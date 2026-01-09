@@ -1,15 +1,17 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
-from typing import List
+from pydantic import BaseModel, Field, EmailStr, ConfigDict
+from typing import List, Optional
 import uuid
-from datetime import datetime, timezone
-
+from datetime import datetime, timezone, timedelta
+import bcrypt
+import jwt
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -19,54 +21,769 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# Create the main app without a prefix
-app = FastAPI()
+# JWT Configuration
+SECRET_KEY = os.environ.get('JWT_SECRET', 'oll-secret-key-change-in-production')
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_HOURS = 24
 
-# Create a router with the /api prefix
+app = FastAPI(title="OLL Platform API")
 api_router = APIRouter(prefix="/api")
+security = HTTPBearer()
 
+# ========================
+# PYDANTIC MODELS
+# ========================
 
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
-    
+# Auth Models
+class AdminUser(BaseModel):
+    model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    email: EmailStr
+    name: str
+    role: str = "admin"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
+class AdminCreate(BaseModel):
+    email: EmailStr
+    password: str
+    name: str
+    role: str = "admin"
 
-# Add your routes to the router instead of directly to app
-@api_router.get("/")
-async def root():
-    return {"message": "Hello World"}
+class AdminLogin(BaseModel):
+    email: EmailStr
+    password: str
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: AdminUser
+
+# Student Inquiry Models
+class StudentInquiry(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    learner_type: str  # self, child
+    age_group: str
+    skill: str
+    learning_mode: str  # online, offline
+    city: str
+    learning_goal: str
+    name: str
+    email: EmailStr
+    phone: str
+    status: str = "new"  # new, contacted, demo_scheduled, converted, closed
+    notes: str = ""
+    demo_date: Optional[str] = None
+    demo_time: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class StudentInquiryCreate(BaseModel):
+    learner_type: str
+    age_group: str
+    skill: str
+    learning_mode: str
+    city: str
+    learning_goal: str
+    name: str
+    email: EmailStr
+    phone: str
+    demo_date: Optional[str] = None
+    demo_time: Optional[str] = None
+
+class StudentInquiryUpdate(BaseModel):
+    status: Optional[str] = None
+    notes: Optional[str] = None
+    demo_date: Optional[str] = None
+    demo_time: Optional[str] = None
+
+# School Inquiry Models
+class SchoolInquiry(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    school_name: str
+    contact_name: str
+    email: EmailStr
+    phone: str
+    location: str
+    school_size: str
+    fee_range: str
+    programs_interested: List[str]
+    support_needed: List[str]
+    status: str = "new"  # new, contacted, meeting_scheduled, proposal_sent, converted, closed
+    notes: str = ""
+    meeting_date: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class SchoolInquiryCreate(BaseModel):
+    school_name: str
+    contact_name: str
+    email: EmailStr
+    phone: str
+    location: str
+    school_size: str
+    fee_range: str
+    programs_interested: List[str]
+    support_needed: List[str]
+
+class SchoolInquiryUpdate(BaseModel):
+    status: Optional[str] = None
+    notes: Optional[str] = None
+    meeting_date: Optional[str] = None
+
+# Educator Models
+class EducatorApplication(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    email: EmailStr
+    phone: str
+    skills: List[str]
+    experience: str
+    grades_comfortable: List[str]
+    city: str
+    availability: str
+    demo_ready: bool = False
+    status: str = "new"  # new, reviewed, interview_scheduled, approved, rejected
+    notes: str = ""
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class EducatorApplicationCreate(BaseModel):
+    name: str
+    email: EmailStr
+    phone: str
+    skills: List[str]
+    experience: str
+    grades_comfortable: List[str]
+    city: str
+    availability: str
+    demo_ready: bool = False
+
+class EducatorApplicationUpdate(BaseModel):
+    status: Optional[str] = None
+    notes: Optional[str] = None
+
+# Open Requirements Models
+class OpenRequirement(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    title: str
+    skill: str
+    city: str
+    description: str
+    requirements: str
+    positions: int = 1
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class OpenRequirementCreate(BaseModel):
+    title: str
+    skill: str
+    city: str
+    description: str
+    requirements: str
+    positions: int = 1
+
+class OpenRequirementUpdate(BaseModel):
+    title: Optional[str] = None
+    skill: Optional[str] = None
+    city: Optional[str] = None
+    description: Optional[str] = None
+    requirements: Optional[str] = None
+    positions: Optional[int] = None
+    is_active: Optional[bool] = None
+
+# FAQ Models
+class FAQ(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    question: str
+    answer: str
+    category: str  # courses, fees, demos, online_vs_offline
+    order: int = 0
+    is_active: bool = True
+
+class FAQCreate(BaseModel):
+    question: str
+    answer: str
+    category: str
+    order: int = 0
+
+class FAQUpdate(BaseModel):
+    question: Optional[str] = None
+    answer: Optional[str] = None
+    category: Optional[str] = None
+    order: Optional[int] = None
+    is_active: Optional[bool] = None
+
+# Blog Models
+class Blog(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    title: str
+    slug: str
+    excerpt: str
+    content: str
+    cover_image: str
+    category: str  # students, parents, educators, schools
+    author: str
+    is_published: bool = False
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class BlogCreate(BaseModel):
+    title: str
+    slug: str
+    excerpt: str
+    content: str
+    cover_image: str
+    category: str
+    author: str
+    is_published: bool = False
+
+class BlogUpdate(BaseModel):
+    title: Optional[str] = None
+    slug: Optional[str] = None
+    excerpt: Optional[str] = None
+    content: Optional[str] = None
+    cover_image: Optional[str] = None
+    category: Optional[str] = None
+    is_published: Optional[bool] = None
+
+# Support Ticket Models
+class SupportTicket(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    email: EmailStr
+    user_type: str  # student, educator, school
+    subject: str
+    message: str
+    status: str = "open"  # open, in_progress, resolved, closed
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class SupportTicketCreate(BaseModel):
+    name: str
+    email: EmailStr
+    user_type: str
+    subject: str
+    message: str
+
+# About Page Content Model
+class AboutContent(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = "about-page"
+    mission: str
+    vision: str
+    what_we_do: str
+    media_features: List[dict] = []
+    team_members: List[dict] = []
+    gallery_images: List[str] = []
+    updates: List[dict] = []
+
+class AboutContentUpdate(BaseModel):
+    mission: Optional[str] = None
+    vision: Optional[str] = None
+    what_we_do: Optional[str] = None
+    media_features: Optional[List[dict]] = None
+    team_members: Optional[List[dict]] = None
+    gallery_images: Optional[List[str]] = None
+    updates: Optional[List[dict]] = None
+
+# Demo Slot Models
+class DemoSlot(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    date: str
+    time: str
+    is_available: bool = True
+    booked_by: Optional[str] = None
+
+# ========================
+# HELPER FUNCTIONS
+# ========================
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+def verify_password(password: str, hashed: str) -> bool:
+    return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
+
+def create_access_token(data: dict) -> str:
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
+    try:
+        payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        email = payload.get("sub")
+        if email is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        user = await db.admins.find_one({"email": email}, {"_id": 0, "password": 0})
+        if user is None:
+            raise HTTPException(status_code=401, detail="User not found")
+        return user
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+def serialize_doc(doc: dict) -> dict:
+    """Remove MongoDB _id and convert datetime to ISO string"""
+    if doc is None:
+        return None
+    doc.pop('_id', None)
+    for key, value in doc.items():
+        if isinstance(value, datetime):
+            doc[key] = value.isoformat()
+    return doc
+
+# ========================
+# AUTH ENDPOINTS
+# ========================
+
+@api_router.post("/auth/register", response_model=TokenResponse)
+async def register_admin(data: AdminCreate):
+    existing = await db.admins.find_one({"email": data.email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already registered")
     
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
+    admin_data = {
+        "id": str(uuid.uuid4()),
+        "email": data.email,
+        "name": data.name,
+        "role": data.role,
+        "password": hash_password(data.password),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.admins.insert_one(admin_data)
     
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
+    token = create_access_token({"sub": data.email})
+    user = AdminUser(id=admin_data["id"], email=data.email, name=data.name, role=data.role)
+    return TokenResponse(access_token=token, user=user)
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
+@api_router.post("/auth/login", response_model=TokenResponse)
+async def login_admin(data: AdminLogin):
+    admin = await db.admins.find_one({"email": data.email})
+    if not admin or not verify_password(data.password, admin["password"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
     
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
-    
-    return status_checks
+    token = create_access_token({"sub": data.email})
+    user = AdminUser(id=admin["id"], email=admin["email"], name=admin["name"], role=admin.get("role", "admin"))
+    return TokenResponse(access_token=token, user=user)
 
-# Include the router in the main app
+@api_router.get("/auth/me")
+async def get_me(user: dict = Depends(get_current_user)):
+    return user
+
+# ========================
+# STUDENT INQUIRY ENDPOINTS
+# ========================
+
+@api_router.post("/students/inquiry", response_model=StudentInquiry)
+async def create_student_inquiry(data: StudentInquiryCreate):
+    inquiry = StudentInquiry(**data.model_dump())
+    doc = inquiry.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    await db.student_inquiries.insert_one(doc)
+    return inquiry
+
+@api_router.get("/students/inquiries", response_model=List[StudentInquiry])
+async def get_student_inquiries(
+    status: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    query = {}
+    if status:
+        query["status"] = status
+    inquiries = await db.student_inquiries.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    for inq in inquiries:
+        if isinstance(inq.get('created_at'), str):
+            inq['created_at'] = datetime.fromisoformat(inq['created_at'])
+        if isinstance(inq.get('updated_at'), str):
+            inq['updated_at'] = datetime.fromisoformat(inq['updated_at'])
+    return inquiries
+
+@api_router.get("/students/inquiry/{inquiry_id}", response_model=StudentInquiry)
+async def get_student_inquiry(inquiry_id: str, user: dict = Depends(get_current_user)):
+    inquiry = await db.student_inquiries.find_one({"id": inquiry_id}, {"_id": 0})
+    if not inquiry:
+        raise HTTPException(status_code=404, detail="Inquiry not found")
+    if isinstance(inquiry.get('created_at'), str):
+        inquiry['created_at'] = datetime.fromisoformat(inquiry['created_at'])
+    if isinstance(inquiry.get('updated_at'), str):
+        inquiry['updated_at'] = datetime.fromisoformat(inquiry['updated_at'])
+    return inquiry
+
+@api_router.patch("/students/inquiry/{inquiry_id}", response_model=StudentInquiry)
+async def update_student_inquiry(
+    inquiry_id: str, 
+    data: StudentInquiryUpdate,
+    user: dict = Depends(get_current_user)
+):
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    await db.student_inquiries.update_one({"id": inquiry_id}, {"$set": update_data})
+    inquiry = await db.student_inquiries.find_one({"id": inquiry_id}, {"_id": 0})
+    if isinstance(inquiry.get('created_at'), str):
+        inquiry['created_at'] = datetime.fromisoformat(inquiry['created_at'])
+    if isinstance(inquiry.get('updated_at'), str):
+        inquiry['updated_at'] = datetime.fromisoformat(inquiry['updated_at'])
+    return inquiry
+
+# ========================
+# SCHOOL INQUIRY ENDPOINTS
+# ========================
+
+@api_router.post("/schools/inquiry", response_model=SchoolInquiry)
+async def create_school_inquiry(data: SchoolInquiryCreate):
+    inquiry = SchoolInquiry(**data.model_dump())
+    doc = inquiry.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    await db.school_inquiries.insert_one(doc)
+    return inquiry
+
+@api_router.get("/schools/inquiries", response_model=List[SchoolInquiry])
+async def get_school_inquiries(
+    status: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    query = {}
+    if status:
+        query["status"] = status
+    inquiries = await db.school_inquiries.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    for inq in inquiries:
+        if isinstance(inq.get('created_at'), str):
+            inq['created_at'] = datetime.fromisoformat(inq['created_at'])
+        if isinstance(inq.get('updated_at'), str):
+            inq['updated_at'] = datetime.fromisoformat(inq['updated_at'])
+    return inquiries
+
+@api_router.patch("/schools/inquiry/{inquiry_id}", response_model=SchoolInquiry)
+async def update_school_inquiry(
+    inquiry_id: str, 
+    data: SchoolInquiryUpdate,
+    user: dict = Depends(get_current_user)
+):
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    await db.school_inquiries.update_one({"id": inquiry_id}, {"$set": update_data})
+    inquiry = await db.school_inquiries.find_one({"id": inquiry_id}, {"_id": 0})
+    if isinstance(inquiry.get('created_at'), str):
+        inquiry['created_at'] = datetime.fromisoformat(inquiry['created_at'])
+    if isinstance(inquiry.get('updated_at'), str):
+        inquiry['updated_at'] = datetime.fromisoformat(inquiry['updated_at'])
+    return inquiry
+
+# ========================
+# EDUCATOR ENDPOINTS
+# ========================
+
+@api_router.post("/educators/apply", response_model=EducatorApplication)
+async def create_educator_application(data: EducatorApplicationCreate):
+    application = EducatorApplication(**data.model_dump())
+    doc = application.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    await db.educator_applications.insert_one(doc)
+    return application
+
+@api_router.get("/educators/applications", response_model=List[EducatorApplication])
+async def get_educator_applications(
+    status: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    query = {}
+    if status:
+        query["status"] = status
+    applications = await db.educator_applications.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    for app in applications:
+        if isinstance(app.get('created_at'), str):
+            app['created_at'] = datetime.fromisoformat(app['created_at'])
+        if isinstance(app.get('updated_at'), str):
+            app['updated_at'] = datetime.fromisoformat(app['updated_at'])
+    return applications
+
+@api_router.patch("/educators/application/{app_id}", response_model=EducatorApplication)
+async def update_educator_application(
+    app_id: str, 
+    data: EducatorApplicationUpdate,
+    user: dict = Depends(get_current_user)
+):
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    await db.educator_applications.update_one({"id": app_id}, {"$set": update_data})
+    application = await db.educator_applications.find_one({"id": app_id}, {"_id": 0})
+    if isinstance(application.get('created_at'), str):
+        application['created_at'] = datetime.fromisoformat(application['created_at'])
+    if isinstance(application.get('updated_at'), str):
+        application['updated_at'] = datetime.fromisoformat(application['updated_at'])
+    return application
+
+# Open Requirements
+@api_router.get("/requirements", response_model=List[OpenRequirement])
+async def get_open_requirements(city: Optional[str] = None, skill: Optional[str] = None):
+    query = {"is_active": True}
+    if city:
+        query["city"] = city
+    if skill:
+        query["skill"] = skill
+    requirements = await db.open_requirements.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    for req in requirements:
+        if isinstance(req.get('created_at'), str):
+            req['created_at'] = datetime.fromisoformat(req['created_at'])
+    return requirements
+
+@api_router.post("/requirements", response_model=OpenRequirement)
+async def create_requirement(data: OpenRequirementCreate, user: dict = Depends(get_current_user)):
+    requirement = OpenRequirement(**data.model_dump())
+    doc = requirement.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    await db.open_requirements.insert_one(doc)
+    return requirement
+
+@api_router.patch("/requirements/{req_id}", response_model=OpenRequirement)
+async def update_requirement(
+    req_id: str, 
+    data: OpenRequirementUpdate,
+    user: dict = Depends(get_current_user)
+):
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    await db.open_requirements.update_one({"id": req_id}, {"$set": update_data})
+    requirement = await db.open_requirements.find_one({"id": req_id}, {"_id": 0})
+    if isinstance(requirement.get('created_at'), str):
+        requirement['created_at'] = datetime.fromisoformat(requirement['created_at'])
+    return requirement
+
+@api_router.delete("/requirements/{req_id}")
+async def delete_requirement(req_id: str, user: dict = Depends(get_current_user)):
+    await db.open_requirements.delete_one({"id": req_id})
+    return {"message": "Deleted successfully"}
+
+# ========================
+# FAQ ENDPOINTS
+# ========================
+
+@api_router.get("/faqs", response_model=List[FAQ])
+async def get_faqs(category: Optional[str] = None):
+    query = {"is_active": True}
+    if category:
+        query["category"] = category
+    faqs = await db.faqs.find(query, {"_id": 0}).sort("order", 1).to_list(100)
+    return faqs
+
+@api_router.post("/faqs", response_model=FAQ)
+async def create_faq(data: FAQCreate, user: dict = Depends(get_current_user)):
+    faq = FAQ(**data.model_dump())
+    doc = faq.model_dump()
+    await db.faqs.insert_one(doc)
+    return faq
+
+@api_router.patch("/faqs/{faq_id}", response_model=FAQ)
+async def update_faq(faq_id: str, data: FAQUpdate, user: dict = Depends(get_current_user)):
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    await db.faqs.update_one({"id": faq_id}, {"$set": update_data})
+    faq = await db.faqs.find_one({"id": faq_id}, {"_id": 0})
+    return faq
+
+@api_router.delete("/faqs/{faq_id}")
+async def delete_faq(faq_id: str, user: dict = Depends(get_current_user)):
+    await db.faqs.delete_one({"id": faq_id})
+    return {"message": "Deleted successfully"}
+
+# ========================
+# BLOG ENDPOINTS
+# ========================
+
+@api_router.get("/blogs", response_model=List[Blog])
+async def get_blogs(category: Optional[str] = None, published_only: bool = True):
+    query = {}
+    if published_only:
+        query["is_published"] = True
+    if category:
+        query["category"] = category
+    blogs = await db.blogs.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    for blog in blogs:
+        if isinstance(blog.get('created_at'), str):
+            blog['created_at'] = datetime.fromisoformat(blog['created_at'])
+        if isinstance(blog.get('updated_at'), str):
+            blog['updated_at'] = datetime.fromisoformat(blog['updated_at'])
+    return blogs
+
+@api_router.get("/blogs/{slug}", response_model=Blog)
+async def get_blog(slug: str):
+    blog = await db.blogs.find_one({"slug": slug}, {"_id": 0})
+    if not blog:
+        raise HTTPException(status_code=404, detail="Blog not found")
+    if isinstance(blog.get('created_at'), str):
+        blog['created_at'] = datetime.fromisoformat(blog['created_at'])
+    if isinstance(blog.get('updated_at'), str):
+        blog['updated_at'] = datetime.fromisoformat(blog['updated_at'])
+    return blog
+
+@api_router.post("/blogs", response_model=Blog)
+async def create_blog(data: BlogCreate, user: dict = Depends(get_current_user)):
+    blog = Blog(**data.model_dump())
+    doc = blog.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    await db.blogs.insert_one(doc)
+    return blog
+
+@api_router.patch("/blogs/{blog_id}", response_model=Blog)
+async def update_blog(blog_id: str, data: BlogUpdate, user: dict = Depends(get_current_user)):
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    await db.blogs.update_one({"id": blog_id}, {"$set": update_data})
+    blog = await db.blogs.find_one({"id": blog_id}, {"_id": 0})
+    if isinstance(blog.get('created_at'), str):
+        blog['created_at'] = datetime.fromisoformat(blog['created_at'])
+    if isinstance(blog.get('updated_at'), str):
+        blog['updated_at'] = datetime.fromisoformat(blog['updated_at'])
+    return blog
+
+@api_router.delete("/blogs/{blog_id}")
+async def delete_blog(blog_id: str, user: dict = Depends(get_current_user)):
+    await db.blogs.delete_one({"id": blog_id})
+    return {"message": "Deleted successfully"}
+
+# ========================
+# SUPPORT TICKET ENDPOINTS
+# ========================
+
+@api_router.post("/support/ticket", response_model=SupportTicket)
+async def create_support_ticket(data: SupportTicketCreate):
+    ticket = SupportTicket(**data.model_dump())
+    doc = ticket.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    await db.support_tickets.insert_one(doc)
+    return ticket
+
+@api_router.get("/support/tickets", response_model=List[SupportTicket])
+async def get_support_tickets(status: Optional[str] = None, user: dict = Depends(get_current_user)):
+    query = {}
+    if status:
+        query["status"] = status
+    tickets = await db.support_tickets.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+    for ticket in tickets:
+        if isinstance(ticket.get('created_at'), str):
+            ticket['created_at'] = datetime.fromisoformat(ticket['created_at'])
+    return tickets
+
+@api_router.patch("/support/tickets/{ticket_id}")
+async def update_support_ticket(ticket_id: str, status: str, user: dict = Depends(get_current_user)):
+    await db.support_tickets.update_one({"id": ticket_id}, {"$set": {"status": status}})
+    return {"message": "Updated successfully"}
+
+# ========================
+# ABOUT PAGE ENDPOINTS
+# ========================
+
+@api_router.get("/about", response_model=AboutContent)
+async def get_about_content():
+    content = await db.about_content.find_one({"id": "about-page"}, {"_id": 0})
+    if not content:
+        # Return default content
+        return AboutContent(
+            mission="To democratize skill education and empower every student with future-ready skills.",
+            vision="A world where every child has access to quality skill education.",
+            what_we_do="We provide comprehensive skill education programs in Robotics, Coding, AI, Entrepreneurship, and Financial Literacy.",
+            media_features=[
+                {"name": "Shark Tank India", "description": "Featured on Shark Tank India Season 2"},
+                {"name": "KBC", "description": "Recognized by Kaun Banega Crorepati"}
+            ],
+            team_members=[],
+            gallery_images=[],
+            updates=[]
+        )
+    return content
+
+@api_router.patch("/about", response_model=AboutContent)
+async def update_about_content(data: AboutContentUpdate, user: dict = Depends(get_current_user)):
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    await db.about_content.update_one(
+        {"id": "about-page"}, 
+        {"$set": update_data}, 
+        upsert=True
+    )
+    content = await db.about_content.find_one({"id": "about-page"}, {"_id": 0})
+    return content
+
+# ========================
+# DEMO SLOTS ENDPOINTS
+# ========================
+
+@api_router.get("/demo-slots")
+async def get_available_demo_slots(date: Optional[str] = None):
+    # Generate available slots for next 14 days
+    slots = []
+    base_date = datetime.now(timezone.utc).date()
+    times = ["10:00", "11:00", "12:00", "14:00", "15:00", "16:00", "17:00"]
+    
+    for i in range(14):
+        current_date = base_date + timedelta(days=i)
+        if current_date.weekday() < 6:  # Monday to Saturday
+            date_str = current_date.isoformat()
+            for time in times:
+                # Check if slot is booked
+                booked = await db.demo_bookings.find_one({
+                    "date": date_str,
+                    "time": time
+                })
+                slots.append({
+                    "date": date_str,
+                    "time": time,
+                    "is_available": booked is None
+                })
+    
+    if date:
+        slots = [s for s in slots if s["date"] == date]
+    
+    return slots
+
+# ========================
+# DASHBOARD STATS ENDPOINTS
+# ========================
+
+@api_router.get("/dashboard/stats")
+async def get_dashboard_stats(user: dict = Depends(get_current_user)):
+    student_count = await db.student_inquiries.count_documents({})
+    school_count = await db.school_inquiries.count_documents({})
+    educator_count = await db.educator_applications.count_documents({})
+    ticket_count = await db.support_tickets.count_documents({"status": "open"})
+    
+    # Get counts by status
+    student_new = await db.student_inquiries.count_documents({"status": "new"})
+    student_converted = await db.student_inquiries.count_documents({"status": "converted"})
+    school_new = await db.school_inquiries.count_documents({"status": "new"})
+    educator_new = await db.educator_applications.count_documents({"status": "new"})
+    
+    return {
+        "total_students": student_count,
+        "total_schools": school_count,
+        "total_educators": educator_count,
+        "open_tickets": ticket_count,
+        "new_student_leads": student_new,
+        "converted_students": student_converted,
+        "new_school_leads": school_new,
+        "new_educator_applications": educator_new
+    }
+
+# ========================
+# HEALTH CHECK
+# ========================
+
+@api_router.get("/health")
+async def health_check():
+    return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
+
+# Include router and middleware
 app.include_router(api_router)
 
 app.add_middleware(

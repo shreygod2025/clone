@@ -1,115 +1,307 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body {
-    margin: 0;
-    font-family:
-        -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
-        "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
-        sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-}
-
-code {
-    font-family:
-        source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
+:root {
+  --oll-red: #D63031;
+  --oll-red-hover: #B02021;
+  --oll-navy: #1E3A5F;
+  --oll-navy-light: #2C5282;
+  --glass-light: rgba(255, 255, 255, 0.7);
+  --glass-dark: rgba(30, 58, 95, 0.4);
+  --glass-border: rgba(255, 255, 255, 0.2);
 }
 
 @layer base {
-    :root {
-        --background: 0 0% 100%;
-        --foreground: 0 0% 3.9%;
-        --card: 0 0% 100%;
-        --card-foreground: 0 0% 3.9%;
-        --popover: 0 0% 100%;
-        --popover-foreground: 0 0% 3.9%;
-        --primary: 0 0% 9%;
-        --primary-foreground: 0 0% 98%;
-        --secondary: 0 0% 96.1%;
-        --secondary-foreground: 0 0% 9%;
-        --muted: 0 0% 96.1%;
-        --muted-foreground: 0 0% 45.1%;
-        --accent: 0 0% 96.1%;
-        --accent-foreground: 0 0% 9%;
-        --destructive: 0 84.2% 60.2%;
-        --destructive-foreground: 0 0% 98%;
-        --border: 0 0% 89.8%;
-        --input: 0 0% 89.8%;
-        --ring: 0 0% 3.9%;
-        --chart-1: 12 76% 61%;
-        --chart-2: 173 58% 39%;
-        --chart-3: 197 37% 24%;
-        --chart-4: 43 74% 66%;
-        --chart-5: 27 87% 67%;
-        --radius: 0.5rem;
-    }
-    .dark {
-        --background: 0 0% 3.9%;
-        --foreground: 0 0% 98%;
-        --card: 0 0% 3.9%;
-        --card-foreground: 0 0% 98%;
-        --popover: 0 0% 3.9%;
-        --popover-foreground: 0 0% 98%;
-        --primary: 0 0% 98%;
-        --primary-foreground: 0 0% 9%;
-        --secondary: 0 0% 14.9%;
-        --secondary-foreground: 0 0% 98%;
-        --muted: 0 0% 14.9%;
-        --muted-foreground: 0 0% 63.9%;
-        --accent: 0 0% 14.9%;
-        --accent-foreground: 0 0% 98%;
-        --destructive: 0 62.8% 30.6%;
-        --destructive-foreground: 0 0% 98%;
-        --border: 0 0% 14.9%;
-        --input: 0 0% 14.9%;
-        --ring: 0 0% 83.1%;
-        --chart-1: 220 70% 50%;
-        --chart-2: 160 60% 45%;
-        --chart-3: 30 80% 55%;
-        --chart-4: 280 65% 60%;
-        --chart-5: 340 75% 55%;
-    }
+  :root {
+    --background: 210 40% 98%;
+    --foreground: 215 25% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 25% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 215 25% 15%;
+    --primary: 355 75% 51%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 213 52% 24%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 215 25% 15%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 355 75% 51%;
+    --radius: 0.75rem;
+    --chart-1: 355 75% 51%;
+    --chart-2: 213 52% 24%;
+    --chart-3: 173 58% 39%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+
+  .dark {
+    --background: 215 28% 9%;
+    --foreground: 210 40% 98%;
+    --card: 215 25% 12%;
+    --card-foreground: 210 40% 98%;
+    --popover: 215 25% 12%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 355 75% 51%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 213 52% 34%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 215 25% 17%;
+    --muted-foreground: 215 16% 57%;
+    --accent: 215 25% 17%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 215 25% 17%;
+    --input: 215 25% 17%;
+    --ring: 355 75% 51%;
+  }
 }
 
 @layer base {
-    * {
-        @apply border-border;
-    }
-    body {
-        @apply bg-background text-foreground;
-    }
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Manrope', sans-serif;
+  }
 }
 
-@layer base {
-    [data-debug-wrapper="true"] {
-        display: contents !important;
-    }
+@layer components {
+  .glass-card {
+    @apply bg-white/70 backdrop-blur-xl border border-white/40 shadow-xl shadow-blue-900/5;
+  }
 
-    [data-debug-wrapper="true"] > * {
-        margin-left: inherit;
-        margin-right: inherit;
-        margin-top: inherit;
-        margin-bottom: inherit;
-        padding-left: inherit;
-        padding-right: inherit;
-        padding-top: inherit;
-        padding-bottom: inherit;
-        column-gap: inherit;
-        row-gap: inherit;
-        gap: inherit;
-        border-left-width: inherit;
-        border-right-width: inherit;
-        border-top-width: inherit;
-        border-bottom-width: inherit;
-        border-left-style: inherit;
-        border-right-style: inherit;
-        border-top-style: inherit;
-        border-bottom-style: inherit;
-        border-left-color: inherit;
-        border-right-color: inherit;
-        border-top-color: inherit;
-        border-bottom-color: inherit;
-    }
+  .glass-card-dark {
+    @apply bg-slate-900/70 backdrop-blur-xl border border-white/10 shadow-xl;
+  }
+
+  .btn-primary {
+    @apply h-12 px-8 rounded-full bg-[#D63031] text-white font-semibold hover:bg-[#B02021] hover:scale-105 transition-all duration-300 shadow-lg shadow-red-500/25;
+  }
+
+  .btn-secondary {
+    @apply h-12 px-8 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[#1E3A5F] hover:bg-white/20 transition-all duration-300;
+  }
+
+  .btn-navy {
+    @apply h-12 px-8 rounded-full bg-[#1E3A5F] text-white font-semibold hover:bg-[#2C5282] hover:scale-105 transition-all duration-300 shadow-lg shadow-blue-900/25;
+  }
+
+  .input-glass {
+    @apply h-12 bg-white/50 backdrop-blur-sm border-slate-200 focus:border-[#1E3A5F] focus:ring-[#1E3A5F]/20 rounded-xl;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-[#1E3A5F] to-[#D63031] bg-clip-text text-transparent;
+  }
+
+  .gradient-bg {
+    @apply bg-gradient-to-br from-[#1E3A5F] to-[#D63031];
+  }
+
+  .funnel-card {
+    @apply relative overflow-hidden cursor-pointer group transition-all duration-500;
+  }
+
+  .funnel-card::before {
+    content: '';
+    @apply absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent z-10;
+  }
+
+  .funnel-card:hover {
+    @apply scale-[1.02];
+  }
+
+  .step-indicator {
+    @apply w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300;
+  }
+
+  .step-indicator.active {
+    @apply bg-[#D63031] text-white;
+  }
+
+  .step-indicator.completed {
+    @apply bg-[#1E3A5F] text-white;
+  }
+
+  .step-indicator.pending {
+    @apply bg-slate-200 text-slate-500;
+  }
+
+  .selection-card {
+    @apply p-6 rounded-2xl border-2 border-slate-200 cursor-pointer transition-all duration-300 hover:border-[#D63031] hover:shadow-lg hover:shadow-red-500/10;
+  }
+
+  .selection-card.selected {
+    @apply border-[#D63031] bg-red-50 shadow-lg shadow-red-500/10;
+  }
+
+  .admin-sidebar {
+    @apply bg-[#1E3A5F] text-white min-h-screen;
+  }
+
+  .admin-nav-item {
+    @apply flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 hover:bg-white/10;
+  }
+
+  .admin-nav-item.active {
+    @apply bg-white/20;
+  }
+
+  .stat-card {
+    @apply p-6 rounded-2xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-shadow;
+  }
+
+  .pipeline-card {
+    @apply p-4 rounded-xl bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer;
+  }
+
+  .badge-status {
+    @apply px-3 py-1 rounded-full text-xs font-medium;
+  }
+
+  .badge-new {
+    @apply bg-blue-100 text-blue-700;
+  }
+
+  .badge-contacted {
+    @apply bg-yellow-100 text-yellow-700;
+  }
+
+  .badge-converted {
+    @apply bg-green-100 text-green-700;
+  }
+
+  .badge-closed {
+    @apply bg-slate-100 text-slate-600;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.5s ease-out forwards;
+  }
+
+  .animate-slide-in-right {
+    animation: slideInRight 0.3s ease-out forwards;
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-20px); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-slate-100 rounded-full;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-300 rounded-full hover:bg-slate-400;
+}
+
+/* Calendar custom styles */
+.rdp {
+  --rdp-cell-size: 40px;
+  --rdp-accent-color: #D63031;
+  --rdp-background-color: rgba(214, 48, 49, 0.1);
+}
+
+.rdp-day_selected:not([disabled]) {
+  background-color: #D63031 !important;
+}
+
+.rdp-day_selected:hover:not([disabled]) {
+  background-color: #B02021 !important;
+}
+
+/* Debug wrapper fix */
+[data-debug-wrapper="true"] {
+  display: contents !important;
+}
+
+[data-debug-wrapper="true"] > * {
+  margin-left: inherit;
+  margin-right: inherit;
+  margin-top: inherit;
+  margin-bottom: inherit;
+  padding-left: inherit;
+  padding-right: inherit;
+  padding-top: inherit;
+  padding-bottom: inherit;
+  column-gap: inherit;
+  row-gap: inherit;
+  gap: inherit;
+  border-left-width: inherit;
+  border-right-width: inherit;
+  border-top-width: inherit;
+  border-bottom-width: inherit;
+  border-left-style: inherit;
+  border-right-style: inherit;
+  border-top-style: inherit;
+  border-bottom-style: inherit;
+  border-left-color: inherit;
+  border-right-color: inherit;
+  border-top-color: inherit;
+  border-bottom-color: inherit;
 }
