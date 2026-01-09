@@ -67,7 +67,7 @@ class OLLAPITester:
     def test_admin_register(self):
         """Test admin registration"""
         test_data = {
-            "email": f"admin_{datetime.now().strftime('%H%M%S')}@oll.test",
+            "email": f"admin_{datetime.now().strftime('%H%M%S')}@example.com",
             "password": "TestPass123!",
             "name": "Test Admin",
             "role": "admin"
