@@ -37,7 +37,7 @@ const LandingPage = () => {
   ];
 
   return (
-    <div className="h-screen bg-slate-50 overflow-hidden flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Navigation */}
       <nav className="bg-white/80 backdrop-blur-lg border-b border-slate-200/50 shrink-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -78,42 +78,42 @@ const LandingPage = () => {
         )}
       </nav>
 
-      {/* Main Content - Full Height */}
-      <main className="flex-1 flex flex-col">
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col px-4 py-4 md:py-6">
         {/* Tagline */}
-        <div className="text-center py-6 md:py-8 px-4 shrink-0">
+        <div className="text-center mb-4 md:mb-6 shrink-0">
           <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-[#1E3A5F]" style={{ fontFamily: 'Manrope, sans-serif' }}>
             Leading a Skill Learning Revolution
           </h1>
-          <p className="text-base md:text-lg text-slate-500 mt-2">
+          <p className="text-sm md:text-base text-slate-500 mt-1">
             Choose your path
           </p>
         </div>
 
-        {/* User Type Cards */}
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 px-4 md:px-8 pb-6 md:pb-8">
+        {/* User Type Cards - Flexible Grid */}
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-6 max-w-7xl mx-auto w-full">
           {userTypes.map((type) => (
             <div
               key={type.id}
               onClick={() => navigate(type.path)}
-              className={`relative rounded-3xl bg-gradient-to-br ${type.gradient} p-6 md:p-8 flex flex-col justify-between cursor-pointer hover:scale-[1.02] transition-all duration-300 shadow-xl hover:shadow-2xl min-h-[180px] md:min-h-0`}
+              className={`relative rounded-2xl md:rounded-3xl bg-gradient-to-br ${type.gradient} p-4 md:p-6 lg:p-8 flex flex-col cursor-pointer hover:scale-[1.02] transition-all duration-300 shadow-lg hover:shadow-xl`}
               data-testid={`${type.id}-card`}
             >
               {/* Icon */}
-              <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                <type.icon className="w-7 h-7 md:w-8 md:h-8 text-white" />
+              <div className="w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center mb-2 md:mb-auto">
+                <type.icon className="w-5 h-5 md:w-7 md:h-7 text-white" />
               </div>
               
               {/* Content */}
-              <div className="mt-auto">
-                <p className="text-white/70 text-sm font-medium">{type.subtitle}</p>
-                <h2 className="text-2xl md:text-3xl font-bold text-white mt-1" style={{ fontFamily: 'Manrope, sans-serif' }}>
+              <div>
+                <p className="text-white/70 text-xs md:text-sm font-medium">{type.subtitle}</p>
+                <h2 className="text-lg md:text-2xl lg:text-3xl font-bold text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>
                   {type.title}
                 </h2>
-                <p className="text-white/60 text-sm mt-2">{type.description}</p>
-                <div className="flex items-center gap-2 text-white font-medium mt-4 group">
+                <p className="text-white/60 text-xs md:text-sm mt-1">{type.description}</p>
+                <div className="flex items-center gap-2 text-white font-medium mt-2 md:mt-4 text-sm md:text-base">
                   Get Started
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight className="w-4 h-4 md:w-5 md:h-5" />
                 </div>
               </div>
             </div>
