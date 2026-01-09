@@ -1,0 +1,136 @@
+{
+  "design_system": {
+    "identity": {
+      "name": "OLL Platform",
+      "tone": "Professional, Trustworthy, Dynamic, Growth-oriented",
+      "aesthetic": "Modern Glassmorphism with High Contrast",
+      "principles": [
+        "Glassy but Readable: Use glass effects for containers/overlays, but keep text on opaque or high-contrast backgrounds.",
+        "Red for Action, Blue for Trust: Strict color usage rules.",
+        "Mobile-First Funnels: One question per screen on mobile.",
+        "No-Scroll Decision: Landing page must present the 3 user paths immediately."
+      ]
+    },
+    "typography": {
+      "font_family": {
+        "headings": "Manrope, sans-serif",
+        "body": "Inter, sans-serif",
+        "mono": "JetBrains Mono, monospace"
+      },
+      "scale": {
+        "h1": "text-4xl md:text-6xl font-bold tracking-tight",
+        "h2": "text-3xl md:text-4xl font-semibold tracking-tight",
+        "h3": "text-2xl md:text-3xl font-semibold",
+        "body_lg": "text-lg md:text-xl leading-relaxed",
+        "body_base": "text-base leading-relaxed",
+        "caption": "text-sm text-muted-foreground"
+      }
+    },
+    "colors": {
+      "palette": {
+        "primary": {
+          "DEFAULT": "#D63031",
+          "foreground": "#FFFFFF",
+          "hover": "#B02021"
+        },
+        "secondary": {
+          "DEFAULT": "#1E3A5F",
+          "foreground": "#FFFFFF",
+          "light": "#2C5282"
+        },
+        "background": {
+          "DEFAULT": "#F8FAFC",
+          "dark": "#0F172A"
+        },
+        "glass": {
+          "light": "rgba(255, 255, 255, 0.7)",
+          "dark": "rgba(30, 58, 95, 0.4)",
+          "border": "rgba(255, 255, 255, 0.2)"
+        }
+      },
+      "usage": {
+        "cta_buttons": "bg-[#D63031] hover:bg-[#B02021] text-white shadow-lg shadow-red-500/20",
+        "trust_elements": "text-[#1E3A5F] or bg-[#1E3A5F]",
+        "gradients": "bg-gradient-to-br from-[#1E3A5F] to-[#D63031] (Use sparingly, mostly for text or subtle overlays)"
+      }
+    },
+    "layout": {
+      "spacing": {
+        "container": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
+        "section": "py-16 md:py-24",
+        "card_padding": "p-6 md:p-8"
+      },
+      "radius": {
+        "default": "rounded-xl",
+        "button": "rounded-full",
+        "card": "rounded-2xl"
+      },
+      "grids": {
+        "landing_hero": "grid grid-cols-1 md:grid-cols-3 h-screen w-full",
+        "dashboard": "grid grid-cols-1 md:grid-cols-[280px_1fr] min-h-screen"
+      }
+    },
+    "components": {
+      "buttons": {
+        "primary": "h-12 px-8 rounded-full bg-[#D63031] text-white font-semibold hover:scale-105 transition-all shadow-lg shadow-red-500/25",
+        "secondary": "h-12 px-8 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[#1E3A5F] hover:bg-white/20 transition-all",
+        "ghost": "hover:bg-slate-100 text-slate-700"
+      },
+      "cards": {
+        "glass": "bg-white/70 backdrop-blur-xl border border-white/40 shadow-xl shadow-blue-900/5",
+        "solid": "bg-white border border-slate-100 shadow-sm hover:shadow-md transition-shadow"
+      },
+      "inputs": {
+        "default": "h-12 bg-white/50 backdrop-blur-sm border-slate-200 focus:border-[#1E3A5F] focus:ring-[#1E3A5F]/20 rounded-lg"
+      }
+    },
+    "assets": {
+      "images": {
+        "student_hero": "https://images.unsplash.com/photo-1561346745-5db62ae43861?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3MjQyMTd8MHwxfHNlYXJjaHwxfHxoYXBweSUyMHN0dWRlbnQlMjBzdHVkeWluZyUyMGxhcHRvcHxlbnwwfHx8fDE3Njc4OTY2NTF8MA&ixlib=rb-4.1.0&q=85",
+        "educator_hero": "https://images.pexels.com/photos/1181534/pexels-photo-1181534.jpeg",
+        "school_hero": "https://images.pexels.com/photos/159213/hall-congress-architecture-building-159213.jpeg",
+        "abstract_bg": "https://images.pexels.com/photos/7135037/pexels-photo-7135037.jpeg",
+        "logo_placeholder": "https://placehold.co/200x60/1E3A5F/FFFFFF?text=OLL+Platform"
+      },
+      "icons": "Use Lucide React icons. Stroke width 1.5px for elegance."
+    }
+  },
+  "implementation_guide": {
+    "landing_page": {
+      "structure": "Split Screen / Bento Grid",
+      "sections": [
+        {
+          "name": "Hero Selector",
+          "description": "Three equal-width vertical columns (on desktop) or stacked cards (mobile). Each represents a user type: Student, Educator, School.",
+          "interaction": "Hovering expands the column slightly. Clicking leads to the respective funnel.",
+          "visuals": "High-quality image background with heavy gradient overlay (Navy to Transparent). Large typography."
+        }
+      ]
+    },
+    "funnels": {
+      "structure": "Multi-step Wizard",
+      "layout": "Centered glass card on a subtle animated gradient background.",
+      "features": [
+        "Progress Bar (Top)",
+        "One Question Per Screen",
+        "Big Clickable Options (Cards)",
+        "Smooth Transitions (Framer Motion)"
+      ]
+    },
+    "dashboard": {
+      "structure": "Sidebar Layout",
+      "style": "Glassmorphic Sidebar + Clean White Content Area",
+      "widgets": "Stats cards, Recent Activity list, Calendar view."
+    }
+  },
+  "universal_guidelines": [
+    "Use 'Manrope' for all headings.",
+    "Use 'Inter' for all body text.",
+    "Primary CTA buttons MUST be Red (#D63031).",
+    "Secondary buttons and Trust elements MUST be Navy Blue (#1E3A5F).",
+    "Glassmorphism: Use 'backdrop-blur-xl' and 'bg-white/70' for overlays.",
+    "All interactive elements must have 'data-testid'.",
+    "Do not use generic gradients. Use the specific Navy-Red brand gradient.",
+    "Ensure mobile responsiveness. Images max-h-[80vh] on mobile."
+  ]
+}
