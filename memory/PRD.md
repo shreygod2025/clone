@@ -27,9 +27,10 @@ Build a high-conversion, multi-user skill-education platform for OLL that:
 ### Phase 1 - MVP Complete ✅
 
 **Landing Page**
-- 3-column split design with clickable user type cards
-- Logo integration (color + white variants)
-- Navigation with About, Blog, FAQ, Admin Login
+- Clean 3-card design with gradient backgrounds (no stock images)
+- Full viewport display - no scrolling needed
+- Navigation with About, Blog, FAQ (Admin link removed from nav)
+- Admin access at separate /admin route
 
 **Student Funnel**
 - 8-step wizard form (learner type → age → skill → mode → city → goal → contact → demo)
