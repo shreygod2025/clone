@@ -115,7 +115,7 @@
   }
 
   .funnel-card {
-    @apply relative overflow-hidden cursor-pointer group transition-all duration-500;
+    @apply relative overflow-hidden cursor-pointer transition-all duration-500;
   }
 
   .funnel-card::before {
