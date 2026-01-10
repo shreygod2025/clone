@@ -71,31 +71,35 @@ class StudentInquiry(BaseModel):
     name: str
     email: EmailStr
     phone: str
-    status: str = "new"  # new, contacted, demo_scheduled, converted, closed
+    status: str = "new"  # new, demo_completed, converted, closed
     notes: str = ""
     demo_date: Optional[str] = None
     demo_time: Optional[str] = None
+    followup_date: Optional[str] = None
+    source: str = "website"
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class StudentInquiryCreate(BaseModel):
-    learner_type: str
-    age_group: str
-    skill: str
-    learning_mode: str
-    city: str
-    learning_goal: str
+    learner_type: str = "self"
+    age_group: str = ""
+    skill: str = ""
+    learning_mode: str = ""
+    city: str = ""
+    learning_goal: str = ""
     name: str
     email: EmailStr
     phone: str
     demo_date: Optional[str] = None
     demo_time: Optional[str] = None
+    source: str = "website"
 
 class StudentInquiryUpdate(BaseModel):
     status: Optional[str] = None
     notes: Optional[str] = None
     demo_date: Optional[str] = None
     demo_time: Optional[str] = None
+    followup_date: Optional[str] = None
 
 # School Inquiry Models
 class SchoolInquiry(BaseModel):
@@ -108,11 +112,13 @@ class SchoolInquiry(BaseModel):
     location: str
     school_size: str
     fee_range: str
+    board: str = ""
     programs_interested: List[str]
     support_needed: List[str]
-    status: str = "new"  # new, contacted, meeting_scheduled, proposal_sent, converted, closed
+    status: str = "new"  # new, meeting_done, converted, closed
     notes: str = ""
     meeting_date: Optional[str] = None
+    source: str = "website"
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -121,11 +127,13 @@ class SchoolInquiryCreate(BaseModel):
     contact_name: str
     email: EmailStr
     phone: str
-    location: str
-    school_size: str
-    fee_range: str
-    programs_interested: List[str]
-    support_needed: List[str]
+    location: str = ""
+    school_size: str = ""
+    fee_range: str = ""
+    board: str = ""
+    programs_interested: List[str] = []
+    support_needed: List[str] = []
+    source: str = "website"
 
 class SchoolInquiryUpdate(BaseModel):
     status: Optional[str] = None
