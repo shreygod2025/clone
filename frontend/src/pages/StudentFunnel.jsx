@@ -439,16 +439,16 @@ const StudentFunnel = () => {
     switch (step.id) {
       case 'age':
         return (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             {AGE_OPTIONS.map(option => (
               <div
                 key={option.value}
-                className={`selection-card ${formData.age_group === option.value ? 'selected' : ''}`}
+                className={`selection-card p-4 sm:p-5 ${formData.age_group === option.value ? 'selected' : ''}`}
                 onClick={() => updateForm('age_group', option.value)}
                 data-testid={`age-${option.value}`}
               >
-                <h3 className="font-semibold text-[#1E3A5F] mb-1">{option.label}</h3>
-                <p className="text-sm text-slate-500">{option.description}</p>
+                <h3 className="font-semibold text-[#1E3A5F] mb-1 text-sm sm:text-base">{option.label}</h3>
+                <p className="text-xs sm:text-sm text-slate-500">{option.description}</p>
               </div>
             ))}
           </div>
@@ -456,17 +456,17 @@ const StudentFunnel = () => {
 
       case 'skill':
         return (
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             {SKILL_OPTIONS.map(option => (
               <div
                 key={option.value}
-                className={`selection-card flex items-center gap-4 ${formData.skill === option.value ? 'selected' : ''}`}
+                className={`selection-card flex items-center gap-3 sm:gap-4 p-3 sm:p-4 ${formData.skill === option.value ? 'selected' : ''}`}
                 onClick={() => updateForm('skill', option.value)}
                 data-testid={`skill-${option.value}`}
               >
-                <div>
-                  <h3 className="font-semibold text-[#1E3A5F] mb-1">{option.label}</h3>
-                  <p className="text-sm text-slate-500">{option.description}</p>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-[#1E3A5F] mb-0.5 text-sm sm:text-base">{option.label}</h3>
+                  <p className="text-xs sm:text-sm text-slate-500 truncate">{option.description}</p>
                 </div>
               </div>
             ))}
@@ -475,16 +475,16 @@ const StudentFunnel = () => {
 
       case 'mode':
         return (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             {MODE_OPTIONS.map(option => (
               <div
                 key={option.value}
-                className={`selection-card text-center py-8 ${formData.learning_mode === option.value ? 'selected' : ''}`}
+                className={`selection-card text-center py-6 sm:py-8 px-3 ${formData.learning_mode === option.value ? 'selected' : ''}`}
                 onClick={() => updateForm('learning_mode', option.value)}
                 data-testid={`mode-${option.value}`}
               >
-                <h3 className="font-semibold text-[#1E3A5F] mb-1">{option.label}</h3>
-                <p className="text-sm text-slate-500">{option.description}</p>
+                <h3 className="font-semibold text-[#1E3A5F] mb-1 text-sm sm:text-base">{option.label}</h3>
+                <p className="text-xs sm:text-sm text-slate-500">{option.description}</p>
               </div>
             ))}
           </div>
@@ -492,15 +492,15 @@ const StudentFunnel = () => {
 
       case 'city':
         return (
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
             {CITIES.map(city => (
               <div
                 key={city}
-                className={`selection-card text-center py-4 ${formData.city === city ? 'selected' : ''}`}
+                className={`selection-card text-center py-3 sm:py-4 px-2 ${formData.city === city ? 'selected' : ''}`}
                 onClick={() => updateForm('city', city)}
                 data-testid={`city-${city.toLowerCase()}`}
               >
-                <span className="font-medium text-[#1E3A5F]">{city}</span>
+                <span className="font-medium text-[#1E3A5F] text-sm sm:text-base">{city}</span>
               </div>
             ))}
           </div>
@@ -508,16 +508,16 @@ const StudentFunnel = () => {
 
       case 'goal':
         return (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             {GOAL_OPTIONS.map(option => (
               <div
                 key={option.value}
-                className={`selection-card ${formData.learning_goal === option.value ? 'selected' : ''}`}
+                className={`selection-card p-4 sm:p-5 ${formData.learning_goal === option.value ? 'selected' : ''}`}
                 onClick={() => updateForm('learning_goal', option.value)}
                 data-testid={`goal-${option.value}`}
               >
-                <h3 className="font-semibold text-[#1E3A5F] mb-1">{option.label}</h3>
-                <p className="text-sm text-slate-500">{option.description}</p>
+                <h3 className="font-semibold text-[#1E3A5F] mb-1 text-sm sm:text-base">{option.label}</h3>
+                <p className="text-xs sm:text-sm text-slate-500">{option.description}</p>
               </div>
             ))}
           </div>
@@ -566,14 +566,14 @@ const StudentFunnel = () => {
       case 'demo_time':
         return (
           <div>
-            <p className="text-center text-slate-600 mb-4">
+            <p className="text-center text-slate-600 mb-4 text-sm sm:text-base">
               Selected: {formData.demo_date ? format(formData.demo_date, 'EEEE, MMMM d') : ''}
             </p>
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3">
               {TIME_SLOTS.map(time => (
                 <div
                   key={time}
-                  className={`p-4 rounded-xl border-2 text-center cursor-pointer transition-all ${
+                  className={`p-3 sm:p-4 rounded-xl border-2 text-center cursor-pointer transition-all ${
                     formData.demo_time === time 
                       ? 'border-[#D63031] bg-red-50 text-[#D63031]' 
                       : 'border-slate-200 hover:border-slate-300'
@@ -581,8 +581,8 @@ const StudentFunnel = () => {
                   onClick={() => updateForm('demo_time', time)}
                   data-testid={`time-${time.replace(':', '')}`}
                 >
-                  <Clock className="w-5 h-5 mx-auto mb-1" />
-                  <span className="font-medium">{time}</span>
+                  <Clock className="w-4 h-4 sm:w-5 sm:h-5 mx-auto mb-1" />
+                  <span className="font-medium text-sm sm:text-base">{time}</span>
                 </div>
               ))}
             </div>
