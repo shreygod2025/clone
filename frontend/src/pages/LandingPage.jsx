@@ -111,10 +111,11 @@ const LandingPage = () => {
                   {type.title}
                 </h2>
                 <p className="text-white/60 text-xs md:text-sm mt-1">{type.description}</p>
-                <div className="flex items-center gap-2 text-white font-medium mt-2 md:mt-4 text-sm md:text-base">
-                  Get Started
-                  <ArrowRight className="w-4 h-4 md:w-5 md:h-5" />
-                </div>
+              </div>
+              
+              {/* Arrow positioned at bottom right */}
+              <div className="absolute bottom-4 right-4 md:bottom-6 md:right-6 w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/20 flex items-center justify-center">
+                <ArrowRight className="w-5 h-5 md:w-6 md:h-6 text-white" />
               </div>
             </div>
           ))}
