@@ -171,14 +171,16 @@ const StudentFunnel = () => {
     
     setSubmitting(true);
     try {
-      // First verify OTP
-      const otpResponse = await axios.post(`${API}/auth/verify-otp`, {
-        phone: formData.phone,
-        otp: otp,
-        user_type: 'student'
-      });
+      // First verify OTP using context (this sets the user session)
+      const otpResult = await verifyOTP(formData.phone, otp, 'student');
       
-      // OTP verified, now submit the inquiry
+      if (!otpResult.success) {
+        toast.error(otpResult.message || 'Invalid OTP');
+        setSubmitting(false);
+        return;
+      }
+      
+      // OTP verified and user is now logged in, submit the inquiry
       const payload = {
         learner_type: 'self', // Default since we removed the selection
         age_group: formData.age_group,
@@ -212,7 +214,7 @@ const StudentFunnel = () => {
         center_name: formData.selected_center_name
       });
       
-      // Update user auth context
+      // Update user booking in context (user is already logged in from verifyOTP)
       updateUserBooking(response.data);
       
       setSubmitted(true);
