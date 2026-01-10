@@ -685,7 +685,7 @@ const StudentFunnel = () => {
 
   // Learning Flow
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col">
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-slate-200/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -703,7 +703,7 @@ const StudentFunnel = () => {
         </div>
       </header>
 
-      <main className="pt-8 pb-12 px-4">
+      <main className="flex-1 pt-20 pb-8 px-4">
         <div className="max-w-2xl mx-auto">
           {/* Progress Bar - Hidden on mobile */}
           <div className="mb-8 hidden sm:block">
@@ -766,9 +766,9 @@ const StudentFunnel = () => {
         </div>
       </main>
 
-      <footer className="bg-[#1E3A5F]/50">
+      <footer className="bg-[#1E3A5F] mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="py-4 flex justify-center gap-6 text-sm text-white/70">
+          <div className="py-4 flex justify-center gap-6 text-sm text-white/80">
             <Link to="/about" className="hover:text-white">About OLL</Link>
             <Link to="/centers" className="hover:text-white">Our Centers</Link>
             <Link to="/faq" className="hover:text-white">FAQs</Link>
