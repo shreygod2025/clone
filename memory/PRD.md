@@ -81,9 +81,9 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - [ ] Complete WhatsApp OTP integration (Twilio) when credentials provided
 
 ### P1 - High Priority
-- [ ] School Funnel Post-Submission Page (services showcase like school-for-skills.com)
-- [ ] Educator Funnel: Add "Other City" text input option
-- [ ] Educator Funnel: Date/time selection for "Demo Class"
+- [x] School Funnel Post-Submission Page (services showcase) ✅ DONE
+- [x] Educator Funnel: Add "Other City" text input option ✅ DONE
+- [x] Educator Funnel: Date/time selection for "Demo Class" ✅ DONE
 - [ ] Admin: Support Queries View section
 
 ### P2 - Medium Priority
