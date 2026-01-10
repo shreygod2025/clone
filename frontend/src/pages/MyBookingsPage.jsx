@@ -31,16 +31,20 @@ const MyBookingsPage = () => {
       return;
     }
     fetchBookings();
-  }, [isLoggedIn, navigate]);
+  }, [isLoggedIn, navigate, user?.phone]);
 
   const fetchBookings = async () => {
-    if (!user?.phone) return;
+    if (!user?.phone) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
-      const response = await axios.get(`${API}/user/bookings/${user.phone}?user_type=${user.user_type}`);
+      const response = await axios.get(`${API}/user/bookings/${user.phone}?user_type=${user.user_type || 'student'}`);
       setBookings(response.data);
     } catch (error) {
-      console.error('Failed to fetch bookings');
+      console.error('Failed to fetch bookings:', error);
+      toast.error('Failed to load bookings');
     } finally {
       setLoading(false);
     }
