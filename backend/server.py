@@ -881,6 +881,88 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
     }
 
 # ========================
+# CITY ENDPOINTS
+# ========================
+
+@api_router.get("/cities", response_model=List[City])
+async def get_cities():
+    cities = await db.cities.find({}, {"_id": 0}).sort("order", 1).to_list(100)
+    return cities
+
+@api_router.post("/cities", response_model=City)
+async def create_city(city: CityCreate):
+    city_data = City(**city.model_dump())
+    await db.cities.insert_one(city_data.model_dump())
+    return city_data
+
+@api_router.patch("/cities/{city_id}", response_model=City)
+async def update_city(city_id: str, city_update: CityUpdate):
+    update_data = {k: v for k, v in city_update.model_dump().items() if v is not None}
+    if update_data:
+        await db.cities.update_one({"id": city_id}, {"$set": update_data})
+    city = await db.cities.find_one({"id": city_id}, {"_id": 0})
+    if not city:
+        raise HTTPException(status_code=404, detail="City not found")
+    return city
+
+@api_router.delete("/cities/{city_id}")
+async def delete_city(city_id: str):
+    result = await db.cities.delete_one({"id": city_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="City not found")
+    return {"message": "City deleted"}
+
+@api_router.post("/cities/reorder")
+async def reorder_cities(city_orders: List[dict]):
+    for item in city_orders:
+        await db.cities.update_one({"id": item["id"]}, {"$set": {"order": item["order"]}})
+    return {"message": "Cities reordered"}
+
+# ========================
+# CENTER ENDPOINTS
+# ========================
+
+@api_router.get("/centers", response_model=List[Center])
+async def get_centers():
+    centers = await db.centers.find({}, {"_id": 0}).to_list(100)
+    return centers
+
+@api_router.get("/centers/by-city/{city}")
+async def get_centers_by_city(city: str):
+    centers = await db.centers.find({"city": city, "is_active": True}, {"_id": 0}).to_list(100)
+    return centers
+
+@api_router.post("/centers", response_model=Center)
+async def create_center(center: CenterCreate):
+    center_data = Center(**center.model_dump())
+    await db.centers.insert_one(center_data.model_dump())
+    # Update city to mark it has a center
+    await db.cities.update_one({"name": center.city}, {"$set": {"has_center": True}})
+    return center_data
+
+@api_router.patch("/centers/{center_id}", response_model=Center)
+async def update_center(center_id: str, center_update: CenterUpdate):
+    update_data = {k: v for k, v in center_update.model_dump().items() if v is not None}
+    if update_data:
+        await db.centers.update_one({"id": center_id}, {"$set": update_data})
+    center = await db.centers.find_one({"id": center_id}, {"_id": 0})
+    if not center:
+        raise HTTPException(status_code=404, detail="Center not found")
+    return center
+
+@api_router.delete("/centers/{center_id}")
+async def delete_center(center_id: str):
+    center = await db.centers.find_one({"id": center_id}, {"_id": 0})
+    if not center:
+        raise HTTPException(status_code=404, detail="Center not found")
+    await db.centers.delete_one({"id": center_id})
+    # Check if city still has centers
+    remaining = await db.centers.count_documents({"city": center["city"]})
+    if remaining == 0:
+        await db.cities.update_one({"name": center["city"]}, {"$set": {"has_center": False}})
+    return {"message": "Center deleted"}
+
+# ========================
 # HEALTH CHECK
 # ========================
 
