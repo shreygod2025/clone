@@ -55,7 +55,7 @@ const AdminEducators = () => {
 
   const handleStatusChange = async (educator, newStatus, additionalData = {}) => {
     try {
-      await axios.patch(`${API}/educators/${educator.id}`, { 
+      await axios.patch(`${API}/educators/application/${educator.id}`, { 
         status: newStatus,
         ...additionalData
       }, {
