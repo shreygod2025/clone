@@ -233,6 +233,9 @@ const StudentFunnel = () => {
         phone: formData.phone,
         demo_date: formData.demo_date ? format(formData.demo_date, 'yyyy-MM-dd') : null,
         demo_time: formData.demo_time,
+        address: formData.address || '',
+        selected_center: formData.selected_center || '',
+        selected_center_name: formData.selected_center_name || '',
       });
       setSubmitted(true);
       toast.success('Demo booked successfully!');
