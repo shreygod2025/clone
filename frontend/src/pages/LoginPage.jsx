@@ -32,7 +32,7 @@ const LoginPage = () => {
     setLoading(false);
     
     if (result.success) {
-      toast.success('OTP sent! Use 1234 for testing');
+      toast.success('OTP sent! Use 1111 for testing');
       setStep('otp');
     } else {
       toast.error(result.message);
@@ -170,7 +170,7 @@ const LoginPage = () => {
                     data-testid="login-otp"
                   />
                   <p className="text-xs text-slate-400 mt-2 text-center">
-                    Use <strong>1234</strong> for testing
+                    Use <strong>1111</strong> for testing
                   </p>
                 </div>
                 <Button 
