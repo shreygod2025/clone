@@ -409,6 +409,45 @@ const StudentFunnel = () => {
           </div>
         );
 
+      case 'select_center':
+        return (
+          <div className="space-y-3">
+            <p className="text-center text-slate-600 mb-4">
+              Select an OLL center in {formData.city}
+            </p>
+            {cityCenters.length > 0 ? (
+              cityCenters.map(center => (
+                <div
+                  key={center.id}
+                  className={`selection-card p-4 sm:p-5 ${formData.selected_center === center.id ? 'selected' : ''}`}
+                  onClick={() => {
+                    updateForm('selected_center', center.id);
+                    updateForm('selected_center_name', center.name);
+                  }}
+                  data-testid={`center-${center.id}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-[#D63031]/10 flex items-center justify-center shrink-0">
+                      <Building2 className="w-5 h-5 text-[#D63031]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-[#1E3A5F] text-sm sm:text-base">{center.name}</h3>
+                      <p className="text-xs text-slate-500 mt-0.5">{center.area}</p>
+                      <p className="text-xs text-slate-400 mt-1 line-clamp-2">{center.address}</p>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center">
+                <p className="text-amber-700 text-sm">
+                  No centers available in {formData.city}. Please go back and select a different mode.
+                </p>
+              </div>
+            )}
+          </div>
+        );
+
       case 'goal':
         return (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
