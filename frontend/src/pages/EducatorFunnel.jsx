@@ -172,48 +172,48 @@ const EducatorFunnel = () => {
 
             {/* Apply Form */}
             <TabsContent value="apply">
-              <form onSubmit={handleSubmit} className="glass-card rounded-3xl p-6 md:p-8">
-                <div className="grid md:grid-cols-2 gap-6">
+              <form onSubmit={handleSubmit} className="glass-card rounded-3xl p-4 sm:p-6 md:p-8 overflow-hidden">
+                <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
                   {/* Personal Info */}
-                  <div className="space-y-4">
-                    <h3 className="font-semibold text-[#1E3A5F] text-lg">Personal Information</h3>
+                  <div className="space-y-3 sm:space-y-4">
+                    <h3 className="font-semibold text-[#1E3A5F] text-base sm:text-lg">Personal Information</h3>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">Full Name *</label>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">Full Name *</label>
                       <Input
                         placeholder="Enter your name"
                         value={formData.name}
                         onChange={(e) => setFormData({...formData, name: e.target.value})}
-                        className="input-glass"
+                        className="input-glass h-10 sm:h-12"
                         data-testid="educator-name"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">Email *</label>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">Email *</label>
                       <Input
                         type="email"
                         placeholder="Enter your email"
                         value={formData.email}
                         onChange={(e) => setFormData({...formData, email: e.target.value})}
-                        className="input-glass"
+                        className="input-glass h-10 sm:h-12"
                         data-testid="educator-email"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">Phone *</label>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">Phone *</label>
                       <Input
                         placeholder="Enter your phone"
                         value={formData.phone}
                         onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                        className="input-glass"
+                        className="input-glass h-10 sm:h-12"
                         data-testid="educator-phone"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">City</label>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">City</label>
                       <select
                         value={formData.city}
                         onChange={(e) => setFormData({...formData, city: e.target.value})}
-                        className="w-full h-12 px-4 bg-white/50 backdrop-blur-sm border border-slate-200 rounded-xl focus:border-[#1E3A5F] focus:outline-none"
+                        className="w-full h-10 sm:h-12 px-3 sm:px-4 bg-white/50 backdrop-blur-sm border border-slate-200 rounded-xl focus:border-[#1E3A5F] focus:outline-none text-sm sm:text-base"
                         data-testid="educator-city"
                       >
                         <option value="">Select City</option>
@@ -225,17 +225,17 @@ const EducatorFunnel = () => {
                   </div>
 
                   {/* Professional Info */}
-                  <div className="space-y-4">
-                    <h3 className="font-semibold text-[#1E3A5F] text-lg">Professional Details</h3>
+                  <div className="space-y-3 sm:space-y-4">
+                    <h3 className="font-semibold text-[#1E3A5F] text-base sm:text-lg">Professional Details</h3>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">Skills You Can Teach *</label>
-                      <div className="flex flex-wrap gap-2">
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">Skills You Can Teach *</label>
+                      <div className="flex flex-wrap gap-1.5 sm:gap-2">
                         {SKILLS.map(skill => (
                           <button
                             key={skill}
                             type="button"
                             onClick={() => toggleSkill(skill)}
-                            className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                            className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-all ${
                               formData.skills.includes(skill)
                                 ? 'bg-[#D63031] text-white'
                                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -248,24 +248,24 @@ const EducatorFunnel = () => {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">Experience</label>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">Experience</label>
                       <Textarea
                         placeholder="Describe your teaching experience..."
                         value={formData.experience}
                         onChange={(e) => setFormData({...formData, experience: e.target.value})}
-                        className="input-glass min-h-[100px]"
+                        className="input-glass min-h-[80px] sm:min-h-[100px] text-sm sm:text-base"
                         data-testid="educator-experience"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">Grades Comfortable With</label>
-                      <div className="flex flex-wrap gap-2">
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">Grades Comfortable With</label>
+                      <div className="flex flex-wrap gap-1.5 sm:gap-2">
                         {GRADES.map(grade => (
                           <button
                             key={grade}
                             type="button"
                             onClick={() => toggleGrade(grade)}
-                            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                            className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs font-medium transition-all ${
                               formData.grades_comfortable.includes(grade)
                                 ? 'bg-[#1E3A5F] text-white'
                                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -278,11 +278,11 @@ const EducatorFunnel = () => {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-2">Availability</label>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">Availability</label>
                       <select
                         value={formData.availability}
                         onChange={(e) => setFormData({...formData, availability: e.target.value})}
-                        className="w-full h-12 px-4 bg-white/50 backdrop-blur-sm border border-slate-200 rounded-xl focus:border-[#1E3A5F] focus:outline-none"
+                        className="w-full h-10 sm:h-12 px-3 sm:px-4 bg-white/50 backdrop-blur-sm border border-slate-200 rounded-xl focus:border-[#1E3A5F] focus:outline-none text-sm sm:text-base"
                         data-testid="educator-availability"
                       >
                         <option value="">Select Availability</option>
@@ -291,21 +291,21 @@ const EducatorFunnel = () => {
                         ))}
                       </select>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
                       <Checkbox
                         id="demo_ready"
                         checked={formData.demo_ready}
                         onCheckedChange={(checked) => setFormData({...formData, demo_ready: checked})}
                         data-testid="demo-ready-checkbox"
                       />
-                      <label htmlFor="demo_ready" className="text-sm text-slate-600">
+                      <label htmlFor="demo_ready" className="text-xs sm:text-sm text-slate-600">
                         I am ready to give a demo class
                       </label>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex justify-between items-center mt-8 pt-6 border-t border-slate-200">
+                <div className="flex flex-col-reverse sm:flex-row justify-between items-center gap-3 sm:gap-0 mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-slate-200">
                   <Button
                     type="button"
                     variant="ghost"
