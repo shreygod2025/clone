@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, Calendar, Clock, BookOpen, MapPin, Target, Mail, HelpCircle, MessageCircle, Send } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Calendar, Clock, BookOpen, MapPin, Target, Mail, HelpCircle, MessageCircle, Send, Building2, Home } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
@@ -11,16 +11,16 @@ import { format, addDays } from 'date-fns';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-// Learning Flow Steps
+// Learning Flow Steps - reordered: city before mode, contact after demo
 const LEARNING_STEPS = [
   { id: 'age', title: 'Age Group' },
   { id: 'skill', title: 'What to learn?' },
+  { id: 'city', title: 'Your City' },
   { id: 'mode', title: 'Learning Mode' },
-  { id: 'city', title: 'Location' }, // Only if offline
   { id: 'goal', title: 'Learning Goal' },
-  { id: 'contact', title: 'Contact Details' },
   { id: 'demo_date', title: 'Select Date' },
   { id: 'demo_time', title: 'Select Time' },
+  { id: 'contact', title: 'Contact Details' },
 ];
 
 const AGE_OPTIONS = [
@@ -31,28 +31,18 @@ const AGE_OPTIONS = [
 ];
 
 const SKILL_OPTIONS = [
-  { value: 'robotics', label: 'Robotics', description: 'Build and program robots' },
-  { value: 'coding', label: 'Coding', description: 'Learn programming' },
-  { value: 'ai', label: 'AI & Machine Learning', description: 'Explore artificial intelligence' },
-  { value: 'entrepreneurship', label: 'Entrepreneurship', description: 'Business & innovation' },
-  { value: 'financial', label: 'Financial Literacy', description: 'Money management skills' },
-];
-
-const MODE_OPTIONS = [
-  { value: 'online', label: 'Online', description: 'Learn from anywhere' },
-  { value: 'offline', label: 'Offline', description: 'In-person classes' },
-];
-
-const CITIES = [
-  'Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 
-  'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow', 'Chandigarh', 'Kochi'
+  { value: 'robotics', label: '🤖 Robotics', description: 'Build and program robots' },
+  { value: 'coding', label: '💻 Coding', description: 'Learn programming' },
+  { value: 'ai', label: '🧠 AI & Machine Learning', description: 'Explore artificial intelligence' },
+  { value: 'entrepreneurship', label: '💡 Entrepreneurship', description: 'Business & innovation' },
+  { value: 'financial', label: '💰 Financial Literacy', description: 'Money management skills' },
 ];
 
 const GOAL_OPTIONS = [
-  { value: 'fun', label: 'Fun Learning', description: 'Explore and enjoy' },
-  { value: 'competitions', label: 'Competitions', description: 'Prepare for contests' },
-  { value: 'career', label: 'Career Exposure', description: 'Future job readiness' },
-  { value: 'school', label: 'School Support', description: 'Academic enhancement' },
+  { value: 'fun', label: '🎮 Fun Learning', description: 'Explore and enjoy' },
+  { value: 'competitions', label: '🏆 Competitions', description: 'Prepare for contests' },
+  { value: 'career', label: '🚀 Career Exposure', description: 'Future job readiness' },
+  { value: 'school', label: '📚 School Support', description: 'Academic enhancement' },
 ];
 
 const TIME_SLOTS = ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'];
@@ -67,14 +57,19 @@ const QUERY_CATEGORIES = [
 
 const StudentFunnel = () => {
   const navigate = useNavigate();
-  const [flowType, setFlowType] = useState(null); // 'learn' or 'support'
+  const [flowType, setFlowType] = useState(null);
   const [currentStep, setCurrentStep] = useState(0);
+  const [cities, setCities] = useState([]);
+  const [centers, setCenters] = useState([]);
+  const [cityHasCenter, setCityHasCenter] = useState(false);
+  
   const [formData, setFormData] = useState({
     learner_type: 'self',
     age_group: '',
     skill: '',
-    learning_mode: '',
     city: '',
+    learning_mode: '',
+    offline_type: '', // 'home' or 'center'
     learning_goal: '',
     name: '',
     email: '',
@@ -90,43 +85,95 @@ const StudentFunnel = () => {
   });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [showQueryOption, setShowQueryOption] = useState(false);
+
+  useEffect(() => {
+    fetchCitiesAndCenters();
+  }, []);
+
+  const fetchCitiesAndCenters = async () => {
+    try {
+      const [citiesRes, centersRes] = await Promise.all([
+        axios.get(`${API}/cities`),
+        axios.get(`${API}/centers`)
+      ]);
+      setCities(citiesRes.data.filter(c => c.is_active));
+      setCenters(centersRes.data.filter(c => c.is_active));
+    } catch (error) {
+      // Fallback to default cities
+      setCities([
+        { name: 'Mumbai', has_center: false },
+        { name: 'Delhi', has_center: false },
+        { name: 'Bangalore', has_center: false },
+        { name: 'Chennai', has_center: false },
+        { name: 'Kolkata', has_center: false },
+        { name: 'Hyderabad', has_center: false },
+        { name: 'Pune', has_center: false },
+        { name: 'Ahmedabad', has_center: false }
+      ]);
+    }
+  };
+
+  // Check if selected city has a center
+  useEffect(() => {
+    if (formData.city) {
+      const hasCenterInCity = centers.some(c => c.city === formData.city);
+      setCityHasCenter(hasCenterInCity);
+    }
+  }, [formData.city, centers]);
 
   const updateForm = (key, value) => {
     setFormData(prev => ({ ...prev, [key]: value }));
   };
 
-  // Get active steps based on learning mode
-  const getActiveSteps = () => {
-    if (formData.learning_mode === 'online') {
-      return LEARNING_STEPS.filter(s => s.id !== 'city');
-    }
-    return LEARNING_STEPS;
-  };
-
-  const activeSteps = getActiveSteps();
-
-  const canProceed = () => {
-    const step = activeSteps[currentStep];
-    if (!step) return false;
-    
-    switch (step.id) {
-      case 'age': return formData.age_group;
-      case 'skill': return formData.skill;
-      case 'mode': return formData.learning_mode;
-      case 'city': return formData.city;
-      case 'goal': return formData.learning_goal;
-      case 'contact': return formData.name && formData.phone;
-      case 'demo_date': return formData.demo_date;
-      case 'demo_time': return formData.demo_time;
-      default: return false;
-    }
-  };
+  // Get active steps - all steps now since city is always shown
+  const activeSteps = LEARNING_STEPS;
 
   const handleNext = () => {
-    if (currentStep < activeSteps.length - 1) {
-      setCurrentStep(prev => prev + 1);
+    const step = activeSteps[currentStep];
+    
+    // Validation
+    if (step.id === 'age' && !formData.age_group) {
+      toast.error('Please select an age group');
+      return;
     }
+    if (step.id === 'skill' && !formData.skill) {
+      toast.error('Please select what you want to learn');
+      return;
+    }
+    if (step.id === 'city' && !formData.city) {
+      toast.error('Please select your city');
+      return;
+    }
+    if (step.id === 'mode' && !formData.learning_mode) {
+      toast.error('Please select a learning mode');
+      return;
+    }
+    if (step.id === 'mode' && formData.learning_mode === 'offline' && !formData.offline_type) {
+      toast.error('Please select offline learning type');
+      return;
+    }
+    if (step.id === 'goal' && !formData.learning_goal) {
+      toast.error('Please select your learning goal');
+      return;
+    }
+    if (step.id === 'demo_date' && !formData.demo_date) {
+      toast.error('Please select a demo date');
+      return;
+    }
+    if (step.id === 'demo_time' && !formData.demo_time) {
+      toast.error('Please select a time slot');
+      return;
+    }
+    if (step.id === 'contact') {
+      if (!formData.name || !formData.phone) {
+        toast.error('Please fill all required fields');
+        return;
+      }
+      handleSubmit();
+      return;
+    }
+    
+    setCurrentStep(prev => prev + 1);
   };
 
   const handleBack = () => {
@@ -137,15 +184,22 @@ const StudentFunnel = () => {
     }
   };
 
-  const handleSubmitLearning = async () => {
+  const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      const payload = {
-        ...formData,
-        email: `${formData.phone}@student.oll`,
+      await axios.post(`${API}/students/inquiry`, {
+        learner_type: formData.learner_type,
+        age_group: formData.age_group,
+        skill: formData.skill,
+        learning_mode: formData.learning_mode === 'offline' ? `offline_${formData.offline_type}` : 'online',
+        city: formData.city,
+        learning_goal: formData.learning_goal,
+        name: formData.name,
+        email: formData.email || `${formData.phone}@oll.student`,
+        phone: formData.phone,
         demo_date: formData.demo_date ? format(formData.demo_date, 'yyyy-MM-dd') : null,
-      };
-      await axios.post(`${API}/students/inquiry`, payload);
+        demo_time: formData.demo_time,
+      });
       setSubmitted(true);
       toast.success('Demo booked successfully!');
     } catch (error) {
@@ -155,20 +209,17 @@ const StudentFunnel = () => {
     }
   };
 
-  const handleSubmitSupport = async () => {
+  const handleSupportSubmit = async (e) => {
+    e.preventDefault();
     if (!supportData.name || !supportData.email || !supportData.category || !supportData.message) {
       toast.error('Please fill all fields');
       return;
     }
     setSubmitting(true);
     try {
-      await axios.post(`${API}/support/ticket`, {
-        ...supportData,
-        user_type: 'student',
-        subject: `Query: ${supportData.category}`,
-      });
-      toast.success('Query submitted! We\'ll get back to you soon.');
-      navigate('/');
+      await axios.post(`${API}/support/ticket`, supportData);
+      setSubmitted(true);
+      toast.success('Your query has been submitted!');
     } catch (error) {
       toast.error('Something went wrong. Please try again.');
     } finally {
@@ -176,266 +227,13 @@ const StudentFunnel = () => {
     }
   };
 
-  // Success Screen after demo booking
-  if (submitted) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
-        <div className="glass-card rounded-3xl p-8 md:p-12 max-w-lg w-full text-center animate-slide-up">
-          <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
-            <Check className="w-10 h-10 text-green-600" />
-          </div>
-          <h2 className="text-2xl md:text-3xl font-bold text-[#1E3A5F] mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
-            Demo Booked Successfully!
-          </h2>
-          <p className="text-slate-600 mb-6">
-            Our team will reach out to you with the link to join your demo session.
-          </p>
-          <div className="bg-slate-50 rounded-xl p-4 mb-6 text-left">
-            <p className="text-sm text-slate-500 mb-1">Scheduled for</p>
-            <p className="font-semibold text-[#1E3A5F]">
-              {formData.demo_date ? format(formData.demo_date, 'EEEE, MMMM d, yyyy') : ''} at {formData.demo_time}
-            </p>
-          </div>
-          
-          {!showQueryOption ? (
-            <div className="space-y-3">
-              <Button onClick={() => navigate('/')} className="btn-primary w-full" data-testid="back-to-home-btn">
-                Back to Home
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => setShowQueryOption(true)} 
-                className="w-full flex items-center justify-center gap-2"
-                data-testid="ask-query-btn"
-              >
-                <MessageCircle className="w-4 h-4" /> Have a Question?
-              </Button>
-            </div>
-          ) : (
-            <div className="text-left space-y-4 animate-slide-up">
-              <h3 className="font-semibold text-[#1E3A5F]">Ask a Query</h3>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Category</label>
-                <select
-                  value={supportData.category}
-                  onChange={(e) => setSupportData({...supportData, category: e.target.value})}
-                  className="w-full h-12 px-4 border border-slate-200 rounded-xl"
-                  data-testid="query-category"
-                >
-                  <option value="">Select category</option>
-                  {QUERY_CATEGORIES.map(cat => (
-                    <option key={cat.value} value={cat.value}>{cat.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Your Question</label>
-                <Textarea
-                  placeholder="Type your question..."
-                  value={supportData.message}
-                  onChange={(e) => setSupportData({
-                    ...supportData, 
-                    message: e.target.value,
-                    name: formData.name,
-                    email: formData.email
-                  })}
-                  className="min-h-[100px]"
-                  data-testid="query-message"
-                />
-              </div>
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setShowQueryOption(false)} className="flex-1">
-                  Cancel
-                </Button>
-                <Button onClick={handleSubmitSupport} disabled={submitting} className="btn-primary flex-1">
-                  {submitting ? 'Sending...' : 'Submit'}
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
+  // Check if city is in our list
+  const isCityInList = cities.some(c => c.name === formData.city);
 
-  // Initial Selection Screen
-  if (!flowType) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-        <header className="bg-white/80 backdrop-blur-lg border-b border-slate-200/50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
-              <Link to="/" className="flex items-center gap-2">
-                <img 
-                  src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png" 
-                  alt="OLL" 
-                  className="h-8"
-                />
-              </Link>
-            </div>
-          </div>
-        </header>
-
-        <main className="pt-12 pb-12 px-4">
-          <div className="max-w-xl mx-auto">
-            <div className="text-center mb-8">
-              <h1 className="text-2xl md:text-3xl font-bold text-[#1E3A5F] mb-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
-                How can we help you?
-              </h1>
-              <p className="text-slate-600">Select an option to continue</p>
-            </div>
-
-            <div className="space-y-4">
-              <div
-                className="selection-card flex items-center gap-4 p-6"
-                onClick={() => setFlowType('learn')}
-                data-testid="learn-skill-option"
-              >
-                <div className="w-14 h-14 rounded-2xl bg-[#D63031]/10 flex items-center justify-center shrink-0">
-                  <BookOpen className="w-7 h-7 text-[#D63031]" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-[#1E3A5F] text-lg">I'm looking to learn a skill</h3>
-                  <p className="text-sm text-slate-500">Explore courses and book a free demo</p>
-                </div>
-                <ArrowRight className="w-5 h-5 text-slate-400 ml-auto" />
-              </div>
-
-              <div
-                className="selection-card flex items-center gap-4 p-6"
-                onClick={() => setFlowType('support')}
-                data-testid="support-option"
-              >
-                <div className="w-14 h-14 rounded-2xl bg-[#1E3A5F]/10 flex items-center justify-center shrink-0">
-                  <HelpCircle className="w-7 h-7 text-[#1E3A5F]" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-[#1E3A5F] text-lg">I have a query / need support</h3>
-                  <p className="text-sm text-slate-500">Get help with your questions</p>
-                </div>
-                <ArrowRight className="w-5 h-5 text-slate-400 ml-auto" />
-              </div>
-            </div>
-
-            <div className="mt-8 text-center">
-              <Button variant="ghost" onClick={() => navigate('/')} className="text-slate-500">
-                <ArrowLeft className="w-4 h-4 mr-2" /> Back to Home
-              </Button>
-            </div>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  // Support Flow
-  if (flowType === 'support') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-        <header className="bg-white/80 backdrop-blur-lg border-b border-slate-200/50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
-              <Link to="/" className="flex items-center gap-2">
-                <img 
-                  src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png" 
-                  alt="OLL" 
-                  className="h-8"
-                />
-              </Link>
-            </div>
-          </div>
-        </header>
-
-        <main className="pt-12 pb-12 px-4">
-          <div className="max-w-xl mx-auto">
-            <div className="glass-card rounded-3xl p-6 md:p-8">
-              <h2 className="text-xl md:text-2xl font-bold text-[#1E3A5F] mb-6" style={{ fontFamily: 'Manrope, sans-serif' }}>
-                How can we help?
-              </h2>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Select Query Type</label>
-                  <div className="grid grid-cols-1 gap-2">
-                    {QUERY_CATEGORIES.map(cat => (
-                      <div
-                        key={cat.value}
-                        className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                          supportData.category === cat.value 
-                            ? 'border-[#D63031] bg-red-50' 
-                            : 'border-slate-200 hover:border-slate-300'
-                        }`}
-                        onClick={() => setSupportData({...supportData, category: cat.value})}
-                        data-testid={`query-cat-${cat.value}`}
-                      >
-                        <h4 className="font-medium text-[#1E3A5F]">{cat.label}</h4>
-                        <p className="text-sm text-slate-500">{cat.description}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Your Name</label>
-                  <Input
-                    placeholder="Enter your name"
-                    value={supportData.name}
-                    onChange={(e) => setSupportData({...supportData, name: e.target.value})}
-                    className="input-glass"
-                    data-testid="support-name"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Email</label>
-                  <Input
-                    type="email"
-                    placeholder="Enter your email"
-                    value={supportData.email}
-                    onChange={(e) => setSupportData({...supportData, email: e.target.value})}
-                    className="input-glass"
-                    data-testid="support-email"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Your Message</label>
-                  <Textarea
-                    placeholder="Describe your query in detail..."
-                    value={supportData.message}
-                    onChange={(e) => setSupportData({...supportData, message: e.target.value})}
-                    className="min-h-[120px]"
-                    data-testid="support-message"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between mt-8 pt-6 border-t border-slate-200">
-                <Button variant="ghost" onClick={() => setFlowType(null)} className="flex items-center gap-2">
-                  <ArrowLeft className="w-4 h-4" /> Back
-                </Button>
-                <Button
-                  onClick={handleSubmitSupport}
-                  disabled={submitting}
-                  className="btn-primary flex items-center gap-2"
-                  data-testid="submit-support-btn"
-                >
-                  {submitting ? 'Submitting...' : 'Submit Query'}
-                  <Send className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        </main>
-      </div>
-    );
-  }
-
-  // Learning Flow - Multi-step form
-  const renderStep = () => {
+  // Render step content
+  const renderStepContent = () => {
     const step = activeSteps[currentStep];
-    if (!step) return null;
-
+    
     switch (step.id) {
       case 'age':
         return (
@@ -453,7 +251,7 @@ const StudentFunnel = () => {
             ))}
           </div>
         );
-
+        
       case 'skill':
         return (
           <div className="space-y-2 sm:space-y-3">
@@ -473,36 +271,104 @@ const StudentFunnel = () => {
           </div>
         );
 
-      case 'mode':
-        return (
-          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-            {MODE_OPTIONS.map(option => (
-              <div
-                key={option.value}
-                className={`selection-card text-center py-6 sm:py-8 px-3 ${formData.learning_mode === option.value ? 'selected' : ''}`}
-                onClick={() => updateForm('learning_mode', option.value)}
-                data-testid={`mode-${option.value}`}
-              >
-                <h3 className="font-semibold text-[#1E3A5F] mb-1 text-sm sm:text-base">{option.label}</h3>
-                <p className="text-xs sm:text-sm text-slate-500">{option.description}</p>
-              </div>
-            ))}
-          </div>
-        );
-
       case 'city':
         return (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
-            {CITIES.map(city => (
-              <div
-                key={city}
-                className={`selection-card text-center py-3 sm:py-4 px-2 ${formData.city === city ? 'selected' : ''}`}
-                onClick={() => updateForm('city', city)}
-                data-testid={`city-${city.toLowerCase()}`}
-              >
-                <span className="font-medium text-[#1E3A5F] text-sm sm:text-base">{city}</span>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+              {cities.map(city => (
+                <div
+                  key={city.name}
+                  className={`selection-card text-center py-3 sm:py-4 px-2 ${formData.city === city.name ? 'selected' : ''}`}
+                  onClick={() => updateForm('city', city.name)}
+                  data-testid={`city-${city.name.toLowerCase()}`}
+                >
+                  <span className="font-medium text-[#1E3A5F] text-sm sm:text-base">{city.name}</span>
+                  {city.has_center && (
+                    <span className="block text-xs text-[#D63031] mt-1">Has Center</span>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-slate-500 mb-2">Don't see your city?</p>
+              <Input
+                placeholder="Enter your city"
+                value={!isCityInList ? formData.city : ''}
+                onChange={(e) => updateForm('city', e.target.value)}
+                className="max-w-xs mx-auto"
+                data-testid="city-other"
+              />
+            </div>
+          </div>
+        );
+        
+      case 'mode':
+        // Check if selected city is in our list
+        const showOfflineOptions = cities.some(c => c.name === formData.city);
+        
+        return (
+          <div className="space-y-4">
+            {/* Online Option - Always available */}
+            <div
+              className={`selection-card text-center py-6 sm:py-8 px-3 ${formData.learning_mode === 'online' ? 'selected' : ''}`}
+              onClick={() => {
+                updateForm('learning_mode', 'online');
+                updateForm('offline_type', '');
+              }}
+              data-testid="mode-online"
+            >
+              <h3 className="font-semibold text-[#1E3A5F] mb-1 text-sm sm:text-base">🌐 Online Classes</h3>
+              <p className="text-xs sm:text-sm text-slate-500">Learn from anywhere via video call</p>
+            </div>
+
+            {/* Offline Options - Only if city is in our list */}
+            {showOfflineOptions ? (
+              <>
+                {/* Offline at Home */}
+                <div
+                  className={`selection-card text-center py-6 sm:py-8 px-3 ${formData.learning_mode === 'offline' && formData.offline_type === 'home' ? 'selected' : ''}`}
+                  onClick={() => {
+                    updateForm('learning_mode', 'offline');
+                    updateForm('offline_type', 'home');
+                  }}
+                  data-testid="mode-offline-home"
+                >
+                  <div className="flex items-center justify-center gap-2 mb-1">
+                    <Home className="w-5 h-5 text-[#1E3A5F]" />
+                    <h3 className="font-semibold text-[#1E3A5F] text-sm sm:text-base">Offline at Your Home</h3>
+                  </div>
+                  <p className="text-xs sm:text-sm text-slate-500">Educator comes to your location</p>
+                </div>
+
+                {/* Offline at Center - Only if city has center */}
+                {cityHasCenter && (
+                  <div
+                    className={`selection-card text-center py-6 sm:py-8 px-3 ${formData.learning_mode === 'offline' && formData.offline_type === 'center' ? 'selected' : ''}`}
+                    onClick={() => {
+                      updateForm('learning_mode', 'offline');
+                      updateForm('offline_type', 'center');
+                    }}
+                    data-testid="mode-offline-center"
+                  >
+                    <div className="flex items-center justify-center gap-2 mb-1">
+                      <Building2 className="w-5 h-5 text-[#D63031]" />
+                      <h3 className="font-semibold text-[#1E3A5F] text-sm sm:text-base">Offline at OLL Center</h3>
+                    </div>
+                    <p className="text-xs sm:text-sm text-slate-500">Visit our learning center in {formData.city}</p>
+                    <Link to="/centers" className="text-xs text-[#D63031] hover:underline mt-1 inline-block">
+                      View Center Details →
+                    </Link>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center">
+                <p className="text-amber-700 text-sm">
+                  Offline classes are currently not available in {formData.city || 'your city'}. 
+                  You can continue with online classes.
+                </p>
               </div>
-            ))}
+            )}
           </div>
         );
 
@@ -523,32 +389,6 @@ const StudentFunnel = () => {
           </div>
         );
 
-      case 'contact':
-        return (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Full Name</label>
-              <Input
-                placeholder="Enter your name"
-                value={formData.name}
-                onChange={(e) => updateForm('name', e.target.value)}
-                className="input-glass"
-                data-testid="input-name"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Phone Number</label>
-              <Input
-                placeholder="Enter your phone number"
-                value={formData.phone}
-                onChange={(e) => updateForm('phone', e.target.value)}
-                className="input-glass"
-                data-testid="input-phone"
-              />
-            </div>
-          </div>
-        );
-
       case 'demo_date':
         return (
           <div className="flex justify-center">
@@ -557,8 +397,7 @@ const StudentFunnel = () => {
               selected={formData.demo_date}
               onSelect={(date) => updateForm('demo_date', date)}
               disabled={(date) => date < new Date() || date > addDays(new Date(), 14) || date.getDay() === 0}
-              className="rounded-xl border border-slate-200"
-              data-testid="demo-calendar"
+              className="rounded-xl border border-slate-200 bg-white p-3"
             />
           </div>
         );
@@ -589,14 +428,253 @@ const StudentFunnel = () => {
           </div>
         );
 
+      case 'contact':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Your Name *</label>
+              <Input
+                placeholder="Enter your name"
+                value={formData.name}
+                onChange={(e) => updateForm('name', e.target.value)}
+                className="input-glass"
+                data-testid="contact-name"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Phone Number *</label>
+              <Input
+                placeholder="Enter phone number"
+                value={formData.phone}
+                onChange={(e) => updateForm('phone', e.target.value)}
+                className="input-glass"
+                data-testid="contact-phone"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Email (Optional)</label>
+              <Input
+                type="email"
+                placeholder="Enter email"
+                value={formData.email}
+                onChange={(e) => updateForm('email', e.target.value)}
+                className="input-glass"
+                data-testid="contact-email"
+              />
+            </div>
+            
+            {/* Summary */}
+            <div className="bg-slate-50 rounded-xl p-4 mt-6">
+              <h4 className="font-medium text-[#1E3A5F] mb-2">Demo Summary</h4>
+              <div className="text-sm text-slate-600 space-y-1">
+                <p>📅 {formData.demo_date ? format(formData.demo_date, 'EEEE, MMMM d, yyyy') : ''} at {formData.demo_time}</p>
+                <p>📍 {formData.learning_mode === 'online' ? 'Online' : `Offline ${formData.offline_type === 'center' ? 'at OLL Center' : 'at Home'}`} in {formData.city}</p>
+                <p>📚 {SKILL_OPTIONS.find(s => s.value === formData.skill)?.label}</p>
+              </div>
+            </div>
+          </div>
+        );
+
       default:
         return null;
     }
   };
 
+  // Success Screen
+  if (submitted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
+        <div className="glass-card rounded-3xl p-8 md:p-12 max-w-lg w-full text-center animate-slide-up">
+          <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
+            <Check className="w-10 h-10 text-green-600" />
+          </div>
+          <h2 className="text-2xl md:text-3xl font-bold text-[#1E3A5F] mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
+            {flowType === 'learn' ? 'Demo Booked!' : 'Query Submitted!'}
+          </h2>
+          <p className="text-slate-600 mb-6">
+            {flowType === 'learn' 
+              ? `Your demo is scheduled for ${formData.demo_date ? format(formData.demo_date, 'MMMM d') : ''} at ${formData.demo_time}. We'll send you a confirmation shortly.`
+              : 'Our team will get back to you within 24 hours.'
+            }
+          </p>
+          <Button onClick={() => navigate('/')} className="btn-primary w-full" data-testid="back-to-home-btn">
+            Back to Home
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Initial Flow Selection
+  if (!flowType) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+        {/* Header */}
+        <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-slate-200/50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <Link to="/" className="flex items-center gap-2">
+                <img 
+                  src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png" 
+                  alt="OLL" 
+                  className="h-8"
+                />
+              </Link>
+              <div className="flex items-center gap-4">
+                <Link to="/centers" className="text-slate-600 hover:text-[#1E3A5F] font-medium transition-colors hidden sm:block">
+                  Centers
+                </Link>
+                <Link 
+                  to="/faq"
+                  className="flex items-center gap-2 text-slate-600 hover:text-[#1E3A5F] transition-colors"
+                >
+                  <HelpCircle className="w-5 h-5" />
+                  <span className="hidden sm:inline">Need Help?</span>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <main className="pt-24 pb-12 px-4">
+          <div className="max-w-lg mx-auto">
+            <h1 className="text-2xl md:text-3xl font-bold text-[#1E3A5F] text-center mb-8" style={{ fontFamily: 'Manrope, sans-serif' }}>
+              How can we help you?
+            </h1>
+
+            <div className="space-y-4">
+              <div
+                className="selection-card p-6 cursor-pointer"
+                onClick={() => setFlowType('learn')}
+                data-testid="learn-skill-option"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-[#D63031]/10 flex items-center justify-center">
+                    <BookOpen className="w-7 h-7 text-[#D63031]" />
+                  </div>
+                  <div>
+                    <h2 className="font-semibold text-[#1E3A5F] text-lg">I want to learn a skill</h2>
+                    <p className="text-slate-500 text-sm">Book a free demo class</p>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                className="selection-card p-6 cursor-pointer"
+                onClick={() => setFlowType('support')}
+                data-testid="support-option"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-[#1E3A5F]/10 flex items-center justify-center">
+                    <MessageCircle className="w-7 h-7 text-[#1E3A5F]" />
+                  </div>
+                  <div>
+                    <h2 className="font-semibold text-[#1E3A5F] text-lg">I have a question</h2>
+                    <p className="text-slate-500 text-sm">Get support from our team</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Support Flow
+  if (flowType === 'support') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+        <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-slate-200/50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <Link to="/" className="flex items-center gap-2">
+                <img 
+                  src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png" 
+                  alt="OLL" 
+                  className="h-8"
+                />
+              </Link>
+            </div>
+          </div>
+        </header>
+
+        <main className="pt-24 pb-12 px-4">
+          <div className="max-w-lg mx-auto">
+            <button 
+              onClick={() => setFlowType(null)}
+              className="flex items-center gap-2 text-slate-600 hover:text-[#1E3A5F] mb-6"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back
+            </button>
+
+            <h1 className="text-2xl font-bold text-[#1E3A5F] mb-6" style={{ fontFamily: 'Manrope, sans-serif' }}>
+              How can we help?
+            </h1>
+
+            <form onSubmit={handleSupportSubmit} className="glass-card rounded-2xl p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Your Name</label>
+                <Input
+                  placeholder="Enter your name"
+                  value={supportData.name}
+                  onChange={(e) => setSupportData({...supportData, name: e.target.value})}
+                  data-testid="support-name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Email</label>
+                <Input
+                  type="email"
+                  placeholder="Enter your email"
+                  value={supportData.email}
+                  onChange={(e) => setSupportData({...supportData, email: e.target.value})}
+                  data-testid="support-email"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Category</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {QUERY_CATEGORIES.map(cat => (
+                    <div
+                      key={cat.value}
+                      className={`p-3 rounded-xl border-2 cursor-pointer transition-all text-center ${
+                        supportData.category === cat.value
+                          ? 'border-[#D63031] bg-red-50'
+                          : 'border-slate-200 hover:border-slate-300'
+                      }`}
+                      onClick={() => setSupportData({...supportData, category: cat.value})}
+                    >
+                      <span className="text-sm font-medium text-[#1E3A5F]">{cat.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Your Question</label>
+                <Textarea
+                  placeholder="Describe your query..."
+                  value={supportData.message}
+                  onChange={(e) => setSupportData({...supportData, message: e.target.value})}
+                  className="min-h-[120px]"
+                  data-testid="support-message"
+                />
+              </div>
+              <Button type="submit" disabled={submitting} className="btn-primary w-full">
+                {submitting ? 'Submitting...' : 'Submit Query'}
+              </Button>
+            </form>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Learning Flow
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <header className="bg-white/80 backdrop-blur-lg border-b border-slate-200/50">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-slate-200/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <Link to="/" className="flex items-center gap-2">
@@ -605,6 +683,9 @@ const StudentFunnel = () => {
                 alt="OLL" 
                 className="h-8"
               />
+            </Link>
+            <Link to="/centers" className="text-slate-600 hover:text-[#1E3A5F] font-medium transition-colors text-sm">
+              View Centers
             </Link>
           </div>
         </div>
@@ -640,16 +721,14 @@ const StudentFunnel = () => {
             <span className="text-sm text-slate-500">Step {currentStep + 1} of {activeSteps.length}</span>
           </div>
 
-          {/* Step Card */}
-          <div className="glass-card rounded-3xl p-6 md:p-8 animate-fade-in">
-            <h2 className="text-xl md:text-2xl font-bold text-[#1E3A5F] mb-6" style={{ fontFamily: 'Manrope, sans-serif' }}>
-              {activeSteps[currentStep]?.title}
+          <div className="glass-card rounded-3xl p-6 md:p-8 animate-slide-up">
+            <h2 className="text-xl md:text-2xl font-bold text-[#1E3A5F] mb-6 text-center" style={{ fontFamily: 'Manrope, sans-serif' }}>
+              {activeSteps[currentStep].title}
             </h2>
             
-            {renderStep()}
+            {renderStepContent()}
 
-            {/* Navigation Buttons */}
-            <div className="flex items-center justify-between mt-8 pt-6 border-t border-slate-200">
+            <div className="flex justify-between mt-8 pt-6 border-t border-slate-200">
               <Button
                 variant="ghost"
                 onClick={handleBack}
@@ -659,32 +738,31 @@ const StudentFunnel = () => {
                 <ArrowLeft className="w-4 h-4" />
                 Back
               </Button>
-              
-              {currentStep < activeSteps.length - 1 ? (
-                <Button
-                  onClick={handleNext}
-                  disabled={!canProceed()}
-                  className="btn-primary flex items-center gap-2"
-                  data-testid="next-btn"
-                >
-                  Next
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleSubmitLearning}
-                  disabled={!canProceed() || submitting}
-                  className="btn-primary flex items-center gap-2"
-                  data-testid="submit-btn"
-                >
-                  {submitting ? 'Booking...' : 'Book Demo'}
-                  <Check className="w-4 h-4" />
-                </Button>
-              )}
+              <Button
+                onClick={handleNext}
+                disabled={submitting}
+                className="btn-primary flex items-center gap-2"
+                data-testid="next-btn"
+              >
+                {activeSteps[currentStep].id === 'contact' 
+                  ? (submitting ? 'Booking...' : 'Book Demo')
+                  : 'Continue'}
+                <ArrowRight className="w-4 h-4" />
+              </Button>
             </div>
           </div>
         </div>
       </main>
+
+      <footer className="bg-[#1E3A5F]/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="py-4 flex justify-center gap-6 text-sm text-white/70">
+            <Link to="/about" className="hover:text-white">About OLL</Link>
+            <Link to="/centers" className="hover:text-white">Our Centers</Link>
+            <Link to="/faq" className="hover:text-white">FAQs</Link>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
