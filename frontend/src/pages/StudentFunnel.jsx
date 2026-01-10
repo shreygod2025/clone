@@ -215,7 +215,7 @@ const StudentFunnel = () => {
       });
       
       // Update user booking in context (user is already logged in from verifyOTP)
-      updateUserBooking(response.data);
+      updateUserBooking({ ...response.data, name: formData.name });
       
       setSubmitted(true);
       toast.success('Demo booked successfully!');
