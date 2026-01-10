@@ -49,6 +49,7 @@ const StudentFunnel = () => {
   const [cities, setCities] = useState([]);
   const [centers, setCenters] = useState([]);
   const [bookingData, setBookingData] = useState(null);
+  const [cameFromCoursePage, setCameFromCoursePage] = useState(false);
   
   // OTP State
   const [otpSent, setOtpSent] = useState(false);
@@ -73,14 +74,15 @@ const StudentFunnel = () => {
     address: '',
   });
 
-  // Check for pre-selected skill from URL params
+  // Check for pre-selected skill from URL params (coming from course page)
   useEffect(() => {
     const skillParam = searchParams.get('skill');
     if (skillParam && SKILL_OPTIONS.find(s => s.value === skillParam)) {
       setFlowType('learn');
       setFormData(prev => ({ ...prev, skill: skillParam }));
-      // Skip to city step (step 2) since skill is pre-selected
-      setCurrentStep(2);
+      setCameFromCoursePage(true);
+      // Start from learner/age step (step 1) since skill is pre-selected
+      setCurrentStep(1);
     }
   }, [searchParams]);
 
@@ -112,11 +114,11 @@ const StudentFunnel = () => {
     fetchCenters();
   }, [formData.city, formData.offline_type]);
 
-  // Dynamic steps based on selections
+  // Dynamic steps - SKILL FIRST, then LEARNER (age)
   const getActiveSteps = () => {
     const steps = [
-      { id: 'learner', title: 'Who is learning?' },
       { id: 'skill', title: 'Choose a Skill' },
+      { id: 'learner', title: 'Who is learning?' },
       { id: 'city', title: 'Select City' },
       { id: 'mode', title: 'Learning Mode' },
     ];
@@ -139,6 +141,17 @@ const StudentFunnel = () => {
 
   const updateForm = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Auto-advance for single selection questions
+  const handleSingleSelect = (field, value, shouldAdvance = true) => {
+    updateForm(field, value);
+    if (shouldAdvance) {
+      // Small delay for visual feedback before advancing
+      setTimeout(() => {
+        setCurrentStep(prev => prev + 1);
+      }, 200);
+    }
   };
 
   const handleSendOTP = async () => {
@@ -230,10 +243,10 @@ const StudentFunnel = () => {
   const validateStep = () => {
     const stepId = activeSteps[currentStep].id;
     switch (stepId) {
-      case 'learner':
-        return formData.learner_type && formData.age_group;
       case 'skill':
         return formData.skill;
+      case 'learner':
+        return formData.learner_type && formData.age_group;
       case 'city':
         return formData.city;
       case 'mode':
@@ -282,6 +295,7 @@ const StudentFunnel = () => {
   const handleBack = () => {
     if (currentStep === 0) {
       setFlowType(null);
+      setCameFromCoursePage(false);
     } else {
       // Reset OTP state when going back from OTP step
       if (activeSteps[currentStep].id === 'otp') {
@@ -296,6 +310,23 @@ const StudentFunnel = () => {
     const stepId = activeSteps[currentStep].id;
     
     switch (stepId) {
+      case 'skill':
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {SKILL_OPTIONS.map((skill) => (
+              <div
+                key={skill.value}
+                className={`selection-card p-4 cursor-pointer ${formData.skill === skill.value ? 'selected' : ''}`}
+                onClick={() => handleSingleSelect('skill', skill.value)}
+                data-testid={`skill-${skill.value}`}
+              >
+                <div className="text-3xl mb-2">{skill.icon}</div>
+                <div className="font-semibold">{skill.label}</div>
+              </div>
+            ))}
+          </div>
+        );
+
       case 'learner':
         return (
           <div className="space-y-6">
@@ -339,23 +370,6 @@ const StudentFunnel = () => {
           </div>
         );
 
-      case 'skill':
-        return (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {SKILL_OPTIONS.map((skill) => (
-              <div
-                key={skill.value}
-                className={`selection-card p-4 cursor-pointer ${formData.skill === skill.value ? 'selected' : ''}`}
-                onClick={() => updateForm('skill', skill.value)}
-                data-testid={`skill-${skill.value}`}
-              >
-                <div className="text-3xl mb-2">{skill.icon}</div>
-                <div className="font-semibold">{skill.label}</div>
-              </div>
-            ))}
-          </div>
-        );
-
       case 'city':
         return (
           <div className="space-y-4">
@@ -364,7 +378,7 @@ const StudentFunnel = () => {
                 <div
                   key={city.id}
                   className={`selection-card p-3 cursor-pointer ${formData.city === city.name ? 'selected' : ''}`}
-                  onClick={() => updateForm('city', city.name)}
+                  onClick={() => handleSingleSelect('city', city.name)}
                   data-testid={`city-${city.name.toLowerCase()}`}
                 >
                   <div className="flex items-center gap-2">
@@ -392,6 +406,8 @@ const StudentFunnel = () => {
                 onClick={() => {
                   updateForm('learning_mode', 'online');
                   updateForm('offline_type', '');
+                  // Auto-advance for online selection
+                  setTimeout(() => setCurrentStep(prev => prev + 1), 200);
                 }}
                 data-testid="mode-online"
               >
@@ -416,7 +432,7 @@ const StudentFunnel = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div
                     className={`selection-card p-4 cursor-pointer ${formData.offline_type === 'center' ? 'selected' : ''}`}
-                    onClick={() => updateForm('offline_type', 'center')}
+                    onClick={() => handleSingleSelect('offline_type', 'center')}
                     data-testid="offline-center"
                   >
                     <div className="flex items-center gap-3">
@@ -429,7 +445,7 @@ const StudentFunnel = () => {
                   </div>
                   <div
                     className={`selection-card p-4 cursor-pointer ${formData.offline_type === 'home' ? 'selected' : ''}`}
-                    onClick={() => updateForm('offline_type', 'home')}
+                    onClick={() => handleSingleSelect('offline_type', 'home')}
                     data-testid="offline-home"
                   >
                     <div className="flex items-center gap-3">
@@ -458,6 +474,8 @@ const StudentFunnel = () => {
                   onClick={() => {
                     updateForm('selected_center', center.id);
                     updateForm('selected_center_name', center.name);
+                    // Auto-advance after center selection
+                    setTimeout(() => setCurrentStep(prev => prev + 1), 200);
                   }}
                   data-testid={`center-${center.id}`}
                 >
@@ -745,6 +763,7 @@ const StudentFunnel = () => {
             <div className="py-4 flex justify-center gap-6 text-sm text-white/80">
               <Link to="/about" className="hover:text-white">About OLL</Link>
               <Link to="/centers" className="hover:text-white">Our Centers</Link>
+              <Link to="/blogs" className="hover:text-white">Blog</Link>
               <Link to="/faq" className="hover:text-white">FAQs</Link>
             </div>
           </div>
@@ -769,9 +788,13 @@ const StudentFunnel = () => {
                 />
               </Link>
               <div className="flex items-center gap-4">
-                <Link to="/login" className="text-[#D63031] hover:underline text-sm font-medium">
+                <Button
+                  onClick={() => navigate('/login')}
+                  className="bg-[#1E3A5F] hover:bg-[#2d4a6f] text-white text-sm"
+                  data-testid="funnel-login-btn"
+                >
                   Login
-                </Link>
+                </Button>
                 <Link to="/centers" className="text-slate-600 hover:text-[#1E3A5F] font-medium transition-colors hidden sm:block">
                   Centers
                 </Link>
@@ -834,6 +857,7 @@ const StudentFunnel = () => {
             <div className="py-4 flex justify-center gap-6 text-sm text-white/80">
               <Link to="/about" className="hover:text-white">About OLL</Link>
               <Link to="/centers" className="hover:text-white">Our Centers</Link>
+              <Link to="/blogs" className="hover:text-white">Blog</Link>
               <Link to="/faq" className="hover:text-white">FAQs</Link>
             </div>
           </div>
@@ -861,9 +885,12 @@ const StudentFunnel = () => {
               />
             </Link>
             <div className="flex items-center gap-4">
-              <Link to="/login" className="text-[#D63031] hover:underline text-sm font-medium">
+              <Button
+                onClick={() => navigate('/login')}
+                className="bg-[#1E3A5F] hover:bg-[#2d4a6f] text-white text-sm"
+              >
                 Login
-              </Link>
+              </Button>
               <Link to="/centers" className="text-slate-600 hover:text-[#1E3A5F] font-medium transition-colors text-sm">
                 View Centers
               </Link>
@@ -942,6 +969,7 @@ const StudentFunnel = () => {
           <div className="py-4 flex justify-center gap-6 text-sm text-white/80">
             <Link to="/about" className="hover:text-white">About OLL</Link>
             <Link to="/centers" className="hover:text-white">Our Centers</Link>
+            <Link to="/blogs" className="hover:text-white">Blog</Link>
             <Link to="/faq" className="hover:text-white">FAQs</Link>
           </div>
         </div>
