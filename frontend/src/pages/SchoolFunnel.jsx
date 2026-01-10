@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, Building2, Users, Award, Clock, Calendar, Send } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Building2, Users, Award, Clock, Calendar, Send, BookOpen, Cog, Trophy, GraduationCap, Lightbulb, Target, ChevronRight, Play, Star, Phone } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Calendar as CalendarComponent } from '../components/ui/calendar';
@@ -66,6 +66,60 @@ const SUPPORT_OPTIONS = [
 
 const TIME_SLOTS = ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'];
 
+// Services data for post-submission showcase
+const SERVICES = [
+  {
+    id: 'robotics',
+    icon: Cog,
+    title: 'Robotics Lab Setup',
+    description: 'Complete robotics lab with equipment, curriculum, and trained instructors',
+    features: ['Age-appropriate kits', 'Structured curriculum', 'Competition prep', 'Regular assessments'],
+    color: 'blue'
+  },
+  {
+    id: 'coding',
+    icon: BookOpen,
+    title: 'Coding & AI Program',
+    description: 'Comprehensive coding education from basics to advanced AI/ML',
+    features: ['Scratch to Python pathway', 'Real-world projects', 'AI/ML introduction', 'Industry certifications'],
+    color: 'purple'
+  },
+  {
+    id: 'competitions',
+    icon: Trophy,
+    title: 'Competition Training',
+    description: 'Prepare students for national and international STEM competitions',
+    features: ['WRO preparation', 'Hackathon training', 'Science fairs', 'Innovation challenges'],
+    color: 'amber'
+  },
+  {
+    id: 'teacher',
+    icon: GraduationCap,
+    title: 'Teacher Training',
+    description: 'Upskill your faculty with latest teaching methodologies',
+    features: ['Hands-on workshops', 'Certification programs', 'Ongoing support', 'Resource access'],
+    color: 'green'
+  },
+];
+
+const TESTIMONIALS = [
+  {
+    quote: "OLL transformed our STEM program. Students are now winning state-level competitions!",
+    author: "Principal, Delhi Public School",
+    location: "Delhi"
+  },
+  {
+    quote: "The teacher training program was exceptional. Our faculty is now confident teaching robotics.",
+    author: "Academic Head, Ryan International",
+    location: "Mumbai"
+  },
+  {
+    quote: "From lab setup to curriculum, OLL provided end-to-end support. Highly recommended!",
+    author: "Director, Kendriya Vidyalaya",
+    location: "Bangalore"
+  }
+];
+
 const SchoolFunnel = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
@@ -93,7 +147,6 @@ const SchoolFunnel = () => {
   // Auto-advance for single selection questions
   const handleSingleSelect = (key, value) => {
     updateForm(key, value);
-    // Small delay for visual feedback before advancing
     setTimeout(() => {
       setCurrentStep(prev => prev + 1);
     }, 200);
@@ -161,56 +214,227 @@ const SchoolFunnel = () => {
     }
   };
 
+  // Post-Submission Services Showcase Page
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
-        <div className="glass-card rounded-3xl p-8 md:p-12 max-w-lg w-full text-center animate-slide-up">
-          <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
-            <Check className="w-10 h-10 text-green-600" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+        {/* Header */}
+        <header className="bg-white/80 backdrop-blur-lg border-b border-slate-200/50 sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <Link to="/" className="flex items-center gap-2">
+                <img 
+                  src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png" 
+                  alt="OLL" 
+                  className="h-8"
+                />
+              </Link>
+              <a href="tel:+919876543210" className="flex items-center gap-2 text-[#D63031] font-medium text-sm">
+                <Phone className="w-4 h-4" />
+                <span className="hidden sm:inline">Call Us</span>
+              </a>
+            </div>
           </div>
-          <h2 className="text-2xl md:text-3xl font-bold text-[#1E3A5F] mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
-            Meeting Scheduled!
-          </h2>
-          <p className="text-slate-600 mb-4">
-            Thank you for your interest in partnering with OLL.
-          </p>
-          
-          <div className="bg-slate-50 rounded-xl p-4 mb-6 text-left">
-            <p className="text-sm text-slate-500 mb-1">Meeting scheduled for</p>
-            <p className="font-semibold text-[#1E3A5F]">
-              {formData.meeting_date ? format(formData.meeting_date, 'EEEE, MMMM d, yyyy') : ''} at {formData.meeting_time}
+        </header>
+
+        {/* Success Banner */}
+        <div className="bg-gradient-to-r from-[#1E3A5F] to-[#2d5a8f] text-white py-8 px-4">
+          <div className="max-w-4xl mx-auto text-center">
+            <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-4">
+              <Check className="w-8 h-8" />
+            </div>
+            <h1 className="text-2xl md:text-3xl font-bold mb-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
+              Meeting Scheduled Successfully!
+            </h1>
+            <p className="text-white/80 mb-4">
+              Thank you, {formData.school_name}. We're excited to partner with you.
             </p>
+            <div className="inline-flex items-center gap-2 bg-white/20 rounded-full px-4 py-2 text-sm">
+              <Calendar className="w-4 h-4" />
+              <span>{formData.meeting_date ? format(formData.meeting_date, 'EEEE, MMMM d, yyyy') : ''}</span>
+              <span className="mx-1">•</span>
+              <Clock className="w-4 h-4" />
+              <span>{formData.meeting_time}</span>
+            </div>
           </div>
-          
-          {/* Credibility Section */}
-          <div className="bg-slate-50 rounded-xl p-6 mb-6 text-left">
-            <h3 className="font-semibold text-[#1E3A5F] mb-4">Why Schools Choose OLL</h3>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-[#1E3A5F]/10 flex items-center justify-center">
-                  <Building2 className="w-4 h-4 text-[#1E3A5F]" />
-                </div>
-                <span className="text-sm text-slate-600">500+ Partner Schools</span>
+        </div>
+
+        {/* Stats Section */}
+        <div className="py-8 bg-white border-b border-slate-200">
+          <div className="max-w-6xl mx-auto px-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
+              <div className="text-center">
+                <div className="text-3xl md:text-4xl font-bold text-[#1E3A5F]">500+</div>
+                <div className="text-sm text-slate-500">Partner Schools</div>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-[#1E3A5F]/10 flex items-center justify-center">
-                  <Users className="w-4 h-4 text-[#1E3A5F]" />
-                </div>
-                <span className="text-sm text-slate-600">50,000+ Students Trained</span>
+              <div className="text-center">
+                <div className="text-3xl md:text-4xl font-bold text-[#1E3A5F]">50,000+</div>
+                <div className="text-sm text-slate-500">Students Trained</div>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-[#1E3A5F]/10 flex items-center justify-center">
-                  <Award className="w-4 h-4 text-[#1E3A5F]" />
-                </div>
-                <span className="text-sm text-slate-600">100+ Competition Winners</span>
+              <div className="text-center">
+                <div className="text-3xl md:text-4xl font-bold text-[#1E3A5F]">100+</div>
+                <div className="text-sm text-slate-500">Competition Wins</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl md:text-4xl font-bold text-[#1E3A5F]">15+</div>
+                <div className="text-sm text-slate-500">Cities Covered</div>
               </div>
             </div>
           </div>
-          
-          <Button onClick={() => navigate('/')} className="btn-primary w-full" data-testid="back-to-home-btn">
-            Back to Home
-          </Button>
         </div>
+
+        {/* Services Section */}
+        <div className="py-12 px-4">
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center mb-10">
+              <h2 className="text-2xl md:text-3xl font-bold text-[#1E3A5F] mb-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                Our Services for Schools
+              </h2>
+              <p className="text-slate-600">Comprehensive skill education solutions tailored for your school</p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              {SERVICES.map(service => {
+                const colorClasses = {
+                  blue: 'bg-blue-50 text-blue-600 border-blue-200',
+                  purple: 'bg-purple-50 text-purple-600 border-purple-200',
+                  amber: 'bg-amber-50 text-amber-600 border-amber-200',
+                  green: 'bg-green-50 text-green-600 border-green-200',
+                };
+                return (
+                  <div key={service.id} className="glass-card rounded-2xl p-6 hover:shadow-lg transition-shadow">
+                    <div className={`w-12 h-12 rounded-xl ${colorClasses[service.color]} flex items-center justify-center mb-4`}>
+                      <service.icon className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-[#1E3A5F] mb-2">{service.title}</h3>
+                    <p className="text-slate-600 text-sm mb-4">{service.description}</p>
+                    <div className="space-y-2">
+                      {service.features.map((feature, idx) => (
+                        <div key={idx} className="flex items-center gap-2 text-sm text-slate-500">
+                          <Check className="w-4 h-4 text-green-500 flex-shrink-0" />
+                          <span>{feature}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* How It Works Section */}
+        <div className="py-12 px-4 bg-white">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-10">
+              <h2 className="text-2xl md:text-3xl font-bold text-[#1E3A5F] mb-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                How We Partner With Schools
+              </h2>
+              <p className="text-slate-600">Simple 4-step process to transform your school's skill education</p>
+            </div>
+
+            <div className="relative">
+              {/* Timeline line */}
+              <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-0.5 bg-slate-200 -translate-x-1/2"></div>
+              
+              <div className="space-y-8 md:space-y-0">
+                {[
+                  { step: 1, title: 'Consultation', desc: 'We understand your school\'s needs and goals', icon: Target },
+                  { step: 2, title: 'Customization', desc: 'Tailored curriculum and lab setup plan', icon: Lightbulb },
+                  { step: 3, title: 'Implementation', desc: 'Lab setup, teacher training, and launch', icon: Cog },
+                  { step: 4, title: 'Ongoing Support', desc: 'Regular assessments and continuous improvement', icon: Star },
+                ].map((item, idx) => (
+                  <div key={item.step} className={`flex items-center gap-4 md:gap-8 ${idx % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'}`}>
+                    <div className={`flex-1 ${idx % 2 === 0 ? 'md:text-right' : 'md:text-left'}`}>
+                      <div className="glass-card rounded-xl p-4 inline-block">
+                        <h3 className="font-semibold text-[#1E3A5F]">{item.title}</h3>
+                        <p className="text-sm text-slate-500">{item.desc}</p>
+                      </div>
+                    </div>
+                    <div className="relative z-10 w-12 h-12 rounded-full bg-[#D63031] text-white flex items-center justify-center font-bold shadow-lg flex-shrink-0">
+                      {item.step}
+                    </div>
+                    <div className="flex-1 hidden md:block"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Testimonials */}
+        <div className="py-12 px-4 bg-gradient-to-br from-[#1E3A5F] to-[#2d5a8f]">
+          <div className="max-w-6xl mx-auto">
+            <div className="text-center mb-10">
+              <h2 className="text-2xl md:text-3xl font-bold text-white mb-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                What Schools Say About Us
+              </h2>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-6">
+              {TESTIMONIALS.map((testimonial, idx) => (
+                <div key={idx} className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
+                  <div className="flex gap-1 mb-3">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                    ))}
+                  </div>
+                  <p className="text-white/90 text-sm mb-4">"{testimonial.quote}"</p>
+                  <div>
+                    <p className="text-white font-medium text-sm">{testimonial.author}</p>
+                    <p className="text-white/60 text-xs">{testimonial.location}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* CTA Section */}
+        <div className="py-12 px-4 bg-white">
+          <div className="max-w-2xl mx-auto text-center">
+            <h2 className="text-2xl font-bold text-[#1E3A5F] mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
+              Ready to Transform Your School?
+            </h2>
+            <p className="text-slate-600 mb-6">
+              Our team will reach out before your scheduled meeting. In the meantime, explore our resources.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button 
+                onClick={() => navigate('/courses')} 
+                className="btn-primary"
+              >
+                Explore Programs
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => navigate('/')} 
+                className="border-slate-300"
+              >
+                Back to Home
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <footer className="bg-[#1E3A5F] text-white py-8">
+          <div className="max-w-7xl mx-auto px-4 text-center">
+            <img 
+              src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/rugags0w_OLL-horizontal-logo-white.png" 
+              alt="OLL" 
+              className="h-8 mx-auto mb-4"
+            />
+            <div className="flex justify-center gap-6 text-sm text-white/80 mb-4">
+              <Link to="/about" className="hover:text-white">About Us</Link>
+              <Link to="/courses" className="hover:text-white">Programs</Link>
+              <Link to="/faq" className="hover:text-white">FAQs</Link>
+              <Link to="/blogs" className="hover:text-white">Blog</Link>
+            </div>
+            <p className="text-white/60 text-sm">© 2024 OLL. All rights reserved.</p>
+          </div>
+        </footer>
       </div>
     );
   }
@@ -350,7 +574,6 @@ const SchoolFunnel = () => {
               selected={formData.meeting_date}
               onSelect={(date) => {
                 updateForm('meeting_date', date);
-                // Auto-advance after date selection
                 if (date) {
                   setTimeout(() => setCurrentStep(prev => prev + 1), 200);
                 }
