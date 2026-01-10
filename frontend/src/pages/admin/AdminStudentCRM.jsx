@@ -194,12 +194,6 @@ const AdminStudentCRM = () => {
       toast.error('Failed to add lead');
     }
   };
-      setNewLead({ name: '', phone: '', email: '', skill: '', city: '', learning_mode: 'online', source: 'manual', notes: '' });
-      fetchInquiries();
-    } catch (error) {
-      toast.error('Failed to add lead');
-    }
-  };
 
   const filteredInquiries = inquiries.filter(inq => {
     const matchesSearch = inq.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
