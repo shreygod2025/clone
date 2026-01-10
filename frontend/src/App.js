@@ -11,6 +11,8 @@ import BlogsPage from "./pages/BlogsPage";
 import BlogDetailPage from "./pages/BlogDetailPage";
 import FAQPage from "./pages/FAQPage";
 import CentersPage from "./pages/CentersPage";
+import LoginPage from "./pages/LoginPage";
+import MyBookingsPage from "./pages/MyBookingsPage";
 
 // Course SEO Pages
 import CoursesListPage from "./pages/courses/CoursesListPage";
@@ -31,6 +33,7 @@ import AdminCenters from "./pages/admin/AdminCenters";
 
 // Auth Context
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { UserAuthProvider } from "./context/UserAuthContext";
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -53,38 +56,44 @@ const ProtectedRoute = ({ children }) => {
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/student" element={<StudentFunnel />} />
-          <Route path="/educator" element={<EducatorFunnel />} />
-          <Route path="/school" element={<SchoolFunnel />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/blogs" element={<BlogsPage />} />
-          <Route path="/blogs/:slug" element={<BlogDetailPage />} />
-          <Route path="/faq" element={<FAQPage />} />
-          <Route path="/centers" element={<CentersPage />} />
-          
-          {/* SEO Course Pages */}
-          <Route path="/courses" element={<CoursesListPage />} />
-          <Route path="/courses/:courseSlug" element={<CoursePage />} />
-          
-          {/* Admin Routes */}
-          <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-          <Route path="/admin/students" element={<ProtectedRoute><AdminStudentCRM /></ProtectedRoute>} />
-          <Route path="/admin/schools" element={<ProtectedRoute><AdminSchoolCRM /></ProtectedRoute>} />
-          <Route path="/admin/educators" element={<ProtectedRoute><AdminEducators /></ProtectedRoute>} />
-          <Route path="/admin/blogs" element={<ProtectedRoute><AdminBlogs /></ProtectedRoute>} />
-          <Route path="/admin/faqs" element={<ProtectedRoute><AdminFAQs /></ProtectedRoute>} />
-          <Route path="/admin/requirements" element={<ProtectedRoute><AdminRequirements /></ProtectedRoute>} />
-          <Route path="/admin/support" element={<ProtectedRoute><AdminSupport /></ProtectedRoute>} />
-          <Route path="/admin/cities" element={<ProtectedRoute><AdminCities /></ProtectedRoute>} />
-          <Route path="/admin/centers" element={<ProtectedRoute><AdminCenters /></ProtectedRoute>} />
-        </Routes>
-        <Toaster position="top-right" richColors />
-      </BrowserRouter>
+      <UserAuthProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/student" element={<StudentFunnel />} />
+            <Route path="/educator" element={<EducatorFunnel />} />
+            <Route path="/school" element={<SchoolFunnel />} />
+            <Route path="/about" element={<AboutPage />} />
+            <Route path="/blogs" element={<BlogsPage />} />
+            <Route path="/blogs/:slug" element={<BlogDetailPage />} />
+            <Route path="/faq" element={<FAQPage />} />
+            <Route path="/centers" element={<CentersPage />} />
+            
+            {/* User Auth Routes */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/my-bookings" element={<MyBookingsPage />} />
+            
+            {/* SEO Course Pages */}
+            <Route path="/courses" element={<CoursesListPage />} />
+            <Route path="/courses/:courseSlug" element={<CoursePage />} />
+            
+            {/* Admin Routes */}
+            <Route path="/admin/login" element={<AdminLogin />} />
+            <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/admin/students" element={<ProtectedRoute><AdminStudentCRM /></ProtectedRoute>} />
+            <Route path="/admin/schools" element={<ProtectedRoute><AdminSchoolCRM /></ProtectedRoute>} />
+            <Route path="/admin/educators" element={<ProtectedRoute><AdminEducators /></ProtectedRoute>} />
+            <Route path="/admin/blogs" element={<ProtectedRoute><AdminBlogs /></ProtectedRoute>} />
+            <Route path="/admin/faqs" element={<ProtectedRoute><AdminFAQs /></ProtectedRoute>} />
+            <Route path="/admin/requirements" element={<ProtectedRoute><AdminRequirements /></ProtectedRoute>} />
+            <Route path="/admin/support" element={<ProtectedRoute><AdminSupport /></ProtectedRoute>} />
+            <Route path="/admin/cities" element={<ProtectedRoute><AdminCities /></ProtectedRoute>} />
+            <Route path="/admin/centers" element={<ProtectedRoute><AdminCenters /></ProtectedRoute>} />
+          </Routes>
+          <Toaster position="top-right" richColors />
+        </BrowserRouter>
+      </UserAuthProvider>
     </AuthProvider>
   );
 }
