@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Menu, X, User, LogIn } from 'lucide-react';
 import { Button } from './ui/button';
+import { useUserAuth } from '../context/UserAuthContext';
 
 const Navbar = ({ showBookDemo = false, onBookDemo }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, isLoggedIn, logout } = useUserAuth();
 
   const navLinks = [
     { path: '/courses', label: 'Courses' },
@@ -44,6 +47,30 @@ const Navbar = ({ showBookDemo = false, onBookDemo }) => {
                 {link.label}
               </Link>
             ))}
+            
+            {/* Login / Profile */}
+            {isLoggedIn ? (
+              <button
+                onClick={() => navigate('/my-bookings')}
+                className="flex items-center gap-2 text-slate-600 hover:text-[#1E3A5F] font-medium"
+                data-testid="profile-btn"
+              >
+                <div className="w-8 h-8 rounded-full bg-[#1E3A5F] flex items-center justify-center">
+                  <User className="w-4 h-4 text-white" />
+                </div>
+                <span className="hidden lg:inline">{user?.name?.split(' ')[0] || 'Profile'}</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => navigate('/login')}
+                className="flex items-center gap-2 text-slate-600 hover:text-[#1E3A5F] font-medium"
+                data-testid="login-btn"
+              >
+                <LogIn className="w-5 h-5" />
+                <span>Login</span>
+              </button>
+            )}
+            
             {showBookDemo && (
               <Button 
                 onClick={onBookDemo}
@@ -57,6 +84,17 @@ const Navbar = ({ showBookDemo = false, onBookDemo }) => {
 
           {/* Mobile Menu Button */}
           <div className="flex items-center gap-2 md:hidden">
+            {isLoggedIn && (
+              <button
+                onClick={() => navigate('/my-bookings')}
+                className="p-2"
+                data-testid="mobile-profile-btn"
+              >
+                <div className="w-8 h-8 rounded-full bg-[#1E3A5F] flex items-center justify-center">
+                  <User className="w-4 h-4 text-white" />
+                </div>
+              </button>
+            )}
             {showBookDemo && (
               <Button 
                 onClick={onBookDemo}
@@ -94,6 +132,25 @@ const Navbar = ({ showBookDemo = false, onBookDemo }) => {
               {link.label}
             </Link>
           ))}
+          <div className="pt-2 border-t border-slate-200 mt-2">
+            {isLoggedIn ? (
+              <Link 
+                to="/my-bookings"
+                className="block py-2 px-2 rounded-lg text-slate-600 hover:text-[#1E3A5F] hover:bg-slate-50"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                My Bookings
+              </Link>
+            ) : (
+              <Link 
+                to="/login"
+                className="block py-2 px-2 rounded-lg text-slate-600 hover:text-[#1E3A5F] hover:bg-slate-50"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Login
+              </Link>
+            )}
+          </div>
         </div>
       )}
     </nav>
