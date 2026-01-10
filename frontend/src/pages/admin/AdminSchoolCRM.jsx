@@ -154,22 +154,38 @@ const AdminSchoolCRM = () => {
       await axios.post(`${API}/schools/inquiry`, {
         school_name: newLead.school_name,
         contact_name: newLead.contact_name,
-        email: `${newLead.phone}@school.oll`,
+        email: newLead.email || `${newLead.phone}@school.oll`,
         phone: newLead.phone,
         location: newLead.location,
-        school_size: '',
+        school_size: newLead.student_count || '',
         fee_range: '',
         board: newLead.board,
         meeting_type: newLead.meeting_type,
+        meeting_date: newLead.meeting_date ? format(newLead.meeting_date, 'yyyy-MM-dd') : null,
+        meeting_time: newLead.meeting_time,
         programs_interested: [],
         support_needed: [],
         source: newLead.source,
+        notes: newLead.notes,
       }, {
         headers: getAuthHeaders()
       });
       toast.success('Lead added successfully');
       setShowAddForm(false);
-      setNewLead({ school_name: '', contact_name: '', phone: '', location: '', board: '', meeting_type: 'offline', source: 'manual', notes: '' });
+      setNewLead({ 
+        school_name: '', 
+        contact_name: '', 
+        phone: '', 
+        email: '',
+        location: '', 
+        board: '', 
+        student_count: '',
+        meeting_type: 'offline', 
+        meeting_date: null,
+        meeting_time: '',
+        source: 'manual', 
+        notes: '' 
+      });
       fetchInquiries();
     } catch (error) {
       toast.error('Failed to add lead');
