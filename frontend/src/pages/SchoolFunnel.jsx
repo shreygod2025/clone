@@ -90,6 +90,15 @@ const SchoolFunnel = () => {
     setFormData(prev => ({ ...prev, [key]: value }));
   };
 
+  // Auto-advance for single selection questions
+  const handleSingleSelect = (key, value) => {
+    updateForm(key, value);
+    // Small delay for visual feedback before advancing
+    setTimeout(() => {
+      setCurrentStep(prev => prev + 1);
+    }, 200);
+  };
+
   const toggleArrayItem = (key, value) => {
     setFormData(prev => ({
       ...prev,
@@ -215,7 +224,7 @@ const SchoolFunnel = () => {
               <div
                 key={option.value}
                 className={`selection-card p-4 sm:p-5 ${formData.board === option.value ? 'selected' : ''}`}
-                onClick={() => updateForm('board', option.value)}
+                onClick={() => handleSingleSelect('board', option.value)}
                 data-testid={`board-${option.value}`}
               >
                 <h3 className="font-semibold text-[#1E3A5F] text-base sm:text-lg">{option.label}</h3>
@@ -232,7 +241,7 @@ const SchoolFunnel = () => {
               <div
                 key={city}
                 className={`selection-card text-center py-3 sm:py-4 px-2 ${formData.location === city ? 'selected' : ''}`}
-                onClick={() => updateForm('location', city)}
+                onClick={() => handleSingleSelect('location', city)}
                 data-testid={`city-${city.toLowerCase()}`}
               >
                 <span className="font-medium text-[#1E3A5F] text-sm sm:text-base">{city}</span>
@@ -248,7 +257,7 @@ const SchoolFunnel = () => {
               <div
                 key={option.value}
                 className={`selection-card p-4 sm:p-5 ${formData.school_size === option.value ? 'selected' : ''}`}
-                onClick={() => updateForm('school_size', option.value)}
+                onClick={() => handleSingleSelect('school_size', option.value)}
                 data-testid={`size-${option.value}`}
               >
                 <h3 className="font-semibold text-[#1E3A5F] text-sm sm:text-base">{option.label}</h3>
@@ -265,7 +274,7 @@ const SchoolFunnel = () => {
               <div
                 key={option.value}
                 className={`selection-card p-4 sm:p-5 ${formData.fee_range === option.value ? 'selected' : ''}`}
-                onClick={() => updateForm('fee_range', option.value)}
+                onClick={() => handleSingleSelect('fee_range', option.value)}
                 data-testid={`fee-${option.value}`}
               >
                 <h3 className="font-semibold text-[#1E3A5F] text-sm sm:text-base">{option.label}</h3>
@@ -339,7 +348,13 @@ const SchoolFunnel = () => {
             <CalendarComponent
               mode="single"
               selected={formData.meeting_date}
-              onSelect={(date) => updateForm('meeting_date', date)}
+              onSelect={(date) => {
+                updateForm('meeting_date', date);
+                // Auto-advance after date selection
+                if (date) {
+                  setTimeout(() => setCurrentStep(prev => prev + 1), 200);
+                }
+              }}
               disabled={(date) => date < new Date() || date > addDays(new Date(), 14) || date.getDay() === 0}
               className="rounded-xl border border-slate-200"
               data-testid="meeting-calendar"
@@ -362,7 +377,7 @@ const SchoolFunnel = () => {
                       ? 'border-[#D63031] bg-red-50 text-[#D63031]' 
                       : 'border-slate-200 hover:border-slate-300'
                   }`}
-                  onClick={() => updateForm('meeting_time', time)}
+                  onClick={() => handleSingleSelect('meeting_time', time)}
                   data-testid={`time-${time.replace(':', '')}`}
                 >
                   <Clock className="w-4 h-4 sm:w-5 sm:h-5 mx-auto mb-1" />
@@ -401,7 +416,7 @@ const SchoolFunnel = () => {
               <Input
                 placeholder="Enter phone number"
                 value={formData.phone}
-                onChange={(e) => updateForm('phone', e.target.value)}
+                onChange={(e) => updateForm('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
                 className="input-glass"
                 data-testid="contact-phone"
               />

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, Calendar, Clock, BookOpen, MapPin, Target, Mail, HelpCircle, MessageCircle, Send, Building2, Home, Phone, Shield } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Calendar, Clock, BookOpen, MapPin, Target, HelpCircle, MessageCircle, Building2, Home, Phone, Shield } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
@@ -28,13 +28,6 @@ const AGE_OPTIONS = [
   { value: '18+', label: '18+ years', description: 'Adult Learners' },
 ];
 
-const GOAL_OPTIONS = [
-  { value: 'hobby', label: 'Hobby & Interest', icon: '🎨' },
-  { value: 'career', label: 'Career Preparation', icon: '💼' },
-  { value: 'competition', label: 'Competitions', icon: '🏆' },
-  { value: 'school', label: 'School Projects', icon: '📚' },
-];
-
 const TIME_SLOTS = ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'];
 
 const StudentFunnel = () => {
@@ -57,7 +50,6 @@ const StudentFunnel = () => {
   const [otpLoading, setOtpLoading] = useState(false);
   
   const [formData, setFormData] = useState({
-    learner_type: 'child',
     age_group: '',
     skill: '',
     city: '',
@@ -65,11 +57,9 @@ const StudentFunnel = () => {
     offline_type: '', // 'center' or 'home'
     selected_center: '',
     selected_center_name: '',
-    learning_goal: '',
     demo_date: null,
     demo_time: '',
     name: '',
-    email: '',
     phone: '',
     address: '',
   });
@@ -81,7 +71,7 @@ const StudentFunnel = () => {
       setFlowType('learn');
       setFormData(prev => ({ ...prev, skill: skillParam }));
       setCameFromCoursePage(true);
-      // Start from learner/age step (step 1) since skill is pre-selected
+      // Start from age step (step 1) since skill is pre-selected
       setCurrentStep(1);
     }
   }, [searchParams]);
@@ -114,11 +104,11 @@ const StudentFunnel = () => {
     fetchCenters();
   }, [formData.city, formData.offline_type]);
 
-  // Dynamic steps - SKILL FIRST, then LEARNER (age)
+  // Dynamic steps - SKILL FIRST, then AGE (removed learner type)
   const getActiveSteps = () => {
     const steps = [
       { id: 'skill', title: 'Choose a Skill' },
-      { id: 'learner', title: 'Who is learning?' },
+      { id: 'age', title: 'Select Age Group' },
       { id: 'city', title: 'Select City' },
       { id: 'mode', title: 'Learning Mode' },
     ];
@@ -144,14 +134,12 @@ const StudentFunnel = () => {
   };
 
   // Auto-advance for single selection questions
-  const handleSingleSelect = (field, value, shouldAdvance = true) => {
+  const handleSingleSelect = (field, value) => {
     updateForm(field, value);
-    if (shouldAdvance) {
-      // Small delay for visual feedback before advancing
-      setTimeout(() => {
-        setCurrentStep(prev => prev + 1);
-      }, 200);
-    }
+    // Small delay for visual feedback before advancing
+    setTimeout(() => {
+      setCurrentStep(prev => prev + 1);
+    }, 200);
   };
 
   const handleSendOTP = async () => {
@@ -192,7 +180,7 @@ const StudentFunnel = () => {
       
       // OTP verified, now submit the inquiry
       const payload = {
-        learner_type: formData.learner_type,
+        learner_type: 'self', // Default since we removed the selection
         age_group: formData.age_group,
         skill: formData.skill,
         city: formData.city,
@@ -201,9 +189,9 @@ const StudentFunnel = () => {
           : formData.offline_type === 'center' 
             ? 'offline_center' 
             : 'offline_home',
-        learning_goal: formData.learning_goal,
+        learning_goal: 'general',
         name: formData.name,
-        email: formData.email,
+        email: `${formData.phone}@student.oll`, // Auto-generate email from phone
         phone: formData.phone,
         demo_date: formData.demo_date ? format(formData.demo_date, 'yyyy-MM-dd') : null,
         demo_time: formData.demo_time,
@@ -245,8 +233,8 @@ const StudentFunnel = () => {
     switch (stepId) {
       case 'skill':
         return formData.skill;
-      case 'learner':
-        return formData.learner_type && formData.age_group;
+      case 'age':
+        return formData.age_group;
       case 'city':
         return formData.city;
       case 'mode':
@@ -259,7 +247,7 @@ const StudentFunnel = () => {
       case 'schedule':
         return formData.demo_date && formData.demo_time;
       case 'contact':
-        return formData.name && formData.email && formData.phone && formData.phone.length >= 10;
+        return formData.name && formData.phone && formData.phone.length >= 10;
       case 'otp':
         return otp.length >= 4;
       default:
@@ -327,46 +315,20 @@ const StudentFunnel = () => {
           </div>
         );
 
-      case 'learner':
+      case 'age':
         return (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
+            {AGE_OPTIONS.map((age) => (
               <div
-                className={`selection-card p-4 cursor-pointer ${formData.learner_type === 'child' ? 'selected' : ''}`}
-                onClick={() => updateForm('learner_type', 'child')}
-                data-testid="learner-child"
+                key={age.value}
+                className={`selection-card p-4 cursor-pointer ${formData.age_group === age.value ? 'selected' : ''}`}
+                onClick={() => handleSingleSelect('age_group', age.value)}
+                data-testid={`age-${age.value}`}
               >
-                <div className="text-3xl mb-2">👦</div>
-                <div className="font-medium">For My Child</div>
-                <div className="text-xs text-slate-500">Parent enrolling</div>
+                <div className="font-semibold text-[#1E3A5F]">{age.label}</div>
+                <div className="text-xs text-slate-500 mt-1">{age.description}</div>
               </div>
-              <div
-                className={`selection-card p-4 cursor-pointer ${formData.learner_type === 'self' ? 'selected' : ''}`}
-                onClick={() => updateForm('learner_type', 'self')}
-                data-testid="learner-self"
-              >
-                <div className="text-3xl mb-2">🧑</div>
-                <div className="font-medium">For Myself</div>
-                <div className="text-xs text-slate-500">Self-learning</div>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-3">Age Group</label>
-              <div className="grid grid-cols-2 gap-3">
-                {AGE_OPTIONS.map((age) => (
-                  <div
-                    key={age.value}
-                    className={`selection-card p-3 cursor-pointer ${formData.age_group === age.value ? 'selected' : ''}`}
-                    onClick={() => updateForm('age_group', age.value)}
-                    data-testid={`age-${age.value}`}
-                  >
-                    <div className="font-medium text-sm">{age.label}</div>
-                    <div className="text-xs text-slate-500">{age.description}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            ))}
           </div>
         );
 
@@ -540,22 +502,11 @@ const StudentFunnel = () => {
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Full Name</label>
               <Input
-                placeholder={formData.learner_type === 'child' ? "Parent's Name" : "Your Name"}
+                placeholder="Enter your name"
                 value={formData.name}
                 onChange={(e) => updateForm('name', e.target.value)}
                 className="input-glass"
                 data-testid="contact-name"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Email</label>
-              <Input
-                type="email"
-                placeholder="your@email.com"
-                value={formData.email}
-                onChange={(e) => updateForm('email', e.target.value)}
-                className="input-glass"
-                data-testid="contact-email"
               />
             </div>
             <div>
