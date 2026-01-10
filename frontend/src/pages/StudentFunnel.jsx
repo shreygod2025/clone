@@ -612,8 +612,8 @@ const StudentFunnel = () => {
 
       <main className="pt-8 pb-12 px-4">
         <div className="max-w-2xl mx-auto">
-          {/* Progress Bar */}
-          <div className="mb-8">
+          {/* Progress Bar - Hidden on mobile */}
+          <div className="mb-8 hidden sm:block">
             <div className="flex items-center justify-between mb-4">
               {activeSteps.map((step, index) => (
                 <div key={step.id} className="flex items-center">
@@ -633,6 +633,11 @@ const StudentFunnel = () => {
             <p className="text-center text-sm text-slate-500">
               Step {currentStep + 1} of {activeSteps.length}
             </p>
+          </div>
+          
+          {/* Mobile Step Counter */}
+          <div className="mb-4 sm:hidden text-center">
+            <span className="text-sm text-slate-500">Step {currentStep + 1} of {activeSteps.length}</span>
           </div>
 
           {/* Step Card */}
