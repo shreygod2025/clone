@@ -195,6 +195,11 @@ class OpenRequirement(BaseModel):
     description: str
     requirements: str
     positions: int = 1
+    days: List[str] = []
+    timing_from: str = ""
+    timing_to: str = ""
+    pay_per_session: str = ""
+    pay_type: str = "per_session"
     is_active: bool = True
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -202,9 +207,15 @@ class OpenRequirementCreate(BaseModel):
     title: str
     skill: str
     city: str
-    description: str
-    requirements: str
+    description: str = ""
+    requirements: str = ""
     positions: int = 1
+    days: List[str] = []
+    timing_from: str = ""
+    timing_to: str = ""
+    pay_per_session: str = ""
+    pay_type: str = "per_session"
+    is_active: bool = True
 
 class OpenRequirementUpdate(BaseModel):
     title: Optional[str] = None
