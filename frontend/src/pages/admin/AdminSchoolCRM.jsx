@@ -653,7 +653,7 @@ const AdminSchoolCRM = () => {
 
       {/* Add Lead Dialog */}
       <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add New School Lead</DialogTitle>
           </DialogHeader>
@@ -687,7 +687,17 @@ const AdminSchoolCRM = () => {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Email</label>
+              <Input
+                type="email"
+                placeholder="Email address (optional)"
+                value={newLead.email}
+                onChange={(e) => setNewLead({...newLead, email: e.target.value})}
+                data-testid="new-school-email"
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">City</label>
                 <select
@@ -711,6 +721,16 @@ const AdminSchoolCRM = () => {
                   <option value="">Select board</option>
                   {BOARDS.map(b => <option key={b} value={b}>{b}</option>)}
                 </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Est. Students</label>
+                <Input
+                  type="number"
+                  placeholder="Student count"
+                  value={newLead.student_count}
+                  onChange={(e) => setNewLead({...newLead, student_count: e.target.value})}
+                  data-testid="new-school-students"
+                />
               </div>
             </div>
             
@@ -745,6 +765,44 @@ const AdminSchoolCRM = () => {
               </div>
             </div>
 
+            {/* Meeting Date & Time */}
+            <div className="border-t pt-4 mt-4">
+              <h4 className="font-medium text-slate-900 mb-3">Meeting Scheduling</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Meeting Date</label>
+                  <div className="border rounded-lg p-2">
+                    <CalendarComponent
+                      mode="single"
+                      selected={newLead.meeting_date}
+                      onSelect={(date) => setNewLead({...newLead, meeting_date: date})}
+                      disabled={(date) => date < new Date()}
+                      className="rounded-md"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Meeting Time</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {TIME_SLOTS.map(time => (
+                      <button
+                        key={time}
+                        type="button"
+                        className={`p-2 rounded-lg border text-sm ${
+                          newLead.meeting_time === time 
+                            ? 'border-[#D63031] bg-red-50 text-[#D63031]' 
+                            : 'border-slate-200 hover:border-slate-300'
+                        }`}
+                        onClick={() => setNewLead({...newLead, meeting_time: time})}
+                      >
+                        {time}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Source</label>
               <select
@@ -757,6 +815,7 @@ const AdminSchoolCRM = () => {
                 <option value="referral">Referral</option>
                 <option value="event">Event / Conference</option>
                 <option value="cold_call">Cold Call</option>
+                <option value="website">Website</option>
                 <option value="other">Other</option>
               </select>
             </div>
@@ -770,7 +829,7 @@ const AdminSchoolCRM = () => {
                 data-testid="new-school-notes"
               />
             </div>
-            <div className="flex gap-3 pt-4">
+            <div className="flex gap-3 pt-4 border-t">
               <Button variant="outline" onClick={() => setShowAddForm(false)} className="flex-1">
                 Cancel
               </Button>
