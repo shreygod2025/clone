@@ -688,9 +688,9 @@ const StudentFunnel = () => {
     );
   }
 
-  // Support Flow - using SchoolSupportFlow component for school-related queries
+  // Support Flow - using SupportFlow component for all queries
   if (flowType === 'support') {
-    return <SchoolSupportFlow onBack={() => setFlowType(null)} />;
+    return <SupportFlow onBack={() => setFlowType(null)} />;
   }
 
   // Learning Flow
