@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Check, Calendar, Clock, BookOpen, MapPin, Target, Mail, HelpCircle, MessageCircle, Send, Building2, Home } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -57,6 +57,7 @@ const QUERY_CATEGORIES = [
 
 const StudentFunnel = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [flowType, setFlowType] = useState(null);
   const [currentStep, setCurrentStep] = useState(0);
   const [cities, setCities] = useState([]);
@@ -85,6 +86,17 @@ const StudentFunnel = () => {
   });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  // Handle pre-selected skill from URL (from course pages)
+  useEffect(() => {
+    const preSelectedSkill = searchParams.get('skill');
+    if (preSelectedSkill && SKILL_OPTIONS.find(s => s.value === preSelectedSkill)) {
+      setFlowType('learning');
+      setFormData(prev => ({ ...prev, skill: preSelectedSkill }));
+      // Skip to step after skill selection (city step, index 2)
+      setCurrentStep(2);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     fetchCitiesAndCenters();
