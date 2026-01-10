@@ -21,8 +21,20 @@ const STATUS_SECTIONS = [
 ];
 
 const SKILLS = ['Robotics', 'Coding', 'AI', 'Entrepreneurship', 'Financial Literacy'];
-const CITIES = ['Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 'Pune', 'Ahmedabad'];
+const CITIES = ['Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow'];
 const TIME_SLOTS = ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'];
+const AGE_GROUPS = ['6-8 years', '9-12 years', '13-16 years', '17+ years'];
+const LEARNING_MODES = [
+  { value: 'online', label: 'Online' },
+  { value: 'offline_home', label: 'Offline at Home' },
+  { value: 'offline_center', label: 'Offline at Center' },
+];
+const LEARNING_GOALS = [
+  { value: 'career', label: 'Career Preparation' },
+  { value: 'skill_building', label: 'Skill Building' },
+  { value: 'competition', label: 'Competition Prep' },
+  { value: 'fun', label: 'Fun Learning' },
+];
 
 const AdminStudentCRM = () => {
   const { getAuthHeaders } = useAuth();
