@@ -165,6 +165,8 @@ class EducatorApplication(BaseModel):
     city: str
     availability: str
     demo_ready: bool = False
+    requirement_id: Optional[str] = None  # Link to specific requirement if applying to one
+    requirement_title: Optional[str] = None
     status: str = "new"  # new, reviewed, interview_scheduled, approved, rejected
     notes: str = ""
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
