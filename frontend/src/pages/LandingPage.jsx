@@ -53,6 +53,7 @@ const LandingPage = () => {
             {/* Desktop Nav */}
             <div className="hidden md:flex items-center gap-8">
               <Link to="/about" className="text-slate-600 hover:text-[#1E3A5F] font-medium transition-colors">About</Link>
+              <Link to="/centers" className="text-slate-600 hover:text-[#1E3A5F] font-medium transition-colors">Centers</Link>
               <Link to="/blogs" className="text-slate-600 hover:text-[#1E3A5F] font-medium transition-colors">Blog</Link>
               <Link to="/faq" className="text-slate-600 hover:text-[#1E3A5F] font-medium transition-colors">FAQ</Link>
             </div>
