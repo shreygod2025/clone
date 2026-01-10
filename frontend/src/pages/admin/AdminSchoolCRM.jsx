@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Eye, Edit2, Building2, Phone, MapPin, Plus, ChevronRight, MessageSquare, Calendar } from 'lucide-react';
+import { Search, Eye, Building2, Phone, MapPin, Plus, MessageSquare, Calendar, Archive, CalendarClock, CheckCircle2, Video, Users, User, Mail, Layers, DollarSign } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Textarea } from '../../components/ui/textarea';
+import { Calendar as CalendarComponent } from '../../components/ui/calendar';
 import { toast } from 'sonner';
+import { format, addDays } from 'date-fns';
 import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -15,10 +17,12 @@ const STATUS_SECTIONS = [
   { value: 'new', label: 'New Leads', color: 'bg-blue-500' },
   { value: 'meeting_done', label: 'Meeting Done', color: 'bg-purple-500' },
   { value: 'converted', label: 'Converted', color: 'bg-green-500' },
+  { value: 'archived', label: 'Archived', color: 'bg-slate-400' },
 ];
 
 const CITIES = ['Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow'];
 const BOARDS = ['CBSE', 'ICSE', 'IGCSE', 'State Board', 'IB'];
+const TIME_SLOTS = ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'];
 
 const AdminSchoolCRM = () => {
   const { getAuthHeaders } = useAuth();
@@ -26,16 +30,23 @@ const AdminSchoolCRM = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSection, setActiveSection] = useState('new');
-  const [selectedInquiry, setSelectedInquiry] = useState(null);
-  const [editMode, setEditMode] = useState(false);
+  
+  // Modal states
+  const [viewInquiry, setViewInquiry] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [editData, setEditData] = useState({ status: '', notes: '', meeting_date: '' });
+  const [showRescheduleModal, setShowRescheduleModal] = useState(null);
+  const [showConvertModal, setShowConvertModal] = useState(null);
+  
+  // Form states
+  const [rescheduleData, setRescheduleData] = useState({ date: null, time: '', meeting_type: 'offline', reason: '' });
+  const [convertData, setConvertData] = useState({ amount: '' });
   const [newLead, setNewLead] = useState({
     school_name: '',
     contact_name: '',
     phone: '',
     location: '',
     board: '',
+    meeting_type: 'offline',
     source: 'manual',
     notes: ''
   });
@@ -58,30 +69,76 @@ const AdminSchoolCRM = () => {
     }
   };
 
-  const handleUpdate = async () => {
+  const handleStatusChange = async (inquiry, newStatus, additionalData = {}) => {
     try {
-      await axios.patch(`${API}/schools/inquiry/${selectedInquiry.id}`, editData, {
+      await axios.patch(`${API}/schools/inquiry/${inquiry.id}`, { 
+        status: newStatus,
+        ...additionalData
+      }, {
         headers: getAuthHeaders()
       });
-      toast.success('Updated successfully');
-      setEditMode(false);
-      setSelectedInquiry(null);
-      fetchInquiries();
-    } catch (error) {
-      toast.error('Failed to update');
-    }
-  };
-
-  const handleStatusChange = async (inquiry, newStatus) => {
-    try {
-      await axios.patch(`${API}/schools/inquiry/${inquiry.id}`, { status: newStatus }, {
-        headers: getAuthHeaders()
-      });
-      toast.success(`Moved to ${STATUS_SECTIONS.find(s => s.value === newStatus)?.label}`);
+      toast.success(`Status updated successfully`);
       fetchInquiries();
     } catch (error) {
       toast.error('Failed to update status');
     }
+  };
+
+  const handleMeetingDone = async (inquiry) => {
+    await handleStatusChange(inquiry, 'meeting_done');
+  };
+
+  const handleReschedule = async () => {
+    if (!rescheduleData.date || !rescheduleData.time) {
+      toast.error('Please select date and time');
+      return;
+    }
+    try {
+      await axios.patch(`${API}/schools/inquiry/${showRescheduleModal.id}`, {
+        meeting_date: format(rescheduleData.date, 'yyyy-MM-dd'),
+        meeting_time: rescheduleData.time,
+        meeting_type: rescheduleData.meeting_type,
+        notes: showRescheduleModal.notes 
+          ? `${showRescheduleModal.notes}\n\nMeeting Rescheduled (${rescheduleData.meeting_type}): ${rescheduleData.reason}` 
+          : `Meeting Rescheduled (${rescheduleData.meeting_type}): ${rescheduleData.reason}`
+      }, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Meeting rescheduled successfully');
+      setShowRescheduleModal(null);
+      setRescheduleData({ date: null, time: '', meeting_type: 'offline', reason: '' });
+      fetchInquiries();
+    } catch (error) {
+      toast.error('Failed to reschedule');
+    }
+  };
+
+  const handleConvert = async () => {
+    if (!convertData.amount) {
+      toast.error('Please enter the deal amount');
+      return;
+    }
+    try {
+      await axios.patch(`${API}/schools/inquiry/${showConvertModal.id}`, {
+        status: 'converted',
+        conversion_amount: convertData.amount,
+        notes: showConvertModal.notes 
+          ? `${showConvertModal.notes}\n\nConverted: ₹${convertData.amount}` 
+          : `Converted: ₹${convertData.amount}`
+      }, {
+        headers: getAuthHeaders()
+      });
+      toast.success('School converted successfully!');
+      setShowConvertModal(null);
+      setConvertData({ amount: '' });
+      fetchInquiries();
+    } catch (error) {
+      toast.error('Failed to convert');
+    }
+  };
+
+  const handleArchive = async (inquiry) => {
+    await handleStatusChange(inquiry, 'archived');
   };
 
   const handleAddLead = async () => {
@@ -99,6 +156,7 @@ const AdminSchoolCRM = () => {
         school_size: '',
         fee_range: '',
         board: newLead.board,
+        meeting_type: newLead.meeting_type,
         programs_interested: [],
         support_needed: [],
         source: newLead.source,
@@ -107,7 +165,7 @@ const AdminSchoolCRM = () => {
       });
       toast.success('Lead added successfully');
       setShowAddForm(false);
-      setNewLead({ school_name: '', contact_name: '', phone: '', location: '', board: '', source: 'manual', notes: '' });
+      setNewLead({ school_name: '', contact_name: '', phone: '', location: '', board: '', meeting_type: 'offline', source: 'manual', notes: '' });
       fetchInquiries();
     } catch (error) {
       toast.error('Failed to add lead');
@@ -115,14 +173,84 @@ const AdminSchoolCRM = () => {
   };
 
   const filteredInquiries = inquiries.filter(inq => {
-    const matchesSearch = inq.school_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inq.contact_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inq.phone.includes(searchQuery);
+    const matchesSearch = inq.school_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      inq.contact_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      inq.phone?.includes(searchQuery);
     const matchesSection = inq.status === activeSection;
     return matchesSearch && matchesSection;
   });
 
   const getCount = (status) => inquiries.filter(i => i.status === status).length;
+
+  // Render action buttons based on status
+  const renderActionButtons = (inquiry) => {
+    switch (inquiry.status) {
+      case 'new':
+        return (
+          <div className="flex gap-1 flex-wrap">
+            <button
+              onClick={() => handleMeetingDone(inquiry)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-700 flex items-center gap-1 font-medium"
+              data-testid={`meeting-done-${inquiry.id}`}
+            >
+              <CheckCircle2 className="w-3 h-3" />
+              Meeting Done
+            </button>
+            <button
+              onClick={() => {
+                setShowRescheduleModal(inquiry);
+                setRescheduleData({ date: null, time: '', meeting_type: inquiry.meeting_type || 'offline', reason: '' });
+              }}
+              className="text-xs px-3 py-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 flex items-center gap-1 font-medium"
+              data-testid={`reschedule-${inquiry.id}`}
+            >
+              <CalendarClock className="w-3 h-3" />
+              Reschedule
+            </button>
+            <button
+              onClick={() => handleArchive(inquiry)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1 font-medium"
+              data-testid={`archive-${inquiry.id}`}
+            >
+              <Archive className="w-3 h-3" />
+              Archive
+            </button>
+          </div>
+        );
+      
+      case 'meeting_done':
+        return (
+          <div className="flex gap-1 flex-wrap">
+            <button
+              onClick={() => {
+                setShowConvertModal(inquiry);
+                setConvertData({ amount: '' });
+              }}
+              className="text-xs px-3 py-1.5 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 flex items-center gap-1 font-medium"
+              data-testid={`convert-${inquiry.id}`}
+            >
+              <CheckCircle2 className="w-3 h-3" />
+              Converted
+            </button>
+            <button
+              onClick={() => handleArchive(inquiry)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1 font-medium"
+              data-testid={`archive-${inquiry.id}`}
+            >
+              <Archive className="w-3 h-3" />
+              Archive
+            </button>
+          </div>
+        );
+      
+      case 'converted':
+      case 'archived':
+        return null; // No action buttons for converted/archived
+      
+      default:
+        return null;
+    }
+  };
 
   return (
     <AdminLayout title="School CRM">
@@ -194,14 +322,24 @@ const AdminSchoolCRM = () => {
                   <h3 className="font-semibold text-[#1E3A5F]">{inquiry.school_name}</h3>
                   <p className="text-sm text-slate-500">{inquiry.contact_name}</p>
                 </div>
-                <span className={`px-2 py-1 rounded text-xs font-medium ${
-                  inquiry.source === 'website' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
-                }`}>
-                  {inquiry.source || 'website'}
-                </span>
+                <div className="flex flex-col items-end gap-1">
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${
+                    inquiry.source === 'website' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {inquiry.source || 'website'}
+                  </span>
+                  {inquiry.meeting_type && (
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1 ${
+                      inquiry.meeting_type === 'online' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                    }`}>
+                      {inquiry.meeting_type === 'online' ? <Video className="w-3 h-3" /> : <Users className="w-3 h-3" />}
+                      {inquiry.meeting_type === 'online' ? 'Online' : 'Offline'}
+                    </span>
+                  )}
+                </div>
               </div>
 
-              <div className="space-y-1 text-sm text-slate-600 mb-4">
+              <div className="space-y-1 text-sm text-slate-600 mb-3">
                 <p className="flex items-center gap-1">
                   <Phone className="w-3 h-3 text-slate-400" /> {inquiry.phone}
                 </p>
@@ -216,7 +354,13 @@ const AdminSchoolCRM = () => {
                 {inquiry.meeting_date && (
                   <p className="flex items-center gap-1 text-[#D63031] font-medium">
                     <Calendar className="w-3 h-3" />
-                    Meeting: {inquiry.meeting_date}
+                    Meeting: {inquiry.meeting_date} {inquiry.meeting_time && `at ${inquiry.meeting_time}`}
+                  </p>
+                )}
+                {inquiry.conversion_amount && (
+                  <p className="text-green-600 font-medium flex items-center gap-1">
+                    <DollarSign className="w-3 h-3" />
+                    ₹{inquiry.conversion_amount}
                   </p>
                 )}
               </div>
@@ -231,110 +375,275 @@ const AdminSchoolCRM = () => {
                 </div>
               )}
 
+              {/* Comments shown outside */}
               {inquiry.notes && (
-                <div className="bg-slate-50 rounded-lg p-2 mb-4 text-sm text-slate-600">
-                  <MessageSquare className="w-3 h-3 inline mr-1" />
-                  {inquiry.notes.substring(0, 100)}{inquiry.notes.length > 100 ? '...' : ''}
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
+                  <p className="text-xs text-amber-700 font-medium mb-1 flex items-center gap-1">
+                    <MessageSquare className="w-3 h-3" /> Comments
+                  </p>
+                  <p className="text-sm text-amber-900 whitespace-pre-line">{inquiry.notes}</p>
                 </div>
               )}
 
+              {/* View Button */}
               <div className="flex gap-2 mb-3">
                 <Button
                   variant="outline"
                   size="sm"
                   className="flex-1"
-                  onClick={() => {
-                    setSelectedInquiry(inquiry);
-                    setEditData({
-                      status: inquiry.status,
-                      notes: inquiry.notes || '',
-                      meeting_date: inquiry.meeting_date || ''
-                    });
-                    setEditMode(true);
-                  }}
-                  data-testid={`edit-school-${inquiry.id}`}
+                  onClick={() => setViewInquiry(inquiry)}
+                  data-testid={`view-school-${inquiry.id}`}
                 >
-                  <Edit2 className="w-4 h-4 mr-1" /> Edit
+                  <Eye className="w-4 h-4 mr-1" /> View
                 </Button>
               </div>
 
-              {/* Move to Section Buttons */}
-              <div className="flex gap-1 flex-wrap">
-                {STATUS_SECTIONS.filter(s => s.value !== inquiry.status).map(section => (
-                  <button
-                    key={section.value}
-                    onClick={() => handleStatusChange(inquiry, section.value)}
-                    className="text-xs px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1"
-                    data-testid={`move-school-to-${section.value}-${inquiry.id}`}
-                  >
-                    <ChevronRight className="w-3 h-3" />
-                    {section.label}
-                  </button>
-                ))}
-              </div>
+              {/* Action Buttons based on status */}
+              {renderActionButtons(inquiry)}
             </div>
           ))}
         </div>
       )}
 
-      {/* Edit Dialog */}
-      <Dialog open={editMode && selectedInquiry} onOpenChange={() => { setEditMode(false); setSelectedInquiry(null); }}>
+      {/* View Details Dialog */}
+      <Dialog open={!!viewInquiry} onOpenChange={() => setViewInquiry(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Edit - {selectedInquiry?.school_name}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-[#1E3A5F]" />
+              {viewInquiry?.school_name}
+            </DialogTitle>
           </DialogHeader>
-          {selectedInquiry && (
+          {viewInquiry && (
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Status</label>
-                <select
-                  value={editData.status}
-                  onChange={(e) => setEditData({...editData, status: e.target.value})}
-                  className="w-full h-10 px-4 border border-slate-200 rounded-lg"
-                  data-testid="edit-status"
-                >
-                  {STATUS_SECTIONS.map(s => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
-                  ))}
-                  <option value="closed">Closed</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Meeting Date</label>
-                <Input
-                  type="date"
-                  value={editData.meeting_date}
-                  onChange={(e) => setEditData({...editData, meeting_date: e.target.value})}
-                  data-testid="edit-meeting-date"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-50 rounded-lg p-3">
+                  <p className="text-xs text-slate-500 mb-1">Contact Person</p>
+                  <p className="font-medium text-[#1E3A5F] flex items-center gap-1">
+                    <User className="w-4 h-4" /> {viewInquiry.contact_name}
+                  </p>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-3">
+                  <p className="text-xs text-slate-500 mb-1">Phone</p>
+                  <p className="font-medium text-[#1E3A5F] flex items-center gap-1">
+                    <Phone className="w-4 h-4" /> {viewInquiry.phone}
+                  </p>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-3">
+                  <p className="text-xs text-slate-500 mb-1">Email</p>
+                  <p className="font-medium text-[#1E3A5F] flex items-center gap-1">
+                    <Mail className="w-4 h-4" /> {viewInquiry.email || 'N/A'}
+                  </p>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-3">
+                  <p className="text-xs text-slate-500 mb-1">Location</p>
+                  <p className="font-medium text-[#1E3A5F] flex items-center gap-1">
+                    <MapPin className="w-4 h-4" /> {viewInquiry.location || 'N/A'}
+                  </p>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-3">
+                  <p className="text-xs text-slate-500 mb-1">Board</p>
+                  <p className="font-medium text-[#1E3A5F]">{viewInquiry.board || 'N/A'}</p>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-3">
+                  <p className="text-xs text-slate-500 mb-1">School Size</p>
+                  <p className="font-medium text-[#1E3A5F]">{viewInquiry.school_size || 'N/A'}</p>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-3">
+                  <p className="text-xs text-slate-500 mb-1">Fee Range</p>
+                  <p className="font-medium text-[#1E3A5F]">{viewInquiry.fee_range || 'N/A'}</p>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-3">
+                  <p className="text-xs text-slate-500 mb-1">Meeting Type</p>
+                  <p className={`font-medium flex items-center gap-1 ${viewInquiry.meeting_type === 'online' ? 'text-green-600' : 'text-orange-600'}`}>
+                    {viewInquiry.meeting_type === 'online' ? <Video className="w-4 h-4" /> : <Users className="w-4 h-4" />}
+                    {viewInquiry.meeting_type === 'online' ? 'Online Meeting' : 'Offline Meeting'}
+                  </p>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Notes / Comments</label>
-                <Textarea
-                  value={editData.notes}
-                  onChange={(e) => setEditData({...editData, notes: e.target.value})}
-                  placeholder="Add notes..."
-                  className="min-h-[120px]"
-                  data-testid="edit-notes"
-                />
-              </div>
+              {viewInquiry.programs_interested?.length > 0 && (
+                <div className="bg-slate-50 rounded-lg p-3">
+                  <p className="text-xs text-slate-500 mb-2">Programs Interested</p>
+                  <div className="flex flex-wrap gap-1">
+                    {viewInquiry.programs_interested.map((p, idx) => (
+                      <span key={idx} className="px-2 py-1 bg-[#1E3A5F]/10 rounded text-xs text-[#1E3A5F] capitalize font-medium">
+                        {p}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-              <div className="flex gap-3 pt-4">
-                <Button 
-                  variant="outline" 
-                  onClick={() => { setEditMode(false); setSelectedInquiry(null); }} 
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button onClick={handleUpdate} className="btn-primary flex-1" data-testid="save-edit">
-                  Save Changes
-                </Button>
+              {viewInquiry.support_needed?.length > 0 && (
+                <div className="bg-slate-50 rounded-lg p-3">
+                  <p className="text-xs text-slate-500 mb-2">Support Needed</p>
+                  <div className="flex flex-wrap gap-1">
+                    {viewInquiry.support_needed.map((s, idx) => (
+                      <span key={idx} className="px-2 py-1 bg-[#D63031]/10 rounded text-xs text-[#D63031] capitalize font-medium">
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {viewInquiry.meeting_date && (
+                <div className="bg-blue-50 rounded-lg p-3">
+                  <p className="text-xs text-blue-500 mb-1">Meeting Scheduled</p>
+                  <p className="font-medium text-blue-700 flex items-center gap-1">
+                    <Calendar className="w-4 h-4" /> 
+                    {viewInquiry.meeting_date} {viewInquiry.meeting_time && `at ${viewInquiry.meeting_time}`}
+                  </p>
+                </div>
+              )}
+
+              {viewInquiry.conversion_amount && (
+                <div className="bg-green-50 rounded-lg p-3">
+                  <p className="text-xs text-green-500 mb-1">Conversion Details</p>
+                  <p className="font-medium text-green-700">
+                    Deal Amount: ₹{viewInquiry.conversion_amount}
+                  </p>
+                </div>
+              )}
+
+              {viewInquiry.notes && (
+                <div className="bg-amber-50 rounded-lg p-3">
+                  <p className="text-xs text-amber-500 mb-1">Notes / Comments</p>
+                  <p className="text-amber-900 whitespace-pre-line">{viewInquiry.notes}</p>
+                </div>
+              )}
+
+              <div className="pt-4 border-t">
+                <p className="text-xs text-slate-400">
+                  Status: <span className="font-medium text-[#1E3A5F] capitalize">{viewInquiry.status?.replace('_', ' ')}</span>
+                  {' • '}Source: <span className="font-medium text-[#1E3A5F]">{viewInquiry.source || 'website'}</span>
+                </p>
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Reschedule Meeting Modal */}
+      <Dialog open={!!showRescheduleModal} onOpenChange={() => setShowRescheduleModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reschedule Meeting - {showRescheduleModal?.school_name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Meeting Type Selection */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Meeting Type</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className={`flex-1 p-3 rounded-lg border-2 flex items-center justify-center gap-2 font-medium transition-all ${
+                    rescheduleData.meeting_type === 'offline' 
+                      ? 'border-[#D63031] bg-red-50 text-[#D63031]' 
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                  onClick={() => setRescheduleData({...rescheduleData, meeting_type: 'offline'})}
+                >
+                  <Users className="w-4 h-4" />
+                  Offline
+                </button>
+                <button
+                  type="button"
+                  className={`flex-1 p-3 rounded-lg border-2 flex items-center justify-center gap-2 font-medium transition-all ${
+                    rescheduleData.meeting_type === 'online' 
+                      ? 'border-[#D63031] bg-red-50 text-[#D63031]' 
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                  onClick={() => setRescheduleData({...rescheduleData, meeting_type: 'online'})}
+                >
+                  <Video className="w-4 h-4" />
+                  Online
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Select New Date</label>
+              <div className="flex justify-center">
+                <CalendarComponent
+                  mode="single"
+                  selected={rescheduleData.date}
+                  onSelect={(date) => setRescheduleData({...rescheduleData, date})}
+                  disabled={(date) => date < new Date() || date > addDays(new Date(), 30) || date.getDay() === 0}
+                  className="rounded-xl border border-slate-200"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Select Time</label>
+              <div className="grid grid-cols-4 gap-2">
+                {TIME_SLOTS.map(time => (
+                  <button
+                    key={time}
+                    type="button"
+                    className={`p-2 rounded-lg border text-sm font-medium transition-all ${
+                      rescheduleData.time === time 
+                        ? 'border-[#D63031] bg-red-50 text-[#D63031]' 
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                    onClick={() => setRescheduleData({...rescheduleData, time})}
+                  >
+                    {time}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Reason for Rescheduling</label>
+              <Textarea
+                placeholder="Enter reason..."
+                value={rescheduleData.reason}
+                onChange={(e) => setRescheduleData({...rescheduleData, reason: e.target.value})}
+                className="min-h-[80px]"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" onClick={() => setShowRescheduleModal(null)} className="flex-1">
+                Cancel
+              </Button>
+              <Button onClick={handleReschedule} className="btn-primary flex-1">
+                Reschedule Meeting
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Convert Modal */}
+      <Dialog open={!!showConvertModal} onOpenChange={() => setShowConvertModal(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Convert School - {showConvertModal?.school_name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Deal Amount (₹)</label>
+              <Input
+                type="number"
+                placeholder="Enter deal amount"
+                value={convertData.amount}
+                onChange={(e) => setConvertData({...convertData, amount: e.target.value})}
+                data-testid="convert-amount"
+              />
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" onClick={() => setShowConvertModal(null)} className="flex-1">
+                Cancel
+              </Button>
+              <Button onClick={handleConvert} className="btn-primary flex-1">
+                Convert School
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -400,6 +709,38 @@ const AdminSchoolCRM = () => {
                 </select>
               </div>
             </div>
+            
+            {/* Meeting Type */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Preferred Meeting Type</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className={`flex-1 p-3 rounded-lg border-2 flex items-center justify-center gap-2 font-medium transition-all ${
+                    newLead.meeting_type === 'offline' 
+                      ? 'border-[#D63031] bg-red-50 text-[#D63031]' 
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                  onClick={() => setNewLead({...newLead, meeting_type: 'offline'})}
+                >
+                  <Users className="w-4 h-4" />
+                  Offline Meeting
+                </button>
+                <button
+                  type="button"
+                  className={`flex-1 p-3 rounded-lg border-2 flex items-center justify-center gap-2 font-medium transition-all ${
+                    newLead.meeting_type === 'online' 
+                      ? 'border-[#D63031] bg-red-50 text-[#D63031]' 
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                  onClick={() => setNewLead({...newLead, meeting_type: 'online'})}
+                >
+                  <Video className="w-4 h-4" />
+                  Online Meeting
+                </button>
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Source</label>
               <select
