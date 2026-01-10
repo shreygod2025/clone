@@ -310,7 +310,7 @@ const EducatorFunnel = () => {
                     type="button"
                     variant="ghost"
                     onClick={() => navigate('/')}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 w-full sm:w-auto"
                     data-testid="back-btn"
                   >
                     <ArrowLeft className="w-4 h-4" />
@@ -319,7 +319,7 @@ const EducatorFunnel = () => {
                   <Button
                     type="submit"
                     disabled={submitting}
-                    className="btn-primary flex items-center gap-2"
+                    className="btn-primary flex items-center gap-2 w-full sm:w-auto justify-center"
                     data-testid="submit-application-btn"
                   >
                     {submitting ? 'Submitting...' : 'Submit Application'}
