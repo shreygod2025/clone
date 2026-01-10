@@ -547,26 +547,26 @@ const StudentFunnel = () => {
 
       case 'otp':
         return (
-          <div className="space-y-6 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-green-100 flex items-center justify-center mx-auto">
-              <Shield className="w-8 h-8 text-green-600" />
+          <div className="space-y-4 sm:space-y-6 text-center">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-green-100 flex items-center justify-center mx-auto">
+              <Shield className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
             </div>
             
             <div>
-              <h3 className="text-lg font-semibold text-[#1E3A5F] mb-2">Verify Your Number</h3>
-              <p className="text-slate-500 text-sm">
-                We've sent an OTP to <strong>{formData.phone}</strong>
+              <h3 className="text-base sm:text-lg font-semibold text-[#1E3A5F] mb-1 sm:mb-2">Verify Your Number</h3>
+              <p className="text-slate-500 text-xs sm:text-sm">
+                OTP sent to <strong>{formData.phone}</strong>
               </p>
             </div>
 
-            <div className="max-w-xs mx-auto space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <div>
                 <Input
                   type="text"
-                  placeholder="Enter 4-digit OTP"
+                  placeholder="Enter OTP"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                  className="text-2xl text-center tracking-[0.5em] py-6"
+                  className="text-xl sm:text-2xl text-center tracking-[0.3em] sm:tracking-[0.5em] py-4 sm:py-6 max-w-[200px] sm:max-w-xs mx-auto"
                   maxLength={4}
                   data-testid="otp-input"
                 />
@@ -579,36 +579,36 @@ const StudentFunnel = () => {
                 type="button"
                 onClick={handleSendOTP}
                 disabled={otpLoading}
-                className="text-sm text-[#D63031] hover:underline"
+                className="text-xs sm:text-sm text-[#D63031] hover:underline"
               >
                 {otpLoading ? 'Sending...' : 'Resend OTP'}
               </button>
             </div>
 
-            {/* Demo Summary Preview */}
-            <div className="bg-slate-50 rounded-xl p-4 text-left mt-6">
-              <h4 className="font-medium text-[#1E3A5F] mb-3 text-sm">Booking Summary</h4>
-              <div className="text-sm text-slate-600 space-y-2">
+            {/* Demo Summary Preview - More compact on mobile */}
+            <div className="bg-slate-50 rounded-xl p-3 sm:p-4 text-left">
+              <h4 className="font-medium text-[#1E3A5F] mb-2 sm:mb-3 text-xs sm:text-sm">Booking Summary</h4>
+              <div className="text-xs sm:text-sm text-slate-600 space-y-1.5 sm:space-y-2">
                 <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-slate-400" />
-                  <span>{formData.demo_date ? format(formData.demo_date, 'EEEE, MMMM d, yyyy') : ''}</span>
+                  <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 flex-shrink-0" />
+                  <span className="truncate">{formData.demo_date ? format(formData.demo_date, 'EEE, MMM d, yyyy') : ''}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-slate-400" />
+                  <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 flex-shrink-0" />
                   <span>{formData.demo_time}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-slate-400" />
-                  <span>
+                  <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 flex-shrink-0" />
+                  <span className="truncate">
                     {formData.learning_mode === 'online' 
                       ? 'Online' 
                       : formData.offline_type === 'center' 
-                        ? `${formData.selected_center_name || 'OLL Center'}, ${formData.city}` 
-                        : `At Home, ${formData.city}`}
+                        ? `${formData.selected_center_name || 'Center'}, ${formData.city}` 
+                        : `Home, ${formData.city}`}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 text-slate-400" />
+                  <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-400 flex-shrink-0" />
                   <span>{SKILL_OPTIONS.find(s => s.value === formData.skill)?.label}</span>
                 </div>
               </div>
