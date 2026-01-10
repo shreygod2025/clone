@@ -17,6 +17,7 @@ const LEARNING_STEPS = [
   { id: 'skill', title: 'What to learn?' },
   { id: 'city', title: 'Your City' },
   { id: 'mode', title: 'Learning Mode' },
+  { id: 'select_center', title: 'Select Center' },  // Only shown if offline at center
   { id: 'goal', title: 'Learning Goal' },
   { id: 'demo_date', title: 'Select Date' },
   { id: 'demo_time', title: 'Select Time' },
