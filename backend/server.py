@@ -770,6 +770,36 @@ async def create_support_ticket(data: SupportTicketCreate):
     await db.support_tickets.insert_one(doc)
     return ticket
 
+# School Support Query (for ongoing class issues)
+class SchoolSupportQuery(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    category: str  # kit, teacher, lms, payment
+    sub_category: str = ""
+    sub_sub_category: str = ""
+    school_name: str
+    class_division: str
+    contact_name: str
+    phone: str
+    email: str = ""
+    details: str = ""
+    reason: str = ""
+    status: str = "new"  # new, in_progress, resolved
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+@api_router.post("/support/school-query")
+async def create_school_support_query(data: dict):
+    query = SchoolSupportQuery(**data)
+    doc = query.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    await db.school_support_queries.insert_one(doc)
+    return {"message": "Query submitted successfully", "id": query.id}
+
+@api_router.get("/support/school-queries")
+async def get_school_support_queries(user: dict = Depends(get_current_user)):
+    queries = await db.school_support_queries.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return queries
+
 @api_router.get("/support/tickets", response_model=List[SupportTicket])
 async def get_support_tickets(status: Optional[str] = None, user: dict = Depends(get_current_user)):
     query = {}
