@@ -13,89 +13,40 @@ Build a high-conversion, multi-user skill-education platform for OLL that:
 3. **Schools** - Wanting to partner with OLL for skill programs
 4. **Admins** - Managing CRM, content, and operations
 
-## Core Requirements (Static)
-- Funnel-based user journeys with minimal friction
-- Step-by-step inquiry forms (1 question per screen)
-- Calendly-style demo booking (MOCKED)
-- Smart FAQ system with support tickets
-- Admin CRM for lead management
-- Blog system for SEO
-- Mobile-first, fast-loading design
-
 ## What's Been Implemented
 
-### Phase 1 - MVP Complete ✅ (January 2026)
+### Latest Updates (January 10, 2026)
 
-**Landing Page**
-- Clean 3-card design with gradient backgrounds (no stock images)
-- Full viewport display - no scrolling needed
-- Navigation with About, Blog, FAQ (Admin link removed from nav)
-- Admin access at separate /admin route
+**UI/UX Improvements:**
+- ✅ Removed "Made with Emergent" badge from all pages
+- ✅ Landing page cards now show arrow only (removed "Get Started" text)
+- ✅ Progress bar hidden on mobile for Student/School funnels (shows "Step X of Y" text only)
+- ✅ All funnel forms (Student, School, Educator) are fully responsive on mobile
 
-**Student Funnel**
-- 8-step wizard form (learner type → age → skill → mode → city → goal → contact → demo)
-- Calendar-based demo booking (Calendly-style, MOCKED)
-- Progress indicator
-- FAQ modal with common questions
-- Conditional city field (only shows for offline mode)
+**Admin Requirements Enhancement:**
+- ✅ Added **Working Days** selection (Mon-Sun)
+- ✅ Added **Timing From / To** fields
+- ✅ Added **Pay** amount and **Pay Type** (per session / per month)
+- ✅ Requirements now display days, timings, and pay information
 
-**Educator Funnel**
-- Application form with skills, experience, grades, availability
-- Open requirements listing from backend
-- Demo-ready toggle
+**Educator Funnel Enhancement:**
+- ✅ Two tabs: "General Application" and "Open Positions"
+- ✅ Open Positions shows available requirements with days, timings, pay
+- ✅ **Requirement-specific application form** - When clicking "Apply for This Position":
+  - Shows position summary (skill, city, pay)
+  - Asks for relevant experience in that specific skill
+  - Asks why interested in this position
+  - Shows available days to select from
+  - Different from general application form
 
-**School Funnel** ✅ (Updated January 10, 2026)
-- 9-step B2B inquiry wizard
-- Board selection, location, school size, fee range
-- Programs interested (multi-select checkboxes)
-- Support needed (multi-select)
-- Meeting date and time selection
-- School Name moved to final contact step
-- Credibility section post-submission
+**CRM Improvements (Previous Session):**
+- Student CRM: Status-based CTAs (New→Demo Completed/Reschedule/Archive, Demo Completed→Converted/Archive)
+- School CRM: Similar workflow with Offline/Online meeting type
+- Convert action asks for amount and sessions
 
-**FAQ Page**
-- Searchable FAQs
-- Category filters (Courses, Fees, Demos, Online vs Offline)
-- Support ticket creation
-
-**About Page** ✅ (Redesigned January 10, 2026)
-- New hero: "Building a Religion of Practical Learning"
-- Mission & Vision sections
-- **Our Journey** - Timeline with milestones (2019, 2021, 2024)
-  - YouTube video integration for founder story
-  - "Watch: OLL BackStory" and "Watch: Introduction to OLL" buttons
-- **Our Team** section - 3 members:
-  - Shreyaan Daga (Co-Founder & CEO)
-  - Neha Kambli (Business Head)
-  - Ritesh Rathore (Growth Partners)
-- **Board of Advisors** section - 6 advisors with photos and bios:
-  - Ms. Vinita Mahajan, Lt Gen Surendra Kulkarni, Heather Anderson
-  - Dr. Neeta Bali, Dr. Seema Negi, Ms. Alka Singh
-- **Our Investors** section
-- What We Do showcase
-- Join OLL Team form
-- Become Growth Partner form
-
-**Blog System**
-- Blog listing with categories
-- Individual blog detail pages
-- CTA integration
-
-**Admin Panel**
-- JWT authentication (login/register)
-- Dashboard with 8 stat cards
-- **Student CRM** ✅ (Updated January 10, 2026)
-  - View, edit status, add notes, schedule demos
-  - Shows "Mode: Online" or "Mode: Offline • [City]"
-  - Kanban-style pipeline (New Leads, Demo Completed, Converted)
-- **School CRM**
-  - View, edit status, schedule meetings
-  - Pipeline similar to Student CRM
-- Educator Management (review applications, update status)
-- Blog Management (CRUD)
-- FAQ Management (CRUD)
-- Open Requirements Management (CRUD)
-- Support Ticket Management
+**About Page (Previous Session):**
+- Timeline with Shark Tank India (Feb 1, 2023) and KBC (Mar 4, 2025)
+- Our Team, Board of Advisors, Our Investors sections
 
 ### Technical Stack
 - **Frontend**: React 19 + Tailwind CSS + Shadcn/UI
@@ -111,73 +62,73 @@ Build a high-conversion, multi-user skill-education platform for OLL that:
 ## Prioritized Backlog
 
 ### P0 - Critical (Next Phase)
-- [ ] Educator CRM in Admin Panel (similar to Student/School CRMs)
-- [ ] Email notifications integration (SendGrid/Resend)
+- [ ] Educator CRM in Admin Panel (view applications with requirement_id tracking)
+- [ ] Email notifications integration
 - [ ] WhatsApp automation for confirmations
 - [ ] Real calendar integration (replace MOCKED demo booking)
 
 ### P1 - High Priority
-- [ ] SEO course funnel pages (by user type, by course)
+- [ ] SEO course funnel pages
 - [ ] City-based school landing pages
-- [ ] About page content editing in admin
-- [ ] Gallery management in admin
-- [ ] Content Management (Blogs, FAQs) - backend logic enhancement
+- [ ] Content Management in admin
 - [ ] Export leads to CSV
 
 ### P2 - Medium Priority
-- [ ] Analytics dashboard with charts
+- [ ] Analytics dashboard
+- [ ] Role-based access control
 - [ ] Bulk status updates
-- [ ] Role-based access control (Admin, Sales, Ops, Content)
-- [ ] Password reset flow
-
-### P3 - Nice to Have
-- [ ] Dark mode toggle
-- [ ] Multi-language support
-- [ ] Payment tracking integration
-- [ ] Advanced reporting
-- [ ] Lead scoring system
 
 ## MOCKED Features
-- **Calendar/Demo Booking**: Currently shows a confirmation message only. No real Calendly or calendar integration yet.
+- **Calendar/Demo Booking**: Shows confirmation message only, no real calendar integration
+
+## Key Database Schema Updates
+
+**OpenRequirement** (new fields):
+```python
+days: List[str] = []           # ['Monday', 'Wednesday', 'Friday']
+timing_from: str = ""          # '10:00'
+timing_to: str = ""            # '17:00'
+pay_per_session: str = ""      # '500'
+pay_type: str = "per_session"  # 'per_session' or 'per_month'
+```
+
+**EducatorApplication** (new fields):
+```python
+requirement_id: Optional[str] = None      # Links to specific requirement
+requirement_title: Optional[str] = None   # For display
+```
 
 ## File Structure
 ```
 /app/
 ├── backend/
-│   ├── server.py      # Main FastAPI app with all models and API endpoints
-│   ├── tests/
-│   │   └── test_oll_features.py  # API tests
-│   └── .env           # Backend environment variables
+│   ├── server.py      # Updated with new requirement fields
+│   └── .env
 ├── frontend/
 │   ├── src/
-│   │   ├── components/ui/  # Shadcn/UI components
-│   │   ├── context/
-│   │   │   └── AuthContext.jsx # JWT token management
 │   │   ├── pages/
-│   │   │   ├── admin/     # Admin panel pages
-│   │   │   │   ├── AdminDashboard.jsx
-│   │   │   │   ├── AdminStudentCRM.jsx  # Updated to show learning_mode
-│   │   │   │   └── AdminSchoolCRM.jsx
-│   │   │   ├── AboutPage.jsx  # Redesigned with timeline/team/advisors
-│   │   │   ├── BlogsPage.jsx
-│   │   │   ├── EducatorFunnel.jsx
-│   │   │   ├── LandingPage.jsx
-│   │   │   ├── SchoolFunnel.jsx  # 9-step funnel
-│   │   │   └── StudentFunnel.jsx
-│   │   ├── App.js
-│   │   └── index.css
-│   └── package.json
-├── memory/
-│   └── PRD.md
-└── test_reports/
-    ├── iteration_1.json
-    └── iteration_2.json
+│   │   │   ├── admin/
+│   │   │   │   ├── AdminRequirements.jsx  # Days, timings, pay fields
+│   │   │   │   ├── AdminStudentCRM.jsx    # Status-based workflow
+│   │   │   │   └── AdminSchoolCRM.jsx     # Meeting type, workflow
+│   │   │   ├── StudentFunnel.jsx   # Mobile responsive, hidden progress bar
+│   │   │   ├── SchoolFunnel.jsx    # Mobile responsive, hidden progress bar
+│   │   │   ├── EducatorFunnel.jsx  # Requirement-specific applications
+│   │   │   ├── AboutPage.jsx       # Timeline with Shark Tank/KBC
+│   │   │   └── LandingPage.jsx     # Arrow only cards
+│   │   └── ...
+│   └── public/
+│       └── index.html  # Removed Made with Emergent badge
+└── memory/
+    └── PRD.md
 ```
 
 ## Last Update
 - **Date**: January 10, 2026
 - **Changes**: 
-  1. About page redesigned with timeline, team, advisors, investors sections
-  2. Student CRM updated to show learning mode (Online/Offline) with city
-  3. School Funnel verified - School Name is in final step (already implemented)
-- **Testing**: All features verified working (iteration_2.json - 100% pass rate)
+  1. Removed Made with Emergent badge
+  2. Progress bar hidden on mobile for funnels
+  3. Landing page cards show arrow only
+  4. Admin Requirements: Added days, timings, pay fields
+  5. Educator funnel: Requirement-specific application form
+- **Testing**: Verified via screenshots
