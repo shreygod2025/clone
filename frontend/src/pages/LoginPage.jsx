@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Phone, Shield, User, GraduationCap, Users, Building2 } from 'lucide-react';
+import { ArrowLeft, Phone, Shield, GraduationCap, Users, Building2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { toast } from 'sonner';
@@ -11,10 +11,11 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const { sendOTP, verifyOTP } = useUserAuth();
   const [step, setStep] = useState('type'); // type, phone, otp
-  const [userType, setUserType] = useState('student');
+  const [userType, setUserType] = useState(''); // Start with no selection
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
+  const toastShownRef = useRef(false); // Prevent duplicate toasts
 
   const userTypes = [
     { id: 'student', label: 'Student / Parent', icon: GraduationCap, description: 'View your demo bookings' },
@@ -49,7 +50,11 @@ const LoginPage = () => {
     setLoading(false);
     
     if (result.success) {
-      toast.success('Login successful!');
+      // Show toast only once
+      if (!toastShownRef.current) {
+        toastShownRef.current = true;
+        toast.success('Login successful!');
+      }
       navigate('/my-bookings');
     } else {
       toast.error(result.message);
@@ -60,6 +65,11 @@ const LoginPage = () => {
     if (step === 'otp') setStep('phone');
     else if (step === 'phone') setStep('type');
     else navigate('/');
+  };
+
+  const handleTypeSelect = (typeId) => {
+    setUserType(typeId);
+    setStep('phone');
   };
 
   return (
@@ -87,11 +97,8 @@ const LoginPage = () => {
                 {userTypes.map(type => (
                   <div
                     key={type.id}
-                    className={`selection-card p-4 cursor-pointer ${userType === type.id ? 'selected' : ''}`}
-                    onClick={() => {
-                      setUserType(type.id);
-                      setStep('phone');
-                    }}
+                    className="selection-card p-4 cursor-pointer"
+                    onClick={() => handleTypeSelect(type.id)}
                     data-testid={`login-type-${type.id}`}
                   >
                     <div className="flex items-center gap-4">
@@ -126,7 +133,7 @@ const LoginPage = () => {
                   <label className="block text-sm font-medium text-slate-700 mb-2">Phone Number</label>
                   <Input
                     type="tel"
-                    placeholder="Enter your phone number"
+                    placeholder="Enter 10-digit number"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     className="text-lg"
@@ -162,10 +169,10 @@ const LoginPage = () => {
                   <label className="block text-sm font-medium text-slate-700 mb-2">Enter OTP</label>
                   <Input
                     type="text"
-                    placeholder="Enter 4-digit OTP"
+                    placeholder="••••"
                     value={otp}
                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                    className="text-2xl text-center tracking-[0.5em]"
+                    className="text-2xl text-center tracking-widest"
                     maxLength={4}
                     data-testid="login-otp"
                   />
