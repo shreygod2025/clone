@@ -49,7 +49,7 @@ const AdminRequirements = () => {
       const [reqRes, citiesRes, appsRes] = await Promise.all([
         axios.get(`${API}/requirements`, { headers: getAuthHeaders() }),
         axios.get(`${API}/cities`, { headers: getAuthHeaders() }),
-        axios.get(`${API}/educators`, { headers: getAuthHeaders() })
+        axios.get(`${API}/educators/applications`, { headers: getAuthHeaders() })
       ]);
       setRequirements(reqRes.data);
       setCities(citiesRes.data);
