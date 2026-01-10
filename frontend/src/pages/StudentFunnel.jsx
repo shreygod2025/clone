@@ -116,7 +116,7 @@ const StudentFunnel = () => {
       case 'mode': return formData.learning_mode;
       case 'city': return formData.city;
       case 'goal': return formData.learning_goal;
-      case 'contact': return formData.name && formData.email;
+      case 'contact': return formData.name && formData.phone;
       case 'demo_date': return formData.demo_date;
       case 'demo_time': return formData.demo_time;
       default: return false;
@@ -142,6 +142,7 @@ const StudentFunnel = () => {
     try {
       const payload = {
         ...formData,
+        email: `${formData.phone}@student.oll`,
         demo_date: formData.demo_date ? format(formData.demo_date, 'yyyy-MM-dd') : null,
       };
       await axios.post(`${API}/students/inquiry`, payload);
@@ -536,14 +537,13 @@ const StudentFunnel = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Email</label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Phone Number</label>
               <Input
-                type="email"
-                placeholder="Enter your email"
-                value={formData.email}
-                onChange={(e) => updateForm('email', e.target.value)}
+                placeholder="Enter your phone number"
+                value={formData.phone}
+                onChange={(e) => updateForm('phone', e.target.value)}
                 className="input-glass"
-                data-testid="input-email"
+                data-testid="input-phone"
               />
             </div>
           </div>
