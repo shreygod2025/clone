@@ -42,7 +42,7 @@ const AdminEducators = () => {
   const fetchEducators = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API}/educators`, {
+      const response = await axios.get(`${API}/educators/applications`, {
         headers: getAuthHeaders()
       });
       setEducators(response.data);
