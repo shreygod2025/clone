@@ -44,9 +44,13 @@ const AdminSchoolCRM = () => {
     school_name: '',
     contact_name: '',
     phone: '',
+    email: '',
     location: '',
     board: '',
+    student_count: '',
     meeting_type: 'offline',
+    meeting_date: null,
+    meeting_time: '',
     source: 'manual',
     notes: ''
   });
