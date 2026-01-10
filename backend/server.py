@@ -486,6 +486,110 @@ async def get_me(user: dict = Depends(get_current_user)):
     return user
 
 # ========================
+# USER OTP AUTHENTICATION (Student/Educator/School)
+# ========================
+
+# Store OTPs temporarily (in production, use Redis)
+otp_store = {}
+
+class OTPRequest(BaseModel):
+    phone: str
+    user_type: str = "student"  # student, educator, school
+
+class OTPVerify(BaseModel):
+    phone: str
+    otp: str
+    user_type: str = "student"
+
+@api_router.post("/auth/send-otp")
+async def send_otp(data: OTPRequest):
+    # Generate OTP (in production, send via SMS)
+    otp = "1234"  # Mock OTP for testing
+    otp_store[data.phone] = {
+        "otp": otp,
+        "user_type": data.user_type,
+        "expires": datetime.now(timezone.utc) + timedelta(minutes=10)
+    }
+    # In production: Send OTP via Twilio/MSG91
+    return {"message": "OTP sent successfully", "hint": "Use 1234 for testing"}
+
+@api_router.post("/auth/verify-otp")
+async def verify_otp(data: OTPVerify):
+    stored = otp_store.get(data.phone)
+    if not stored:
+        raise HTTPException(status_code=400, detail="OTP expired or not found. Please request a new one.")
+    
+    if stored["otp"] != data.otp:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+    
+    if datetime.now(timezone.utc) > stored["expires"]:
+        del otp_store[data.phone]
+        raise HTTPException(status_code=400, detail="OTP expired. Please request a new one.")
+    
+    # Clear OTP after successful verification
+    del otp_store[data.phone]
+    
+    # Find or create user based on phone and type
+    collection_map = {
+        "student": "student_inquiries",
+        "educator": "educator_applications", 
+        "school": "school_inquiries"
+    }
+    collection = collection_map.get(data.user_type, "student_inquiries")
+    
+    # Find user's bookings/applications
+    user_data = await db[collection].find_one({"phone": data.phone}, {"_id": 0})
+    
+    # Get all bookings for this phone
+    bookings = await db[collection].find({"phone": data.phone}, {"_id": 0}).sort("created_at", -1).to_list(10)
+    
+    return {
+        "phone": data.phone,
+        "user_type": data.user_type,
+        "name": user_data.get("name") or user_data.get("contact_name") if user_data else None,
+        "email": user_data.get("email") if user_data else None,
+        "bookings": bookings,
+        "is_registered": user_data is not None
+    }
+
+@api_router.get("/user/bookings/{phone}")
+async def get_user_bookings(phone: str, user_type: str = "student"):
+    collection_map = {
+        "student": "student_inquiries",
+        "educator": "educator_applications",
+        "school": "school_inquiries"
+    }
+    collection = collection_map.get(user_type, "student_inquiries")
+    bookings = await db[collection].find({"phone": phone}, {"_id": 0}).sort("created_at", -1).to_list(20)
+    return bookings
+
+@api_router.post("/user/reschedule")
+async def reschedule_booking(data: dict):
+    collection_map = {
+        "student": "student_inquiries",
+        "educator": "educator_applications",
+        "school": "school_inquiries"
+    }
+    collection = collection_map.get(data.get("user_type", "student"), "student_inquiries")
+    
+    booking_id = data.get("booking_id")
+    new_date = data.get("new_date")
+    new_time = data.get("new_time")
+    
+    if not booking_id or not new_date or not new_time:
+        raise HTTPException(status_code=400, detail="Missing required fields")
+    
+    update_data = {
+        "demo_date" if data.get("user_type") == "student" else "meeting_date": new_date,
+        "demo_time" if data.get("user_type") == "student" else "meeting_time": new_time,
+        "status": "rescheduled",
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db[collection].update_one({"id": booking_id}, {"$set": update_data})
+    return {"message": "Booking rescheduled successfully"}
+
+# ========================
 # STUDENT INQUIRY ENDPOINTS
 # ========================
 
