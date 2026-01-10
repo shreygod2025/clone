@@ -10,6 +10,7 @@ import AboutPage from "./pages/AboutPage";
 import BlogsPage from "./pages/BlogsPage";
 import BlogDetailPage from "./pages/BlogDetailPage";
 import FAQPage from "./pages/FAQPage";
+import CentersPage from "./pages/CentersPage";
 
 // Admin Pages
 import AdminLogin from "./pages/admin/AdminLogin";
@@ -21,6 +22,8 @@ import AdminBlogs from "./pages/admin/AdminBlogs";
 import AdminFAQs from "./pages/admin/AdminFAQs";
 import AdminRequirements from "./pages/admin/AdminRequirements";
 import AdminSupport from "./pages/admin/AdminSupport";
+import AdminCities from "./pages/admin/AdminCities";
+import AdminCenters from "./pages/admin/AdminCenters";
 
 // Auth Context
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -57,6 +60,7 @@ function App() {
           <Route path="/blogs" element={<BlogsPage />} />
           <Route path="/blogs/:slug" element={<BlogDetailPage />} />
           <Route path="/faq" element={<FAQPage />} />
+          <Route path="/centers" element={<CentersPage />} />
           
           {/* Admin Routes */}
           <Route path="/admin/login" element={<AdminLogin />} />
@@ -68,6 +72,8 @@ function App() {
           <Route path="/admin/faqs" element={<ProtectedRoute><AdminFAQs /></ProtectedRoute>} />
           <Route path="/admin/requirements" element={<ProtectedRoute><AdminRequirements /></ProtectedRoute>} />
           <Route path="/admin/support" element={<ProtectedRoute><AdminSupport /></ProtectedRoute>} />
+          <Route path="/admin/cities" element={<ProtectedRoute><AdminCities /></ProtectedRoute>} />
+          <Route path="/admin/centers" element={<ProtectedRoute><AdminCenters /></ProtectedRoute>} />
         </Routes>
         <Toaster position="top-right" richColors />
       </BrowserRouter>
