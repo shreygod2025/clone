@@ -71,11 +71,13 @@ class StudentInquiry(BaseModel):
     name: str
     email: EmailStr
     phone: str
-    status: str = "new"  # new, demo_completed, converted, closed
+    status: str = "new"  # new, demo_completed, converted, archived
     notes: str = ""
     demo_date: Optional[str] = None
     demo_time: Optional[str] = None
     followup_date: Optional[str] = None
+    conversion_amount: Optional[str] = None
+    sessions_count: Optional[str] = None
     source: str = "website"
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -100,6 +102,9 @@ class StudentInquiryUpdate(BaseModel):
     demo_date: Optional[str] = None
     demo_time: Optional[str] = None
     followup_date: Optional[str] = None
+    conversion_amount: Optional[str] = None
+    sessions_count: Optional[str] = None
+    followup_date: Optional[str] = None
 
 # School Inquiry Models
 class SchoolInquiry(BaseModel):
@@ -115,9 +120,12 @@ class SchoolInquiry(BaseModel):
     board: str = ""
     programs_interested: List[str]
     support_needed: List[str]
-    status: str = "new"  # new, meeting_done, converted, closed
+    status: str = "new"  # new, meeting_done, converted, archived
     notes: str = ""
     meeting_date: Optional[str] = None
+    meeting_time: Optional[str] = None
+    meeting_type: str = "offline"  # offline, online
+    conversion_amount: Optional[str] = None
     source: str = "website"
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -133,12 +141,16 @@ class SchoolInquiryCreate(BaseModel):
     board: str = ""
     programs_interested: List[str] = []
     support_needed: List[str] = []
+    meeting_type: str = "offline"
     source: str = "website"
 
 class SchoolInquiryUpdate(BaseModel):
     status: Optional[str] = None
     notes: Optional[str] = None
     meeting_date: Optional[str] = None
+    meeting_time: Optional[str] = None
+    meeting_type: Optional[str] = None
+    conversion_amount: Optional[str] = None
 
 # Educator Models
 class EducatorApplication(BaseModel):
