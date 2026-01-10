@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { toast } from 'sonner';
 import axios from 'axios';
+import Navbar from '../components/Navbar';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
