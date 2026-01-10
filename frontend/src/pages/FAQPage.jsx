@@ -133,27 +133,10 @@ const FAQPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-slate-200/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <Link to="/" className="flex items-center gap-2">
-              <img 
-                src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png" 
-                alt="OLL" 
-                className="h-8"
-              />
-            </Link>
-            <div className="flex items-center gap-4">
-              <Link to="/about" className="text-slate-600 hover:text-[#1E3A5F] font-medium transition-colors hidden sm:block">About</Link>
-              <Link to="/blogs" className="text-slate-600 hover:text-[#1E3A5F] font-medium transition-colors hidden sm:block">Blog</Link>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Navbar showBookDemo onBookDemo={() => window.location.href = '/student'} />
 
       {/* Main Content */}
-      <main className="pt-24 pb-12 px-4">
+      <main className="py-12 px-4">
         <div className="max-w-4xl mx-auto">
           {/* Hero */}
           <div className="text-center mb-8">
