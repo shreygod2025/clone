@@ -59,10 +59,10 @@ const AdminLayout = ({ children, title }) => {
 
       {/* Sidebar */}
       <aside className={`
-        fixed top-0 left-0 z-50 h-full w-64 bg-[#1E3A5F] text-white transform transition-transform duration-300
+        fixed top-0 left-0 z-50 h-full w-64 bg-[#1E3A5F] text-white transform transition-transform duration-300 flex flex-col
         lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        <div className="p-4 flex items-center justify-between">
+        <div className="p-4 flex items-center justify-between shrink-0">
           <img 
             src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/rugags0w_OLL-horizontal-logo-white.png" 
             alt="OLL" 
@@ -76,14 +76,14 @@ const AdminLayout = ({ children, title }) => {
           </button>
         </div>
 
-        <div className="px-4 py-2 mb-4">
+        <div className="px-4 py-2 mb-4 shrink-0">
           <div className="bg-white/10 rounded-xl p-3">
             <p className="text-white font-medium truncate">{user?.name || 'Admin'}</p>
             <p className="text-white/60 text-sm truncate">{user?.email}</p>
           </div>
         </div>
 
-        <nav className="px-2 space-y-1">
+        <nav className="px-2 space-y-1 flex-1 overflow-y-auto">
           {navItems.map(item => (
             <Link
               key={item.path}
@@ -99,7 +99,7 @@ const AdminLayout = ({ children, title }) => {
           ))}
         </nav>
 
-        <div className="absolute bottom-4 left-2 right-2">
+        <div className="p-2 border-t border-white/10 shrink-0">
           <button
             onClick={handleLogout}
             className="admin-nav-item w-full text-red-300 hover:bg-red-500/20"
