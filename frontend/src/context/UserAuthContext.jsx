@@ -45,11 +45,12 @@ export const UserAuthProvider = ({ children }) => {
   };
 
   const updateUserBooking = (bookingData) => {
-    // Update user with booking data and name (for first-time users)
+    // Update user with booking data, name, and phone (for first-time users)
     const updatedUser = { 
       ...user, 
       latest_booking: bookingData,
-      name: user?.name || bookingData?.name || bookingData?.contact_name
+      name: user?.name || bookingData?.name || bookingData?.contact_name,
+      phone: user?.phone || bookingData?.phone
     };
     setUser(updatedUser);
     localStorage.setItem('oll_user', JSON.stringify(updatedUser));
