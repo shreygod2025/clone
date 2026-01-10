@@ -1,9 +1,19 @@
 import { useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { GraduationCap, Users, Building2, ArrowRight } from 'lucide-react';
 import Navbar from '../components/Navbar';
+import { useUserAuth } from '../context/UserAuthContext';
 
 const LandingPage = () => {
   const navigate = useNavigate();
+  const { isLoggedIn, user } = useUserAuth();
+
+  // Redirect logged-in students to their bookings page
+  useEffect(() => {
+    if (isLoggedIn && user?.user_type === 'student') {
+      navigate('/my-bookings');
+    }
+  }, [isLoggedIn, user, navigate]);
 
   const userTypes = [
     {
