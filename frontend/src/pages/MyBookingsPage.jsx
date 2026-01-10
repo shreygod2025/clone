@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Calendar, Clock, MapPin, ArrowRight, CalendarClock, LogOut, Check, X, ChevronRight } from 'lucide-react';
 import { Button } from '../components/ui/button';
@@ -24,13 +24,18 @@ const MyBookingsPage = () => {
   const [newDate, setNewDate] = useState(null);
   const [newTime, setNewTime] = useState('');
   const [rescheduling, setRescheduling] = useState(false);
+  const hasFetched = useRef(false);
 
   useEffect(() => {
     if (!isLoggedIn) {
       navigate('/login');
       return;
     }
-    fetchBookings();
+    // Only fetch once per mount to prevent duplicate calls
+    if (!hasFetched.current && user?.phone) {
+      hasFetched.current = true;
+      fetchBookings();
+    }
   }, [isLoggedIn, navigate, user?.phone]);
 
   const fetchBookings = async () => {
@@ -41,10 +46,11 @@ const MyBookingsPage = () => {
     setLoading(true);
     try {
       const response = await axios.get(`${API}/user/bookings/${user.phone}?user_type=${user.user_type || 'student'}`);
-      setBookings(response.data);
+      setBookings(response.data || []);
     } catch (error) {
       console.error('Failed to fetch bookings:', error);
-      toast.error('Failed to load bookings');
+      // Don't show error toast, just set empty bookings
+      setBookings([]);
     } finally {
       setLoading(false);
     }
