@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Eye, Edit2, Phone, Mail, MapPin, Calendar, Clock, Plus, ChevronRight, MessageSquare } from 'lucide-react';
+import { Search, Eye, Phone, Calendar, Clock, Plus, ChevronRight, MessageSquare, Archive, CalendarClock, CheckCircle2, X, User, Mail, MapPin, Target, BookOpen } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Textarea } from '../../components/ui/textarea';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
+import { Calendar as CalendarComponent } from '../../components/ui/calendar';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, addDays } from 'date-fns';
 import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -17,10 +17,12 @@ const STATUS_SECTIONS = [
   { value: 'new', label: 'New Leads', color: 'bg-blue-500' },
   { value: 'demo_completed', label: 'Demo Completed', color: 'bg-purple-500' },
   { value: 'converted', label: 'Converted', color: 'bg-green-500' },
+  { value: 'archived', label: 'Archived', color: 'bg-slate-400' },
 ];
 
 const SKILLS = ['Robotics', 'Coding', 'AI', 'Entrepreneurship', 'Financial Literacy'];
 const CITIES = ['Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 'Pune', 'Ahmedabad'];
+const TIME_SLOTS = ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'];
 
 const AdminStudentCRM = () => {
   const { getAuthHeaders } = useAuth();
@@ -28,16 +30,23 @@ const AdminStudentCRM = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSection, setActiveSection] = useState('new');
-  const [selectedInquiry, setSelectedInquiry] = useState(null);
-  const [editMode, setEditMode] = useState(false);
+  
+  // Modal states
+  const [viewInquiry, setViewInquiry] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [editData, setEditData] = useState({ status: '', notes: '', followup_date: '' });
+  const [showRescheduleModal, setShowRescheduleModal] = useState(null);
+  const [showConvertModal, setShowConvertModal] = useState(null);
+  
+  // Form states
+  const [rescheduleData, setRescheduleData] = useState({ date: null, time: '', reason: '' });
+  const [convertData, setConvertData] = useState({ amount: '', sessions: '' });
   const [newLead, setNewLead] = useState({
     name: '',
     phone: '',
     email: '',
     skill: '',
     city: '',
+    learning_mode: 'online',
     source: 'manual',
     notes: ''
   });
@@ -60,30 +69,76 @@ const AdminStudentCRM = () => {
     }
   };
 
-  const handleUpdate = async () => {
+  const handleStatusChange = async (inquiry, newStatus, additionalData = {}) => {
     try {
-      await axios.patch(`${API}/students/inquiry/${selectedInquiry.id}`, editData, {
+      await axios.patch(`${API}/students/inquiry/${inquiry.id}`, { 
+        status: newStatus,
+        ...additionalData
+      }, {
         headers: getAuthHeaders()
       });
-      toast.success('Updated successfully');
-      setEditMode(false);
-      setSelectedInquiry(null);
-      fetchInquiries();
-    } catch (error) {
-      toast.error('Failed to update');
-    }
-  };
-
-  const handleStatusChange = async (inquiry, newStatus) => {
-    try {
-      await axios.patch(`${API}/students/inquiry/${inquiry.id}`, { status: newStatus }, {
-        headers: getAuthHeaders()
-      });
-      toast.success(`Moved to ${STATUS_SECTIONS.find(s => s.value === newStatus)?.label}`);
+      toast.success(`Status updated successfully`);
       fetchInquiries();
     } catch (error) {
       toast.error('Failed to update status');
     }
+  };
+
+  const handleDemoCompleted = async (inquiry) => {
+    await handleStatusChange(inquiry, 'demo_completed');
+  };
+
+  const handleReschedule = async () => {
+    if (!rescheduleData.date || !rescheduleData.time) {
+      toast.error('Please select date and time');
+      return;
+    }
+    try {
+      await axios.patch(`${API}/students/inquiry/${showRescheduleModal.id}`, {
+        demo_date: format(rescheduleData.date, 'yyyy-MM-dd'),
+        demo_time: rescheduleData.time,
+        notes: showRescheduleModal.notes 
+          ? `${showRescheduleModal.notes}\n\nRescheduled: ${rescheduleData.reason}` 
+          : `Rescheduled: ${rescheduleData.reason}`
+      }, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Demo rescheduled successfully');
+      setShowRescheduleModal(null);
+      setRescheduleData({ date: null, time: '', reason: '' });
+      fetchInquiries();
+    } catch (error) {
+      toast.error('Failed to reschedule');
+    }
+  };
+
+  const handleConvert = async () => {
+    if (!convertData.amount || !convertData.sessions) {
+      toast.error('Please enter amount and number of sessions');
+      return;
+    }
+    try {
+      await axios.patch(`${API}/students/inquiry/${showConvertModal.id}`, {
+        status: 'converted',
+        conversion_amount: convertData.amount,
+        sessions_count: convertData.sessions,
+        notes: showConvertModal.notes 
+          ? `${showConvertModal.notes}\n\nConverted: ₹${convertData.amount} for ${convertData.sessions} sessions` 
+          : `Converted: ₹${convertData.amount} for ${convertData.sessions} sessions`
+      }, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Lead converted successfully!');
+      setShowConvertModal(null);
+      setConvertData({ amount: '', sessions: '' });
+      fetchInquiries();
+    } catch (error) {
+      toast.error('Failed to convert');
+    }
+  };
+
+  const handleArchive = async (inquiry) => {
+    await handleStatusChange(inquiry, 'archived');
   };
 
   const handleAddLead = async () => {
@@ -97,14 +152,13 @@ const AdminStudentCRM = () => {
         email: newLead.email || `${newLead.phone}@manual.oll`,
         learner_type: 'self',
         age_group: '',
-        learning_mode: '',
         learning_goal: '',
       }, {
         headers: getAuthHeaders()
       });
       toast.success('Lead added successfully');
       setShowAddForm(false);
-      setNewLead({ name: '', phone: '', email: '', skill: '', city: '', source: 'manual', notes: '' });
+      setNewLead({ name: '', phone: '', email: '', skill: '', city: '', learning_mode: 'online', source: 'manual', notes: '' });
       fetchInquiries();
     } catch (error) {
       toast.error('Failed to add lead');
@@ -112,13 +166,83 @@ const AdminStudentCRM = () => {
   };
 
   const filteredInquiries = inquiries.filter(inq => {
-    const matchesSearch = inq.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inq.phone.includes(searchQuery);
+    const matchesSearch = inq.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      inq.phone?.includes(searchQuery);
     const matchesSection = inq.status === activeSection;
     return matchesSearch && matchesSection;
   });
 
   const getCount = (status) => inquiries.filter(i => i.status === status).length;
+
+  // Render action buttons based on status
+  const renderActionButtons = (inquiry) => {
+    switch (inquiry.status) {
+      case 'new':
+        return (
+          <div className="flex gap-1 flex-wrap">
+            <button
+              onClick={() => handleDemoCompleted(inquiry)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-700 flex items-center gap-1 font-medium"
+              data-testid={`demo-completed-${inquiry.id}`}
+            >
+              <CheckCircle2 className="w-3 h-3" />
+              Demo Completed
+            </button>
+            <button
+              onClick={() => {
+                setShowRescheduleModal(inquiry);
+                setRescheduleData({ date: null, time: '', reason: '' });
+              }}
+              className="text-xs px-3 py-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 flex items-center gap-1 font-medium"
+              data-testid={`reschedule-${inquiry.id}`}
+            >
+              <CalendarClock className="w-3 h-3" />
+              Reschedule Demo
+            </button>
+            <button
+              onClick={() => handleArchive(inquiry)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1 font-medium"
+              data-testid={`archive-${inquiry.id}`}
+            >
+              <Archive className="w-3 h-3" />
+              Archive
+            </button>
+          </div>
+        );
+      
+      case 'demo_completed':
+        return (
+          <div className="flex gap-1 flex-wrap">
+            <button
+              onClick={() => {
+                setShowConvertModal(inquiry);
+                setConvertData({ amount: '', sessions: '' });
+              }}
+              className="text-xs px-3 py-1.5 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 flex items-center gap-1 font-medium"
+              data-testid={`convert-${inquiry.id}`}
+            >
+              <CheckCircle2 className="w-3 h-3" />
+              Converted
+            </button>
+            <button
+              onClick={() => handleArchive(inquiry)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1 font-medium"
+              data-testid={`archive-${inquiry.id}`}
+            >
+              <Archive className="w-3 h-3" />
+              Archive
+            </button>
+          </div>
+        );
+      
+      case 'converted':
+      case 'archived':
+        return null; // No action buttons for converted/archived
+      
+      default:
+        return null;
+    }
+  };
 
   return (
     <AdminLayout title="Student CRM">
@@ -198,7 +322,7 @@ const AdminStudentCRM = () => {
                 </span>
               </div>
 
-              <div className="space-y-1 text-sm text-slate-600 mb-4">
+              <div className="space-y-1 text-sm text-slate-600 mb-3">
                 {inquiry.skill && (
                   <p><span className="text-slate-400">Skill:</span> {inquiry.skill}</p>
                 )}
@@ -219,120 +343,234 @@ const AdminStudentCRM = () => {
                     Demo: {inquiry.demo_date} {inquiry.demo_time && `at ${inquiry.demo_time}`}
                   </p>
                 )}
-                {inquiry.followup_date && (
-                  <p className="text-[#D63031] font-medium flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    Follow-up: {inquiry.followup_date}
+                {inquiry.conversion_amount && (
+                  <p className="text-green-600 font-medium">
+                    ₹{inquiry.conversion_amount} • {inquiry.sessions_count} sessions
                   </p>
                 )}
               </div>
 
+              {/* Comments shown outside */}
               {inquiry.notes && (
-                <div className="bg-slate-50 rounded-lg p-2 mb-4 text-sm text-slate-600">
-                  <MessageSquare className="w-3 h-3 inline mr-1" />
-                  {inquiry.notes.substring(0, 100)}{inquiry.notes.length > 100 ? '...' : ''}
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
+                  <p className="text-xs text-amber-700 font-medium mb-1 flex items-center gap-1">
+                    <MessageSquare className="w-3 h-3" /> Comments
+                  </p>
+                  <p className="text-sm text-amber-900 whitespace-pre-line">{inquiry.notes}</p>
                 </div>
               )}
 
+              {/* View Button */}
               <div className="flex gap-2 mb-3">
                 <Button
                   variant="outline"
                   size="sm"
                   className="flex-1"
-                  onClick={() => {
-                    setSelectedInquiry(inquiry);
-                    setEditData({
-                      status: inquiry.status,
-                      notes: inquiry.notes || '',
-                      followup_date: inquiry.followup_date || ''
-                    });
-                    setEditMode(true);
-                  }}
-                  data-testid={`edit-inquiry-${inquiry.id}`}
+                  onClick={() => setViewInquiry(inquiry)}
+                  data-testid={`view-inquiry-${inquiry.id}`}
                 >
-                  <Edit2 className="w-4 h-4 mr-1" /> Edit
+                  <Eye className="w-4 h-4 mr-1" /> View
                 </Button>
               </div>
 
-              {/* Move to Section Buttons */}
-              <div className="flex gap-1 flex-wrap">
-                {STATUS_SECTIONS.filter(s => s.value !== inquiry.status).map(section => (
-                  <button
-                    key={section.value}
-                    onClick={() => handleStatusChange(inquiry, section.value)}
-                    className="text-xs px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1"
-                    data-testid={`move-to-${section.value}-${inquiry.id}`}
-                  >
-                    <ChevronRight className="w-3 h-3" />
-                    {section.label}
-                  </button>
-                ))}
-              </div>
+              {/* Action Buttons based on status */}
+              {renderActionButtons(inquiry)}
             </div>
           ))}
         </div>
       )}
 
-      {/* Edit Dialog */}
-      <Dialog open={editMode && selectedInquiry} onOpenChange={() => { setEditMode(false); setSelectedInquiry(null); }}>
+      {/* View Details Dialog */}
+      <Dialog open={!!viewInquiry} onOpenChange={() => setViewInquiry(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Edit Lead - {selectedInquiry?.name}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <User className="w-5 h-5 text-[#1E3A5F]" />
+              {viewInquiry?.name}
+            </DialogTitle>
           </DialogHeader>
-          {selectedInquiry && (
+          {viewInquiry && (
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Status</label>
-                <select
-                  value={editData.status}
-                  onChange={(e) => setEditData({...editData, status: e.target.value})}
-                  className="w-full h-10 px-4 border border-slate-200 rounded-lg"
-                  data-testid="edit-status"
-                >
-                  {STATUS_SECTIONS.map(s => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
-                  ))}
-                  <option value="closed">Closed</option>
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-slate-50 rounded-lg p-3">
+                  <p className="text-xs text-slate-500 mb-1">Phone</p>
+                  <p className="font-medium text-[#1E3A5F] flex items-center gap-1">
+                    <Phone className="w-4 h-4" /> {viewInquiry.phone}
+                  </p>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-3">
+                  <p className="text-xs text-slate-500 mb-1">Email</p>
+                  <p className="font-medium text-[#1E3A5F] flex items-center gap-1">
+                    <Mail className="w-4 h-4" /> {viewInquiry.email || 'N/A'}
+                  </p>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-3">
+                  <p className="text-xs text-slate-500 mb-1">Skill Interest</p>
+                  <p className="font-medium text-[#1E3A5F] flex items-center gap-1">
+                    <BookOpen className="w-4 h-4" /> {viewInquiry.skill || 'N/A'}
+                  </p>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-3">
+                  <p className="text-xs text-slate-500 mb-1">Learning Mode</p>
+                  <p className={`font-medium flex items-center gap-1 ${viewInquiry.learning_mode === 'offline' ? 'text-[#D63031]' : 'text-[#1E3A5F]'}`}>
+                    <MapPin className="w-4 h-4" /> 
+                    {viewInquiry.learning_mode === 'offline' ? `Offline - ${viewInquiry.city}` : 'Online'}
+                  </p>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-3">
+                  <p className="text-xs text-slate-500 mb-1">Learner Type</p>
+                  <p className="font-medium text-[#1E3A5F]">{viewInquiry.learner_type || 'N/A'}</p>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-3">
+                  <p className="text-xs text-slate-500 mb-1">Age Group</p>
+                  <p className="font-medium text-[#1E3A5F]">{viewInquiry.age_group || 'N/A'}</p>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-3">
+                  <p className="text-xs text-slate-500 mb-1">Learning Goal</p>
+                  <p className="font-medium text-[#1E3A5F] flex items-center gap-1">
+                    <Target className="w-4 h-4" /> {viewInquiry.learning_goal || 'N/A'}
+                  </p>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-3">
+                  <p className="text-xs text-slate-500 mb-1">Source</p>
+                  <p className="font-medium text-[#1E3A5F]">{viewInquiry.source || 'website'}</p>
+                </div>
               </div>
-              
-              {editData.status === 'demo_completed' && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Follow-up Date</label>
-                  <Input
-                    type="date"
-                    value={editData.followup_date}
-                    onChange={(e) => setEditData({...editData, followup_date: e.target.value})}
-                    data-testid="edit-followup-date"
-                  />
+
+              {viewInquiry.demo_date && (
+                <div className="bg-blue-50 rounded-lg p-3">
+                  <p className="text-xs text-blue-500 mb-1">Demo Scheduled</p>
+                  <p className="font-medium text-blue-700 flex items-center gap-1">
+                    <Calendar className="w-4 h-4" /> 
+                    {viewInquiry.demo_date} {viewInquiry.demo_time && `at ${viewInquiry.demo_time}`}
+                  </p>
                 </div>
               )}
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Notes / Comments</label>
-                <Textarea
-                  value={editData.notes}
-                  onChange={(e) => setEditData({...editData, notes: e.target.value})}
-                  placeholder="Add notes..."
-                  className="min-h-[120px]"
-                  data-testid="edit-notes"
-                />
-              </div>
+              {viewInquiry.conversion_amount && (
+                <div className="bg-green-50 rounded-lg p-3">
+                  <p className="text-xs text-green-500 mb-1">Conversion Details</p>
+                  <p className="font-medium text-green-700">
+                    ₹{viewInquiry.conversion_amount} for {viewInquiry.sessions_count} sessions
+                  </p>
+                </div>
+              )}
 
-              <div className="flex gap-3 pt-4">
-                <Button 
-                  variant="outline" 
-                  onClick={() => { setEditMode(false); setSelectedInquiry(null); }} 
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button onClick={handleUpdate} className="btn-primary flex-1" data-testid="save-edit">
-                  Save Changes
-                </Button>
+              {viewInquiry.notes && (
+                <div className="bg-amber-50 rounded-lg p-3">
+                  <p className="text-xs text-amber-500 mb-1">Notes / Comments</p>
+                  <p className="text-amber-900 whitespace-pre-line">{viewInquiry.notes}</p>
+                </div>
+              )}
+
+              <div className="pt-4 border-t">
+                <p className="text-xs text-slate-400">
+                  Status: <span className="font-medium text-[#1E3A5F] capitalize">{viewInquiry.status?.replace('_', ' ')}</span>
+                </p>
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Reschedule Demo Modal */}
+      <Dialog open={!!showRescheduleModal} onOpenChange={() => setShowRescheduleModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Reschedule Demo - {showRescheduleModal?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Select New Date</label>
+              <div className="flex justify-center">
+                <CalendarComponent
+                  mode="single"
+                  selected={rescheduleData.date}
+                  onSelect={(date) => setRescheduleData({...rescheduleData, date})}
+                  disabled={(date) => date < new Date() || date > addDays(new Date(), 14) || date.getDay() === 0}
+                  className="rounded-xl border border-slate-200"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Select Time</label>
+              <div className="grid grid-cols-4 gap-2">
+                {TIME_SLOTS.map(time => (
+                  <button
+                    key={time}
+                    type="button"
+                    className={`p-2 rounded-lg border text-sm font-medium transition-all ${
+                      rescheduleData.time === time 
+                        ? 'border-[#D63031] bg-red-50 text-[#D63031]' 
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                    onClick={() => setRescheduleData({...rescheduleData, time})}
+                  >
+                    {time}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Reason for Rescheduling</label>
+              <Textarea
+                placeholder="Enter reason..."
+                value={rescheduleData.reason}
+                onChange={(e) => setRescheduleData({...rescheduleData, reason: e.target.value})}
+                className="min-h-[80px]"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" onClick={() => setShowRescheduleModal(null)} className="flex-1">
+                Cancel
+              </Button>
+              <Button onClick={handleReschedule} className="btn-primary flex-1">
+                Reschedule Demo
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Convert Modal */}
+      <Dialog open={!!showConvertModal} onOpenChange={() => setShowConvertModal(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Convert Lead - {showConvertModal?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Amount (₹)</label>
+              <Input
+                type="number"
+                placeholder="Enter amount"
+                value={convertData.amount}
+                onChange={(e) => setConvertData({...convertData, amount: e.target.value})}
+                data-testid="convert-amount"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Number of Sessions</label>
+              <Input
+                type="number"
+                placeholder="Enter number of sessions"
+                value={convertData.sessions}
+                onChange={(e) => setConvertData({...convertData, sessions: e.target.value})}
+                data-testid="convert-sessions"
+              />
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" onClick={() => setShowConvertModal(null)} className="flex-1">
+                Cancel
+              </Button>
+              <Button onClick={handleConvert} className="btn-primary flex-1">
+                Convert Lead
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -377,6 +615,20 @@ const AdminStudentCRM = () => {
                 </select>
               </div>
               <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Learning Mode</label>
+                <select
+                  value={newLead.learning_mode}
+                  onChange={(e) => setNewLead({...newLead, learning_mode: e.target.value})}
+                  className="w-full h-10 px-4 border border-slate-200 rounded-lg"
+                  data-testid="new-lead-mode"
+                >
+                  <option value="online">Online</option>
+                  <option value="offline">Offline</option>
+                </select>
+              </div>
+            </div>
+            {newLead.learning_mode === 'offline' && (
+              <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">City</label>
                 <select
                   value={newLead.city}
@@ -388,7 +640,7 @@ const AdminStudentCRM = () => {
                   {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-            </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Source</label>
               <select
