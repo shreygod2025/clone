@@ -90,11 +90,20 @@ const FOUNDER_TIMELINE = [
     videoTitle: 'Introduction to OLL'
   },
   {
-    year: '2024',
-    title: 'Mission for 1 Billion Learners',
-    description: 'Expanding our reach to empower a billion daily learners with practical, transformative skills.',
-    videoId: null,
-    videoTitle: null
+    date: 'Feb 1, 2023',
+    year: '2023',
+    title: 'Shark Tank India',
+    description: 'Featured on Shark Tank India, showcasing our innovative approach to skill education and receiving national recognition.',
+    videoId: 'dQw4w9WgXcQ',
+    videoTitle: 'Shark Tank India Episode'
+  },
+  {
+    date: 'Mar 4, 2025',
+    year: '2025',
+    title: 'Kaun Banega Crorepati',
+    description: 'Recognized on KBC for transforming education across India and empowering millions of students.',
+    videoId: 'dQw4w9WgXcQ',
+    videoTitle: 'KBC Episode'
   }
 ];
 
