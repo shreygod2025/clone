@@ -168,13 +168,32 @@ const AdminStudentCRM = () => {
         ...newLead,
         email: newLead.email || `${newLead.phone}@manual.oll`,
         learner_type: 'self',
-        age_group: '',
-        learning_goal: '',
+        demo_date: newLead.demo_date ? format(newLead.demo_date, 'yyyy-MM-dd') : null,
       }, {
         headers: getAuthHeaders()
       });
       toast.success('Lead added successfully');
       setShowAddForm(false);
+      setNewLead({
+        name: '',
+        phone: '',
+        email: '',
+        skill: '',
+        city: '',
+        age_group: '',
+        learning_mode: 'online',
+        learning_goal: '',
+        demo_date: null,
+        demo_time: '',
+        address: '',
+        source: 'manual',
+        notes: ''
+      });
+      fetchInquiries();
+    } catch (error) {
+      toast.error('Failed to add lead');
+    }
+  };
       setNewLead({ name: '', phone: '', email: '', skill: '', city: '', learning_mode: 'online', source: 'manual', notes: '' });
       fetchInquiries();
     } catch (error) {
