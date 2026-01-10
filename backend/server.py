@@ -795,6 +795,15 @@ async def create_school_support_query(data: dict):
     await db.school_support_queries.insert_one(doc)
     return {"message": "Query submitted successfully", "id": query.id}
 
+# General Support Query (demo, ongoing classes, school, other)
+@api_router.post("/support/query")
+async def create_support_query(data: dict):
+    data['id'] = str(uuid.uuid4())
+    data['status'] = 'new'
+    data['created_at'] = datetime.now(timezone.utc).isoformat()
+    await db.support_queries.insert_one(data)
+    return {"message": "Query submitted successfully", "id": data['id']}
+
 @api_router.get("/support/school-queries")
 async def get_school_support_queries(user: dict = Depends(get_current_user)):
     queries = await db.school_support_queries.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
