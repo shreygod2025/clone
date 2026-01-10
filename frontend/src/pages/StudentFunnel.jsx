@@ -8,7 +8,7 @@ import { Calendar as CalendarComponent } from '../components/ui/calendar';
 import { toast } from 'sonner';
 import axios from 'axios';
 import { format, addDays } from 'date-fns';
-import SchoolSupportFlow from './SchoolSupportFlow';
+import SupportFlow from './SupportFlow';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
