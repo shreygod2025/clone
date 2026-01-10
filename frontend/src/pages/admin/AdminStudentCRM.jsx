@@ -612,16 +612,17 @@ const AdminStudentCRM = () => {
 
       {/* Add Lead Dialog */}
       <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add New Lead</DialogTitle>
+            <DialogTitle>Add New Student Lead</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Basic Info */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Name *</label>
                 <Input
-                  placeholder="Lead name"
+                  placeholder="Student / Parent name"
                   value={newLead.name}
                   onChange={(e) => setNewLead({...newLead, name: e.target.value})}
                   data-testid="new-lead-name"
@@ -637,7 +638,32 @@ const AdminStudentCRM = () => {
                 />
               </div>
             </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Email</label>
+              <Input
+                type="email"
+                placeholder="Email address (optional)"
+                value={newLead.email}
+                onChange={(e) => setNewLead({...newLead, email: e.target.value})}
+                data-testid="new-lead-email"
+              />
+            </div>
+
+            {/* Age & Skill */}
             <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Age Group</label>
+                <select
+                  value={newLead.age_group}
+                  onChange={(e) => setNewLead({...newLead, age_group: e.target.value})}
+                  className="w-full h-10 px-4 border border-slate-200 rounded-lg"
+                  data-testid="new-lead-age"
+                >
+                  <option value="">Select age group</option>
+                  {AGE_GROUPS.map(a => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Skill Interest</label>
                 <select
@@ -650,6 +676,10 @@ const AdminStudentCRM = () => {
                   {SKILLS.map(s => <option key={s} value={s.toLowerCase()}>{s}</option>)}
                 </select>
               </div>
+            </div>
+
+            {/* Learning Mode & Goal */}
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Learning Mode</label>
                 <select
@@ -658,12 +688,25 @@ const AdminStudentCRM = () => {
                   className="w-full h-10 px-4 border border-slate-200 rounded-lg"
                   data-testid="new-lead-mode"
                 >
-                  <option value="online">Online</option>
-                  <option value="offline">Offline</option>
+                  {LEARNING_MODES.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Learning Goal</label>
+                <select
+                  value={newLead.learning_goal}
+                  onChange={(e) => setNewLead({...newLead, learning_goal: e.target.value})}
+                  className="w-full h-10 px-4 border border-slate-200 rounded-lg"
+                  data-testid="new-lead-goal"
+                >
+                  <option value="">Select goal</option>
+                  {LEARNING_GOALS.map(g => <option key={g.value} value={g.value}>{g.label}</option>)}
                 </select>
               </div>
             </div>
-            {newLead.learning_mode === 'offline' && (
+
+            {/* City (always show) & Address (for offline) */}
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">City</label>
                 <select
@@ -676,22 +719,77 @@ const AdminStudentCRM = () => {
                   {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
-            )}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Source</label>
-              <select
-                value={newLead.source}
-                onChange={(e) => setNewLead({...newLead, source: e.target.value})}
-                className="w-full h-10 px-4 border border-slate-200 rounded-lg"
-                data-testid="new-lead-source"
-              >
-                <option value="manual">Manual Entry</option>
-                <option value="referral">Referral</option>
-                <option value="social">Social Media</option>
-                <option value="event">Event</option>
-                <option value="other">Other</option>
-              </select>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Source</label>
+                <select
+                  value={newLead.source}
+                  onChange={(e) => setNewLead({...newLead, source: e.target.value})}
+                  className="w-full h-10 px-4 border border-slate-200 rounded-lg"
+                  data-testid="new-lead-source"
+                >
+                  <option value="manual">Manual Entry</option>
+                  <option value="referral">Referral</option>
+                  <option value="social">Social Media</option>
+                  <option value="event">Event</option>
+                  <option value="website">Website</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
             </div>
+
+            {/* Address for offline home */}
+            {newLead.learning_mode === 'offline_home' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Address</label>
+                <Textarea
+                  placeholder="Complete address for home visit"
+                  value={newLead.address}
+                  onChange={(e) => setNewLead({...newLead, address: e.target.value})}
+                  className="min-h-[60px]"
+                  data-testid="new-lead-address"
+                />
+              </div>
+            )}
+
+            {/* Demo Date & Time */}
+            <div className="border-t pt-4 mt-4">
+              <h4 className="font-medium text-slate-900 mb-3">Demo Scheduling</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Demo Date</label>
+                  <div className="border rounded-lg p-2">
+                    <CalendarComponent
+                      mode="single"
+                      selected={newLead.demo_date}
+                      onSelect={(date) => setNewLead({...newLead, demo_date: date})}
+                      disabled={(date) => date < new Date()}
+                      className="rounded-md"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Demo Time</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {TIME_SLOTS.map(time => (
+                      <button
+                        key={time}
+                        type="button"
+                        className={`p-2 rounded-lg border text-sm ${
+                          newLead.demo_time === time 
+                            ? 'border-[#D63031] bg-red-50 text-[#D63031]' 
+                            : 'border-slate-200 hover:border-slate-300'
+                        }`}
+                        onClick={() => setNewLead({...newLead, demo_time: time})}
+                      >
+                        {time}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Notes */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Notes</label>
               <Textarea
@@ -702,7 +800,8 @@ const AdminStudentCRM = () => {
                 data-testid="new-lead-notes"
               />
             </div>
-            <div className="flex gap-3 pt-4">
+
+            <div className="flex gap-3 pt-4 border-t">
               <Button variant="outline" onClick={() => setShowAddForm(false)} className="flex-1">
                 Cancel
               </Button>
