@@ -224,6 +224,11 @@ class OpenRequirementUpdate(BaseModel):
     description: Optional[str] = None
     requirements: Optional[str] = None
     positions: Optional[int] = None
+    days: Optional[List[str]] = None
+    timing_from: Optional[str] = None
+    timing_to: Optional[str] = None
+    pay_per_session: Optional[str] = None
+    pay_type: Optional[str] = None
     is_active: Optional[bool] = None
 
 # FAQ Models
