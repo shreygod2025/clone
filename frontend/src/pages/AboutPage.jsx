@@ -272,7 +272,7 @@ const AboutPage = () => {
                 {/* Content */}
                 <div className={`flex-1 ${index % 2 === 0 ? 'md:pr-12 md:text-right' : 'md:pl-12'}`}>
                   <span className="inline-block px-4 py-1 rounded-full bg-[#D63031] text-white text-sm font-semibold mb-3">
-                    {item.year}
+                    {item.date || item.year}
                   </span>
                   <h3 className="text-xl font-bold text-[#1E3A5F] mb-2">{item.title}</h3>
                   <p className="text-slate-600 mb-4">{item.description}</p>
