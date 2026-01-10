@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, Briefcase, MapPin, Clock, Users, HelpCircle, Send } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Briefcase, MapPin, Clock, Users, HelpCircle, Send, Calendar, IndianRupee, X } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Checkbox } from '../components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { toast } from 'sonner';
 import axios from 'axios';
 
@@ -26,7 +27,10 @@ const EducatorFunnel = () => {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [selectedRequirement, setSelectedRequirement] = useState(null);
+  const [showRequirementForm, setShowRequirementForm] = useState(false);
   
+  // General application form
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -39,6 +43,17 @@ const EducatorFunnel = () => {
     demo_ready: false,
   });
 
+  // Requirement-specific application form
+  const [reqFormData, setReqFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    experience: '',
+    why_interested: '',
+    available_days: [],
+    demo_ready: false,
+  });
+
   useEffect(() => {
     fetchRequirements();
   }, []);
@@ -47,7 +62,8 @@ const EducatorFunnel = () => {
     setLoading(true);
     try {
       const response = await axios.get(`${API}/requirements`);
-      setRequirements(response.data);
+      // Only show active requirements
+      setRequirements(response.data.filter(r => r.is_active));
     } catch (error) {
       console.error('Failed to fetch requirements');
     } finally {
@@ -58,7 +74,7 @@ const EducatorFunnel = () => {
   const toggleSkill = (skill) => {
     setFormData(prev => ({
       ...prev,
-      skills: prev.skills.includes(skill) 
+      skills: prev.skills.includes(skill)
         ? prev.skills.filter(s => s !== skill)
         : [...prev.skills, skill]
     }));
@@ -73,25 +89,88 @@ const EducatorFunnel = () => {
     }));
   };
 
+  const toggleReqDay = (day) => {
+    setReqFormData(prev => ({
+      ...prev,
+      available_days: prev.available_days.includes(day)
+        ? prev.available_days.filter(d => d !== day)
+        : [...prev.available_days, day]
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.email || !formData.phone || formData.skills.length === 0) {
       toast.error('Please fill all required fields');
       return;
     }
-    
+
     setSubmitting(true);
     try {
       await axios.post(`${API}/educators/apply`, formData);
       setSubmitted(true);
       toast.success('Application submitted successfully!');
     } catch (error) {
-      toast.error('Failed to submit application. Please try again.');
+      toast.error('Failed to submit. Please try again.');
     } finally {
       setSubmitting(false);
     }
   };
 
+  // Handle requirement-specific application
+  const handleApplyToRequirement = (req) => {
+    setSelectedRequirement(req);
+    setReqFormData({
+      name: '',
+      email: '',
+      phone: '',
+      experience: '',
+      why_interested: '',
+      available_days: req.days || [],
+      demo_ready: false,
+    });
+    setShowRequirementForm(true);
+  };
+
+  const handleRequirementSubmit = async (e) => {
+    e.preventDefault();
+    if (!reqFormData.name || !reqFormData.email || !reqFormData.phone) {
+      toast.error('Please fill all required fields');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await axios.post(`${API}/educators/apply`, {
+        name: reqFormData.name,
+        email: reqFormData.email,
+        phone: reqFormData.phone,
+        skills: [selectedRequirement.skill],
+        experience: reqFormData.experience,
+        grades_comfortable: [],
+        city: selectedRequirement.city,
+        availability: reqFormData.available_days.join(', ') || 'Flexible',
+        demo_ready: reqFormData.demo_ready,
+        requirement_id: selectedRequirement.id,
+        requirement_title: selectedRequirement.title,
+      });
+      setShowRequirementForm(false);
+      setSelectedRequirement(null);
+      toast.success('Application submitted successfully!');
+    } catch (error) {
+      toast.error('Failed to submit. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const formatDays = (days) => {
+    if (!days || days.length === 0) return 'Flexible';
+    if (days.length === 7) return 'All Days';
+    return days.map(d => d.substring(0, 3)).join(', ');
+  };
+
+  // Success Screen
   if (submitted) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
@@ -142,10 +221,10 @@ const EducatorFunnel = () => {
         <div className="max-w-4xl mx-auto">
           {/* Hero */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold text-[#1E3A5F] mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#1E3A5F] mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
               Join OLL as an Educator
             </h1>
-            <p className="text-slate-600 max-w-2xl mx-auto">
+            <p className="text-slate-600 max-w-2xl mx-auto text-sm sm:text-base">
               Share your expertise and be part of India's skill learning revolution. 
               We're looking for passionate educators to join our growing network.
             </p>
@@ -156,17 +235,17 @@ const EducatorFunnel = () => {
             <TabsList className="grid w-full grid-cols-2 mb-8 bg-slate-100 p-1 rounded-full">
               <TabsTrigger 
                 value="apply" 
-                className="rounded-full data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                className="rounded-full data-[state=active]:bg-white data-[state=active]:shadow-sm text-sm"
                 data-testid="tab-apply"
               >
-                Apply to Join
+                General Application
               </TabsTrigger>
               <TabsTrigger 
                 value="requirements" 
-                className="rounded-full data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                className="rounded-full data-[state=active]:bg-white data-[state=active]:shadow-sm text-sm"
                 data-testid="tab-requirements"
               >
-                Open Requirements
+                Open Positions ({requirements.length})
               </TabsTrigger>
             </TabsList>
 
@@ -339,23 +418,25 @@ const EducatorFunnel = () => {
                 ) : requirements.length === 0 ? (
                   <div className="glass-card rounded-3xl p-8 text-center">
                     <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                    <h3 className="font-semibold text-[#1E3A5F] mb-2">No Open Requirements</h3>
-                    <p className="text-slate-500 mb-4">Check back later for new opportunities.</p>
+                    <h3 className="font-semibold text-[#1E3A5F] mb-2">No Open Positions</h3>
+                    <p className="text-slate-500 mb-4">Check back later for new opportunities or submit a general application.</p>
                     <Button 
                       onClick={() => setActiveTab('apply')} 
                       className="btn-primary"
                       data-testid="apply-anyway-btn"
                     >
-                      Apply Anyway
+                      Submit General Application
                     </Button>
                   </div>
                 ) : (
                   requirements.map(req => (
-                    <div key={req.id} className="glass-card rounded-2xl p-6 hover:shadow-lg transition-shadow">
-                      <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div key={req.id} className="glass-card rounded-2xl p-4 sm:p-6 hover:shadow-lg transition-shadow">
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                         <div className="flex-1">
                           <h3 className="font-semibold text-[#1E3A5F] text-lg mb-2">{req.title}</h3>
-                          <div className="flex flex-wrap gap-3 text-sm text-slate-500 mb-3">
+                          
+                          {/* Basic Info */}
+                          <div className="flex flex-wrap gap-2 sm:gap-3 text-sm text-slate-500 mb-3">
                             <span className="flex items-center gap-1">
                               <Briefcase className="w-4 h-4" /> {req.skill}
                             </span>
@@ -366,14 +447,34 @@ const EducatorFunnel = () => {
                               <Users className="w-4 h-4" /> {req.positions} positions
                             </span>
                           </div>
+                          
+                          {/* Additional Details */}
+                          <div className="flex flex-wrap gap-2 mb-3">
+                            {req.days && req.days.length > 0 && (
+                              <span className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs sm:text-sm">
+                                <Calendar className="w-3 h-3" /> {formatDays(req.days)}
+                              </span>
+                            )}
+                            {req.timing_from && req.timing_to && (
+                              <span className="flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-700 rounded text-xs sm:text-sm">
+                                <Clock className="w-3 h-3" /> {req.timing_from} - {req.timing_to}
+                              </span>
+                            )}
+                            {req.pay_per_session && (
+                              <span className="flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded text-xs sm:text-sm">
+                                <IndianRupee className="w-3 h-3" /> ₹{req.pay_per_session}/{req.pay_type === 'per_session' ? 'session' : 'month'}
+                              </span>
+                            )}
+                          </div>
+                          
                           <p className="text-slate-600 text-sm">{req.description}</p>
                         </div>
                         <Button
-                          onClick={() => setActiveTab('apply')}
-                          className="btn-primary shrink-0"
+                          onClick={() => handleApplyToRequirement(req)}
+                          className="btn-primary shrink-0 w-full sm:w-auto"
                           data-testid={`apply-req-${req.id}`}
                         >
-                          Apply Now
+                          Apply for This Position
                         </Button>
                       </div>
                     </div>
@@ -384,6 +485,170 @@ const EducatorFunnel = () => {
           </Tabs>
         </div>
       </main>
+
+      {/* Footer */}
+      <footer className="bg-[#1E3A5F] text-white py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <img 
+            src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/rugags0w_OLL-horizontal-logo-white.png" 
+            alt="OLL" 
+            className="h-8 mx-auto mb-4"
+          />
+          <p className="text-white/70 text-sm">
+            © 2024 OLL. All rights reserved.
+          </p>
+        </div>
+      </footer>
+
+      {/* Requirement-Specific Application Modal */}
+      <Dialog open={showRequirementForm} onOpenChange={setShowRequirementForm}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-[#1E3A5F]">
+              Apply: {selectedRequirement?.title}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedRequirement && (
+            <form onSubmit={handleRequirementSubmit} className="space-y-4">
+              {/* Position Details Summary */}
+              <div className="bg-slate-50 rounded-xl p-4 space-y-2">
+                <div className="flex flex-wrap gap-2 text-sm">
+                  <span className="flex items-center gap-1 text-slate-600">
+                    <Briefcase className="w-4 h-4" /> {selectedRequirement.skill}
+                  </span>
+                  <span className="flex items-center gap-1 text-slate-600">
+                    <MapPin className="w-4 h-4" /> {selectedRequirement.city}
+                  </span>
+                </div>
+                {selectedRequirement.pay_per_session && (
+                  <p className="text-green-600 font-medium text-sm">
+                    ₹{selectedRequirement.pay_per_session} / {selectedRequirement.pay_type === 'per_session' ? 'session' : 'month'}
+                  </p>
+                )}
+                {selectedRequirement.timing_from && selectedRequirement.timing_to && (
+                  <p className="text-sm text-slate-500">
+                    Timing: {selectedRequirement.timing_from} - {selectedRequirement.timing_to}
+                  </p>
+                )}
+              </div>
+
+              {/* Application Form */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Full Name *</label>
+                <Input
+                  placeholder="Enter your name"
+                  value={reqFormData.name}
+                  onChange={(e) => setReqFormData({...reqFormData, name: e.target.value})}
+                  data-testid="req-name"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Email *</label>
+                  <Input
+                    type="email"
+                    placeholder="Your email"
+                    value={reqFormData.email}
+                    onChange={(e) => setReqFormData({...reqFormData, email: e.target.value})}
+                    data-testid="req-email"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Phone *</label>
+                  <Input
+                    placeholder="Your phone"
+                    value={reqFormData.phone}
+                    onChange={(e) => setReqFormData({...reqFormData, phone: e.target.value})}
+                    data-testid="req-phone"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Relevant Experience in {selectedRequirement.skill}
+                </label>
+                <Textarea
+                  placeholder={`Describe your experience teaching ${selectedRequirement.skill}...`}
+                  value={reqFormData.experience}
+                  onChange={(e) => setReqFormData({...reqFormData, experience: e.target.value})}
+                  className="min-h-[80px]"
+                  data-testid="req-experience"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Why are you interested in this position?
+                </label>
+                <Textarea
+                  placeholder="Tell us why this role interests you..."
+                  value={reqFormData.why_interested}
+                  onChange={(e) => setReqFormData({...reqFormData, why_interested: e.target.value})}
+                  className="min-h-[80px]"
+                  data-testid="req-why"
+                />
+              </div>
+
+              {selectedRequirement.days && selectedRequirement.days.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Which days are you available?
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedRequirement.days.map(day => (
+                      <button
+                        key={day}
+                        type="button"
+                        onClick={() => toggleReqDay(day)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                          reqFormData.available_days.includes(day)
+                            ? 'bg-[#1E3A5F] text-white'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        {day}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center gap-3">
+                <Checkbox
+                  id="req_demo_ready"
+                  checked={reqFormData.demo_ready}
+                  onCheckedChange={(checked) => setReqFormData({...reqFormData, demo_ready: checked})}
+                />
+                <label htmlFor="req_demo_ready" className="text-sm text-slate-600">
+                  I am ready to give a demo class
+                </label>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setShowRequirementForm(false)} 
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={submitting}
+                  className="btn-primary flex-1"
+                  data-testid="submit-req-application"
+                >
+                  {submitting ? 'Submitting...' : 'Submit Application'}
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
