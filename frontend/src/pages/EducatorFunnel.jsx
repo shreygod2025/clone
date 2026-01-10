@@ -7,8 +7,10 @@ import { Textarea } from '../components/ui/textarea';
 import { Checkbox } from '../components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import { Calendar as CalendarComponent } from '../components/ui/calendar';
 import { toast } from 'sonner';
 import axios from 'axios';
+import { format, addDays } from 'date-fns';
 import Navbar from '../components/Navbar';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -20,6 +22,7 @@ const CITIES = [
   'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow', 'Chandigarh', 'Kochi'
 ];
 const AVAILABILITY = ['Weekday Mornings', 'Weekday Afternoons', 'Weekday Evenings', 'Weekends'];
+const TIME_SLOTS = ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'];
 
 const EducatorFunnel = () => {
   const navigate = useNavigate();
@@ -30,6 +33,7 @@ const EducatorFunnel = () => {
   const [submitted, setSubmitted] = useState(false);
   const [selectedRequirement, setSelectedRequirement] = useState(null);
   const [showRequirementForm, setShowRequirementForm] = useState(false);
+  const [showOtherCity, setShowOtherCity] = useState(false);
   
   // General application form
   const [formData, setFormData] = useState({
@@ -40,8 +44,11 @@ const EducatorFunnel = () => {
     experience: '',
     grades_comfortable: [],
     city: '',
+    other_city: '',
     availability: '',
     demo_ready: false,
+    demo_date: null,
+    demo_time: '',
   });
 
   // Requirement-specific application form
@@ -99,6 +106,17 @@ const EducatorFunnel = () => {
     }));
   };
 
+  const handleCityChange = (e) => {
+    const value = e.target.value;
+    if (value === 'other') {
+      setShowOtherCity(true);
+      setFormData(prev => ({ ...prev, city: '' }));
+    } else {
+      setShowOtherCity(false);
+      setFormData(prev => ({ ...prev, city: value, other_city: '' }));
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.email || !formData.phone || formData.skills.length === 0) {
@@ -106,9 +124,19 @@ const EducatorFunnel = () => {
       return;
     }
 
+    // Validate demo date/time if demo_ready is checked
+    if (formData.demo_ready && (!formData.demo_date || !formData.demo_time)) {
+      toast.error('Please select your preferred demo date and time');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      await axios.post(`${API}/educators/apply`, formData);
+      await axios.post(`${API}/educators/apply`, {
+        ...formData,
+        city: showOtherCity ? formData.other_city : formData.city,
+        demo_date: formData.demo_date ? format(formData.demo_date, 'yyyy-MM-dd') : null,
+      });
       setSubmitted(true);
       toast.success('Application submitted successfully!');
     } catch (error) {
@@ -182,9 +210,22 @@ const EducatorFunnel = () => {
           <h2 className="text-2xl md:text-3xl font-bold text-[#1E3A5F] mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
             Application Submitted!
           </h2>
-          <p className="text-slate-600 mb-6">
+          <p className="text-slate-600 mb-4">
             Thank you for your interest in joining OLL. Our team will review your application and get back to you within 3-5 business days.
           </p>
+          
+          {formData.demo_ready && formData.demo_date && formData.demo_time && (
+            <div className="bg-blue-50 rounded-xl p-4 mb-6 text-left">
+              <p className="text-sm text-slate-500 mb-1">Demo class scheduled for</p>
+              <p className="font-semibold text-[#1E3A5F]">
+                {format(formData.demo_date, 'EEEE, MMMM d, yyyy')} at {formData.demo_time}
+              </p>
+              <p className="text-xs text-slate-500 mt-2">
+                Our team will confirm the demo details via email/phone.
+              </p>
+            </div>
+          )}
+          
           <Button onClick={() => navigate('/')} className="btn-primary w-full" data-testid="back-to-home-btn">
             Back to Home
           </Button>
@@ -263,7 +304,7 @@ const EducatorFunnel = () => {
                       <Input
                         placeholder="Enter your phone"
                         value={formData.phone}
-                        onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                        onChange={(e) => setFormData({...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 10)})}
                         className="input-glass h-10 sm:h-12"
                         data-testid="educator-phone"
                       />
@@ -271,8 +312,8 @@ const EducatorFunnel = () => {
                     <div>
                       <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">City</label>
                       <select
-                        value={formData.city}
-                        onChange={(e) => setFormData({...formData, city: e.target.value})}
+                        value={showOtherCity ? 'other' : formData.city}
+                        onChange={handleCityChange}
                         className="w-full h-10 sm:h-12 px-3 sm:px-4 bg-white/50 backdrop-blur-sm border border-slate-200 rounded-xl focus:border-[#1E3A5F] focus:outline-none text-sm sm:text-base"
                         data-testid="educator-city"
                       >
@@ -280,7 +321,21 @@ const EducatorFunnel = () => {
                         {CITIES.map(city => (
                           <option key={city} value={city}>{city}</option>
                         ))}
+                        <option value="other">Other City</option>
                       </select>
+                      
+                      {/* Other City Input */}
+                      {showOtherCity && (
+                        <div className="mt-2">
+                          <Input
+                            placeholder="Enter your city name"
+                            value={formData.other_city}
+                            onChange={(e) => setFormData({...formData, other_city: e.target.value})}
+                            className="input-glass h-10 sm:h-12"
+                            data-testid="educator-other-city"
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -351,18 +406,79 @@ const EducatorFunnel = () => {
                         ))}
                       </select>
                     </div>
-                    <div className="flex items-center gap-2 sm:gap-3">
-                      <Checkbox
-                        id="demo_ready"
-                        checked={formData.demo_ready}
-                        onCheckedChange={(checked) => setFormData({...formData, demo_ready: checked})}
-                        data-testid="demo-ready-checkbox"
-                      />
-                      <label htmlFor="demo_ready" className="text-xs sm:text-sm text-slate-600">
-                        I am ready to give a demo class
-                      </label>
-                    </div>
                   </div>
+                </div>
+
+                {/* Demo Class Section */}
+                <div className="mt-6 pt-6 border-t border-slate-200">
+                  <div className="flex items-center gap-2 sm:gap-3 mb-4">
+                    <Checkbox
+                      id="demo_ready"
+                      checked={formData.demo_ready}
+                      onCheckedChange={(checked) => setFormData({...formData, demo_ready: checked})}
+                      data-testid="demo-ready-checkbox"
+                    />
+                    <label htmlFor="demo_ready" className="text-sm sm:text-base font-medium text-[#1E3A5F]">
+                      I am ready to give a demo class
+                    </label>
+                  </div>
+
+                  {/* Demo Date/Time Selection - shown when demo_ready is checked */}
+                  {formData.demo_ready && (
+                    <div className="bg-blue-50 rounded-xl p-4 sm:p-6 space-y-4">
+                      <p className="text-sm text-slate-600">
+                        Select your preferred date and time for the demo class:
+                      </p>
+                      
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        {/* Date Selection */}
+                        <div>
+                          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Preferred Date</label>
+                          <div className="flex justify-center bg-white rounded-xl p-2">
+                            <CalendarComponent
+                              mode="single"
+                              selected={formData.demo_date}
+                              onSelect={(date) => setFormData({...formData, demo_date: date})}
+                              disabled={(date) => date < new Date() || date > addDays(new Date(), 14) || date.getDay() === 0}
+                              className="rounded-lg"
+                              data-testid="demo-calendar"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Time Selection */}
+                        <div>
+                          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Preferred Time</label>
+                          <div className="grid grid-cols-2 gap-2">
+                            {TIME_SLOTS.map(time => (
+                              <button
+                                key={time}
+                                type="button"
+                                className={`p-2 sm:p-3 rounded-lg border-2 text-center transition-all text-sm ${
+                                  formData.demo_time === time 
+                                    ? 'border-[#D63031] bg-red-50 text-[#D63031]' 
+                                    : 'border-slate-200 bg-white hover:border-slate-300'
+                                }`}
+                                onClick={() => setFormData({...formData, demo_time: time})}
+                                data-testid={`demo-time-${time.replace(':', '')}`}
+                              >
+                                <Clock className="w-4 h-4 mx-auto mb-1" />
+                                {time}
+                              </button>
+                            ))}
+                          </div>
+                          
+                          {formData.demo_date && formData.demo_time && (
+                            <div className="mt-4 p-3 bg-green-50 rounded-lg">
+                              <p className="text-sm text-green-700">
+                                <span className="font-medium">Selected:</span> {format(formData.demo_date, 'EEE, MMM d')} at {formData.demo_time}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-col-reverse sm:flex-row justify-between items-center gap-3 sm:gap-0 mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-slate-200">
@@ -475,6 +591,11 @@ const EducatorFunnel = () => {
             alt="OLL" 
             className="h-8 mx-auto mb-4"
           />
+          <div className="flex justify-center gap-6 text-sm text-white/80 mb-4">
+            <Link to="/about" className="hover:text-white">About Us</Link>
+            <Link to="/faq" className="hover:text-white">FAQs</Link>
+            <Link to="/blogs" className="hover:text-white">Blog</Link>
+          </div>
           <p className="text-white/70 text-sm">
             © 2024 OLL. All rights reserved.
           </p>
@@ -541,7 +662,7 @@ const EducatorFunnel = () => {
                   <Input
                     placeholder="Your phone"
                     value={reqFormData.phone}
-                    onChange={(e) => setReqFormData({...reqFormData, phone: e.target.value})}
+                    onChange={(e) => setReqFormData({...reqFormData, phone: e.target.value.replace(/\D/g, '').slice(0, 10)})}
                     data-testid="req-phone"
                   />
                 </div>
