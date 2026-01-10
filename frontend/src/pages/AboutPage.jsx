@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Target, Eye, Award, Users, MapPin, Briefcase, Send, Check, ArrowRight } from 'lucide-react';
+import { Target, Eye, Award, Users, MapPin, Briefcase, Send, Check, ArrowRight, Play, Building2, GraduationCap } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Button } from '../components/ui/button';
@@ -9,35 +9,102 @@ import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-const DEFAULT_CONTENT = {
-  mission: "To democratize skill education and empower every student with future-ready skills that prepare them for the jobs of tomorrow.",
-  vision: "A world where every child has access to quality skill education, regardless of their background or location.",
-  what_we_do: "OLL provides comprehensive skill education programs in Robotics, Coding, AI, Entrepreneurship, and Financial Literacy. We partner with schools, train educators, and organize competitions to create a complete ecosystem for skill development.",
-  media_features: [
-    { name: "Shark Tank India", description: "Featured on Shark Tank India Season 2 for our innovative approach to education" },
-    { name: "Kaun Banega Crorepati", description: "Recognized by KBC for transforming rural education" },
-    { name: "Economic Times", description: "Featured as Top 50 EdTech startups in India" },
-  ],
-  gallery_images: [
-    "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=600&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1531482615713-2afd69097998?w=600&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=600&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=600&h=400&fit=crop",
-  ],
-};
-
 const CITIES = [
   'Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 
   'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow', 'Chandigarh', 'Kochi'
 ];
 
+// Team Members Data
+const TEAM_MEMBERS = [
+  {
+    name: 'Shreyaan Daga',
+    role: 'Co-Founder & CEO',
+    image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop&crop=face'
+  },
+  {
+    name: 'Neha Kambli',
+    role: 'Business Head',
+    image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=300&h=300&fit=crop&crop=face'
+  },
+  {
+    name: 'Ritesh Rathore',
+    role: 'Growth Partners',
+    image: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&h=300&fit=crop&crop=face'
+  }
+];
+
+// Board of Advisors Data
+const ADVISORS = [
+  {
+    name: 'Ms. Vinita Mahajan',
+    title: 'Honorary Advisor at OLL',
+    description: 'Director Mount Litera Zee School - Pathankot. Ex Principal, JMK School CBSE - Pathankot for 17 Years.',
+    image: 'https://myoll.s3.ap-south-1.amazonaws.com/uploads/member/board-of-director-vinita-mahajan_10120609102024000000.webp'
+  },
+  {
+    name: 'Lt Gen Surendra Kulkarni',
+    title: 'Honorary Advisor at OLL',
+    description: 'Former Director Mayo College, Ajmer. Army man turned into Educator. Ex Mayo Old Boy.',
+    image: 'https://myoll.s3.ap-south-1.amazonaws.com/uploads/member/lft-surendra-kulkarni_29081609002024000000.webp'
+  },
+  {
+    name: 'Heather Anderson',
+    title: 'President of World Genesis Foundation',
+    description: 'Educator and advocate specializing in art therapy and youth empowerment. Supports UNESCO\'s mission for youth worldwide.',
+    image: 'https://myoll.s3.ap-south-1.amazonaws.com/uploads/member/untitled-design-4_30123010262024000000.webp'
+  },
+  {
+    name: 'Dr. Neeta Bali',
+    title: 'Honorary Advisor at OLL',
+    description: 'Director Academics at MVN Group of Schools. Ex Director Principal GD Goenka & Seth Anandram Jaipuria Group of Schools.',
+    image: 'https://myoll.s3.ap-south-1.amazonaws.com/uploads/member/untitled-design-2_01130308282024000000.webp'
+  },
+  {
+    name: 'Dr. Seema Negi',
+    title: 'Managing Advisor at OLL',
+    description: 'Director-Principal at Sanjeevani World. Global Goodwill Ambassador. International Trainer & TEDx Speaker.',
+    image: 'https://myoll.s3.ap-south-1.amazonaws.com/uploads/member/untitled-design-3_01130408242024000000.webp'
+  },
+  {
+    name: 'Ms. Alka Singh',
+    title: 'Honorary Advisor at OLL',
+    description: 'Principal - Blue Bells Model School, Gurgaon. Gold Medalist in Economics with 30+ years of experience.',
+    image: 'https://myoll.s3.ap-south-1.amazonaws.com/uploads/member/untitled-design-4_03175409182024000000.webp'
+  }
+];
+
+// Timeline/Founder Journey Data
+const FOUNDER_TIMELINE = [
+  {
+    year: '2019',
+    title: 'The Beginning',
+    description: 'OLL was founded with a vision to democratize skill education for students across India.',
+    videoId: '5FUd_nUqpf4',
+    videoTitle: 'OLL BackStory'
+  },
+  {
+    year: '2021',
+    title: 'Building the Platform',
+    description: 'Launched online learning platform connecting students with expert educators nationwide.',
+    videoId: '0zOewstS_6s',
+    videoTitle: 'Introduction to OLL'
+  },
+  {
+    year: '2024',
+    title: 'Mission for 1 Billion Learners',
+    description: 'Expanding our reach to empower a billion daily learners with practical, transformative skills.',
+    videoId: null,
+    videoTitle: null
+  }
+];
+
 const AboutPage = () => {
-  const [content, setContent] = useState(DEFAULT_CONTENT);
   const [showTeamForm, setShowTeamForm] = useState(false);
   const [showPartnerForm, setShowPartnerForm] = useState(false);
   const [teamSubmitted, setTeamSubmitted] = useState(false);
   const [partnerSubmitted, setPartnerSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [activeVideo, setActiveVideo] = useState(null);
   
   const [teamForm, setTeamForm] = useState({
     name: '',
@@ -57,24 +124,6 @@ const AboutPage = () => {
     investment_capacity: '',
     message: ''
   });
-
-  useEffect(() => {
-    fetchContent();
-  }, []);
-
-  const fetchContent = async () => {
-    try {
-      const response = await axios.get(`${API}/about`);
-      if (response.data) {
-        setContent({
-          ...DEFAULT_CONTENT,
-          ...response.data
-        });
-      }
-    } catch (error) {
-      // Use default content
-    }
-  };
 
   const handleTeamSubmit = async (e) => {
     e.preventDefault();
@@ -157,10 +206,10 @@ const AboutPage = () => {
       <section className="pt-12 pb-8 px-4">
         <div className="max-w-7xl mx-auto text-center">
           <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-[#1E3A5F] mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
-            About OLL
+            Building a Religion of Practical Learning
           </h1>
           <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-            Leading a Skill Learning Revolution for Students Across India
+            Mission for 1 Billion Daily Learners
           </p>
         </div>
       </section>
@@ -177,7 +226,7 @@ const AboutPage = () => {
                 Our Mission
               </h2>
               <p className="text-slate-600 leading-relaxed">
-                {content.mission}
+                To democratize skill education and empower every student with future-ready skills that prepare them for the jobs of tomorrow.
               </p>
             </div>
             <div className="glass-card rounded-3xl p-8" data-testid="vision-section">
@@ -188,15 +237,171 @@ const AboutPage = () => {
                 Our Vision
               </h2>
               <p className="text-slate-600 leading-relaxed">
-                {content.vision}
+                To ignite the limitless potential of a billion learners every day by giving them access to limitless skills and a truly transformative learning experience.
               </p>
             </div>
           </div>
         </div>
       </section>
 
+      {/* Founder Timeline Section */}
+      <section className="py-16 px-4 bg-white" data-testid="founder-timeline">
+        <div className="max-w-5xl mx-auto">
+          <h2 className="text-2xl md:text-3xl font-bold text-[#1E3A5F] text-center mb-12" style={{ fontFamily: 'Manrope, sans-serif' }}>
+            Our Journey
+          </h2>
+          
+          <div className="relative">
+            {/* Timeline Line */}
+            <div className="absolute left-8 md:left-1/2 top-0 bottom-0 w-0.5 bg-gradient-to-b from-[#D63031] to-[#1E3A5F] hidden md:block" />
+            
+            {FOUNDER_TIMELINE.map((item, index) => (
+              <div key={index} className={`relative flex flex-col md:flex-row gap-8 mb-12 ${index % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'}`}>
+                {/* Timeline dot */}
+                <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-[#D63031] border-4 border-white shadow-lg z-10" />
+                
+                {/* Content */}
+                <div className={`flex-1 ${index % 2 === 0 ? 'md:pr-12 md:text-right' : 'md:pl-12'}`}>
+                  <span className="inline-block px-4 py-1 rounded-full bg-[#D63031] text-white text-sm font-semibold mb-3">
+                    {item.year}
+                  </span>
+                  <h3 className="text-xl font-bold text-[#1E3A5F] mb-2">{item.title}</h3>
+                  <p className="text-slate-600 mb-4">{item.description}</p>
+                  
+                  {item.videoId && (
+                    <button
+                      onClick={() => setActiveVideo(item.videoId)}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#1E3A5F]/10 text-[#1E3A5F] hover:bg-[#1E3A5F]/20 transition-colors"
+                      data-testid={`watch-video-${index}`}
+                    >
+                      <Play className="w-4 h-4" />
+                      Watch: {item.videoTitle}
+                    </button>
+                  )}
+                </div>
+                
+                {/* Spacer for alternating layout */}
+                <div className="hidden md:block flex-1" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Video Modal */}
+      {activeVideo && (
+        <div 
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+          onClick={() => setActiveVideo(null)}
+        >
+          <div className="relative w-full max-w-4xl aspect-video bg-black rounded-2xl overflow-hidden">
+            <iframe
+              src={`https://www.youtube.com/embed/${activeVideo}?autoplay=1`}
+              title="YouTube video"
+              className="w-full h-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+            <button
+              onClick={() => setActiveVideo(null)}
+              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center text-white transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Our Team Section */}
+      <section className="py-16 px-4" data-testid="team-section">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-2xl md:text-3xl font-bold text-[#1E3A5F] text-center mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
+            Our Team
+          </h2>
+          <p className="text-slate-600 text-center mb-12 max-w-2xl mx-auto">
+            Meet the passionate leaders driving OLL's mission forward
+          </p>
+          
+          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+            {TEAM_MEMBERS.map((member, index) => (
+              <div key={index} className="glass-card rounded-3xl p-6 text-center hover:shadow-xl transition-shadow" data-testid={`team-member-${index}`}>
+                <div className="w-32 h-32 rounded-full overflow-hidden mx-auto mb-4 border-4 border-white shadow-lg">
+                  <img 
+                    src={member.image} 
+                    alt={member.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <h3 className="text-lg font-bold text-[#1E3A5F] mb-1">{member.name}</h3>
+                <p className="text-[#D63031] font-medium text-sm">{member.role}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Board of Advisors Section */}
+      <section className="py-16 px-4 bg-gradient-to-br from-[#1E3A5F] to-[#2d5a8f]" data-testid="advisors-section">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-2xl md:text-3xl font-bold text-white text-center mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
+            Board of Advisors
+          </h2>
+          <p className="text-white/70 text-center mb-12 max-w-2xl mx-auto">
+            Industry leaders and education experts guiding our vision
+          </p>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {ADVISORS.map((advisor, index) => (
+              <div key={index} className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 hover:bg-white/20 transition-colors" data-testid={`advisor-${index}`}>
+                <div className="flex items-start gap-4">
+                  <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-white/20">
+                    <img 
+                      src={advisor.image} 
+                      alt={advisor.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div>
+                    <h3 className="text-white font-bold mb-1">{advisor.name}</h3>
+                    <p className="text-[#D63031] text-sm font-medium mb-2">{advisor.title}</p>
+                    <p className="text-white/70 text-sm leading-relaxed">{advisor.description}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Our Investors Section */}
+      <section className="py-16 px-4 bg-white" data-testid="investors-section">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-2xl md:text-3xl font-bold text-[#1E3A5F] text-center mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
+            Our Investors
+          </h2>
+          <p className="text-slate-600 text-center mb-12 max-w-2xl mx-auto">
+            Backed by visionaries who believe in transforming education
+          </p>
+          
+          <div className="flex flex-wrap justify-center items-center gap-8">
+            <div className="glass-card rounded-2xl p-8 text-center">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#1E3A5F] to-[#D63031] flex items-center justify-center mx-auto mb-4">
+                <Building2 className="w-10 h-10 text-white" />
+              </div>
+              <p className="text-slate-600 text-sm">Angel Investors & Strategic Partners</p>
+            </div>
+            <div className="glass-card rounded-2xl p-8 text-center">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#D63031] to-[#1E3A5F] flex items-center justify-center mx-auto mb-4">
+                <GraduationCap className="w-10 h-10 text-white" />
+              </div>
+              <p className="text-slate-600 text-sm">EdTech Industry Leaders</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* What We Do */}
-      <section className="py-12 px-4 bg-white">
+      <section className="py-12 px-4">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-2xl md:text-3xl font-bold text-[#1E3A5F] text-center mb-8" style={{ fontFamily: 'Manrope, sans-serif' }}>
             What We Do
@@ -208,30 +413,12 @@ const AboutPage = () => {
               { icon: '🔬', title: 'Lab Setup', desc: 'Complete infrastructure' },
               { icon: '👨‍🏫', title: 'Teacher Training', desc: 'Certified programs' },
             ].map((item, i) => (
-              <div key={i} className="text-center p-4">
+              <div key={i} className="text-center p-4 glass-card rounded-2xl">
                 <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#1E3A5F] to-[#D63031] flex items-center justify-center mx-auto mb-3">
                   <span className="text-2xl">{item.icon}</span>
                 </div>
                 <h3 className="font-semibold text-[#1E3A5F] text-sm md:text-base">{item.title}</h3>
                 <p className="text-xs md:text-sm text-slate-500">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Media Features */}
-      <section className="py-12 px-4">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-2xl md:text-3xl font-bold text-[#1E3A5F] text-center mb-8" style={{ fontFamily: 'Manrope, sans-serif' }}>
-            Featured In
-          </h2>
-          <div className="grid md:grid-cols-3 gap-4">
-            {content.media_features.map((feature, index) => (
-              <div key={index} className="glass-card rounded-2xl p-6 text-center">
-                <Award className="w-10 h-10 text-[#D63031] mx-auto mb-4" />
-                <h3 className="font-semibold text-[#1E3A5F] mb-2">{feature.name}</h3>
-                <p className="text-sm text-slate-600">{feature.description}</p>
               </div>
             ))}
           </div>
@@ -485,26 +672,6 @@ const AboutPage = () => {
               </div>
             </form>
           )}
-        </div>
-      </section>
-
-      {/* Gallery */}
-      <section className="py-12 px-4 bg-white">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-2xl md:text-3xl font-bold text-[#1E3A5F] text-center mb-8" style={{ fontFamily: 'Manrope, sans-serif' }}>
-            Gallery
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {content.gallery_images.map((image, index) => (
-              <div key={index} className="aspect-square rounded-2xl overflow-hidden">
-                <img 
-                  src={image} 
-                  alt={`Gallery ${index + 1}`}
-                  className="w-full h-full object-cover hover:scale-110 transition-transform duration-500"
-                />
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 

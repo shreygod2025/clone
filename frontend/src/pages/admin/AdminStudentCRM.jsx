@@ -202,8 +202,16 @@ const AdminStudentCRM = () => {
                 {inquiry.skill && (
                   <p><span className="text-slate-400">Skill:</span> {inquiry.skill}</p>
                 )}
-                {inquiry.city && (
-                  <p><span className="text-slate-400">City:</span> {inquiry.city}</p>
+                {inquiry.learning_mode && (
+                  <p>
+                    <span className="text-slate-400">Mode:</span>{' '}
+                    <span className={`font-medium ${inquiry.learning_mode === 'offline' ? 'text-[#D63031]' : 'text-[#1E3A5F]'}`}>
+                      {inquiry.learning_mode === 'offline' ? 'Offline' : 'Online'}
+                    </span>
+                    {inquiry.learning_mode === 'offline' && inquiry.city && (
+                      <span className="text-slate-500"> • {inquiry.city}</span>
+                    )}
+                  </p>
                 )}
                 {inquiry.demo_date && (
                   <p className="flex items-center gap-1">
