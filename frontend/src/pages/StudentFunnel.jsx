@@ -539,12 +539,32 @@ const StudentFunnel = () => {
               />
             </div>
             
+            {/* Address field - only for offline at home */}
+            {formData.learning_mode === 'offline' && formData.offline_type === 'home' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Your Address * <span className="text-slate-400 font-normal">(for home visit)</span>
+                </label>
+                <Textarea
+                  placeholder="Enter your complete address including landmark, city, and pincode"
+                  value={formData.address}
+                  onChange={(e) => updateForm('address', e.target.value)}
+                  className="input-glass min-h-[80px]"
+                  data-testid="contact-address"
+                />
+              </div>
+            )}
+            
             {/* Summary */}
             <div className="bg-slate-50 rounded-xl p-4 mt-6">
               <h4 className="font-medium text-[#1E3A5F] mb-2">Demo Summary</h4>
               <div className="text-sm text-slate-600 space-y-1">
                 <p>📅 {formData.demo_date ? format(formData.demo_date, 'EEEE, MMMM d, yyyy') : ''} at {formData.demo_time}</p>
-                <p>📍 {formData.learning_mode === 'online' ? 'Online' : `Offline ${formData.offline_type === 'center' ? 'at OLL Center' : 'at Home'}`} in {formData.city}</p>
+                <p>📍 {formData.learning_mode === 'online' 
+                  ? 'Online' 
+                  : formData.offline_type === 'center' 
+                    ? `At ${formData.selected_center_name || 'OLL Center'}` 
+                    : 'At Your Home'} in {formData.city}</p>
                 <p>📚 {SKILL_OPTIONS.find(s => s.value === formData.skill)?.label}</p>
               </div>
             </div>
