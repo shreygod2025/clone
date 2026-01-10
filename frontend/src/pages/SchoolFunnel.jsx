@@ -209,16 +209,16 @@ const SchoolFunnel = () => {
     switch (STEPS[currentStep].id) {
       case 'board':
         return (
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             {BOARDS.map(option => (
               <div
                 key={option.value}
-                className={`selection-card p-5 ${formData.board === option.value ? 'selected' : ''}`}
+                className={`selection-card p-4 sm:p-5 ${formData.board === option.value ? 'selected' : ''}`}
                 onClick={() => updateForm('board', option.value)}
                 data-testid={`board-${option.value}`}
               >
-                <h3 className="font-semibold text-[#1E3A5F] text-lg">{option.label}</h3>
-                <p className="text-sm text-slate-500">{option.description}</p>
+                <h3 className="font-semibold text-[#1E3A5F] text-base sm:text-lg">{option.label}</h3>
+                <p className="text-xs sm:text-sm text-slate-500">{option.description}</p>
               </div>
             ))}
           </div>
@@ -226,15 +226,15 @@ const SchoolFunnel = () => {
 
       case 'location':
         return (
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
             {CITIES.map(city => (
               <div
                 key={city}
-                className={`selection-card text-center py-4 ${formData.location === city ? 'selected' : ''}`}
+                className={`selection-card text-center py-3 sm:py-4 px-2 ${formData.location === city ? 'selected' : ''}`}
                 onClick={() => updateForm('location', city)}
                 data-testid={`city-${city.toLowerCase()}`}
               >
-                <span className="font-medium text-[#1E3A5F]">{city}</span>
+                <span className="font-medium text-[#1E3A5F] text-sm sm:text-base">{city}</span>
               </div>
             ))}
           </div>
@@ -242,16 +242,16 @@ const SchoolFunnel = () => {
 
       case 'school_size':
         return (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             {SCHOOL_SIZES.map(option => (
               <div
                 key={option.value}
-                className={`selection-card p-5 ${formData.school_size === option.value ? 'selected' : ''}`}
+                className={`selection-card p-4 sm:p-5 ${formData.school_size === option.value ? 'selected' : ''}`}
                 onClick={() => updateForm('school_size', option.value)}
                 data-testid={`size-${option.value}`}
               >
-                <h3 className="font-semibold text-[#1E3A5F]">{option.label}</h3>
-                <p className="text-sm text-slate-500">{option.description}</p>
+                <h3 className="font-semibold text-[#1E3A5F] text-sm sm:text-base">{option.label}</h3>
+                <p className="text-xs sm:text-sm text-slate-500">{option.description}</p>
               </div>
             ))}
           </div>
@@ -259,16 +259,16 @@ const SchoolFunnel = () => {
 
       case 'fee_range':
         return (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             {FEE_RANGES.map(option => (
               <div
                 key={option.value}
-                className={`selection-card p-5 ${formData.fee_range === option.value ? 'selected' : ''}`}
+                className={`selection-card p-4 sm:p-5 ${formData.fee_range === option.value ? 'selected' : ''}`}
                 onClick={() => updateForm('fee_range', option.value)}
                 data-testid={`fee-${option.value}`}
               >
-                <h3 className="font-semibold text-[#1E3A5F]">{option.label}</h3>
-                <p className="text-sm text-slate-500">{option.description}</p>
+                <h3 className="font-semibold text-[#1E3A5F] text-sm sm:text-base">{option.label}</h3>
+                <p className="text-xs sm:text-sm text-slate-500">{option.description}</p>
               </div>
             ))}
           </div>
@@ -276,27 +276,27 @@ const SchoolFunnel = () => {
 
       case 'programs':
         return (
-          <div className="space-y-3">
-            <p className="text-slate-600 mb-2">Select all that apply</p>
+          <div className="space-y-2 sm:space-y-3">
+            <p className="text-slate-600 mb-2 text-sm sm:text-base">Select all that apply</p>
             {PROGRAMS.map(option => (
               <div
                 key={option.value}
-                className={`selection-card p-5 flex items-center gap-4 ${formData.programs_interested.includes(option.value) ? 'selected' : ''}`}
+                className={`selection-card p-3 sm:p-5 flex items-center gap-3 sm:gap-4 ${formData.programs_interested.includes(option.value) ? 'selected' : ''}`}
                 onClick={() => toggleArrayItem('programs_interested', option.value)}
                 data-testid={`program-${option.value}`}
               >
-                <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
+                <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg border-2 flex items-center justify-center transition-all flex-shrink-0 ${
                   formData.programs_interested.includes(option.value) 
                     ? 'bg-[#D63031] border-[#D63031]' 
                     : 'border-slate-300'
                 }`}>
                   {formData.programs_interested.includes(option.value) && (
-                    <Check className="w-4 h-4 text-white" />
+                    <Check className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
                   )}
                 </div>
-                <div>
-                  <h3 className="font-semibold text-[#1E3A5F]">{option.label}</h3>
-                  <p className="text-sm text-slate-500">{option.description}</p>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-[#1E3A5F] text-sm sm:text-base">{option.label}</h3>
+                  <p className="text-xs sm:text-sm text-slate-500 truncate">{option.description}</p>
                 </div>
               </div>
             ))}
@@ -305,27 +305,27 @@ const SchoolFunnel = () => {
 
       case 'support':
         return (
-          <div className="space-y-3">
-            <p className="text-slate-600 mb-2">Select all that apply</p>
+          <div className="space-y-2 sm:space-y-3">
+            <p className="text-slate-600 mb-2 text-sm sm:text-base">Select all that apply</p>
             {SUPPORT_OPTIONS.map(option => (
               <div
                 key={option.value}
-                className={`selection-card p-5 flex items-center gap-4 ${formData.support_needed.includes(option.value) ? 'selected' : ''}`}
+                className={`selection-card p-3 sm:p-5 flex items-center gap-3 sm:gap-4 ${formData.support_needed.includes(option.value) ? 'selected' : ''}`}
                 onClick={() => toggleArrayItem('support_needed', option.value)}
                 data-testid={`support-${option.value}`}
               >
-                <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
+                <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg border-2 flex items-center justify-center transition-all flex-shrink-0 ${
                   formData.support_needed.includes(option.value) 
                     ? 'bg-[#D63031] border-[#D63031]' 
                     : 'border-slate-300'
                 }`}>
                   {formData.support_needed.includes(option.value) && (
-                    <Check className="w-4 h-4 text-white" />
+                    <Check className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
                   )}
                 </div>
-                <div>
-                  <h3 className="font-semibold text-[#1E3A5F]">{option.label}</h3>
-                  <p className="text-sm text-slate-500">{option.description}</p>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-[#1E3A5F] text-sm sm:text-base">{option.label}</h3>
+                  <p className="text-xs sm:text-sm text-slate-500 truncate">{option.description}</p>
                 </div>
               </div>
             ))}
@@ -349,14 +349,14 @@ const SchoolFunnel = () => {
       case 'meeting_time':
         return (
           <div>
-            <p className="text-center text-slate-600 mb-4">
+            <p className="text-center text-slate-600 mb-4 text-sm sm:text-base">
               Selected: {formData.meeting_date ? format(formData.meeting_date, 'EEEE, MMMM d') : ''}
             </p>
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3">
               {TIME_SLOTS.map(time => (
                 <div
                   key={time}
-                  className={`p-4 rounded-xl border-2 text-center cursor-pointer transition-all ${
+                  className={`p-3 sm:p-4 rounded-xl border-2 text-center cursor-pointer transition-all ${
                     formData.meeting_time === time 
                       ? 'border-[#D63031] bg-red-50 text-[#D63031]' 
                       : 'border-slate-200 hover:border-slate-300'
@@ -364,8 +364,8 @@ const SchoolFunnel = () => {
                   onClick={() => updateForm('meeting_time', time)}
                   data-testid={`time-${time.replace(':', '')}`}
                 >
-                  <Clock className="w-5 h-5 mx-auto mb-1" />
-                  <span className="font-medium">{time}</span>
+                  <Clock className="w-4 h-4 sm:w-5 sm:h-5 mx-auto mb-1" />
+                  <span className="font-medium text-sm sm:text-base">{time}</span>
                 </div>
               ))}
             </div>
