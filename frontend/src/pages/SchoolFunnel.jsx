@@ -1,21 +1,24 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, Building2, Users, Award, Wrench, Send } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Building2, Users, Award, Clock, Calendar, Send } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
+import { Calendar as CalendarComponent } from '../components/ui/calendar';
 import { toast } from 'sonner';
 import axios from 'axios';
+import { format, addDays } from 'date-fns';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const STEPS = [
-  { id: 'school_name', title: 'School Name' },
   { id: 'board', title: 'Board' },
   { id: 'location', title: 'Location' },
   { id: 'school_size', title: 'School Size' },
   { id: 'fee_range', title: 'Fee Range' },
   { id: 'programs', title: 'Programs Interested In' },
   { id: 'support', title: 'Support Needed' },
+  { id: 'meeting_date', title: 'Schedule Meeting - Select Date' },
+  { id: 'meeting_time', title: 'Schedule Meeting - Select Time' },
   { id: 'contact', title: 'Contact Details' },
 ];
 
@@ -60,6 +63,8 @@ const SUPPORT_OPTIONS = [
   { value: 'training', label: 'Teacher Training', description: 'Faculty development' },
 ];
 
+const TIME_SLOTS = ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'];
+
 const SchoolFunnel = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
@@ -74,6 +79,8 @@ const SchoolFunnel = () => {
     fee_range: '',
     programs_interested: [],
     support_needed: [],
+    meeting_date: null,
+    meeting_time: '',
     contact_name: '',
     phone: '',
   });
@@ -93,14 +100,15 @@ const SchoolFunnel = () => {
 
   const canProceed = () => {
     switch (STEPS[currentStep].id) {
-      case 'school_name': return formData.school_name.trim();
       case 'board': return formData.board;
       case 'location': return formData.location;
       case 'school_size': return formData.school_size;
       case 'fee_range': return formData.fee_range;
       case 'programs': return formData.programs_interested.length > 0;
       case 'support': return formData.support_needed.length > 0;
-      case 'contact': return formData.contact_name && formData.phone;
+      case 'meeting_date': return formData.meeting_date;
+      case 'meeting_time': return formData.meeting_time;
+      case 'contact': return formData.school_name && formData.contact_name && formData.phone;
       default: return false;
     }
   };
@@ -151,11 +159,18 @@ const SchoolFunnel = () => {
             <Check className="w-10 h-10 text-green-600" />
           </div>
           <h2 className="text-2xl md:text-3xl font-bold text-[#1E3A5F] mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
-            Inquiry Submitted!
+            Meeting Scheduled!
           </h2>
-          <p className="text-slate-600 mb-6">
-            Thank you for your interest in partnering with OLL. Our school partnerships team will contact you within 24-48 hours.
+          <p className="text-slate-600 mb-4">
+            Thank you for your interest in partnering with OLL.
           </p>
+          
+          <div className="bg-slate-50 rounded-xl p-4 mb-6 text-left">
+            <p className="text-sm text-slate-500 mb-1">Meeting scheduled for</p>
+            <p className="font-semibold text-[#1E3A5F]">
+              {formData.meeting_date ? format(formData.meeting_date, 'EEEE, MMMM d, yyyy') : ''} at {formData.meeting_time}
+            </p>
+          </div>
           
           {/* Credibility Section */}
           <div className="bg-slate-50 rounded-xl p-6 mb-6 text-left">
@@ -192,21 +207,6 @@ const SchoolFunnel = () => {
 
   const renderStep = () => {
     switch (STEPS[currentStep].id) {
-      case 'school_name':
-        return (
-          <div className="space-y-4">
-            <p className="text-slate-600 mb-4">Enter your school's name</p>
-            <Input
-              placeholder="e.g., Delhi Public School"
-              value={formData.school_name}
-              onChange={(e) => updateForm('school_name', e.target.value)}
-              className="input-glass text-lg h-14"
-              data-testid="school-name-input"
-              autoFocus
-            />
-          </div>
-        );
-
       case 'board':
         return (
           <div className="space-y-3">
@@ -332,9 +332,59 @@ const SchoolFunnel = () => {
           </div>
         );
 
+      case 'meeting_date':
+        return (
+          <div className="flex justify-center">
+            <CalendarComponent
+              mode="single"
+              selected={formData.meeting_date}
+              onSelect={(date) => updateForm('meeting_date', date)}
+              disabled={(date) => date < new Date() || date > addDays(new Date(), 14) || date.getDay() === 0}
+              className="rounded-xl border border-slate-200"
+              data-testid="meeting-calendar"
+            />
+          </div>
+        );
+
+      case 'meeting_time':
+        return (
+          <div>
+            <p className="text-center text-slate-600 mb-4">
+              Selected: {formData.meeting_date ? format(formData.meeting_date, 'EEEE, MMMM d') : ''}
+            </p>
+            <div className="grid grid-cols-4 gap-3">
+              {TIME_SLOTS.map(time => (
+                <div
+                  key={time}
+                  className={`p-4 rounded-xl border-2 text-center cursor-pointer transition-all ${
+                    formData.meeting_time === time 
+                      ? 'border-[#D63031] bg-red-50 text-[#D63031]' 
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                  onClick={() => updateForm('meeting_time', time)}
+                  data-testid={`time-${time.replace(':', '')}`}
+                >
+                  <Clock className="w-5 h-5 mx-auto mb-1" />
+                  <span className="font-medium">{time}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+
       case 'contact':
         return (
           <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">School Name</label>
+              <Input
+                placeholder="Enter school name"
+                value={formData.school_name}
+                onChange={(e) => updateForm('school_name', e.target.value)}
+                className="input-glass"
+                data-testid="school-name"
+              />
+            </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Contact Person Name</label>
               <Input
@@ -396,7 +446,7 @@ const SchoolFunnel = () => {
                   {index < STEPS.length - 1 && (
                     <div className={`w-full h-1 mx-1 rounded ${
                       index < currentStep ? 'bg-[#1E3A5F]' : 'bg-slate-200'
-                    }`} style={{ width: '16px' }} />
+                    }`} style={{ width: '12px' }} />
                   )}
                 </div>
               ))}
@@ -443,7 +493,7 @@ const SchoolFunnel = () => {
                   className="btn-primary flex items-center gap-2"
                   data-testid="submit-btn"
                 >
-                  {submitting ? 'Submitting...' : 'Submit Inquiry'}
+                  {submitting ? 'Submitting...' : 'Schedule Meeting'}
                   <Send className="w-4 h-4" />
                 </Button>
               )}
