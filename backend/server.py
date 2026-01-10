@@ -341,6 +341,65 @@ class DemoSlot(BaseModel):
     is_available: bool = True
     booked_by: Optional[str] = None
 
+# City Models
+class City(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    state: str = ""
+    is_active: bool = True
+    has_center: bool = False
+    order: int = 0
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class CityCreate(BaseModel):
+    name: str
+    state: str = ""
+    is_active: bool = True
+    has_center: bool = False
+    order: int = 0
+
+class CityUpdate(BaseModel):
+    name: Optional[str] = None
+    state: Optional[str] = None
+    is_active: Optional[bool] = None
+    has_center: Optional[bool] = None
+    order: Optional[int] = None
+
+# Center Models
+class Center(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    city: str
+    area: str
+    address: str
+    contact_phone: str
+    contact_email: str = ""
+    google_maps_link: str = ""
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class CenterCreate(BaseModel):
+    name: str
+    city: str
+    area: str
+    address: str
+    contact_phone: str
+    contact_email: str = ""
+    google_maps_link: str = ""
+    is_active: bool = True
+
+class CenterUpdate(BaseModel):
+    name: Optional[str] = None
+    city: Optional[str] = None
+    area: Optional[str] = None
+    address: Optional[str] = None
+    contact_phone: Optional[str] = None
+    contact_email: Optional[str] = None
+    google_maps_link: Optional[str] = None
+    is_active: Optional[bool] = None
+
 # ========================
 # HELPER FUNCTIONS
 # ========================
