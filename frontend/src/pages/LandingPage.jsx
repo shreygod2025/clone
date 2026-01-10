@@ -38,44 +38,6 @@ const LandingPage = () => {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <Navbar />
-              <img 
-                src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png" 
-                alt="OLL" 
-                className="h-10"
-              />
-            </Link>
-            
-            {/* Desktop Nav */}
-            <div className="hidden md:flex items-center gap-8">
-              <Link to="/courses" className="text-slate-600 hover:text-[#1E3A5F] font-medium transition-colors">Courses</Link>
-              <Link to="/about" className="text-slate-600 hover:text-[#1E3A5F] font-medium transition-colors">About</Link>
-              <Link to="/centers" className="text-slate-600 hover:text-[#1E3A5F] font-medium transition-colors">Centers</Link>
-              <Link to="/blogs" className="text-slate-600 hover:text-[#1E3A5F] font-medium transition-colors">Blog</Link>
-              <Link to="/faq" className="text-slate-600 hover:text-[#1E3A5F] font-medium transition-colors">FAQ</Link>
-            </div>
-
-            {/* Mobile Menu Button */}
-            <button 
-              className="md:hidden p-2"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              data-testid="mobile-menu-btn"
-            >
-              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden bg-white border-t border-slate-200 py-4 px-4 space-y-3 animate-slide-up">
-            <Link to="/courses" className="block py-2 text-slate-600 hover:text-[#1E3A5F]">Courses</Link>
-            <Link to="/about" className="block py-2 text-slate-600 hover:text-[#1E3A5F]">About</Link>
-            <Link to="/centers" className="block py-2 text-slate-600 hover:text-[#1E3A5F]">Centers</Link>
-            <Link to="/blogs" className="block py-2 text-slate-600 hover:text-[#1E3A5F]">Blog</Link>
-            <Link to="/faq" className="block py-2 text-slate-600 hover:text-[#1E3A5F]">FAQ</Link>
-          </div>
-        )}
-      </nav>
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col px-4 py-4 md:py-6">
