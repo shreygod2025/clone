@@ -165,10 +165,13 @@ class EducatorApplication(BaseModel):
     city: str
     availability: str
     demo_ready: bool = False
-    requirement_id: Optional[str] = None  # Link to specific requirement if applying to one
+    requirement_id: Optional[str] = None
     requirement_title: Optional[str] = None
-    status: str = "new"  # new, reviewed, interview_scheduled, approved, rejected
+    status: str = "new"  # new, demo_scheduled, demo_completed, onboarded, archived
     notes: str = ""
+    demo_date: Optional[str] = None
+    demo_time: Optional[str] = None
+    onboarding_date: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -188,6 +191,9 @@ class EducatorApplicationCreate(BaseModel):
 class EducatorApplicationUpdate(BaseModel):
     status: Optional[str] = None
     notes: Optional[str] = None
+    demo_date: Optional[str] = None
+    demo_time: Optional[str] = None
+    onboarding_date: Optional[str] = None
 
 # Open Requirements Models
 class OpenRequirement(BaseModel):
