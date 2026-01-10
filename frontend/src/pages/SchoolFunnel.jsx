@@ -1,40 +1,30 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Check, Building2, Users, Award, Wrench, HelpCircle, Send } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Building2, Users, Award, Wrench, Send } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { Checkbox } from '../components/ui/checkbox';
 import { toast } from 'sonner';
 import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-const PROGRAMS = [
-  { value: 'stem', label: 'STEM / Robotics' },
-  { value: 'ai', label: 'AI & Coding' },
-  { value: 'entrepreneurship', label: 'Entrepreneurship' },
-  { value: 'financial', label: 'Financial Literacy' },
+const STEPS = [
+  { id: 'school_name', title: 'School Name' },
+  { id: 'board', title: 'Board' },
+  { id: 'location', title: 'Location' },
+  { id: 'school_size', title: 'School Size' },
+  { id: 'fee_range', title: 'Fee Range' },
+  { id: 'programs', title: 'Programs Interested In' },
+  { id: 'support', title: 'Support Needed' },
+  { id: 'contact', title: 'Contact Details' },
 ];
 
-const SUPPORT_OPTIONS = [
-  { value: 'curriculum', label: 'Curriculum Design' },
-  { value: 'lab', label: 'Lab Setup' },
-  { value: 'competitions', label: 'Competitions' },
-  { value: 'training', label: 'Teacher Training' },
-];
-
-const SCHOOL_SIZES = [
-  'Under 500 students',
-  '500-1000 students',
-  '1000-2000 students',
-  '2000+ students'
-];
-
-const FEE_RANGES = [
-  'Under ₹50,000/year',
-  '₹50,000 - ₹1,00,000/year',
-  '₹1,00,000 - ₹2,00,000/year',
-  'Above ₹2,00,000/year'
+const BOARDS = [
+  { value: 'cbse', label: 'CBSE', description: 'Central Board of Secondary Education' },
+  { value: 'icse', label: 'ICSE', description: 'Indian Certificate of Secondary Education' },
+  { value: 'igcse', label: 'IGCSE', description: 'International General Certificate' },
+  { value: 'state', label: 'State Board', description: 'State Education Board' },
+  { value: 'ib', label: 'IB', description: 'International Baccalaureate' },
 ];
 
 const CITIES = [
@@ -42,55 +32,112 @@ const CITIES = [
   'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow', 'Chandigarh', 'Kochi'
 ];
 
+const SCHOOL_SIZES = [
+  { value: 'under_500', label: 'Under 500 students', description: 'Small school' },
+  { value: '500_1000', label: '500-1000 students', description: 'Medium school' },
+  { value: '1000_2000', label: '1000-2000 students', description: 'Large school' },
+  { value: '2000_plus', label: '2000+ students', description: 'Very large school' },
+];
+
+const FEE_RANGES = [
+  { value: 'under_50k', label: 'Under ₹50,000/year', description: 'Budget friendly' },
+  { value: '50k_1l', label: '₹50,000 - ₹1,00,000/year', description: 'Mid range' },
+  { value: '1l_2l', label: '₹1,00,000 - ₹2,00,000/year', description: 'Premium' },
+  { value: 'above_2l', label: 'Above ₹2,00,000/year', description: 'Premium Plus' },
+];
+
+const PROGRAMS = [
+  { value: 'stem', label: 'STEM / Robotics', description: 'Hands-on science & tech' },
+  { value: 'coding', label: 'Coding & AI', description: 'Programming skills' },
+  { value: 'entrepreneurship', label: 'Entrepreneurship', description: 'Business mindset' },
+  { value: 'financial', label: 'Financial Literacy', description: 'Money management' },
+];
+
+const SUPPORT_OPTIONS = [
+  { value: 'curriculum', label: 'Curriculum Design', description: 'Course structure & content' },
+  { value: 'lab', label: 'Lab Setup', description: 'Infrastructure & equipment' },
+  { value: 'competitions', label: 'Competitions', description: 'Events & championships' },
+  { value: 'training', label: 'Teacher Training', description: 'Faculty development' },
+];
+
 const SchoolFunnel = () => {
   const navigate = useNavigate();
+  const [currentStep, setCurrentStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   
   const [formData, setFormData] = useState({
     school_name: '',
-    contact_name: '',
-    email: '',
-    phone: '',
+    board: '',
     location: '',
     school_size: '',
     fee_range: '',
     programs_interested: [],
     support_needed: [],
+    contact_name: '',
+    phone: '',
   });
 
-  const toggleProgram = (program) => {
+  const updateForm = (key, value) => {
+    setFormData(prev => ({ ...prev, [key]: value }));
+  };
+
+  const toggleArrayItem = (key, value) => {
     setFormData(prev => ({
       ...prev,
-      programs_interested: prev.programs_interested.includes(program)
-        ? prev.programs_interested.filter(p => p !== program)
-        : [...prev.programs_interested, program]
+      [key]: prev[key].includes(value)
+        ? prev[key].filter(v => v !== value)
+        : [...prev[key], value]
     }));
   };
 
-  const toggleSupport = (support) => {
-    setFormData(prev => ({
-      ...prev,
-      support_needed: prev.support_needed.includes(support)
-        ? prev.support_needed.filter(s => s !== support)
-        : [...prev.support_needed, support]
-    }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!formData.school_name || !formData.email || !formData.phone) {
-      toast.error('Please fill all required fields');
-      return;
+  const canProceed = () => {
+    switch (STEPS[currentStep].id) {
+      case 'school_name': return formData.school_name.trim();
+      case 'board': return formData.board;
+      case 'location': return formData.location;
+      case 'school_size': return formData.school_size;
+      case 'fee_range': return formData.fee_range;
+      case 'programs': return formData.programs_interested.length > 0;
+      case 'support': return formData.support_needed.length > 0;
+      case 'contact': return formData.contact_name && formData.phone;
+      default: return false;
     }
-    
+  };
+
+  const handleNext = () => {
+    if (currentStep < STEPS.length - 1) {
+      setCurrentStep(prev => prev + 1);
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep > 0) {
+      setCurrentStep(prev => prev - 1);
+    } else {
+      navigate('/');
+    }
+  };
+
+  const handleSubmit = async () => {
     setSubmitting(true);
     try {
-      await axios.post(`${API}/schools/inquiry`, formData);
+      await axios.post(`${API}/schools/inquiry`, {
+        school_name: formData.school_name,
+        contact_name: formData.contact_name,
+        email: `${formData.phone}@school.oll`,
+        phone: formData.phone,
+        location: formData.location,
+        school_size: formData.school_size,
+        fee_range: formData.fee_range,
+        programs_interested: formData.programs_interested,
+        support_needed: formData.support_needed,
+        board: formData.board,
+      });
       setSubmitted(true);
       toast.success('Inquiry submitted successfully!');
     } catch (error) {
-      toast.error('Failed to submit inquiry. Please try again.');
+      toast.error('Something went wrong. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -107,7 +154,7 @@ const SchoolFunnel = () => {
             Inquiry Submitted!
           </h2>
           <p className="text-slate-600 mb-6">
-            Thank you for your interest in partnering with OLL. Our school partnerships team will contact you within 24-48 hours to schedule a discussion.
+            Thank you for your interest in partnering with OLL. Our school partnerships team will contact you within 24-48 hours.
           </p>
           
           {/* Credibility Section */}
@@ -143,10 +190,183 @@ const SchoolFunnel = () => {
     );
   }
 
+  const renderStep = () => {
+    switch (STEPS[currentStep].id) {
+      case 'school_name':
+        return (
+          <div className="space-y-4">
+            <p className="text-slate-600 mb-4">Enter your school's name</p>
+            <Input
+              placeholder="e.g., Delhi Public School"
+              value={formData.school_name}
+              onChange={(e) => updateForm('school_name', e.target.value)}
+              className="input-glass text-lg h-14"
+              data-testid="school-name-input"
+              autoFocus
+            />
+          </div>
+        );
+
+      case 'board':
+        return (
+          <div className="space-y-3">
+            {BOARDS.map(option => (
+              <div
+                key={option.value}
+                className={`selection-card p-5 ${formData.board === option.value ? 'selected' : ''}`}
+                onClick={() => updateForm('board', option.value)}
+                data-testid={`board-${option.value}`}
+              >
+                <h3 className="font-semibold text-[#1E3A5F] text-lg">{option.label}</h3>
+                <p className="text-sm text-slate-500">{option.description}</p>
+              </div>
+            ))}
+          </div>
+        );
+
+      case 'location':
+        return (
+          <div className="grid grid-cols-3 gap-3">
+            {CITIES.map(city => (
+              <div
+                key={city}
+                className={`selection-card text-center py-4 ${formData.location === city ? 'selected' : ''}`}
+                onClick={() => updateForm('location', city)}
+                data-testid={`city-${city.toLowerCase()}`}
+              >
+                <span className="font-medium text-[#1E3A5F]">{city}</span>
+              </div>
+            ))}
+          </div>
+        );
+
+      case 'school_size':
+        return (
+          <div className="grid grid-cols-2 gap-4">
+            {SCHOOL_SIZES.map(option => (
+              <div
+                key={option.value}
+                className={`selection-card p-5 ${formData.school_size === option.value ? 'selected' : ''}`}
+                onClick={() => updateForm('school_size', option.value)}
+                data-testid={`size-${option.value}`}
+              >
+                <h3 className="font-semibold text-[#1E3A5F]">{option.label}</h3>
+                <p className="text-sm text-slate-500">{option.description}</p>
+              </div>
+            ))}
+          </div>
+        );
+
+      case 'fee_range':
+        return (
+          <div className="grid grid-cols-2 gap-4">
+            {FEE_RANGES.map(option => (
+              <div
+                key={option.value}
+                className={`selection-card p-5 ${formData.fee_range === option.value ? 'selected' : ''}`}
+                onClick={() => updateForm('fee_range', option.value)}
+                data-testid={`fee-${option.value}`}
+              >
+                <h3 className="font-semibold text-[#1E3A5F]">{option.label}</h3>
+                <p className="text-sm text-slate-500">{option.description}</p>
+              </div>
+            ))}
+          </div>
+        );
+
+      case 'programs':
+        return (
+          <div className="space-y-3">
+            <p className="text-slate-600 mb-2">Select all that apply</p>
+            {PROGRAMS.map(option => (
+              <div
+                key={option.value}
+                className={`selection-card p-5 flex items-center gap-4 ${formData.programs_interested.includes(option.value) ? 'selected' : ''}`}
+                onClick={() => toggleArrayItem('programs_interested', option.value)}
+                data-testid={`program-${option.value}`}
+              >
+                <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
+                  formData.programs_interested.includes(option.value) 
+                    ? 'bg-[#D63031] border-[#D63031]' 
+                    : 'border-slate-300'
+                }`}>
+                  {formData.programs_interested.includes(option.value) && (
+                    <Check className="w-4 h-4 text-white" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="font-semibold text-[#1E3A5F]">{option.label}</h3>
+                  <p className="text-sm text-slate-500">{option.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+
+      case 'support':
+        return (
+          <div className="space-y-3">
+            <p className="text-slate-600 mb-2">Select all that apply</p>
+            {SUPPORT_OPTIONS.map(option => (
+              <div
+                key={option.value}
+                className={`selection-card p-5 flex items-center gap-4 ${formData.support_needed.includes(option.value) ? 'selected' : ''}`}
+                onClick={() => toggleArrayItem('support_needed', option.value)}
+                data-testid={`support-${option.value}`}
+              >
+                <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
+                  formData.support_needed.includes(option.value) 
+                    ? 'bg-[#D63031] border-[#D63031]' 
+                    : 'border-slate-300'
+                }`}>
+                  {formData.support_needed.includes(option.value) && (
+                    <Check className="w-4 h-4 text-white" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="font-semibold text-[#1E3A5F]">{option.label}</h3>
+                  <p className="text-sm text-slate-500">{option.description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+
+      case 'contact':
+        return (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Contact Person Name</label>
+              <Input
+                placeholder="Enter your name"
+                value={formData.contact_name}
+                onChange={(e) => updateForm('contact_name', e.target.value)}
+                className="input-glass"
+                data-testid="contact-name"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Phone Number</label>
+              <Input
+                placeholder="Enter phone number"
+                value={formData.phone}
+                onChange={(e) => updateForm('phone', e.target.value)}
+                className="input-glass"
+                data-testid="contact-phone"
+              />
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-slate-200/50">
+      <header className="bg-white/80 backdrop-blur-lg border-b border-slate-200/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <Link to="/" className="flex items-center gap-2">
@@ -156,207 +376,77 @@ const SchoolFunnel = () => {
                 className="h-8"
               />
             </Link>
-            <Link 
-              to="/faq"
-              className="flex items-center gap-2 text-slate-600 hover:text-[#1E3A5F] transition-colors"
-            >
-              <HelpCircle className="w-5 h-5" />
-              <span className="hidden sm:inline">Need Help?</span>
-            </Link>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="pt-24 pb-12 px-4">
-        <div className="max-w-4xl mx-auto">
-          {/* Hero */}
-          <div className="text-center mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold text-[#1E3A5F] mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
-              Bring Future Skills to Your School
-            </h1>
-            <p className="text-slate-600 max-w-2xl mx-auto">
-              Partner with OLL to implement world-class skill education programs — without operational hassle.
+      <main className="pt-8 pb-12 px-4">
+        <div className="max-w-2xl mx-auto">
+          {/* Progress Bar */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              {STEPS.map((step, index) => (
+                <div key={step.id} className="flex items-center">
+                  <div className={`step-indicator ${
+                    index < currentStep ? 'completed' : index === currentStep ? 'active' : 'pending'
+                  }`}>
+                    {index < currentStep ? <Check className="w-5 h-5" /> : index + 1}
+                  </div>
+                  {index < STEPS.length - 1 && (
+                    <div className={`w-full h-1 mx-1 rounded ${
+                      index < currentStep ? 'bg-[#1E3A5F]' : 'bg-slate-200'
+                    }`} style={{ width: '16px' }} />
+                  )}
+                </div>
+              ))}
+            </div>
+            <p className="text-center text-sm text-slate-500">
+              Step {currentStep + 1} of {STEPS.length}
             </p>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="glass-card rounded-3xl p-6 md:p-8">
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* School Info */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-[#1E3A5F] text-lg flex items-center gap-2">
-                  <Building2 className="w-5 h-5" /> School Information
-                </h3>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">School Name *</label>
-                  <Input
-                    placeholder="Enter school name"
-                    value={formData.school_name}
-                    onChange={(e) => setFormData({...formData, school_name: e.target.value})}
-                    className="input-glass"
-                    data-testid="school-name"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Contact Person Name *</label>
-                  <Input
-                    placeholder="Enter contact person name"
-                    value={formData.contact_name}
-                    onChange={(e) => setFormData({...formData, contact_name: e.target.value})}
-                    className="input-glass"
-                    data-testid="contact-name"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Email *</label>
-                  <Input
-                    type="email"
-                    placeholder="Enter email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({...formData, email: e.target.value})}
-                    className="input-glass"
-                    data-testid="school-email"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Phone *</label>
-                  <Input
-                    placeholder="Enter phone number"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                    className="input-glass"
-                    data-testid="school-phone"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Location</label>
-                  <select
-                    value={formData.location}
-                    onChange={(e) => setFormData({...formData, location: e.target.value})}
-                    className="w-full h-12 px-4 bg-white/50 backdrop-blur-sm border border-slate-200 rounded-xl focus:border-[#1E3A5F] focus:outline-none"
-                    data-testid="school-location"
-                  >
-                    <option value="">Select City</option>
-                    {CITIES.map(city => (
-                      <option key={city} value={city}>{city}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+          {/* Step Card */}
+          <div className="glass-card rounded-3xl p-6 md:p-8 animate-fade-in">
+            <h2 className="text-xl md:text-2xl font-bold text-[#1E3A5F] mb-6" style={{ fontFamily: 'Manrope, sans-serif' }}>
+              {STEPS[currentStep].title}
+            </h2>
+            
+            {renderStep()}
 
-              {/* Requirements */}
-              <div className="space-y-4">
-                <h3 className="font-semibold text-[#1E3A5F] text-lg flex items-center gap-2">
-                  <Wrench className="w-5 h-5" /> Requirements
-                </h3>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">School Size</label>
-                  <select
-                    value={formData.school_size}
-                    onChange={(e) => setFormData({...formData, school_size: e.target.value})}
-                    className="w-full h-12 px-4 bg-white/50 backdrop-blur-sm border border-slate-200 rounded-xl focus:border-[#1E3A5F] focus:outline-none"
-                    data-testid="school-size"
-                  >
-                    <option value="">Select Size</option>
-                    {SCHOOL_SIZES.map(size => (
-                      <option key={size} value={size}>{size}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Fee Range</label>
-                  <select
-                    value={formData.fee_range}
-                    onChange={(e) => setFormData({...formData, fee_range: e.target.value})}
-                    className="w-full h-12 px-4 bg-white/50 backdrop-blur-sm border border-slate-200 rounded-xl focus:border-[#1E3A5F] focus:outline-none"
-                    data-testid="school-fee-range"
-                  >
-                    <option value="">Select Fee Range</option>
-                    {FEE_RANGES.map(fee => (
-                      <option key={fee} value={fee}>{fee}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Programs Interested In</label>
-                  <div className="space-y-2">
-                    {PROGRAMS.map(program => (
-                      <div key={program.value} className="flex items-center gap-3">
-                        <Checkbox
-                          id={program.value}
-                          checked={formData.programs_interested.includes(program.value)}
-                          onCheckedChange={() => toggleProgram(program.value)}
-                          data-testid={`program-${program.value}`}
-                        />
-                        <label htmlFor={program.value} className="text-sm text-slate-600 cursor-pointer">
-                          {program.label}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Support Needed</label>
-                  <div className="space-y-2">
-                    {SUPPORT_OPTIONS.map(support => (
-                      <div key={support.value} className="flex items-center gap-3">
-                        <Checkbox
-                          id={support.value}
-                          checked={formData.support_needed.includes(support.value)}
-                          onCheckedChange={() => toggleSupport(support.value)}
-                          data-testid={`support-${support.value}`}
-                        />
-                        <label htmlFor={support.value} className="text-sm text-slate-600 cursor-pointer">
-                          {support.label}
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-between items-center mt-8 pt-6 border-t border-slate-200">
+            {/* Navigation Buttons */}
+            <div className="flex items-center justify-between mt-8 pt-6 border-t border-slate-200">
               <Button
-                type="button"
                 variant="ghost"
-                onClick={() => navigate('/')}
+                onClick={handleBack}
                 className="flex items-center gap-2"
                 data-testid="back-btn"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Back
               </Button>
-              <Button
-                type="submit"
-                disabled={submitting}
-                className="btn-primary flex items-center gap-2"
-                data-testid="submit-inquiry-btn"
-              >
-                {submitting ? 'Submitting...' : 'Schedule Discussion'}
-                <Send className="w-4 h-4" />
-              </Button>
-            </div>
-          </form>
-
-          {/* Trust Section */}
-          <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="glass-card rounded-xl p-4 text-center">
-              <div className="text-2xl font-bold text-[#D63031]">500+</div>
-              <div className="text-sm text-slate-500">Partner Schools</div>
-            </div>
-            <div className="glass-card rounded-xl p-4 text-center">
-              <div className="text-2xl font-bold text-[#D63031]">50,000+</div>
-              <div className="text-sm text-slate-500">Students</div>
-            </div>
-            <div className="glass-card rounded-xl p-4 text-center">
-              <div className="text-2xl font-bold text-[#D63031]">100+</div>
-              <div className="text-sm text-slate-500">Cities</div>
-            </div>
-            <div className="glass-card rounded-xl p-4 text-center">
-              <div className="text-2xl font-bold text-[#D63031]">95%</div>
-              <div className="text-sm text-slate-500">Satisfaction</div>
+              
+              {currentStep < STEPS.length - 1 ? (
+                <Button
+                  onClick={handleNext}
+                  disabled={!canProceed()}
+                  className="btn-primary flex items-center gap-2"
+                  data-testid="next-btn"
+                >
+                  Next
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleSubmit}
+                  disabled={!canProceed() || submitting}
+                  className="btn-primary flex items-center gap-2"
+                  data-testid="submit-btn"
+                >
+                  {submitting ? 'Submitting...' : 'Submit Inquiry'}
+                  <Send className="w-4 h-4" />
+                </Button>
+              )}
             </div>
           </div>
         </div>
