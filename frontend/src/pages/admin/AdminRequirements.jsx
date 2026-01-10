@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Plus, Edit2, Trash2, Briefcase, MapPin, Users } from 'lucide-react';
+import { Plus, Edit2, Trash2, Briefcase, MapPin, Users, Clock, Calendar, IndianRupee } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Textarea } from '../../components/ui/textarea';
@@ -17,6 +17,7 @@ const CITIES = [
   'Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 
   'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow', 'Chandigarh', 'Kochi'
 ];
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 const AdminRequirements = () => {
   const { getAuthHeaders } = useAuth();
@@ -31,6 +32,11 @@ const AdminRequirements = () => {
     description: '',
     requirements: '',
     positions: 1,
+    days: [],
+    timing_from: '',
+    timing_to: '',
+    pay_per_session: '',
+    pay_type: 'per_session',
     is_active: true
   });
 
@@ -50,6 +56,15 @@ const AdminRequirements = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleDay = (day) => {
+    setFormData(prev => ({
+      ...prev,
+      days: prev.days.includes(day) 
+        ? prev.days.filter(d => d !== day)
+        : [...prev.days, day]
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -103,6 +118,11 @@ const AdminRequirements = () => {
       description: '',
       requirements: '',
       positions: 1,
+      days: [],
+      timing_from: '',
+      timing_to: '',
+      pay_per_session: '',
+      pay_type: 'per_session',
       is_active: true
     });
   };
@@ -116,9 +136,21 @@ const AdminRequirements = () => {
       description: req.description,
       requirements: req.requirements,
       positions: req.positions,
+      days: req.days || [],
+      timing_from: req.timing_from || '',
+      timing_to: req.timing_to || '',
+      pay_per_session: req.pay_per_session || '',
+      pay_type: req.pay_type || 'per_session',
       is_active: req.is_active
     });
     setShowForm(true);
+  };
+
+  const formatDays = (days) => {
+    if (!days || days.length === 0) return 'Flexible';
+    if (days.length === 7) return 'All Days';
+    if (days.length > 3) return `${days.length} days/week`;
+    return days.map(d => d.substring(0, 3)).join(', ');
   };
 
   return (
@@ -175,6 +207,25 @@ const AdminRequirements = () => {
                 </span>
               </div>
               
+              {/* Days, Timings, Pay */}
+              <div className="flex flex-wrap gap-3 text-sm mb-3">
+                {req.days && req.days.length > 0 && (
+                  <span className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded">
+                    <Calendar className="w-3 h-3" /> {formatDays(req.days)}
+                  </span>
+                )}
+                {req.timing_from && req.timing_to && (
+                  <span className="flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-700 rounded">
+                    <Clock className="w-3 h-3" /> {req.timing_from} - {req.timing_to}
+                  </span>
+                )}
+                {req.pay_per_session && (
+                  <span className="flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded">
+                    <IndianRupee className="w-3 h-3" /> ₹{req.pay_per_session}/{req.pay_type === 'per_session' ? 'session' : 'month'}
+                  </span>
+                )}
+              </div>
+              
               <p className="text-slate-600 text-sm mb-4">{req.description}</p>
 
               <div className="flex gap-2">
@@ -204,7 +255,7 @@ const AdminRequirements = () => {
 
       {/* Requirement Form Dialog */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingReq ? 'Edit Requirement' : 'Add New Requirement'}</DialogTitle>
           </DialogHeader>
@@ -258,6 +309,77 @@ const AdminRequirements = () => {
                 data-testid="requirement-positions"
               />
             </div>
+            
+            {/* Days Selection */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Working Days</label>
+              <div className="flex flex-wrap gap-2">
+                {DAYS.map(day => (
+                  <button
+                    key={day}
+                    type="button"
+                    onClick={() => toggleDay(day)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                      formData.days.includes(day)
+                        ? 'bg-[#1E3A5F] text-white'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                    data-testid={`day-${day.toLowerCase()}`}
+                  >
+                    {day.substring(0, 3)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Timings */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Timing From</label>
+                <Input
+                  type="time"
+                  value={formData.timing_from}
+                  onChange={(e) => setFormData({...formData, timing_from: e.target.value})}
+                  data-testid="requirement-timing-from"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Timing To</label>
+                <Input
+                  type="time"
+                  value={formData.timing_to}
+                  onChange={(e) => setFormData({...formData, timing_to: e.target.value})}
+                  data-testid="requirement-timing-to"
+                />
+              </div>
+            </div>
+
+            {/* Pay */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Pay (₹)</label>
+                <Input
+                  type="number"
+                  placeholder="e.g., 500"
+                  value={formData.pay_per_session}
+                  onChange={(e) => setFormData({...formData, pay_per_session: e.target.value})}
+                  data-testid="requirement-pay"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Pay Type</label>
+                <select
+                  value={formData.pay_type}
+                  onChange={(e) => setFormData({...formData, pay_type: e.target.value})}
+                  className="w-full h-10 px-4 border border-slate-200 rounded-lg"
+                  data-testid="requirement-pay-type"
+                >
+                  <option value="per_session">Per Session</option>
+                  <option value="per_month">Per Month</option>
+                </select>
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Description</label>
               <Textarea
