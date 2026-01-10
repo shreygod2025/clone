@@ -58,7 +58,12 @@ const AdminStudentCRM = () => {
     email: '',
     skill: '',
     city: '',
+    age_group: '',
     learning_mode: 'online',
+    learning_goal: '',
+    demo_date: null,
+    demo_time: '',
+    address: '',
     source: 'manual',
     notes: ''
   });
