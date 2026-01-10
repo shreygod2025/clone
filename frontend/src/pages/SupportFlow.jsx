@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, UserX, Monitor, CreditCard, ExternalLink, Camera, Check, Calendar, Building2, School, HelpCircle, CalendarClock, Phone } from 'lucide-react';
+import { ArrowLeft, Package, UserX, Monitor, CreditCard, ExternalLink, Camera, Check, Calendar, Building2, School, HelpCircle, CalendarClock, Phone, LogIn, LinkIcon } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
@@ -8,7 +8,7 @@ import { Calendar as CalendarComponent } from '../components/ui/calendar';
 import { toast } from 'sonner';
 import axios from 'axios';
 import { format, addDays } from 'date-fns';
-import Navbar from '../components/Navbar';
+import { useUserAuth } from '../context/UserAuthContext';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -19,8 +19,9 @@ const TIME_SLOTS = ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00
 
 const SupportFlow = ({ onBack }) => {
   const navigate = useNavigate();
+  const { isLoggedIn } = useUserAuth();
   const [mainCategory, setMainCategory] = useState(''); // demo, ongoing_classes, ongoing_school, other
-  const [step, setStep] = useState('main'); // main, category, subcategory, form, success
+  const [step, setStep] = useState('main'); // main, category, subcategory, form, success, login_prompt
   const [category, setCategory] = useState('');
   const [subCategory, setSubCategory] = useState('');
   const [subSubCategory, setSubSubCategory] = useState('');
@@ -42,9 +43,10 @@ const SupportFlow = ({ onBack }) => {
   });
   const [submitting, setSubmitting] = useState(false);
 
-  // Main categories
+  // Main categories - Added "Demo Link" option
   const mainCategories = [
     { id: 'demo', label: 'Demo Related', icon: Calendar, description: 'Reschedule demo, update booking details' },
+    { id: 'demo_link', label: 'Link to Join Demo', icon: LinkIcon, description: 'Get your demo joining link' },
     { id: 'ongoing_classes', label: 'Ongoing Classes', icon: Building2, description: 'Online / Offline at home or center' },
     { id: 'ongoing_school', label: 'Ongoing Course in School', icon: School, description: 'School program related queries' },
     { id: 'other', label: 'Other Query', icon: HelpCircle, description: 'Any other questions' },
@@ -100,7 +102,7 @@ const SupportFlow = ({ onBack }) => {
   ];
 
   const handleBack = () => {
-    if (step === 'success') {
+    if (step === 'success' || step === 'login_prompt') {
       onBack();
     } else if (step === 'form') {
       if (subSubCategory) {
@@ -155,6 +157,40 @@ const SupportFlow = ({ onBack }) => {
     }
   };
 
+  // Login prompt for demo link
+  const renderLoginPrompt = () => (
+    <div className="text-center py-8">
+      <div className="w-16 h-16 rounded-full bg-[#1E3A5F]/10 flex items-center justify-center mx-auto mb-4">
+        <LogIn className="w-8 h-8 text-[#1E3A5F]" />
+      </div>
+      <h2 className="text-2xl font-bold text-[#1E3A5F] mb-2">Login Required</h2>
+      <p className="text-slate-600 mb-6">
+        Please login with your phone number to access your demo joining link and schedule.
+      </p>
+      <div className="space-y-3">
+        <Button 
+          onClick={() => navigate('/login')} 
+          className="w-full bg-[#1E3A5F] hover:bg-[#2d4a6f]"
+          data-testid="login-prompt-btn"
+        >
+          <LogIn className="w-4 h-4 mr-2" />
+          Login to View Demo Link
+        </Button>
+        <Button 
+          variant="outline" 
+          onClick={handleBack} 
+          className="w-full"
+        >
+          Go Back
+        </Button>
+      </div>
+      <p className="text-sm text-slate-500 mt-6">
+        Don't have a booking yet?{' '}
+        <Link to="/student" className="text-[#D63031] hover:underline">Book a Demo</Link>
+      </p>
+    </div>
+  );
+
   // Main category selection
   const renderMainSelection = () => (
     <div className="space-y-3">
@@ -165,7 +201,14 @@ const SupportFlow = ({ onBack }) => {
           className="selection-card p-4 cursor-pointer"
           onClick={() => {
             setMainCategory(cat.id);
-            if (cat.id === 'other') {
+            if (cat.id === 'demo_link') {
+              // If logged in, go to my-bookings, else show login prompt
+              if (isLoggedIn) {
+                navigate('/my-bookings');
+              } else {
+                setStep('login_prompt');
+              }
+            } else if (cat.id === 'other') {
               setStep('form');
             } else {
               setStep('category');
@@ -662,7 +705,7 @@ const SupportFlow = ({ onBack }) => {
 
       <main className="flex-1 pt-24 pb-8 px-4">
         <div className="max-w-lg mx-auto">
-          {step !== 'success' && (
+          {step !== 'success' && step !== 'login_prompt' && (
             <button 
               onClick={handleBack}
               className="flex items-center gap-2 text-slate-600 hover:text-[#1E3A5F] mb-6"
@@ -678,6 +721,7 @@ const SupportFlow = ({ onBack }) => {
             {step === 'subcategory' && renderSubCategory()}
             {step === 'form' && renderForm()}
             {step === 'success' && renderSuccess()}
+            {step === 'login_prompt' && renderLoginPrompt()}
           </div>
         </div>
       </main>
@@ -687,6 +731,7 @@ const SupportFlow = ({ onBack }) => {
           <div className="py-4 flex justify-center gap-6 text-sm text-white/80">
             <Link to="/about" className="hover:text-white">About OLL</Link>
             <Link to="/centers" className="hover:text-white">Our Centers</Link>
+            <Link to="/blogs" className="hover:text-white">Blog</Link>
             <Link to="/faq" className="hover:text-white">FAQs</Link>
           </div>
         </div>

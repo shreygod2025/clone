@@ -10,12 +10,11 @@ const Navbar = ({ showBookDemo = false, onBookDemo }) => {
   const navigate = useNavigate();
   const { user, isLoggedIn, logout } = useUserAuth();
 
+  // Removed Blog and FAQ from navbar - moved to footer
   const navLinks = [
     { path: '/courses', label: 'Courses' },
     { path: '/about', label: 'About' },
     { path: '/centers', label: 'Centers' },
-    { path: '/blogs', label: 'Blog' },
-    { path: '/faq', label: 'FAQ' },
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -48,7 +47,7 @@ const Navbar = ({ showBookDemo = false, onBookDemo }) => {
               </Link>
             ))}
             
-            {/* Login / Profile */}
+            {/* Login / Profile - Dark Blue Button */}
             {isLoggedIn ? (
               <button
                 onClick={() => navigate('/my-bookings')}
@@ -61,14 +60,14 @@ const Navbar = ({ showBookDemo = false, onBookDemo }) => {
                 <span className="hidden lg:inline">{user?.name?.split(' ')[0] || 'Profile'}</span>
               </button>
             ) : (
-              <button
+              <Button
                 onClick={() => navigate('/login')}
-                className="flex items-center gap-2 text-slate-600 hover:text-[#1E3A5F] font-medium"
+                className="bg-[#1E3A5F] hover:bg-[#2d4a6f] text-white"
                 data-testid="login-btn"
               >
-                <LogIn className="w-5 h-5" />
-                <span>Login</span>
-              </button>
+                <LogIn className="w-4 h-4 mr-2" />
+                Login
+              </Button>
             )}
             
             {showBookDemo && (
@@ -94,6 +93,15 @@ const Navbar = ({ showBookDemo = false, onBookDemo }) => {
                   <User className="w-4 h-4 text-white" />
                 </div>
               </button>
+            )}
+            {!isLoggedIn && (
+              <Button
+                onClick={() => navigate('/login')}
+                className="bg-[#1E3A5F] hover:bg-[#2d4a6f] text-white text-sm px-3 py-1 h-8"
+                data-testid="mobile-login-btn"
+              >
+                Login
+              </Button>
             )}
             {showBookDemo && (
               <Button 
@@ -144,7 +152,7 @@ const Navbar = ({ showBookDemo = false, onBookDemo }) => {
             ) : (
               <Link 
                 to="/login"
-                className="block py-2 px-2 rounded-lg text-slate-600 hover:text-[#1E3A5F] hover:bg-slate-50"
+                className="block py-2 px-2 rounded-lg text-[#1E3A5F] font-medium hover:bg-slate-50"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Login
