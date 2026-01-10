@@ -177,11 +177,13 @@ class EducatorApplicationCreate(BaseModel):
     email: EmailStr
     phone: str
     skills: List[str]
-    experience: str
-    grades_comfortable: List[str]
-    city: str
-    availability: str
+    experience: str = ""
+    grades_comfortable: List[str] = []
+    city: str = ""
+    availability: str = ""
     demo_ready: bool = False
+    requirement_id: Optional[str] = None
+    requirement_title: Optional[str] = None
 
 class EducatorApplicationUpdate(BaseModel):
     status: Optional[str] = None
