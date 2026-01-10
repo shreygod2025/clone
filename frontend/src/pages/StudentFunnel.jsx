@@ -905,19 +905,20 @@ const StudentFunnel = () => {
                 <ArrowLeft className="w-4 h-4" />
                 Back
               </Button>
-              <Button
-                onClick={handleNext}
-                disabled={submitting || otpLoading}
-                className="btn-primary flex items-center gap-2"
-                data-testid="next-btn"
-              >
-                {activeSteps[currentStep].id === 'otp' 
-                  ? (submitting ? 'Confirming...' : 'Confirm Booking')
-                  : activeSteps[currentStep].id === 'contact'
-                  ? 'Verify Phone'
-                  : 'Continue'}
-                <ArrowRight className="w-4 h-4" />
-              </Button>
+              {/* Hide Continue button on OTP step since it has its own confirm button */}
+              {activeSteps[currentStep].id !== 'otp' && (
+                <Button
+                  onClick={handleNext}
+                  disabled={submitting || otpLoading}
+                  className="btn-primary flex items-center gap-2"
+                  data-testid="next-btn"
+                >
+                  {activeSteps[currentStep].id === 'contact'
+                    ? 'Verify Phone'
+                    : 'Continue'}
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              )}
             </div>
           </div>
         </div>
