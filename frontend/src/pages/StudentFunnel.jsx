@@ -141,8 +141,17 @@ const StudentFunnel = () => {
     setFormData(prev => ({ ...prev, [key]: value }));
   };
 
-  // Get active steps - all steps now since city is always shown
-  const activeSteps = LEARNING_STEPS;
+  // Get active steps - filter based on mode selection
+  const activeSteps = LEARNING_STEPS.filter(step => {
+    // Only show select_center step if user chose "offline at center"
+    if (step.id === 'select_center') {
+      return formData.learning_mode === 'offline' && formData.offline_type === 'center';
+    }
+    return true;
+  });
+
+  // Get centers for selected city
+  const cityCenters = centers.filter(c => c.city === formData.city);
 
   const handleNext = () => {
     const step = activeSteps[currentStep];
@@ -168,6 +177,10 @@ const StudentFunnel = () => {
       toast.error('Please select offline learning type');
       return;
     }
+    if (step.id === 'select_center' && !formData.selected_center) {
+      toast.error('Please select a center');
+      return;
+    }
     if (step.id === 'goal' && !formData.learning_goal) {
       toast.error('Please select your learning goal');
       return;
@@ -183,6 +196,11 @@ const StudentFunnel = () => {
     if (step.id === 'contact') {
       if (!formData.name || !formData.phone) {
         toast.error('Please fill all required fields');
+        return;
+      }
+      // Require address if offline at home
+      if (formData.learning_mode === 'offline' && formData.offline_type === 'home' && !formData.address) {
+        toast.error('Please enter your address');
         return;
       }
       handleSubmit();
