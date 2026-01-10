@@ -196,14 +196,14 @@ class OpenRequirement(BaseModel):
     title: str
     skill: str
     city: str
+    area: str = ""
     description: str
-    requirements: str
     positions: int = 1
     days: List[str] = []
     timing_from: str = ""
     timing_to: str = ""
-    pay_per_session: str = ""
-    pay_type: str = "per_session"
+    pay_amount: str = ""
+    pay_type: str = "per_session"  # per_session, per_day, per_month
     is_active: bool = True
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -211,13 +211,13 @@ class OpenRequirementCreate(BaseModel):
     title: str
     skill: str
     city: str
+    area: str = ""
     description: str = ""
-    requirements: str = ""
     positions: int = 1
     days: List[str] = []
     timing_from: str = ""
     timing_to: str = ""
-    pay_per_session: str = ""
+    pay_amount: str = ""
     pay_type: str = "per_session"
     is_active: bool = True
 
@@ -225,13 +225,13 @@ class OpenRequirementUpdate(BaseModel):
     title: Optional[str] = None
     skill: Optional[str] = None
     city: Optional[str] = None
+    area: Optional[str] = None
     description: Optional[str] = None
-    requirements: Optional[str] = None
     positions: Optional[int] = None
     days: Optional[List[str]] = None
     timing_from: Optional[str] = None
     timing_to: Optional[str] = None
-    pay_per_session: Optional[str] = None
+    pay_amount: Optional[str] = None
     pay_type: Optional[str] = None
     is_active: Optional[bool] = None
 
