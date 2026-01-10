@@ -12,6 +12,10 @@ import BlogDetailPage from "./pages/BlogDetailPage";
 import FAQPage from "./pages/FAQPage";
 import CentersPage from "./pages/CentersPage";
 
+// Course SEO Pages
+import CoursesListPage from "./pages/courses/CoursesListPage";
+import CoursePage from "./pages/courses/CoursePage";
+
 // Admin Pages
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -61,6 +65,10 @@ function App() {
           <Route path="/blogs/:slug" element={<BlogDetailPage />} />
           <Route path="/faq" element={<FAQPage />} />
           <Route path="/centers" element={<CentersPage />} />
+          
+          {/* SEO Course Pages */}
+          <Route path="/courses" element={<CoursesListPage />} />
+          <Route path="/courses/:courseSlug" element={<CoursePage />} />
           
           {/* Admin Routes */}
           <Route path="/admin/login" element={<AdminLogin />} />
