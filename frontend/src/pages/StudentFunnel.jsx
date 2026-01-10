@@ -72,6 +72,9 @@ const StudentFunnel = () => {
     city: '',
     learning_mode: '',
     offline_type: '', // 'home' or 'center'
+    selected_center: '', // center id when offline at center
+    selected_center_name: '', // center name for display
+    address: '', // home address when offline at home
     learning_goal: '',
     name: '',
     email: '',
