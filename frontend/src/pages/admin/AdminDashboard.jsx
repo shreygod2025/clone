@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Building2, GraduationCap, FileText, 
-  HelpCircle, Briefcase, MessageSquare, LogOut, Menu, X, ChevronRight
+  HelpCircle, Briefcase, MessageSquare, LogOut, Menu, X, ChevronRight,
+  MapPin, Building
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
@@ -21,6 +22,8 @@ const AdminLayout = ({ children, title }) => {
     { path: '/admin/schools', icon: Building2, label: 'School CRM' },
     { path: '/admin/educators', icon: Users, label: 'Educators' },
     { path: '/admin/requirements', icon: Briefcase, label: 'Requirements' },
+    { path: '/admin/cities', icon: MapPin, label: 'Cities' },
+    { path: '/admin/centers', icon: Building, label: 'Centers' },
     { path: '/admin/blogs', icon: FileText, label: 'Blogs' },
     { path: '/admin/faqs', icon: HelpCircle, label: 'FAQs' },
     { path: '/admin/support', icon: MessageSquare, label: 'Support' },
