@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Plus, Edit2, Trash2, Briefcase, MapPin, Users, Clock, Calendar, IndianRupee } from 'lucide-react';
+import { Plus, Edit2, Trash2, Briefcase, MapPin, Users, Clock, Calendar, IndianRupee, Eye, ChevronDown, ChevronUp } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Textarea } from '../../components/ui/textarea';
@@ -13,46 +13,49 @@ import axios from 'axios';
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const SKILLS = ['Robotics', 'Coding', 'AI & ML', 'Entrepreneurship', 'Financial Literacy'];
-const CITIES = [
-  'Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 
-  'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow', 'Chandigarh', 'Kochi'
-];
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 const AdminRequirements = () => {
   const { getAuthHeaders } = useAuth();
   const [requirements, setRequirements] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingReq, setEditingReq] = useState(null);
+  const [expandedReq, setExpandedReq] = useState(null);
   const [formData, setFormData] = useState({
     title: '',
     skill: '',
     city: '',
+    area: '',
     description: '',
-    requirements: '',
     positions: 1,
     days: [],
     timing_from: '',
     timing_to: '',
-    pay_per_session: '',
+    pay_amount: '',
     pay_type: 'per_session',
     is_active: true
   });
 
   useEffect(() => {
-    fetchRequirements();
+    fetchData();
   }, []);
 
-  const fetchRequirements = async () => {
+  const fetchData = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(`${API}/requirements`, {
-        headers: getAuthHeaders()
-      });
-      setRequirements(response.data);
+      const [reqRes, citiesRes, appsRes] = await Promise.all([
+        axios.get(`${API}/requirements`, { headers: getAuthHeaders() }),
+        axios.get(`${API}/cities`, { headers: getAuthHeaders() }),
+        axios.get(`${API}/educators`, { headers: getAuthHeaders() })
+      ]);
+      setRequirements(reqRes.data);
+      setCities(citiesRes.data);
+      setApplications(appsRes.data);
     } catch (error) {
-      toast.error('Failed to fetch requirements');
+      toast.error('Failed to fetch data');
     } finally {
       setLoading(false);
     }
@@ -90,7 +93,7 @@ const AdminRequirements = () => {
       setShowForm(false);
       setEditingReq(null);
       resetForm();
-      fetchRequirements();
+      fetchData();
     } catch (error) {
       toast.error('Failed to save requirement');
     }
@@ -104,7 +107,7 @@ const AdminRequirements = () => {
         headers: getAuthHeaders()
       });
       toast.success('Requirement deleted');
-      fetchRequirements();
+      fetchData();
     } catch (error) {
       toast.error('Failed to delete requirement');
     }
@@ -115,13 +118,13 @@ const AdminRequirements = () => {
       title: '',
       skill: '',
       city: '',
+      area: '',
       description: '',
-      requirements: '',
       positions: 1,
       days: [],
       timing_from: '',
       timing_to: '',
-      pay_per_session: '',
+      pay_amount: '',
       pay_type: 'per_session',
       is_active: true
     });
@@ -133,13 +136,13 @@ const AdminRequirements = () => {
       title: req.title,
       skill: req.skill,
       city: req.city,
+      area: req.area || '',
       description: req.description,
-      requirements: req.requirements,
       positions: req.positions,
       days: req.days || [],
       timing_from: req.timing_from || '',
       timing_to: req.timing_to || '',
-      pay_per_session: req.pay_per_session || '',
+      pay_amount: req.pay_amount || req.pay_per_session || '',
       pay_type: req.pay_type || 'per_session',
       is_active: req.is_active
     });
@@ -151,6 +154,20 @@ const AdminRequirements = () => {
     if (days.length === 7) return 'All Days';
     if (days.length > 3) return `${days.length} days/week`;
     return days.map(d => d.substring(0, 3)).join(', ');
+  };
+
+  const getPayTypeLabel = (type) => {
+    switch(type) {
+      case 'per_session': return 'session';
+      case 'per_day': return 'day';
+      case 'per_month': return 'month';
+      default: return 'session';
+    }
+  };
+
+  // Get applicants for a specific requirement
+  const getApplicantsForReq = (reqId) => {
+    return applications.filter(app => app.requirement_id === reqId);
   };
 
   return (
@@ -180,76 +197,119 @@ const AdminRequirements = () => {
           <p className="text-slate-500">No open requirements</p>
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 gap-4">
-          {requirements.map((req) => (
-            <div 
-              key={req.id} 
-              className={`bg-white rounded-2xl border p-6 ${req.is_active ? 'border-slate-100' : 'border-slate-200 opacity-60'}`}
-              data-testid={`requirement-card-${req.id}`}
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="font-semibold text-[#1E3A5F] text-lg">{req.title}</h3>
-                  <div className="flex flex-wrap gap-3 text-sm text-slate-500 mt-2">
-                    <span className="flex items-center gap-1">
-                      <Briefcase className="w-4 h-4" /> {req.skill}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-4 h-4" /> {req.city}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Users className="w-4 h-4" /> {req.positions} positions
-                    </span>
+        <div className="space-y-4">
+          {requirements.map((req) => {
+            const applicants = getApplicantsForReq(req.id);
+            const isExpanded = expandedReq === req.id;
+            
+            return (
+              <div 
+                key={req.id} 
+                className={`bg-white rounded-2xl border overflow-hidden ${req.is_active ? 'border-slate-100' : 'border-slate-200 opacity-60'}`}
+                data-testid={`requirement-card-${req.id}`}
+              >
+                {/* Requirement Header */}
+                <div className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="font-semibold text-[#1E3A5F] text-lg">{req.title}</h3>
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${req.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                          {req.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-3 text-sm text-slate-500">
+                        <span className="flex items-center gap-1">
+                          <Briefcase className="w-4 h-4" /> {req.skill}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-4 h-4" /> {req.city}{req.area && ` - ${req.area}`}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Users className="w-4 h-4" /> {req.positions} positions
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => openEditForm(req)} data-testid={`edit-requirement-${req.id}`}>
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => handleDelete(req.id)} className="text-red-500 hover:text-red-700" data-testid={`delete-requirement-${req.id}`}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-                <span className={`px-2 py-1 rounded text-xs font-medium ${req.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
-                  {req.is_active ? 'Active' : 'Inactive'}
-                </span>
-              </div>
-              
-              {/* Days, Timings, Pay */}
-              <div className="flex flex-wrap gap-3 text-sm mb-3">
-                {req.days && req.days.length > 0 && (
-                  <span className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded">
-                    <Calendar className="w-3 h-3" /> {formatDays(req.days)}
-                  </span>
-                )}
-                {req.timing_from && req.timing_to && (
-                  <span className="flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-700 rounded">
-                    <Clock className="w-3 h-3" /> {req.timing_from} - {req.timing_to}
-                  </span>
-                )}
-                {req.pay_per_session && (
-                  <span className="flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded">
-                    <IndianRupee className="w-3 h-3" /> ₹{req.pay_per_session}/{req.pay_type === 'per_session' ? 'session' : 'month'}
-                  </span>
-                )}
-              </div>
-              
-              <p className="text-slate-600 text-sm mb-4">{req.description}</p>
+                  
+                  {/* Days, Timings, Pay */}
+                  <div className="flex flex-wrap gap-3 text-sm mb-3">
+                    {req.days && req.days.length > 0 && (
+                      <span className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded">
+                        <Calendar className="w-3 h-3" /> {formatDays(req.days)}
+                      </span>
+                    )}
+                    {req.timing_from && req.timing_to && (
+                      <span className="flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-700 rounded">
+                        <Clock className="w-3 h-3" /> {req.timing_from} - {req.timing_to}
+                      </span>
+                    )}
+                    {(req.pay_amount || req.pay_per_session) && (
+                      <span className="flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded">
+                        <IndianRupee className="w-3 h-3" /> ₹{req.pay_amount || req.pay_per_session}/{getPayTypeLabel(req.pay_type)}
+                      </span>
+                    )}
+                  </div>
+                  
+                  {req.description && (
+                    <p className="text-slate-600 text-sm mb-4">{req.description}</p>
+                  )}
 
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => openEditForm(req)}
-                  className="flex-1"
-                  data-testid={`edit-requirement-${req.id}`}
-                >
-                  <Edit2 className="w-4 h-4 mr-1" /> Edit
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDelete(req.id)}
-                  className="text-red-500 hover:text-red-700"
-                  data-testid={`delete-requirement-${req.id}`}
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
+                  {/* Applicants Toggle */}
+                  <button
+                    onClick={() => setExpandedReq(isExpanded ? null : req.id)}
+                    className="flex items-center gap-2 text-sm font-medium text-[#1E3A5F] hover:text-[#D63031] transition-colors"
+                  >
+                    <Users className="w-4 h-4" />
+                    {applicants.length} Applicants
+                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </button>
+                </div>
+
+                {/* Applicants Section */}
+                {isExpanded && (
+                  <div className="border-t bg-slate-50 p-4">
+                    {applicants.length === 0 ? (
+                      <p className="text-slate-500 text-sm text-center py-4">No applications yet</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {applicants.map(app => (
+                          <div key={app.id} className="bg-white rounded-xl p-4 border border-slate-100">
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <h4 className="font-medium text-[#1E3A5F]">{app.name}</h4>
+                                <p className="text-sm text-slate-500">{app.phone} • {app.email}</p>
+                                {app.experience && (
+                                  <p className="text-sm text-slate-600 mt-1">{app.experience}</p>
+                                )}
+                              </div>
+                              <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                app.status === 'new' ? 'bg-blue-100 text-blue-700' :
+                                app.status === 'demo_scheduled' ? 'bg-purple-100 text-purple-700' :
+                                app.status === 'demo_completed' ? 'bg-orange-100 text-orange-700' :
+                                app.status === 'onboarded' ? 'bg-green-100 text-green-700' :
+                                'bg-slate-100 text-slate-500'
+                              }`}>
+                                {app.status?.replace('_', ' ')}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -265,7 +325,7 @@ const AdminRequirements = () => {
               <Input
                 value={formData.title}
                 onChange={(e) => setFormData({...formData, title: e.target.value})}
-                placeholder="e.g., Robotics Instructor - Mumbai"
+                placeholder="e.g., Robotics Instructor"
                 data-testid="requirement-title"
               />
             </div>
@@ -293,21 +353,33 @@ const AdminRequirements = () => {
                   data-testid="requirement-city"
                 >
                   <option value="">Select City</option>
-                  {CITIES.map(city => (
-                    <option key={city} value={city}>{city}</option>
+                  {cities.filter(c => c.is_active).map(city => (
+                    <option key={city.id} value={city.name}>{city.name}</option>
                   ))}
                 </select>
               </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Positions</label>
-              <Input
-                type="number"
-                min="1"
-                value={formData.positions}
-                onChange={(e) => setFormData({...formData, positions: parseInt(e.target.value) || 1})}
-                data-testid="requirement-positions"
-              />
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Area</label>
+                <Input
+                  value={formData.area}
+                  onChange={(e) => setFormData({...formData, area: e.target.value})}
+                  placeholder="e.g., Andheri West"
+                  data-testid="requirement-area"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Positions</label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={formData.positions}
+                  onChange={(e) => setFormData({...formData, positions: parseInt(e.target.value) || 1})}
+                  data-testid="requirement-positions"
+                />
+              </div>
             </div>
             
             {/* Days Selection */}
@@ -361,8 +433,8 @@ const AdminRequirements = () => {
                 <Input
                   type="number"
                   placeholder="e.g., 500"
-                  value={formData.pay_per_session}
-                  onChange={(e) => setFormData({...formData, pay_per_session: e.target.value})}
+                  value={formData.pay_amount}
+                  onChange={(e) => setFormData({...formData, pay_amount: e.target.value})}
                   data-testid="requirement-pay"
                 />
               </div>
@@ -375,6 +447,7 @@ const AdminRequirements = () => {
                   data-testid="requirement-pay-type"
                 >
                   <option value="per_session">Per Session</option>
+                  <option value="per_day">Per Day</option>
                   <option value="per_month">Per Month</option>
                 </select>
               </div>
@@ -390,16 +463,7 @@ const AdminRequirements = () => {
                 data-testid="requirement-description"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Requirements</label>
-              <Textarea
-                value={formData.requirements}
-                onChange={(e) => setFormData({...formData, requirements: e.target.value})}
-                placeholder="Qualifications and requirements..."
-                className="min-h-[80px]"
-                data-testid="requirement-requirements"
-              />
-            </div>
+            
             <div className="flex items-center gap-3">
               <Switch
                 checked={formData.is_active}
