@@ -503,15 +503,15 @@ class OTPVerify(BaseModel):
 
 @api_router.post("/auth/send-otp")
 async def send_otp(data: OTPRequest):
-    # Generate OTP (in production, send via SMS)
-    otp = "1234"  # Mock OTP for testing
+    # Generate OTP (in production, send via WhatsApp/Twilio)
+    otp = "1111"  # Mock OTP for testing
     otp_store[data.phone] = {
         "otp": otp,
         "user_type": data.user_type,
         "expires": datetime.now(timezone.utc) + timedelta(minutes=10)
     }
-    # In production: Send OTP via Twilio/MSG91
-    return {"message": "OTP sent successfully", "hint": "Use 1234 for testing"}
+    # TODO: Integrate Twilio WhatsApp OTP in production
+    return {"message": "OTP sent via WhatsApp", "hint": "Use 1111 for testing"}
 
 @api_router.post("/auth/verify-otp")
 async def verify_otp(data: OTPVerify):
