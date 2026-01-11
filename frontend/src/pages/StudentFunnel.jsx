@@ -971,8 +971,8 @@ const StudentFunnel = () => {
                 <ArrowLeft className="w-4 h-4" />
                 Back
               </Button>
-              {/* Hide Continue button on OTP step since it has its own confirm button */}
-              {activeSteps[currentStep].id !== 'otp' && (
+              {/* Hide Continue button on OTP and action steps since they have their own navigation */}
+              {activeSteps[currentStep].id !== 'otp' && activeSteps[currentStep].id !== 'action' && (
                 <Button
                   onClick={handleNext}
                   disabled={submitting || otpLoading}
