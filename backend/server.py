@@ -1265,6 +1265,9 @@ async def create_inquiry_lead(data: dict):
     doc = lead.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
     
+    # Get source from data or default to team_inquiry_form
+    source = data.get('source', 'team_inquiry_form')
+    
     # Also add to appropriate CRM based on inquiry type
     inquiry_type = data.get('inquiry_type', 'student')
     
@@ -1282,8 +1285,9 @@ async def create_inquiry_lead(data: dict):
             "email": doc['email'],
             "phone": doc['phone'],
             "status": "new",
-            "notes": f"Added via team inquiry form. Details: {doc.get('details', '')}",
-            "source": "team_inquiry_form",
+            "notes": f"Details: {doc.get('details', '')}",
+            "comments": [],
+            "source": source,
             "created_at": doc['created_at'],
             "updated_at": doc['created_at']
         }
@@ -1300,37 +1304,55 @@ async def create_inquiry_lead(data: dict):
             "school_size": "",
             "fee_range": "",
             "board": "",
-            "programs_interested": [doc.get('offering', '')],
+            "programs_interested": [doc.get('offering', '')] if doc.get('offering') else [],
             "support_needed": [],
             "status": "new",
-            "notes": f"Added via team inquiry form. Details: {doc.get('details', '')}",
-            "source": "team_inquiry_form",
+            "notes": f"Details: {doc.get('details', '')}",
+            "comments": [],
+            "source": source,
             "created_at": doc['created_at'],
             "updated_at": doc['created_at']
         }
         await db.school_inquiries.insert_one(school_doc)
-    elif inquiry_type in ['teacher', 'growth_partner']:
+    elif inquiry_type == 'teacher':
         # Add to educator applications
         educator_doc = {
             "id": doc['id'],
             "name": doc['name'],
             "email": doc['email'],
             "phone": doc['phone'],
-            "skills": [doc.get('offering', '')],
+            "skills": [doc.get('offering', '')] if doc.get('offering') else [],
             "experience": "",
             "grades_comfortable": [],
             "city": doc.get('city', ''),
             "availability": "",
             "demo_ready": False,
             "status": "new",
-            "notes": f"Added via team inquiry form ({inquiry_type}). Details: {doc.get('details', '')}",
+            "notes": f"Details: {doc.get('details', '')}",
+            "comments": [],
+            "source": source,
             "created_at": doc['created_at'],
             "updated_at": doc['created_at']
         }
         await db.educator_applications.insert_one(educator_doc)
-    
-    # Also store in inquiry_leads collection for tracking
-    await db.inquiry_leads.insert_one(doc)
+    elif inquiry_type in ['growth_partner', 'team']:
+        # Add to growth partners collection
+        partner_doc = {
+            "id": doc['id'],
+            "name": doc['name'],
+            "email": doc['email'],
+            "phone": doc['phone'],
+            "city": doc.get('city', ''),
+            "interest_type": doc.get('offering', ''),
+            "details": doc.get('details', ''),
+            "status": "new",
+            "notes": "",
+            "comments": [],
+            "source": source,
+            "created_at": doc['created_at'],
+            "updated_at": doc['created_at']
+        }
+        await db.growth_partners.insert_one(partner_doc)
     
     return {"message": "Lead added successfully", "id": doc['id']}
 
