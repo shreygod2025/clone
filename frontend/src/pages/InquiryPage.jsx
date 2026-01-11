@@ -392,6 +392,7 @@ const InquiryPage = () => {
               <h4 className="font-medium text-[#1E3A5F] mb-2">Lead Summary</h4>
               <div className="text-sm text-slate-600 space-y-1">
                 <p><span className="font-medium">Type:</span> {INQUIRY_TYPES.find(t => t.value === formData.inquiry_type)?.label}</p>
+                <p><span className="font-medium">Source:</span> {SOURCE_OPTIONS.find(s => s.value === formData.source)?.label}</p>
                 <p><span className="font-medium">Name:</span> {formData.name}</p>
                 <p><span className="font-medium">Phone:</span> {formData.phone}</p>
                 <p><span className="font-medium">Offering:</span> {formData.offering}</p>
