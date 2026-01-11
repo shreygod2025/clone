@@ -13,7 +13,6 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const STEPS = [
   { id: 'board', title: 'Board' },
-  { id: 'location', title: 'Location' },
   { id: 'school_size', title: 'School Size' },
   { id: 'fee_range', title: 'Fee Range' },
   { id: 'programs', title: 'Programs Interested In' },
