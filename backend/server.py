@@ -104,7 +104,44 @@ class StudentInquiryUpdate(BaseModel):
     followup_date: Optional[str] = None
     conversion_amount: Optional[str] = None
     sessions_count: Optional[str] = None
-    followup_date: Optional[str] = None
+
+# Comment Model (shared across CRMs)
+class Comment(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    text: str
+    author: str = "Admin"
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+# Growth Partner Model
+class GrowthPartner(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    email: str
+    phone: str
+    city: str = ""
+    interest_type: str = ""  # franchise, partnership, other
+    details: str = ""
+    status: str = "new"  # new, contacted, in_discussion, converted, archived
+    notes: str = ""
+    comments: List[dict] = []
+    source: str = "website"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class GrowthPartnerCreate(BaseModel):
+    name: str
+    email: str
+    phone: str
+    city: str = ""
+    interest_type: str = ""
+    details: str = ""
+    source: str = "website"
+
+class GrowthPartnerUpdate(BaseModel):
+    status: Optional[str] = None
+    notes: Optional[str] = None
+    interest_type: Optional[str] = None
 
 # School Inquiry Models
 class SchoolInquiry(BaseModel):
