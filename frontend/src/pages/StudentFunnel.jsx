@@ -824,8 +824,8 @@ const StudentFunnel = () => {
                     <MessageCircle className="w-7 h-7 text-[#1E3A5F]" />
                   </div>
                   <div>
-                    <h2 className="font-semibold text-[#1E3A5F] text-lg">I have a question</h2>
-                    <p className="text-slate-500 text-sm">Get support from our team</p>
+                    <h2 className="font-semibold text-[#1E3A5F] text-lg">I have a query / need support</h2>
+                    <p className="text-slate-500 text-sm">Get help from our team</p>
                   </div>
                 </div>
               </div>
