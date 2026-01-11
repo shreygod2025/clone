@@ -268,6 +268,22 @@ const InquiryPage = () => {
           </div>
         );
 
+      case 'source':
+        return (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {SOURCE_OPTIONS.map((src) => (
+              <div
+                key={src.value}
+                className={`selection-card p-4 cursor-pointer ${formData.source === src.value ? 'selected' : ''}`}
+                onClick={() => handleSingleSelect('source', src.value)}
+                data-testid={`source-${src.value}`}
+              >
+                <div className="font-medium text-[#1E3A5F] text-sm">{src.label}</div>
+              </div>
+            ))}
+          </div>
+        );
+
       case 'contact':
         return (
           <div className="space-y-4">
