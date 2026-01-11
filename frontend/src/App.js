@@ -31,6 +31,8 @@ import AdminRequirements from "./pages/admin/AdminRequirements";
 import AdminSupport from "./pages/admin/AdminSupport";
 import AdminCities from "./pages/admin/AdminCities";
 import AdminCenters from "./pages/admin/AdminCenters";
+import AdminInquiryLeads from "./pages/admin/AdminInquiryLeads";
+import AdminInquiryQueries from "./pages/admin/AdminInquiryQueries";
 
 // Auth Context
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -86,6 +88,8 @@ function App() {
             <Route path="/admin/students" element={<ProtectedRoute><AdminStudentCRM /></ProtectedRoute>} />
             <Route path="/admin/schools" element={<ProtectedRoute><AdminSchoolCRM /></ProtectedRoute>} />
             <Route path="/admin/educators" element={<ProtectedRoute><AdminEducators /></ProtectedRoute>} />
+            <Route path="/admin/inquiry-leads" element={<ProtectedRoute><AdminInquiryLeads /></ProtectedRoute>} />
+            <Route path="/admin/inquiry-queries" element={<ProtectedRoute><AdminInquiryQueries /></ProtectedRoute>} />
             <Route path="/admin/blogs" element={<ProtectedRoute><AdminBlogs /></ProtectedRoute>} />
             <Route path="/admin/faqs" element={<ProtectedRoute><AdminFAQs /></ProtectedRoute>} />
             <Route path="/admin/requirements" element={<ProtectedRoute><AdminRequirements /></ProtectedRoute>} />
