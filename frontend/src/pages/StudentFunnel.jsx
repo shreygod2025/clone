@@ -516,7 +516,7 @@ const StudentFunnel = () => {
               ))}
             </div>
             {centers.length === 0 && (
-              <p className="text-center text-slate-500 py-4">No centers available in this city. Please select "At My Home" option.</p>
+              <p className="text-center text-slate-500 py-4">No centers available in this city. Please select &quot;At My Home&quot; option.</p>
             )}
           </div>
         );
@@ -729,7 +729,7 @@ const StudentFunnel = () => {
               Demo Booked!
             </h2>
             <p className="text-slate-500 text-center mb-8">
-              We'll send you a confirmation on WhatsApp
+              We&apos;ll send you a confirmation on WhatsApp
             </p>
 
             {/* Booking Details Card */}
