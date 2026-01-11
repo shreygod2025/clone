@@ -1106,6 +1106,165 @@ async def delete_center(center_id: str):
     return {"message": "Center deleted"}
 
 # ========================
+# INQUIRY SYSTEM ENDPOINTS (Team Lead/Query Management)
+# ========================
+
+class InquiryLead(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    inquiry_type: str  # student, school, growth_partner, teacher, team
+    action_type: str = "lead"
+    name: str
+    phone: str
+    email: str
+    offering: str
+    city: str = ""
+    details: str = ""
+    source: str = "team_inquiry_form"
+    status: str = "new"  # new, contacted, converted, archived
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class InquiryQuery(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    inquiry_type: str  # student, school, growth_partner, teacher, team
+    action_type: str = "query"
+    name: str
+    phone: str
+    email: str
+    query_type: str  # demo_related, payment, course_info, technical, partnership, feedback, other
+    query_details: str = ""
+    source: str = "team_inquiry_form"
+    status: str = "open"  # open, in_progress, resolved, closed
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+@api_router.post("/inquiry/lead")
+async def create_inquiry_lead(data: dict):
+    lead = InquiryLead(**data)
+    doc = lead.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    
+    # Also add to appropriate CRM based on inquiry type
+    inquiry_type = data.get('inquiry_type', 'student')
+    
+    if inquiry_type == 'student':
+        # Add to student inquiries
+        student_doc = {
+            "id": doc['id'],
+            "learner_type": "self",
+            "age_group": "",
+            "skill": doc.get('offering', ''),
+            "learning_mode": "online",
+            "city": doc.get('city', ''),
+            "learning_goal": "",
+            "name": doc['name'],
+            "email": doc['email'],
+            "phone": doc['phone'],
+            "status": "new",
+            "notes": f"Added via team inquiry form. Details: {doc.get('details', '')}",
+            "source": "team_inquiry_form",
+            "created_at": doc['created_at'],
+            "updated_at": doc['created_at']
+        }
+        await db.student_inquiries.insert_one(student_doc)
+    elif inquiry_type == 'school':
+        # Add to school inquiries
+        school_doc = {
+            "id": doc['id'],
+            "school_name": doc['name'],
+            "contact_name": doc['name'],
+            "email": doc['email'],
+            "phone": doc['phone'],
+            "location": doc.get('city', ''),
+            "school_size": "",
+            "fee_range": "",
+            "board": "",
+            "programs_interested": [doc.get('offering', '')],
+            "support_needed": [],
+            "status": "new",
+            "notes": f"Added via team inquiry form. Details: {doc.get('details', '')}",
+            "source": "team_inquiry_form",
+            "created_at": doc['created_at'],
+            "updated_at": doc['created_at']
+        }
+        await db.school_inquiries.insert_one(school_doc)
+    elif inquiry_type in ['teacher', 'growth_partner']:
+        # Add to educator applications
+        educator_doc = {
+            "id": doc['id'],
+            "name": doc['name'],
+            "email": doc['email'],
+            "phone": doc['phone'],
+            "skills": [doc.get('offering', '')],
+            "experience": "",
+            "grades_comfortable": [],
+            "city": doc.get('city', ''),
+            "availability": "",
+            "demo_ready": False,
+            "status": "new",
+            "notes": f"Added via team inquiry form ({inquiry_type}). Details: {doc.get('details', '')}",
+            "created_at": doc['created_at'],
+            "updated_at": doc['created_at']
+        }
+        await db.educator_applications.insert_one(educator_doc)
+    
+    # Also store in inquiry_leads collection for tracking
+    await db.inquiry_leads.insert_one(doc)
+    
+    return {"message": "Lead added successfully", "id": doc['id']}
+
+@api_router.post("/inquiry/query")
+async def create_inquiry_query(data: dict):
+    query = InquiryQuery(**data)
+    doc = query.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    
+    # Store in inquiry_queries collection (ticketing system)
+    await db.inquiry_queries.insert_one(doc)
+    
+    return {"message": "Query submitted successfully", "id": doc['id']}
+
+@api_router.get("/inquiry/leads")
+async def get_inquiry_leads(
+    inquiry_type: Optional[str] = None,
+    status: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    query = {}
+    if inquiry_type:
+        query["inquiry_type"] = inquiry_type
+    if status:
+        query["status"] = status
+    leads = await db.inquiry_leads.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return leads
+
+@api_router.get("/inquiry/queries")
+async def get_inquiry_queries(
+    inquiry_type: Optional[str] = None,
+    status: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    query = {}
+    if inquiry_type:
+        query["inquiry_type"] = inquiry_type
+    if status:
+        query["status"] = status
+    queries = await db.inquiry_queries.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return queries
+
+@api_router.patch("/inquiry/leads/{lead_id}")
+async def update_inquiry_lead(lead_id: str, data: dict, user: dict = Depends(get_current_user)):
+    update_data = {k: v for k, v in data.items() if v is not None}
+    await db.inquiry_leads.update_one({"id": lead_id}, {"$set": update_data})
+    return {"message": "Lead updated successfully"}
+
+@api_router.patch("/inquiry/queries/{query_id}")
+async def update_inquiry_query(query_id: str, data: dict, user: dict = Depends(get_current_user)):
+    update_data = {k: v for k, v in data.items() if v is not None}
+    await db.inquiry_queries.update_one({"id": query_id}, {"$set": update_data})
+    return {"message": "Query updated successfully"}
+
+# ========================
 # HEALTH CHECK
 # ========================
 
