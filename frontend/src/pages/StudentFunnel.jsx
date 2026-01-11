@@ -301,21 +301,19 @@ const StudentFunnel = () => {
     }
   };
 
-  // Handle skill click - show modal with options
-  const handleSkillClick = (skill) => {
-    setSelectedSkillForModal(skill);
-    setShowSkillModal(true);
+  // Handle skill selection - simple advance (no modal)
+  const handleSkillSelect = (skill) => {
+    updateForm('skill', skill.value);
+    setTimeout(() => setCurrentStep(prev => prev + 1), 200);
   };
 
-  // Handle modal option selection
-  const handleSkillModalOption = (option) => {
-    setShowSkillModal(false);
-    if (option === 'details') {
+  // Handle action choice - book demo or see details
+  const handleActionChoice = (action) => {
+    if (action === 'details') {
       // Navigate to course details page
-      navigate(`/courses/${selectedSkillForModal.value}`);
+      navigate(`/courses/${formData.skill}`);
     } else {
       // Book demo - continue with funnel
-      updateForm('skill', selectedSkillForModal.value);
       setTimeout(() => setCurrentStep(prev => prev + 1), 200);
     }
   };
