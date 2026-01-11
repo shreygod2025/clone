@@ -299,6 +299,25 @@ const StudentFunnel = () => {
     }
   };
 
+  // Handle skill click - show modal with options
+  const handleSkillClick = (skill) => {
+    setSelectedSkillForModal(skill);
+    setShowSkillModal(true);
+  };
+
+  // Handle modal option selection
+  const handleSkillModalOption = (option) => {
+    setShowSkillModal(false);
+    if (option === 'details') {
+      // Navigate to course details page
+      navigate(`/courses/${selectedSkillForModal.value}`);
+    } else {
+      // Book demo - continue with funnel
+      updateForm('skill', selectedSkillForModal.value);
+      setTimeout(() => setCurrentStep(prev => prev + 1), 200);
+    }
+  };
+
   const renderStepContent = () => {
     const stepId = activeSteps[currentStep].id;
     
@@ -310,7 +329,7 @@ const StudentFunnel = () => {
               <div
                 key={skill.value}
                 className={`selection-card p-4 cursor-pointer ${formData.skill === skill.value ? 'selected' : ''}`}
-                onClick={() => handleSingleSelect('skill', skill.value)}
+                onClick={() => handleSkillClick(skill)}
                 data-testid={`skill-${skill.value}`}
               >
                 <div className="text-3xl mb-2">{skill.icon}</div>
