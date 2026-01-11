@@ -127,6 +127,8 @@ const InquiryPage = () => {
         return formData.inquiry_type;
       case 'action':
         return formData.action_type;
+      case 'source':
+        return formData.source;
       case 'contact':
         return formData.name && formData.phone && formData.phone.length >= 10;
       case 'offering':
