@@ -12,14 +12,30 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## What's Been Implemented
 
+### January 2026 Updates (Latest Session)
+
+#### Student Funnel Improvements
+- [x] Removed popup modal for skill action selection
+- [x] "See Course Details / Book Free Demo" is now a regular step (Step 2)
+- [x] City selection step only appears for OFFLINE mode
+- [x] Online mode skips city and goes directly to Schedule Demo
+- [x] Step order: Skill -> Action -> Age -> Mode -> [City if offline] -> Schedule -> Contact -> OTP
+
+#### New Inquiry Page for Team Members (/inquiry)
+- [x] 5 inquiry types: Student, School, Growth Partner, Teacher/Educator, Team
+- [x] Two action paths: Add Lead (CRM) or Log Query (Ticketing)
+- [x] Lead flow: Contact Details -> Select Offering -> Additional Details -> Submit to CRM
+- [x] Query flow: Type of Query -> Contact Details -> Query Details -> Submit to Ticketing
+- [x] Leads automatically synced to appropriate CRM collection (student_inquiries, school_inquiries, educator_applications)
+- [x] Queries stored in inquiry_queries collection for ticketing
+
 ### December 2025 Updates
 
-#### UI/UX Improvements (Latest Session)
+#### UI/UX Improvements
 - [x] Login button changed to dark blue (#1E3A5F)
 - [x] Blog and FAQ moved to footer only (removed from navbar)
 - [x] Student funnel: Removed "For My Child/For Myself" - only Age Group selection
 - [x] Student funnel: Removed Email input field (auto-generated from phone)
-- [x] Student funnel: Reordered steps - Skill first, then Age
 - [x] Student funnel: Auto-advance on single selection questions
 - [x] School funnel: Auto-advance on single selection questions
 - [x] "Link to Join Demo" support option with login prompt
@@ -32,15 +48,16 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - [x] User auth context for session management
 - [ ] WhatsApp OTP integration (MOCKED - uses 1111)
 
-#### Student Funnel (7 Steps)
+#### Student Funnel (Dynamic Steps - 7 for online, 8 for offline)
 1. Choose a Skill (auto-advances)
-2. Select Age Group (auto-advances)
-3. Select City (auto-advances)
-4. Learning Mode (Online auto-advances, Offline shows sub-options)
-5. Select Center (if offline at center, auto-advances)
-6. Schedule Demo (date + time)
-7. Contact Details (name + phone only)
-8. OTP Verification → Success
+2. Action Choice: See Course Details / Book Free Demo
+3. Select Age Group (auto-advances)
+4. Learning Mode (Online auto-advances to step 5, Offline shows sub-options)
+5. [Offline only] Select City (auto-advances)
+6. [Offline at center] Select Center (auto-advances)
+7. Schedule Demo (date + time)
+8. Contact Details (name + phone only)
+9. OTP Verification -> Success
 
 #### School Funnel (9 Steps with Auto-Advance)
 1. Board (auto-advances)
@@ -79,12 +96,14 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ### P0 - Critical
 - [ ] Complete WhatsApp OTP integration (Twilio) when credentials provided
+- [ ] Make Educator application form dynamic (fields from admin requirements)
 
 ### P1 - High Priority
 - [x] School Funnel Post-Submission Page (services showcase) ✅ DONE
 - [x] Educator Funnel: Add "Other City" text input option ✅ DONE
 - [x] Educator Funnel: Date/time selection for "Demo Class" ✅ DONE
-- [ ] Admin: Support Queries View section
+- [ ] Admin: Support Queries View section (view inquiry_queries collection)
+- [ ] Admin: View leads from inquiry system (inquiry_leads collection)
 
 ### P2 - Medium Priority
 - [ ] Content Management (Blog posts, FAQ, About Us)
@@ -102,7 +121,7 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 ```
 /app/
 ├── backend/
-│   └── server.py      # FastAPI monolith with OTP auth routes
+│   └── server.py      # FastAPI monolith with OTP auth routes and inquiry endpoints
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
@@ -111,9 +130,10 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 │   │   ├── context/
 │   │   │   └── UserAuthContext.jsx  # Phone/OTP login context
 │   │   └── pages/
-│   │       ├── StudentFunnel.jsx    # 7-step funnel with auto-advance
+│   │       ├── StudentFunnel.jsx    # Dynamic steps with conditional city
 │   │       ├── SchoolFunnel.jsx     # 9-step funnel with auto-advance
 │   │       ├── EducatorFunnel.jsx
+│   │       ├── InquiryPage.jsx      # NEW: Team inquiry portal
 │   │       ├── SupportFlow.jsx      # With "Link to Join Demo" option
 │   │       ├── LoginPage.jsx
 │   │       ├── MyBookingsPage.jsx
@@ -123,12 +143,40 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 ```
 
 ## Key API Endpoints
+
+### Auth
 - `POST /api/auth/send-otp` - Send OTP (mocked, returns 1111)
 - `POST /api/auth/verify-otp` - Verify OTP
+
+### User
 - `GET /api/user/bookings/{phone}` - Get user bookings
 - `POST /api/user/reschedule` - Reschedule booking
+
+### Inquiries
 - `POST /api/students/inquiry` - Submit student inquiry
 - `POST /api/schools/inquiry` - Submit school inquiry
+- `POST /api/educators/apply` - Submit educator application
+
+### Inquiry System (NEW)
+- `POST /api/inquiry/lead` - Add lead (syncs to appropriate CRM)
+- `POST /api/inquiry/query` - Add query to ticketing
+- `GET /api/inquiry/leads` - Get all leads (admin auth required)
+- `GET /api/inquiry/queries` - Get all queries (admin auth required)
+- `PATCH /api/inquiry/leads/{lead_id}` - Update lead status
+- `PATCH /api/inquiry/queries/{query_id}` - Update query status
+
+## Database Collections
+
+### Existing
+- `student_inquiries` - Student demo bookings
+- `school_inquiries` - School partnership inquiries
+- `educator_applications` - Educator applications
+- `cities` - City list
+- `centers` - OLL center locations
+
+### New (Inquiry System)
+- `inquiry_leads` - All leads from team inquiry form
+- `inquiry_queries` - All queries/tickets from team inquiry form
 
 ## Credentials
 - **Admin:** admin@oll.co / Dagaji03@
