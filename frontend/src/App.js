@@ -87,12 +87,11 @@ function App() {
             <Route path="/admin/students" element={<ProtectedRoute><AdminStudentCRM /></ProtectedRoute>} />
             <Route path="/admin/schools" element={<ProtectedRoute><AdminSchoolCRM /></ProtectedRoute>} />
             <Route path="/admin/educators" element={<ProtectedRoute><AdminEducators /></ProtectedRoute>} />
-            <Route path="/admin/inquiry-leads" element={<ProtectedRoute><AdminInquiryLeads /></ProtectedRoute>} />
-            <Route path="/admin/inquiry-queries" element={<ProtectedRoute><AdminInquiryQueries /></ProtectedRoute>} />
+            <Route path="/admin/growth-partners" element={<ProtectedRoute><AdminGrowthPartners /></ProtectedRoute>} />
+            <Route path="/admin/support" element={<ProtectedRoute><AdminSupportUnified /></ProtectedRoute>} />
             <Route path="/admin/blogs" element={<ProtectedRoute><AdminBlogs /></ProtectedRoute>} />
             <Route path="/admin/faqs" element={<ProtectedRoute><AdminFAQs /></ProtectedRoute>} />
             <Route path="/admin/requirements" element={<ProtectedRoute><AdminRequirements /></ProtectedRoute>} />
-            <Route path="/admin/support" element={<ProtectedRoute><AdminSupport /></ProtectedRoute>} />
             <Route path="/admin/cities" element={<ProtectedRoute><AdminCities /></ProtectedRoute>} />
             <Route path="/admin/centers" element={<ProtectedRoute><AdminCenters /></ProtectedRoute>} />
           </Routes>
