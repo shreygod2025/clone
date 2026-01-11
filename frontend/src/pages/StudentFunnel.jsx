@@ -396,33 +396,6 @@ const StudentFunnel = () => {
           </div>
         );
 
-      case 'city':
-        return (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {cities.map((city) => (
-                <div
-                  key={city.id}
-                  className={`selection-card p-3 cursor-pointer ${formData.city === city.name ? 'selected' : ''}`}
-                  onClick={() => handleSingleSelect('city', city.name)}
-                  data-testid={`city-${city.name.toLowerCase()}`}
-                >
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-slate-400" />
-                    <span className="font-medium text-sm">{city.name}</span>
-                  </div>
-                  {city.has_center && (
-                    <div className="text-xs text-green-600 mt-1">Has Center</div>
-                  )}
-                </div>
-              ))}
-            </div>
-            {cities.length === 0 && (
-              <p className="text-center text-slate-500 py-4">Loading cities...</p>
-            )}
-          </div>
-        );
-
       case 'mode':
         return (
           <div className="space-y-4">
@@ -432,7 +405,8 @@ const StudentFunnel = () => {
                 onClick={() => {
                   updateForm('learning_mode', 'online');
                   updateForm('offline_type', '');
-                  // Auto-advance for online selection
+                  updateForm('city', ''); // Clear city for online
+                  // Auto-advance for online selection - skip city step
                   setTimeout(() => setCurrentStep(prev => prev + 1), 200);
                 }}
                 data-testid="mode-online"
@@ -484,6 +458,34 @@ const StudentFunnel = () => {
                   </div>
                 </div>
               </div>
+            )}
+          </div>
+        );
+
+      case 'city':
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600 mb-2">Select your city for offline classes</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {cities.map((city) => (
+                <div
+                  key={city.id}
+                  className={`selection-card p-3 cursor-pointer ${formData.city === city.name ? 'selected' : ''}`}
+                  onClick={() => handleSingleSelect('city', city.name)}
+                  data-testid={`city-${city.name.toLowerCase()}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-slate-400" />
+                    <span className="font-medium text-sm">{city.name}</span>
+                  </div>
+                  {city.has_center && (
+                    <div className="text-xs text-green-600 mt-1">Has Center</div>
+                  )}
+                </div>
+              ))}
+            </div>
+            {cities.length === 0 && (
+              <p className="text-center text-slate-500 py-4">Loading cities...</p>
             )}
           </div>
         );
