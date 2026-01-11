@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Phone, Shield, GraduationCap, Users, Building2 } from 'lucide-react';
+import { ArrowLeft, Phone, Shield } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { toast } from 'sonner';
@@ -10,18 +10,11 @@ import Navbar from '../components/Navbar';
 const LoginPage = () => {
   const navigate = useNavigate();
   const { sendOTP, verifyOTP } = useUserAuth();
-  const [step, setStep] = useState('type'); // type, phone, otp
-  const [userType, setUserType] = useState(''); // Start with no selection
+  const [step, setStep] = useState('phone'); // phone, otp
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
-  const toastShownRef = useRef(false); // Prevent duplicate toasts
-
-  const userTypes = [
-    { id: 'student', label: 'Student / Parent', icon: GraduationCap, description: 'View your demo bookings' },
-    { id: 'educator', label: 'Educator', icon: Users, description: 'View your applications' },
-    { id: 'school', label: 'School', icon: Building2, description: 'View your meeting bookings' },
-  ];
+  const toastShownRef = useRef(false);
 
   const handleSendOTP = async () => {
     if (!phone || phone.length < 10) {
@@ -29,7 +22,8 @@ const LoginPage = () => {
       return;
     }
     setLoading(true);
-    const result = await sendOTP(phone, userType);
+    // Send OTP without user type - backend will determine based on phone
+    const result = await sendOTP(phone, 'student');
     setLoading(false);
     
     if (result.success) {
@@ -46,11 +40,11 @@ const LoginPage = () => {
       return;
     }
     setLoading(true);
-    const result = await verifyOTP(phone, otp, userType);
+    // Verify OTP - backend returns user type automatically
+    const result = await verifyOTP(phone, otp, 'student');
     setLoading(false);
     
     if (result.success) {
-      // Show toast only once
       if (!toastShownRef.current) {
         toastShownRef.current = true;
         toast.success('Login successful!');
@@ -62,14 +56,12 @@ const LoginPage = () => {
   };
 
   const handleBack = () => {
-    if (step === 'otp') setStep('phone');
-    else if (step === 'phone') setStep('type');
-    else navigate('/');
-  };
-
-  const handleTypeSelect = (typeId) => {
-    setUserType(typeId);
-    setStep('phone');
+    if (step === 'otp') {
+      setStep('phone');
+      setOtp('');
+    } else {
+      navigate('/');
+    }
   };
 
   return (
@@ -86,46 +78,16 @@ const LoginPage = () => {
             Back
           </button>
 
-          {step === 'type' && (
-            <>
-              <h1 className="text-2xl font-bold text-[#1E3A5F] mb-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
-                Login to OLL
-              </h1>
-              <p className="text-slate-500 mb-6">Select your account type</p>
-
-              <div className="space-y-3">
-                {userTypes.map(type => (
-                  <div
-                    key={type.id}
-                    className="selection-card p-4 cursor-pointer"
-                    onClick={() => handleTypeSelect(type.id)}
-                    data-testid={`login-type-${type.id}`}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-[#1E3A5F]/10 flex items-center justify-center">
-                        <type.icon className="w-6 h-6 text-[#1E3A5F]" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-[#1E3A5F]">{type.label}</h3>
-                        <p className="text-sm text-slate-500">{type.description}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
           {step === 'phone' && (
             <>
               <div className="w-16 h-16 rounded-2xl bg-[#1E3A5F]/10 flex items-center justify-center mx-auto mb-6">
                 <Phone className="w-8 h-8 text-[#1E3A5F]" />
               </div>
               <h1 className="text-2xl font-bold text-[#1E3A5F] mb-2 text-center" style={{ fontFamily: 'Manrope, sans-serif' }}>
-                Enter Phone Number
+                Login to OLL
               </h1>
               <p className="text-slate-500 mb-6 text-center">
-                We'll send you an OTP to verify
+                Enter your phone number to continue
               </p>
 
               <div className="space-y-4">
