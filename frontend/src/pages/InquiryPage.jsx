@@ -592,7 +592,7 @@ const InquiryPage = () => {
                 Back
               </Button>
               {/* Hide Continue button on auto-advance steps */}
-              {!['type', 'action', 'query_type'].includes(activeSteps[currentStep].id) && (
+              {!['type', 'action', 'query_type', 'source'].includes(activeSteps[currentStep].id) && (
                 <Button
                   onClick={handleNext}
                   disabled={submitting}
