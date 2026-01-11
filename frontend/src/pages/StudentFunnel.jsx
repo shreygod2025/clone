@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, Calendar, Clock, BookOpen, MapPin, Target, HelpCircle, MessageCircle, Building2, Home, Phone, Shield } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Calendar, Clock, BookOpen, MapPin, HelpCircle, MessageCircle, Building2, Home, Phone, Shield, Eye, X } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Calendar as CalendarComponent } from '../components/ui/calendar';
+import { Dialog, DialogContent } from '../components/ui/dialog';
 import { toast } from 'sonner';
 import { format, addDays, isBefore, startOfDay } from 'date-fns';
 import axios from 'axios';
@@ -43,6 +44,8 @@ const StudentFunnel = () => {
   const [centers, setCenters] = useState([]);
   const [bookingData, setBookingData] = useState(null);
   const [cameFromCoursePage, setCameFromCoursePage] = useState(false);
+  const [showSkillModal, setShowSkillModal] = useState(false);
+  const [selectedSkillForModal, setSelectedSkillForModal] = useState(null);
   
   // OTP State
   const [otpSent, setOtpSent] = useState(false);
