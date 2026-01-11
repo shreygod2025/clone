@@ -36,6 +36,18 @@ const SKILL_OPTIONS = [
   { value: 'financial', label: 'Financial Literacy' },
 ];
 
+const SOURCE_OPTIONS = [
+  { value: 'walk_in', label: 'Walk-in' },
+  { value: 'phone_call', label: 'Phone Call' },
+  { value: 'whatsapp', label: 'WhatsApp' },
+  { value: 'referral', label: 'Referral' },
+  { value: 'website', label: 'Website' },
+  { value: 'social_media', label: 'Social Media' },
+  { value: 'event', label: 'Event / Workshop' },
+  { value: 'about_page', label: 'About Page Form' },
+  { value: 'other', label: 'Other' },
+];
+
 const InquiryPage = () => {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(0);
@@ -53,6 +65,7 @@ const InquiryPage = () => {
     // Lead specific
     offering: '',
     city: '',
+    source: '', // NEW: source field
     details: '',
     // Query specific
     query_type: '',
