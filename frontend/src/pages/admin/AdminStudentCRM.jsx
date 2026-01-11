@@ -197,6 +197,25 @@ const AdminStudentCRM = () => {
     }
   };
 
+  const handleAddComment = async () => {
+    if (!newComment.trim()) {
+      toast.error('Please enter a comment');
+      return;
+    }
+    try {
+      await axios.post(`${API}/students/comment/${showCommentModal.id}`, 
+        { text: newComment },
+        { headers: getAuthHeaders() }
+      );
+      toast.success('Comment added');
+      setNewComment('');
+      setShowCommentModal(null);
+      fetchInquiries();
+    } catch (error) {
+      toast.error('Failed to add comment');
+    }
+  };
+
   const filteredInquiries = inquiries.filter(inq => {
     const matchesSearch = inq.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       inq.phone?.includes(searchQuery);
@@ -208,13 +227,24 @@ const AdminStudentCRM = () => {
 
   // Render action buttons based on status
   const renderActionButtons = (inquiry) => {
+    const baseButtons = (
+      <button
+        onClick={() => setShowCommentModal(inquiry)}
+        className="text-xs px-3 py-1.5 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-700 flex items-center gap-1 font-medium"
+        data-testid={`comment-${inquiry.id}`}
+      >
+        <MessageSquare className="w-3 h-3" />
+        Add Note
+      </button>
+    );
+
     switch (inquiry.status) {
       case 'new':
         return (
           <div className="flex gap-1 flex-wrap">
             <button
               onClick={() => handleDemoCompleted(inquiry)}
-              className="text-xs px-3 py-1.5 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-700 flex items-center gap-1 font-medium"
+              className="text-xs px-3 py-1.5 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 flex items-center gap-1 font-medium"
               data-testid={`demo-completed-${inquiry.id}`}
             >
               <CheckCircle2 className="w-3 h-3" />
@@ -229,8 +259,9 @@ const AdminStudentCRM = () => {
               data-testid={`reschedule-${inquiry.id}`}
             >
               <CalendarClock className="w-3 h-3" />
-              Reschedule Demo
+              Reschedule
             </button>
+            {baseButtons}
             <button
               onClick={() => handleArchive(inquiry)}
               className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1 font-medium"
@@ -256,6 +287,7 @@ const AdminStudentCRM = () => {
               <CheckCircle2 className="w-3 h-3" />
               Converted
             </button>
+            {baseButtons}
             <button
               onClick={() => handleArchive(inquiry)}
               className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1 font-medium"
@@ -269,7 +301,7 @@ const AdminStudentCRM = () => {
       
       case 'converted':
       case 'archived':
-        return null; // No action buttons for converted/archived
+        return <div className="flex gap-1 flex-wrap">{baseButtons}</div>;
       
       default:
         return null;
