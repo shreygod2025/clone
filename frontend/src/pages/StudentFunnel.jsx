@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, Calendar, Clock, BookOpen, MapPin, HelpCircle, MessageCircle, Building2, Home, Phone, Shield, Eye, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Calendar, Clock, BookOpen, MapPin, HelpCircle, MessageCircle, Building2, Home, Phone, Shield, Eye } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Calendar as CalendarComponent } from '../components/ui/calendar';
-import { Dialog, DialogContent } from '../components/ui/dialog';
 import { toast } from 'sonner';
 import { format, addDays, isBefore, startOfDay } from 'date-fns';
 import axios from 'axios';
@@ -44,8 +43,6 @@ const StudentFunnel = () => {
   const [centers, setCenters] = useState([]);
   const [bookingData, setBookingData] = useState(null);
   const [cameFromCoursePage, setCameFromCoursePage] = useState(false);
-  const [showSkillModal, setShowSkillModal] = useState(false);
-  const [selectedSkillForModal, setSelectedSkillForModal] = useState(null);
   
   // OTP State
   const [otpSent, setOtpSent] = useState(false);
@@ -107,18 +104,23 @@ const StudentFunnel = () => {
     fetchCenters();
   }, [formData.city, formData.offline_type]);
 
-  // Dynamic steps - SKILL FIRST, then AGE (removed learner type)
+  // Dynamic steps - SKILL FIRST, then AGE, then ACTION CHOICE (removed learner type)
   const getActiveSteps = () => {
     const steps = [
       { id: 'skill', title: 'Choose a Skill' },
+      { id: 'action', title: 'What would you like to do?' },
       { id: 'age', title: 'Select Age Group' },
-      { id: 'city', title: 'Select City' },
       { id: 'mode', title: 'Learning Mode' },
     ];
     
-    // Add center selection step if offline at center
-    if (formData.learning_mode === 'offline' && formData.offline_type === 'center' && centers.length > 0) {
-      steps.push({ id: 'center', title: 'Select Center' });
+    // Add city selection only if offline is selected
+    if (formData.learning_mode === 'offline') {
+      steps.push({ id: 'city', title: 'Select City' });
+      
+      // Add center selection step if offline at center
+      if (formData.offline_type === 'center' && centers.length > 0) {
+        steps.push({ id: 'center', title: 'Select Center' });
+      }
     }
     
     steps.push(
