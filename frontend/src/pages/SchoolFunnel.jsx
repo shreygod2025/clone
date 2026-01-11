@@ -163,14 +163,13 @@ const SchoolFunnel = () => {
   const canProceed = () => {
     switch (STEPS[currentStep].id) {
       case 'board': return formData.board;
-      case 'location': return formData.location;
       case 'school_size': return formData.school_size;
       case 'fee_range': return formData.fee_range;
       case 'programs': return formData.programs_interested.length > 0;
       case 'support': return formData.support_needed.length > 0;
       case 'meeting_date': return formData.meeting_date;
       case 'meeting_time': return formData.meeting_time;
-      case 'contact': return formData.school_name && formData.contact_name && formData.phone;
+      case 'contact': return formData.school_name && formData.contact_name && formData.phone && formData.location;
       default: return false;
     }
   };
