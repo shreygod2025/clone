@@ -25,14 +25,13 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminStudentCRM from "./pages/admin/AdminStudentCRM";
 import AdminSchoolCRM from "./pages/admin/AdminSchoolCRM";
 import AdminEducators from "./pages/admin/AdminEducators";
+import AdminGrowthPartners from "./pages/admin/AdminGrowthPartners";
 import AdminBlogs from "./pages/admin/AdminBlogs";
 import AdminFAQs from "./pages/admin/AdminFAQs";
 import AdminRequirements from "./pages/admin/AdminRequirements";
-import AdminSupport from "./pages/admin/AdminSupport";
+import AdminSupportUnified from "./pages/admin/AdminSupportUnified";
 import AdminCities from "./pages/admin/AdminCities";
 import AdminCenters from "./pages/admin/AdminCenters";
-import AdminInquiryLeads from "./pages/admin/AdminInquiryLeads";
-import AdminInquiryQueries from "./pages/admin/AdminInquiryQueries";
 
 // Auth Context
 import { AuthProvider, useAuth } from "./context/AuthContext";
