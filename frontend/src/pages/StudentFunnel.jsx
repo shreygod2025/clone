@@ -329,13 +329,53 @@ const StudentFunnel = () => {
               <div
                 key={skill.value}
                 className={`selection-card p-4 cursor-pointer ${formData.skill === skill.value ? 'selected' : ''}`}
-                onClick={() => handleSkillClick(skill)}
+                onClick={() => handleSkillSelect(skill)}
                 data-testid={`skill-${skill.value}`}
               >
                 <div className="text-3xl mb-2">{skill.icon}</div>
                 <div className="font-semibold">{skill.label}</div>
               </div>
             ))}
+          </div>
+        );
+
+      case 'action':
+        const selectedSkill = SKILL_OPTIONS.find(s => s.value === formData.skill);
+        return (
+          <div className="space-y-6">
+            <div className="text-center mb-4">
+              <div className="text-4xl mb-3">{selectedSkill?.icon}</div>
+              <h3 className="text-xl font-bold text-[#1E3A5F]" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                {selectedSkill?.label}
+              </h3>
+              <p className="text-slate-500 text-sm mt-1">What would you like to do?</p>
+            </div>
+            
+            <div className="space-y-3">
+              <div
+                className="selection-card p-5 cursor-pointer flex items-center justify-between"
+                onClick={() => handleActionChoice('details')}
+                data-testid="action-see-details"
+              >
+                <div className="flex items-center gap-3">
+                  <Eye className="w-5 h-5 text-[#1E3A5F]" />
+                  <span className="font-medium">See Course Details</span>
+                </div>
+                <ArrowRight className="w-4 h-4 text-slate-400" />
+              </div>
+              
+              <div
+                className="selection-card p-5 cursor-pointer flex items-center justify-between bg-[#D63031]/5 border-[#D63031]/30"
+                onClick={() => handleActionChoice('book')}
+                data-testid="action-book-demo"
+              >
+                <div className="flex items-center gap-3">
+                  <Calendar className="w-5 h-5 text-[#D63031]" />
+                  <span className="font-medium text-[#D63031]">Book Free Demo</span>
+                </div>
+                <ArrowRight className="w-4 h-4 text-[#D63031]" />
+              </div>
+            </div>
           </div>
         );
 
