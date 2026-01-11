@@ -1000,48 +1000,6 @@ const StudentFunnel = () => {
           </div>
         </div>
       </footer>
-
-      {/* Skill Selection Modal */}
-      <Dialog open={showSkillModal} onOpenChange={setShowSkillModal}>
-        <DialogContent className="max-w-sm p-0 overflow-hidden">
-          <div className="p-6">
-            <div className="text-center mb-6">
-              <div className="text-4xl mb-3">{selectedSkillForModal?.icon}</div>
-              <h2 className="text-xl font-bold text-[#1E3A5F]" style={{ fontFamily: 'Manrope, sans-serif' }}>
-                {selectedSkillForModal?.label}
-              </h2>
-              <p className="text-slate-500 text-sm mt-1">What would you like to do?</p>
-            </div>
-            
-            <div className="space-y-3">
-              <Button
-                onClick={() => handleSkillModalOption('details')}
-                variant="outline"
-                className="w-full h-14 flex items-center justify-between px-4 border-slate-200 hover:border-[#1E3A5F] hover:bg-slate-50"
-                data-testid="skill-see-details"
-              >
-                <div className="flex items-center gap-3">
-                  <Eye className="w-5 h-5 text-[#1E3A5F]" />
-                  <span className="font-medium">See Course Details</span>
-                </div>
-                <ArrowRight className="w-4 h-4 text-slate-400" />
-              </Button>
-              
-              <Button
-                onClick={() => handleSkillModalOption('book')}
-                className="w-full h-14 flex items-center justify-between px-4 bg-[#D63031] hover:bg-[#b52828]"
-                data-testid="skill-book-demo"
-              >
-                <div className="flex items-center gap-3">
-                  <Calendar className="w-5 h-5" />
-                  <span className="font-medium">Book Free Demo</span>
-                </div>
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
