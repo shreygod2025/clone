@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Eye, Phone, Calendar, Clock, Plus, ChevronRight, MessageSquare, Archive, CalendarClock, CheckCircle2, X, User, Mail, MapPin, Target, BookOpen } from 'lucide-react';
+import { Search, Eye, Phone, Calendar, Clock, Plus, ChevronRight, MessageSquare, Archive, CalendarClock, CheckCircle2, X, User, Mail, MapPin, Target, BookOpen, Send } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -37,7 +37,7 @@ const LEARNING_GOALS = [
 ];
 
 const AdminStudentCRM = () => {
-  const { getAuthHeaders } = useAuth();
+  const { getAuthHeaders, user } = useAuth();
   const [inquiries, setInquiries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -48,6 +48,8 @@ const AdminStudentCRM = () => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showRescheduleModal, setShowRescheduleModal] = useState(null);
   const [showConvertModal, setShowConvertModal] = useState(null);
+  const [showCommentModal, setShowCommentModal] = useState(null);
+  const [newComment, setNewComment] = useState('');
   
   // Form states
   const [rescheduleData, setRescheduleData] = useState({ date: null, time: '', reason: '' });
