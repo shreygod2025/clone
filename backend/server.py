@@ -683,6 +683,90 @@ async def update_student_inquiry(
     return inquiry
 
 # ========================
+# COMMENTS ENDPOINTS (Universal for all CRMs)
+# ========================
+
+@api_router.post("/{collection}/comment/{item_id}")
+async def add_comment(collection: str, item_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Add a comment to any CRM item (students, schools, educators, growth_partners)"""
+    collection_map = {
+        "students": "student_inquiries",
+        "schools": "school_inquiries",
+        "educators": "educator_applications",
+        "growth_partners": "growth_partners"
+    }
+    db_collection = collection_map.get(collection)
+    if not db_collection:
+        raise HTTPException(status_code=400, detail="Invalid collection")
+    
+    comment = {
+        "id": str(uuid.uuid4()),
+        "text": data.get("text", ""),
+        "author": user.get("name", "Admin"),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db[db_collection].update_one(
+        {"id": item_id},
+        {"$push": {"comments": comment}, "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    return {"message": "Comment added", "comment": comment}
+
+@api_router.get("/{collection}/comments/{item_id}")
+async def get_comments(collection: str, item_id: str, user: dict = Depends(get_current_user)):
+    """Get all comments for a CRM item"""
+    collection_map = {
+        "students": "student_inquiries",
+        "schools": "school_inquiries",
+        "educators": "educator_applications",
+        "growth_partners": "growth_partners"
+    }
+    db_collection = collection_map.get(collection)
+    if not db_collection:
+        raise HTTPException(status_code=400, detail="Invalid collection")
+    
+    item = await db[db_collection].find_one({"id": item_id}, {"_id": 0, "comments": 1})
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return item.get("comments", [])
+
+# ========================
+# GROWTH PARTNER ENDPOINTS
+# ========================
+
+@api_router.post("/growth-partners", response_model=GrowthPartner)
+async def create_growth_partner(data: GrowthPartnerCreate):
+    partner = GrowthPartner(**data.model_dump())
+    doc = partner.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    await db.growth_partners.insert_one(doc)
+    return partner
+
+@api_router.get("/growth-partners")
+async def get_growth_partners(
+    status: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    query = {}
+    if status:
+        query["status"] = status
+    partners = await db.growth_partners.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    return partners
+
+@api_router.patch("/growth-partners/{partner_id}")
+async def update_growth_partner(
+    partner_id: str, 
+    data: GrowthPartnerUpdate,
+    user: dict = Depends(get_current_user)
+):
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    await db.growth_partners.update_one({"id": partner_id}, {"$set": update_data})
+    partner = await db.growth_partners.find_one({"id": partner_id}, {"_id": 0})
+    return partner
+
+# ========================
 # SCHOOL INQUIRY ENDPOINTS
 # ========================
 
