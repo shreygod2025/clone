@@ -607,6 +607,16 @@ const SchoolFunnel = () => {
               />
             </div>
             <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">School Location / City</label>
+              <Input
+                placeholder="Enter city or location"
+                value={formData.location}
+                onChange={(e) => updateForm('location', e.target.value)}
+                className="input-glass"
+                data-testid="school-location"
+              />
+            </div>
+            <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Contact Person Name</label>
               <Input
                 placeholder="Enter your name"
