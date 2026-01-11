@@ -240,6 +240,8 @@ const StudentFunnel = () => {
     switch (stepId) {
       case 'skill':
         return formData.skill;
+      case 'action':
+        return true; // Action step auto-advances
       case 'age':
         return formData.age_group;
       case 'city':
