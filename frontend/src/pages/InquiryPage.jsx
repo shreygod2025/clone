@@ -498,6 +498,7 @@ const InquiryPage = () => {
                     email: '',
                     offering: '',
                     city: '',
+                    source: '',
                     details: '',
                     query_type: '',
                     query_details: '',
