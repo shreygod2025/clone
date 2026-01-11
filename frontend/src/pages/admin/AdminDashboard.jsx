@@ -21,12 +21,14 @@ const AdminLayout = ({ children, title }) => {
     { path: '/admin/students', icon: GraduationCap, label: 'Student CRM' },
     { path: '/admin/schools', icon: Building2, label: 'School CRM' },
     { path: '/admin/educators', icon: Users, label: 'Educators' },
+    { path: '/admin/inquiry-leads', icon: Briefcase, label: 'Inquiry Leads' },
+    { path: '/admin/inquiry-queries', icon: MessageSquare, label: 'Support Queries' },
     { path: '/admin/requirements', icon: Briefcase, label: 'Requirements' },
     { path: '/admin/cities', icon: MapPin, label: 'Cities' },
     { path: '/admin/centers', icon: Building, label: 'Centers' },
     { path: '/admin/blogs', icon: FileText, label: 'Blogs' },
     { path: '/admin/faqs', icon: HelpCircle, label: 'FAQs' },
-    { path: '/admin/support', icon: MessageSquare, label: 'Support' },
+    { path: '/admin/support', icon: MessageSquare, label: 'Legacy Support' },
   ];
 
   const handleLogout = () => {
