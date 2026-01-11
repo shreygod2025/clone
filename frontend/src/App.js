@@ -13,6 +13,7 @@ import FAQPage from "./pages/FAQPage";
 import CentersPage from "./pages/CentersPage";
 import LoginPage from "./pages/LoginPage";
 import MyBookingsPage from "./pages/MyBookingsPage";
+import InquiryPage from "./pages/InquiryPage";
 
 // Course SEO Pages
 import CoursesListPage from "./pages/courses/CoursesListPage";
