@@ -456,22 +456,6 @@ const SchoolFunnel = () => {
           </div>
         );
 
-      case 'location':
-        return (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
-            {CITIES.map(city => (
-              <div
-                key={city}
-                className={`selection-card text-center py-3 sm:py-4 px-2 ${formData.location === city ? 'selected' : ''}`}
-                onClick={() => handleSingleSelect('location', city)}
-                data-testid={`city-${city.toLowerCase()}`}
-              >
-                <span className="font-medium text-[#1E3A5F] text-sm sm:text-base">{city}</span>
-              </div>
-            ))}
-          </div>
-        );
-
       case 'school_size':
         return (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
