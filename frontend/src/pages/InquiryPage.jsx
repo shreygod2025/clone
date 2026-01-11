@@ -93,6 +93,7 @@ const InquiryPage = () => {
     
     if (formData.action_type === 'lead') {
       steps.push(
+        { id: 'source', title: 'Lead Source' },
         { id: 'contact', title: 'Contact Details' },
         { id: 'offering', title: 'Select Offering' },
         { id: 'details', title: 'Additional Details' }
