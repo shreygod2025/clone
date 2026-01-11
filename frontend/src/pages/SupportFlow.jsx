@@ -43,17 +43,17 @@ const SupportFlow = ({ onBack }) => {
   });
   const [submitting, setSubmitting] = useState(false);
 
-  // Main categories - Added "Demo Link" option
+  // Main categories - Removed "Demo Link" from here (moved inside Demo Related)
   const mainCategories = [
-    { id: 'demo', label: 'Demo Related', icon: Calendar, description: 'Reschedule demo, update booking details' },
-    { id: 'demo_link', label: 'Link to Join Demo', icon: LinkIcon, description: 'Get your demo joining link' },
+    { id: 'demo', label: 'Demo Related', icon: Calendar, description: 'Demo link, reschedule, update booking' },
     { id: 'ongoing_classes', label: 'Ongoing Classes', icon: Building2, description: 'Online / Offline at home or center' },
     { id: 'ongoing_school', label: 'Ongoing Course in School', icon: School, description: 'School program related queries' },
     { id: 'other', label: 'Other Query', icon: HelpCircle, description: 'Any other questions' },
   ];
 
-  // Demo sub-options
+  // Demo sub-options - Added "Link to Join Demo" option
   const demoOptions = [
+    { id: 'demo_link', label: 'Link to Join Demo', description: 'Get your demo joining link', action: 'login' },
     { id: 'reschedule', label: 'Reschedule Demo', description: 'Change your demo date/time' },
     { id: 'new_date', label: 'Ask for New Date & Time', description: 'Request a new slot' },
     { id: 'update_phone', label: 'Update Phone Number', description: 'Change the number used for booking' },
