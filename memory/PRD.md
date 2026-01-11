@@ -102,8 +102,8 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - [x] School Funnel Post-Submission Page (services showcase) ✅ DONE
 - [x] Educator Funnel: Add "Other City" text input option ✅ DONE
 - [x] Educator Funnel: Date/time selection for "Demo Class" ✅ DONE
-- [ ] Admin: Support Queries View section (view inquiry_queries collection)
-- [ ] Admin: View leads from inquiry system (inquiry_leads collection)
+- [x] Admin: View leads from inquiry system (inquiry_leads collection) ✅ DONE
+- [x] Admin: Support Queries View section (view inquiry_queries collection) ✅ DONE
 
 ### P2 - Medium Priority
 - [ ] Content Management (Blog posts, FAQ, About Us)
@@ -133,11 +133,15 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 │   │       ├── StudentFunnel.jsx    # Dynamic steps with conditional city
 │   │       ├── SchoolFunnel.jsx     # 9-step funnel with auto-advance
 │   │       ├── EducatorFunnel.jsx
-│   │       ├── InquiryPage.jsx      # NEW: Team inquiry portal
+│   │       ├── InquiryPage.jsx      # Team inquiry portal
 │   │       ├── SupportFlow.jsx      # With "Link to Join Demo" option
 │   │       ├── LoginPage.jsx
 │   │       ├── MyBookingsPage.jsx
 │   │       └── admin/
+│   │           ├── AdminDashboard.jsx
+│   │           ├── AdminInquiryLeads.jsx   # NEW: View all inquiry leads
+│   │           ├── AdminInquiryQueries.jsx # NEW: View all support queries
+│   │           └── ...other admin pages
 └── memory/
     └── PRD.md
 ```
