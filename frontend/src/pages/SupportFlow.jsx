@@ -201,14 +201,7 @@ const SupportFlow = ({ onBack }) => {
           className="selection-card p-4 cursor-pointer"
           onClick={() => {
             setMainCategory(cat.id);
-            if (cat.id === 'demo_link') {
-              // If logged in, go to my-bookings, else show login prompt
-              if (isLoggedIn) {
-                navigate('/my-bookings');
-              } else {
-                setStep('login_prompt');
-              }
-            } else if (cat.id === 'other') {
+            if (cat.id === 'other') {
               setStep('form');
             } else {
               setStep('category');
@@ -230,7 +223,7 @@ const SupportFlow = ({ onBack }) => {
     </div>
   );
 
-  // Demo category options
+  // Demo category options - now includes "Link to Join Demo"
   const renderDemoOptions = () => (
     <div className="space-y-3">
       <h2 className="text-xl font-bold text-[#1E3A5F] mb-4">Demo Related</h2>
