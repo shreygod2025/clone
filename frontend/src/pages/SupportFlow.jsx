@@ -232,8 +232,17 @@ const SupportFlow = ({ onBack }) => {
           key={opt.id}
           className="selection-card p-4 cursor-pointer"
           onClick={() => {
-            setCategory(opt.id);
-            setStep('form');
+            if (opt.action === 'login') {
+              // Link to Join Demo - check if logged in
+              if (isLoggedIn) {
+                navigate('/my-bookings');
+              } else {
+                setStep('login_prompt');
+              }
+            } else {
+              setCategory(opt.id);
+              setStep('form');
+            }
           }}
           data-testid={`demo-${opt.id}`}
         >
