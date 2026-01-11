@@ -5,7 +5,7 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## Core Requirements
 - **Global Structure:** Landing Page (user selector), Student/Parent Funnel, Educator Funnel, School Funnel, SEO Course Funnels, About OLL page, Blog, and an Admin Panel.
-- **Design:** Minimal, clean, fast, glassy design. Red for CTA buttons, blue for trust-building elements. Dark blue (#1E3A5F) for Login button.
+- **Design:** Minimal, clean, fast, glassy design. Red for CTA buttons, blue for trust-building elements.
 - **Authentication:** Phone/OTP-based login for students (WhatsApp integration pending - MOCKED with OTP 1111)
 
 ---
@@ -14,81 +14,54 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ### January 2026 Updates (Latest Session)
 
-#### Student Funnel Improvements
-- [x] Removed popup modal for skill action selection
-- [x] "See Course Details / Book Free Demo" is now a regular step (Step 2)
-- [x] City selection step only appears for OFFLINE mode
-- [x] Online mode skips city and goes directly to Schedule Demo
-- [x] Step order: Skill -> Action -> Age -> Mode -> [City if offline] -> Schedule -> Contact -> OTP
+#### Inquiry System Improvements
+- [x] Added **Source field** to inquiry form (Walk-in, Phone Call, WhatsApp, Referral, Website, Social Media, Event, About Page, Other)
+- [x] Source selection is now Step 3 when adding a Lead
+- [x] Leads now properly route to respective CRMs:
+  - Student leads → Student CRM
+  - School leads → School CRM  
+  - Teacher leads → Educators CRM
+  - Growth Partner/Team leads → Growth Partners CRM
 
-#### New Inquiry Page for Team Members (/inquiry)
-- [x] 5 inquiry types: Student, School, Growth Partner, Teacher/Educator, Team
-- [x] Two action paths: Add Lead (CRM) or Log Query (Ticketing)
-- [x] Lead flow: Contact Details -> Select Offering -> Additional Details -> Submit to CRM
-- [x] Query flow: Type of Query -> Contact Details -> Query Details -> Submit to Ticketing
-- [x] Leads automatically synced to appropriate CRM collection (student_inquiries, school_inquiries, educator_applications)
-- [x] Queries stored in inquiry_queries collection for ticketing
+#### New Growth Partners CRM (`/admin/growth-partners`)
+- [x] Full CRM with status tracking: New → Contacted → In Discussion → Converted → Archived
+- [x] Add Partner form with Interest Type, City, Source, Details
+- [x] Comment history feature
+- [x] Connected to inquiry form (Growth Partner + Team types)
+
+#### Unified Support Center (`/admin/support`)
+- [x] Merged legacy support tickets and inquiry queries into one page
+- [x] Source filter: All Sources / Team Inquiries / User Tickets
+- [x] Query type filter (Demo, Payment, Technical, etc.)
+- [x] Status filter with stats cards
+- [x] Reply functionality
+
+#### Comment History Feature (All CRMs)
+- [x] Student CRM: "Add Note" button on each lead
+- [x] School CRM: "Add Note" button (to be added)
+- [x] Educator CRM: "Add Note" button (to be added)
+- [x] Growth Partners CRM: Full comment history
+- [x] Comments stored with author name and timestamp
+
+#### Student Funnel Improvements (from previous session)
+- [x] Removed popup modal for skill action - now a regular step
+- [x] City selection only appears for OFFLINE mode
+- [x] Online mode skips city and goes to Schedule Demo
 
 ### December 2025 Updates
 
 #### UI/UX Improvements
 - [x] Login button changed to dark blue (#1E3A5F)
-- [x] Blog and FAQ moved to footer only (removed from navbar)
+- [x] Blog and FAQ moved to footer only
 - [x] Student funnel: Removed "For My Child/For Myself" - only Age Group selection
-- [x] Student funnel: Removed Email input field (auto-generated from phone)
-- [x] Student funnel: Auto-advance on single selection questions
-- [x] School funnel: Auto-advance on single selection questions
-- [x] "Link to Join Demo" support option with login prompt
-- [x] Logged-in students redirected to My Bookings page
+- [x] Student funnel: Removed Email input field
+- [x] Auto-advance on single selection questions
 
 #### Authentication System
-- [x] Phone/OTP-based login system (backend endpoints)
+- [x] Phone/OTP-based login system
 - [x] OTP verification step in student funnel
 - [x] My Bookings page with reschedule option
-- [x] User auth context for session management
 - [ ] WhatsApp OTP integration (MOCKED - uses 1111)
-
-#### Student Funnel (Dynamic Steps - 7 for online, 8 for offline)
-1. Choose a Skill (auto-advances)
-2. Action Choice: See Course Details / Book Free Demo
-3. Select Age Group (auto-advances)
-4. Learning Mode (Online auto-advances to step 5, Offline shows sub-options)
-5. [Offline only] Select City (auto-advances)
-6. [Offline at center] Select Center (auto-advances)
-7. Schedule Demo (date + time)
-8. Contact Details (name + phone only)
-9. OTP Verification -> Success
-
-#### School Funnel (9 Steps with Auto-Advance)
-1. Board (auto-advances)
-2. Location (auto-advances)
-3. School Size (auto-advances)
-4. Fee Range (auto-advances)
-5. Programs Interested (multi-select, manual Next)
-6. Support Needed (multi-select, manual Next)
-7. Meeting Date (auto-advances)
-8. Meeting Time (auto-advances)
-9. Contact Details
-
-#### Support Flow
-- [x] Demo Related queries
-- [x] Link to Join Demo (requires login)
-- [x] Ongoing Classes support
-- [x] Ongoing School Course support
-- [x] Other Query
-
-#### SEO & Content
-- [x] Dynamic course landing pages (/courses/:slug)
-- [x] Course listing page (/courses)
-- [x] SEO meta tags with react-helmet-async
-- [x] Shared Navbar component across all pages
-
-#### Admin Panel
-- [x] Student CRM with detailed Add Lead form
-- [x] School CRM with detailed Add Lead form
-- [x] Educator applications management
-- [x] Requirements management
-- [x] Cities and Centers management
 
 ---
 
@@ -97,17 +70,18 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 ### P0 - Critical
 - [ ] Complete WhatsApp OTP integration (Twilio) when credentials provided
 - [ ] Make Educator application form dynamic (fields from admin requirements)
+- [ ] Add comment history to School CRM and Educator CRM (partially done)
 
 ### P1 - High Priority
-- [x] School Funnel Post-Submission Page (services showcase) ✅ DONE
-- [x] Educator Funnel: Add "Other City" text input option ✅ DONE
-- [x] Educator Funnel: Date/time selection for "Demo Class" ✅ DONE
-- [x] Admin: View leads from inquiry system (inquiry_leads collection) ✅ DONE
-- [x] Admin: Support Queries View section (view inquiry_queries collection) ✅ DONE
+- [x] School Funnel Post-Submission Page ✅
+- [x] Growth Partners CRM ✅ 
+- [x] Unified Support Center ✅
+- [x] Source field in inquiry form ✅
 
 ### P2 - Medium Priority
 - [ ] Content Management (Blog posts, FAQ, About Us)
 - [ ] Real Calendar Integration (replace mocked Calendly)
+- [ ] About Us page with Growth Partner form
 
 ### P3 - Low Priority / Future
 - [ ] Email/WhatsApp notifications for form submissions
@@ -121,66 +95,48 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 ```
 /app/
 ├── backend/
-│   └── server.py      # FastAPI monolith with OTP auth routes and inquiry endpoints
+│   └── server.py          # FastAPI with OTP auth, comments API, growth partners API
 ├── frontend/
 │   ├── src/
-│   │   ├── components/
-│   │   │   ├── Navbar.jsx           # Shared navigation (dark blue login)
-│   │   │   └── ui/                  # Shadcn components
-│   │   ├── context/
-│   │   │   └── UserAuthContext.jsx  # Phone/OTP login context
-│   │   └── pages/
-│   │       ├── StudentFunnel.jsx    # Dynamic steps with conditional city
-│   │       ├── SchoolFunnel.jsx     # 9-step funnel with auto-advance
-│   │       ├── EducatorFunnel.jsx
-│   │       ├── InquiryPage.jsx      # Team inquiry portal
-│   │       ├── SupportFlow.jsx      # With "Link to Join Demo" option
-│   │       ├── LoginPage.jsx
-│   │       ├── MyBookingsPage.jsx
-│   │       └── admin/
-│   │           ├── AdminDashboard.jsx
-│   │           ├── AdminInquiryLeads.jsx   # NEW: View all inquiry leads
-│   │           ├── AdminInquiryQueries.jsx # NEW: View all support queries
-│   │           └── ...other admin pages
+│   │   ├── pages/
+│   │   │   ├── StudentFunnel.jsx       # Dynamic steps with conditional city
+│   │   │   ├── SchoolFunnel.jsx        # 9-step funnel
+│   │   │   ├── EducatorFunnel.jsx
+│   │   │   ├── InquiryPage.jsx         # Team inquiry with source selection
+│   │   │   └── admin/
+│   │   │       ├── AdminDashboard.jsx
+│   │   │       ├── AdminStudentCRM.jsx    # With comment history
+│   │   │       ├── AdminSchoolCRM.jsx
+│   │   │       ├── AdminEducators.jsx
+│   │   │       ├── AdminGrowthPartners.jsx # NEW: Growth Partners CRM
+│   │   │       └── AdminSupportUnified.jsx # NEW: Merged support center
 └── memory/
     └── PRD.md
 ```
 
 ## Key API Endpoints
 
-### Auth
-- `POST /api/auth/send-otp` - Send OTP (mocked, returns 1111)
-- `POST /api/auth/verify-otp` - Verify OTP
+### Comments API (Universal)
+- `POST /api/{collection}/comment/{item_id}` - Add comment to any CRM item
+- `GET /api/{collection}/comments/{item_id}` - Get comments for item
+- Collections: students, schools, educators, growth_partners
 
-### User
-- `GET /api/user/bookings/{phone}` - Get user bookings
-- `POST /api/user/reschedule` - Reschedule booking
+### Growth Partners API
+- `POST /api/growth-partners` - Create partner
+- `GET /api/growth-partners` - List partners
+- `PATCH /api/growth-partners/{id}` - Update partner
 
-### Inquiries
-- `POST /api/students/inquiry` - Submit student inquiry
-- `POST /api/schools/inquiry` - Submit school inquiry
-- `POST /api/educators/apply` - Submit educator application
-
-### Inquiry System (NEW)
-- `POST /api/inquiry/lead` - Add lead (syncs to appropriate CRM)
-- `POST /api/inquiry/query` - Add query to ticketing
-- `GET /api/inquiry/leads` - Get all leads (admin auth required)
-- `GET /api/inquiry/queries` - Get all queries (admin auth required)
-- `PATCH /api/inquiry/leads/{lead_id}` - Update lead status
-- `PATCH /api/inquiry/queries/{query_id}` - Update query status
+### Inquiry API (Updated)
+- `POST /api/inquiry/lead` - Add lead (routes to appropriate CRM based on type)
+- `POST /api/inquiry/query` - Add query to support
 
 ## Database Collections
 
-### Existing
-- `student_inquiries` - Student demo bookings
-- `school_inquiries` - School partnership inquiries
-- `educator_applications` - Educator applications
-- `cities` - City list
-- `centers` - OLL center locations
-
-### New (Inquiry System)
-- `inquiry_leads` - All leads from team inquiry form
-- `inquiry_queries` - All queries/tickets from team inquiry form
+- `student_inquiries` - Student leads with comments[]
+- `school_inquiries` - School leads with comments[]
+- `educator_applications` - Educator applications with comments[]
+- `growth_partners` - Growth partner leads with comments[]
+- `inquiry_queries` - Support queries from team form
 
 ## Credentials
 - **Admin:** admin@oll.co / Dagaji03@
