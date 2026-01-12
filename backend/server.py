@@ -300,8 +300,13 @@ class EducatorApplicationCreate(BaseModel):
     city: str = ""
     availability: str = ""
     demo_ready: bool = False
+    demo_date: Optional[str] = None
+    demo_time: Optional[str] = None
     requirement_id: Optional[str] = None
     requirement_title: Optional[str] = None
+    source: str = "website"
+    added_by: str = ""
+    notes: str = ""
 
 class EducatorApplicationUpdate(BaseModel):
     status: Optional[str] = None
