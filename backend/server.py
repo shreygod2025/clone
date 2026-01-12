@@ -603,7 +603,7 @@ async def create_team_user(data: TeamUserCreate, user: dict = Depends(get_curren
         email=data.email,
         name=data.name,
         username=data.username,
-        password_hash=pwd_context.hash(data.password),
+        password_hash=bcrypt.hashpw(data.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
         permissions=data.permissions
     )
     doc = team_user.model_dump()
