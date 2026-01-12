@@ -251,8 +251,12 @@ class SchoolInquiryCreate(BaseModel):
     board: str = ""
     programs_interested: List[str] = []
     support_needed: List[str] = []
+    meeting_date: Optional[str] = None
+    meeting_time: Optional[str] = None
     meeting_type: str = "offline"
     source: str = "website"
+    added_by: str = ""
+    notes: str = ""
 
 class SchoolInquiryUpdate(BaseModel):
     status: Optional[str] = None
