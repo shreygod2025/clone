@@ -330,11 +330,18 @@ const InquiryPage = () => {
             <Check className="w-10 h-10 text-green-600" />
           </div>
           <h2 className="text-2xl font-bold text-[#1E3A5F] mb-2">Submitted Successfully!</h2>
-          <p className="text-slate-500 mb-6">
+          <p className="text-slate-500 mb-2">
             {formData.action_type === 'lead' 
               ? 'Lead has been added to the CRM.'
               : 'Query has been logged to the ticketing system.'}
           </p>
+          {formData.book_demo && formData.demo_date && formData.demo_time && (
+            <div className="bg-green-50 rounded-lg p-3 mb-4">
+              <p className="text-sm text-green-700 font-medium">
+                {formData.inquiry_type === 'school' ? 'Meeting' : 'Demo'} scheduled for {format(formData.demo_date, 'MMM d, yyyy')} at {formData.demo_time}
+              </p>
+            </div>
+          )}
           <div className="flex gap-3">
             <Button 
               variant="outline" 
@@ -366,6 +373,10 @@ const InquiryPage = () => {
                   message: '',
                   investment_capacity: '',
                   interest_type: '',
+                  book_demo: false,
+                  demo_date: null,
+                  demo_time: '',
+                  meeting_type: 'online',
                 });
               }}
               className="flex-1"
