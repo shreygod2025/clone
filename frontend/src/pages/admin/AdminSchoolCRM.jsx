@@ -230,6 +230,27 @@ const AdminSchoolCRM = () => {
     }
   };
 
+  const handleAddFollowup = async () => {
+    if (!followupData.date) {
+      toast.error('Please select a followup date');
+      return;
+    }
+    try {
+      await axios.patch(`${API}/schools/inquiry/${showFollowupModal.id}`, {
+        followup_date: format(followupData.date, 'yyyy-MM-dd'),
+        followup_comment: followupData.comment
+      }, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Followup scheduled');
+      setShowFollowupModal(null);
+      setFollowupData({ date: null, comment: '' });
+      fetchInquiries();
+    } catch (error) {
+      toast.error('Failed to add followup');
+    }
+  };
+
   const handleAssignLead = async (userId) => {
     if (!showAssignModal) return;
     try {
