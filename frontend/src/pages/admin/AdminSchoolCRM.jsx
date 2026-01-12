@@ -27,6 +27,7 @@ const TIME_SLOTS = ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00
 const AdminSchoolCRM = () => {
   const { getAuthHeaders } = useAuth();
   const [inquiries, setInquiries] = useState([]);
+  const [teamUsers, setTeamUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSection, setActiveSection] = useState('new');
@@ -36,6 +37,9 @@ const AdminSchoolCRM = () => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showRescheduleModal, setShowRescheduleModal] = useState(null);
   const [showConvertModal, setShowConvertModal] = useState(null);
+  const [showAssignModal, setShowAssignModal] = useState(null);
+  const [showCommentModal, setShowCommentModal] = useState(null);
+  const [newComment, setNewComment] = useState('');
   
   // Form states
   const [rescheduleData, setRescheduleData] = useState({ date: null, time: '', meeting_type: 'offline', reason: '' });
