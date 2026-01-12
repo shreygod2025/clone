@@ -369,7 +369,7 @@ const EducatorFunnel = () => {
                     <div>
                       <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">Skills You Can Teach *</label>
                       <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                        {SKILLS.map(skill => (
+                        {formConfig.skills.map(skill => (
                           <button
                             key={skill}
                             type="button"
@@ -399,7 +399,7 @@ const EducatorFunnel = () => {
                     <div>
                       <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">Grades Comfortable With</label>
                       <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                        {GRADES.map(grade => (
+                        {formConfig.grades.map(grade => (
                           <button
                             key={grade}
                             type="button"
