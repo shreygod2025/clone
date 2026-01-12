@@ -239,6 +239,12 @@ const AdminSupportUnified = () => {
     if (sourceFilter === 'user_support' && query._source !== 'user_support') return false;
     if (sourceFilter === 'legacy' && query._source !== 'legacy') return false;
     
+    // Assignee filter
+    if (assigneeFilter !== 'all') {
+      if (assigneeFilter === 'unassigned' && query.assigned_to) return false;
+      if (assigneeFilter !== 'unassigned' && query.assigned_to !== assigneeFilter) return false;
+    }
+    
     // Query type filter
     if (queryTypeFilter && query.query_type !== queryTypeFilter) return false;
     
