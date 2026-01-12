@@ -317,6 +317,24 @@ const AdminSchoolCRM = () => {
       </>
     );
 
+    // Followup button - shown in all sections except converted
+    const followupButton = inquiry.status !== 'converted' && (
+      <button
+        onClick={() => {
+          setShowFollowupModal(inquiry);
+          setFollowupData({ 
+            date: inquiry.followup_date ? new Date(inquiry.followup_date) : null, 
+            comment: inquiry.followup_comment || '' 
+          });
+        }}
+        className="text-xs px-3 py-1.5 rounded-lg bg-cyan-100 hover:bg-cyan-200 text-cyan-700 flex items-center gap-1 font-medium"
+        data-testid={`followup-${inquiry.id}`}
+      >
+        <Clock className="w-3 h-3" />
+        Followup
+      </button>
+    );
+
     switch (inquiry.status) {
       case 'new':
         return (
@@ -340,6 +358,7 @@ const AdminSchoolCRM = () => {
               <CalendarClock className="w-3 h-3" />
               Reschedule
             </button>
+            {followupButton}
             {baseButtons}
             <button
               onClick={() => handleArchive(inquiry)}
@@ -366,6 +385,7 @@ const AdminSchoolCRM = () => {
               <CheckCircle2 className="w-3 h-3" />
               Converted
             </button>
+            {followupButton}
             {baseButtons}
             <button
               onClick={() => handleArchive(inquiry)}
@@ -379,8 +399,10 @@ const AdminSchoolCRM = () => {
         );
       
       case 'converted':
-      case 'archived':
         return <div className="flex gap-1 flex-wrap">{baseButtons}</div>;
+      
+      case 'archived':
+        return <div className="flex gap-1 flex-wrap">{followupButton}{baseButtons}</div>;
       
       default:
         return null;
