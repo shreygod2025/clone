@@ -171,16 +171,15 @@ const AboutPage = () => {
     }
     setSubmitting(true);
     try {
-      await axios.post(`${API}/schools/inquiry`, {
-        school_name: `Growth Partner - ${partnerForm.city}`,
-        contact_name: partnerForm.name,
+      // Submit to growth partners CRM
+      await axios.post(`${API}/growth-partners`, {
+        name: partnerForm.name,
         email: partnerForm.email,
         phone: partnerForm.phone || '',
-        location: partnerForm.city,
-        school_size: partnerForm.investment_capacity || 'Not specified',
-        fee_range: 'Growth Partner',
-        programs_interested: ['franchise'],
-        support_needed: ['partnership']
+        city: partnerForm.city,
+        interest_type: 'franchise',
+        details: `Investment capacity: ${partnerForm.investment_capacity || 'Not specified'}. Message: ${partnerForm.message || 'N/A'}`,
+        source: 'about_page'
       });
       setPartnerSubmitted(true);
       toast.success('Application submitted successfully!');
