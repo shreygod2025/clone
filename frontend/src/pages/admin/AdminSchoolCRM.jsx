@@ -559,6 +559,18 @@ const AdminSchoolCRM = () => {
                 </div>
               )}
 
+              {/* Followup shown outside - only for non-converted */}
+              {inquiry.status !== 'converted' && inquiry.followup_date && (
+                <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-3 mb-3">
+                  <p className="text-xs text-cyan-700 font-medium mb-1 flex items-center gap-1">
+                    <Clock className="w-3 h-3" /> Followup: {inquiry.followup_date}
+                  </p>
+                  {inquiry.followup_comment && (
+                    <p className="text-sm text-cyan-900">{inquiry.followup_comment}</p>
+                  )}
+                </div>
+              )}
+
               {/* View Button */}
               <div className="flex gap-2 mb-3">
                 <Button
