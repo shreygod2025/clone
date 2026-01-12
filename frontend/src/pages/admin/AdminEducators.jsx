@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Eye, Phone, Mail, Calendar, Clock, Plus, ChevronRight, MessageSquare, Archive, CalendarClock, CheckCircle2, User, Briefcase, MapPin } from 'lucide-react';
+import { Search, Eye, Phone, Mail, Calendar, Clock, Plus, ChevronRight, MessageSquare, Archive, CalendarClock, CheckCircle2, User, Briefcase, MapPin, UserPlus, Send } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -26,18 +26,35 @@ const TIME_SLOTS = ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00
 const AdminEducators = () => {
   const { getAuthHeaders } = useAuth();
   const [educators, setEducators] = useState([]);
+  const [teamUsers, setTeamUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSection, setActiveSection] = useState('new');
+  const [assigneeFilter, setAssigneeFilter] = useState('all');
   
   // Modal states
   const [viewEducator, setViewEducator] = useState(null);
   const [showScheduleModal, setShowScheduleModal] = useState(null);
+  const [showAssignModal, setShowAssignModal] = useState(null);
+  const [showCommentModal, setShowCommentModal] = useState(null);
+  const [newComment, setNewComment] = useState('');
   const [scheduleData, setScheduleData] = useState({ date: null, time: '' });
 
   useEffect(() => {
     fetchEducators();
+    fetchTeamUsers();
   }, []);
+
+  const fetchTeamUsers = async () => {
+    try {
+      const response = await axios.get(`${API}/team-users`, {
+        headers: getAuthHeaders()
+      });
+      setTeamUsers(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch team users:', error);
+    }
+  };
 
   const fetchEducators = async () => {
     setLoading(true);
