@@ -419,6 +419,12 @@ const AdminSupportUnified = () => {
                       {query.email}
                     </span>
                   )}
+                  {query.assigned_to && (
+                    <span className="flex items-center gap-1 text-indigo-600 font-medium">
+                      <UserPlus className="w-4 h-4" />
+                      Assigned: {getAssignedUserName(query.assigned_to) || 'Team Member'}
+                    </span>
+                  )}
                 </div>
               </div>
 
