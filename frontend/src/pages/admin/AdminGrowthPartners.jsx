@@ -42,6 +42,7 @@ const SOURCE_OPTIONS = [
 const AdminGrowthPartners = () => {
   const { getAuthHeaders, user } = useAuth();
   const [partners, setPartners] = useState([]);
+  const [teamUsers, setTeamUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSection, setActiveSection] = useState('new');
@@ -51,6 +52,7 @@ const AdminGrowthPartners = () => {
   const [viewPartner, setViewPartner] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showCommentModal, setShowCommentModal] = useState(null);
+  const [showAssignModal, setShowAssignModal] = useState(null);
   const [newComment, setNewComment] = useState('');
   
   // Form state
