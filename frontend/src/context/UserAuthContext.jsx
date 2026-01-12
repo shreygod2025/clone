@@ -30,7 +30,11 @@ export const UserAuthProvider = ({ children }) => {
   const verifyOTP = async (phone, otp, userType = 'student') => {
     try {
       const response = await axios.post(`${API}/auth/verify-otp`, { phone, otp, user_type: userType });
-      const userData = response.data;
+      const userData = {
+        ...response.data,
+        user_type: userType, // Ensure user_type is always set
+        phone: phone
+      };
       setUser(userData);
       localStorage.setItem('oll_user', JSON.stringify(userData));
       return { success: true, user: userData };
