@@ -124,7 +124,7 @@ const AdminEducators = () => {
   const handleAssignLead = async (userId) => {
     if (!showAssignModal) return;
     try {
-      await axios.patch(`${API}/educators/${showAssignModal.id}`, {
+      await axios.patch(`${API}/educators/application/${showAssignModal.id}`, {
         assigned_to: userId
       }, {
         headers: getAuthHeaders()
