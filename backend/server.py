@@ -1442,6 +1442,7 @@ async def create_inquiry_lead(data: dict):
     
     # Get source from data or default to team_inquiry_form
     source = data.get('source', 'team_inquiry_form')
+    added_by = data.get('added_by', '')  # user_id of who added this
     
     # Also add to appropriate CRM based on inquiry type
     inquiry_type = data.get('inquiry_type', 'student')
