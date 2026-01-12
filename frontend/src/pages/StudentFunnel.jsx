@@ -140,11 +140,15 @@ const StudentFunnel = () => {
       }
     }
     
-    steps.push(
-      { id: 'schedule', title: 'Schedule Demo' },
-      { id: 'contact', title: 'Contact Details' },
-      { id: 'otp', title: 'Verify Phone' }
-    );
+    steps.push({ id: 'schedule', title: 'Schedule Demo' });
+    
+    // Only add contact and OTP steps if user is NOT logged in
+    if (!isLoggedIn) {
+      steps.push(
+        { id: 'contact', title: 'Contact Details' },
+        { id: 'otp', title: 'Verify Phone' }
+      );
+    }
     
     return steps;
   };
