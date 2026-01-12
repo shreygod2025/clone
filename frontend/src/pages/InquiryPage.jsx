@@ -787,6 +787,106 @@ const InquiryPage = () => {
                 </div>
               )}
 
+              {/* Book Demo/Meeting Section - for student, school, teacher */}
+              {['student', 'school', 'teacher'].includes(formData.inquiry_type) && (
+                <div className="mt-6 pt-6 border-t border-slate-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-semibold text-[#1E3A5F] flex items-center gap-2">
+                      <Calendar className="w-5 h-5" />
+                      {formData.inquiry_type === 'school' ? 'Schedule Meeting' : 'Book Demo'}
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => updateForm('book_demo', !formData.book_demo)}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                        formData.book_demo
+                          ? 'bg-[#D63031] text-white'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                      data-testid="toggle-booking"
+                    >
+                      {formData.book_demo ? 'Booking Enabled ✓' : 'Add Booking'}
+                    </button>
+                  </div>
+
+                  {formData.book_demo && (
+                    <div className="bg-slate-50 rounded-xl p-4 space-y-4">
+                      {/* Meeting Type */}
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                          {formData.inquiry_type === 'school' ? 'Meeting Type' : 'Demo Type'}
+                        </label>
+                        <div className="flex gap-3">
+                          {MEETING_TYPES.map(mt => (
+                            <button
+                              key={mt.value}
+                              type="button"
+                              onClick={() => updateForm('meeting_type', mt.value)}
+                              className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium border-2 transition-all ${
+                                formData.meeting_type === mt.value
+                                  ? 'border-[#1E3A5F] bg-[#1E3A5F] text-white'
+                                  : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                              }`}
+                            >
+                              {mt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Date Selection */}
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">Select Date</label>
+                          <div className="bg-white rounded-lg border border-slate-200 p-2">
+                            <CalendarComponent
+                              mode="single"
+                              selected={formData.demo_date}
+                              onSelect={(date) => updateForm('demo_date', date)}
+                              disabled={(date) => date < new Date() || date > addDays(new Date(), 30)}
+                              className="rounded-md"
+                            />
+                          </div>
+                          {formData.demo_date && (
+                            <p className="text-sm text-[#1E3A5F] mt-2 font-medium">
+                              Selected: {format(formData.demo_date, 'EEEE, MMMM d, yyyy')}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Time Selection */}
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-2">Select Time</label>
+                          <div className="grid grid-cols-3 gap-2">
+                            {TIME_SLOTS.map(time => (
+                              <button
+                                key={time}
+                                type="button"
+                                onClick={() => updateForm('demo_time', time)}
+                                className={`py-2.5 px-3 rounded-lg text-sm font-medium border transition-all ${
+                                  formData.demo_time === time
+                                    ? 'border-[#D63031] bg-[#D63031] text-white'
+                                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                                }`}
+                                data-testid={`time-${time}`}
+                              >
+                                {time}
+                              </button>
+                            ))}
+                          </div>
+                          {formData.demo_time && (
+                            <p className="text-sm text-[#D63031] mt-3 font-medium flex items-center gap-1">
+                              <Clock className="w-4 h-4" />
+                              Selected: {formData.demo_time}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Additional Details */}
               <div className="mt-4">
                 <label className="block text-sm font-medium text-slate-700 mb-1">Additional Notes</label>
