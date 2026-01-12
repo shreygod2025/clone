@@ -424,6 +424,11 @@ const AdminStudentCRM = () => {
                   <p className="text-sm text-slate-500 flex items-center gap-1">
                     <Phone className="w-3 h-3" /> {inquiry.phone}
                   </p>
+                  {inquiry.assigned_to && (
+                    <p className="text-xs text-indigo-600 mt-1 flex items-center gap-1">
+                      <UserPlus className="w-3 h-3" /> Assigned to: {getAssignedUserName(inquiry.assigned_to) || 'Team Member'}
+                    </p>
+                  )}
                 </div>
                 <span className={`px-2 py-1 rounded text-xs font-medium ${
                   inquiry.source === 'website' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
