@@ -552,12 +552,25 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     try:
         payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
         email = payload.get("sub")
+        role = payload.get("role", "admin")
+        user_id = payload.get("user_id")
+        
         if email is None:
             raise HTTPException(status_code=401, detail="Invalid token")
+        
+        # Check admins collection first
         user = await db.admins.find_one({"email": email}, {"_id": 0, "password": 0})
-        if user is None:
-            raise HTTPException(status_code=401, detail="User not found")
-        return user
+        if user:
+            user["role"] = "admin"
+            return user
+        
+        # Then check team_users collection
+        team_user = await db.team_users.find_one({"email": email}, {"_id": 0, "password_hash": 0})
+        if team_user:
+            team_user["role"] = "team_member"
+            return team_user
+        
+        raise HTTPException(status_code=401, detail="User not found")
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError:
