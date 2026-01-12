@@ -121,12 +121,64 @@ const AdminEducators = () => {
     await handleStatusChange(educator, 'archived');
   };
 
+  const handleAssignLead = async (userId) => {
+    if (!showAssignModal) return;
+    try {
+      await axios.patch(`${API}/educators/${showAssignModal.id}`, {
+        assigned_to: userId
+      }, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Lead assigned successfully');
+      setShowAssignModal(null);
+      fetchEducators();
+    } catch (error) {
+      toast.error('Failed to assign lead');
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!newComment.trim()) {
+      toast.error('Please enter a comment');
+      return;
+    }
+    try {
+      await axios.post(`${API}/educators/comment/${showCommentModal.id}`, 
+        { text: newComment },
+        { headers: getAuthHeaders() }
+      );
+      toast.success('Comment added');
+      setNewComment('');
+      setShowCommentModal(null);
+      fetchEducators();
+    } catch (error) {
+      toast.error('Failed to add comment');
+    }
+  };
+
+  const getAssignedUserName = (userId) => {
+    if (!userId) return null;
+    const teamUser = teamUsers.find(u => u.id === userId);
+    return teamUser?.name || null;
+  };
+
   const filteredEducators = educators.filter(edu => {
     const matchesSearch = edu.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       edu.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       edu.phone?.includes(searchQuery);
     const matchesSection = edu.status === activeSection;
-    return matchesSearch && matchesSection;
+    
+    // Assignee filter
+    let matchesAssignee = true;
+    if (assigneeFilter !== 'all') {
+      if (assigneeFilter === 'unassigned') {
+        matchesAssignee = !edu.assigned_to;
+      } else {
+        matchesAssignee = edu.assigned_to === assigneeFilter;
+      }
+    }
+    
+    return matchesSearch && matchesSection && matchesAssignee;
   });
 
   const getCount = (status) => educators.filter(e => e.status === status).length;
