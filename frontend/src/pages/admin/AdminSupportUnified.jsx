@@ -109,6 +109,10 @@ const AdminSupportUnified = () => {
         await axios.patch(`${API}/inquiry/queries/${query.id}`, { status: newStatus }, {
           headers: getAuthHeaders()
         });
+      } else if (query._source === 'user_support') {
+        await axios.patch(`${API}/support/queries/${query.id}`, { status: newStatus }, {
+          headers: getAuthHeaders()
+        });
       } else {
         await axios.patch(`${API}/support/tickets/${query.id}`, { status: newStatus }, {
           headers: getAuthHeaders()
