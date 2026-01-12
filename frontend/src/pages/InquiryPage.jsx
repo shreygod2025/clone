@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Check, User, School, GraduationCap, Users, Briefcase, Phone, Mail, FileText, MessageCircle, UserPlus } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -50,10 +50,13 @@ const SOURCE_OPTIONS = [
 
 const InquiryPage = () => {
   const navigate = useNavigate();
+  const { username } = useParams();
   const [currentStep, setCurrentStep] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [cities, setCities] = useState([]);
+  const [teamUser, setTeamUser] = useState(null);
+  const [loadingUser, setLoadingUser] = useState(!!username);
   
   const [formData, setFormData] = useState({
     inquiry_type: '', // student, school, growth_partner, teacher, team
