@@ -1164,6 +1164,35 @@ async def delete_requirement(req_id: str, user: dict = Depends(get_current_user)
     await db.open_requirements.delete_one({"id": req_id})
     return {"message": "Deleted successfully"}
 
+# Educator Form Configuration
+@api_router.get("/educator-config")
+async def get_educator_config():
+    """Get dynamic configuration for educator application form"""
+    config = await db.educator_config.find_one({"type": "form_config"}, {"_id": 0})
+    if not config:
+        # Return default config
+        return {
+            "skills": ["Robotics", "Coding", "AI & ML", "Entrepreneurship", "Financial Literacy"],
+            "grades": ["Pre-primary", "Primary (1-5)", "Middle (6-8)", "High School (9-10)", "Senior (11-12)"],
+            "availability_options": ["Weekday Mornings", "Weekday Afternoons", "Weekday Evenings", "Weekends"],
+            "experience_options": ["0-1 years", "1-3 years", "3-5 years", "5+ years"],
+            "required_fields": ["name", "email", "phone", "skills"],
+            "optional_fields": ["experience", "grades_comfortable", "city", "availability"]
+        }
+    return config
+
+@api_router.put("/educator-config")
+async def update_educator_config(data: dict, user: dict = Depends(get_current_user)):
+    """Update educator form configuration"""
+    data["type"] = "form_config"
+    data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.educator_config.update_one(
+        {"type": "form_config"}, 
+        {"$set": data}, 
+        upsert=True
+    )
+    return {"message": "Configuration updated"}
+
 # ========================
 # FAQ ENDPOINTS
 # ========================
