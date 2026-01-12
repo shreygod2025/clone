@@ -206,6 +206,12 @@ const InquiryPage = () => {
   const submitLead = async () => {
     const { inquiry_type } = formData;
     
+    // Format demo date if booking is enabled
+    const demoDate = formData.book_demo && formData.demo_date 
+      ? format(formData.demo_date, 'yyyy-MM-dd') 
+      : null;
+    const demoTime = formData.book_demo ? formData.demo_time : null;
+    
     if (inquiry_type === 'student') {
       await axios.post(`${API}/students/inquiry`, {
         learner_type: 'self',
@@ -217,13 +223,13 @@ const InquiryPage = () => {
         name: formData.name,
         email: formData.email || `${formData.phone}@student.oll`,
         phone: formData.phone,
-        demo_date: null,
-        demo_time: null,
+        demo_date: demoDate,
+        demo_time: demoTime,
         source: formData.source || 'team_added',
         added_by: teamUser?.id || '',
         notes: formData.details
       });
-      toast.success('Student lead added to CRM!');
+      toast.success(demoDate ? 'Student lead added with demo booking!' : 'Student lead added to CRM!');
     } 
     else if (inquiry_type === 'school') {
       await axios.post(`${API}/schools/inquiry`, {
@@ -237,11 +243,14 @@ const InquiryPage = () => {
         board: formData.board,
         programs_interested: formData.programs_interested,
         support_needed: [],
+        meeting_date: demoDate,
+        meeting_time: demoTime,
+        meeting_type: formData.meeting_type,
         source: formData.source || 'team_added',
         added_by: teamUser?.id || '',
         notes: formData.details
       });
-      toast.success('School lead added to CRM!');
+      toast.success(demoDate ? 'School lead added with meeting scheduled!' : 'School lead added to CRM!');
     }
     else if (inquiry_type === 'teacher') {
       await axios.post(`${API}/educators/apply`, {
@@ -253,12 +262,14 @@ const InquiryPage = () => {
         grades_comfortable: formData.grades_comfortable,
         city: formData.city,
         availability: formData.availability || 'Flexible',
-        demo_ready: false,
+        demo_ready: formData.book_demo,
+        demo_date: demoDate,
+        demo_time: demoTime,
         source: formData.source || 'team_added',
         added_by: teamUser?.id || '',
         notes: formData.details
       });
-      toast.success('Educator application added!');
+      toast.success(demoDate ? 'Educator added with demo scheduled!' : 'Educator application added!');
     }
     else if (inquiry_type === 'growth_partner') {
       await axios.post(`${API}/growth-partners`, {
