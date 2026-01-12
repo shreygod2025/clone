@@ -199,7 +199,8 @@ const InquiryPage = () => {
         name: formData.name,
         phone: formData.phone,
         email: formData.email || `${formData.phone}@inquiry.oll`,
-        source: 'team_inquiry_form',
+        source: formData.source || 'team_inquiry_form',
+        added_by: teamUser?.id || '',  // Track who added this lead
       };
 
       if (formData.action_type === 'lead') {
