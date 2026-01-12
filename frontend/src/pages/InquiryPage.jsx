@@ -77,6 +77,28 @@ const InquiryPage = () => {
 
   // Fetch cities
   useEffect(() => {
+  // Fetch team user if username provided
+  useEffect(() => {
+    const fetchTeamUser = async () => {
+      if (!username) {
+        setLoadingUser(false);
+        return;
+      }
+      try {
+        const response = await axios.get(`${API}/team-users/by-username/${username}`);
+        setTeamUser(response.data);
+      } catch (error) {
+        toast.error('Invalid user link');
+        navigate('/add');
+      } finally {
+        setLoadingUser(false);
+      }
+    };
+    fetchTeamUser();
+  }, [username, navigate]);
+
+  // Fetch cities
+  useEffect(() => {
     const fetchCities = async () => {
       try {
         const response = await axios.get(`${API}/cities`);
