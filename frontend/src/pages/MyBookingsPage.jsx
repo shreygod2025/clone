@@ -161,7 +161,7 @@ const MyBookingsPage = () => {
               </div>
               <h2 className="text-xl font-semibold text-[#1E3A5F] mb-2">No Bookings Yet</h2>
               <p className="text-slate-500 mb-6">
-                You haven't made any bookings with this phone number.
+                You haven&apos;t made any bookings with this phone number.
               </p>
               <Button 
                 onClick={() => navigate(user?.user_type === 'school' ? '/school' : '/student')}
