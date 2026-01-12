@@ -1487,6 +1487,52 @@ async def get_available_demo_slots(date: Optional[str] = None):
 
 @api_router.get("/dashboard/stats")
 async def get_dashboard_stats(user: dict = Depends(get_current_user)):
+    # Check if user is a team member (not admin)
+    is_team_member = user.get("role") != "admin"
+    user_id = user.get("id")
+    
+    # If team member, filter by assigned_to
+    if is_team_member and user_id:
+        student_count = await db.student_inquiries.count_documents({"assigned_to": user_id})
+        school_count = await db.school_inquiries.count_documents({"assigned_to": user_id})
+        educator_count = await db.educator_applications.count_documents({"assigned_to": user_id})
+        ticket_count = await db.support_tickets.count_documents({"assigned_to": user_id, "status": "open"})
+        
+        student_new = await db.student_inquiries.count_documents({"assigned_to": user_id, "status": "new"})
+        student_converted = await db.student_inquiries.count_documents({"assigned_to": user_id, "status": "converted"})
+        school_new = await db.school_inquiries.count_documents({"assigned_to": user_id, "status": "new"})
+        educator_new = await db.educator_applications.count_documents({"assigned_to": user_id, "status": "new"})
+        
+        # Get followups due today/tomorrow for team member
+        from datetime import timedelta
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        tomorrow = (datetime.now(timezone.utc) + timedelta(days=1)).strftime("%Y-%m-%d")
+        
+        followups_today = await db.school_inquiries.count_documents({
+            "assigned_to": user_id,
+            "followup_date": {"$in": [today, tomorrow]}
+        })
+        
+        # Count leads added by this user
+        leads_added = await db.student_inquiries.count_documents({"added_by": user_id})
+        leads_added += await db.school_inquiries.count_documents({"added_by": user_id})
+        leads_added += await db.educator_applications.count_documents({"added_by": user_id})
+        
+        return {
+            "total_students": student_count,
+            "total_schools": school_count,
+            "total_educators": educator_count,
+            "open_tickets": ticket_count,
+            "new_student_leads": student_new,
+            "converted_students": student_converted,
+            "new_school_leads": school_new,
+            "new_educator_applications": educator_new,
+            "followups_due": followups_today,
+            "leads_added_by_me": leads_added,
+            "is_team_member": True
+        }
+    
+    # Admin gets all stats
     student_count = await db.student_inquiries.count_documents({})
     school_count = await db.school_inquiries.count_documents({})
     educator_count = await db.educator_applications.count_documents({})
@@ -1506,7 +1552,8 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
         "new_student_leads": student_new,
         "converted_students": student_converted,
         "new_school_leads": school_new,
-        "new_educator_applications": educator_new
+        "new_educator_applications": educator_new,
+        "is_team_member": False
     }
 
 # ========================
