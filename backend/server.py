@@ -321,6 +321,7 @@ class EducatorApplicationUpdate(BaseModel):
     demo_date: Optional[str] = None
     demo_time: Optional[str] = None
     onboarding_date: Optional[str] = None
+    assigned_to: Optional[str] = None
 
 # Open Requirements Models
 class OpenRequirement(BaseModel):

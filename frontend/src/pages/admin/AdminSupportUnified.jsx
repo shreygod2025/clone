@@ -76,9 +76,7 @@ const AdminSupportUnified = () => {
     }
   };
 
-  useEffect(() => {
-    fetchAllQueries();();
-  }, []);
+  // Initial effect handled above
 
   const fetchAllQueries = async () => {
     setLoading(true);
