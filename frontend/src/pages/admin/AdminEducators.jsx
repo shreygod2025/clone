@@ -289,6 +289,18 @@ const AdminEducators = () => {
             data-testid="educator-search"
           />
         </div>
+        <select
+          value={assigneeFilter}
+          onChange={(e) => setAssigneeFilter(e.target.value)}
+          className="h-10 px-4 border border-slate-200 rounded-lg bg-white"
+          data-testid="assignee-filter"
+        >
+          <option value="all">All Assignees</option>
+          <option value="unassigned">Unassigned</option>
+          {teamUsers.filter(u => u.is_active).map(u => (
+            <option key={u.id} value={u.id}>{u.name}</option>
+          ))}
+        </select>
       </div>
 
       {/* Section Tabs */}
