@@ -263,6 +263,7 @@ class SchoolInquiryCreate(BaseModel):
     meeting_type: str = "offline"
     source: str = "website"
     added_by: str = ""
+    assigned_to: str = ""
     notes: str = ""
 
 class SchoolInquiryUpdate(BaseModel):
@@ -319,6 +320,7 @@ class EducatorApplicationCreate(BaseModel):
     requirement_title: Optional[str] = None
     source: str = "website"
     added_by: str = ""
+    assigned_to: str = ""
     notes: str = ""
 
 class EducatorApplicationUpdate(BaseModel):
