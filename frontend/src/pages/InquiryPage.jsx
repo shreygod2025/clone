@@ -121,6 +121,12 @@ const InquiryPage = () => {
     // Growth Partner fields
     investment_capacity: '',
     interest_type: '',
+    
+    // Booking fields (for student/school/teacher)
+    book_demo: false,
+    demo_date: null,
+    demo_time: '',
+    meeting_type: 'online', // online or offline
   });
 
   useEffect(() => {
