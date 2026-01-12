@@ -75,8 +75,6 @@ const InquiryPage = () => {
     query_details: '',
   });
 
-  // Fetch cities
-  useEffect(() => {
   // Fetch team user if username provided
   useEffect(() => {
     const fetchTeamUser = async () => {
