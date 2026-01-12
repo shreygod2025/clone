@@ -7,7 +7,7 @@ import requests
 import os
 from datetime import datetime, timedelta
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://eduskill-platform.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://learnsphere-119.preview.emergentagent.com')
 
 # Test phone number and mock OTP
 TEST_PHONE = "9876543210"
