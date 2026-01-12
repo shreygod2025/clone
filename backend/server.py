@@ -773,6 +773,24 @@ async def reschedule_booking(data: dict):
 
 @api_router.post("/students/inquiry", response_model=StudentInquiry)
 async def create_student_inquiry(data: StudentInquiryCreate):
+    # Check for duplicate booking (same phone, skill, and demo_date within the last hour)
+    if data.phone and data.skill:
+        one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+        existing = await db.student_inquiries.find_one({
+            "phone": data.phone,
+            "skill": data.skill,
+            "demo_date": data.demo_date,
+            "created_at": {"$gte": one_hour_ago}
+        })
+        if existing:
+            # Return existing booking instead of creating duplicate
+            if isinstance(existing.get('created_at'), str):
+                existing['created_at'] = datetime.fromisoformat(existing['created_at'])
+            if isinstance(existing.get('updated_at'), str):
+                existing['updated_at'] = datetime.fromisoformat(existing['updated_at'])
+            existing.pop('_id', None)
+            return StudentInquiry(**existing)
+    
     inquiry = StudentInquiry(**data.model_dump())
     doc = inquiry.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
