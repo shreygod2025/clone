@@ -511,6 +511,39 @@ const InquiryPage = () => {
                   <div className="text-xs text-slate-500 mt-1">Add to tickets</div>
                 </button>
               </div>
+
+              {/* Assignment Option - Only show if team user */}
+              {teamUser && formData.action_type === 'lead' && (
+                <div className="mt-4 p-4 bg-indigo-50 rounded-xl border border-indigo-200">
+                  <p className="text-sm font-medium text-indigo-700 mb-3">Lead Assignment</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => updateForm('assign_option', 'self')}
+                      className={`p-3 rounded-lg text-sm font-medium transition-all ${
+                        formData.assign_option === 'self'
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-white text-slate-600 border border-slate-200'
+                      }`}
+                      data-testid="assign-self"
+                    >
+                      <UserPlus className="w-4 h-4 mx-auto mb-1" />
+                      Assign to Me
+                    </button>
+                    <button
+                      onClick={() => updateForm('assign_option', 'auto')}
+                      className={`p-3 rounded-lg text-sm font-medium transition-all ${
+                        formData.assign_option === 'auto'
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-white text-slate-600 border border-slate-200'
+                      }`}
+                      data-testid="assign-auto"
+                    >
+                      <Users className="w-4 h-4 mx-auto mb-1" />
+                      Let Admin Assign
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
