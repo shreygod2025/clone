@@ -230,6 +230,28 @@ const AdminStudentCRM = () => {
     }
   };
 
+  const handleAssignLead = async (userId) => {
+    if (!showAssignModal) return;
+    try {
+      await axios.patch(`${API}/students/inquiry/${showAssignModal.id}`, {
+        assigned_to: userId
+      }, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Lead assigned successfully');
+      setShowAssignModal(null);
+      fetchInquiries();
+    } catch (error) {
+      toast.error('Failed to assign lead');
+    }
+  };
+
+  const getAssignedUserName = (userId) => {
+    if (!userId) return null;
+    const teamUser = teamUsers.find(u => u.id === userId);
+    return teamUser?.name || null;
+  };
+
   const filteredInquiries = inquiries.filter(inq => {
     const matchesSearch = inq.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       inq.phone?.includes(searchQuery);
