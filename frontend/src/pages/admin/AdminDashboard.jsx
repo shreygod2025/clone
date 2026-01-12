@@ -147,7 +147,7 @@ const AdminLayout = ({ children, title }) => {
 };
 
 const AdminDashboard = () => {
-  const { getAuthHeaders } = useAuth();
+  const { user, getAuthHeaders } = useAuth();
   const [stats, setStats] = useState({
     total_students: 0,
     total_schools: 0,
@@ -156,7 +156,10 @@ const AdminDashboard = () => {
     new_student_leads: 0,
     converted_students: 0,
     new_school_leads: 0,
-    new_educator_applications: 0
+    new_educator_applications: 0,
+    followups_due: 0,
+    leads_added_by_me: 0,
+    is_team_member: false
   });
   const [loading, setLoading] = useState(true);
 
@@ -177,7 +180,8 @@ const AdminDashboard = () => {
     }
   };
 
-  const statCards = [
+  // Different stat cards for team members vs admin
+  const adminStatCards = [
     { label: 'Total Student Leads', value: stats.total_students, color: 'bg-blue-500', icon: GraduationCap },
     { label: 'New Student Leads', value: stats.new_student_leads, color: 'bg-green-500', icon: Users },
     { label: 'Converted Students', value: stats.converted_students, color: 'bg-emerald-500', icon: Users },
@@ -188,15 +192,38 @@ const AdminDashboard = () => {
     { label: 'Open Support Tickets', value: stats.open_tickets, color: 'bg-red-500', icon: MessageSquare },
   ];
 
+  const teamStatCards = [
+    { label: 'My Student Leads', value: stats.total_students, color: 'bg-blue-500', icon: GraduationCap },
+    { label: 'My New Leads', value: stats.new_student_leads, color: 'bg-green-500', icon: Users },
+    { label: 'My Conversions', value: stats.converted_students, color: 'bg-emerald-500', icon: Users },
+    { label: 'My School Leads', value: stats.total_schools, color: 'bg-purple-500', icon: Building2 },
+    { label: 'Followups Due', value: stats.followups_due || 0, color: 'bg-cyan-500', icon: MessageSquare },
+    { label: 'Leads Added by Me', value: stats.leads_added_by_me || 0, color: 'bg-orange-500', icon: Users },
+    { label: 'My Support Tickets', value: stats.open_tickets, color: 'bg-red-500', icon: MessageSquare },
+  ];
+
+  const statCards = stats.is_team_member ? teamStatCards : adminStatCards;
+
+  // Get user permissions for quick actions
+  const userPermissions = user?.permissions || [];
+  const isAdmin = user?.role === 'admin';
+
   return (
-    <AdminLayout title="Dashboard">
+    <AdminLayout title={stats.is_team_member ? `Welcome, ${user?.name || 'Team Member'}` : 'Dashboard'}>
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D63031]"></div>
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          {stats.is_team_member && (
+            <div className="mb-6 bg-gradient-to-r from-[#1E3A5F] to-[#2E5A8F] rounded-2xl p-6 text-white">
+              <h2 className="text-xl font-bold mb-2">Your Performance Overview</h2>
+              <p className="text-white/70">Track your assigned leads, conversions, and followups</p>
+            </div>
+          )}
+
+          <div className={`grid ${stats.is_team_member ? 'grid-cols-2 md:grid-cols-4 lg:grid-cols-7' : 'grid-cols-2 md:grid-cols-4'} gap-4 mb-8`}>
             {statCards.map((stat, index) => (
               <div key={index} className="stat-card" data-testid={`stat-${index}`}>
                 <div className="flex items-center gap-3 mb-3">
@@ -214,42 +241,71 @@ const AdminDashboard = () => {
             <div className="bg-white rounded-2xl p-6 border border-slate-100">
               <h3 className="font-semibold text-[#1E3A5F] mb-4">Quick Actions</h3>
               <div className="space-y-3">
-                <Link to="/admin/students" className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                  <span className="text-slate-600">View Student Leads</span>
-                  <ChevronRight className="w-5 h-5 text-slate-400" />
-                </Link>
-                <Link to="/admin/schools" className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                  <span className="text-slate-600">View School Leads</span>
-                  <ChevronRight className="w-5 h-5 text-slate-400" />
-                </Link>
-                <Link to="/admin/educators" className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                  <span className="text-slate-600">Review Educator Applications</span>
-                  <ChevronRight className="w-5 h-5 text-slate-400" />
-                </Link>
-                <Link to="/admin/support" className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                  <span className="text-slate-600">Handle Support Tickets</span>
-                  <ChevronRight className="w-5 h-5 text-slate-400" />
-                </Link>
+                {(isAdmin || userPermissions.includes('students')) && (
+                  <Link to="/admin/students" className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                    <span className="text-slate-600">{stats.is_team_member ? 'View My Student Leads' : 'View Student Leads'}</span>
+                    <ChevronRight className="w-5 h-5 text-slate-400" />
+                  </Link>
+                )}
+                {(isAdmin || userPermissions.includes('schools')) && (
+                  <Link to="/admin/schools" className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                    <span className="text-slate-600">{stats.is_team_member ? 'View My School Leads' : 'View School Leads'}</span>
+                    <ChevronRight className="w-5 h-5 text-slate-400" />
+                  </Link>
+                )}
+                {(isAdmin || userPermissions.includes('educators')) && (
+                  <Link to="/admin/educators" className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                    <span className="text-slate-600">Review Educator Applications</span>
+                    <ChevronRight className="w-5 h-5 text-slate-400" />
+                  </Link>
+                )}
+                {(isAdmin || userPermissions.includes('support')) && (
+                  <Link to="/admin/support" className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                    <span className="text-slate-600">{stats.is_team_member ? 'My Support Tickets' : 'Handle Support Tickets'}</span>
+                    <ChevronRight className="w-5 h-5 text-slate-400" />
+                  </Link>
+                )}
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-6 border border-slate-100">
-              <h3 className="font-semibold text-[#1E3A5F] mb-4">Content Management</h3>
-              <div className="space-y-3">
-                <Link to="/admin/blogs" className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                  <span className="text-slate-600">Manage Blogs</span>
-                  <ChevronRight className="w-5 h-5 text-slate-400" />
-                </Link>
-                <Link to="/admin/faqs" className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                  <span className="text-slate-600">Manage FAQs</span>
-                  <ChevronRight className="w-5 h-5 text-slate-400" />
-                </Link>
-                <Link to="/admin/requirements" className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                  <span className="text-slate-600">Manage Open Requirements</span>
-                  <ChevronRight className="w-5 h-5 text-slate-400" />
-                </Link>
+            {isAdmin ? (
+              <div className="bg-white rounded-2xl p-6 border border-slate-100">
+                <h3 className="font-semibold text-[#1E3A5F] mb-4">Content Management</h3>
+                <div className="space-y-3">
+                  <Link to="/admin/blogs" className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                    <span className="text-slate-600">Manage Blogs</span>
+                    <ChevronRight className="w-5 h-5 text-slate-400" />
+                  </Link>
+                  <Link to="/admin/faqs" className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                    <span className="text-slate-600">Manage FAQs</span>
+                    <ChevronRight className="w-5 h-5 text-slate-400" />
+                  </Link>
+                  <Link to="/admin/requirements" className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                    <span className="text-slate-600">Manage Open Requirements</span>
+                    <ChevronRight className="w-5 h-5 text-slate-400" />
+                  </Link>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="bg-white rounded-2xl p-6 border border-slate-100">
+                <h3 className="font-semibold text-[#1E3A5F] mb-4">Add New Lead</h3>
+                <div className="space-y-3">
+                  <p className="text-sm text-slate-500 mb-4">Use your personalized link to add leads that auto-assign to you:</p>
+                  <div className="bg-slate-50 rounded-xl p-4">
+                    <p className="text-sm font-mono text-slate-600 break-all">
+                      {window.location.origin}/add/{user?.username || user?.id}
+                    </p>
+                  </div>
+                  <Link 
+                    to={`/add/${user?.username || user?.id}`} 
+                    className="flex items-center justify-center gap-2 p-3 bg-[#D63031] text-white rounded-xl hover:bg-[#b52828] transition-colors font-medium"
+                  >
+                    Add New Lead
+                    <ChevronRight className="w-5 h-5" />
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}
