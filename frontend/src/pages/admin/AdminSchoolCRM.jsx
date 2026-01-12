@@ -941,6 +941,112 @@ const AdminSchoolCRM = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Comment Modal */}
+      <Dialog open={!!showCommentModal} onOpenChange={() => setShowCommentModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Comment - {showCommentModal?.school_name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {showCommentModal?.comments?.length > 0 && (
+              <div className="max-h-[200px] overflow-y-auto space-y-2">
+                <h4 className="text-sm font-medium text-slate-700">Previous Comments</h4>
+                {showCommentModal.comments.map((comment, idx) => (
+                  <div key={idx} className="bg-slate-50 rounded-lg p-3">
+                    <p className="text-sm text-slate-700">{comment.text}</p>
+                    <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
+                      <span>{comment.author}</span>
+                      <span>•</span>
+                      <span>{comment.created_at ? format(new Date(comment.created_at), 'MMM d, yyyy h:mm a') : '-'}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <Textarea
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              placeholder="Add a comment or note..."
+              className="min-h-[100px]"
+              data-testid="school-comment-input"
+            />
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => setShowCommentModal(null)} className="flex-1">
+                Cancel
+              </Button>
+              <Button onClick={handleAddComment} className="flex-1 bg-[#D63031] hover:bg-[#b52828]" data-testid="submit-school-comment">
+                <Send className="w-4 h-4 mr-2" />
+                Add Comment
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Lead Modal */}
+      <Dialog open={!!showAssignModal} onOpenChange={() => setShowAssignModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5 text-indigo-600" />
+              Assign Lead - {showAssignModal?.school_name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {showAssignModal?.assigned_to && (
+              <div className="bg-indigo-50 rounded-lg p-3">
+                <p className="text-sm text-indigo-700">
+                  Currently assigned to: <strong>{getAssignedUserName(showAssignModal.assigned_to) || 'Unknown'}</strong>
+                </p>
+              </div>
+            )}
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-slate-700">Select Team Member</p>
+              {teamUsers.length === 0 ? (
+                <p className="text-sm text-slate-500 py-4 text-center">No team members found.</p>
+              ) : (
+                teamUsers.filter(u => u.is_active).map(teamUser => (
+                  <button
+                    key={teamUser.id}
+                    onClick={() => handleAssignLead(teamUser.id)}
+                    className={`w-full p-3 rounded-lg border text-left transition-all hover:border-indigo-300 hover:bg-indigo-50 ${
+                      showAssignModal?.assigned_to === teamUser.id 
+                        ? 'border-indigo-500 bg-indigo-50' 
+                        : 'border-slate-200'
+                    }`}
+                    data-testid={`school-assign-to-${teamUser.id}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-slate-900">{teamUser.name}</p>
+                        <p className="text-xs text-slate-500">{teamUser.email}</p>
+                      </div>
+                      {showAssignModal?.assigned_to === teamUser.id && (
+                        <span className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded">Current</span>
+                      )}
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => setShowAssignModal(null)} className="flex-1">
+                Cancel
+              </Button>
+              {showAssignModal?.assigned_to && (
+                <Button 
+                  variant="outline" 
+                  onClick={() => handleAssignLead('')}
+                  className="flex-1 text-red-600 border-red-200 hover:bg-red-50"
+                >
+                  Unassign
+                </Button>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
