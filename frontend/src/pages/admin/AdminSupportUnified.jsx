@@ -139,6 +139,13 @@ const AdminSupportUnified = () => {
         }, {
           headers: getAuthHeaders()
         });
+      } else if (showReplyModal._source === 'user_support') {
+        await axios.patch(`${API}/support/queries/${showReplyModal.id}`, { 
+          status: 'in_progress',
+          details: `${showReplyModal.query_details}\n\n--- Admin Reply (${format(new Date(), 'MMM d, yyyy h:mm a')}) ---\n${replyText}`
+        }, {
+          headers: getAuthHeaders()
+        });
       }
       toast.success('Reply sent');
       setShowReplyModal(null);
