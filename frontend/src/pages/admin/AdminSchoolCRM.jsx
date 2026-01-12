@@ -421,6 +421,11 @@ const AdminSchoolCRM = () => {
                 <div>
                   <h3 className="font-semibold text-[#1E3A5F]">{inquiry.school_name}</h3>
                   <p className="text-sm text-slate-500">{inquiry.contact_name}</p>
+                  {inquiry.assigned_to && (
+                    <p className="text-xs text-indigo-600 mt-1 flex items-center gap-1">
+                      <UserPlus className="w-3 h-3" /> Assigned: {getAssignedUserName(inquiry.assigned_to) || 'Team Member'}
+                    </p>
+                  )}
                 </div>
                 <div className="flex flex-col items-end gap-1">
                   <span className={`px-2 py-1 rounded text-xs font-medium ${
