@@ -257,7 +257,18 @@ const AdminStudentCRM = () => {
     const matchesSearch = inq.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       inq.phone?.includes(searchQuery);
     const matchesSection = inq.status === activeSection;
-    return matchesSearch && matchesSection;
+    
+    // Assignee filter
+    let matchesAssignee = true;
+    if (assigneeFilter !== 'all') {
+      if (assigneeFilter === 'unassigned') {
+        matchesAssignee = !inq.assigned_to;
+      } else {
+        matchesAssignee = inq.assigned_to === assigneeFilter;
+      }
+    }
+    
+    return matchesSearch && matchesSection && matchesAssignee;
   });
 
   const getCount = (status) => inquiries.filter(i => i.status === status).length;
