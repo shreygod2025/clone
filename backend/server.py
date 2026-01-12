@@ -135,6 +135,7 @@ class StudentInquiryUpdate(BaseModel):
     followup_date: Optional[str] = None
     conversion_amount: Optional[str] = None
     sessions_count: Optional[str] = None
+    assigned_to: Optional[str] = None
 
 # Comment Model (shared across CRMs)
 class Comment(BaseModel):
