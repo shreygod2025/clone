@@ -588,13 +588,30 @@ async def register_admin(data: AdminCreate):
 
 @api_router.post("/auth/login", response_model=TokenResponse)
 async def login_admin(data: AdminLogin):
+    # First check admins collection
     admin = await db.admins.find_one({"email": data.email})
-    if not admin or not verify_password(data.password, admin["password"]):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+    if admin and verify_password(data.password, admin["password"]):
+        token = create_access_token({"sub": data.email, "role": "admin"})
+        user = AdminUser(id=admin["id"], email=admin["email"], name=admin["name"], role=admin.get("role", "admin"))
+        return TokenResponse(access_token=token, user=user)
     
-    token = create_access_token({"sub": data.email})
-    user = AdminUser(id=admin["id"], email=admin["email"], name=admin["name"], role=admin.get("role", "admin"))
-    return TokenResponse(access_token=token, user=user)
+    # Then check team_users collection
+    team_user = await db.team_users.find_one({"email": data.email})
+    if team_user:
+        if not team_user.get("is_active", True):
+            raise HTTPException(status_code=401, detail="User account is disabled")
+        
+        if bcrypt.checkpw(data.password.encode('utf-8'), team_user.get("password_hash", "").encode('utf-8')):
+            token = create_access_token({"sub": data.email, "role": "team_member", "user_id": team_user["id"]})
+            user = AdminUser(
+                id=team_user["id"], 
+                email=team_user["email"], 
+                name=team_user["name"], 
+                role="team_member"
+            )
+            return TokenResponse(access_token=token, user=user)
+    
+    raise HTTPException(status_code=401, detail="Invalid credentials")
 
 @api_router.get("/auth/me")
 async def get_me(user: dict = Depends(get_current_user)):
