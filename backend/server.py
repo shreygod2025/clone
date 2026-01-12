@@ -226,6 +226,7 @@ class SchoolInquiryUpdate(BaseModel):
     meeting_time: Optional[str] = None
     meeting_type: Optional[str] = None
     conversion_amount: Optional[str] = None
+    assigned_to: Optional[str] = None
 
 # Educator Models
 class EducatorApplication(BaseModel):
