@@ -237,6 +237,14 @@ const AdminGrowthPartners = () => {
           </button>
         ))}
         <button
+          onClick={() => setShowAssignModal(partner)}
+          className="text-xs px-3 py-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 flex items-center gap-1 font-medium"
+          data-testid={`assign-${partner.id}`}
+        >
+          <UserPlus className="w-3 h-3" />
+          Assign
+        </button>
+        <button
           onClick={() => setShowCommentModal(partner)}
           className="text-xs px-3 py-1.5 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-700 flex items-center gap-1 font-medium"
           data-testid={`comment-${partner.id}`}
