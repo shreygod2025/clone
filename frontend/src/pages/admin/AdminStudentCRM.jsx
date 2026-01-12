@@ -618,15 +618,24 @@ const AdminStudentCRM = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Reschedule Demo Modal */}
+      {/* Reschedule/Add Demo Modal */}
       <Dialog open={!!showRescheduleModal} onOpenChange={() => setShowRescheduleModal(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Reschedule Demo - {showRescheduleModal?.name}</DialogTitle>
+            <DialogTitle>
+              {showRescheduleModal?.demo_date ? 'Reschedule Demo' : 'Add Demo'} - {showRescheduleModal?.name}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {showRescheduleModal?.demo_date && (
+              <div className="bg-blue-50 rounded-lg p-3">
+                <p className="text-sm text-blue-700">
+                  Current: {showRescheduleModal.demo_date} {showRescheduleModal.demo_time && `at ${showRescheduleModal.demo_time}`}
+                </p>
+              </div>
+            )}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Select New Date</label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Select Date</label>
               <div className="flex justify-center">
                 <CalendarComponent
                   mode="single"
@@ -658,22 +667,24 @@ const AdminStudentCRM = () => {
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Reason for Rescheduling</label>
-              <Textarea
-                placeholder="Enter reason..."
-                value={rescheduleData.reason}
-                onChange={(e) => setRescheduleData({...rescheduleData, reason: e.target.value})}
-                className="min-h-[80px]"
-              />
-            </div>
+            {showRescheduleModal?.demo_date && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Reason for Rescheduling</label>
+                <Textarea
+                  placeholder="Enter reason..."
+                  value={rescheduleData.reason}
+                  onChange={(e) => setRescheduleData({...rescheduleData, reason: e.target.value})}
+                  className="min-h-[80px]"
+                />
+              </div>
+            )}
 
             <div className="flex gap-3 pt-4">
               <Button variant="outline" onClick={() => setShowRescheduleModal(null)} className="flex-1">
                 Cancel
               </Button>
               <Button onClick={handleReschedule} className="btn-primary flex-1">
-                Reschedule Demo
+                {showRescheduleModal?.demo_date ? 'Reschedule Demo' : 'Add Demo'}
               </Button>
             </div>
           </div>
