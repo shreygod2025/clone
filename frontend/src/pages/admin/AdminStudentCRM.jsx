@@ -479,9 +479,12 @@ const AdminStudentCRM = () => {
                 </div>
                 <div className="bg-slate-50 rounded-lg p-3">
                   <p className="text-xs text-slate-500 mb-1">Learning Mode</p>
-                  <p className={`font-medium flex items-center gap-1 ${viewInquiry.learning_mode === 'offline' ? 'text-[#D63031]' : 'text-[#1E3A5F]'}`}>
+                  <p className={`font-medium flex items-center gap-1 ${viewInquiry.learning_mode?.includes('offline') ? 'text-[#D63031]' : 'text-[#1E3A5F]'}`}>
                     <MapPin className="w-4 h-4" /> 
-                    {viewInquiry.learning_mode === 'offline' ? `Offline - ${viewInquiry.city}` : 'Online'}
+                    {viewInquiry.learning_mode === 'online' ? 'Online' :
+                     viewInquiry.learning_mode === 'offline_center' ? `Offline (Center) - ${viewInquiry.city}` :
+                     viewInquiry.learning_mode === 'offline_home' ? `Offline (Home) - ${viewInquiry.city}` :
+                     viewInquiry.learning_mode?.includes('offline') ? `Offline - ${viewInquiry.city}` : 'Online'}
                   </p>
                 </div>
                 <div className="bg-slate-50 rounded-lg p-3">
