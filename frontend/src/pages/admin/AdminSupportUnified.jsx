@@ -303,7 +303,7 @@ const AdminSupportUnified = () => {
                   <span className="text-sm text-slate-500 capitalize">
                     {INQUIRY_TYPES.find(t => t.value === query.inquiry_type)?.label || query.inquiry_type}
                   </span>
-                  <span className={`text-xs px-2 py-0.5 rounded ${query._source === 'inquiry' ? 'bg-purple-100 text-purple-600' : 'bg-slate-100 text-slate-600'}`}>>
+                  <span className={`text-xs px-2 py-0.5 rounded ${query._source === 'inquiry' ? 'bg-purple-100 text-purple-600' : 'bg-slate-100 text-slate-600'}`}>
                     {query._source === 'inquiry' ? 'Team Inquiry' : 'User Ticket'}
                   </span>
                 </div>
