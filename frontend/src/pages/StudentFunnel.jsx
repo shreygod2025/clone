@@ -1062,7 +1062,9 @@ const StudentFunnel = () => {
                   className="btn-primary flex items-center gap-2"
                   data-testid="next-btn"
                 >
-                  {activeSteps[currentStep].id === 'contact'
+                  {isLoggedIn && activeSteps[currentStep].id === 'schedule'
+                    ? (submitting ? 'Booking...' : 'Book Demo')
+                    : activeSteps[currentStep].id === 'contact'
                     ? 'Verify Phone'
                     : 'Continue'}
                   <ArrowRight className="w-4 h-4" />
