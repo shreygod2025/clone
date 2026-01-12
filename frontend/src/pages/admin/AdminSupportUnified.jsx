@@ -180,6 +180,55 @@ const AdminSupportUnified = () => {
 
   return (
     <AdminLayout title="Support Center">
+      {/* Tabs */}
+      <div className="flex flex-wrap gap-3 mb-6">
+        <button
+          onClick={() => setActiveTab('new')}
+          className={`px-6 py-3 rounded-xl font-medium flex items-center gap-2 transition-all ${
+            activeTab === 'new'
+              ? 'bg-blue-500 text-white shadow-lg'
+              : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+          }`}
+          data-testid="tab-new"
+        >
+          <MessageSquare className="w-4 h-4" />
+          New Queries
+          <span className={`ml-1 px-2 py-0.5 rounded-full text-xs ${activeTab === 'new' ? 'bg-white/20' : 'bg-blue-100 text-blue-700'}`}>
+            {newCount}
+          </span>
+        </button>
+        <button
+          onClick={() => setActiveTab('overdue')}
+          className={`px-6 py-3 rounded-xl font-medium flex items-center gap-2 transition-all ${
+            activeTab === 'overdue'
+              ? 'bg-red-500 text-white shadow-lg'
+              : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+          }`}
+          data-testid="tab-overdue"
+        >
+          <AlertTriangle className="w-4 h-4" />
+          Overdue
+          <span className={`ml-1 px-2 py-0.5 rounded-full text-xs ${activeTab === 'overdue' ? 'bg-white/20' : 'bg-red-100 text-red-700'}`}>
+            {overdueCount}
+          </span>
+        </button>
+        <button
+          onClick={() => setActiveTab('closed')}
+          className={`px-6 py-3 rounded-xl font-medium flex items-center gap-2 transition-all ${
+            activeTab === 'closed'
+              ? 'bg-green-500 text-white shadow-lg'
+              : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+          }`}
+          data-testid="tab-closed"
+        >
+          <CheckCircle className="w-4 h-4" />
+          Closed
+          <span className={`ml-1 px-2 py-0.5 rounded-full text-xs ${activeTab === 'closed' ? 'bg-white/20' : 'bg-green-100 text-green-700'}`}>
+            {closedCount}
+          </span>
+        </button>
+      </div>
+
       {/* Filters */}
       <div className="flex flex-wrap gap-4 mb-6">
         <div className="relative flex-1 min-w-[200px]">
@@ -213,21 +262,7 @@ const AdminSupportUnified = () => {
             <option key={t.value} value={t.value}>{t.label}</option>
           ))}
         </select>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="h-10 px-4 border border-slate-200 rounded-lg bg-white"
-          data-testid="status-filter"
-        >
-          <option value="">All Status</option>
-          {STATUS_OPTIONS.map(s => (
-            <option key={s.value} value={s.value}>{s.label}</option>
-          ))}
-        </select>
       </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {STATUS_OPTIONS.map(status => {
           const count = getStatusCount(status.value);
           return (
