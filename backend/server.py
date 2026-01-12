@@ -179,6 +179,40 @@ class GrowthPartnerUpdate(BaseModel):
     interest_type: Optional[str] = None
     assigned_to: Optional[str] = None
 
+# Team Application Models
+class TeamApplication(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    email: str = ""
+    phone: str
+    role: str
+    experience: str = ""
+    city: str = ""
+    message: str = ""
+    status: str = "new"  # new, contacted, interview_scheduled, interviewed, hired, rejected, archived
+    comments: List[dict] = []
+    source: str = "about_page"
+    added_by: str = ""
+    assigned_to: str = ""
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class TeamApplicationCreate(BaseModel):
+    name: str
+    email: str = ""
+    phone: str = ""
+    role: str = ""
+    experience: str = ""
+    city: str = ""
+    message: str = ""
+    source: str = "about_page"
+
+class TeamApplicationUpdate(BaseModel):
+    status: Optional[str] = None
+    notes: Optional[str] = None
+    assigned_to: Optional[str] = None
+
 # School Inquiry Models
 class SchoolInquiry(BaseModel):
     model_config = ConfigDict(extra="ignore")
