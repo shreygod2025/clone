@@ -33,7 +33,7 @@ const TIME_SLOTS = ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00
 const StudentFunnel = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { sendOTP, verifyOTP, updateUserBooking } = useUserAuth();
+  const { sendOTP, verifyOTP, updateUserBooking, isLoggedIn, user } = useUserAuth();
   
   const [flowType, setFlowType] = useState(null); // null, 'learn', 'support'
   const [currentStep, setCurrentStep] = useState(0);
@@ -64,6 +64,18 @@ const StudentFunnel = () => {
     address: '',
   });
 
+  // Pre-fill form data for logged-in users
+  useEffect(() => {
+    if (isLoggedIn && user) {
+      setFormData(prev => ({
+        ...prev,
+        name: user.name || prev.name,
+        phone: user.phone || prev.phone,
+        age_group: user.age_group || prev.age_group,
+      }));
+    }
+  }, [isLoggedIn, user]);
+
   // Check for pre-selected skill from URL params (coming from course page)
   useEffect(() => {
     const skillParam = searchParams.get('skill');
@@ -71,11 +83,15 @@ const StudentFunnel = () => {
       setFlowType('learn');
       setFormData(prev => ({ ...prev, skill: skillParam }));
       setCameFromCoursePage(true);
-      // Start from age step (step 2 in 0-indexed, which is step 3 in display) since skill is pre-selected
-      // Skip both skill (step 0) and action (step 1) steps - go directly to age group
-      setCurrentStep(2);
+      // For logged-in users with age_group, skip to mode step (step 3)
+      // For non-logged-in or users without age_group, go to age step (step 2)
+      if (isLoggedIn && user?.age_group) {
+        setCurrentStep(3); // Go to mode selection
+      } else {
+        setCurrentStep(2); // Go to age group selection
+      }
     }
-  }, [searchParams]);
+  }, [searchParams, isLoggedIn, user]);
 
   // Fetch cities
   useEffect(() => {
