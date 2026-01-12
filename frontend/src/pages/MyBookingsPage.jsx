@@ -256,6 +256,64 @@ const MyBookingsPage = () => {
               </Button>
             </div>
           )}
+
+          {/* Other Courses Section */}
+          {user?.user_type === 'student' && (
+            <div className="mt-12" data-testid="other-courses-section">
+              <div className="mb-6">
+                <h2 className="text-xl md:text-2xl font-bold text-[#1E3A5F]" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                  Other Courses Offered by OLL
+                </h2>
+                <p className="text-slate-500 text-sm mt-1">Explore more skills to learn</p>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {COURSES_DATA.map((course) => (
+                  <Link
+                    key={course.id}
+                    to={`/courses/${course.id}`}
+                    className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-slate-100"
+                    data-testid={`course-card-${course.id}`}
+                  >
+                    {/* Course Header */}
+                    <div className={`relative h-24 bg-gradient-to-br ${course.gradient} flex items-center justify-center`}>
+                      <span className="text-4xl">{course.emoji}</span>
+                    </div>
+                    
+                    {/* Course Content */}
+                    <div className="p-4">
+                      <h3 className="font-semibold text-[#1E3A5F] group-hover:text-[#D63031] transition-colors">
+                        {course.name}
+                      </h3>
+                      <p className="text-slate-500 text-sm mt-1 line-clamp-1">
+                        {course.tagline}
+                      </p>
+                      
+                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
+                        <span className="text-xs text-slate-500 flex items-center gap-1">
+                          <BookOpen className="w-3 h-3" />
+                          View Details
+                        </span>
+                        <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-[#D63031] group-hover:translate-x-1 transition-all" />
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+              
+              {/* View All Courses Link */}
+              <div className="mt-6 text-center">
+                <Link 
+                  to="/courses"
+                  className="inline-flex items-center gap-2 text-[#1E3A5F] hover:text-[#D63031] font-medium transition-colors"
+                  data-testid="view-all-courses-link"
+                >
+                  View All Courses
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+            </div>
+          )}
         </div>
       </main>
 
