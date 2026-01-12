@@ -133,28 +133,39 @@ const AdminSupportUnified = () => {
     return <span className={`badge-status ${typeObj.color}`}>{typeObj.label}</span>;
   };
 
-  const getStatusBadge = (status) => {
-    const statusObj = STATUS_OPTIONS.find(s => s.value === status) || STATUS_OPTIONS[0];
-    return (
-      <span className={`badge-status ${statusObj.color.replace('bg-', 'bg-').replace('-500', '-100')} ${statusObj.color.replace('bg-', 'text-').replace('-500', '-700')}`}>
-        {statusObj.label}
-      </span>
-    );
+  // Check if query is overdue (>24 hours and not resolved/closed)
+  const isOverdue = (query) => {
+    if (['resolved', 'closed'].includes(query.status)) return false;
+    if (!query.created_at) return false;
+    const hoursSinceCreation = differenceInHours(new Date(), new Date(query.created_at));
+    return hoursSinceCreation > 24;
   };
 
   // Combine and filter all queries
   const allQueries = [...queries, ...legacyTickets];
   
+  // Calculate tab counts
+  const newCount = allQueries.filter(q => ['open', 'in_progress'].includes(q.status) && !isOverdue(q)).length;
+  const overdueCount = allQueries.filter(q => isOverdue(q)).length;
+  const closedCount = allQueries.filter(q => ['resolved', 'closed'].includes(q.status)).length;
+  
   const filteredQueries = allQueries.filter(query => {
+    // Tab filter
+    if (activeTab === 'new') {
+      if (!['open', 'in_progress'].includes(query.status)) return false;
+      if (isOverdue(query)) return false;
+    } else if (activeTab === 'overdue') {
+      if (!isOverdue(query)) return false;
+    } else if (activeTab === 'closed') {
+      if (!['resolved', 'closed'].includes(query.status)) return false;
+    }
+    
     // Source filter
     if (sourceFilter === 'inquiry' && query._source !== 'inquiry') return false;
     if (sourceFilter === 'legacy' && query._source !== 'legacy') return false;
     
     // Query type filter
     if (queryTypeFilter && query.query_type !== queryTypeFilter) return false;
-    
-    // Status filter (already applied in API for inquiry queries)
-    if (statusFilter && query.status !== statusFilter) return false;
     
     // Search filter
     if (!searchQuery) return true;
@@ -166,8 +177,6 @@ const AdminSupportUnified = () => {
       query.query_details?.toLowerCase().includes(q)
     );
   }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-  const getStatusCount = (status) => allQueries.filter(q => q.status === status).length;
 
   return (
     <AdminLayout title="Support Center">
