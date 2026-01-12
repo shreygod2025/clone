@@ -261,6 +261,27 @@ const AdminSchoolCRM = () => {
 
   // Render action buttons based on status
   const renderActionButtons = (inquiry) => {
+    const baseButtons = (
+      <>
+        <button
+          onClick={() => setShowAssignModal(inquiry)}
+          className="text-xs px-3 py-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 flex items-center gap-1 font-medium"
+          data-testid={`assign-${inquiry.id}`}
+        >
+          <UserPlus className="w-3 h-3" />
+          Assign
+        </button>
+        <button
+          onClick={() => setShowCommentModal(inquiry)}
+          className="text-xs px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-700 flex items-center gap-1 font-medium"
+          data-testid={`comment-${inquiry.id}`}
+        >
+          <MessageSquare className="w-3 h-3" />
+          Note
+        </button>
+      </>
+    );
+
     switch (inquiry.status) {
       case 'new':
         return (
@@ -284,6 +305,7 @@ const AdminSchoolCRM = () => {
               <CalendarClock className="w-3 h-3" />
               Reschedule
             </button>
+            {baseButtons}
             <button
               onClick={() => handleArchive(inquiry)}
               className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1 font-medium"
