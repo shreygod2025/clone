@@ -922,7 +922,8 @@ async def get_comments(collection: str, item_id: str, user: dict = Depends(get_c
         "students": "student_inquiries",
         "schools": "school_inquiries",
         "educators": "educator_applications",
-        "growth_partners": "growth_partners"
+        "growth_partners": "growth_partners",
+        "team_applications": "team_applications"
     }
     db_collection = collection_map.get(collection)
     if not db_collection:
