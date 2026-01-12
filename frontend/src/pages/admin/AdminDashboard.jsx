@@ -22,6 +22,7 @@ const AdminLayout = ({ children, title }) => {
     { path: '/admin/schools', icon: Building2, label: 'School CRM' },
     { path: '/admin/educators', icon: Users, label: 'Educators' },
     { path: '/admin/growth-partners', icon: Briefcase, label: 'Growth Partners' },
+    { path: '/admin/team-applications', icon: Users, label: 'Team Applications' },
     { path: '/admin/support', icon: MessageSquare, label: 'Support Center' },
     { path: '/admin/users', icon: Users, label: 'Team Users' },
     { path: '/admin/requirements', icon: FileText, label: 'Requirements' },
