@@ -1128,6 +1128,61 @@ const AdminSchoolCRM = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Followup Modal */}
+      <Dialog open={!!showFollowupModal} onOpenChange={() => setShowFollowupModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-cyan-600" />
+              Schedule Followup - {showFollowupModal?.school_name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {showFollowupModal?.followup_date && (
+              <div className="bg-cyan-50 rounded-lg p-3">
+                <p className="text-sm text-cyan-700">
+                  Current followup: <strong>{showFollowupModal.followup_date}</strong>
+                </p>
+                {showFollowupModal.followup_comment && (
+                  <p className="text-xs text-cyan-600 mt-1">{showFollowupModal.followup_comment}</p>
+                )}
+              </div>
+            )}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Followup Date</label>
+              <div className="flex justify-center">
+                <CalendarComponent
+                  mode="single"
+                  selected={followupData.date}
+                  onSelect={(date) => setFollowupData(prev => ({...prev, date}))}
+                  disabled={(date) => date < new Date()}
+                  className="rounded-xl border border-slate-200"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Followup Note</label>
+              <Textarea
+                value={followupData.comment}
+                onChange={(e) => setFollowupData(prev => ({...prev, comment: e.target.value}))}
+                placeholder="Add a note for this followup..."
+                className="min-h-[80px]"
+                data-testid="followup-comment"
+              />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => setShowFollowupModal(null)} className="flex-1">
+                Cancel
+              </Button>
+              <Button onClick={handleAddFollowup} className="flex-1 bg-cyan-600 hover:bg-cyan-700" data-testid="submit-followup">
+                <Clock className="w-4 h-4 mr-2" />
+                Set Followup
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
