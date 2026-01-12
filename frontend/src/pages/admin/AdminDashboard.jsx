@@ -23,6 +23,7 @@ const AdminLayout = ({ children, title }) => {
     { path: '/admin/educators', icon: Users, label: 'Educators' },
     { path: '/admin/growth-partners', icon: Briefcase, label: 'Growth Partners' },
     { path: '/admin/support', icon: MessageSquare, label: 'Support Center' },
+    { path: '/admin/users', icon: Users, label: 'Team Users' },
     { path: '/admin/requirements', icon: FileText, label: 'Requirements' },
     { path: '/admin/cities', icon: MapPin, label: 'Cities' },
     { path: '/admin/centers', icon: Building, label: 'Centers' },
