@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Calendar, Clock, MapPin, ArrowRight, CalendarClock, LogOut, Check, X, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, MapPin, ArrowRight, CalendarClock, LogOut, Check, X, ChevronRight, BookOpen, Users } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Calendar as CalendarComponent } from '../components/ui/calendar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
@@ -13,6 +13,15 @@ import Navbar from '../components/Navbar';
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const TIME_SLOTS = ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'];
+
+// Course data for display
+const COURSES_DATA = [
+  { id: 'robotics', name: 'Robotics', emoji: '🤖', tagline: 'Build the Future with Your Hands', color: '#2563EB', gradient: 'from-blue-600 to-blue-800' },
+  { id: 'coding', name: 'Coding', emoji: '💻', tagline: 'Code Your Ideas Into Reality', color: '#059669', gradient: 'from-emerald-600 to-emerald-800' },
+  { id: 'ai', name: 'AI & Machine Learning', emoji: '🧠', tagline: 'Shape the Intelligent Future', color: '#7C3AED', gradient: 'from-violet-600 to-violet-800' },
+  { id: 'entrepreneurship', name: 'Entrepreneurship', emoji: '💡', tagline: 'Turn Ideas Into Ventures', color: '#D97706', gradient: 'from-amber-500 to-amber-700' },
+  { id: 'financial', name: 'Financial Literacy', emoji: '📊', tagline: 'Master Your Money Future', color: '#0891B2', gradient: 'from-cyan-600 to-cyan-800' },
+];
 
 const MyBookingsPage = () => {
   const navigate = useNavigate();
