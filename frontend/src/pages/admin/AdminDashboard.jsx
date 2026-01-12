@@ -16,21 +16,38 @@ const AdminLayout = ({ children, title }) => {
   const { user, logout, getAuthHeaders } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const navItems = [
-    { path: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
-    { path: '/admin/students', icon: GraduationCap, label: 'Student CRM' },
-    { path: '/admin/schools', icon: Building2, label: 'School CRM' },
-    { path: '/admin/educators', icon: Users, label: 'Educators' },
-    { path: '/admin/growth-partners', icon: Briefcase, label: 'Growth Partners' },
-    { path: '/admin/team-applications', icon: Users, label: 'Team Applications' },
-    { path: '/admin/support', icon: MessageSquare, label: 'Support Center' },
-    { path: '/admin/users', icon: Users, label: 'Team Users' },
-    { path: '/admin/requirements', icon: FileText, label: 'Requirements' },
-    { path: '/admin/cities', icon: MapPin, label: 'Cities' },
-    { path: '/admin/centers', icon: Building, label: 'Centers' },
-    { path: '/admin/blogs', icon: FileText, label: 'Blogs' },
-    { path: '/admin/faqs', icon: HelpCircle, label: 'FAQs' },
+  // All navigation items with permission keys
+  const allNavItems = [
+    { path: '/admin', icon: LayoutDashboard, label: 'Dashboard', permission: null }, // Always visible
+    { path: '/admin/students', icon: GraduationCap, label: 'Student CRM', permission: 'students' },
+    { path: '/admin/schools', icon: Building2, label: 'School CRM', permission: 'schools' },
+    { path: '/admin/educators', icon: Users, label: 'Educators', permission: 'educators' },
+    { path: '/admin/growth-partners', icon: Briefcase, label: 'Growth Partners', permission: 'growth_partners' },
+    { path: '/admin/team-applications', icon: Users, label: 'Team Applications', permission: 'team_applications' },
+    { path: '/admin/support', icon: MessageSquare, label: 'Support Center', permission: 'support' },
+    { path: '/admin/users', icon: Users, label: 'Team Users', permission: 'admin_only' },
+    { path: '/admin/requirements', icon: FileText, label: 'Requirements', permission: 'admin_only' },
+    { path: '/admin/cities', icon: MapPin, label: 'Cities', permission: 'admin_only' },
+    { path: '/admin/centers', icon: Building, label: 'Centers', permission: 'admin_only' },
+    { path: '/admin/blogs', icon: FileText, label: 'Blogs', permission: 'admin_only' },
+    { path: '/admin/faqs', icon: HelpCircle, label: 'FAQs', permission: 'admin_only' },
   ];
+
+  // Filter nav items based on user role and permissions
+  const navItems = allNavItems.filter(item => {
+    // Admin sees everything
+    if (user?.role === 'admin') return true;
+    
+    // Dashboard is always visible
+    if (item.permission === null) return true;
+    
+    // Admin-only items hidden for team members
+    if (item.permission === 'admin_only') return false;
+    
+    // Check if team member has permission
+    const userPermissions = user?.permissions || [];
+    return userPermissions.includes(item.permission);
+  });
 
   const handleLogout = () => {
     logout();
