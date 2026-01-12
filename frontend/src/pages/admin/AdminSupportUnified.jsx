@@ -190,6 +190,7 @@ const AdminSupportUnified = () => {
     
     // Source filter
     if (sourceFilter === 'inquiry' && query._source !== 'inquiry') return false;
+    if (sourceFilter === 'user_support' && query._source !== 'user_support') return false;
     if (sourceFilter === 'legacy' && query._source !== 'legacy') return false;
     
     // Query type filter
