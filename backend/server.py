@@ -978,6 +978,43 @@ async def update_growth_partner(
     return partner
 
 # ========================
+# TEAM APPLICATION ENDPOINTS
+# ========================
+
+@api_router.post("/team-applications", response_model=TeamApplication)
+async def create_team_application(data: TeamApplicationCreate):
+    application = TeamApplication(**data.model_dump())
+    doc = application.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    await db.team_applications.insert_one(doc)
+    return application
+
+@api_router.get("/team-applications")
+async def get_team_applications(
+    status: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    query = {}
+    if status:
+        query["status"] = status
+    
+    applications = await db.team_applications.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    return applications
+
+@api_router.patch("/team-applications/{application_id}")
+async def update_team_application(
+    application_id: str, 
+    data: TeamApplicationUpdate,
+    user: dict = Depends(get_current_user)
+):
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    await db.team_applications.update_one({"id": application_id}, {"$set": update_data})
+    application = await db.team_applications.find_one({"id": application_id}, {"_id": 0})
+    return application
+
+# ========================
 # SCHOOL INQUIRY ENDPOINTS
 # ========================
 
