@@ -40,11 +40,13 @@ const AdminSchoolCRM = () => {
   const [showConvertModal, setShowConvertModal] = useState(null);
   const [showAssignModal, setShowAssignModal] = useState(null);
   const [showCommentModal, setShowCommentModal] = useState(null);
+  const [showFollowupModal, setShowFollowupModal] = useState(null);
   const [newComment, setNewComment] = useState('');
   
   // Form states
   const [rescheduleData, setRescheduleData] = useState({ date: null, time: '', meeting_type: 'offline', reason: '' });
   const [convertData, setConvertData] = useState({ amount: '' });
+  const [followupData, setFollowupData] = useState({ date: null, comment: '' });
   const [newLead, setNewLead] = useState({
     school_name: '',
     contact_name: '',
