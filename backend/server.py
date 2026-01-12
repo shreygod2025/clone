@@ -43,6 +43,7 @@ class AdminUser(BaseModel):
     role: str = "admin"  # admin, team_member
     username: str = ""  # unique username for /add/{username} routes
     is_active: bool = True
+    permissions: List[str] = []  # ['students', 'schools', 'educators', 'support', 'growth_partners', 'team_applications']
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class AdminCreate(BaseModel):
