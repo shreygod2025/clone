@@ -57,13 +57,8 @@ const AdminSupportUnified = () => {
     setLoading(true);
     try {
       // Fetch inquiry queries
-      let inquiryUrl = `${API}/inquiry/queries`;
-      const params = new URLSearchParams();
-      if (statusFilter) params.append('status', statusFilter);
-      if (params.toString()) inquiryUrl += `?${params.toString()}`;
-      
       const [inquiryResponse, legacyResponse] = await Promise.all([
-        axios.get(inquiryUrl, { headers: getAuthHeaders() }),
+        axios.get(`${API}/inquiry/queries`, { headers: getAuthHeaders() }),
         axios.get(`${API}/support/tickets`, { headers: getAuthHeaders() }).catch(() => ({ data: [] }))
       ]);
       
@@ -80,6 +75,7 @@ const AdminSupportUnified = () => {
       setQueries(inquiryQueries);
       setLegacyTickets(legacy);
     } catch (error) {
+      console.error('Fetch error:', error);
       toast.error('Failed to fetch support queries');
     } finally {
       setLoading(false);
