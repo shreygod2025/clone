@@ -7,53 +7,59 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## What's Been Implemented
 
-### January 2026 (Latest Session)
+### January 12, 2026 (Latest Session)
 
-#### Route Change
-- [x] Changed `/inquiry` to `/add` for team lead/query form
-- [x] Added personalized routes `/add/{username}` for each team user
+#### P0 Bug Fix: Support Queries from Student Funnel
+- [x] Fixed bug where queries from "I have a query / need support" in Student Funnel were not appearing in admin panel
+- [x] Added `GET /api/support/queries` endpoint to fetch from `support_queries` collection
+- [x] Added `PATCH /api/support/queries/{id}` endpoint to update query status
+- [x] Updated `AdminSupportUnified.jsx` to fetch from 3 sources:
+  - Team Inquiries (`/api/inquiry/queries`)
+  - User Support (`/api/support/queries`) - **NEW**
+  - Legacy Tickets (`/api/support/tickets`)
+- [x] Added "User Support" badge to distinguish SupportFlow queries in admin panel
+- [x] Added "User Support" filter option in Support Center
 
-#### Team User Management (`/admin/users`)
-- [x] Admin can create team users with name, email, username, password
-- [x] Each user gets a unique add link: `/add/{username}`
-- [x] CRM permissions per user (Students, Schools, Educators, Growth Partners)
-- [x] Toggle user active/inactive status
-- [x] Copy link button for easy sharing
+#### P1 Feature: Assign Lead in CRMs
+- [x] **Student CRM**: Added Assign button with modal to select team members
+- [x] **School CRM**: Added Assign button with modal to select team members  
+- [x] **Growth Partners CRM**: Added Assign button with modal to select team members
+- [x] All CRMs display "Assigned to: [Team Member Name]" on lead cards
+- [x] Unassign functionality available for all CRMs
+- [x] Backend models updated with `assigned_to` field in Update schemas
 
-#### CRM Lead Assignment
-- [x] All CRM models updated with `added_by` and `assigned_to` fields
-- [x] Leads added via `/add/{username}` automatically tracked with `added_by`
-- [x] Team members can only see:
-  - Leads they added (`added_by` matches their user_id)
-  - Leads assigned to them (`assigned_to` matches their user_id)
-- [x] Admins see all leads
-
-#### Support Center Tabs
-- [x] **New Queries** - Open/In Progress queries not overdue
-- [x] **Overdue** - Any query open >24 hours (highlighted in red)
-- [x] **Closed** - Resolved/Closed queries
-- [x] Overdue queries shown with red warning badge
+#### P1 Feature: Comment/Note Functionality in School CRM
+- [x] Added Comment/Note modal to School CRM (was missing before)
+- [x] School CRM now has full comment history like Student CRM
+- [x] Previous comments displayed in modal before adding new comment
 
 ### Previous Sessions
 
-#### Inquiry System
-- [x] Source field in inquiry form (Walk-in, Phone, WhatsApp, Referral, etc.)
+#### Internal Lead/Query System
+- [x] Created `/add` page for team members to create leads and queries
+- [x] Implemented user-specific URLs (`/add/{username}`) that pre-fill "added by" field
 - [x] Leads route to appropriate CRM based on type
-- [x] Growth Partners CRM for franchise/partnership leads
-- [x] Unified Support Center merging legacy + inquiry queries
 
-#### Student Funnel
-- [x] Skill selection → Action choice (See Details/Book Demo) → Age → Mode
-- [x] City selection only for OFFLINE mode
-- [x] OTP verification (mocked with 1111)
+#### Admin User Management
+- [x] Built `/admin/users` page to create and manage team members with login credentials
+- [x] Each user gets a unique add link: `/add/{username}`
+- [x] CRM permissions per user
 
-#### Admin Panel
+#### CRM Expansion & Enhancement
 - [x] Student CRM with comment history
 - [x] School CRM with comment history
 - [x] Educators CRM
 - [x] Growth Partners CRM
 - [x] Team Users management
-- [x] Support Center with New/Overdue/Closed tabs
+
+#### Unified Support Center
+- [x] Merged legacy support tickets and new queries into single `/admin/support` view
+- [x] Implemented "New," "Overdue" (unresolved for >24h), and "Closed" tabs
+- [x] Now fetches from 3 data sources
+
+#### Student Funnel Refinements
+- [x] Replaced "Book Demo/See Course" modal with dedicated step
+- [x] Implemented conditional "City" selection (only for Offline mode)
 
 ---
 
@@ -62,68 +68,73 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 ```
 /app/
 ├── backend/
-│   └── server.py          # Team user mgmt, CRM filtering, overdue tracking
+│   └── server.py          # Team user mgmt, CRM filtering, support queries
 ├── frontend/
 │   ├── src/
 │   │   └── pages/
-│   │       ├── InquiryPage.jsx         # /add and /add/:username
+│   │       ├── SupportFlow.jsx          # User-facing support (submits to /api/support/query)
+│   │       ├── InquiryPage.jsx          # /add and /add/:username
 │   │       └── admin/
-│   │           ├── AdminUsers.jsx       # Team user management
-│   │           ├── AdminStudentCRM.jsx  # Filtered by added_by/assigned_to
-│   │           ├── AdminSchoolCRM.jsx
-│   │           ├── AdminEducators.jsx
-│   │           ├── AdminGrowthPartners.jsx
-│   │           └── AdminSupportUnified.jsx # New/Overdue/Closed tabs
+│   │           ├── AdminSupportUnified.jsx  # Fetches from 3 sources
+│   │           ├── AdminStudentCRM.jsx      # Has Assign + Comment
+│   │           ├── AdminSchoolCRM.jsx       # Has Assign + Comment (NEW)
+│   │           ├── AdminGrowthPartners.jsx  # Has Assign + Comment
+│   │           └── AdminUsers.jsx           # Team user management
 ```
 
 ## Key API Endpoints
 
-### Team Users
-- `POST /api/team-users` - Create team user (admin only)
-- `GET /api/team-users` - List all team users
-- `GET /api/team-users/by-username/{username}` - Get user by username (public)
-- `PATCH /api/team-users/{id}` - Update user
-- `DELETE /api/team-users/{id}` - Delete user
-- `POST /api/team-users/login` - Team user login
+### Support System (Updated)
+- `POST /api/support/query` - Create support query from SupportFlow
+- `GET /api/support/queries` - **NEW** Get all support queries
+- `PATCH /api/support/queries/{id}` - **NEW** Update support query status
+- `GET /api/inquiry/queries` - Get team inquiry queries
+- `GET /api/support/tickets` - Get legacy support tickets
 
-### CRM (Updated with filtering)
-- `GET /api/students/inquiries` - Returns filtered leads for team members
-- `GET /api/schools/inquiries` - Returns filtered leads for team members
-- `GET /api/educators/applications` - Returns filtered leads for team members
-- `GET /api/growth-partners` - Returns filtered leads for team members
+### CRM Endpoints (Updated with assigned_to)
+- `PATCH /api/students/inquiry/{id}` - Update including `assigned_to`
+- `PATCH /api/schools/inquiry/{id}` - Update including `assigned_to`
+- `PATCH /api/growth-partners/{id}` - Update including `assigned_to`
+
+### Comments Endpoints
+- `POST /api/students/comment/{id}` - Add comment to student inquiry
+- `POST /api/schools/comment/{id}` - Add comment to school inquiry
+- `POST /api/growth_partners/comment/{id}` - Add comment to growth partner
+
+### Team Users
+- `GET /api/team-users` - Get all team users
+- `POST /api/team-users` - Create team user
+- `GET /api/team-users/by-username/{username}` - Get user by username
 
 ## Database Collections
 
-### New
-- `team_users` - Team user accounts with permissions
-
-### Updated Fields
-All CRM collections now have:
-- `added_by` - user_id who added this lead
-- `assigned_to` - user_id assigned to handle this lead
-- `comments` - array of comment objects with author and timestamp
+- **support_queries** - Queries from SupportFlow.jsx (Student Funnel support)
+- **inquiry_queries** - Team inquiry queries from /add form
+- **support_tickets** - Legacy support tickets
+- **student_inquiries** - Student leads (has `assigned_to`, `comments`)
+- **school_inquiries** - School leads (has `assigned_to`, `comments`)
+- **growth_partners** - Growth partner leads (has `assigned_to`, `comments`)
+- **team_users** - Team member accounts
 
 ---
 
 ## Pending Tasks
 
-### P0 - Critical
-- [ ] Complete WhatsApp OTP integration when credentials provided
-- [ ] Make Educator application form dynamic
-
 ### P1 - High Priority
-- [ ] Admin: Assign leads to team members functionality
-- [ ] About Us page with Growth Partner form
+- [ ] Connect "About Us" page forms to CRMs (Team and Growth Partner application forms)
+- [ ] Make Educator application form dynamic (fields from admin config)
 
 ### P2 - Medium Priority
-- [ ] Team member dashboard (view their own leads only)
-- [ ] Content Management (Blog, FAQ)
-- [ ] Real Calendar Integration
+- [ ] CSV Export for all CRMs
+- [ ] Content Management (Blog, FAQ admin UI)
+- [ ] Real Calendar Integration (Calendly)
+- [ ] Real WhatsApp OTP (Twilio)
+- [ ] Add Comment History to Educators CRM
 
 ### P3 - Future
-- [ ] CSV Export for leads
+- [ ] Email/WhatsApp notifications for form submissions
 - [ ] Lead Scoring system
-- [ ] Email/WhatsApp notifications
+- [ ] Refactor server.py into modular structure (`/routers`, `/models`)
 
 ---
 
@@ -134,8 +145,8 @@ All CRM collections now have:
 **Test Team User:** john@oll.co / test123 (username: john-doe)
 - Add form: /add/john-doe
 
-**Test OTP:** 1111 (mocked)
+**Test OTP:** 1111 (MOCKED)
 
 ## MOCKED Features
 - OTP sending via WhatsApp - hardcoded to 1111
-- Calendar integration for booking demos
+- Calendar integration for booking demos - mocked
