@@ -401,7 +401,15 @@ const AdminEducators = () => {
                 </div>
               )}
 
-              {/* View Button */}
+              {/* Assigned To */}
+              {educator.assigned_to && (
+                <div className="mb-3 flex items-center gap-1 text-sm text-indigo-600 font-medium">
+                  <UserPlus className="w-3 h-3" />
+                  Assigned: {getAssignedUserName(educator.assigned_to) || 'Team Member'}
+                </div>
+              )}
+
+              {/* View, Assign, Comment Buttons */}
               <div className="flex gap-2 mb-3">
                 <Button
                   variant="outline"
@@ -411,6 +419,27 @@ const AdminEducators = () => {
                   data-testid={`view-educator-${educator.id}`}
                 >
                   <Eye className="w-4 h-4 mr-1" /> View
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                  onClick={() => setShowAssignModal(educator)}
+                  data-testid={`assign-educator-${educator.id}`}
+                >
+                  <UserPlus className="w-4 h-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-amber-600 border-amber-200 hover:bg-amber-50"
+                  onClick={() => setShowCommentModal(educator)}
+                  data-testid={`comment-educator-${educator.id}`}
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  {educator.comments?.length > 0 && (
+                    <span className="ml-1 text-xs">{educator.comments.length}</span>
+                  )}
                 </Button>
               </div>
 
