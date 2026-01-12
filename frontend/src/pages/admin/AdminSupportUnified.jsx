@@ -263,25 +263,6 @@ const AdminSupportUnified = () => {
           ))}
         </select>
       </div>
-        {STATUS_OPTIONS.map(status => {
-          const count = getStatusCount(status.value);
-          return (
-            <div 
-              key={status.value}
-              className={`bg-white rounded-xl border border-slate-100 p-4 cursor-pointer hover:shadow-md transition-shadow ${statusFilter === status.value ? 'ring-2 ring-[#D63031]' : ''}`}
-              onClick={() => setStatusFilter(statusFilter === status.value ? '' : status.value)}
-            >
-              <div className="flex items-center gap-3">
-                <div className={`w-3 h-3 rounded-full ${status.color}`}></div>
-                <div>
-                  <p className="text-2xl font-bold text-[#1E3A5F]">{count}</p>
-                  <p className="text-sm text-slate-500">{status.label}</p>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
 
       {loading ? (
         <div className="text-center py-12">
@@ -290,24 +271,36 @@ const AdminSupportUnified = () => {
       ) : filteredQueries.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">
           <MessageSquare className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-          <p className="text-slate-500">No queries found</p>
+          <p className="text-slate-500">
+            {activeTab === 'new' && 'No new queries'}
+            {activeTab === 'overdue' && 'No overdue queries - Great job!'}
+            {activeTab === 'closed' && 'No closed queries'}
+          </p>
         </div>
       ) : (
         <div className="space-y-4">
           {filteredQueries.map((query) => (
             <div 
               key={`${query._source}-${query.id}`} 
-              className="bg-white rounded-2xl border border-slate-100 p-6"
+              className={`bg-white rounded-2xl border p-6 ${isOverdue(query) ? 'border-red-300 bg-red-50/30' : 'border-slate-100'}`}
               data-testid={`query-card-${query.id}`}
             >
               <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
                 <div className="flex flex-wrap items-center gap-2">
-                  {getStatusBadge(query.status)}
+                  {isOverdue(query) && (
+                    <span className="badge-status bg-red-100 text-red-700 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" />
+                      Overdue
+                    </span>
+                  )}
+                  <span className={`badge-status ${query.status === 'open' ? 'bg-blue-100 text-blue-700' : query.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' : query.status === 'resolved' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
+                    {query.status?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  </span>
                   {getQueryTypeBadge(query.query_type)}
                   <span className="text-sm text-slate-500 capitalize">
                     {INQUIRY_TYPES.find(t => t.value === query.inquiry_type)?.label || query.inquiry_type}
                   </span>
-                  <span className={`text-xs px-2 py-0.5 rounded ${query._source === 'inquiry' ? 'bg-purple-100 text-purple-600' : 'bg-slate-100 text-slate-600'}`}>
+                  <span className={`text-xs px-2 py-0.5 rounded ${query._source === 'inquiry' ? 'bg-purple-100 text-purple-600' : 'bg-slate-100 text-slate-600'}`}>>
                     {query._source === 'inquiry' ? 'Team Inquiry' : 'User Ticket'}
                   </span>
                 </div>
