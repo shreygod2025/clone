@@ -176,6 +176,32 @@ const AdminSupportUnified = () => {
     }
   };
 
+  const handleAssignQuery = async (userId) => {
+    if (!showAssignModal) return;
+    try {
+      if (showAssignModal._source === 'inquiry') {
+        await axios.patch(`${API}/inquiry/queries/${showAssignModal.id}`, { assigned_to: userId }, {
+          headers: getAuthHeaders()
+        });
+      } else if (showAssignModal._source === 'user_support') {
+        await axios.patch(`${API}/support/queries/${showAssignModal.id}`, { assigned_to: userId }, {
+          headers: getAuthHeaders()
+        });
+      }
+      toast.success('Query assigned successfully');
+      setShowAssignModal(null);
+      fetchAllQueries();
+    } catch (error) {
+      toast.error('Failed to assign query');
+    }
+  };
+
+  const getAssignedUserName = (userId) => {
+    if (!userId) return null;
+    const teamUser = teamUsers.find(u => u.id === userId);
+    return teamUser?.name || null;
+  };
+
   const getQueryTypeBadge = (type) => {
     const typeObj = QUERY_TYPES.find(t => t.value === type) || QUERY_TYPES[6];
     return <span className={`badge-status ${typeObj.color}`}>{typeObj.label}</span>;
