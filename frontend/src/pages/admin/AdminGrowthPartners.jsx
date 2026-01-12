@@ -347,6 +347,12 @@ const AdminGrowthPartners = () => {
                         {partner.city}
                       </span>
                     )}
+                    {partner.assigned_to && (
+                      <span className="flex items-center gap-1 text-indigo-600">
+                        <UserPlus className="w-4 h-4" />
+                        Assigned: {getAssignedUserName(partner.assigned_to) || 'Team Member'}
+                      </span>
+                    )}
                   </div>
                   {partner.details && (
                     <p className="mt-2 text-sm text-slate-600 line-clamp-2">{partner.details}</p>
