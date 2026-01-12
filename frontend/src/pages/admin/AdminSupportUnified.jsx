@@ -459,6 +459,16 @@ const AdminSupportUnified = () => {
                   <Send className="w-4 h-4" />
                   Reply
                 </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowAssignModal(query)}
+                  className="flex items-center gap-1 text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                  data-testid={`assign-${query.id}`}
+                >
+                  <UserPlus className="w-4 h-4" />
+                  Assign
+                </Button>
               </div>
             </div>
           ))}
@@ -492,6 +502,76 @@ const AdminSupportUnified = () => {
                   <Send className="w-4 h-4 mr-2" />
                   Send Reply
                 </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Modal */}
+      <Dialog open={!!showAssignModal} onOpenChange={() => setShowAssignModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5 text-indigo-600" />
+              Assign Query
+            </DialogTitle>
+          </DialogHeader>
+          {showAssignModal && (
+            <div className="space-y-4">
+              <div className="bg-slate-50 rounded-lg p-3">
+                <p className="text-sm text-slate-600 font-medium">{showAssignModal.name}</p>
+                <p className="text-xs text-slate-500">{showAssignModal.phone}</p>
+              </div>
+              {showAssignModal.assigned_to && (
+                <div className="bg-indigo-50 rounded-lg p-3">
+                  <p className="text-sm text-indigo-700">
+                    Currently assigned to: <strong>{getAssignedUserName(showAssignModal.assigned_to) || 'Unknown'}</strong>
+                  </p>
+                </div>
+              )}
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-slate-700">Select Team Member</p>
+                {teamUsers.length === 0 ? (
+                  <p className="text-sm text-slate-500 py-4 text-center">No team members found.</p>
+                ) : (
+                  teamUsers.filter(u => u.is_active).map(teamUser => (
+                    <button
+                      key={teamUser.id}
+                      onClick={() => handleAssignQuery(teamUser.id)}
+                      className={`w-full p-3 rounded-lg border text-left transition-all hover:border-indigo-300 hover:bg-indigo-50 ${
+                        showAssignModal.assigned_to === teamUser.id 
+                          ? 'border-indigo-500 bg-indigo-50' 
+                          : 'border-slate-200'
+                      }`}
+                      data-testid={`assign-to-${teamUser.id}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-slate-900">{teamUser.name}</p>
+                          <p className="text-xs text-slate-500">{teamUser.email}</p>
+                        </div>
+                        {showAssignModal.assigned_to === teamUser.id && (
+                          <span className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded">Current</span>
+                        )}
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+              <div className="flex gap-3 pt-2">
+                <Button variant="outline" onClick={() => setShowAssignModal(null)} className="flex-1">
+                  Cancel
+                </Button>
+                {showAssignModal.assigned_to && (
+                  <Button 
+                    variant="outline" 
+                    onClick={() => handleAssignQuery('')}
+                    className="flex-1 text-red-600 border-red-200 hover:bg-red-50"
+                  >
+                    Unassign
+                  </Button>
+                )}
               </div>
             </div>
           )}
