@@ -549,6 +549,15 @@ const InquiryPage = () => {
     );
   }
 
+  // Show loading while fetching user
+  if (loadingUser) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D63031]"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col">
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-slate-200/50">
@@ -561,7 +570,13 @@ const InquiryPage = () => {
                 className="h-8"
               />
             </Link>
-            <div className="text-sm text-slate-500">Team Inquiry Portal</div>
+            <div className="text-sm text-slate-500">
+              {teamUser ? (
+                <span>Adding as <strong className="text-[#1E3A5F]">{teamUser.name}</strong></span>
+              ) : (
+                'Add Lead / Query'
+              )}
+            </div>
           </div>
         </div>
       </header>
