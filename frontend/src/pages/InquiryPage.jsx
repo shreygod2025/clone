@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Check, User, School, GraduationCap, Users, Briefcase, Phone, Mail, FileText, MessageCircle, UserPlus, MapPin, Calendar, Clock, BookOpen } from 'lucide-react';
+import { ArrowLeft, Check, User, School, GraduationCap, Users, Briefcase, Phone, Mail, FileText, MessageCircle, UserPlus, MapPin, Calendar, Clock, BookOpen, Building } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
@@ -67,10 +67,6 @@ const GRADES = ['Pre-primary', 'Primary (1-5)', 'Middle (6-8)', 'High School (9-
 const PROGRAMS = ['Robotics', 'Coding', 'AI & ML', 'Entrepreneurship', 'Financial Literacy'];
 const SCHOOL_SIZES = ['< 500 students', '500-1000 students', '1000-2000 students', '2000+ students'];
 const BOARD_OPTIONS = ['CBSE', 'ICSE', 'State Board', 'IB', 'IGCSE', 'Cambridge', 'Other'];
-const MEETING_TYPES = [
-  { value: 'online', label: 'Online Meeting' },
-  { value: 'offline', label: 'In-Person Meeting' },
-];
 
 const InquiryPage = () => {
   const navigate = useNavigate();
@@ -78,6 +74,7 @@ const InquiryPage = () => {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [cities, setCities] = useState([]);
+  const [centers, setCenters] = useState([]);
   const [teamUser, setTeamUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(!!username);
   
@@ -101,6 +98,7 @@ const InquiryPage = () => {
     age_group: '',
     skill: '',
     learning_mode: '',
+    selected_center: '',
     
     // School fields
     school_name: '',
@@ -123,10 +121,8 @@ const InquiryPage = () => {
     interest_type: '',
     
     // Booking fields (for student/school/teacher)
-    book_demo: false,
     demo_date: null,
     demo_time: '',
-    meeting_type: 'online', // online or offline
   });
 
   useEffect(() => {
@@ -159,6 +155,22 @@ const InquiryPage = () => {
     };
     fetchCities();
   }, []);
+
+  // Fetch centers when city changes and mode is offline_center
+  useEffect(() => {
+    const fetchCenters = async () => {
+      if (formData.city && formData.learning_mode === 'offline_center') {
+        try {
+          const response = await axios.get(`${API}/centers/by-city/${formData.city}`);
+          setCenters(response.data || []);
+        } catch (error) {
+          console.error('Failed to fetch centers');
+          setCenters([]);
+        }
+      }
+    };
+    fetchCenters();
+  }, [formData.city, formData.learning_mode]);
 
   const updateForm = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -206,13 +218,14 @@ const InquiryPage = () => {
   const submitLead = async () => {
     const { inquiry_type } = formData;
     
-    // Format demo date if booking is enabled
-    const demoDate = formData.book_demo && formData.demo_date 
-      ? format(formData.demo_date, 'yyyy-MM-dd') 
-      : null;
-    const demoTime = formData.book_demo ? formData.demo_time : null;
+    // Format demo date if selected
+    const demoDate = formData.demo_date ? format(formData.demo_date, 'yyyy-MM-dd') : null;
+    const demoTime = formData.demo_time || null;
     
     if (inquiry_type === 'student') {
+      // Auto-determine meeting type from learning mode
+      const meetingType = formData.learning_mode === 'online' ? 'online' : 'offline';
+      
       await axios.post(`${API}/students/inquiry`, {
         learner_type: 'self',
         age_group: formData.age_group,
@@ -227,7 +240,9 @@ const InquiryPage = () => {
         demo_time: demoTime,
         source: formData.source || 'team_added',
         added_by: teamUser?.id || '',
-        notes: formData.details
+        notes: formData.selected_center 
+          ? `${formData.details || ''}\nCenter: ${formData.selected_center}`.trim()
+          : formData.details
       });
       toast.success(demoDate ? 'Student lead added with demo booking!' : 'Student lead added to CRM!');
     } 
@@ -245,7 +260,7 @@ const InquiryPage = () => {
         support_needed: [],
         meeting_date: demoDate,
         meeting_time: demoTime,
-        meeting_type: formData.meeting_type,
+        meeting_type: 'offline', // School meetings default to offline
         source: formData.source || 'team_added',
         added_by: teamUser?.id || '',
         notes: formData.details
@@ -262,7 +277,7 @@ const InquiryPage = () => {
         grades_comfortable: formData.grades_comfortable,
         city: formData.city,
         availability: formData.availability || 'Flexible',
-        demo_ready: formData.book_demo,
+        demo_ready: !!demoDate,
         demo_date: demoDate,
         demo_time: demoTime,
         source: formData.source || 'team_added',
@@ -314,6 +329,40 @@ const InquiryPage = () => {
     toast.success('Query logged to ticketing system!');
   };
 
+  const resetForm = () => {
+    setSubmitted(false);
+    setFormData({
+      inquiry_type: '',
+      action_type: '',
+      name: '',
+      phone: '',
+      email: '',
+      city: '',
+      source: '',
+      details: '',
+      query_type: '',
+      query_details: '',
+      age_group: '',
+      skill: '',
+      learning_mode: '',
+      selected_center: '',
+      school_name: '',
+      school_size: '',
+      programs_interested: [],
+      board: '',
+      skills: [],
+      experience: '',
+      grades_comfortable: [],
+      availability: '',
+      role: '',
+      message: '',
+      investment_capacity: '',
+      interest_type: '',
+      demo_date: null,
+      demo_time: '',
+    });
+  };
+
   if (loadingUser) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50">
@@ -325,17 +374,17 @@ const InquiryPage = () => {
   if (submitted) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
-        <div className="glass-card rounded-3xl p-8 max-w-md w-full text-center">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Check className="w-10 h-10 text-green-600" />
+        <div className="glass-card rounded-3xl p-6 sm:p-8 max-w-md w-full text-center">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+            <Check className="w-8 h-8 sm:w-10 sm:h-10 text-green-600" />
           </div>
-          <h2 className="text-2xl font-bold text-[#1E3A5F] mb-2">Submitted Successfully!</h2>
-          <p className="text-slate-500 mb-2">
+          <h2 className="text-xl sm:text-2xl font-bold text-[#1E3A5F] mb-2">Submitted Successfully!</h2>
+          <p className="text-slate-500 mb-2 text-sm sm:text-base">
             {formData.action_type === 'lead' 
               ? 'Lead has been added to the CRM.'
               : 'Query has been logged to the ticketing system.'}
           </p>
-          {formData.book_demo && formData.demo_date && formData.demo_time && (
+          {formData.demo_date && formData.demo_time && (
             <div className="bg-green-50 rounded-lg p-3 mb-4">
               <p className="text-sm text-green-700 font-medium">
                 {formData.inquiry_type === 'school' ? 'Meeting' : 'Demo'} scheduled for {format(formData.demo_date, 'MMM d, yyyy')} at {formData.demo_time}
@@ -345,40 +394,7 @@ const InquiryPage = () => {
           <div className="flex gap-3">
             <Button 
               variant="outline" 
-              onClick={() => {
-                setSubmitted(false);
-                setFormData({
-                  inquiry_type: '',
-                  action_type: '',
-                  name: '',
-                  phone: '',
-                  email: '',
-                  city: '',
-                  source: '',
-                  details: '',
-                  query_type: '',
-                  query_details: '',
-                  age_group: '',
-                  skill: '',
-                  learning_mode: '',
-                  school_name: '',
-                  school_size: '',
-                  programs_interested: [],
-                  board: '',
-                  skills: [],
-                  experience: '',
-                  grades_comfortable: [],
-                  availability: '',
-                  role: '',
-                  message: '',
-                  investment_capacity: '',
-                  interest_type: '',
-                  book_demo: false,
-                  demo_date: null,
-                  demo_time: '',
-                  meeting_type: 'online',
-                });
-              }}
+              onClick={resetForm}
               className="flex-1"
               data-testid="add-another-btn"
             >
@@ -397,37 +413,37 @@ const InquiryPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 py-4 sm:py-8 px-3 sm:px-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
+        <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-8">
           <Link to="/" className="p-2 hover:bg-white/50 rounded-xl transition-colors">
             <ArrowLeft className="w-5 h-5 text-slate-600" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-[#1E3A5F]" style={{ fontFamily: 'Manrope, sans-serif' }}>
+            <h1 className="text-lg sm:text-2xl font-bold text-[#1E3A5F]" style={{ fontFamily: 'Manrope, sans-serif' }}>
               Add Lead / Query
             </h1>
             {teamUser && (
-              <p className="text-sm text-slate-500">Adding as: {teamUser.name}</p>
+              <p className="text-xs sm:text-sm text-slate-500">Adding as: {teamUser.name}</p>
             )}
           </div>
         </div>
 
-        <div className="glass-card rounded-3xl p-6 md:p-8 space-y-8">
+        <div className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 space-y-6 sm:space-y-8">
           {/* Step 1: Inquiry Type */}
           <div>
-            <h2 className="text-lg font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-[#1E3A5F] text-white text-sm flex items-center justify-center">1</span>
+            <h2 className="text-base sm:text-lg font-semibold text-[#1E3A5F] mb-3 sm:mb-4 flex items-center gap-2">
+              <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#1E3A5F] text-white text-xs sm:text-sm flex items-center justify-center">1</span>
               Select Type
             </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
               {INQUIRY_TYPES.map((type) => {
                 const Icon = type.icon;
                 return (
                   <button
                     key={type.value}
-                    className={`p-4 rounded-xl border-2 transition-all text-center ${
+                    className={`p-3 sm:p-4 rounded-xl border-2 transition-all text-center ${
                       formData.inquiry_type === type.value 
                         ? 'border-[#D63031] bg-[#D63031]/5' 
                         : 'border-slate-200 hover:border-slate-300 bg-white'
@@ -435,8 +451,8 @@ const InquiryPage = () => {
                     onClick={() => updateForm('inquiry_type', type.value)}
                     data-testid={`type-${type.value}`}
                   >
-                    <Icon className={`w-6 h-6 mx-auto mb-2 ${formData.inquiry_type === type.value ? 'text-[#D63031]' : 'text-slate-500'}`} />
-                    <div className={`text-sm font-medium ${formData.inquiry_type === type.value ? 'text-[#D63031]' : 'text-slate-700'}`}>
+                    <Icon className={`w-5 h-5 sm:w-6 sm:h-6 mx-auto mb-1.5 sm:mb-2 ${formData.inquiry_type === type.value ? 'text-[#D63031]' : 'text-slate-500'}`} />
+                    <div className={`text-xs sm:text-sm font-medium ${formData.inquiry_type === type.value ? 'text-[#D63031]' : 'text-slate-700'}`}>
                       {type.label}
                     </div>
                   </button>
@@ -448,13 +464,13 @@ const InquiryPage = () => {
           {/* Step 2: Lead or Query */}
           {formData.inquiry_type && (
             <div>
-              <h2 className="text-lg font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-[#1E3A5F] text-white text-sm flex items-center justify-center">2</span>
+              <h2 className="text-base sm:text-lg font-semibold text-[#1E3A5F] mb-3 sm:mb-4 flex items-center gap-2">
+                <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#1E3A5F] text-white text-xs sm:text-sm flex items-center justify-center">2</span>
                 Lead or Query?
               </h2>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <button
-                  className={`p-5 rounded-xl border-2 transition-all ${
+                  className={`p-4 sm:p-5 rounded-xl border-2 transition-all ${
                     formData.action_type === 'lead' 
                       ? 'border-green-500 bg-green-50' 
                       : 'border-slate-200 hover:border-slate-300 bg-white'
@@ -462,12 +478,12 @@ const InquiryPage = () => {
                   onClick={() => updateForm('action_type', 'lead')}
                   data-testid="action-lead"
                 >
-                  <UserPlus className={`w-8 h-8 mx-auto mb-2 ${formData.action_type === 'lead' ? 'text-green-600' : 'text-slate-400'}`} />
-                  <div className={`font-semibold ${formData.action_type === 'lead' ? 'text-green-700' : 'text-slate-700'}`}>Add Lead</div>
+                  <UserPlus className={`w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2 ${formData.action_type === 'lead' ? 'text-green-600' : 'text-slate-400'}`} />
+                  <div className={`font-semibold text-sm sm:text-base ${formData.action_type === 'lead' ? 'text-green-700' : 'text-slate-700'}`}>Add Lead</div>
                   <div className="text-xs text-slate-500 mt-1">Add to CRM</div>
                 </button>
                 <button
-                  className={`p-5 rounded-xl border-2 transition-all ${
+                  className={`p-4 sm:p-5 rounded-xl border-2 transition-all ${
                     formData.action_type === 'query' 
                       ? 'border-blue-500 bg-blue-50' 
                       : 'border-slate-200 hover:border-slate-300 bg-white'
@@ -475,8 +491,8 @@ const InquiryPage = () => {
                   onClick={() => updateForm('action_type', 'query')}
                   data-testid="action-query"
                 >
-                  <MessageCircle className={`w-8 h-8 mx-auto mb-2 ${formData.action_type === 'query' ? 'text-blue-600' : 'text-slate-400'}`} />
-                  <div className={`font-semibold ${formData.action_type === 'query' ? 'text-blue-700' : 'text-slate-700'}`}>Log Query</div>
+                  <MessageCircle className={`w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2 ${formData.action_type === 'query' ? 'text-blue-600' : 'text-slate-400'}`} />
+                  <div className={`font-semibold text-sm sm:text-base ${formData.action_type === 'query' ? 'text-blue-700' : 'text-slate-700'}`}>Log Query</div>
                   <div className="text-xs text-slate-500 mt-1">Add to tickets</div>
                 </button>
               </div>
@@ -486,43 +502,46 @@ const InquiryPage = () => {
           {/* Step 3: Contact & Source */}
           {formData.action_type && (
             <div>
-              <h2 className="text-lg font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-[#1E3A5F] text-white text-sm flex items-center justify-center">3</span>
-                Contact Details & Source
+              <h2 className="text-base sm:text-lg font-semibold text-[#1E3A5F] mb-3 sm:mb-4 flex items-center gap-2">
+                <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#1E3A5F] text-white text-xs sm:text-sm flex items-center justify-center">3</span>
+                Contact Details
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Name *</label>
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Name *</label>
                   <Input
                     placeholder="Full name"
                     value={formData.name}
                     onChange={(e) => updateForm('name', e.target.value)}
+                    className="h-10 sm:h-11"
                     data-testid="input-name"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Phone *</label>
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Phone *</label>
                   <Input
                     placeholder="10-digit number"
                     value={formData.phone}
                     onChange={(e) => updateForm('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    className="h-10 sm:h-11"
                     data-testid="input-phone"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Email</label>
                   <Input
                     type="email"
                     placeholder="Email address"
                     value={formData.email}
                     onChange={(e) => updateForm('email', e.target.value)}
+                    className="h-10 sm:h-11"
                     data-testid="input-email"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Source</label>
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Source</label>
                   <Select value={formData.source} onValueChange={(v) => updateForm('source', v)}>
-                    <SelectTrigger data-testid="select-source">
+                    <SelectTrigger className="h-10 sm:h-11" data-testid="select-source">
                       <SelectValue placeholder="Select source" />
                     </SelectTrigger>
                     <SelectContent>
@@ -534,9 +553,9 @@ const InquiryPage = () => {
                 </div>
                 {formData.inquiry_type !== 'school' && (
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">City</label>
+                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">City</label>
                     <Select value={formData.city} onValueChange={(v) => updateForm('city', v)}>
-                      <SelectTrigger data-testid="select-city">
+                      <SelectTrigger className="h-10 sm:h-11" data-testid="select-city">
                         <SelectValue placeholder="Select city" />
                       </SelectTrigger>
                       <SelectContent>
@@ -554,8 +573,8 @@ const InquiryPage = () => {
           {/* Step 4: Type-specific fields */}
           {formData.action_type === 'lead' && formData.inquiry_type && (
             <div>
-              <h2 className="text-lg font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-[#1E3A5F] text-white text-sm flex items-center justify-center">4</span>
+              <h2 className="text-base sm:text-lg font-semibold text-[#1E3A5F] mb-3 sm:mb-4 flex items-center gap-2">
+                <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#1E3A5F] text-white text-xs sm:text-sm flex items-center justify-center">4</span>
                 {formData.inquiry_type === 'student' && 'Student Details'}
                 {formData.inquiry_type === 'school' && 'School Details'}
                 {formData.inquiry_type === 'teacher' && 'Educator Details'}
@@ -566,11 +585,11 @@ const InquiryPage = () => {
               {/* Student-specific fields */}
               {formData.inquiry_type === 'student' && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Age Group</label>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Age Group</label>
                       <Select value={formData.age_group} onValueChange={(v) => updateForm('age_group', v)}>
-                        <SelectTrigger>
+                        <SelectTrigger className="h-10 sm:h-11">
                           <SelectValue placeholder="Select age group" />
                         </SelectTrigger>
                         <SelectContent>
@@ -581,9 +600,9 @@ const InquiryPage = () => {
                       </Select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Skill Interest</label>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Skill Interest</label>
                       <Select value={formData.skill} onValueChange={(v) => updateForm('skill', v)}>
-                        <SelectTrigger>
+                        <SelectTrigger className="h-10 sm:h-11">
                           <SelectValue placeholder="Select skill" />
                         </SelectTrigger>
                         <SelectContent>
@@ -594,9 +613,9 @@ const InquiryPage = () => {
                       </Select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Learning Mode</label>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Learning Mode</label>
                       <Select value={formData.learning_mode} onValueChange={(v) => updateForm('learning_mode', v)}>
-                        <SelectTrigger>
+                        <SelectTrigger className="h-10 sm:h-11">
                           <SelectValue placeholder="Select mode" />
                         </SelectTrigger>
                         <SelectContent>
@@ -607,33 +626,61 @@ const InquiryPage = () => {
                       </Select>
                     </div>
                   </div>
+                  
+                  {/* Center Selection - only for offline_center mode */}
+                  {formData.learning_mode === 'offline_center' && formData.city && (
+                    <div>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1 flex items-center gap-1">
+                        <Building className="w-4 h-4" />
+                        Select Center
+                      </label>
+                      {centers.length > 0 ? (
+                        <Select value={formData.selected_center} onValueChange={(v) => updateForm('selected_center', v)}>
+                          <SelectTrigger className="h-10 sm:h-11">
+                            <SelectValue placeholder="Select a center" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {centers.map(c => (
+                              <SelectItem key={c.id} value={c.name}>
+                                {c.name} - {c.area}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <p className="text-sm text-slate-500 py-2">No centers available in {formData.city}</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* School-specific fields */}
               {formData.inquiry_type === 'school' && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">School Name</label>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">School Name</label>
                       <Input
                         placeholder="School name"
                         value={formData.school_name}
                         onChange={(e) => updateForm('school_name', e.target.value)}
+                        className="h-10 sm:h-11"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Location</label>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Location</label>
                       <Input
                         placeholder="City / Area"
                         value={formData.city}
                         onChange={(e) => updateForm('city', e.target.value)}
+                        className="h-10 sm:h-11"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">School Size</label>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">School Size</label>
                       <Select value={formData.school_size} onValueChange={(v) => updateForm('school_size', v)}>
-                        <SelectTrigger>
+                        <SelectTrigger className="h-10 sm:h-11">
                           <SelectValue placeholder="Select size" />
                         </SelectTrigger>
                         <SelectContent>
@@ -644,9 +691,9 @@ const InquiryPage = () => {
                       </Select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Board</label>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Board</label>
                       <Select value={formData.board} onValueChange={(v) => updateForm('board', v)}>
-                        <SelectTrigger>
+                        <SelectTrigger className="h-10 sm:h-11">
                           <SelectValue placeholder="Select board" />
                         </SelectTrigger>
                         <SelectContent>
@@ -658,13 +705,13 @@ const InquiryPage = () => {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Programs Interested</label>
+                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Programs Interested</label>
                     <div className="flex flex-wrap gap-2">
                       {PROGRAMS.map(p => (
                         <button
                           key={p}
                           onClick={() => toggleArrayField('programs_interested', p)}
-                          className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${
+                          className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm border transition-all ${
                             formData.programs_interested.includes(p)
                               ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]'
                               : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
@@ -681,19 +728,20 @@ const InquiryPage = () => {
               {/* Educator-specific fields */}
               {formData.inquiry_type === 'teacher' && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Experience</label>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Experience</label>
                       <Input
                         placeholder="Years of experience"
                         value={formData.experience}
                         onChange={(e) => updateForm('experience', e.target.value)}
+                        className="h-10 sm:h-11"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Availability</label>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Availability</label>
                       <Select value={formData.availability} onValueChange={(v) => updateForm('availability', v)}>
-                        <SelectTrigger>
+                        <SelectTrigger className="h-10 sm:h-11">
                           <SelectValue placeholder="Select availability" />
                         </SelectTrigger>
                         <SelectContent>
@@ -706,13 +754,13 @@ const InquiryPage = () => {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Skills</label>
+                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Skills</label>
                     <div className="flex flex-wrap gap-2">
                       {PROGRAMS.map(s => (
                         <button
                           key={s}
                           onClick={() => toggleArrayField('skills', s)}
-                          className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${
+                          className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm border transition-all ${
                             formData.skills.includes(s)
                               ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]'
                               : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
@@ -724,13 +772,13 @@ const InquiryPage = () => {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Grades Comfortable</label>
+                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Grades Comfortable</label>
                     <div className="flex flex-wrap gap-2">
                       {GRADES.map(g => (
                         <button
                           key={g}
                           onClick={() => toggleArrayField('grades_comfortable', g)}
-                          className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${
+                          className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm border transition-all ${
                             formData.grades_comfortable.includes(g)
                               ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]'
                               : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
@@ -747,11 +795,11 @@ const InquiryPage = () => {
               {/* Growth Partner fields */}
               {formData.inquiry_type === 'growth_partner' && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Interest Type</label>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Interest Type</label>
                       <Select value={formData.interest_type} onValueChange={(v) => updateForm('interest_type', v)}>
-                        <SelectTrigger>
+                        <SelectTrigger className="h-10 sm:h-11">
                           <SelectValue placeholder="Select interest" />
                         </SelectTrigger>
                         <SelectContent>
@@ -763,11 +811,12 @@ const InquiryPage = () => {
                       </Select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Investment Capacity</label>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Investment Capacity</label>
                       <Input
                         placeholder="Budget range"
                         value={formData.investment_capacity}
                         onChange={(e) => updateForm('investment_capacity', e.target.value)}
+                        className="h-10 sm:h-11"
                       />
                     </div>
                   </div>
@@ -777,135 +826,98 @@ const InquiryPage = () => {
               {/* Team Application fields */}
               {formData.inquiry_type === 'team' && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Role / Position *</label>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Role / Position *</label>
                       <Input
                         placeholder="Position applying for"
                         value={formData.role}
                         onChange={(e) => updateForm('role', e.target.value)}
+                        className="h-10 sm:h-11"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Experience</label>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Experience</label>
                       <Input
                         placeholder="Years of experience"
                         value={formData.experience}
                         onChange={(e) => updateForm('experience', e.target.value)}
+                        className="h-10 sm:h-11"
                       />
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Book Demo/Meeting Section - for student, school, teacher */}
+              {/* Demo/Meeting Booking Section - ALWAYS VISIBLE for student, school, teacher */}
               {['student', 'school', 'teacher'].includes(formData.inquiry_type) && (
-                <div className="mt-6 pt-6 border-t border-slate-200">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-semibold text-[#1E3A5F] flex items-center gap-2">
-                      <Calendar className="w-5 h-5" />
-                      {formData.inquiry_type === 'school' ? 'Schedule Meeting' : 'Book Demo'}
-                    </h3>
-                    <button
-                      type="button"
-                      onClick={() => updateForm('book_demo', !formData.book_demo)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                        formData.book_demo
-                          ? 'bg-[#D63031] text-white'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
-                      data-testid="toggle-booking"
-                    >
-                      {formData.book_demo ? 'Booking Enabled ✓' : 'Add Booking'}
-                    </button>
-                  </div>
+                <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-slate-200">
+                  <h3 className="font-semibold text-[#1E3A5F] mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
+                    <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
+                    {formData.inquiry_type === 'school' ? 'Schedule Meeting' : 'Book Demo'} (Optional)
+                  </h3>
 
-                  {formData.book_demo && (
-                    <div className="bg-slate-50 rounded-xl p-4 space-y-4">
-                      {/* Meeting Type */}
+                  <div className="bg-slate-50 rounded-xl p-3 sm:p-4 space-y-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      {/* Date Selection */}
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                          {formData.inquiry_type === 'school' ? 'Meeting Type' : 'Demo Type'}
-                        </label>
-                        <div className="flex gap-3">
-                          {MEETING_TYPES.map(mt => (
+                        <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Select Date</label>
+                        <div className="bg-white rounded-lg border border-slate-200 p-2 flex justify-center">
+                          <CalendarComponent
+                            mode="single"
+                            selected={formData.demo_date}
+                            onSelect={(date) => updateForm('demo_date', date)}
+                            disabled={(date) => date < new Date() || date > addDays(new Date(), 30)}
+                            className="rounded-md"
+                          />
+                        </div>
+                        {formData.demo_date && (
+                          <p className="text-xs sm:text-sm text-[#1E3A5F] mt-2 font-medium">
+                            Selected: {format(formData.demo_date, 'EEE, MMM d, yyyy')}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Time Selection */}
+                      <div>
+                        <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Select Time</label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {TIME_SLOTS.map(time => (
                             <button
-                              key={mt.value}
+                              key={time}
                               type="button"
-                              onClick={() => updateForm('meeting_type', mt.value)}
-                              className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium border-2 transition-all ${
-                                formData.meeting_type === mt.value
-                                  ? 'border-[#1E3A5F] bg-[#1E3A5F] text-white'
+                              onClick={() => updateForm('demo_time', time)}
+                              className={`py-2 sm:py-2.5 px-2 sm:px-3 rounded-lg text-xs sm:text-sm font-medium border transition-all ${
+                                formData.demo_time === time
+                                  ? 'border-[#D63031] bg-[#D63031] text-white'
                                   : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
                               }`}
+                              data-testid={`time-${time}`}
                             >
-                              {mt.label}
+                              {time}
                             </button>
                           ))}
                         </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Date Selection */}
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">Select Date</label>
-                          <div className="bg-white rounded-lg border border-slate-200 p-2">
-                            <CalendarComponent
-                              mode="single"
-                              selected={formData.demo_date}
-                              onSelect={(date) => updateForm('demo_date', date)}
-                              disabled={(date) => date < new Date() || date > addDays(new Date(), 30)}
-                              className="rounded-md"
-                            />
-                          </div>
-                          {formData.demo_date && (
-                            <p className="text-sm text-[#1E3A5F] mt-2 font-medium">
-                              Selected: {format(formData.demo_date, 'EEEE, MMMM d, yyyy')}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Time Selection */}
-                        <div>
-                          <label className="block text-sm font-medium text-slate-700 mb-2">Select Time</label>
-                          <div className="grid grid-cols-3 gap-2">
-                            {TIME_SLOTS.map(time => (
-                              <button
-                                key={time}
-                                type="button"
-                                onClick={() => updateForm('demo_time', time)}
-                                className={`py-2.5 px-3 rounded-lg text-sm font-medium border transition-all ${
-                                  formData.demo_time === time
-                                    ? 'border-[#D63031] bg-[#D63031] text-white'
-                                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-                                }`}
-                                data-testid={`time-${time}`}
-                              >
-                                {time}
-                              </button>
-                            ))}
-                          </div>
-                          {formData.demo_time && (
-                            <p className="text-sm text-[#D63031] mt-3 font-medium flex items-center gap-1">
-                              <Clock className="w-4 h-4" />
-                              Selected: {formData.demo_time}
-                            </p>
-                          )}
-                        </div>
+                        {formData.demo_time && (
+                          <p className="text-xs sm:text-sm text-[#D63031] mt-3 font-medium flex items-center gap-1">
+                            <Clock className="w-3 h-3 sm:w-4 sm:h-4" />
+                            Selected: {formData.demo_time}
+                          </p>
+                        )}
                       </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               )}
 
               {/* Additional Details */}
               <div className="mt-4">
-                <label className="block text-sm font-medium text-slate-700 mb-1">Additional Notes</label>
+                <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Additional Notes</label>
                 <Textarea
                   placeholder="Any additional details..."
                   value={formData.details}
                   onChange={(e) => updateForm('details', e.target.value)}
-                  className="min-h-[80px]"
+                  className="min-h-[70px] sm:min-h-[80px]"
                 />
               </div>
             </div>
@@ -914,15 +926,15 @@ const InquiryPage = () => {
           {/* Query-specific fields */}
           {formData.action_type === 'query' && (
             <div>
-              <h2 className="text-lg font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
-                <span className="w-6 h-6 rounded-full bg-[#1E3A5F] text-white text-sm flex items-center justify-center">4</span>
+              <h2 className="text-base sm:text-lg font-semibold text-[#1E3A5F] mb-3 sm:mb-4 flex items-center gap-2">
+                <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#1E3A5F] text-white text-xs sm:text-sm flex items-center justify-center">4</span>
                 Query Details
               </h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Query Type</label>
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Query Type</label>
                   <Select value={formData.query_type} onValueChange={(v) => updateForm('query_type', v)}>
-                    <SelectTrigger>
+                    <SelectTrigger className="h-10 sm:h-11">
                       <SelectValue placeholder="Select query type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -933,12 +945,12 @@ const InquiryPage = () => {
                   </Select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Query Details</label>
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Query Details</label>
                   <Textarea
                     placeholder="Describe the query in detail..."
                     value={formData.query_details}
                     onChange={(e) => updateForm('query_details', e.target.value)}
-                    className="min-h-[120px]"
+                    className="min-h-[100px] sm:min-h-[120px]"
                   />
                 </div>
               </div>
@@ -951,7 +963,7 @@ const InquiryPage = () => {
               <Button
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="w-full bg-[#D63031] hover:bg-[#b52828] h-12 text-lg"
+                className="w-full bg-[#D63031] hover:bg-[#b52828] h-11 sm:h-12 text-base sm:text-lg"
                 data-testid="submit-btn"
               >
                 {submitting ? 'Submitting...' : formData.action_type === 'lead' ? 'Add Lead' : 'Log Query'}
