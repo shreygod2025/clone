@@ -126,6 +126,8 @@ class StudentInquiryCreate(BaseModel):
     demo_date: Optional[str] = None
     demo_time: Optional[str] = None
     source: str = "website"
+    added_by: str = ""
+    notes: str = ""
 
 class StudentInquiryUpdate(BaseModel):
     status: Optional[str] = None
