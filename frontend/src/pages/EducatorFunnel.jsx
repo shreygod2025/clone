@@ -15,19 +15,28 @@ import Navbar from '../components/Navbar';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-const SKILLS = ['Robotics', 'Coding', 'AI & ML', 'Entrepreneurship', 'Financial Literacy'];
-const GRADES = ['Pre-primary', 'Primary (1-5)', 'Middle (6-8)', 'High School (9-10)', 'Senior (11-12)'];
+const DEFAULT_SKILLS = ['Robotics', 'Coding', 'AI & ML', 'Entrepreneurship', 'Financial Literacy'];
+const DEFAULT_GRADES = ['Pre-primary', 'Primary (1-5)', 'Middle (6-8)', 'High School (9-10)', 'Senior (11-12)'];
+const DEFAULT_AVAILABILITY = ['Weekday Mornings', 'Weekday Afternoons', 'Weekday Evenings', 'Weekends'];
+
 const CITIES = [
   'Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 
   'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow', 'Chandigarh', 'Kochi'
 ];
-const AVAILABILITY = ['Weekday Mornings', 'Weekday Afternoons', 'Weekday Evenings', 'Weekends'];
 const TIME_SLOTS = ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'];
 
 const EducatorFunnel = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('apply');
   const [requirements, setRequirements] = useState([]);
+  const [formConfig, setFormConfig] = useState({
+    skills: DEFAULT_SKILLS,
+    grades: DEFAULT_GRADES,
+    availability_options: DEFAULT_AVAILABILITY,
+    experience_options: ['0-1 years', '1-3 years', '3-5 years', '5+ years'],
+    required_fields: ['name', 'email', 'phone', 'skills'],
+    optional_fields: ['experience', 'grades_comfortable', 'city', 'availability']
+  });
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
