@@ -617,7 +617,7 @@ async def login_admin(data: AdminLogin):
     admin = await db.admins.find_one({"email": data.email})
     if admin and verify_password(data.password, admin["password"]):
         token = create_access_token({"sub": data.email, "role": "admin"})
-        user = AdminUser(id=admin["id"], email=admin["email"], name=admin["name"], role=admin.get("role", "admin"))
+        user = AdminUser(id=admin["id"], email=admin["email"], name=admin["name"], role=admin.get("role", "admin"), permissions=[])
         return TokenResponse(access_token=token, user=user)
     
     # Then check team_users collection
@@ -632,7 +632,9 @@ async def login_admin(data: AdminLogin):
                 id=team_user["id"], 
                 email=team_user["email"], 
                 name=team_user["name"], 
-                role="team_member"
+                role="team_member",
+                username=team_user.get("username", ""),
+                permissions=team_user.get("permissions", [])
             )
             return TokenResponse(access_token=token, user=user)
     
