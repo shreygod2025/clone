@@ -73,7 +73,22 @@ const EducatorFunnel = () => {
 
   useEffect(() => {
     fetchRequirements();
+    fetchFormConfig();
   }, []);
+
+  const fetchFormConfig = async () => {
+    try {
+      const response = await axios.get(`${API}/educator-config`);
+      if (response.data) {
+        setFormConfig(prev => ({
+          ...prev,
+          ...response.data
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to fetch form config, using defaults');
+    }
+  };
 
   const fetchRequirements = async () => {
     setLoading(true);
