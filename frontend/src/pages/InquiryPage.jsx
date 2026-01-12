@@ -634,11 +634,16 @@ const InquiryPage = () => {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1">Board</label>
-                      <Input
-                        placeholder="CBSE, ICSE, State Board, etc."
-                        value={formData.board}
-                        onChange={(e) => updateForm('board', e.target.value)}
-                      />
+                      <Select value={formData.board} onValueChange={(v) => updateForm('board', v)}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select board" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {BOARD_OPTIONS.map(b => (
+                            <SelectItem key={b} value={b}>{b}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                   <div>
