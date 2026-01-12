@@ -75,7 +75,8 @@ function App() {
             {/* User Auth Routes */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/my-bookings" element={<MyBookingsPage />} />
-            <Route path="/inquiry" element={<InquiryPage />} />
+            <Route path="/add" element={<InquiryPage />} />
+            <Route path="/add/:username" element={<InquiryPage />} />
             
             {/* SEO Course Pages */}
             <Route path="/courses" element={<CoursesListPage />} />
