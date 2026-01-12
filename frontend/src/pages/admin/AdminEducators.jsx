@@ -91,7 +91,7 @@ const AdminEducators = () => {
       return;
     }
     try {
-      await axios.patch(`${API}/educators/${showScheduleModal.id}`, {
+      await axios.patch(`${API}/educators/application/${showScheduleModal.id}`, {
         status: 'demo_scheduled',
         demo_date: format(scheduleData.date, 'yyyy-MM-dd'),
         demo_time: scheduleData.time
