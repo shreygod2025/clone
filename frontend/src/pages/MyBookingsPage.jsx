@@ -257,8 +257,8 @@ const MyBookingsPage = () => {
             </div>
           )}
 
-          {/* Other Courses Section */}
-          {user?.user_type === 'student' && (
+          {/* Other Courses Section - Show for all logged in users (except schools) */}
+          {user?.user_type !== 'school' && (
             <div className="mt-12" data-testid="other-courses-section">
               <div className="mb-6">
                 <h2 className="text-xl md:text-2xl font-bold text-[#1E3A5F]" style={{ fontFamily: 'Manrope, sans-serif' }}>
