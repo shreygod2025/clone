@@ -294,6 +294,9 @@ const StudentFunnel = () => {
     if (currentStep === 0) {
       setFlowType(null);
       setCameFromCoursePage(false);
+    } else if (cameFromCoursePage && currentStep === 2) {
+      // If came from course page and at age step, go back to course details
+      navigate(`/courses/${formData.skill}`);
     } else {
       // Reset OTP state when going back from OTP step
       if (activeSteps[currentStep].id === 'otp') {
