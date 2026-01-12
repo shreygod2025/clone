@@ -225,6 +225,14 @@ const InquiryPage = () => {
     const demoDate = formData.demo_date ? format(formData.demo_date, 'yyyy-MM-dd') : null;
     const demoTime = formData.demo_time || null;
     
+    // Determine assignment - if team user and "self" selected, auto-assign
+    const assignedTo = (teamUser && formData.assign_option === 'self') ? teamUser.id : '';
+    
+    // Build source string with team member name if added via their link
+    const sourceValue = teamUser 
+      ? `${formData.source || 'team_added'} (Added by: ${teamUser.name})`
+      : (formData.source || 'team_added');
+    
     if (inquiry_type === 'student') {
       // Auto-determine meeting type from learning mode
       const meetingType = formData.learning_mode === 'online' ? 'online' : 'offline';
@@ -241,8 +249,9 @@ const InquiryPage = () => {
         phone: formData.phone,
         demo_date: demoDate,
         demo_time: demoTime,
-        source: formData.source || 'team_added',
+        source: sourceValue,
         added_by: teamUser?.id || '',
+        assigned_to: assignedTo,
         notes: formData.selected_center 
           ? `${formData.details || ''}\nCenter: ${formData.selected_center}`.trim()
           : formData.details
@@ -264,8 +273,9 @@ const InquiryPage = () => {
         meeting_date: demoDate,
         meeting_time: demoTime,
         meeting_type: 'offline', // School meetings default to offline
-        source: formData.source || 'team_added',
+        source: sourceValue,
         added_by: teamUser?.id || '',
+        assigned_to: assignedTo,
         notes: formData.details
       });
       toast.success(demoDate ? 'School lead added with meeting scheduled!' : 'School lead added to CRM!');
@@ -283,8 +293,9 @@ const InquiryPage = () => {
         demo_ready: !!demoDate,
         demo_date: demoDate,
         demo_time: demoTime,
-        source: formData.source || 'team_added',
+        source: sourceValue,
         added_by: teamUser?.id || '',
+        assigned_to: assignedTo,
         notes: formData.details
       });
       toast.success(demoDate ? 'Educator added with demo scheduled!' : 'Educator application added!');
@@ -297,8 +308,9 @@ const InquiryPage = () => {
         city: formData.city,
         interest_type: formData.interest_type || 'franchise',
         details: formData.details || `Investment: ${formData.investment_capacity}`,
-        source: formData.source || 'team_added',
-        added_by: teamUser?.id || ''
+        source: sourceValue,
+        added_by: teamUser?.id || '',
+        assigned_to: assignedTo
       });
       toast.success('Growth Partner lead added!');
     }
@@ -311,7 +323,7 @@ const InquiryPage = () => {
         experience: formData.experience,
         city: formData.city,
         message: formData.details,
-        source: formData.source || 'team_added'
+        source: sourceValue
       });
       toast.success('Team application added!');
     }
