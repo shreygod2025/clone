@@ -580,6 +580,103 @@ class OTPVerify(BaseModel):
     otp: str
     user_type: str = "student"
 
+# ========================
+# TEAM USER MANAGEMENT ENDPOINTS
+# ========================
+
+@api_router.post("/team-users")
+async def create_team_user(data: TeamUserCreate, user: dict = Depends(get_current_user)):
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can create team users")
+    
+    # Check if username already exists
+    existing = await db.team_users.find_one({"username": data.username})
+    if existing:
+        raise HTTPException(status_code=400, detail="Username already exists")
+    
+    # Check if email already exists
+    existing_email = await db.team_users.find_one({"email": data.email})
+    if existing_email:
+        raise HTTPException(status_code=400, detail="Email already exists")
+    
+    team_user = TeamUser(
+        email=data.email,
+        name=data.name,
+        username=data.username,
+        password_hash=pwd_context.hash(data.password),
+        permissions=data.permissions
+    )
+    doc = team_user.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    await db.team_users.insert_one(doc)
+    
+    return {"message": "Team user created", "id": doc['id'], "username": doc['username']}
+
+@api_router.get("/team-users")
+async def get_team_users(user: dict = Depends(get_current_user)):
+    users = await db.team_users.find({}, {"_id": 0, "password_hash": 0}).sort("created_at", -1).to_list(100)
+    return users
+
+@api_router.get("/team-users/{user_id}")
+async def get_team_user(user_id: str, user: dict = Depends(get_current_user)):
+    team_user = await db.team_users.find_one({"id": user_id}, {"_id": 0, "password_hash": 0})
+    if not team_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return team_user
+
+@api_router.get("/team-users/by-username/{username}")
+async def get_team_user_by_username(username: str):
+    team_user = await db.team_users.find_one({"username": username, "is_active": True}, {"_id": 0, "password_hash": 0})
+    if not team_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return team_user
+
+@api_router.patch("/team-users/{user_id}")
+async def update_team_user(user_id: str, data: TeamUserUpdate, user: dict = Depends(get_current_user)):
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can update team users")
+    
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    if update_data:
+        await db.team_users.update_one({"id": user_id}, {"$set": update_data})
+    return {"message": "User updated"}
+
+@api_router.delete("/team-users/{user_id}")
+async def delete_team_user(user_id: str, user: dict = Depends(get_current_user)):
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can delete team users")
+    
+    await db.team_users.delete_one({"id": user_id})
+    return {"message": "User deleted"}
+
+@api_router.post("/team-users/login")
+async def team_user_login(data: AdminLogin):
+    team_user = await db.team_users.find_one({"email": data.email})
+    if not team_user:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    if not pwd_context.verify(data.password, team_user.get("password_hash", "")):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    if not team_user.get("is_active", True):
+        raise HTTPException(status_code=401, detail="User account is disabled")
+    
+    # Create JWT token
+    access_token = create_access_token(data={"sub": team_user["email"], "role": "team_member", "user_id": team_user["id"]})
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": team_user["id"],
+            "email": team_user["email"],
+            "name": team_user["name"],
+            "username": team_user["username"],
+            "role": "team_member",
+            "permissions": team_user.get("permissions", [])
+        }
+    }
+
 @api_router.post("/auth/send-otp")
 async def send_otp(data: OTPRequest):
     # Generate OTP (in production, send via WhatsApp/Twilio)
