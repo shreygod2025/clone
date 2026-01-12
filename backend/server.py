@@ -128,6 +128,7 @@ class StudentInquiryCreate(BaseModel):
     demo_time: Optional[str] = None
     source: str = "website"
     added_by: str = ""
+    assigned_to: str = ""
     notes: str = ""
 
 class StudentInquiryUpdate(BaseModel):
@@ -175,6 +176,7 @@ class GrowthPartnerCreate(BaseModel):
     details: str = ""
     source: str = "website"
     added_by: str = ""
+    assigned_to: str = ""
 
 class GrowthPartnerUpdate(BaseModel):
     status: Optional[str] = None
