@@ -101,12 +101,15 @@ class StudentInquiry(BaseModel):
     phone: str
     status: str = "new"  # new, demo_completed, converted, archived
     notes: str = ""
+    comments: List[dict] = []
     demo_date: Optional[str] = None
     demo_time: Optional[str] = None
     followup_date: Optional[str] = None
     conversion_amount: Optional[str] = None
     sessions_count: Optional[str] = None
     source: str = "website"
+    added_by: str = ""  # user_id who added this lead
+    assigned_to: str = ""  # user_id assigned to handle this lead
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
