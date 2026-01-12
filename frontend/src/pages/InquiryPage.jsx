@@ -90,6 +90,9 @@ const InquiryPage = () => {
     source: '',
     details: '',
     
+    // Assignment option (only for team user links)
+    assign_option: 'self', // 'self' or 'auto'
+    
     // Query fields
     query_type: '',
     query_details: '',
