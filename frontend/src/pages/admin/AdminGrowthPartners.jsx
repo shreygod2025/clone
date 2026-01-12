@@ -173,6 +173,28 @@ const AdminGrowthPartners = () => {
     }
   };
 
+  const handleAssignLead = async (userId) => {
+    if (!showAssignModal) return;
+    try {
+      await axios.patch(`${API}/growth-partners/${showAssignModal.id}`, {
+        assigned_to: userId
+      }, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Lead assigned successfully');
+      setShowAssignModal(null);
+      fetchPartners();
+    } catch (error) {
+      toast.error('Failed to assign lead');
+    }
+  };
+
+  const getAssignedUserName = (userId) => {
+    if (!userId) return null;
+    const teamUser = teamUsers.find(u => u.id === userId);
+    return teamUser?.name || null;
+  };
+
   const filteredPartners = partners.filter(p => {
     const matchesSearch = p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.phone?.includes(searchQuery) ||
