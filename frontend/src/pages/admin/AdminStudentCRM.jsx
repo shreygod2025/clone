@@ -317,7 +317,7 @@ const AdminStudentCRM = () => {
               data-testid={`reschedule-${inquiry.id}`}
             >
               <CalendarClock className="w-3 h-3" />
-              Reschedule
+              {inquiry.demo_date ? 'Reschedule' : 'Add Demo'}
             </button>
             {baseButtons}
             <button
