@@ -37,6 +37,13 @@ const QUERY_TABS = [
   { value: 'closed', label: 'Closed', icon: CheckCircle, color: 'bg-green-500' },
 ];
 
+const STATUS_OPTIONS = [
+  { value: 'open', label: 'Open' },
+  { value: 'in_progress', label: 'In Progress' },
+  { value: 'resolved', label: 'Resolved' },
+  { value: 'closed', label: 'Closed' },
+];
+
 const AdminSupportUnified = () => {
   const { getAuthHeaders, user } = useAuth();
   const [queries, setQueries] = useState([]);
