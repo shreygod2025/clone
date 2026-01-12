@@ -244,9 +244,13 @@ class EducatorApplication(BaseModel):
     requirement_title: Optional[str] = None
     status: str = "new"  # new, demo_scheduled, demo_completed, onboarded, archived
     notes: str = ""
+    comments: List[dict] = []
     demo_date: Optional[str] = None
     demo_time: Optional[str] = None
     onboarding_date: Optional[str] = None
+    source: str = "website"
+    added_by: str = ""
+    assigned_to: str = ""
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
