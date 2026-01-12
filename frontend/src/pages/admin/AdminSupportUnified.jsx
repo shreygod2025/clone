@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Phone, Mail, Clock, User, MessageSquare, AlertCircle, CreditCard, Wrench, HelpCircle, ThumbsUp, Building2, Send, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Search, Phone, Mail, Clock, User, MessageSquare, AlertCircle, CreditCard, Wrench, HelpCircle, ThumbsUp, Building2, Send, AlertTriangle, CheckCircle, UserPlus } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Textarea } from '../../components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { toast } from 'sonner';
 import { format, differenceInHours } from 'date-fns';
 import axios from 'axios';
@@ -48,16 +49,35 @@ const AdminSupportUnified = () => {
   const { getAuthHeaders, user } = useAuth();
   const [queries, setQueries] = useState([]);
   const [legacyTickets, setLegacyTickets] = useState([]);
+  const [teamUsers, setTeamUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [queryTypeFilter, setQueryTypeFilter] = useState('');
   const [activeTab, setActiveTab] = useState('new'); // 'new', 'overdue', 'closed'
-  const [sourceFilter, setSourceFilter] = useState('all'); // 'all', 'inquiry', 'legacy'
+  const [sourceFilter, setSourceFilter] = useState('all'); // 'all', 'inquiry', 'user_support', 'legacy'
+  const [assigneeFilter, setAssigneeFilter] = useState('all');
   const [showReplyModal, setShowReplyModal] = useState(null);
+  const [showAssignModal, setShowAssignModal] = useState(null);
   const [replyText, setReplyText] = useState('');
 
   useEffect(() => {
     fetchAllQueries();
+    fetchTeamUsers();
+  }, []);
+
+  const fetchTeamUsers = async () => {
+    try {
+      const response = await axios.get(`${API}/team-users`, {
+        headers: getAuthHeaders()
+      });
+      setTeamUsers(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch team users:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchAllQueries();();
   }, []);
 
   const fetchAllQueries = async () => {
