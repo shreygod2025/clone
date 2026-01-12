@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Phone, Mail, Clock, User, MessageSquare, AlertCircle, CreditCard, Wrench, HelpCircle, ThumbsUp, Building2, Send } from 'lucide-react';
+import { Search, Phone, Mail, Clock, User, MessageSquare, AlertCircle, CreditCard, Wrench, HelpCircle, ThumbsUp, Building2, Send, AlertTriangle, CheckCircle } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Textarea } from '../../components/ui/textarea';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
+import { format, differenceInHours } from 'date-fns';
 import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -22,19 +22,19 @@ const QUERY_TYPES = [
   { value: 'other', label: 'Other', icon: AlertCircle, color: 'bg-slate-100 text-slate-700' },
 ];
 
-const STATUS_OPTIONS = [
-  { value: 'open', label: 'Open', color: 'bg-blue-500' },
-  { value: 'in_progress', label: 'In Progress', color: 'bg-yellow-500' },
-  { value: 'resolved', label: 'Resolved', color: 'bg-green-500' },
-  { value: 'closed', label: 'Closed', color: 'bg-slate-400' },
-];
-
 const INQUIRY_TYPES = [
   { value: 'student', label: 'Student' },
   { value: 'school', label: 'School' },
   { value: 'growth_partner', label: 'Growth Partner' },
   { value: 'teacher', label: 'Teacher' },
   { value: 'team', label: 'Team' },
+];
+
+// Tabs for query status
+const QUERY_TABS = [
+  { value: 'new', label: 'New', icon: MessageSquare, color: 'bg-blue-500' },
+  { value: 'overdue', label: 'Overdue', icon: AlertTriangle, color: 'bg-red-500' },
+  { value: 'closed', label: 'Closed', icon: CheckCircle, color: 'bg-green-500' },
 ];
 
 const AdminSupportUnified = () => {
@@ -44,14 +44,14 @@ const AdminSupportUnified = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [queryTypeFilter, setQueryTypeFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [activeTab, setActiveTab] = useState('new'); // 'new', 'overdue', 'closed'
   const [sourceFilter, setSourceFilter] = useState('all'); // 'all', 'inquiry', 'legacy'
   const [showReplyModal, setShowReplyModal] = useState(null);
   const [replyText, setReplyText] = useState('');
 
   useEffect(() => {
     fetchAllQueries();
-  }, [statusFilter]);
+  }, []);
 
   const fetchAllQueries = async () => {
     setLoading(true);
