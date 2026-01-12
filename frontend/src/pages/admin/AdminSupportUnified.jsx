@@ -63,14 +63,28 @@ const AdminSupportUnified = () => {
   const fetchAllQueries = async () => {
     setLoading(true);
     try {
-      // Fetch inquiry queries
-      const [inquiryResponse, legacyResponse] = await Promise.all([
-        axios.get(`${API}/inquiry/queries`, { headers: getAuthHeaders() }),
+      // Fetch all three sources: inquiry queries, user support queries, and legacy tickets
+      const [inquiryResponse, supportQueriesResponse, legacyResponse] = await Promise.all([
+        axios.get(`${API}/inquiry/queries`, { headers: getAuthHeaders() }).catch(() => ({ data: [] })),
+        axios.get(`${API}/support/queries`, { headers: getAuthHeaders() }).catch(() => ({ data: [] })),
         axios.get(`${API}/support/tickets`, { headers: getAuthHeaders() }).catch(() => ({ data: [] }))
       ]);
       
       // Add source identifier
-      const inquiryQueries = inquiryResponse.data.map(q => ({ ...q, _source: 'inquiry' }));
+      const inquiryQueries = (inquiryResponse.data || []).map(q => ({ ...q, _source: 'inquiry' }));
+      
+      // Support queries from SupportFlow.jsx (user-facing support)
+      const supportQueries = (supportQueriesResponse.data || []).map(q => ({ 
+        ...q, 
+        _source: 'user_support',
+        query_type: q.category || q.main_category || 'other',
+        query_details: q.details || q.reason || '',
+        inquiry_type: 'student',
+        name: q.contact_name || q.name || 'User',
+        phone: q.phone || '',
+        email: q.email || ''
+      }));
+      
       const legacy = (legacyResponse.data || []).map(t => ({ 
         ...t, 
         _source: 'legacy',
@@ -79,7 +93,7 @@ const AdminSupportUnified = () => {
         inquiry_type: t.user_type || 'student'
       }));
       
-      setQueries(inquiryQueries);
+      setQueries([...inquiryQueries, ...supportQueries]);
       setLegacyTickets(legacy);
     } catch (error) {
       console.error('Fetch error:', error);

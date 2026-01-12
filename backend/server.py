@@ -1199,10 +1199,29 @@ async def create_school_support_query(data: dict):
 @api_router.post("/support/query")
 async def create_support_query(data: dict):
     data['id'] = str(uuid.uuid4())
-    data['status'] = 'new'
+    data['status'] = 'open'
     data['created_at'] = datetime.now(timezone.utc).isoformat()
     await db.support_queries.insert_one(data)
     return {"message": "Query submitted successfully", "id": data['id']}
+
+@api_router.get("/support/queries")
+async def get_support_queries(
+    status: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    """Get all support queries from the SupportFlow component"""
+    query = {}
+    if status:
+        query["status"] = status
+    queries = await db.support_queries.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return queries
+
+@api_router.patch("/support/queries/{query_id}")
+async def update_support_query(query_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Update a support query status"""
+    update_data = {k: v for k, v in data.items() if v is not None}
+    await db.support_queries.update_one({"id": query_id}, {"$set": update_data})
+    return {"message": "Query updated successfully"}
 
 @api_router.get("/support/school-queries")
 async def get_school_support_queries(user: dict = Depends(get_current_user)):
