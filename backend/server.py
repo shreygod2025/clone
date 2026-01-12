@@ -236,6 +236,8 @@ class SchoolInquiry(BaseModel):
     meeting_date: Optional[str] = None
     meeting_time: Optional[str] = None
     meeting_type: str = "offline"  # offline, online
+    followup_date: Optional[str] = None
+    followup_comment: str = ""
     conversion_amount: Optional[str] = None
     source: str = "website"
     added_by: str = ""
@@ -267,6 +269,8 @@ class SchoolInquiryUpdate(BaseModel):
     meeting_date: Optional[str] = None
     meeting_time: Optional[str] = None
     meeting_type: Optional[str] = None
+    followup_date: Optional[str] = None
+    followup_comment: Optional[str] = None
     conversion_amount: Optional[str] = None
     assigned_to: Optional[str] = None
 
