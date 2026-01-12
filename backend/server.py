@@ -786,6 +786,15 @@ async def get_student_inquiries(
     query = {}
     if status:
         query["status"] = status
+    
+    # For team members, only show leads they added or assigned to them
+    if user.get("role") == "team_member":
+        user_id = user.get("user_id", user.get("id", ""))
+        query["$or"] = [
+            {"added_by": user_id},
+            {"assigned_to": user_id}
+        ]
+    
     inquiries = await db.student_inquiries.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
     for inq in inquiries:
         if isinstance(inq.get('created_at'), str):
