@@ -61,7 +61,19 @@ const AdminSchoolCRM = () => {
 
   useEffect(() => {
     fetchInquiries();
+    fetchTeamUsers();
   }, []);
+
+  const fetchTeamUsers = async () => {
+    try {
+      const response = await axios.get(`${API}/team-users`, {
+        headers: getAuthHeaders()
+      });
+      setTeamUsers(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch team users:', error);
+    }
+  };
 
   const fetchInquiries = async () => {
     setLoading(true);
