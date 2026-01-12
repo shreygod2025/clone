@@ -1464,6 +1464,8 @@ async def create_inquiry_lead(data: dict):
             "notes": f"Details: {doc.get('details', '')}",
             "comments": [],
             "source": source,
+            "added_by": added_by,
+            "assigned_to": "",
             "created_at": doc['created_at'],
             "updated_at": doc['created_at']
         }
@@ -1486,6 +1488,8 @@ async def create_inquiry_lead(data: dict):
             "notes": f"Details: {doc.get('details', '')}",
             "comments": [],
             "source": source,
+            "added_by": added_by,
+            "assigned_to": "",
             "created_at": doc['created_at'],
             "updated_at": doc['created_at']
         }
@@ -1507,6 +1511,8 @@ async def create_inquiry_lead(data: dict):
             "notes": f"Details: {doc.get('details', '')}",
             "comments": [],
             "source": source,
+            "added_by": added_by,
+            "assigned_to": "",
             "created_at": doc['created_at'],
             "updated_at": doc['created_at']
         }
@@ -1525,6 +1531,8 @@ async def create_inquiry_lead(data: dict):
             "notes": "",
             "comments": [],
             "source": source,
+            "added_by": added_by,
+            "assigned_to": "",
             "created_at": doc['created_at'],
             "updated_at": doc['created_at']
         }
