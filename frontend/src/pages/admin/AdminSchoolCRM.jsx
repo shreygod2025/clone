@@ -331,6 +331,7 @@ const AdminSchoolCRM = () => {
               <CheckCircle2 className="w-3 h-3" />
               Converted
             </button>
+            {baseButtons}
             <button
               onClick={() => handleArchive(inquiry)}
               className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1 font-medium"
@@ -344,7 +345,7 @@ const AdminSchoolCRM = () => {
       
       case 'converted':
       case 'archived':
-        return null; // No action buttons for converted/archived
+        return <div className="flex gap-1 flex-wrap">{baseButtons}</div>;
       
       default:
         return null;
