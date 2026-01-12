@@ -71,8 +71,9 @@ const StudentFunnel = () => {
       setFlowType('learn');
       setFormData(prev => ({ ...prev, skill: skillParam }));
       setCameFromCoursePage(true);
-      // Start from age step (step 1) since skill is pre-selected
-      setCurrentStep(1);
+      // Start from age step (step 2 in 0-indexed, which is step 3 in display) since skill is pre-selected
+      // Skip both skill (step 0) and action (step 1) steps - go directly to age group
+      setCurrentStep(2);
     }
   }, [searchParams]);
 
