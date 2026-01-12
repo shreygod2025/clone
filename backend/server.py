@@ -655,7 +655,7 @@ async def team_user_login(data: AdminLogin):
     if not team_user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
-    if not pwd_context.verify(data.password, team_user.get("password_hash", "")):
+    if not bcrypt.checkpw(data.password.encode('utf-8'), team_user.get("password_hash", "").encode('utf-8')):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
     if not team_user.get("is_active", True):
