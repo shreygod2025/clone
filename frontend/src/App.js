@@ -90,6 +90,7 @@ function App() {
             <Route path="/admin/schools" element={<ProtectedRoute><AdminSchoolCRM /></ProtectedRoute>} />
             <Route path="/admin/educators" element={<ProtectedRoute><AdminEducators /></ProtectedRoute>} />
             <Route path="/admin/growth-partners" element={<ProtectedRoute><AdminGrowthPartners /></ProtectedRoute>} />
+            <Route path="/admin/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
             <Route path="/admin/support" element={<ProtectedRoute><AdminSupportUnified /></ProtectedRoute>} />
             <Route path="/admin/blogs" element={<ProtectedRoute><AdminBlogs /></ProtectedRoute>} />
             <Route path="/admin/faqs" element={<ProtectedRoute><AdminFAQs /></ProtectedRoute>} />
