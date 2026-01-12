@@ -39,6 +39,7 @@ const LEARNING_GOALS = [
 const AdminStudentCRM = () => {
   const { getAuthHeaders, user } = useAuth();
   const [inquiries, setInquiries] = useState([]);
+  const [teamUsers, setTeamUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSection, setActiveSection] = useState('new');
@@ -49,6 +50,7 @@ const AdminStudentCRM = () => {
   const [showRescheduleModal, setShowRescheduleModal] = useState(null);
   const [showConvertModal, setShowConvertModal] = useState(null);
   const [showCommentModal, setShowCommentModal] = useState(null);
+  const [showAssignModal, setShowAssignModal] = useState(null);
   const [newComment, setNewComment] = useState('');
   
   // Form states
