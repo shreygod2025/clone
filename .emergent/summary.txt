@@ -18,158 +18,177 @@
 **User's preferred language**: English
 
 **what currently exists?**
-The application is a full-stack FastAPI/React platform. The previous session successfully implemented a complete, albeit mocked, phone/OTP authentication and booking management flow. Users can book a demo, are automatically logged in, and can view their bookings on a dedicated  page. Session persistence is working correctly.
+The application is a full-stack FastAPI/React platform. The current session introduced significant new features and enhancements, primarily focused on building out the admin panel and internal team workflows.
 
-Numerous UI/UX refinements have been implemented based on user feedback, including:
-- A simplified login page that goes directly to phone/OTP input.
-- Auto-advancing logic for single-selection questions in both Student and School funnels.
-- A redesigned Student Funnel with skill selection as the first step, an age-only second step, a modal for choosing between viewing course details and booking a demo, and the email field removed.
-- A simplified School Funnel with the city selection step removed.
-- A new, rich post-submission services showcase page for the School Funnel.
-- Enhancements to the Educator Funnel, including an Other City text input and a date/time picker for demo classes.
-- A restructured support flow.
-- A consistent UI with a dark blue login button and Blog/FAQ links moved to the footer.
-- Multiple bug fixes, including issues with bookings not loading, mobile responsiveness on the OTP screen, and repeating login successful alerts.
+Key additions include:
+- A new lead/query submission form at  for internal team members.
+- A user management system for creating team members, who get personalized submission links ().
+- New admin CRM pages for Growth Partners and Team Users.
+- A unified Support Center that merges legacy tickets and new queries, with tabs for New, Overdue, and Closed states.
+- The Student Funnel was refactored to replace a modal with a standard step and to conditionally show City selection only for offline modes.
+- The Student CRM now supports adding comments/notes to leads.
+- Backend logic was added to filter CRM views based on the user who added or is assigned to a lead.
+- Bugs related to offline booking display and user creation have been fixed.
 
 **Last working item**:
-    - Last item agent was working: The agent was implementing a large batch of user-requested changes. It has completed all of them except for the final one.
+    - Last item agent was working: The agent was debugging an issue where support queries submitted via the I have a query / need support option in the Student Funnel were not appearing in the admin's unified Support Center. The agent identified that the  component submits to a different API endpoint () than what the admin panel fetches from ( and ). The next step is to investigate the  endpoint in  to see where it saves the data and align it with the Support Center's data sources.
     - Status: IN PROGRESS
     - Agent Testing Done: N
-    - Which testing method agent to use? both
+    - Which testing method agent to use? backend testing agent
     - User Testing Done: N
 
 **All Pending/In progress Issue list**:
-  There are no pending bugs. All reported issues during the session were resolved.
+  - Issue 1:  Queries from I have a query / need support in Student Funnel are not appearing in the admin panel. (P0)
+
+  Issues Detail:
+  - Issue 1: 
+     - **Attempted fixes:** The agent has identified the root cause: the frontend  component calls the  endpoint, but the  page does not fetch data from this source. No code fix has been attempted yet.
+     - **Next debug checklist:**
+        1. In , find the  endpoint.
+        2. Determine which database collection it saves data to.
+        3. Modify the endpoint to save the query to the  collection so it appears in the unified view.
+        4. Alternatively, modify  in the  function to also fetch data from . The first approach (unifying the backend) is cleaner.
+     - **Why fix this issue and what will be achieved with the fix?** This will ensure all user-submitted support requests are consolidated into a single place for the admin team, preventing lost tickets.
+     - **Status:** IN PROGRESS
+     - **Is recurring issue?** N
+     - **Should Test frontend/backend/both after fix?** both
+     - **Blocked on other issue:** None
 
 **In progress Task List**:
-  - Task 1:  Complete the current batch of user feature requests (P0)
-
- Task Detail:
-  - Task 1: 
-     - **Where to resume:** The final remaining task from the user's last request is to make the Educator application form dynamic. This involves modifying .
-     - **What will be achieved with this?** The application form for educators will dynamically render fields based on requirements configured in the admin panel, rather than having static hardcoded fields. This will likely require creating a new backend API endpoint to fetch these dynamic requirements.
-     - **Status:** NOT STARTED
-     - **Should Test frontend/backend/both after fix?** both
-     - **Blocked on something:** None
+  - None.
 
 **Upcoming and Future Tasks**
     Upcoming Tasks:
-    - **P1: Admin View for Support Queries:** Create a new section in the admin panel to view and manage the support tickets submitted by users through the new hierarchical support flow.
-    
+    - **P1: Implement Assign Lead in CRMs:** Add a button or dropdown in the Student, School, and Growth Partner CRMs to allow admins to assign leads to specific team members.
+    - **P1: Connect About Us forms to CRMs:** Connect the Team and Growth Partner application forms on the About Us page to their respective CRMs in the admin panel.
+    - **P1: Add Comment History to all CRMs:** The comment/note feature is only on the Student CRM. It needs to be added to the School, Educator, and Growth Partner CRMs.
+    - **P2: Make Educator Form Dynamic:** The educator application form fields should be dynamically rendered based on requirements configured in the admin panel. (Carried over from previous session).
+
     Future Tasks:
-    - **P2: Content Management:** Implement backend and admin UI for managing Blog posts, FAQs, and About Us page content.
-    - **P2: Implement Real Calendar Integration:** Replace the mocked demo/meeting booking with a real Calendly/other calendar solution.
-    - **P2: Implement Real WhatsApp OTP:** The current OTP is mocked with 1111. This needs to be integrated with a real service like Twilio for WhatsApp, for which the user will provide credentials later.
+    - **P2: CSV Export:** Add Export to CSV functionality to all CRM pages.
+    - **P2: Content Management:** Implement backend and admin UI for managing Blog, FAQs, and About Us page content.
+    - **P2: Real Calendar Integration:** Replace mocked bookings with a real Calendly integration.
+    - **P2: Real WhatsApp OTP:** Integrate a real OTP service like Twilio.
     - **P3: Notifications:** Implement email or WhatsApp notifications for form submissions and admin actions.
-    - **P3: Export to CSV:** Add functionality for admins to export leads from CRMs to a CSV file.
     - **P3: Lead Scoring:** Implement a system to automatically prioritize high-intent leads.
 
 **Completed work in this session**
-- **Auth & Booking Flow:**
-  - Implemented a complete (mocked) phone/OTP authentication and booking flow using 1111 as the test OTP.
-  - Fixed session persistence, ensuring users stay logged in after booking a demo.
-  - Resolved a bug where bookings were not loading correctly after a fresh login.
-  - Simplified the login page to be a direct phone/OTP input, removing user-type selection.
-- **Funnel Logic & UI/UX:**
-  - Implemented auto-advance functionality for single-selection questions in both Student and School funnels.
-  - Reworked the Student Funnel:
-    - Made Skill the first step.
-    - Added a modal on skill selection to either Book Demo or See Course Details.
-    - Removed the For myself / For my child selector, leaving only age groups.
-    - Removed the email input field from the contact step.
-    - Changed I have a question to I have a query / need support.
-  - Reworked the School Funnel by removing the City selection as a separate step.
-  - Restructured the Support Flow, nesting Link to Join Demo under Demo Related Queries.
-- **New Features:**
-  - Created a rich, services-showcase page that appears after a school submits an inquiry.
-  - Enhanced the Educator Funnel with an Other City text input and a date/time selector for demo classes.
+- **Internal Lead/Query System:**
+  - Created a new page at  for team members to create leads and queries.
+  - Implemented user-specific URLs () that pre-fill the added by field.
+- **Admin User Management:**
+  - Built a new  page to create and manage team members with login credentials.
+- **CRM Expansion & Enhancement:**
+  - Created a new Growth Partners CRM page at .
+  - Merged inquiry leads into their respective CRMs (e.g., a growth_partner lead from  goes to the Growth Partner CRM).
+  - Added a comment/note history feature to the Student CRM.
+- **Unified Support Center:**
+  - Merged legacy support tickets and new queries into a single  view.
+  - Implemented New, Overdue (unresolved for >24h), and Closed tabs.
+- **Student Funnel Refinements:**
+  - Replaced the Book Demo/See Course modal with a dedicated step.
+  - Implemented conditional City selection, which now only appears if Offline mode is chosen.
 - **Bug Fixes:**
-  - Fixed the mobile layout of the OTP entry screen.
-  - Corrected the OTP screen layout to place the Confirm button directly below the input.
-  - Eliminated the pre-selected option on the initial login page.
-  - Prevented the Login Successful toast notification from appearing repeatedly.
-  - Fixed an issue where the OTP input placeholder text was overflowing on mobile.
+  - Fixed an issue where offline bookings were incorrectly displayed as Online in the Student CRM.
+  - Resolved multiple backend errors, including a   during team user creation.
+  - Fixed several frontend bugs in the Support Center related to undefined variables and incorrect filtering logic.
 
 **Earlier issues found/mentioned but not fixed**
-   - None. All user-reported issues in this session were addressed and fixed.
+   - The task to make the **Educator application form dynamic**, which was the top priority from the previous fork, was superseded by new user requests and has not been started. It is now listed under Upcoming Tasks.
 
 **Known issue recurrence from previous fork**
-  - N/A
+  - None.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- **Frontend:** React (, , ), React Router (), Context API for state management, Tailwind CSS for styling, Shadcn/UI components,  for toasts.
-- **Backend:** FastAPI, Mocked logic for OTP verification.
-- **State Management:** Significant work was done on managing complex form state across multiple steps, handling conditional rendering, and ensuring session persistence via  and React Context.
-- **Debugging:** Used  to isolate backend vs. frontend issues. Used browser dev tools (implicitly) and screenshots to diagnose and fix UI and state-related bugs.
+- **Frontend:** React (, ), React Router ( for dynamic  route), complex multi-step form state, Tailwind CSS, Shadcn/UI.
+- **Backend:** FastAPI, Pydantic models for new data structures (TeamUser, GrowthPartner, Comment),  for password hashing, MongoDB queries with filtering based on user roles (, ).
+- **Architecture:** The application continues to use a monolithic backend (), which is becoming increasingly complex and is a candidate for refactoring.
 
 **key DB schema**
-  - No new collections were added in this session. Existing collections (, , ) are used for the funnels. The implicit  collection is now populated and utilized for login and booking management.
+  - **team_users:** 
+  - **growth_partners:** 
+  - **student_inquiries, school_inquiries, educator_applications:** All have been modified to include , , .
+  - **inquiry_queries:** Used by the  form for queries.
+  - **support_tickets:** Legacy support tickets. Both are now displayed in the unified support center.
 
 **changes in tech stack**
-  - No changes to the tech stack.
+  - None.
 
 **All files of reference**
-- **Heavily Modified:**
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
+- 
+- 
+- 
+- 
+- 
+- 
+- 
+- 
+- 
+- 
 
 **Areas that need refactoring**:
-- **Critical:** The  monolith is a persistent concern. It should be broken down into a standard FastAPI project structure (, , ) to improve maintainability.
+- **Critical:** The  monolith is growing large and complex. It should be broken down into a standard FastAPI project structure (, , ).
+- **High:** The  component underwent several rapid fixes. It should be reviewed for clarity and stability.
+- **Low:** The agent created temporary admin pages (, ) that were later superseded by the unified pages. These files should be deleted if they still exist to remove dead code.
 
 **key api endpoints**
-- **Auth (Modified):**
-  - : Logic updated to send a mock response.
-  - : Logic updated to verify against the mock 1111 OTP.
-- **Bookings:**
-  - : This endpoint was debugged and verified to be working correctly.
+- **Team Users:**
+  - : Create a new team user.
+  - : Get all team users.
+- **Growth Partners:**
+  - : Get all growth partner leads.
+- **Comments:**
+  - : Add a comment to a document in a specified collection.
+- **CRM Endpoints (Modified for Permissions):**
+  - , , : All now accept a  query parameter to filter results.
+- **Inquiry System:**
+  - : Modified to route leads to different CRM collections and store  and  info.
+- **Support System (Under Review):**
+  -  & : Used by the admin panel.
+  - : Used by the  component; this is the source of the current bug.
 
 **Critical Info for New Agent**
-- **Immediate Task:** The highest priority is to complete the user's last request by making the educator application form dynamic. This is the only pending item from a large batch of changes.
-- **Mocked Features:** Remember that the OTP system is currently mocked with 1111 and the calendar booking is not integrated with a real service. The user intends to provide credentials for a real WhatsApp OTP service later.
-- **Systematic Approach:** The previous agent was successful due to its systematic approach: implement a batch of features, test thoroughly with screenshots, fix bugs, and then move to the next batch. Continue this pattern.
+- **Top Priority:** Fix the bug where queries from the Student Funnel are not appearing in the admin panel. The user has explicitly reported this.
+- **User-Driven Development:** The user is highly engaged and frequently provides new requirements that override the previous plan. Be prepared to be flexible and reprioritize tasks based on user feedback.
+- **Backend Monolith:** Be very careful when editing . It contains all backend logic, and changes can have wide-ranging effects.
+- **Mocked Features:** Remember that OTP (1111) and Calendar bookings are still mocked.
 
 **documents and test reports created in this job**
-  - /app/memory/PRD.md (Updated multiple times)
+  -  (updated multiple times)
+  - 
 
-**Last 10 User Messages and any pending HUMAN messages** 
-- **User (Msg 168):** (IN PROGRESS) Requested a large batch of changes: direct OTP login, remove city from school form, update student funnel (support text, skill modal), restructure support flow, and make educator form dynamic. *All but the last item have been completed.*
-- **User (Msg 136):** (RESOLVED) Reported 5 UI/UX bugs: login pre-selection, OTP placeholder overflow, repeated login alert, OTP button position, and bookings not showing.
-- **User (Msg 121):** (RESOLVED) Provided details for the next tasks: School Funnel post-submission page and Educator Funnel enhancements.
-- **User (Msg 118):** (RESOLVED) continue - approved the agent's plan.
-- **User (Msg 92):** (RESOLVED) Reported that bookings were not loading and the mobile OTP screen design was broken.
-- **User (Msg 74):** (RESOLVED) Reported that the session was not persisting after booking a demo.
-- **User (Msg 59):** (RESOLVED) Requested to simplify the student form (remove for me/child, remove email) and add auto-advance to the school form.
-- **User (Msg 36):** (RESOLVED) Requested multiple UI changes: blue login button, footer nav, form auto-advance, new student funnel order, and a new support option.
-- **User (Msg 15):** (RESOLVED) Instructed the agent to skip real OTP integration and use a mock OTP 1111.
-- **User (Msg 5):** (PARTIALLY RESOLVED - MOCKED) Clarified that the OTP should be WhatsApp-integrated, not SMS.
+**Last 10 User Messages and any pending HUMAN messages**
+- **Msg 381 (IN PROGRESS):** When I raise a query using I have a query / need support, it does not appear in the admin panel. - **This is the current bug being worked on.**
+- **Msg 361 (RESOLVED):** i had booked for offline its showing online - The agent investigated and fixed the display logic in the Student CRM.
+- **Msg 337 (IN PROGRESS):** failed to fetch support queries - The agent implemented several fixes, but the root cause of the current bug (Msg 381) is related.
+- **Msg 208 (IMPLEMENTED):** Requested changing  to , adding admin users, creating user-specific forms, CRM filtering, and a query system with overdue tabs.
+- **Msg 110 (IMPLEMENTED):** Requested merging inquiry leads into CRMs, adding a source question, merging support queries, and adding comment history.
+- **Msg 80 (IMPLEMENTED):** Requested admin pages for team and growth partner applications.
+- **Msg 5 (IMPLEMENTED):** Requested changes to the Student Funnel (popup to step, conditional city) and a new common lead/query system.
 
 **Project Health Check:**
-- **Broken:** Nothing is broken. The application is stable.
+- **Broken:**
+    - The I have a query / need support flow from the Student Funnel does not correctly log tickets in the admin panel.
 - **Mocked:**
     - The entire Phone/OTP system uses a hardcoded 1111 OTP.
-    - Calendar integration for booking demos/meetings is still mocked.
-- **In Progress:** The feature to make the educator application form dynamic is pending.
+    - Calendar integration for booking demos/meetings is mocked.
+- **In Progress:**
+    - The fix for the broken support flow.
 
 **3rd Party Integrations**
-- **Twilio:** Investigated for WhatsApp OTP, but implementation was deferred by the user in favor of a mocked solution.
+- **Twilio:** Investigated for WhatsApp OTP, but implementation was deferred.
 - **Calendly:** Mocked.
 - **YouTube:** Embedded videos on the About page.
 - **PostHog:** Analytics integration is working correctly.
 
 **Testing status**
-  - Testing agent used after significant changes: YES
-  - Troubleshoot agent used after agent stuck in loop: NO
-  - Test files created: []
-  - Known regressions: A regression where bookings didn't show up on login was introduced and subsequently fixed within the session.
+  - **Testing agent used after significant changes:** YES (once, for the new  page)
+  - **Troubleshoot agent used after agent stuck in loop:** NO
+  - **Test files created:** []
+  - **Known regressions:** None currently, but the  page was buggy after creation and required several fixes.
 
 **Credentials to test flow:**
 - **Admin URL:** 
@@ -178,4 +197,4 @@ Numerous UI/UX refinements have been implemented based on user feedback, includi
 - **User Funnel OTP:** 
 
 **What agent forgot to execute**
-The agent was in the middle of a multi-part user request when the session ended. It did not forget, but has not yet started the final part of the request: making the educator requirements form dynamic.</analysis>
+- The task from the previous fork to **make the educator application form dynamic** was completely skipped in favor of new user requests. It has been moved to the upcoming tasks list.</analysis>
