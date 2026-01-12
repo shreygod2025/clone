@@ -143,16 +143,16 @@ const AboutPage = () => {
     }
     setSubmitting(true);
     try {
-      await axios.post(`${API}/educators/apply`, {
+      // Submit to team applications CRM
+      await axios.post(`${API}/team-applications`, {
         name: teamForm.name,
         email: teamForm.email,
         phone: teamForm.phone || '',
-        skills: [teamForm.role],
+        role: teamForm.role,
         experience: teamForm.experience,
-        grades_comfortable: [],
         city: teamForm.city,
-        availability: 'Full-time',
-        demo_ready: false
+        message: teamForm.message,
+        source: 'about_page'
       });
       setTeamSubmitted(true);
       toast.success('Application submitted successfully!');
