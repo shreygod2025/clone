@@ -998,6 +998,15 @@ async def get_educator_applications(
     query = {}
     if status:
         query["status"] = status
+    
+    # For team members, only show leads they added or assigned to them
+    if user.get("role") == "team_member":
+        user_id = user.get("user_id", user.get("id", ""))
+        query["$or"] = [
+            {"added_by": user_id},
+            {"assigned_to": user_id}
+        ]
+    
     applications = await db.educator_applications.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
     for app in applications:
         if isinstance(app.get('created_at'), str):
