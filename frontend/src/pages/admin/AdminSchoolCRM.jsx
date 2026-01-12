@@ -31,6 +31,7 @@ const AdminSchoolCRM = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSection, setActiveSection] = useState('new');
+  const [assigneeFilter, setAssigneeFilter] = useState('all');
   
   // Modal states
   const [viewInquiry, setViewInquiry] = useState(null);
