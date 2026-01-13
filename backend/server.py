@@ -271,6 +271,10 @@ class SchoolInquiryCreate(BaseModel):
 
 class SchoolInquiryUpdate(BaseModel):
     status: Optional[str] = None
+    school_name: Optional[str] = None
+    contact_name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
     notes: Optional[str] = None
     meeting_date: Optional[str] = None
     meeting_time: Optional[str] = None
