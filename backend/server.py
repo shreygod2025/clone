@@ -673,6 +673,30 @@ async def login_admin(data: AdminLogin):
             )
             return TokenResponse(access_token=token, user=user)
     
+    # Check center_users collection
+    center_user = await db.center_users.find_one({"email": data.email})
+    if center_user:
+        if not center_user.get("is_active", True):
+            raise HTTPException(status_code=401, detail="User account is disabled")
+        
+        if bcrypt.checkpw(data.password.encode('utf-8'), center_user.get("hashed_password", "").encode('utf-8')):
+            token = create_access_token({
+                "sub": data.email, 
+                "role": "center_user", 
+                "user_id": center_user["id"],
+                "center_id": center_user["center_id"],
+                "center_name": center_user["center_name"]
+            })
+            user = AdminUser(
+                id=center_user["id"], 
+                email=center_user["email"], 
+                name=center_user["name"], 
+                role="center_user",
+                center_id=center_user["center_id"],
+                center_name=center_user["center_name"]
+            )
+            return TokenResponse(access_token=token, user=user)
+    
     raise HTTPException(status_code=401, detail="Invalid credentials")
 
 @api_router.get("/auth/me")
