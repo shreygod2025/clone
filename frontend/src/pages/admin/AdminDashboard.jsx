@@ -159,6 +159,9 @@ const AdminDashboard = () => {
     new_educator_applications: 0,
     followups_due: 0,
     leads_added_by_me: 0,
+    todays_student_demos: [],
+    todays_school_meetings: [],
+    todays_educator_demos: [],
     is_team_member: false
   });
   const [loading, setLoading] = useState(true);
