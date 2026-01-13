@@ -573,45 +573,6 @@ const AboutPage = () => {
           </div>
         </div>
       </section>
-                </div>
-              </div>
-              <div className="mt-4">
-                <label className="block text-sm font-medium text-slate-700 mb-2">Investment Capacity</label>
-                <select
-                  value={partnerForm.investment_capacity}
-                  onChange={(e) => setPartnerForm({...partnerForm, investment_capacity: e.target.value})}
-                  className="w-full h-10 px-4 border border-slate-200 rounded-lg"
-                  data-testid="partner-investment"
-                >
-                  <option value="">Select range</option>
-                  <option value="5-10 Lakhs">₹5-10 Lakhs</option>
-                  <option value="10-25 Lakhs">₹10-25 Lakhs</option>
-                  <option value="25-50 Lakhs">₹25-50 Lakhs</option>
-                  <option value="50+ Lakhs">₹50+ Lakhs</option>
-                </select>
-              </div>
-              <div className="mt-4">
-                <label className="block text-sm font-medium text-slate-700 mb-2">Tell us about your background</label>
-                <Textarea
-                  placeholder="Your professional background, why you want to partner..."
-                  value={partnerForm.message}
-                  onChange={(e) => setPartnerForm({...partnerForm, message: e.target.value})}
-                  className="min-h-[100px]"
-                  data-testid="partner-message"
-                />
-              </div>
-              <div className="flex gap-3 mt-6">
-                <Button type="button" variant="outline" onClick={() => setShowPartnerForm(false)} className="flex-1">
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={submitting} className="btn-primary flex-1">
-                  {submitting ? 'Submitting...' : 'Submit Application'}
-                </Button>
-              </div>
-            </form>
-          )}
-        </div>
-      </section>
 
       {/* Footer */}
       <footer className="bg-[#1E3A5F] text-white py-12">
