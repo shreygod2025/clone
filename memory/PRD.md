@@ -22,7 +22,7 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 ```
 /app/
 ├── backend/
-│   └── server.py      # FastAPI backend with all endpoints
+│   └── server.py      # FastAPI backend with multi-user auth (Admin, Team, Center)
 ├── frontend/
 │   ├── src/
 │   │   ├── pages/
@@ -30,42 +30,64 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 │   │   │   ├── StudentFunnel.jsx       # Student booking flow
 │   │   │   ├── MyBookingsPage.jsx      # User's bookings
 │   │   │   ├── AboutPage.jsx           # About OLL page
+│   │   │   ├── GrowthPartnerPage.jsx   # Growth Partner landing page
 │   │   │   ├── EducatorFunnel.jsx      # Dynamic educator form
 │   │   │   └── admin/
-│   │   │       ├── AdminStudentCRM.jsx       # With Add Demo/Reschedule
-│   │   │       ├── AdminSchoolCRM.jsx        # With Followup feature
-│   │   │       ├── AdminEducators.jsx        # With Assign/Comment/Filter
+│   │   │       ├── AdminStudentCRM.jsx       # Enhanced View/Edit modal
+│   │   │       ├── AdminSchoolCRM.jsx        # Enhanced View/Edit modal
+│   │   │       ├── AdminEducators.jsx        # Enhanced View/Edit modal
+│   │   │       ├── AdminGrowthPartners.jsx   # Enhanced View/Edit modal
 │   │   │       ├── AdminSupportUnified.jsx
 │   │   │       ├── AdminTeamApplications.jsx
-│   │   │       └── AdminDashboard.jsx        # Individual analytics for team
+│   │   │       ├── AdminDashboard.jsx        # Overdue section + Today's Schedule
+│   │   │       ├── CenterDashboard.jsx       # Full Student CRM for centers
+│   │   │       └── AdminCenterUsers.jsx      # Center user management
 │   │   └── context/
-│   │       └── AuthContext.jsx
+│   │       └── AuthContext.jsx         # Multi-user auth (Admin, Team, Center)
 └── memory/
     └── PRD.md
 ```
 
 ## What's Been Implemented (January 2026)
 
-### Latest Session (Jan 12, 2026)
+### Latest Session (Jan 13, 2026)
+- ✅ **Enhanced View/Edit Popup for ALL CRMs:**
+  - School CRM, Educators CRM, Growth Partners CRM now have inline editing
+  - View popup shows Edit button to switch to edit mode
+  - Edit mode allows changing: name, phone, email, dates, notes
+  - Full Comments section with add comment functionality
+  - Author and timestamp shown for each comment
+- ✅ **Dashboard Overdue Section:**
+  - Shows overdue student demos, school meetings, educator demos
+  - "Requires Attention" badge with total count
+  - Each item shows name, phone, date, and relevant details
+  - Appears above Today's Schedule when items exist
+- ✅ **Center Dashboard Full CRM:**
+  - Center users see full Student CRM for their location
+  - Add Demo functionality with complete form
+  - View/Edit lead details with inline editing
+  - Comment management system
+  - Status management: New → Demo Completed → Converted → Archived
+  - Overdue indicators on lead cards
+
+### Previous Session (Jan 12, 2026)
+- ✅ **Center Login & Dashboard:**
+  - Separate authentication for center staff
+  - Dedicated `/center` dashboard
+  - Admin UI to manage center users
+- ✅ **Growth Partner Landing Page:**
+  - Dedicated `/growth-partner` page with detailed form
+- ✅ **Today's Schedule on Dashboard:**
+  - Shows appointments for current day
+  - Separate sections for Student Demos, School Meetings, Educator Demos
 - ✅ **Team User Dashboard with Individual Analytics:**
   - Shows personalized stats: My Leads, My Conversions, Followups Due, Leads Added by Me
   - Performance Overview banner
   - Quick Actions filtered by user permissions
-  - Personalized "Add New Lead" link
-- ✅ **Add/Change Demo Date in Admin CRM:**
-  - Button shows "Add Demo" for leads without demo date
-  - Button shows "Reschedule" for leads with existing demo
-  - Modal shows current date when rescheduling
-- ✅ **/add Form - Assignment Options:**
-  - When using team user link (/add/username), shows "Assign to Me" or "Let Admin Assign"
-  - Default is "Assign to Me" - auto-assigns lead to the team member
-  - Source field now includes team member name: "walk_in (Added by: Test User)"
-- ✅ **Mobile-Friendly /add Form:** Responsive design
-- ✅ **Demo/Meeting Booking Always Visible:** Calendar shown directly without toggle
-- ✅ **Student Form - Center Selection:** For offline mode
-- ✅ **School CRM - Followup Feature:** Date/comment visible on cards
+- ✅ **Multi-select Availability:** Educator forms support multiple availability options
+- ✅ **School CRM Follow-up Feature:** Date/comment visible on cards
 
-### Previous Sessions
+### Foundation Features
 - ✅ Student/School/Educator booking funnels
 - ✅ OTP verification system (mocked with 1111)
 - ✅ Admin Panel with multiple CRMs
@@ -83,15 +105,20 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - **Calendar Integration:** No real Calendly integration yet
 
 ## Key API Endpoints
-- `POST /auth/login` - Unified login for admins and team users
-- `GET /auth/me` - Get current user with permissions
-- `GET /dashboard/stats` - Returns individual stats for team members, global stats for admin
-- `PATCH /students/inquiry/{id}` - Update student (includes demo_date, assigned_to)
-- `PATCH /schools/inquiry/{id}` - Update school (includes followup_date, followup_comment)
-- All Create endpoints now support `assigned_to` field
+- `POST /auth/login` - Unified login for admins, team users, and center users
+- `GET /auth/me` - Get current user with role and permissions
+- `GET /dashboard/stats` - Returns overdue items, today's schedule, individual stats for team
+- `PATCH /students/inquiry/{id}` - Update student (name, phone, email, demo_date, notes)
+- `PATCH /schools/inquiry/{id}` - Update school (school_name, contact_name, phone, email, meeting_date, notes)
+- `PATCH /educators/application/{id}` - Update educator (name, phone, email, demo_date, notes)
+- `PATCH /growth-partners/{id}` - Update partner (name, phone, email, city, details, notes)
+- `GET /center/demos` - Get student inquiries for center user's location
+- `PATCH /center/demos/{id}` - Update demo from center dashboard
+- `POST /center/demos/{id}/comment` - Add comment from center dashboard
 
 ## Credentials
 - **Admin:** admin@oll.co / Dagaji03@
+- **Center User:** andheri@oll.co / center123
 - **OTP Code:** 1111
 - **Team Users:** Create via Admin Panel → Team Users
 
@@ -114,4 +141,4 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## Refactoring Needs
 - **Critical:** Break down `/app/backend/server.py` into modules (`/routers`, `/models`, `/services`)
-- **High:** Extract shared CRM functionality into reusable React hooks
+- **High:** Extract shared CRM modal functionality into reusable React component
