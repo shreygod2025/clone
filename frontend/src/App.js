@@ -35,6 +35,8 @@ import AdminRequirements from "./pages/admin/AdminRequirements";
 import AdminSupportUnified from "./pages/admin/AdminSupportUnified";
 import AdminCities from "./pages/admin/AdminCities";
 import AdminCenters from "./pages/admin/AdminCenters";
+import AdminCenterUsers from "./pages/admin/AdminCenterUsers";
+import CenterDashboard from "./pages/admin/CenterDashboard";
 
 // Auth Context
 import { AuthProvider, useAuth } from "./context/AuthContext";
