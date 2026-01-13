@@ -14,6 +14,7 @@ import CentersPage from "./pages/CentersPage";
 import LoginPage from "./pages/LoginPage";
 import MyBookingsPage from "./pages/MyBookingsPage";
 import InquiryPage from "./pages/InquiryPage";
+import GrowthPartnerPage from "./pages/GrowthPartnerPage";
 
 // Course SEO Pages
 import CoursesListPage from "./pages/courses/CoursesListPage";
