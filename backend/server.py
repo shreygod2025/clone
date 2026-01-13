@@ -78,6 +78,25 @@ class TeamUserUpdate(BaseModel):
     is_active: Optional[bool] = None
     permissions: Optional[List[str]] = None
 
+# Center User Models
+class CenterUser(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    center_id: str  # ID of the center this user manages
+    center_name: str
+    email: str
+    name: str
+    hashed_password: str = ""
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class CenterUserCreate(BaseModel):
+    center_id: str
+    center_name: str
+    email: str
+    password: str
+    name: str
+
 class AdminLogin(BaseModel):
     email: EmailStr
     password: str
