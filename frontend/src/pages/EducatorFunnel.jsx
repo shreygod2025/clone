@@ -427,17 +427,23 @@ const EducatorFunnel = () => {
                     </div>
                     <div>
                       <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">Availability</label>
-                      <select
-                        value={formData.availability}
-                        onChange={(e) => setFormData({...formData, availability: e.target.value})}
-                        className="w-full h-10 sm:h-12 px-3 sm:px-4 bg-white/50 backdrop-blur-sm border border-slate-200 rounded-xl focus:border-[#1E3A5F] focus:outline-none text-sm sm:text-base"
-                        data-testid="educator-availability"
-                      >
-                        <option value="">Select Availability</option>
-                        {formConfig.availability_options.map(a => (
-                          <option key={a} value={a}>{a}</option>
+                      <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                        {formConfig.availability_options.map(slot => (
+                          <button
+                            key={slot}
+                            type="button"
+                            onClick={() => toggleAvailability(slot)}
+                            className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs font-medium transition-all ${
+                              formData.availability.includes(slot)
+                                ? 'bg-[#1E3A5F] text-white'
+                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            }`}
+                            data-testid={`availability-${slot.toLowerCase().replace(/\s+/g, '-')}`}
+                          >
+                            {slot}
+                          </button>
                         ))}
-                      </select>
+                      </div>
                     </div>
                   </div>
                 </div>
