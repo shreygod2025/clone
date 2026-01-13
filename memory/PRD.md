@@ -26,18 +26,18 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 ├── frontend/
 │   ├── src/
 │   │   ├── pages/
-│   │   │   ├── InquiryPage.jsx         # Internal /add form (mobile-friendly)
+│   │   │   ├── InquiryPage.jsx         # Internal /add form (mobile-friendly, auto-assign)
 │   │   │   ├── StudentFunnel.jsx       # Student booking flow
 │   │   │   ├── MyBookingsPage.jsx      # User's bookings
 │   │   │   ├── AboutPage.jsx           # About OLL page
 │   │   │   ├── EducatorFunnel.jsx      # Dynamic educator form
 │   │   │   └── admin/
-│   │   │       ├── AdminStudentCRM.jsx
-│   │   │       ├── AdminSchoolCRM.jsx    # With Followup feature
-│   │   │       ├── AdminEducators.jsx    # With Assign/Comment/Filter
+│   │   │       ├── AdminStudentCRM.jsx       # With Add Demo/Reschedule
+│   │   │       ├── AdminSchoolCRM.jsx        # With Followup feature
+│   │   │       ├── AdminEducators.jsx        # With Assign/Comment/Filter
 │   │   │       ├── AdminSupportUnified.jsx
 │   │   │       ├── AdminTeamApplications.jsx
-│   │   │       └── AdminDashboard.jsx    # Permission-based nav
+│   │   │       └── AdminDashboard.jsx        # Individual analytics for team
 │   │   └── context/
 │   │       └── AuthContext.jsx
 └── memory/
@@ -47,17 +47,23 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 ## What's Been Implemented (January 2026)
 
 ### Latest Session (Jan 12, 2026)
-- ✅ **Mobile-Friendly /add Form:** Complete redesign with responsive layout
-- ✅ **Demo/Meeting Booking Always Visible:** Calendar shown directly without toggle button
-- ✅ **Student Form - Center Selection:** When "Offline at Center" mode selected, center dropdown appears
-- ✅ **Student Form - Meeting Type Removed:** Auto-determined from learning mode (online/offline)
-- ✅ **School CRM - Followup Feature:** 
-  - Added `followup_date` and `followup_comment` fields to backend
-  - Added Followup button to all non-converted sections
-  - Followup date/comment visible on cards
-  - Followup Modal with calendar and note
-- ✅ **Educator CRM - Assign/Comment/Filter:** Complete implementation with modals
-- ✅ **Role-based Sidebar Navigation:** Team members only see CRMs they have permission for
+- ✅ **Team User Dashboard with Individual Analytics:**
+  - Shows personalized stats: My Leads, My Conversions, Followups Due, Leads Added by Me
+  - Performance Overview banner
+  - Quick Actions filtered by user permissions
+  - Personalized "Add New Lead" link
+- ✅ **Add/Change Demo Date in Admin CRM:**
+  - Button shows "Add Demo" for leads without demo date
+  - Button shows "Reschedule" for leads with existing demo
+  - Modal shows current date when rescheduling
+- ✅ **/add Form - Assignment Options:**
+  - When using team user link (/add/username), shows "Assign to Me" or "Let Admin Assign"
+  - Default is "Assign to Me" - auto-assigns lead to the team member
+  - Source field now includes team member name: "walk_in (Added by: Test User)"
+- ✅ **Mobile-Friendly /add Form:** Responsive design
+- ✅ **Demo/Meeting Booking Always Visible:** Calendar shown directly without toggle
+- ✅ **Student Form - Center Selection:** For offline mode
+- ✅ **School CRM - Followup Feature:** Date/comment visible on cards
 
 ### Previous Sessions
 - ✅ Student/School/Educator booking funnels
@@ -67,8 +73,8 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ "Comment/Note" functionality
 - ✅ Assignee filter dropdowns
 - ✅ Team User management with permissions
+- ✅ Role-based sidebar navigation
 - ✅ Unified Support Center
-- ✅ Internal /add page for team members
 - ✅ Dynamic Educator form configuration
 - ✅ PostHog analytics integration
 
@@ -79,9 +85,10 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 ## Key API Endpoints
 - `POST /auth/login` - Unified login for admins and team users
 - `GET /auth/me` - Get current user with permissions
-- `PATCH /schools/inquiry/{id}` - Update school inquiry (includes followup_date, followup_comment)
-- `PATCH /educators/application/{id}` - Update educator (includes assigned_to)
-- `POST /{collection}/comment/{id}` - Add comment to any CRM item
+- `GET /dashboard/stats` - Returns individual stats for team members, global stats for admin
+- `PATCH /students/inquiry/{id}` - Update student (includes demo_date, assigned_to)
+- `PATCH /schools/inquiry/{id}` - Update school (includes followup_date, followup_comment)
+- All Create endpoints now support `assigned_to` field
 
 ## Credentials
 - **Admin:** admin@oll.co / Dagaji03@
@@ -98,10 +105,11 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - [ ] Real Calendar Integration (Calendly)
 - [ ] Real WhatsApp OTP (Twilio)
 - [ ] Email/WhatsApp notifications for form submissions
+- [ ] Proposal/MOU generation for Schools (deferred)
 
 ### P3 - Future
 - [ ] Lead Scoring system
-- [ ] Admin Dashboard Analytics widgets
+- [ ] Admin Dashboard Analytics widgets (charts, graphs)
 - [ ] SEO optimization for course pages
 
 ## Refactoring Needs
