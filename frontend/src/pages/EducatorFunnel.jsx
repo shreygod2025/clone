@@ -425,7 +425,7 @@ const EducatorFunnel = () => {
                         data-testid="educator-availability"
                       >
                         <option value="">Select Availability</option>
-                        {AVAILABILITY.map(a => (
+                        {formConfig.availability_options.map(a => (
                           <option key={a} value={a}>{a}</option>
                         ))}
                       </select>
