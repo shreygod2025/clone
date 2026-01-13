@@ -252,6 +252,47 @@ const AdminStudentCRM = () => {
     }
   };
 
+  const handleSaveEdit = async () => {
+    if (!viewInquiry) return;
+    try {
+      await axios.patch(`${API}/students/inquiry/${viewInquiry.id}`, {
+        name: editData.name,
+        phone: editData.phone,
+        email: editData.email,
+        demo_date: editData.demo_date || null,
+        demo_time: editData.demo_time || null,
+        notes: editData.notes
+      }, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Lead updated successfully');
+      setEditMode(false);
+      setViewInquiry(null);
+      fetchInquiries();
+    } catch (error) {
+      toast.error('Failed to update lead');
+    }
+  };
+
+  const handleAddViewComment = async () => {
+    if (!viewComment.trim() || !viewInquiry) return;
+    try {
+      await axios.post(`${API}/students/comment/${viewInquiry.id}`, 
+        { text: viewComment },
+        { headers: getAuthHeaders() }
+      );
+      toast.success('Comment added');
+      setViewComment('');
+      // Refresh the viewInquiry data
+      const response = await axios.get(`${API}/students/inquiries`, { headers: getAuthHeaders() });
+      const updatedInquiry = response.data.find(i => i.id === viewInquiry.id);
+      if (updatedInquiry) setViewInquiry(updatedInquiry);
+      fetchInquiries();
+    } catch (error) {
+      toast.error('Failed to add comment');
+    }
+  };
+
   const getAssignedUserName = (userId) => {
     if (!userId) return null;
     const teamUser = teamUsers.find(u => u.id === userId);
