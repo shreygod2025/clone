@@ -30,11 +30,17 @@ const AdminLogin = () => {
       if (isRegister) {
         await register(formData.email, formData.password, formData.name);
         toast.success('Account created successfully!');
+        navigate('/admin');
       } else {
-        await login(formData.email, formData.password);
+        const userData = await login(formData.email, formData.password);
         toast.success('Welcome back!');
+        // Redirect based on user role
+        if (userData.role === 'center_user') {
+          navigate('/center');
+        } else {
+          navigate('/admin');
+        }
       }
-      navigate('/admin');
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Authentication failed');
     } finally {
