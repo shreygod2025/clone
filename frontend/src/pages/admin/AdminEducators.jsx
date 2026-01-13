@@ -39,6 +39,11 @@ const AdminEducators = () => {
   const [showCommentModal, setShowCommentModal] = useState(null);
   const [newComment, setNewComment] = useState('');
   const [scheduleData, setScheduleData] = useState({ date: null, time: '' });
+  
+  // View/Edit states
+  const [editMode, setEditMode] = useState(false);
+  const [editData, setEditData] = useState({ name: '', phone: '', email: '', demo_date: '', demo_time: '', notes: '' });
+  const [viewComment, setViewComment] = useState('');
 
   useEffect(() => {
     fetchEducators();
