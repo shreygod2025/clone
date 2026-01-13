@@ -54,6 +54,11 @@ const AdminStudentCRM = () => {
   const [showAssignModal, setShowAssignModal] = useState(null);
   const [newComment, setNewComment] = useState('');
   
+  // View/Edit states
+  const [editMode, setEditMode] = useState(false);
+  const [editData, setEditData] = useState({ name: '', phone: '', email: '', demo_date: '', demo_time: '', notes: '' });
+  const [viewComment, setViewComment] = useState('');
+  
   // Form states
   const [rescheduleData, setRescheduleData] = useState({ date: null, time: '', reason: '' });
   const [convertData, setConvertData] = useState({ amount: '', sessions: '' });
