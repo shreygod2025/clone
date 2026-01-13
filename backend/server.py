@@ -884,23 +884,56 @@ async def delete_center_user(user_id: str, user: dict = Depends(get_current_user
 
 @api_router.get("/center/demos")
 async def get_center_demos(user: dict = Depends(get_current_user)):
-    """Get demos for the logged-in center user's center"""
+    """Get all student inquiries for the logged-in center user's center - full CRM view"""
     if user.get("role") != "center_user":
         raise HTTPException(status_code=403, detail="Only center users can access this endpoint")
     
     center_name = user.get("center_name", "")
+    center_city = center_name.split('-')[0].strip() if '-' in center_name else center_name
     
-    # Find student inquiries that mention this center in notes or have offline_center mode
-    # Also check city matches
+    # Find student inquiries that are for this center
+    # Match by: learning_mode offline_center AND city matches, OR notes mention center
     demos = await db.student_inquiries.find({
         "$or": [
             {"notes": {"$regex": center_name, "$options": "i"}},
-            {"learning_mode": "offline_center", "city": {"$regex": center_name.split('-')[0].strip() if '-' in center_name else center_name, "$options": "i"}}
-        ],
-        "status": {"$in": ["new", "demo_scheduled"]}
-    }, {"_id": 0}).sort("demo_date", 1).to_list(100)
+            {"learning_mode": "offline_center", "city": {"$regex": center_city, "$options": "i"}},
+            {"source": {"$regex": center_name, "$options": "i"}}
+        ]
+    }, {"_id": 0}).sort("created_at", -1).to_list(500)
     
     return demos
+
+@api_router.patch("/center/demos/{inquiry_id}")
+async def update_center_demo(inquiry_id: str, data: StudentInquiryUpdate, user: dict = Depends(get_current_user)):
+    """Update a student inquiry from center dashboard"""
+    if user.get("role") != "center_user":
+        raise HTTPException(status_code=403, detail="Only center users can access this endpoint")
+    
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    await db.student_inquiries.update_one({"id": inquiry_id}, {"$set": update_data})
+    inquiry = await db.student_inquiries.find_one({"id": inquiry_id}, {"_id": 0})
+    return inquiry
+
+@api_router.post("/center/demos/{inquiry_id}/comment")
+async def add_center_demo_comment(inquiry_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Add a comment to a student inquiry from center dashboard"""
+    if user.get("role") != "center_user":
+        raise HTTPException(status_code=403, detail="Only center users can access this endpoint")
+    
+    comment = {
+        "id": str(uuid.uuid4()),
+        "text": data.get("text", ""),
+        "author": f"{user.get('name', 'Center')} ({user.get('center_name', '')})",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.student_inquiries.update_one(
+        {"id": inquiry_id},
+        {"$push": {"comments": comment}, "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    return {"message": "Comment added", "comment": comment}
 
 @api_router.post("/center/demos")
 async def create_center_demo(data: StudentInquiryCreate, user: dict = Depends(get_current_user)):
