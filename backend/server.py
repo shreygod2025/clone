@@ -593,6 +593,8 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         email = payload.get("sub")
         role = payload.get("role", "admin")
         user_id = payload.get("user_id")
+        center_id = payload.get("center_id")
+        center_name = payload.get("center_name")
         
         if email is None:
             raise HTTPException(status_code=401, detail="Invalid token")
@@ -608,6 +610,12 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         if team_user:
             team_user["role"] = "team_member"
             return team_user
+        
+        # Check center_users collection
+        center_user = await db.center_users.find_one({"email": email}, {"_id": 0, "hashed_password": 0})
+        if center_user:
+            center_user["role"] = "center_user"
+            return center_user
         
         raise HTTPException(status_code=401, detail="User not found")
     except jwt.ExpiredSignatureError:
