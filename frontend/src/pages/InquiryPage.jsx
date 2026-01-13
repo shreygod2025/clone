@@ -777,29 +777,32 @@ const InquiryPage = () => {
               {/* Educator-specific fields */}
               {formData.inquiry_type === 'teacher' && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                    <div>
-                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Experience</label>
-                      <Input
-                        placeholder="Years of experience"
-                        value={formData.experience}
-                        onChange={(e) => updateForm('experience', e.target.value)}
-                        className="h-10 sm:h-11"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Availability</label>
-                      <Select value={formData.availability} onValueChange={(v) => updateForm('availability', v)}>
-                        <SelectTrigger className="h-10 sm:h-11">
-                          <SelectValue placeholder="Select availability" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Full-time">Full-time</SelectItem>
-                          <SelectItem value="Part-time">Part-time</SelectItem>
-                          <SelectItem value="Weekends">Weekends only</SelectItem>
-                          <SelectItem value="Flexible">Flexible</SelectItem>
-                        </SelectContent>
-                      </Select>
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Experience</label>
+                    <Input
+                      placeholder="Years of experience"
+                      value={formData.experience}
+                      onChange={(e) => updateForm('experience', e.target.value)}
+                      className="h-10 sm:h-11"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Availability</label>
+                    <div className="flex flex-wrap gap-2">
+                      {AVAILABILITY_OPTIONS.map(slot => (
+                        <button
+                          key={slot}
+                          type="button"
+                          onClick={() => toggleArrayField('availability', slot)}
+                          className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm border transition-all ${
+                            formData.availability.includes(slot)
+                              ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]'
+                              : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                          }`}
+                        >
+                          {slot}
+                        </button>
+                      ))}
                     </div>
                   </div>
                   <div>
@@ -808,6 +811,7 @@ const InquiryPage = () => {
                       {PROGRAMS.map(s => (
                         <button
                           key={s}
+                          type="button"
                           onClick={() => toggleArrayField('skills', s)}
                           className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm border transition-all ${
                             formData.skills.includes(s)
@@ -826,6 +830,7 @@ const InquiryPage = () => {
                       {GRADES.map(g => (
                         <button
                           key={g}
+                          type="button"
                           onClick={() => toggleArrayField('grades_comfortable', g)}
                           className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm border transition-all ${
                             formData.grades_comfortable.includes(g)
