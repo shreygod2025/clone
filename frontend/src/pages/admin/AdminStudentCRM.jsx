@@ -522,97 +522,226 @@ const AdminStudentCRM = () => {
         </div>
       )}
 
-      {/* View Details Dialog */}
-      <Dialog open={!!viewInquiry} onOpenChange={() => setViewInquiry(null)}>
-        <DialogContent className="max-w-lg">
+      {/* View/Edit Details Dialog */}
+      <Dialog open={!!viewInquiry} onOpenChange={() => { setViewInquiry(null); setEditMode(false); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <User className="w-5 h-5 text-[#1E3A5F]" />
-              {viewInquiry?.name}
+            <DialogTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <User className="w-5 h-5 text-[#1E3A5F]" />
+                {editMode ? 'Edit Lead' : viewInquiry?.name}
+              </div>
+              {!editMode && (
+                <Button variant="outline" size="sm" onClick={() => {
+                  setEditMode(true);
+                  setEditData({
+                    name: viewInquiry?.name || '',
+                    phone: viewInquiry?.phone || '',
+                    email: viewInquiry?.email || '',
+                    demo_date: viewInquiry?.demo_date || '',
+                    demo_time: viewInquiry?.demo_time || '',
+                    notes: viewInquiry?.notes || ''
+                  });
+                }}>
+                  <Edit className="w-4 h-4 mr-1" /> Edit
+                </Button>
+              )}
             </DialogTitle>
           </DialogHeader>
           {viewInquiry && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-1">Phone</p>
-                  <p className="font-medium text-[#1E3A5F] flex items-center gap-1">
-                    <Phone className="w-4 h-4" /> {viewInquiry.phone}
-                  </p>
+              {editMode ? (
+                /* Edit Mode */
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
+                      <Input
+                        value={editData.name}
+                        onChange={(e) => setEditData({...editData, name: e.target.value})}
+                        placeholder="Full name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Phone</label>
+                      <Input
+                        value={editData.phone}
+                        onChange={(e) => setEditData({...editData, phone: e.target.value})}
+                        placeholder="Phone number"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                      <Input
+                        value={editData.email}
+                        onChange={(e) => setEditData({...editData, email: e.target.value})}
+                        placeholder="Email"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Demo Date</label>
+                      <Input
+                        type="date"
+                        value={editData.demo_date}
+                        onChange={(e) => setEditData({...editData, demo_date: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Demo Time</label>
+                      <select
+                        value={editData.demo_time}
+                        onChange={(e) => setEditData({...editData, demo_time: e.target.value})}
+                        className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                      >
+                        <option value="">Select time</option>
+                        {TIME_SLOTS.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+                    <Textarea
+                      value={editData.notes}
+                      onChange={(e) => setEditData({...editData, notes: e.target.value})}
+                      placeholder="Internal notes..."
+                      className="min-h-[80px]"
+                    />
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <Button variant="outline" onClick={() => setEditMode(false)} className="flex-1">Cancel</Button>
+                    <Button onClick={handleSaveEdit} className="flex-1 bg-[#1E3A5F] hover:bg-[#152c4a]">
+                      <Save className="w-4 h-4 mr-1" /> Save Changes
+                    </Button>
+                  </div>
                 </div>
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-1">Email</p>
-                  <p className="font-medium text-[#1E3A5F] flex items-center gap-1">
-                    <Mail className="w-4 h-4" /> {viewInquiry.email || 'N/A'}
-                  </p>
-                </div>
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-1">Skill Interest</p>
-                  <p className="font-medium text-[#1E3A5F] flex items-center gap-1">
-                    <BookOpen className="w-4 h-4" /> {viewInquiry.skill || 'N/A'}
-                  </p>
-                </div>
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-1">Learning Mode</p>
-                  <p className={`font-medium flex items-center gap-1 ${viewInquiry.learning_mode?.includes('offline') ? 'text-[#D63031]' : 'text-[#1E3A5F]'}`}>
-                    <MapPin className="w-4 h-4" /> 
-                    {viewInquiry.learning_mode === 'online' ? 'Online' :
-                     viewInquiry.learning_mode === 'offline_center' ? `Offline (Center) - ${viewInquiry.city}` :
-                     viewInquiry.learning_mode === 'offline_home' ? `Offline (Home) - ${viewInquiry.city}` :
-                     viewInquiry.learning_mode?.includes('offline') ? `Offline - ${viewInquiry.city}` : 'Online'}
-                  </p>
-                </div>
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-1">Learner Type</p>
-                  <p className="font-medium text-[#1E3A5F]">{viewInquiry.learner_type || 'N/A'}</p>
-                </div>
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-1">Age Group</p>
-                  <p className="font-medium text-[#1E3A5F]">{viewInquiry.age_group || 'N/A'}</p>
-                </div>
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-1">Learning Goal</p>
-                  <p className="font-medium text-[#1E3A5F] flex items-center gap-1">
-                    <Target className="w-4 h-4" /> {viewInquiry.learning_goal || 'N/A'}
-                  </p>
-                </div>
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-1">Source</p>
-                  <p className="font-medium text-[#1E3A5F]">{viewInquiry.source || 'website'}</p>
-                </div>
-              </div>
+              ) : (
+                /* View Mode */
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-1">Phone</p>
+                      <p className="font-medium text-[#1E3A5F] flex items-center gap-1">
+                        <Phone className="w-4 h-4" /> {viewInquiry.phone}
+                      </p>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-1">Email</p>
+                      <p className="font-medium text-[#1E3A5F] flex items-center gap-1">
+                        <Mail className="w-4 h-4" /> {viewInquiry.email || 'N/A'}
+                      </p>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-1">Skill Interest</p>
+                      <p className="font-medium text-[#1E3A5F] flex items-center gap-1">
+                        <BookOpen className="w-4 h-4" /> {viewInquiry.skill || 'N/A'}
+                      </p>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-1">Learning Mode</p>
+                      <p className={`font-medium flex items-center gap-1 ${viewInquiry.learning_mode?.includes('offline') ? 'text-[#D63031]' : 'text-[#1E3A5F]'}`}>
+                        <MapPin className="w-4 h-4" /> 
+                        {viewInquiry.learning_mode === 'online' ? 'Online' :
+                         viewInquiry.learning_mode === 'offline_center' ? `Offline (Center) - ${viewInquiry.city}` :
+                         viewInquiry.learning_mode === 'offline_home' ? `Offline (Home) - ${viewInquiry.city}` :
+                         viewInquiry.learning_mode?.includes('offline') ? `Offline - ${viewInquiry.city}` : 'Online'}
+                      </p>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-1">Learner Type</p>
+                      <p className="font-medium text-[#1E3A5F]">{viewInquiry.learner_type || 'N/A'}</p>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-1">Age Group</p>
+                      <p className="font-medium text-[#1E3A5F]">{viewInquiry.age_group || 'N/A'}</p>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-1">Learning Goal</p>
+                      <p className="font-medium text-[#1E3A5F] flex items-center gap-1">
+                        <Target className="w-4 h-4" /> {viewInquiry.learning_goal || 'N/A'}
+                      </p>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-1">Source</p>
+                      <p className="font-medium text-[#1E3A5F]">{viewInquiry.source || 'website'}</p>
+                    </div>
+                  </div>
 
-              {viewInquiry.demo_date && (
-                <div className="bg-blue-50 rounded-lg p-3">
-                  <p className="text-xs text-blue-500 mb-1">Demo Scheduled</p>
-                  <p className="font-medium text-blue-700 flex items-center gap-1">
-                    <Calendar className="w-4 h-4" /> 
-                    {viewInquiry.demo_date} {viewInquiry.demo_time && `at ${viewInquiry.demo_time}`}
-                  </p>
-                </div>
+                  {viewInquiry.demo_date && (
+                    <div className="bg-blue-50 rounded-lg p-3">
+                      <p className="text-xs text-blue-500 mb-1">Demo Scheduled</p>
+                      <p className="font-medium text-blue-700 flex items-center gap-1">
+                        <Calendar className="w-4 h-4" /> 
+                        {viewInquiry.demo_date} {viewInquiry.demo_time && `at ${viewInquiry.demo_time}`}
+                      </p>
+                    </div>
+                  )}
+
+                  {viewInquiry.conversion_amount && (
+                    <div className="bg-green-50 rounded-lg p-3">
+                      <p className="text-xs text-green-500 mb-1">Conversion Details</p>
+                      <p className="font-medium text-green-700">
+                        ₹{viewInquiry.conversion_amount} for {viewInquiry.sessions_count} sessions
+                      </p>
+                    </div>
+                  )}
+
+                  {viewInquiry.notes && (
+                    <div className="bg-amber-50 rounded-lg p-3">
+                      <p className="text-xs text-amber-500 mb-1">Notes</p>
+                      <p className="text-amber-900 whitespace-pre-line">{viewInquiry.notes}</p>
+                    </div>
+                  )}
+
+                  {/* Comments Section */}
+                  <div className="border-t pt-4">
+                    <h4 className="font-semibold text-[#1E3A5F] mb-3 flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4" />
+                      Comments ({viewInquiry.comments?.length || 0})
+                    </h4>
+                    
+                    {viewInquiry.comments?.length > 0 && (
+                      <div className="space-y-2 max-h-[150px] overflow-y-auto mb-3">
+                        {viewInquiry.comments.map((comment, idx) => (
+                          <div key={idx} className="bg-slate-50 rounded-lg p-3">
+                            <p className="text-sm text-slate-700">{comment.text}</p>
+                            <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
+                              <User className="w-3 h-3" />
+                              <span>{comment.author}</span>
+                              <span>•</span>
+                              <span>{comment.created_at ? new Date(comment.created_at).toLocaleString() : '-'}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Add Comment */}
+                    <div className="flex gap-2">
+                      <Input
+                        value={viewComment}
+                        onChange={(e) => setViewComment(e.target.value)}
+                        placeholder="Add a comment..."
+                        className="flex-1"
+                        onKeyDown={(e) => e.key === 'Enter' && handleAddViewComment()}
+                      />
+                      <Button onClick={handleAddViewComment} size="sm" className="bg-[#1E3A5F]">
+                        <Send className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t">
+                    <p className="text-xs text-slate-400">
+                      Status: <span className="font-medium text-[#1E3A5F] capitalize">{viewInquiry.status?.replace('_', ' ')}</span>
+                      {viewInquiry.assigned_to && (
+                        <span className="ml-2">| Assigned: {getAssignedUserName(viewInquiry.assigned_to)}</span>
+                      )}
+                    </p>
+                  </div>
+                </>
               )}
-
-              {viewInquiry.conversion_amount && (
-                <div className="bg-green-50 rounded-lg p-3">
-                  <p className="text-xs text-green-500 mb-1">Conversion Details</p>
-                  <p className="font-medium text-green-700">
-                    ₹{viewInquiry.conversion_amount} for {viewInquiry.sessions_count} sessions
-                  </p>
-                </div>
-              )}
-
-              {viewInquiry.notes && (
-                <div className="bg-amber-50 rounded-lg p-3">
-                  <p className="text-xs text-amber-500 mb-1">Notes / Comments</p>
-                  <p className="text-amber-900 whitespace-pre-line">{viewInquiry.notes}</p>
-                </div>
-              )}
-
-              <div className="pt-4 border-t">
-                <p className="text-xs text-slate-400">
-                  Status: <span className="font-medium text-[#1E3A5F] capitalize">{viewInquiry.status?.replace('_', ' ')}</span>
-                </p>
-              </div>
             </div>
           )}
         </DialogContent>
