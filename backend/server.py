@@ -1660,7 +1660,43 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
     
     from datetime import timedelta
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
     tomorrow = (datetime.now(timezone.utc) + timedelta(days=1)).strftime("%Y-%m-%d")
+    
+    # Calculate overdue date (demos/meetings in the past that are still "new" status)
+    async def get_overdue_items(user_filter=None):
+        """Get items where demo/meeting date has passed but status is still 'new'"""
+        base_filter = {"status": "new"}
+        if user_filter:
+            base_filter["assigned_to"] = user_filter
+        
+        # Overdue student demos (demo_date < today and status is new)
+        overdue_students = await db.student_inquiries.find(
+            {**base_filter, "demo_date": {"$lt": today, "$ne": None, "$exists": True}},
+            {"_id": 0, "id": 1, "name": 1, "phone": 1, "demo_date": 1, "demo_time": 1, "skill": 1}
+        ).to_list(20)
+        
+        # Overdue school meetings
+        overdue_schools = await db.school_inquiries.find(
+            {**base_filter, "meeting_date": {"$lt": today, "$ne": None, "$exists": True}},
+            {"_id": 0, "id": 1, "school_name": 1, "contact_name": 1, "phone": 1, "meeting_date": 1, "meeting_time": 1}
+        ).to_list(20)
+        
+        # Overdue educator demos
+        overdue_filter = {"status": {"$in": ["new", "demo_scheduled"]}}
+        if user_filter:
+            overdue_filter["assigned_to"] = user_filter
+        overdue_educators = await db.educator_applications.find(
+            {**overdue_filter, "demo_date": {"$lt": today, "$ne": None, "$exists": True}},
+            {"_id": 0, "id": 1, "name": 1, "phone": 1, "demo_date": 1, "demo_time": 1, "skills": 1}
+        ).to_list(20)
+        
+        return {
+            "overdue_students": overdue_students,
+            "overdue_schools": overdue_schools,
+            "overdue_educators": overdue_educators,
+            "total_overdue": len(overdue_students) + len(overdue_schools) + len(overdue_educators)
+        }
     
     # If team member, filter by assigned_to
     if is_team_member and user_id:
@@ -1700,6 +1736,9 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
             {"_id": 0, "name": 1, "phone": 1, "demo_time": 1, "skills": 1}
         ).to_list(20)
         
+        # Get overdue items for team member
+        overdue_data = await get_overdue_items(user_id)
+        
         return {
             "total_students": student_count,
             "total_schools": school_count,
@@ -1714,6 +1753,10 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
             "todays_student_demos": todays_student_demos,
             "todays_school_meetings": todays_school_meetings,
             "todays_educator_demos": todays_educator_demos,
+            "overdue_students": overdue_data["overdue_students"],
+            "overdue_schools": overdue_data["overdue_schools"],
+            "overdue_educators": overdue_data["overdue_educators"],
+            "total_overdue": overdue_data["total_overdue"],
             "is_team_member": True
         }
     
@@ -1745,6 +1788,9 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
         {"_id": 0, "name": 1, "phone": 1, "demo_time": 1, "skills": 1, "assigned_to": 1}
     ).to_list(50)
     
+    # Get overdue items for admin (all)
+    overdue_data = await get_overdue_items(None)
+    
     return {
         "total_students": student_count,
         "total_schools": school_count,
@@ -1757,6 +1803,10 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
         "todays_student_demos": todays_student_demos,
         "todays_school_meetings": todays_school_meetings,
         "todays_educator_demos": todays_educator_demos,
+        "overdue_students": overdue_data["overdue_students"],
+        "overdue_schools": overdue_data["overdue_schools"],
+        "overdue_educators": overdue_data["overdue_educators"],
+        "total_overdue": overdue_data["total_overdue"],
         "is_team_member": False
     }
 
