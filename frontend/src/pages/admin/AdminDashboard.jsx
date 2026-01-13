@@ -241,6 +241,115 @@ const AdminDashboard = () => {
             ))}
           </div>
 
+          {/* Overdue Section - Show first as it's urgent */}
+          {stats.total_overdue > 0 && (
+            <div className="mb-8">
+              <h3 className="font-semibold text-red-600 mb-4 flex items-center gap-2">
+                <Clock className="w-5 h-5" />
+                Overdue ({stats.total_overdue})
+                <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">Requires Attention</span>
+              </h3>
+              <div className="grid md:grid-cols-3 gap-4">
+                {/* Overdue Student Demos */}
+                {stats.overdue_students?.length > 0 && (
+                  <div className="bg-red-50 rounded-2xl p-5 border border-red-200">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
+                        <GraduationCap className="w-4 h-4 text-red-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-red-800">Student Demos</h4>
+                        <p className="text-xs text-red-500">{stats.overdue_students?.length || 0} overdue</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                      {stats.overdue_students.map((demo, idx) => (
+                        <div key={idx} className="bg-white rounded-lg p-3 border border-red-100">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-medium text-sm text-slate-800">{demo.name}</span>
+                            <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                              {demo.demo_date}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-slate-500">
+                            <Phone className="w-3 h-3" />
+                            {demo.phone}
+                            {demo.skill && <span className="ml-2 text-red-600">• {demo.skill}</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Overdue School Meetings */}
+                {stats.overdue_schools?.length > 0 && (
+                  <div className="bg-red-50 rounded-2xl p-5 border border-red-200">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
+                        <Building2 className="w-4 h-4 text-red-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-red-800">School Meetings</h4>
+                        <p className="text-xs text-red-500">{stats.overdue_schools?.length || 0} overdue</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                      {stats.overdue_schools.map((meeting, idx) => (
+                        <div key={idx} className="bg-white rounded-lg p-3 border border-red-100">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-medium text-sm text-slate-800">{meeting.school_name}</span>
+                            <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                              {meeting.meeting_date}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-slate-500">
+                            <User className="w-3 h-3" />
+                            {meeting.contact_name}
+                            <Phone className="w-3 h-3 ml-2" />
+                            {meeting.phone}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Overdue Educator Demos */}
+                {stats.overdue_educators?.length > 0 && (
+                  <div className="bg-red-50 rounded-2xl p-5 border border-red-200">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
+                        <Users className="w-4 h-4 text-red-600" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-red-800">Educator Demos</h4>
+                        <p className="text-xs text-red-500">{stats.overdue_educators?.length || 0} overdue</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                      {stats.overdue_educators.map((demo, idx) => (
+                        <div key={idx} className="bg-white rounded-lg p-3 border border-red-100">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-medium text-sm text-slate-800">{demo.name}</span>
+                            <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                              {demo.demo_date}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-slate-500">
+                            <Phone className="w-3 h-3" />
+                            {demo.phone}
+                            {demo.skills?.length > 0 && <span className="ml-2 text-red-600">• {demo.skills.slice(0, 2).join(', ')}</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Today's Schedule Section */}
           {(stats.todays_student_demos?.length > 0 || stats.todays_school_meetings?.length > 0 || stats.todays_educator_demos?.length > 0) && (
             <div className="mb-8">
