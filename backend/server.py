@@ -52,6 +52,9 @@ class AdminCreate(BaseModel):
     name: str
     role: str = "admin"
     username: str = ""
+    permissions: List[str] = []
+    center_id: str = ""
+    center_name: str = ""
 
 class TeamUser(BaseModel):
     model_config = ConfigDict(extra="ignore")
