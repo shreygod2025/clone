@@ -121,6 +121,15 @@ const EducatorFunnel = () => {
     }));
   };
 
+  const toggleAvailability = (slot) => {
+    setFormData(prev => ({
+      ...prev,
+      availability: prev.availability.includes(slot)
+        ? prev.availability.filter(a => a !== slot)
+        : [...prev.availability, slot]
+    }));
+  };
+
   const toggleReqDay = (day) => {
     setReqFormData(prev => ({
       ...prev,
