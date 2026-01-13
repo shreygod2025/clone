@@ -25,7 +25,7 @@ const BOARDS = ['CBSE', 'ICSE', 'IGCSE', 'State Board', 'IB'];
 const TIME_SLOTS = ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'];
 
 const AdminSchoolCRM = () => {
-  const { getAuthHeaders } = useAuth();
+  const { getAuthHeaders, user } = useAuth();
   const [inquiries, setInquiries] = useState([]);
   const [teamUsers, setTeamUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,6 +42,11 @@ const AdminSchoolCRM = () => {
   const [showCommentModal, setShowCommentModal] = useState(null);
   const [showFollowupModal, setShowFollowupModal] = useState(null);
   const [newComment, setNewComment] = useState('');
+  
+  // View/Edit states
+  const [editMode, setEditMode] = useState(false);
+  const [editData, setEditData] = useState({ school_name: '', contact_name: '', phone: '', email: '', meeting_date: '', meeting_time: '', notes: '' });
+  const [viewComment, setViewComment] = useState('');
   
   // Form states
   const [rescheduleData, setRescheduleData] = useState({ date: null, time: '', meeting_type: 'offline', reason: '' });
