@@ -1495,6 +1495,10 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
     is_team_member = user.get("role") != "admin"
     user_id = user.get("id")
     
+    from datetime import timedelta
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    tomorrow = (datetime.now(timezone.utc) + timedelta(days=1)).strftime("%Y-%m-%d")
+    
     # If team member, filter by assigned_to
     if is_team_member and user_id:
         student_count = await db.student_inquiries.count_documents({"assigned_to": user_id})
@@ -1507,11 +1511,6 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
         school_new = await db.school_inquiries.count_documents({"assigned_to": user_id, "status": "new"})
         educator_new = await db.educator_applications.count_documents({"assigned_to": user_id, "status": "new"})
         
-        # Get followups due today/tomorrow for team member
-        from datetime import timedelta
-        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        tomorrow = (datetime.now(timezone.utc) + timedelta(days=1)).strftime("%Y-%m-%d")
-        
         followups_today = await db.school_inquiries.count_documents({
             "assigned_to": user_id,
             "followup_date": {"$in": [today, tomorrow]}
@@ -1521,6 +1520,22 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
         leads_added = await db.student_inquiries.count_documents({"added_by": user_id})
         leads_added += await db.school_inquiries.count_documents({"added_by": user_id})
         leads_added += await db.educator_applications.count_documents({"added_by": user_id})
+        
+        # Get today's meetings/demos for team member
+        todays_student_demos = await db.student_inquiries.find(
+            {"assigned_to": user_id, "demo_date": today, "status": "new"},
+            {"_id": 0, "name": 1, "phone": 1, "demo_time": 1, "skill": 1}
+        ).to_list(20)
+        
+        todays_school_meetings = await db.school_inquiries.find(
+            {"assigned_to": user_id, "meeting_date": today, "status": "new"},
+            {"_id": 0, "school_name": 1, "contact_name": 1, "phone": 1, "meeting_time": 1}
+        ).to_list(20)
+        
+        todays_educator_demos = await db.educator_applications.find(
+            {"assigned_to": user_id, "demo_date": today, "status": {"$in": ["new", "demo_scheduled"]}},
+            {"_id": 0, "name": 1, "phone": 1, "demo_time": 1, "skills": 1}
+        ).to_list(20)
         
         return {
             "total_students": student_count,
@@ -1533,6 +1548,9 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
             "new_educator_applications": educator_new,
             "followups_due": followups_today,
             "leads_added_by_me": leads_added,
+            "todays_student_demos": todays_student_demos,
+            "todays_school_meetings": todays_school_meetings,
+            "todays_educator_demos": todays_educator_demos,
             "is_team_member": True
         }
     
@@ -1548,6 +1566,22 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
     school_new = await db.school_inquiries.count_documents({"status": "new"})
     educator_new = await db.educator_applications.count_documents({"status": "new"})
     
+    # Get today's meetings/demos for admin (all)
+    todays_student_demos = await db.student_inquiries.find(
+        {"demo_date": today, "status": "new"},
+        {"_id": 0, "name": 1, "phone": 1, "demo_time": 1, "skill": 1, "assigned_to": 1}
+    ).to_list(50)
+    
+    todays_school_meetings = await db.school_inquiries.find(
+        {"meeting_date": today, "status": "new"},
+        {"_id": 0, "school_name": 1, "contact_name": 1, "phone": 1, "meeting_time": 1, "assigned_to": 1}
+    ).to_list(50)
+    
+    todays_educator_demos = await db.educator_applications.find(
+        {"demo_date": today, "status": {"$in": ["new", "demo_scheduled"]}},
+        {"_id": 0, "name": 1, "phone": 1, "demo_time": 1, "skills": 1, "assigned_to": 1}
+    ).to_list(50)
+    
     return {
         "total_students": student_count,
         "total_schools": school_count,
@@ -1557,6 +1591,9 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
         "converted_students": student_converted,
         "new_school_leads": school_new,
         "new_educator_applications": educator_new,
+        "todays_student_demos": todays_student_demos,
+        "todays_school_meetings": todays_school_meetings,
+        "todays_educator_demos": todays_educator_demos,
         "is_team_member": False
     }
 
