@@ -529,71 +529,203 @@ const AdminGrowthPartners = () => {
         </DialogContent>
       </Dialog>
 
-      {/* View Partner Modal */}
-      <Dialog open={!!viewPartner} onOpenChange={() => setViewPartner(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      {/* View/Edit Partner Modal */}
+      <Dialog open={!!viewPartner} onOpenChange={() => { setViewPartner(null); setEditMode(false); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Partner Details</DialogTitle>
+            <DialogTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <User className="w-5 h-5 text-[#1E3A5F]" />
+                {editMode ? 'Edit Partner' : viewPartner?.name}
+              </div>
+              {!editMode && (
+                <Button variant="outline" size="sm" onClick={() => {
+                  setEditMode(true);
+                  setEditData({
+                    name: viewPartner?.name || '',
+                    phone: viewPartner?.phone || '',
+                    email: viewPartner?.email || '',
+                    city: viewPartner?.city || '',
+                    details: viewPartner?.details || '',
+                    notes: viewPartner?.notes || ''
+                  });
+                }}>
+                  <Edit className="w-4 h-4 mr-1" /> Edit
+                </Button>
+              )}
+            </DialogTitle>
           </DialogHeader>
           {viewPartner && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs text-slate-500">Name</label>
-                  <p className="font-medium text-[#1E3A5F]">{viewPartner.name}</p>
+              {editMode ? (
+                /* Edit Mode */
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
+                      <Input
+                        value={editData.name}
+                        onChange={(e) => setEditData({...editData, name: e.target.value})}
+                        placeholder="Full name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Phone</label>
+                      <Input
+                        value={editData.phone}
+                        onChange={(e) => setEditData({...editData, phone: e.target.value})}
+                        placeholder="Phone number"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                      <Input
+                        value={editData.email}
+                        onChange={(e) => setEditData({...editData, email: e.target.value})}
+                        placeholder="Email"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">City</label>
+                      <Select value={editData.city} onValueChange={(v) => setEditData({...editData, city: v})}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select city" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {cities.map((city) => (
+                            <SelectItem key={city.id} value={city.name}>{city.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Details</label>
+                    <Textarea
+                      value={editData.details}
+                      onChange={(e) => setEditData({...editData, details: e.target.value})}
+                      placeholder="Partner details..."
+                      className="min-h-[80px]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+                    <Textarea
+                      value={editData.notes}
+                      onChange={(e) => setEditData({...editData, notes: e.target.value})}
+                      placeholder="Internal notes..."
+                      className="min-h-[60px]"
+                    />
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <Button variant="outline" onClick={() => setEditMode(false)} className="flex-1">Cancel</Button>
+                    <Button onClick={handleSaveEdit} className="flex-1 bg-[#1E3A5F] hover:bg-[#152c4a]">
+                      <Save className="w-4 h-4 mr-1" /> Save Changes
+                    </Button>
+                  </div>
                 </div>
-                <div>
-                  <label className="text-xs text-slate-500">Status</label>
-                  <p className="font-medium capitalize">{viewPartner.status?.replace('_', ' ')}</p>
-                </div>
-                <div>
-                  <label className="text-xs text-slate-500">Phone</label>
-                  <p className="font-medium">{viewPartner.phone}</p>
-                </div>
-                <div>
-                  <label className="text-xs text-slate-500">Email</label>
-                  <p className="font-medium">{viewPartner.email || '-'}</p>
-                </div>
-                <div>
-                  <label className="text-xs text-slate-500">City</label>
-                  <p className="font-medium">{viewPartner.city || '-'}</p>
-                </div>
-                <div>
-                  <label className="text-xs text-slate-500">Interest Type</label>
-                  <p className="font-medium capitalize">{viewPartner.interest_type || '-'}</p>
-                </div>
-                <div>
-                  <label className="text-xs text-slate-500">Source</label>
-                  <p className="font-medium">{SOURCE_OPTIONS.find(s => s.value === viewPartner.source)?.label || viewPartner.source || '-'}</p>
-                </div>
-                <div>
-                  <label className="text-xs text-slate-500">Created</label>
-                  <p className="font-medium text-sm">
-                    {viewPartner.created_at ? format(new Date(viewPartner.created_at), 'MMM d, yyyy') : '-'}
-                  </p>
-                </div>
-              </div>
-              
-              {viewPartner.details && (
-                <div>
-                  <label className="text-xs text-slate-500">Details</label>
-                  <p className="text-slate-600">{viewPartner.details}</p>
-                </div>
-              )}
+              ) : (
+                /* View Mode */
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-1">Phone</p>
+                      <p className="font-medium text-[#1E3A5F] flex items-center gap-1">
+                        <Phone className="w-4 h-4" /> {viewPartner.phone}
+                      </p>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-1">Email</p>
+                      <p className="font-medium text-[#1E3A5F] flex items-center gap-1">
+                        <Mail className="w-4 h-4" /> {viewPartner.email || '-'}
+                      </p>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-1">City</p>
+                      <p className="font-medium text-[#1E3A5F] flex items-center gap-1">
+                        <MapPin className="w-4 h-4" /> {viewPartner.city || '-'}
+                      </p>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-1">Interest Type</p>
+                      <p className="font-medium text-[#1E3A5F] capitalize">{viewPartner.interest_type || '-'}</p>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-1">Source</p>
+                      <p className="font-medium text-[#1E3A5F]">{SOURCE_OPTIONS.find(s => s.value === viewPartner.source)?.label || viewPartner.source || '-'}</p>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-1">Status</p>
+                      <p className="font-medium text-[#1E3A5F] capitalize">{viewPartner.status?.replace('_', ' ')}</p>
+                    </div>
+                  </div>
+                  
+                  {viewPartner.details && (
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-1">Details</p>
+                      <p className="text-slate-700">{viewPartner.details}</p>
+                    </div>
+                  )}
 
-              {/* Comments Section */}
-              <div className="pt-4 border-t">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-medium text-[#1E3A5F]">Comments History</h4>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setShowCommentModal(viewPartner)}
-                    className="flex items-center gap-1"
-                  >
-                    <MessageSquare className="w-3 h-3" />
-                    Add Comment
-                  </Button>
+                  {viewPartner.notes && (
+                    <div className="bg-amber-50 rounded-lg p-3">
+                      <p className="text-xs text-amber-500 mb-1">Notes</p>
+                      <p className="text-amber-900 whitespace-pre-line">{viewPartner.notes}</p>
+                    </div>
+                  )}
+
+                  {/* Comments Section */}
+                  <div className="border-t pt-4">
+                    <h4 className="font-semibold text-[#1E3A5F] mb-3 flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4" />
+                      Comments ({viewPartner.comments?.length || 0})
+                    </h4>
+                    
+                    {viewPartner.comments?.length > 0 && (
+                      <div className="space-y-2 max-h-[150px] overflow-y-auto mb-3">
+                        {viewPartner.comments.map((comment, idx) => (
+                          <div key={idx} className="bg-slate-50 rounded-lg p-3">
+                            <p className="text-sm text-slate-700">{comment.text}</p>
+                            <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
+                              <User className="w-3 h-3" />
+                              <span>{comment.author}</span>
+                              <span>•</span>
+                              <span>{comment.created_at ? new Date(comment.created_at).toLocaleString() : '-'}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Add Comment */}
+                    <div className="flex gap-2">
+                      <Input
+                        value={viewComment}
+                        onChange={(e) => setViewComment(e.target.value)}
+                        placeholder="Add a comment..."
+                        className="flex-1"
+                        onKeyDown={(e) => e.key === 'Enter' && handleAddViewComment()}
+                      />
+                      <Button onClick={handleAddViewComment} size="sm" className="bg-[#1E3A5F]">
+                        <Send className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t">
+                    <p className="text-xs text-slate-400">
+                      Created: {viewPartner.created_at ? format(new Date(viewPartner.created_at), 'MMM d, yyyy') : '-'}
+                      {viewPartner.assigned_to && (
+                        <span className="ml-2">| Assigned: {getAssignedUserName(viewPartner.assigned_to)}</span>
+                      )}
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
                 </div>
                 {viewPartner.comments?.length > 0 ? (
                   <div className="space-y-3 max-h-[200px] overflow-y-auto">
