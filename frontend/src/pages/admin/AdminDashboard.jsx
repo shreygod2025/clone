@@ -26,6 +26,7 @@ const AdminLayout = ({ children, title }) => {
     { path: '/admin/team-applications', icon: Users, label: 'Team Applications', permission: 'team_applications' },
     { path: '/admin/support', icon: MessageSquare, label: 'Support Center', permission: 'support' },
     { path: '/admin/users', icon: Users, label: 'Team Users', permission: 'admin_only' },
+    { path: '/admin/center-users', icon: Building, label: 'Center Users', permission: 'admin_only' },
     { path: '/admin/requirements', icon: FileText, label: 'Requirements', permission: 'admin_only' },
     { path: '/admin/cities', icon: MapPin, label: 'Cities', permission: 'admin_only' },
     { path: '/admin/centers', icon: Building, label: 'Centers', permission: 'admin_only' },
