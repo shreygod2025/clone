@@ -178,6 +178,47 @@ const AdminGrowthPartners = () => {
     }
   };
 
+  const handleSaveEdit = async () => {
+    if (!viewPartner) return;
+    try {
+      await axios.patch(`${API}/growth-partners/${viewPartner.id}`, {
+        name: editData.name,
+        phone: editData.phone,
+        email: editData.email,
+        city: editData.city,
+        details: editData.details,
+        notes: editData.notes
+      }, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Partner updated successfully');
+      setEditMode(false);
+      setViewPartner(null);
+      fetchPartners();
+    } catch (error) {
+      toast.error('Failed to update partner');
+    }
+  };
+
+  const handleAddViewComment = async () => {
+    if (!viewComment.trim() || !viewPartner) return;
+    try {
+      await axios.post(`${API}/growth_partners/comment/${viewPartner.id}`, 
+        { text: viewComment },
+        { headers: getAuthHeaders() }
+      );
+      toast.success('Comment added');
+      setViewComment('');
+      // Refresh the viewPartner data
+      const response = await axios.get(`${API}/growth-partners`, { headers: getAuthHeaders() });
+      const updated = response.data.find(i => i.id === viewPartner.id);
+      if (updated) setViewPartner(updated);
+      fetchPartners();
+    } catch (error) {
+      toast.error('Failed to add comment');
+    }
+  };
+
   const handleAssignLead = async (userId) => {
     if (!showAssignModal) return;
     try {
