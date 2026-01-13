@@ -168,6 +168,7 @@ const EducatorFunnel = () => {
       await axios.post(`${API}/educators/apply`, {
         ...formData,
         city: showOtherCity ? formData.other_city : formData.city,
+        availability: formData.availability.join(', ') || 'Flexible',
         demo_date: formData.demo_date ? format(formData.demo_date, 'yyyy-MM-dd') : null,
       });
       setSubmitted(true);
