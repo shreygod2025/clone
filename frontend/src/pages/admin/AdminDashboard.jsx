@@ -240,6 +240,123 @@ const AdminDashboard = () => {
             ))}
           </div>
 
+          {/* Today's Schedule Section */}
+          {(stats.todays_student_demos?.length > 0 || stats.todays_school_meetings?.length > 0 || stats.todays_educator_demos?.length > 0) && (
+            <div className="mb-8">
+              <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
+                <Calendar className="w-5 h-5" />
+                Today's Schedule
+              </h3>
+              <div className="grid md:grid-cols-3 gap-4">
+                {/* Student Demos */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-100">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                      <GraduationCap className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-slate-800">Student Demos</h4>
+                      <p className="text-xs text-slate-500">{stats.todays_student_demos?.length || 0} scheduled</p>
+                    </div>
+                  </div>
+                  {stats.todays_student_demos?.length > 0 ? (
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                      {stats.todays_student_demos.map((demo, idx) => (
+                        <div key={idx} className="bg-blue-50 rounded-lg p-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-medium text-sm text-slate-800">{demo.name}</span>
+                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {demo.demo_time || 'TBD'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-slate-500">
+                            <Phone className="w-3 h-3" />
+                            {demo.phone}
+                            {demo.skill && <span className="ml-2 text-blue-600">• {demo.skill}</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-400 text-center py-4">No demos today</p>
+                  )}
+                </div>
+
+                {/* School Meetings */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-100">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                      <Building2 className="w-4 h-4 text-purple-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-slate-800">School Meetings</h4>
+                      <p className="text-xs text-slate-500">{stats.todays_school_meetings?.length || 0} scheduled</p>
+                    </div>
+                  </div>
+                  {stats.todays_school_meetings?.length > 0 ? (
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                      {stats.todays_school_meetings.map((meeting, idx) => (
+                        <div key={idx} className="bg-purple-50 rounded-lg p-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-medium text-sm text-slate-800">{meeting.school_name}</span>
+                            <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {meeting.meeting_time || 'TBD'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-slate-500">
+                            <User className="w-3 h-3" />
+                            {meeting.contact_name}
+                            <Phone className="w-3 h-3 ml-2" />
+                            {meeting.phone}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-400 text-center py-4">No meetings today</p>
+                  )}
+                </div>
+
+                {/* Educator Demos */}
+                <div className="bg-white rounded-2xl p-5 border border-slate-100">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">
+                      <Users className="w-4 h-4 text-orange-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-slate-800">Educator Demos</h4>
+                      <p className="text-xs text-slate-500">{stats.todays_educator_demos?.length || 0} scheduled</p>
+                    </div>
+                  </div>
+                  {stats.todays_educator_demos?.length > 0 ? (
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                      {stats.todays_educator_demos.map((demo, idx) => (
+                        <div key={idx} className="bg-orange-50 rounded-lg p-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-medium text-sm text-slate-800">{demo.name}</span>
+                            <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              {demo.demo_time || 'TBD'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-slate-500">
+                            <Phone className="w-3 h-3" />
+                            {demo.phone}
+                            {demo.skills?.length > 0 && <span className="ml-2 text-orange-600">• {demo.skills.slice(0, 2).join(', ')}</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-400 text-center py-4">No demos today</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid md:grid-cols-2 gap-6">
             <div className="bg-white rounded-2xl p-6 border border-slate-100">
               <h3 className="font-semibold text-[#1E3A5F] mb-4">Quick Actions</h3>
