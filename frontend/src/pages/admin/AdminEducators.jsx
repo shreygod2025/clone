@@ -496,98 +496,234 @@ const AdminEducators = () => {
         </div>
       )}
 
-      {/* View Details Dialog */}
-      <Dialog open={!!viewEducator} onOpenChange={() => setViewEducator(null)}>
-        <DialogContent className="max-w-lg">
+      {/* View/Edit Details Dialog */}
+      <Dialog open={!!viewEducator} onOpenChange={() => { setViewEducator(null); setEditMode(false); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <User className="w-5 h-5 text-[#1E3A5F]" />
-              {viewEducator?.name}
+            <DialogTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <User className="w-5 h-5 text-[#1E3A5F]" />
+                {editMode ? 'Edit Educator' : viewEducator?.name}
+              </div>
+              {!editMode && (
+                <Button variant="outline" size="sm" onClick={() => {
+                  setEditMode(true);
+                  setEditData({
+                    name: viewEducator?.name || '',
+                    phone: viewEducator?.phone || '',
+                    email: viewEducator?.email || '',
+                    demo_date: viewEducator?.demo_date || '',
+                    demo_time: viewEducator?.demo_time || '',
+                    notes: viewEducator?.notes || ''
+                  });
+                }}>
+                  <Edit className="w-4 h-4 mr-1" /> Edit
+                </Button>
+              )}
             </DialogTitle>
           </DialogHeader>
           {viewEducator && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-1">Email</p>
-                  <p className="font-medium text-[#1E3A5F] flex items-center gap-1 text-sm">
-                    <Mail className="w-4 h-4" /> {viewEducator.email}
-                  </p>
-                </div>
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-1">Phone</p>
-                  <p className="font-medium text-[#1E3A5F] flex items-center gap-1 text-sm">
-                    <Phone className="w-4 h-4" /> {viewEducator.phone}
-                  </p>
-                </div>
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-1">City</p>
-                  <p className="font-medium text-[#1E3A5F] flex items-center gap-1 text-sm">
-                    <MapPin className="w-4 h-4" /> {viewEducator.city || 'N/A'}
-                  </p>
-                </div>
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-1">Availability</p>
-                  <p className="font-medium text-[#1E3A5F] text-sm">{viewEducator.availability || 'N/A'}</p>
-                </div>
-              </div>
-
-              {viewEducator.skills?.length > 0 && (
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-2">Skills</p>
-                  <div className="flex flex-wrap gap-1">
-                    {viewEducator.skills.map((skill, idx) => (
-                      <span key={idx} className="px-2 py-1 bg-[#1E3A5F]/10 text-[#1E3A5F] rounded text-xs font-medium">
-                        {skill}
-                      </span>
-                    ))}
+              {editMode ? (
+                /* Edit Mode */
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
+                      <Input
+                        value={editData.name}
+                        onChange={(e) => setEditData({...editData, name: e.target.value})}
+                        placeholder="Full name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Phone</label>
+                      <Input
+                        value={editData.phone}
+                        onChange={(e) => setEditData({...editData, phone: e.target.value})}
+                        placeholder="Phone number"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                      <Input
+                        value={editData.email}
+                        onChange={(e) => setEditData({...editData, email: e.target.value})}
+                        placeholder="Email"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Demo Date</label>
+                      <Input
+                        type="date"
+                        value={editData.demo_date}
+                        onChange={(e) => setEditData({...editData, demo_date: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Demo Time</label>
+                      <select
+                        value={editData.demo_time}
+                        onChange={(e) => setEditData({...editData, demo_time: e.target.value})}
+                        className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                      >
+                        <option value="">Select time</option>
+                        {TIME_SLOTS.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+                    <Textarea
+                      value={editData.notes}
+                      onChange={(e) => setEditData({...editData, notes: e.target.value})}
+                      placeholder="Internal notes..."
+                      className="min-h-[80px]"
+                    />
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <Button variant="outline" onClick={() => setEditMode(false)} className="flex-1">Cancel</Button>
+                    <Button onClick={handleSaveEdit} className="flex-1 bg-[#1E3A5F] hover:bg-[#152c4a]">
+                      <Save className="w-4 h-4 mr-1" /> Save Changes
+                    </Button>
                   </div>
                 </div>
-              )}
-
-              {viewEducator.grades_comfortable?.length > 0 && (
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-2">Grades Comfortable</p>
-                  <div className="flex flex-wrap gap-1">
-                    {viewEducator.grades_comfortable.map((grade, idx) => (
-                      <span key={idx} className="px-2 py-1 bg-[#D63031]/10 text-[#D63031] rounded text-xs font-medium">
-                        {grade}
-                      </span>
-                    ))}
+              ) : (
+                /* View Mode */
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-1">Email</p>
+                      <p className="font-medium text-[#1E3A5F] flex items-center gap-1 text-sm">
+                        <Mail className="w-4 h-4" /> {viewEducator.email}
+                      </p>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-1">Phone</p>
+                      <p className="font-medium text-[#1E3A5F] flex items-center gap-1 text-sm">
+                        <Phone className="w-4 h-4" /> {viewEducator.phone}
+                      </p>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-1">City</p>
+                      <p className="font-medium text-[#1E3A5F] flex items-center gap-1 text-sm">
+                        <MapPin className="w-4 h-4" /> {viewEducator.city || 'N/A'}
+                      </p>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-1">Availability</p>
+                      <p className="font-medium text-[#1E3A5F] text-sm">{viewEducator.availability || 'N/A'}</p>
+                    </div>
                   </div>
-                </div>
-              )}
 
-              {viewEducator.experience && (
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-1">Experience</p>
-                  <p className="text-slate-700 text-sm">{viewEducator.experience}</p>
-                </div>
-              )}
+                  {viewEducator.skills?.length > 0 && (
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-2">Skills</p>
+                      <div className="flex flex-wrap gap-1">
+                        {viewEducator.skills.map((skill, idx) => (
+                          <span key={idx} className="px-2 py-1 bg-[#1E3A5F]/10 text-[#1E3A5F] rounded text-xs font-medium">
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-              {viewEducator.requirement_title && (
-                <div className="bg-[#D63031]/5 rounded-lg p-3">
-                  <p className="text-xs text-[#D63031] mb-1">Applied For</p>
-                  <p className="font-medium text-[#D63031]">{viewEducator.requirement_title}</p>
-                </div>
-              )}
+                  {viewEducator.grades_comfortable?.length > 0 && (
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-2">Grades Comfortable</p>
+                      <div className="flex flex-wrap gap-1">
+                        {viewEducator.grades_comfortable.map((grade, idx) => (
+                          <span key={idx} className="px-2 py-1 bg-[#D63031]/10 text-[#D63031] rounded text-xs font-medium">
+                            {grade}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-              {viewEducator.demo_date && (
-                <div className="bg-purple-50 rounded-lg p-3">
-                  <p className="text-xs text-purple-500 mb-1">Demo Scheduled</p>
-                  <p className="font-medium text-purple-700 flex items-center gap-1">
-                    <Calendar className="w-4 h-4" /> 
-                    {viewEducator.demo_date} {viewEducator.demo_time && `at ${viewEducator.demo_time}`}
-                  </p>
-                </div>
-              )}
+                  {viewEducator.experience && (
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-1">Experience</p>
+                      <p className="text-slate-700 text-sm">{viewEducator.experience}</p>
+                    </div>
+                  )}
 
-              <div className="pt-4 border-t">
-                <div className="flex items-center gap-4 text-sm text-slate-500">
-                  <span>Status: <span className="font-medium text-[#1E3A5F] capitalize">{viewEducator.status?.replace('_', ' ')}</span></span>
-                  <span>Demo Ready: <span className="font-medium text-[#1E3A5F]">{viewEducator.demo_ready ? 'Yes' : 'No'}</span></span>
-                </div>
-              </div>
+                  {viewEducator.requirement_title && (
+                    <div className="bg-[#D63031]/5 rounded-lg p-3">
+                      <p className="text-xs text-[#D63031] mb-1">Applied For</p>
+                      <p className="font-medium text-[#D63031]">{viewEducator.requirement_title}</p>
+                    </div>
+                  )}
+
+                  {viewEducator.demo_date && (
+                    <div className="bg-purple-50 rounded-lg p-3">
+                      <p className="text-xs text-purple-500 mb-1">Demo Scheduled</p>
+                      <p className="font-medium text-purple-700 flex items-center gap-1">
+                        <Calendar className="w-4 h-4" /> 
+                        {viewEducator.demo_date} {viewEducator.demo_time && `at ${viewEducator.demo_time}`}
+                      </p>
+                    </div>
+                  )}
+
+                  {viewEducator.notes && (
+                    <div className="bg-amber-50 rounded-lg p-3">
+                      <p className="text-xs text-amber-500 mb-1">Notes</p>
+                      <p className="text-amber-900 whitespace-pre-line">{viewEducator.notes}</p>
+                    </div>
+                  )}
+
+                  {/* Comments Section */}
+                  <div className="border-t pt-4">
+                    <h4 className="font-semibold text-[#1E3A5F] mb-3 flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4" />
+                      Comments ({viewEducator.comments?.length || 0})
+                    </h4>
+                    
+                    {viewEducator.comments?.length > 0 && (
+                      <div className="space-y-2 max-h-[150px] overflow-y-auto mb-3">
+                        {viewEducator.comments.map((comment, idx) => (
+                          <div key={idx} className="bg-slate-50 rounded-lg p-3">
+                            <p className="text-sm text-slate-700">{comment.text}</p>
+                            <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
+                              <User className="w-3 h-3" />
+                              <span>{comment.author}</span>
+                              <span>•</span>
+                              <span>{comment.created_at ? new Date(comment.created_at).toLocaleString() : '-'}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Add Comment */}
+                    <div className="flex gap-2">
+                      <Input
+                        value={viewComment}
+                        onChange={(e) => setViewComment(e.target.value)}
+                        placeholder="Add a comment..."
+                        className="flex-1"
+                        onKeyDown={(e) => e.key === 'Enter' && handleAddViewComment()}
+                      />
+                      <Button onClick={handleAddViewComment} size="sm" className="bg-[#1E3A5F]">
+                        <Send className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t">
+                    <div className="flex items-center gap-4 text-sm text-slate-500">
+                      <span>Status: <span className="font-medium text-[#1E3A5F] capitalize">{viewEducator.status?.replace('_', ' ')}</span></span>
+                      <span>Demo Ready: <span className="font-medium text-[#1E3A5F]">{viewEducator.demo_ready ? 'Yes' : 'No'}</span></span>
+                      {viewEducator.assigned_to && (
+                        <span>| Assigned: {getAssignedUserName(viewEducator.assigned_to)}</span>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </DialogContent>
