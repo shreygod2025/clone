@@ -638,121 +638,245 @@ const AdminSchoolCRM = () => {
         </div>
       )}
 
-      {/* View Details Dialog */}
-      <Dialog open={!!viewInquiry} onOpenChange={() => setViewInquiry(null)}>
-        <DialogContent className="max-w-lg">
+      {/* View/Edit Details Dialog */}
+      <Dialog open={!!viewInquiry} onOpenChange={() => { setViewInquiry(null); setEditMode(false); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Building2 className="w-5 h-5 text-[#1E3A5F]" />
-              {viewInquiry?.school_name}
+            <DialogTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-[#1E3A5F]" />
+                {editMode ? 'Edit Lead' : viewInquiry?.school_name}
+              </div>
+              {!editMode && (
+                <Button variant="outline" size="sm" onClick={() => {
+                  setEditMode(true);
+                  setEditData({
+                    school_name: viewInquiry?.school_name || '',
+                    contact_name: viewInquiry?.contact_name || '',
+                    phone: viewInquiry?.phone || '',
+                    email: viewInquiry?.email || '',
+                    meeting_date: viewInquiry?.meeting_date || '',
+                    meeting_time: viewInquiry?.meeting_time || '',
+                    notes: viewInquiry?.notes || ''
+                  });
+                }}>
+                  <Edit className="w-4 h-4 mr-1" /> Edit
+                </Button>
+              )}
             </DialogTitle>
           </DialogHeader>
           {viewInquiry && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-1">Contact Person</p>
-                  <p className="font-medium text-[#1E3A5F] flex items-center gap-1">
-                    <User className="w-4 h-4" /> {viewInquiry.contact_name}
-                  </p>
-                </div>
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-1">Phone</p>
-                  <p className="font-medium text-[#1E3A5F] flex items-center gap-1">
-                    <Phone className="w-4 h-4" /> {viewInquiry.phone}
-                  </p>
-                </div>
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-1">Email</p>
-                  <p className="font-medium text-[#1E3A5F] flex items-center gap-1">
-                    <Mail className="w-4 h-4" /> {viewInquiry.email || 'N/A'}
-                  </p>
-                </div>
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-1">Location</p>
-                  <p className="font-medium text-[#1E3A5F] flex items-center gap-1">
-                    <MapPin className="w-4 h-4" /> {viewInquiry.location || 'N/A'}
-                  </p>
-                </div>
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-1">Board</p>
-                  <p className="font-medium text-[#1E3A5F]">{viewInquiry.board || 'N/A'}</p>
-                </div>
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-1">School Size</p>
-                  <p className="font-medium text-[#1E3A5F]">{viewInquiry.school_size || 'N/A'}</p>
-                </div>
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-1">Fee Range</p>
-                  <p className="font-medium text-[#1E3A5F]">{viewInquiry.fee_range || 'N/A'}</p>
-                </div>
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-1">Meeting Type</p>
-                  <p className={`font-medium flex items-center gap-1 ${viewInquiry.meeting_type === 'online' ? 'text-green-600' : 'text-orange-600'}`}>
-                    {viewInquiry.meeting_type === 'online' ? <Video className="w-4 h-4" /> : <Users className="w-4 h-4" />}
-                    {viewInquiry.meeting_type === 'online' ? 'Online Meeting' : 'Offline Meeting'}
-                  </p>
-                </div>
-              </div>
-
-              {viewInquiry.programs_interested?.length > 0 && (
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-2">Programs Interested</p>
-                  <div className="flex flex-wrap gap-1">
-                    {viewInquiry.programs_interested.map((p, idx) => (
-                      <span key={idx} className="px-2 py-1 bg-[#1E3A5F]/10 rounded text-xs text-[#1E3A5F] capitalize font-medium">
-                        {p}
-                      </span>
-                    ))}
+              {editMode ? (
+                /* Edit Mode */
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">School Name</label>
+                      <Input
+                        value={editData.school_name}
+                        onChange={(e) => setEditData({...editData, school_name: e.target.value})}
+                        placeholder="School name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Contact Name</label>
+                      <Input
+                        value={editData.contact_name}
+                        onChange={(e) => setEditData({...editData, contact_name: e.target.value})}
+                        placeholder="Contact person"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Phone</label>
+                      <Input
+                        value={editData.phone}
+                        onChange={(e) => setEditData({...editData, phone: e.target.value})}
+                        placeholder="Phone number"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                      <Input
+                        value={editData.email}
+                        onChange={(e) => setEditData({...editData, email: e.target.value})}
+                        placeholder="Email"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Meeting Date</label>
+                      <Input
+                        type="date"
+                        value={editData.meeting_date}
+                        onChange={(e) => setEditData({...editData, meeting_date: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Meeting Time</label>
+                      <select
+                        value={editData.meeting_time}
+                        onChange={(e) => setEditData({...editData, meeting_time: e.target.value})}
+                        className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                      >
+                        <option value="">Select time</option>
+                        {TIME_SLOTS.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+                    <Textarea
+                      value={editData.notes}
+                      onChange={(e) => setEditData({...editData, notes: e.target.value})}
+                      placeholder="Internal notes..."
+                      className="min-h-[80px]"
+                    />
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <Button variant="outline" onClick={() => setEditMode(false)} className="flex-1">Cancel</Button>
+                    <Button onClick={handleSaveEdit} className="flex-1 bg-[#1E3A5F] hover:bg-[#152c4a]">
+                      <Save className="w-4 h-4 mr-1" /> Save Changes
+                    </Button>
                   </div>
                 </div>
-              )}
-
-              {viewInquiry.support_needed?.length > 0 && (
-                <div className="bg-slate-50 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 mb-2">Support Needed</p>
-                  <div className="flex flex-wrap gap-1">
-                    {viewInquiry.support_needed.map((s, idx) => (
-                      <span key={idx} className="px-2 py-1 bg-[#D63031]/10 rounded text-xs text-[#D63031] capitalize font-medium">
-                        {s}
-                      </span>
-                    ))}
+              ) : (
+                /* View Mode */
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-1">Contact Person</p>
+                      <p className="font-medium text-[#1E3A5F] flex items-center gap-1">
+                        <User className="w-4 h-4" /> {viewInquiry.contact_name}
+                      </p>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-1">Phone</p>
+                      <p className="font-medium text-[#1E3A5F] flex items-center gap-1">
+                        <Phone className="w-4 h-4" /> {viewInquiry.phone}
+                      </p>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-1">Email</p>
+                      <p className="font-medium text-[#1E3A5F] flex items-center gap-1">
+                        <Mail className="w-4 h-4" /> {viewInquiry.email || 'N/A'}
+                      </p>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-1">Location</p>
+                      <p className="font-medium text-[#1E3A5F] flex items-center gap-1">
+                        <MapPin className="w-4 h-4" /> {viewInquiry.location || 'N/A'}
+                      </p>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-1">Board</p>
+                      <p className="font-medium text-[#1E3A5F]">{viewInquiry.board || 'N/A'}</p>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-1">School Size</p>
+                      <p className="font-medium text-[#1E3A5F]">{viewInquiry.school_size || 'N/A'}</p>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-1">Fee Range</p>
+                      <p className="font-medium text-[#1E3A5F]">{viewInquiry.fee_range || 'N/A'}</p>
+                    </div>
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-1">Meeting Type</p>
+                      <p className={`font-medium flex items-center gap-1 ${viewInquiry.meeting_type === 'online' ? 'text-green-600' : 'text-orange-600'}`}>
+                        {viewInquiry.meeting_type === 'online' ? <Video className="w-4 h-4" /> : <Users className="w-4 h-4" />}
+                        {viewInquiry.meeting_type === 'online' ? 'Online Meeting' : 'Offline Meeting'}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              )}
 
-              {viewInquiry.meeting_date && (
-                <div className="bg-blue-50 rounded-lg p-3">
-                  <p className="text-xs text-blue-500 mb-1">Meeting Scheduled</p>
-                  <p className="font-medium text-blue-700 flex items-center gap-1">
-                    <Calendar className="w-4 h-4" /> 
-                    {viewInquiry.meeting_date} {viewInquiry.meeting_time && `at ${viewInquiry.meeting_time}`}
-                  </p>
-                </div>
-              )}
+                  {viewInquiry.programs_interested?.length > 0 && (
+                    <div className="bg-slate-50 rounded-lg p-3">
+                      <p className="text-xs text-slate-500 mb-2">Programs Interested</p>
+                      <div className="flex flex-wrap gap-1">
+                        {viewInquiry.programs_interested.map((p, idx) => (
+                          <span key={idx} className="px-2 py-1 bg-[#1E3A5F]/10 rounded text-xs text-[#1E3A5F] capitalize font-medium">
+                            {p}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-              {viewInquiry.conversion_amount && (
-                <div className="bg-green-50 rounded-lg p-3">
-                  <p className="text-xs text-green-500 mb-1">Conversion Details</p>
-                  <p className="font-medium text-green-700">
-                    Deal Amount: ₹{viewInquiry.conversion_amount}
-                  </p>
-                </div>
-              )}
+                  {viewInquiry.meeting_date && (
+                    <div className="bg-blue-50 rounded-lg p-3">
+                      <p className="text-xs text-blue-500 mb-1">Meeting Scheduled</p>
+                      <p className="font-medium text-blue-700 flex items-center gap-1">
+                        <Calendar className="w-4 h-4" /> 
+                        {viewInquiry.meeting_date} {viewInquiry.meeting_time && `at ${viewInquiry.meeting_time}`}
+                      </p>
+                    </div>
+                  )}
 
-              {viewInquiry.notes && (
-                <div className="bg-amber-50 rounded-lg p-3">
-                  <p className="text-xs text-amber-500 mb-1">Notes / Comments</p>
-                  <p className="text-amber-900 whitespace-pre-line">{viewInquiry.notes}</p>
-                </div>
-              )}
+                  {viewInquiry.conversion_amount && (
+                    <div className="bg-green-50 rounded-lg p-3">
+                      <p className="text-xs text-green-500 mb-1">Conversion Details</p>
+                      <p className="font-medium text-green-700">
+                        Deal Amount: ₹{viewInquiry.conversion_amount}
+                      </p>
+                    </div>
+                  )}
 
-              <div className="pt-4 border-t">
-                <p className="text-xs text-slate-400">
-                  Status: <span className="font-medium text-[#1E3A5F] capitalize">{viewInquiry.status?.replace('_', ' ')}</span>
-                  {' • '}Source: <span className="font-medium text-[#1E3A5F]">{viewInquiry.source || 'website'}</span>
-                </p>
-              </div>
+                  {viewInquiry.notes && (
+                    <div className="bg-amber-50 rounded-lg p-3">
+                      <p className="text-xs text-amber-500 mb-1">Notes</p>
+                      <p className="text-amber-900 whitespace-pre-line">{viewInquiry.notes}</p>
+                    </div>
+                  )}
+
+                  {/* Comments Section */}
+                  <div className="border-t pt-4">
+                    <h4 className="font-semibold text-[#1E3A5F] mb-3 flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4" />
+                      Comments ({viewInquiry.comments?.length || 0})
+                    </h4>
+                    
+                    {viewInquiry.comments?.length > 0 && (
+                      <div className="space-y-2 max-h-[150px] overflow-y-auto mb-3">
+                        {viewInquiry.comments.map((comment, idx) => (
+                          <div key={idx} className="bg-slate-50 rounded-lg p-3">
+                            <p className="text-sm text-slate-700">{comment.text}</p>
+                            <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
+                              <User className="w-3 h-3" />
+                              <span>{comment.author}</span>
+                              <span>•</span>
+                              <span>{comment.created_at ? new Date(comment.created_at).toLocaleString() : '-'}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Add Comment */}
+                    <div className="flex gap-2">
+                      <Input
+                        value={viewComment}
+                        onChange={(e) => setViewComment(e.target.value)}
+                        placeholder="Add a comment..."
+                        className="flex-1"
+                        onKeyDown={(e) => e.key === 'Enter' && handleAddViewComment()}
+                      />
+                      <Button onClick={handleAddViewComment} size="sm" className="bg-[#1E3A5F]">
+                        <Send className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 border-t">
+                    <p className="text-xs text-slate-400">
+                      Status: <span className="font-medium text-[#1E3A5F] capitalize">{viewInquiry.status?.replace('_', ' ')}</span>
+                      {viewInquiry.assigned_to && (
+                        <span className="ml-2">| Assigned: {getAssignedUserName(viewInquiry.assigned_to)}</span>
+                      )}
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </DialogContent>
