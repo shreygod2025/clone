@@ -561,73 +561,18 @@ const AboutPage = () => {
             </p>
           </div>
 
-          {!showPartnerForm && !partnerSubmitted && (
-            <div className="text-center">
-              <Button 
-                onClick={() => setShowPartnerForm(true)}
-                className="bg-white text-[#D63031] hover:bg-white/90 font-semibold px-8 py-3 rounded-full"
-                data-testid="growth-partner-btn"
-              >
-                Become a Partner
-              </Button>
-            </div>
-          )}
-
-          {partnerSubmitted && (
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 text-center">
-              <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mx-auto mb-4">
-                <Check className="w-8 h-8 text-[#D63031]" />
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-2">Application Submitted!</h3>
-              <p className="text-white/80">Our partnership team will contact you within 48 hours.</p>
-            </div>
-          )}
-
-          {showPartnerForm && !partnerSubmitted && (
-            <form onSubmit={handlePartnerSubmit} className="bg-white rounded-2xl p-6 md:p-8 animate-slide-up">
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Name *</label>
-                  <Input
-                    placeholder="Your name"
-                    value={partnerForm.name}
-                    onChange={(e) => setPartnerForm({...partnerForm, name: e.target.value})}
-                    data-testid="partner-name"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Email *</label>
-                  <Input
-                    type="email"
-                    placeholder="Your email"
-                    value={partnerForm.email}
-                    onChange={(e) => setPartnerForm({...partnerForm, email: e.target.value})}
-                    data-testid="partner-email"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Phone</label>
-                  <Input
-                    placeholder="Your phone"
-                    value={partnerForm.phone}
-                    onChange={(e) => setPartnerForm({...partnerForm, phone: e.target.value})}
-                    data-testid="partner-phone"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">City *</label>
-                  <select
-                    value={partnerForm.city}
-                    onChange={(e) => setPartnerForm({...partnerForm, city: e.target.value})}
-                    className="w-full h-10 px-4 border border-slate-200 rounded-lg"
-                    data-testid="partner-city"
-                  >
-                    <option value="">Select city</option>
-                    {CITIES.map(city => (
-                      <option key={city} value={city}>{city}</option>
-                    ))}
-                    <option value="Other">Other City</option>
-                  </select>
+          <div className="text-center">
+            <Link 
+              to="/growth-partner"
+              className="inline-flex items-center gap-2 bg-white text-[#D63031] hover:bg-white/90 font-semibold px-8 py-3 rounded-full transition-colors"
+              data-testid="growth-partner-btn"
+            >
+              Become a Partner
+              <ArrowRight className="w-5 h-5" />
+            </Link>
+          </div>
+        </div>
+      </section>
                 </div>
               </div>
               <div className="mt-4">
