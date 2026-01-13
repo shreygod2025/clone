@@ -133,6 +133,9 @@ class StudentInquiryCreate(BaseModel):
 
 class StudentInquiryUpdate(BaseModel):
     status: Optional[str] = None
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
     notes: Optional[str] = None
     demo_date: Optional[str] = None
     demo_time: Optional[str] = None
