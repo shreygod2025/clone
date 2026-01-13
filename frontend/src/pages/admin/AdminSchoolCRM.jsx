@@ -235,6 +235,48 @@ const AdminSchoolCRM = () => {
     }
   };
 
+  const handleSaveEdit = async () => {
+    if (!viewInquiry) return;
+    try {
+      await axios.patch(`${API}/schools/inquiry/${viewInquiry.id}`, {
+        school_name: editData.school_name,
+        contact_name: editData.contact_name,
+        phone: editData.phone,
+        email: editData.email,
+        meeting_date: editData.meeting_date || null,
+        meeting_time: editData.meeting_time || null,
+        notes: editData.notes
+      }, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Lead updated successfully');
+      setEditMode(false);
+      setViewInquiry(null);
+      fetchInquiries();
+    } catch (error) {
+      toast.error('Failed to update lead');
+    }
+  };
+
+  const handleAddViewComment = async () => {
+    if (!viewComment.trim() || !viewInquiry) return;
+    try {
+      await axios.post(`${API}/schools/comment/${viewInquiry.id}`, 
+        { text: viewComment },
+        { headers: getAuthHeaders() }
+      );
+      toast.success('Comment added');
+      setViewComment('');
+      // Refresh the viewInquiry data
+      const response = await axios.get(`${API}/schools/inquiries`, { headers: getAuthHeaders() });
+      const updatedInquiry = response.data.find(i => i.id === viewInquiry.id);
+      if (updatedInquiry) setViewInquiry(updatedInquiry);
+      fetchInquiries();
+    } catch (error) {
+      toast.error('Failed to add comment');
+    }
+  };
+
   const handleAddFollowup = async () => {
     if (!followupData.date) {
       toast.error('Please select a followup date');
