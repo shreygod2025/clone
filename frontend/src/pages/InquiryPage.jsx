@@ -290,7 +290,7 @@ const InquiryPage = () => {
         experience: formData.experience,
         grades_comfortable: formData.grades_comfortable,
         city: formData.city,
-        availability: formData.availability || 'Flexible',
+        availability: Array.isArray(formData.availability) ? formData.availability.join(', ') : (formData.availability || 'Flexible'),
         demo_ready: !!demoDate,
         demo_date: demoDate,
         demo_time: demoTime,
