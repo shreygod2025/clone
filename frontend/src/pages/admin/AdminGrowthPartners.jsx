@@ -55,6 +55,11 @@ const AdminGrowthPartners = () => {
   const [showAssignModal, setShowAssignModal] = useState(null);
   const [newComment, setNewComment] = useState('');
   
+  // View/Edit states
+  const [editMode, setEditMode] = useState(false);
+  const [editData, setEditData] = useState({ name: '', phone: '', email: '', city: '', details: '', notes: '' });
+  const [viewComment, setViewComment] = useState('');
+  
   // Form state
   const [newPartner, setNewPartner] = useState({
     name: '',
