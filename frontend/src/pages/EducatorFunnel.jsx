@@ -54,7 +54,7 @@ const EducatorFunnel = () => {
     grades_comfortable: [],
     city: '',
     other_city: '',
-    availability: '',
+    availability: [],
     demo_ready: false,
     demo_date: null,
     demo_time: '',

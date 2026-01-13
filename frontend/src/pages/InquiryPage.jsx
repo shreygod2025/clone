@@ -113,7 +113,7 @@ const InquiryPage = () => {
     skills: [],
     experience: '',
     grades_comfortable: [],
-    availability: '',
+    availability: [],
     
     // Team fields
     role: '',
