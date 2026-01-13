@@ -161,6 +161,47 @@ const AdminEducators = () => {
     }
   };
 
+  const handleSaveEdit = async () => {
+    if (!viewEducator) return;
+    try {
+      await axios.patch(`${API}/educators/application/${viewEducator.id}`, {
+        name: editData.name,
+        phone: editData.phone,
+        email: editData.email,
+        demo_date: editData.demo_date || null,
+        demo_time: editData.demo_time || null,
+        notes: editData.notes
+      }, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Educator updated successfully');
+      setEditMode(false);
+      setViewEducator(null);
+      fetchEducators();
+    } catch (error) {
+      toast.error('Failed to update educator');
+    }
+  };
+
+  const handleAddViewComment = async () => {
+    if (!viewComment.trim() || !viewEducator) return;
+    try {
+      await axios.post(`${API}/educators/comment/${viewEducator.id}`, 
+        { text: viewComment },
+        { headers: getAuthHeaders() }
+      );
+      toast.success('Comment added');
+      setViewComment('');
+      // Refresh the viewEducator data
+      const response = await axios.get(`${API}/educators/applications`, { headers: getAuthHeaders() });
+      const updated = response.data.find(i => i.id === viewEducator.id);
+      if (updated) setViewEducator(updated);
+      fetchEducators();
+    } catch (error) {
+      toast.error('Failed to add comment');
+    }
+  };
+
   const getAssignedUserName = (userId) => {
     if (!userId) return null;
     const teamUser = teamUsers.find(u => u.id === userId);
