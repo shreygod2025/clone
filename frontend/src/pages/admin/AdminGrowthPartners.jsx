@@ -726,28 +726,6 @@ const AdminGrowthPartners = () => {
           )}
         </DialogContent>
       </Dialog>
-                </div>
-                {viewPartner.comments?.length > 0 ? (
-                  <div className="space-y-3 max-h-[200px] overflow-y-auto">
-                    {viewPartner.comments.map((comment, idx) => (
-                      <div key={idx} className="bg-slate-50 rounded-lg p-3">
-                        <p className="text-sm text-slate-700">{comment.text}</p>
-                        <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
-                          <span>{comment.author}</span>
-                          <span>•</span>
-                          <span>{comment.created_at ? format(new Date(comment.created_at), 'MMM d, yyyy h:mm a') : '-'}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-slate-500 text-center py-4">No comments yet</p>
-                )}
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* Add Comment Modal */}
       <Dialog open={!!showCommentModal} onOpenChange={() => setShowCommentModal(null)}>
