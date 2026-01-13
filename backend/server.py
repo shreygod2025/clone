@@ -819,6 +819,97 @@ async def team_user_login(data: AdminLogin):
         }
     }
 
+# ========================
+# CENTER USER MANAGEMENT ENDPOINTS
+# ========================
+
+@api_router.post("/center-users")
+async def create_center_user(data: CenterUserCreate, user: dict = Depends(get_current_user)):
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can create center users")
+    
+    # Check if email already exists
+    existing = await db.center_users.find_one({"email": data.email})
+    if existing:
+        raise HTTPException(status_code=400, detail="Email already exists")
+    
+    # Hash password
+    hashed_password = bcrypt.hashpw(data.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    
+    center_user = CenterUser(
+        center_id=data.center_id,
+        center_name=data.center_name,
+        email=data.email,
+        name=data.name,
+        hashed_password=hashed_password
+    )
+    
+    await db.center_users.insert_one(center_user.model_dump())
+    return {"message": "Center user created", "id": center_user.id}
+
+@api_router.get("/center-users")
+async def list_center_users(user: dict = Depends(get_current_user)):
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can view center users")
+    
+    users = await db.center_users.find({}, {"_id": 0, "hashed_password": 0}).to_list(100)
+    return users
+
+@api_router.delete("/center-users/{user_id}")
+async def delete_center_user(user_id: str, user: dict = Depends(get_current_user)):
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can delete center users")
+    
+    await db.center_users.delete_one({"id": user_id})
+    return {"message": "Center user deleted"}
+
+@api_router.get("/center/demos")
+async def get_center_demos(user: dict = Depends(get_current_user)):
+    """Get demos for the logged-in center user's center"""
+    if user.get("role") != "center_user":
+        raise HTTPException(status_code=403, detail="Only center users can access this endpoint")
+    
+    center_name = user.get("center_name", "")
+    
+    # Find student inquiries that mention this center in notes or have offline_center mode
+    # Also check city matches
+    demos = await db.student_inquiries.find({
+        "$or": [
+            {"notes": {"$regex": center_name, "$options": "i"}},
+            {"learning_mode": "offline_center", "city": {"$regex": center_name.split('-')[0].strip() if '-' in center_name else center_name, "$options": "i"}}
+        ],
+        "status": {"$in": ["new", "demo_scheduled"]}
+    }, {"_id": 0}).sort("demo_date", 1).to_list(100)
+    
+    return demos
+
+@api_router.post("/center/demos")
+async def create_center_demo(data: StudentInquiryCreate, user: dict = Depends(get_current_user)):
+    """Quick add a demo for the logged-in center user's center"""
+    if user.get("role") != "center_user":
+        raise HTTPException(status_code=403, detail="Only center users can access this endpoint")
+    
+    center_name = user.get("center_name", "")
+    
+    inquiry = StudentInquiry(
+        learner_type=data.learner_type or "self",
+        age_group=data.age_group,
+        skill=data.skill,
+        learning_mode="offline_center",
+        city=center_name.split('-')[0].strip() if '-' in center_name else center_name,
+        learning_goal=data.learning_goal or "general",
+        name=data.name,
+        email=data.email,
+        phone=data.phone,
+        demo_date=data.demo_date,
+        demo_time=data.demo_time,
+        source=f"center_added ({center_name})",
+        notes=f"Center: {center_name}\n{data.notes or ''}"
+    )
+    
+    await db.student_inquiries.insert_one(inquiry.model_dump())
+    return inquiry.model_dump()
+
 @api_router.post("/auth/send-otp")
 async def send_otp(data: OTPRequest):
     # Generate OTP (in production, send via WhatsApp/Twilio)
