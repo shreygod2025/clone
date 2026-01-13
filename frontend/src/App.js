@@ -80,6 +80,7 @@ function App() {
             <Route path="/my-bookings" element={<MyBookingsPage />} />
             <Route path="/add" element={<InquiryPage />} />
             <Route path="/add/:username" element={<InquiryPage />} />
+            <Route path="/growth-partner" element={<GrowthPartnerPage />} />
             
             {/* SEO Course Pages */}
             <Route path="/courses" element={<CoursesListPage />} />
