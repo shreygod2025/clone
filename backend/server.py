@@ -205,6 +205,11 @@ class GrowthPartnerCreate(BaseModel):
 
 class GrowthPartnerUpdate(BaseModel):
     status: Optional[str] = None
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    city: Optional[str] = None
+    details: Optional[str] = None
     notes: Optional[str] = None
     interest_type: Optional[str] = None
     assigned_to: Optional[str] = None
@@ -240,6 +245,9 @@ class TeamApplicationCreate(BaseModel):
 
 class TeamApplicationUpdate(BaseModel):
     status: Optional[str] = None
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
     notes: Optional[str] = None
     assigned_to: Optional[str] = None
 
@@ -354,6 +362,9 @@ class EducatorApplicationCreate(BaseModel):
 
 class EducatorApplicationUpdate(BaseModel):
     status: Optional[str] = None
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
     notes: Optional[str] = None
     demo_date: Optional[str] = None
     demo_time: Optional[str] = None
