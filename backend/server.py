@@ -133,6 +133,9 @@ class StudentInquiry(BaseModel):
     source: str = "website"
     added_by: str = ""  # user_id who added this lead
     assigned_to: str = ""  # user_id assigned to handle this lead
+    assigned_educator_id: str = ""  # educator assigned to conduct demo
+    assigned_educator_name: str = ""  # educator name for display
+    meeting_link: str = ""  # Jitsi meeting link
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
