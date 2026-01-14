@@ -95,16 +95,19 @@ const AdminSupportUnified = () => {
       // Add source identifier
       const inquiryQueries = (inquiryResponse.data || []).map(q => ({ ...q, _source: 'inquiry' }));
       
-      // Support queries from SupportFlow.jsx (user-facing support)
+      // Support queries from SupportFlow.jsx (user-facing support) and Educator queries
       const supportQueries = (supportQueriesResponse.data || []).map(q => ({ 
         ...q, 
-        _source: 'user_support',
-        query_type: q.category || q.main_category || 'other',
-        query_details: q.details || q.reason || '',
-        inquiry_type: 'student',
-        name: q.contact_name || q.name || 'User',
-        phone: q.phone || '',
-        email: q.email || ''
+        _source: q.type === 'educator_query' ? 'educator' : 'user_support',
+        query_type: q.type === 'educator_query' ? q.category : (q.category || q.main_category || 'other'),
+        query_details: q.type === 'educator_query' 
+          ? `[${q.category_label || ''}] ${q.subcategory_label || ''}: ${q.query || ''}`
+          : (q.details || q.reason || ''),
+        inquiry_type: q.type === 'educator_query' ? 'educator' : 'student',
+        name: q.educator_name || q.contact_name || q.name || 'User',
+        phone: q.educator_phone || q.phone || '',
+        email: q.educator_email || q.email || '',
+        priority: q.priority || 'normal'
       }));
       
       const legacy = (legacyResponse.data || []).map(t => ({ 
