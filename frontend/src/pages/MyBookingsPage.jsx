@@ -282,20 +282,49 @@ const MyBookingsPage = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      {['new', 'confirmed', 'rescheduled'].includes(booking.status) && (
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setSelectedBooking(booking);
-                            setShowReschedule(true);
-                          }}
-                          className="text-[#D63031] border-[#D63031]/30 hover:bg-red-50"
-                          data-testid={`reschedule-${booking.id}`}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Join Demo Button - Only for online classes when joinable */}
+                      {isDemoJoinable(booking) && (
+                        <a
+                          href={generateMeetingLink(booking)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium text-sm transition-all duration-300 bg-gradient-to-r from-[#1E3A5F] to-[#D63031] hover:from-[#D63031] hover:to-[#1E3A5F] shadow-md hover:shadow-lg"
+                          data-testid={`join-demo-${booking.id}`}
                         >
-                          <CalendarClock className="w-4 h-4 mr-2" />
-                          Reschedule
-                        </Button>
+                          <Video className="w-4 h-4" />
+                          Join Demo
+                        </a>
+                      )}
+                      
+                      {['new', 'confirmed', 'rescheduled'].includes(booking.status) && (
+                        <>
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedBooking(booking);
+                              setShowReschedule(true);
+                            }}
+                            className="text-[#1E3A5F] border-[#1E3A5F]/30 hover:bg-[#1E3A5F]/5"
+                            data-testid={`reschedule-${booking.id}`}
+                          >
+                            <CalendarClock className="w-4 h-4 mr-2" />
+                            Reschedule
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            onClick={() => {
+                              setSelectedBooking(booking);
+                              setShowCancelModal(true);
+                              setCancelReason('');
+                            }}
+                            className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                            data-testid={`cancel-${booking.id}`}
+                          >
+                            <XCircle className="w-4 h-4 mr-2" />
+                            Cancel
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>
