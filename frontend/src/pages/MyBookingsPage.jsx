@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Calendar, Clock, MapPin, ArrowRight, CalendarClock, LogOut, Check, X, ChevronRight, BookOpen, Users, Video, MessageCircle, XCircle } from 'lucide-react';
+import { Calendar, Clock, MapPin, ArrowRight, CalendarClock, LogOut, Check, X, ChevronRight, BookOpen, Users, Video, MessageCircle, XCircle, Navigation, Home } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Calendar as CalendarComponent } from '../components/ui/calendar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Textarea } from '../components/ui/textarea';
 import { toast } from 'sonner';
 import { useUserAuth } from '../context/UserAuthContext';
-import { format, addDays, parseISO, isAfter, isBefore, addHours } from 'date-fns';
+import { format, addDays, parseISO, isAfter, isBefore, addHours, compareAsc } from 'date-fns';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 
