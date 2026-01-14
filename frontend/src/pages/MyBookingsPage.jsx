@@ -103,6 +103,55 @@ const MyBookingsPage = () => {
     }
   };
 
+  const handleCancelBooking = async () => {
+    if (!cancelReason) {
+      toast.error('Please select a reason for cancellation');
+      return;
+    }
+    setCancelling(true);
+    try {
+      await axios.post(`${API}/user/cancel-booking`, {
+        booking_id: selectedBooking.id,
+        user_type: user.user_type,
+        reason: cancelReason
+      });
+      toast.success('Demo cancelled successfully');
+      setShowCancelModal(false);
+      setSelectedBooking(null);
+      setCancelReason('');
+      fetchBookings();
+    } catch (error) {
+      toast.error('Failed to cancel booking');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  // Generate a meeting link based on booking ID
+  const generateMeetingLink = (booking) => {
+    // Create a unique Google Meet-like link using booking ID
+    const meetCode = booking.id?.slice(-10) || 'demo-meet';
+    return `https://meet.jit.si/OLL-Demo-${meetCode}`;
+  };
+
+  // Check if demo is joinable (within 15 mins before to 1 hour after scheduled time)
+  const isDemoJoinable = (booking) => {
+    if (!booking.demo_date || !booking.demo_time) return false;
+    if (!['new', 'confirmed', 'rescheduled'].includes(booking.status)) return false;
+    if (booking.learning_mode !== 'online') return false;
+    
+    try {
+      const demoDateTime = parseISO(`${booking.demo_date}T${booking.demo_time}:00`);
+      const now = new Date();
+      const joinWindowStart = addHours(demoDateTime, -0.25); // 15 mins before
+      const joinWindowEnd = addHours(demoDateTime, 1); // 1 hour after
+      
+      return isAfter(now, joinWindowStart) && isBefore(now, joinWindowEnd);
+    } catch {
+      return false;
+    }
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/');
