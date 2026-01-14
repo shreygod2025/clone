@@ -96,6 +96,17 @@ const AdminStudentCRM = () => {
     }
   };
 
+  const fetchOnboardedEducators = async () => {
+    try {
+      const response = await axios.get(`${API}/educators?status=onboarded`, {
+        headers: getAuthHeaders()
+      });
+      setOnboardedEducators(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch educators:', error);
+    }
+  };
+
   const fetchInquiries = async () => {
     setLoading(true);
     try {
@@ -122,6 +133,23 @@ const AdminStudentCRM = () => {
       fetchInquiries();
     } catch (error) {
       toast.error('Failed to update status');
+    }
+  };
+
+  const handleAssignEducator = async (educatorId, educatorName) => {
+    if (!showAssignModal) return;
+    try {
+      await axios.patch(`${API}/students/inquiry/${showAssignModal.id}`, {
+        assigned_educator_id: educatorId,
+        assigned_educator_name: educatorName
+      }, {
+        headers: getAuthHeaders()
+      });
+      toast.success(`Demo assigned to ${educatorName}`);
+      setShowAssignModal(null);
+      fetchInquiries();
+    } catch (error) {
+      toast.error('Failed to assign educator');
     }
   };
 
