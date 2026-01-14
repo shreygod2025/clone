@@ -313,6 +313,14 @@ const EducatorDashboard = () => {
     return styles[status] || 'bg-slate-100 text-slate-600';
   };
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D63031]"></div>
+      </div>
+    );
+  }
+
   if (!isLoggedIn || user?.role !== 'educator') return null;
 
   const appStatus = applicationData?.status || user?.status;
