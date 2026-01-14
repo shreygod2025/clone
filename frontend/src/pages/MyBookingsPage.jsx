@@ -436,26 +436,24 @@ const MyBookingsPage = () => {
             </div>
           )}
 
-          {/* Book Another & Support */}
+          {/* Book Another & Support - Subtle shadow buttons */}
           {bookings.length > 0 && (
-            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-              <Button
+            <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button
                 onClick={() => navigate(user?.user_type === 'school' ? '/school' : '/student')}
-                variant="outline"
-                className="border-[#1E3A5F] text-[#1E3A5F] hover:bg-[#1E3A5F]/5"
+                className="px-5 py-2.5 bg-white text-[#1E3A5F] text-sm font-medium rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
               >
                 {user?.user_type === 'school' ? 'Schedule Another Meeting' : 'Book Another Demo'}
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-              <Button
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              <button
                 onClick={handleSupportQuery}
-                variant="outline"
-                className="border-[#D63031] text-[#D63031] hover:bg-[#D63031]/5"
+                className="px-5 py-2.5 bg-white text-slate-600 text-sm font-medium rounded-xl shadow-md hover:shadow-lg transition-all duration-200 flex items-center gap-2"
                 data-testid="need-support-btn"
               >
-                <MessageCircle className="w-4 h-4 mr-2" />
-                I have a query / Need Support
-              </Button>
+                <MessageCircle className="w-4 h-4" />
+                I have a query
+              </button>
             </div>
           )}
 
