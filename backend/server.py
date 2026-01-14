@@ -608,12 +608,21 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         payload = jwt.decode(credentials.credentials, SECRET_KEY, algorithms=[ALGORITHM])
         email = payload.get("sub")
         role = payload.get("role", "admin")
+        educator_id = payload.get("educator_id")
         user_id = payload.get("user_id")
         center_id = payload.get("center_id")
         center_name = payload.get("center_name")
         
         if email is None:
             raise HTTPException(status_code=401, detail="Invalid token")
+        
+        # Check if this is an educator login
+        if role == "educator" and educator_id:
+            educator = await db.educator_applications.find_one({"id": educator_id}, {"_id": 0})
+            if educator:
+                educator["role"] = "educator"
+                educator["educator_id"] = educator_id
+                return educator
         
         # Check admins collection first
         user = await db.admins.find_one({"email": email}, {"_id": 0, "password": 0})
@@ -632,6 +641,13 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
         if center_user:
             center_user["role"] = "center_user"
             return center_user
+        
+        # Check educator_applications for educator logins
+        educator = await db.educator_applications.find_one({"email": email, "status": "onboarded"}, {"_id": 0})
+        if educator:
+            educator["role"] = "educator"
+            educator["educator_id"] = educator["id"]
+            return educator
         
         raise HTTPException(status_code=401, detail="User not found")
     except jwt.ExpiredSignatureError:
