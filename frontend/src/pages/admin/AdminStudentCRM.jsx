@@ -558,16 +558,18 @@ const AdminStudentCRM = () => {
                 )}
                 {inquiry.learning_mode && (
                   <p>
-                    <span className="text-slate-400">Mode:</span>{' '}
-                    <span className={`font-medium ${inquiry.learning_mode.includes('offline') ? 'text-[#D63031]' : 'text-[#1E3A5F]'}`}>
-                      {inquiry.learning_mode === 'online' ? 'Online' : 
-                       inquiry.learning_mode === 'offline_center' ? 'Offline (Center)' : 
-                       inquiry.learning_mode === 'offline_home' ? 'Offline (Home)' : 
-                       inquiry.learning_mode.includes('offline') ? 'Offline' : 'Online'}
-                    </span>
-                    {inquiry.learning_mode.includes('offline') && inquiry.city && (
-                      <span className="text-slate-500"> • {inquiry.city}</span>
-                    )}
+                    <span className="text-slate-400">Location:</span>{' '}
+                    {(() => {
+                      const locationInfo = getLocationDisplay(inquiry);
+                      return (
+                        <span className={`font-medium ${
+                          locationInfo.type === 'online' ? 'text-[#1E3A5F]' : 
+                          locationInfo.type === 'home' ? 'text-green-600' : 'text-[#D63031]'
+                        }`}>
+                          {locationInfo.text}
+                        </span>
+                      );
+                    })()}
                   </p>
                 )}
                 {inquiry.demo_date && (
