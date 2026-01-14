@@ -655,6 +655,54 @@ const EducatorFunnel = () => {
                   </div>
                 </div>
 
+                {/* Teaching Mode Preference Section */}
+                <div className="mt-6 pt-6 border-t border-slate-200">
+                  <h3 className="font-semibold text-[#1E3A5F] text-base sm:text-lg mb-4">Preferred Teaching Mode *</h3>
+                  <div className="grid sm:grid-cols-3 gap-3">
+                    {getAvailableTeachingModes().map(mode => {
+                      const IconComponent = mode.icon;
+                      const isSelected = formData.teaching_mode.includes(mode.id);
+                      return (
+                        <button
+                          key={mode.id}
+                          type="button"
+                          onClick={() => !mode.disabled && toggleTeachingMode(mode.id)}
+                          disabled={mode.disabled}
+                          className={`p-4 rounded-xl border-2 text-left transition-all ${
+                            mode.disabled 
+                              ? 'border-slate-100 bg-slate-50 opacity-50 cursor-not-allowed'
+                              : isSelected 
+                                ? 'border-[#D63031] bg-red-50'
+                                : 'border-slate-200 hover:border-slate-300 bg-white'
+                          }`}
+                          title={mode.tooltip || ''}
+                          data-testid={`teaching-mode-${mode.id}`}
+                        >
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                              isSelected ? 'bg-[#D63031]/10' : 'bg-slate-100'
+                            }`}>
+                              <IconComponent className={`w-5 h-5 ${isSelected ? 'text-[#D63031]' : 'text-slate-500'}`} />
+                            </div>
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                              isSelected ? 'border-[#D63031] bg-[#D63031]' : 'border-slate-300'
+                            }`}>
+                              {isSelected && <Check className="w-3 h-3 text-white" />}
+                            </div>
+                          </div>
+                          <p className={`font-medium text-sm ${isSelected ? 'text-[#D63031]' : 'text-slate-700'}`}>
+                            {mode.label}
+                          </p>
+                          <p className="text-xs text-slate-500 mt-1">{mode.description}</p>
+                          {mode.disabled && (
+                            <p className="text-xs text-amber-600 mt-2">No center in your city</p>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 {/* Demo Class Section */}
                 <div className="mt-6 pt-6 border-t border-slate-200">
                   <div className="flex items-center gap-2 sm:gap-3 mb-4">
