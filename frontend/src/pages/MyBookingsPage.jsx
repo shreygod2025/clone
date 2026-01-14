@@ -364,14 +364,15 @@ const MyBookingsPage = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {/* Join Demo Button - For online classes */}
+                    {/* Action Buttons - Mobile Optimized */}
+                    <div className="flex flex-col gap-2 w-full md:w-auto">
+                      {/* Join Demo Button - Full width on mobile */}
                       {isOnlineMode(booking) && ['new', 'confirmed', 'rescheduled'].includes(booking.status) && (
                         <a
                           href={generateMeetingLink(booking)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium text-sm transition-all duration-300 shadow-md hover:shadow-lg ${
+                          className={`w-full md:w-auto inline-flex items-center justify-center gap-2 px-4 py-3 md:py-2 rounded-lg text-white font-medium text-sm transition-all duration-300 shadow-md hover:shadow-lg ${
                             isDemoJoinable(booking)
                               ? 'bg-gradient-to-r from-[#1E3A5F] to-[#D63031] hover:from-[#D63031] hover:to-[#1E3A5F] animate-pulse'
                               : 'bg-gradient-to-r from-[#1E3A5F] to-[#D63031] hover:from-[#D63031] hover:to-[#1E3A5F]'
@@ -383,13 +384,13 @@ const MyBookingsPage = () => {
                         </a>
                       )}
 
-                      {/* Go to Center Button - For offline center */}
+                      {/* Go to Center Button - Full width on mobile */}
                       {isOfflineCenter(booking) && ['new', 'confirmed', 'rescheduled'].includes(booking.status) && (
                         <a
                           href={generateCenterMapsLink(booking)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium text-sm transition-all duration-300 bg-gradient-to-r from-[#1E3A5F] to-[#D63031] hover:from-[#D63031] hover:to-[#1E3A5F] shadow-md hover:shadow-lg"
+                          className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-4 py-3 md:py-2 rounded-lg text-white font-medium text-sm transition-all duration-300 bg-gradient-to-r from-[#1E3A5F] to-[#D63031] hover:from-[#D63031] hover:to-[#1E3A5F] shadow-md hover:shadow-lg"
                           data-testid={`go-to-center-${booking.id}`}
                         >
                           <Navigation className="w-4 h-4" />
@@ -397,34 +398,36 @@ const MyBookingsPage = () => {
                         </a>
                       )}
                       
+                      {/* Reschedule & Cancel - Half-half on mobile */}
                       {['new', 'confirmed', 'rescheduled'].includes(booking.status) && (
-                        <>
+                        <div className="flex gap-2 w-full">
                           <Button
                             variant="outline"
                             onClick={() => {
                               setSelectedBooking(booking);
                               setShowReschedule(true);
                             }}
-                            className="text-[#1E3A5F] border-[#1E3A5F]/30 hover:bg-[#1E3A5F]/5"
+                            className="flex-1 text-[#1E3A5F] border-[#1E3A5F]/30 hover:bg-[#1E3A5F]/5"
                             data-testid={`reschedule-${booking.id}`}
                           >
-                            <CalendarClock className="w-4 h-4 mr-2" />
-                            Reschedule
+                            <CalendarClock className="w-4 h-4 mr-1 md:mr-2" />
+                            <span className="hidden sm:inline">Reschedule</span>
+                            <span className="sm:hidden">Reschedule</span>
                           </Button>
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             onClick={() => {
                               setSelectedBooking(booking);
                               setShowCancelModal(true);
                               setCancelReason('');
                             }}
-                            className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                            className="flex-1 text-red-500 border-red-200 hover:bg-red-50"
                             data-testid={`cancel-${booking.id}`}
                           >
-                            <XCircle className="w-4 h-4 mr-2" />
+                            <XCircle className="w-4 h-4 mr-1 md:mr-2" />
                             Cancel
                           </Button>
-                        </>
+                        </div>
                       )}
                     </div>
                   </div>
