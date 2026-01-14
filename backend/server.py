@@ -649,6 +649,64 @@ def serialize_doc(doc: dict) -> dict:
             doc[key] = value.isoformat()
     return doc
 
+async def auto_assign_educator(skill: str, city: str = "", learning_mode: str = "online") -> dict:
+    """
+    Auto-assign an onboarded educator based on skill match.
+    Returns educator dict with id and name, or empty dict if none found.
+    Uses round-robin based on number of current assignments.
+    """
+    # Normalize skill name for matching
+    skill_lower = skill.lower() if skill else ""
+    
+    # Find all onboarded educators who teach this skill
+    educators = await db.educator_applications.find({
+        "status": "onboarded",
+        "skills": {"$elemMatch": {"$regex": skill_lower, "$options": "i"}}
+    }, {"_id": 0}).to_list(100)
+    
+    if not educators:
+        # Try partial match
+        educators = await db.educator_applications.find({
+            "status": "onboarded"
+        }, {"_id": 0}).to_list(100)
+        # Filter by skill manually
+        educators = [e for e in educators if any(skill_lower in s.lower() for s in e.get('skills', []))]
+    
+    if not educators:
+        return {}
+    
+    # If city specified and offline mode, prefer educators in same city
+    if city and learning_mode != "online":
+        city_educators = [e for e in educators if e.get('city', '').lower() == city.lower()]
+        if city_educators:
+            educators = city_educators
+    
+    # Get assignment counts for round-robin
+    educator_ids = [e['id'] for e in educators]
+    assignment_counts = {}
+    
+    for eid in educator_ids:
+        count = await db.student_inquiries.count_documents({
+            "assigned_educator_id": eid,
+            "status": {"$in": ["new", "confirmed", "rescheduled"]}
+        })
+        assignment_counts[eid] = count
+    
+    # Select educator with least assignments
+    selected = min(educators, key=lambda e: assignment_counts.get(e['id'], 0))
+    
+    return {
+        "id": selected['id'],
+        "name": selected['name'],
+        "phone": selected.get('phone', ''),
+        "email": selected.get('email', '')
+    }
+
+def generate_meeting_link(inquiry_id: str) -> str:
+    """Generate a unique Jitsi meeting link for a booking"""
+    meet_code = inquiry_id[-10:] if inquiry_id else 'demo-meet'
+    return f"https://meet.jit.si/OLLDemo{meet_code}"
+
 # ========================
 # AUTH ENDPOINTS
 # ========================
