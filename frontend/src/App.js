@@ -81,6 +81,7 @@ function App() {
             {/* User Auth Routes */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/my-bookings" element={<MyBookingsPage />} />
+            <Route path="/educator-dashboard" element={<EducatorDashboard />} />
             <Route path="/add" element={<InquiryPage />} />
             <Route path="/add/:username" element={<InquiryPage />} />
             <Route path="/growth-partner" element={<GrowthPartnerPage />} />
