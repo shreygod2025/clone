@@ -91,7 +91,8 @@ const Navbar = ({ showBookDemo = false, onBookDemo }) => {
               </Button>
             )}
             
-            {showBookDemo && (
+            {/* Hide Book Demo for educators */}
+            {showBookDemo && !isEducator && (
               <Button 
                 onClick={onBookDemo}
                 className="bg-[#D63031] hover:bg-[#b52828] text-white ml-2"
