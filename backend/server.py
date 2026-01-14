@@ -1830,6 +1830,118 @@ async def educator_complete_demo(inquiry_id: str, data: dict, user: dict = Depen
     
     return {"message": "Demo marked as completed"}
 
+# ========================
+# EDUCATOR APPLICATION MANAGEMENT (For Admin)
+# ========================
+
+class EducatorDemoRating(BaseModel):
+    """Rating structure for educator demo evaluation"""
+    personality: dict  # {score: 1-5, sub_scores: {confidence: 1-5, enthusiasm: 1-5, professionalism: 1-5}}
+    communication: dict  # {score: 1-5, sub_scores: {clarity: 1-5, engagement: 1-5, responsiveness: 1-5}}
+    expertise: dict  # {score: 1-5, sub_scores: {subject_knowledge: 1-5, teaching_methodology: 1-5, problem_solving: 1-5}}
+    technical: dict  # {webcam: bool, mic: bool, internet: str, notes: str}
+    overall_score: float
+    feedback: str = ""
+    recommendation: str = ""  # onboard, reject, retake
+
+@api_router.post("/educators/complete-demo/{app_id}")
+async def complete_educator_demo_with_rating(
+    app_id: str, 
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Mark educator demo as completed with detailed rating"""
+    # Get the application
+    application = await db.educator_applications.find_one({"id": app_id}, {"_id": 0})
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    # Calculate overall score from ratings
+    rating_data = data.get("rating", {})
+    personality = rating_data.get("personality", {})
+    communication = rating_data.get("communication", {})
+    expertise = rating_data.get("expertise", {})
+    technical = rating_data.get("technical", {})
+    
+    # Calculate average scores
+    personality_score = personality.get("score", 3)
+    communication_score = communication.get("score", 3)
+    expertise_score = expertise.get("score", 3)
+    
+    overall_score = round((personality_score + communication_score + expertise_score) / 3, 1)
+    
+    demo_rating = {
+        "personality": personality,
+        "communication": communication,
+        "expertise": expertise,
+        "technical": technical,
+        "overall_score": overall_score,
+        "feedback": data.get("feedback", ""),
+        "recommendation": data.get("recommendation", "pending"),
+        "rated_by": user.get("name", "Admin"),
+        "rated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Determine new status based on recommendation
+    new_status = "demo_completed"
+    if data.get("recommendation") == "onboard":
+        new_status = "onboarded"
+    elif data.get("recommendation") == "reject":
+        new_status = "archived"
+    
+    # Update the application
+    update_data = {
+        "status": new_status,
+        "demo_rating": demo_rating,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    if new_status == "onboarded":
+        update_data["onboarding_date"] = datetime.now(timezone.utc).isoformat()
+    
+    await db.educator_applications.update_one(
+        {"id": app_id},
+        {"$set": update_data, "$push": {
+            "comments": {
+                "id": str(uuid.uuid4()),
+                "text": f"Demo completed. Overall Score: {overall_score}/5. Recommendation: {data.get('recommendation', 'pending')}",
+                "author": user.get("name", "Admin"),
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+        }}
+    )
+    
+    return {
+        "message": "Demo rating saved successfully",
+        "overall_score": overall_score,
+        "new_status": new_status
+    }
+
+@api_router.get("/educators/my-application")
+async def get_my_educator_application(user: dict = Depends(get_current_user)):
+    """Get educator's own application details"""
+    educator_id = user.get("educator_id") or user.get("id")
+    phone = user.get("phone")
+    email = user.get("email")
+    
+    # Find by id, phone, or email
+    application = None
+    if educator_id:
+        application = await db.educator_applications.find_one({"id": educator_id}, {"_id": 0})
+    if not application and phone:
+        application = await db.educator_applications.find_one({"phone": phone}, {"_id": 0})
+    if not application and email:
+        application = await db.educator_applications.find_one({"email": email}, {"_id": 0})
+    
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    # Generate meeting link if not present
+    if not application.get("meeting_link"):
+        application["meeting_link"] = generate_meeting_link(application["id"])
+    
+    return application
+
 # Open Requirements
 @api_router.get("/requirements", response_model=List[OpenRequirement])
 async def get_open_requirements(city: Optional[str] = None, skill: Optional[str] = None):
