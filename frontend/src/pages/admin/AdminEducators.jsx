@@ -140,7 +140,69 @@ const AdminEducators = () => {
   };
 
   const handleDemoCompleted = async (educator) => {
-    await handleStatusChange(educator, 'demo_completed');
+    // Open rating modal instead of direct status change
+    setShowRatingModal(educator);
+    setRatingData({
+      personality: { score: 3, sub_scores: {} },
+      communication: { score: 3, sub_scores: {} },
+      expertise: { score: 3, sub_scores: {} },
+      technical: { webcam: true, mic: true, internet: 'good', notes: '' },
+      feedback: '',
+      recommendation: 'pending'
+    });
+  };
+
+  const handleSubmitRating = async () => {
+    if (!showRatingModal) return;
+    
+    try {
+      await axios.post(`${API}/educators/complete-demo/${showRatingModal.id}`, {
+        rating: ratingData,
+        feedback: ratingData.feedback,
+        recommendation: ratingData.recommendation
+      }, {
+        headers: getAuthHeaders()
+      });
+      
+      toast.success('Demo completed and rating saved');
+      setShowRatingModal(null);
+      fetchEducators();
+    } catch (error) {
+      toast.error('Failed to save rating');
+    }
+  };
+
+  // Generate Jitsi meeting link for admin (moderator)
+  const generateMeetingLink = (educator) => {
+    const meetCode = educator.id?.slice(-10) || 'demo-meet';
+    const roomName = `OLLDemo${meetCode}`;
+    const config = {
+      'config.prejoinPageEnabled': true,
+      'config.startWithAudioMuted': false,
+      'config.startWithVideoMuted': false,
+      'config.enableLobby': true,
+      'userInfo.displayName': 'OLL Admin',
+      'userInfo.moderator': true
+    };
+    const configString = Object.entries(config)
+      .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+      .join('&');
+    return `https://meet.jit.si/${roomName}#${configString}`;
+  };
+
+  // Check if demo is joinable (within 30 mins before to 1.5 hours after)
+  const isDemoJoinable = (educator) => {
+    if (!educator.demo_date || !educator.demo_time) return false;
+    if (educator.status !== 'demo_scheduled') return false;
+    try {
+      const demoDateTime = parseISO(`${educator.demo_date}T${educator.demo_time}:00`);
+      const now = new Date();
+      const joinWindowStart = addHours(demoDateTime, -0.5);
+      const joinWindowEnd = addHours(demoDateTime, 1.5);
+      return isAfter(now, joinWindowStart) && isBefore(now, joinWindowEnd);
+    } catch {
+      return false;
+    }
   };
 
   const handleOnboard = async (educator) => {
