@@ -1071,16 +1071,16 @@ const StudentFunnel = () => {
                 Back
               </Button>
               {/* Hide Continue button on OTP and action steps since they have their own navigation */}
-              {activeSteps[currentStep].id !== 'otp' && activeSteps[currentStep].id !== 'action' && (
+              {currentStepData?.id !== 'otp' && currentStepData?.id !== 'action' && (
                 <Button
                   onClick={handleNext}
                   disabled={submitting || otpLoading}
                   className="btn-primary flex items-center gap-2"
                   data-testid="next-btn"
                 >
-                  {isLoggedIn && activeSteps[currentStep].id === 'schedule'
+                  {isLoggedIn && currentStepData?.id === 'schedule'
                     ? (submitting ? 'Booking...' : 'Book Demo')
-                    : activeSteps[currentStep].id === 'contact'
+                    : currentStepData?.id === 'contact'
                     ? 'Verify Phone'
                     : 'Continue'}
                   <ArrowRight className="w-4 h-4" />
