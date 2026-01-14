@@ -333,9 +333,9 @@ const MyBookingsPage = () => {
             </div>
           )}
 
-          {/* Book Another */}
+          {/* Book Another & Support */}
           {bookings.length > 0 && (
-            <div className="mt-8 text-center">
+            <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
               <Button
                 onClick={() => navigate(user?.user_type === 'school' ? '/school' : '/student')}
                 variant="outline"
@@ -343,6 +343,15 @@ const MyBookingsPage = () => {
               >
                 {user?.user_type === 'school' ? 'Schedule Another Meeting' : 'Book Another Demo'}
                 <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+              <Button
+                onClick={() => navigate('/student?support=true')}
+                variant="outline"
+                className="border-[#D63031] text-[#D63031] hover:bg-[#D63031]/5"
+                data-testid="need-support-btn"
+              >
+                <MessageCircle className="w-4 h-4 mr-2" />
+                I have a query / Need Support
               </Button>
             </div>
           )}
