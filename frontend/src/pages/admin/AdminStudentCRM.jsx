@@ -299,6 +299,51 @@ const AdminStudentCRM = () => {
     return teamUser?.name || null;
   };
 
+  // Helper functions for meeting links and location
+  const generateMeetingLink = (inquiry) => {
+    const meetCode = inquiry.id?.slice(-10) || 'demo-meet';
+    return `https://meet.jit.si/OLL-Demo-${meetCode}`;
+  };
+
+  const isDemoJoinable = (inquiry) => {
+    if (!inquiry.demo_date || !inquiry.demo_time) return false;
+    if (!['new', 'demo_scheduled'].includes(inquiry.status)) return false;
+    if (inquiry.learning_mode !== 'online') return false;
+    
+    try {
+      const demoDateTime = parseISO(`${inquiry.demo_date}T${inquiry.demo_time}:00`);
+      const now = new Date();
+      const joinWindowStart = addHours(demoDateTime, -0.25);
+      const joinWindowEnd = addHours(demoDateTime, 1);
+      return isAfter(now, joinWindowStart) && isBefore(now, joinWindowEnd);
+    } catch {
+      return false;
+    }
+  };
+
+  const isOnlineMode = (inquiry) => inquiry.learning_mode === 'online';
+  const isOfflineCenter = (inquiry) => inquiry.learning_mode === 'offline_center';
+  const isOfflineHome = (inquiry) => inquiry.learning_mode === 'offline_home';
+
+  const generateCenterMapsLink = (inquiry) => {
+    const centerName = inquiry.selected_center_name || inquiry.center_name || 'OLL Center';
+    const city = inquiry.city || '';
+    const query = encodeURIComponent(`${centerName} ${city}`);
+    return `https://www.google.com/maps/search/?api=1&query=${query}`;
+  };
+
+  const getLocationDisplay = (inquiry) => {
+    if (isOnlineMode(inquiry)) {
+      return { type: 'online', text: 'Online Class', icon: Video };
+    } else if (isOfflineCenter(inquiry)) {
+      const centerName = inquiry.selected_center_name || inquiry.center_name || 'OLL Center';
+      return { type: 'center', text: `${centerName}, ${inquiry.city || ''}`, icon: MapPin };
+    } else if (isOfflineHome(inquiry)) {
+      return { type: 'home', text: `At Home - ${inquiry.address || inquiry.city || ''}`, icon: Home };
+    }
+    return { type: 'unknown', text: inquiry.city || 'Location TBD', icon: MapPin };
+  };
+
   const filteredInquiries = inquiries.filter(inq => {
     const matchesSearch = inq.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       inq.phone?.includes(searchQuery);
