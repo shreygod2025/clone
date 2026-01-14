@@ -88,7 +88,7 @@ const EducatorDashboard = () => {
 
   useEffect(() => {
     // Wait for auth loading to complete before checking login status
-    if (loading) return;
+    if (authLoading) return;
     
     if (!isLoggedIn || user?.role !== 'educator') {
       navigate('/login');
@@ -99,7 +99,7 @@ const EducatorDashboard = () => {
       fetchDemos();
       fetchAvailableEducators();
     }
-  }, [isLoggedIn, user, navigate, loading]);
+  }, [isLoggedIn, user, navigate, authLoading]);
 
   const getAuthHeaders = () => ({
     'Authorization': `Bearer ${token}`,
