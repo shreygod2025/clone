@@ -50,7 +50,26 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## What's Been Implemented (January 2026)
 
-### Latest Session (Jan 13, 2026)
+### Latest Session (Jan 14, 2026)
+- ✅ **Student Form Improvements:**
+  - "Book Free Demo Class" button now appears ABOVE "See Course Details" (primary action)
+  - "Resend OTP" link now appears BELOW "Confirm Booking" button
+  - Fixed runtime error after OTP confirmation (currentStepData guard)
+- ✅ **My Bookings Page Enhancements:**
+  - Bookings sorted by earliest upcoming date
+  - **Join Demo button** (blue-red gradient) for online classes - links to Jitsi Meet
+  - **Go to Center button** for offline center bookings - opens Google Maps
+  - **At Home** display for offline home bookings with address
+  - **Cancel Demo** feature with reason selection (5 options)
+  - Support button now navigates without logging out user
+- ✅ **Admin CRM Join/Navigate Buttons:**
+  - Student CRM shows "Join Demo" for online bookings
+  - Student CRM shows "Go to Center" for offline center bookings
+  - Location display enhanced: "Online Class", "Center Name, City", "At Home - Address"
+- ✅ **Navigation Fix:**
+  - Logo click keeps logged-in users on their dashboard (/my-bookings)
+
+### Previous Session (Jan 13, 2026)
 - ✅ **Enhanced View/Edit Popup for ALL CRMs:**
   - School CRM, Educators CRM, Growth Partners CRM now have inline editing
   - View popup shows Edit button to switch to edit mode
