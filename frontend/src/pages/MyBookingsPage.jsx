@@ -30,11 +30,22 @@ const MyBookingsPage = () => {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showReschedule, setShowReschedule] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [newDate, setNewDate] = useState(null);
   const [newTime, setNewTime] = useState('');
   const [rescheduling, setRescheduling] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
   const hasFetched = useRef(false);
+
+  const CANCEL_REASONS = [
+    { value: 'schedule_conflict', label: 'Schedule conflict' },
+    { value: 'found_alternative', label: 'Found an alternative' },
+    { value: 'not_interested', label: 'No longer interested' },
+    { value: 'financial', label: 'Financial reasons' },
+    { value: 'other', label: 'Other reason' }
+  ];
 
   useEffect(() => {
     if (!isLoggedIn) {
