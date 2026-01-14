@@ -964,15 +964,63 @@ async def create_center_demo(data: StudentInquiryCreate, user: dict = Depends(ge
 
 @api_router.post("/auth/send-otp")
 async def send_otp(data: OTPRequest):
-    # Generate OTP (in production, send via WhatsApp/Twilio)
-    otp = "1111"  # Mock OTP for testing
+    import random
+    import httpx
+    
+    # Generate random 4-digit OTP
+    otp = str(random.randint(1000, 9999))
+    
+    # Store OTP
     otp_store[data.phone] = {
         "otp": otp,
         "user_type": data.user_type,
         "expires": datetime.now(timezone.utc) + timedelta(minutes=10)
     }
-    # TODO: Integrate Twilio WhatsApp OTP in production
-    return {"message": "OTP sent via WhatsApp", "hint": "Use 1111 for testing"}
+    
+    # AiSensy WhatsApp API Integration
+    AISENSY_API_KEY = os.environ.get("AISENSY_API_KEY", "")
+    
+    if AISENSY_API_KEY:
+        try:
+            # Format phone number with country code
+            phone_number = data.phone if data.phone.startswith("91") else f"91{data.phone}"
+            
+            # AiSensy API endpoint
+            aisensy_url = "https://backend.aisensy.com/campaign/t1/api/v2"
+            
+            payload = {
+                "apiKey": AISENSY_API_KEY,
+                "campaignName": "otp_verification",
+                "destination": phone_number,
+                "userName": "OLL Student",
+                "templateParams": [otp],
+                "source": "OLL Platform",
+                "media": {},
+                "buttons": [],
+                "carouselCards": [],
+                "location": {}
+            }
+            
+            async with httpx.AsyncClient() as client:
+                response = await client.post(aisensy_url, json=payload, timeout=30.0)
+                
+                if response.status_code == 200:
+                    return {"message": "OTP sent via WhatsApp", "sent": True}
+                else:
+                    print(f"AiSensy API error: {response.status_code} - {response.text}")
+                    # Fallback to mock OTP if API fails
+                    otp_store[data.phone]["otp"] = "1111"
+                    return {"message": "OTP sent (test mode)", "hint": "Use 1111 for testing", "sent": False}
+                    
+        except Exception as e:
+            print(f"AiSensy error: {str(e)}")
+            # Fallback to mock OTP
+            otp_store[data.phone]["otp"] = "1111"
+            return {"message": "OTP sent (test mode)", "hint": "Use 1111 for testing", "sent": False}
+    else:
+        # No API key - use mock OTP
+        otp_store[data.phone]["otp"] = "1111"
+        return {"message": "OTP sent (test mode)", "hint": "Use 1111 for testing", "sent": False}
 
 @api_router.post("/auth/verify-otp")
 async def verify_otp(data: OTPVerify):
