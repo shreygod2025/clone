@@ -168,6 +168,8 @@ class StudentInquiryUpdate(BaseModel):
     conversion_amount: Optional[str] = None
     sessions_count: Optional[str] = None
     assigned_to: Optional[str] = None
+    assigned_educator_id: Optional[str] = None
+    assigned_educator_name: Optional[str] = None
 
 # Comment Model (shared across CRMs)
 class Comment(BaseModel):
