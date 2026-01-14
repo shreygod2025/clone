@@ -297,12 +297,12 @@ const MyBookingsPage = () => {
               <p className="text-slate-500 mt-4">Loading your bookings...</p>
             </div>
           ) : bookings.length === 0 ? (
-            <div className="glass-card rounded-2xl p-8 text-center">
-              <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
-                <Calendar className="w-8 h-8 text-slate-400" />
+            <div className="glass-card rounded-2xl p-6 text-center">
+              <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                <Calendar className="w-7 h-7 text-slate-400" />
               </div>
-              <h2 className="text-xl font-semibold text-[#1E3A5F] mb-2">No Bookings Yet</h2>
-              <p className="text-slate-500 mb-6">
+              <h2 className="text-lg font-semibold text-[#1E3A5F] mb-1">No Bookings Yet</h2>
+              <p className="text-slate-500 text-sm mb-4">
                 You haven&apos;t made any bookings with this phone number.
               </p>
               <Button 
@@ -314,16 +314,17 @@ const MyBookingsPage = () => {
               </Button>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {bookings.map((booking) => (
                 <div 
                   key={booking.id}
-                  className="glass-card rounded-2xl p-6 hover:shadow-lg transition-shadow"
+                  className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow border border-slate-100"
                 >
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="font-semibold text-[#1E3A5F] text-lg">
+                  <div className="flex flex-col gap-3">
+                    {/* Header Row */}
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="font-semibold text-[#1E3A5F]">
                           {user?.user_type === 'school' 
                             ? booking.school_name 
                             : user?.user_type === 'educator'
@@ -331,41 +332,40 @@ const MyBookingsPage = () => {
                             : booking.skill?.charAt(0).toUpperCase() + booking.skill?.slice(1) || 'Demo'
                           }
                         </h3>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
-                          {booking.status?.replace('_', ' ').toUpperCase() || 'NEW'}
-                        </span>
-                      </div>
-                      
-                      <div className="space-y-1 text-sm text-slate-600">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-slate-400" />
-                          <span>
+                        <div className="flex items-center gap-3 mt-1 text-sm text-slate-500">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5" />
                             {formatDate(booking.demo_date || booking.meeting_date)}
                           </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-slate-400" />
-                          <span>{booking.demo_time || booking.meeting_time || 'Time not set'}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {(() => {
-                            const locationInfo = getLocationDisplay(booking);
-                            const LocationIcon = locationInfo.icon;
-                            return (
-                              <>
-                                <LocationIcon className="w-4 h-4 text-slate-400" />
-                                <span className={locationInfo.type === 'home' ? 'text-green-600 font-medium' : ''}>
-                                  {locationInfo.text}
-                                </span>
-                              </>
-                            );
-                          })()}
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5" />
+                            {booking.demo_time || booking.meeting_time || 'TBD'}
+                          </span>
                         </div>
                       </div>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
+                        {booking.status?.replace('_', ' ').toUpperCase() || 'NEW'}
+                      </span>
+                    </div>
+                    
+                    {/* Location Row */}
+                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                      {(() => {
+                        const locationInfo = getLocationDisplay(booking);
+                        const LocationIcon = locationInfo.icon;
+                        return (
+                          <>
+                            <LocationIcon className="w-4 h-4 text-slate-400" />
+                            <span className={locationInfo.type === 'home' ? 'text-green-600 font-medium' : ''}>
+                              {locationInfo.text}
+                            </span>
+                          </>
+                        );
+                      })()}
                     </div>
 
                     {/* Action Buttons - Mobile Optimized */}
-                    <div className="flex flex-col gap-2 w-full md:w-auto">
+                    <div className="flex flex-col gap-2 pt-2 border-t border-slate-100">
                       {/* Join Demo Button - Full width on mobile */}
                       {isOnlineMode(booking) && ['new', 'confirmed', 'rescheduled'].includes(booking.status) && (
                         <a
