@@ -428,7 +428,7 @@ const MyBookingsPage = () => {
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
               <Button
-                onClick={() => navigate('/student?support=true')}
+                onClick={handleSupportQuery}
                 variant="outline"
                 className="border-[#D63031] text-[#D63031] hover:bg-[#D63031]/5"
                 data-testid="need-support-btn"
