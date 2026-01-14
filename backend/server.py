@@ -359,6 +359,7 @@ class EducatorApplicationCreate(BaseModel):
     experience: str = ""
     grades_comfortable: List[str] = []
     city: str = ""
+    teaching_mode: str = ""  # online, offline_home, offline_center
     availability: str = ""
     demo_ready: bool = False
     demo_date: Optional[str] = None
