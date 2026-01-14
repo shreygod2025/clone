@@ -83,6 +83,7 @@ const AdminStudentCRM = () => {
   useEffect(() => {
     fetchInquiries();
     fetchTeamUsers();
+    fetchOnboardedEducators();
   }, []);
 
   const fetchTeamUsers = async () => {
