@@ -21,7 +21,7 @@ export const UserAuthProvider = ({ children }) => {
   const sendOTP = async (phone, userType = 'student') => {
     try {
       const response = await axios.post(`${API}/auth/send-otp`, { phone, user_type: userType });
-      return { success: true, message: response.data.message };
+      return { success: true, message: response.data.message, sent: response.data.sent };
     } catch (error) {
       return { success: false, message: error.response?.data?.detail || 'Failed to send OTP' };
     }
