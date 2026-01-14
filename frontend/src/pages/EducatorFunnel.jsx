@@ -788,12 +788,12 @@ const EducatorFunnel = () => {
                   </Button>
                   <Button
                     type="submit"
-                    disabled={submitting}
+                    disabled={otpSending || formData.teaching_mode.length === 0}
                     className="btn-primary flex items-center gap-2 w-full sm:w-auto justify-center"
                     data-testid="submit-application-btn"
                   >
-                    {submitting ? 'Submitting...' : 'Submit Application'}
-                    <Send className="w-4 h-4" />
+                    {otpSending ? 'Sending OTP...' : 'Continue & Verify Phone'}
+                    <ArrowRight className="w-4 h-4" />
                   </Button>
                 </div>
               </form>
