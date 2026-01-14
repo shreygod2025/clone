@@ -162,6 +162,9 @@ const StudentFunnel = () => {
   };
 
   const activeSteps = getActiveSteps();
+  
+  // Guard against accessing invalid step index
+  const currentStepData = activeSteps[currentStep] || activeSteps[activeSteps.length - 1];
 
   const updateForm = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
