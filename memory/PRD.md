@@ -134,6 +134,7 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - `GET /center/demos` - Get student inquiries for center user's location
 - `PATCH /center/demos/{id}` - Update demo from center dashboard
 - `POST /center/demos/{id}/comment` - Add comment from center dashboard
+- `POST /user/cancel-booking` - Cancel a booking with reason (new)
 
 ## Credentials
 - **Admin:** admin@oll.co / Dagaji03@
