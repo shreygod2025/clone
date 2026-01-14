@@ -139,7 +139,7 @@ const MyBookingsPage = () => {
 
   // Generate a meeting link based on booking ID
   const generateMeetingLink = (booking) => {
-    // Create a unique Google Meet-like link using booking ID
+    // Create a unique Jitsi Meet link using booking ID
     const meetCode = booking.id?.slice(-10) || 'demo-meet';
     return `https://meet.jit.si/OLL-Demo-${meetCode}`;
   };
@@ -160,6 +160,59 @@ const MyBookingsPage = () => {
     } catch {
       return false;
     }
+  };
+
+  // Check if booking is online mode
+  const isOnlineMode = (booking) => {
+    return booking.learning_mode === 'online';
+  };
+
+  // Check if booking is offline at center
+  const isOfflineCenter = (booking) => {
+    return booking.learning_mode === 'offline_center' || 
+           (booking.learning_mode?.includes('offline') && booking.learning_mode?.includes('center'));
+  };
+
+  // Check if booking is offline at home
+  const isOfflineHome = (booking) => {
+    return booking.learning_mode === 'offline_home' || 
+           (booking.learning_mode?.includes('offline') && booking.learning_mode?.includes('home'));
+  };
+
+  // Generate Google Maps link for center
+  const generateCenterMapsLink = (booking) => {
+    const centerName = booking.selected_center_name || booking.center_name || 'OLL Center';
+    const city = booking.city || '';
+    const query = encodeURIComponent(`${centerName} ${city}`);
+    return `https://www.google.com/maps/search/?api=1&query=${query}`;
+  };
+
+  // Get location display text
+  const getLocationDisplay = (booking) => {
+    if (isOnlineMode(booking)) {
+      return { type: 'online', text: 'Online Class', icon: Video };
+    } else if (isOfflineCenter(booking)) {
+      const centerName = booking.selected_center_name || booking.center_name || 'OLL Center';
+      return { 
+        type: 'center', 
+        text: `${centerName}, ${booking.city || ''}`, 
+        icon: MapPin 
+      };
+    } else if (isOfflineHome(booking)) {
+      const address = booking.address || booking.home_address || booking.city || 'Your Home';
+      return { 
+        type: 'home', 
+        text: `At Home - ${address}`, 
+        icon: Home 
+      };
+    }
+    return { type: 'unknown', text: booking.location || booking.city || 'Location TBD', icon: MapPin };
+  };
+
+  // Handle support query - navigate without logging out
+  const handleSupportQuery = () => {
+    // Store user data before navigation to ensure session persists
+    navigate('/student', { state: { openSupport: true } });
   };
 
   const handleLogout = () => {
