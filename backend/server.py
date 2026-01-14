@@ -981,72 +981,64 @@ async def send_otp(data: OTPRequest):
     AISENSY_API_KEY = os.environ.get("AISENSY_API_KEY", "")
     AISENSY_CAMPAIGN_NAME = os.environ.get("AISENSY_CAMPAIGN_NAME", "otpollsite")
     
-    if AISENSY_API_KEY:
-        try:
-            # Format phone number with country code (91 for India)
-            phone_number = data.phone
-            if not phone_number.startswith("91") and not phone_number.startswith("+91"):
-                phone_number = f"91{phone_number}"
-            # Remove + if present
-            phone_number = phone_number.replace("+", "")
-            
-            # AiSensy API endpoint
-            aisensy_url = "https://backend.aisensy.com/campaign/t1/api/v2"
-            
-            payload = {
-                "apiKey": AISENSY_API_KEY,
-                "campaignName": AISENSY_CAMPAIGN_NAME,
-                "destination": phone_number,
-                "userName": "OLL User",
-                "templateParams": [otp],
-                "source": "OLL Platform",
-                "media": {},
-                "buttons": [
-                    {
-                        "type": "button",
-                        "sub_type": "url",
-                        "index": 0,
-                        "parameters": [
-                            {
-                                "type": "text",
-                                "text": otp
-                            }
-                        ]
-                    }
-                ],
-                "carouselCards": [],
-                "location": {},
-                "attributes": {},
-                "paramsFallbackValue": {
-                    "FirstName": otp
+    if not AISENSY_API_KEY:
+        raise HTTPException(status_code=500, detail="WhatsApp OTP service not configured")
+    
+    try:
+        # Format phone number with country code (91 for India)
+        phone_number = data.phone
+        if not phone_number.startswith("91") and not phone_number.startswith("+91"):
+            phone_number = f"91{phone_number}"
+        # Remove + if present
+        phone_number = phone_number.replace("+", "")
+        
+        # AiSensy API endpoint
+        aisensy_url = "https://backend.aisensy.com/campaign/t1/api/v2"
+        
+        payload = {
+            "apiKey": AISENSY_API_KEY,
+            "campaignName": AISENSY_CAMPAIGN_NAME,
+            "destination": phone_number,
+            "userName": "OLL User",
+            "templateParams": [otp],
+            "source": "OLL Platform",
+            "media": {},
+            "buttons": [
+                {
+                    "type": "button",
+                    "sub_type": "url",
+                    "index": 0,
+                    "parameters": [
+                        {
+                            "type": "text",
+                            "text": otp
+                        }
+                    ]
                 }
+            ],
+            "carouselCards": [],
+            "location": {},
+            "attributes": {},
+            "paramsFallbackValue": {
+                "FirstName": otp
             }
+        }
+        
+        async with httpx.AsyncClient() as client:
+            response = await client.post(aisensy_url, json=payload, timeout=30.0)
             
-            async with httpx.AsyncClient() as client:
-                response = await client.post(aisensy_url, json=payload, timeout=30.0)
+            if response.status_code == 200:
+                print(f"AiSensy OTP sent successfully to {phone_number}")
+                return {"message": "OTP sent via WhatsApp", "sent": True}
+            else:
+                print(f"AiSensy API error: {response.status_code} - {response.text}")
+                raise HTTPException(status_code=500, detail="Failed to send OTP. Please try again.")
                 
-                if response.status_code == 200:
-                    print(f"AiSensy OTP sent successfully to {phone_number}")
-                    return {"message": "OTP sent via WhatsApp", "sent": True}
-                else:
-                    print(f"AiSensy API error: {response.status_code} - {response.text}")
-                    # Fallback to mock OTP if API fails
-                    otp_store[data.phone]["otp"] = "1111"
-                    return {
-                        "message": "OTP sent (test mode)", 
-                        "hint": "Use 1111 for testing", 
-                        "sent": False
-                    }
-                    
-        except Exception as e:
-            print(f"AiSensy error: {str(e)}")
-            # Fallback to mock OTP
-            otp_store[data.phone]["otp"] = "1111"
-            return {"message": "OTP sent (test mode)", "hint": "Use 1111 for testing", "sent": False}
-    else:
-        # No API key - use mock OTP
-        otp_store[data.phone]["otp"] = "1111"
-        return {"message": "OTP sent (test mode)", "hint": "Use 1111 for testing", "sent": False}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"AiSensy error: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to send OTP. Please try again.")
 
 @api_router.post("/auth/verify-otp")
 async def verify_otp(data: OTPVerify):
