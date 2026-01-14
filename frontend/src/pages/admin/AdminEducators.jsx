@@ -349,13 +349,28 @@ const AdminEducators = () => {
       case 'demo_scheduled':
         return (
           <div className="flex gap-1 flex-wrap">
+            {/* Join Demo Button */}
+            <a
+              href={generateMeetingLink(educator)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 font-medium ${
+                isDemoJoinable(educator)
+                  ? 'bg-gradient-to-r from-[#1E3A5F] to-[#D63031] text-white animate-pulse'
+                  : 'bg-gradient-to-r from-[#1E3A5F] to-[#D63031] text-white'
+              }`}
+              data-testid={`join-demo-${educator.id}`}
+            >
+              <Video className="w-3 h-3" />
+              {isDemoJoinable(educator) ? 'Join Now' : 'Join Demo'}
+            </a>
             <button
               onClick={() => handleDemoCompleted(educator)}
               className="text-xs px-3 py-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-700 flex items-center gap-1 font-medium"
               data-testid={`demo-completed-${educator.id}`}
             >
               <CheckCircle2 className="w-3 h-3" />
-              Demo Completed
+              Complete & Rate
             </button>
             <button
               onClick={() => {
