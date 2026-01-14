@@ -1539,6 +1539,190 @@ async def update_educator_application(
         application['updated_at'] = datetime.fromisoformat(application['updated_at'])
     return application
 
+# ========================
+# EDUCATOR PORTAL ENDPOINTS
+# ========================
+
+@api_router.post("/educator/login")
+async def educator_login(data: OTPVerify):
+    """Login for onboarded educators using phone + OTP"""
+    # Verify OTP first
+    stored = otp_store.get(data.phone)
+    if not stored:
+        raise HTTPException(status_code=400, detail="OTP expired or not found")
+    
+    if stored["otp"] != data.otp:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+    
+    if datetime.now(timezone.utc) > stored["expires"]:
+        del otp_store[data.phone]
+        raise HTTPException(status_code=400, detail="OTP expired")
+    
+    # Clear OTP
+    del otp_store[data.phone]
+    
+    # Find onboarded educator
+    educator = await db.educator_applications.find_one({
+        "phone": data.phone,
+        "status": "onboarded"
+    }, {"_id": 0})
+    
+    if not educator:
+        raise HTTPException(status_code=403, detail="Not an onboarded educator. Please contact admin.")
+    
+    # Create JWT token for educator
+    token = create_access_token({
+        "sub": educator["email"],
+        "role": "educator",
+        "educator_id": educator["id"],
+        "name": educator["name"]
+    })
+    
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {
+            "id": educator["id"],
+            "name": educator["name"],
+            "email": educator["email"],
+            "phone": educator["phone"],
+            "skills": educator.get("skills", []),
+            "role": "educator"
+        }
+    }
+
+@api_router.get("/educator/my-demos")
+async def get_educator_demos(user: dict = Depends(get_current_user)):
+    """Get demos assigned to the logged-in educator"""
+    # Get educator_id from token or find by email
+    educator_id = user.get("educator_id") or user.get("id")
+    
+    if not educator_id:
+        # Try to find educator by email
+        educator = await db.educator_applications.find_one({"email": user.get("email")}, {"_id": 0})
+        if educator:
+            educator_id = educator["id"]
+    
+    if not educator_id:
+        raise HTTPException(status_code=403, detail="Educator not found")
+    
+    # Get demos assigned to this educator
+    demos = await db.student_inquiries.find({
+        "assigned_educator_id": educator_id,
+        "status": {"$in": ["new", "confirmed", "rescheduled"]}
+    }, {"_id": 0}).sort("demo_date", 1).to_list(100)
+    
+    return demos
+
+@api_router.get("/educator/demo-history")
+async def get_educator_demo_history(user: dict = Depends(get_current_user)):
+    """Get completed/past demos for the educator"""
+    educator_id = user.get("educator_id") or user.get("id")
+    
+    if not educator_id:
+        educator = await db.educator_applications.find_one({"email": user.get("email")}, {"_id": 0})
+        if educator:
+            educator_id = educator["id"]
+    
+    if not educator_id:
+        raise HTTPException(status_code=403, detail="Educator not found")
+    
+    demos = await db.student_inquiries.find({
+        "assigned_educator_id": educator_id,
+        "status": {"$in": ["demo_completed", "converted", "archived", "cancelled"]}
+    }, {"_id": 0}).sort("demo_date", -1).to_list(100)
+    
+    return demos
+
+@api_router.post("/educator/pass-demo/{inquiry_id}")
+async def pass_demo_to_educator(inquiry_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Pass a demo to another educator"""
+    educator_id = user.get("educator_id") or user.get("id")
+    target_educator_id = data.get("target_educator_id")
+    reason = data.get("reason", "")
+    
+    if not target_educator_id:
+        raise HTTPException(status_code=400, detail="Target educator ID required")
+    
+    # Verify current educator owns this demo
+    inquiry = await db.student_inquiries.find_one({"id": inquiry_id}, {"_id": 0})
+    if not inquiry:
+        raise HTTPException(status_code=404, detail="Demo not found")
+    
+    if inquiry.get("assigned_educator_id") != educator_id:
+        raise HTTPException(status_code=403, detail="You are not assigned to this demo")
+    
+    # Get target educator details
+    target_educator = await db.educator_applications.find_one({
+        "id": target_educator_id,
+        "status": "onboarded"
+    }, {"_id": 0})
+    
+    if not target_educator:
+        raise HTTPException(status_code=404, detail="Target educator not found or not onboarded")
+    
+    # Update the inquiry
+    await db.student_inquiries.update_one(
+        {"id": inquiry_id},
+        {"$set": {
+            "assigned_educator_id": target_educator["id"],
+            "assigned_educator_name": target_educator["name"],
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }, "$push": {
+            "comments": {
+                "id": str(uuid.uuid4()),
+                "text": f"Demo passed from {user.get('name', 'Educator')} to {target_educator['name']}. Reason: {reason}",
+                "author": "System",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+        }}
+    )
+    
+    return {"message": "Demo passed successfully", "new_educator": target_educator["name"]}
+
+@api_router.get("/educator/available-educators")
+async def get_available_educators(user: dict = Depends(get_current_user)):
+    """Get list of other onboarded educators for passing demos"""
+    current_educator_id = user.get("educator_id") or user.get("id")
+    
+    educators = await db.educator_applications.find({
+        "status": "onboarded",
+        "id": {"$ne": current_educator_id}
+    }, {"_id": 0, "id": 1, "name": 1, "skills": 1, "city": 1}).to_list(50)
+    
+    return educators
+
+@api_router.post("/educator/complete-demo/{inquiry_id}")
+async def educator_complete_demo(inquiry_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Mark a demo as completed by educator"""
+    educator_id = user.get("educator_id") or user.get("id")
+    feedback = data.get("feedback", "")
+    
+    # Verify educator owns this demo
+    inquiry = await db.student_inquiries.find_one({"id": inquiry_id}, {"_id": 0})
+    if not inquiry:
+        raise HTTPException(status_code=404, detail="Demo not found")
+    
+    if inquiry.get("assigned_educator_id") != educator_id:
+        raise HTTPException(status_code=403, detail="You are not assigned to this demo")
+    
+    await db.student_inquiries.update_one(
+        {"id": inquiry_id},
+        {"$set": {
+            "status": "demo_completed",
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }, "$push": {
+            "comments": {
+                "id": str(uuid.uuid4()),
+                "text": f"Demo completed by {user.get('name', 'Educator')}. Feedback: {feedback}",
+                "author": user.get("name", "Educator"),
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+        }}
+    )
+    
+    return {"message": "Demo marked as completed"}
+
 # Open Requirements
 @api_router.get("/requirements", response_model=List[OpenRequirement])
 async def get_open_requirements(city: Optional[str] = None, skill: Optional[str] = None):
