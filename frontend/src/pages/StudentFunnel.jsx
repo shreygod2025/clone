@@ -909,7 +909,7 @@ const StudentFunnel = () => {
         <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-slate-200/50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
-              <Link to="/" className="flex items-center gap-2">
+              <Link to={isLoggedIn ? "/my-bookings" : "/"} className="flex items-center gap-2">
                 <img 
                   src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png" 
                   alt="OLL" 
@@ -917,13 +917,25 @@ const StudentFunnel = () => {
                 />
               </Link>
               <div className="flex items-center gap-4">
-                <Button
-                  onClick={() => navigate('/login')}
-                  className="bg-[#1E3A5F] hover:bg-[#2d4a6f] text-white text-sm"
-                  data-testid="funnel-login-btn"
-                >
-                  Login
-                </Button>
+                {isLoggedIn ? (
+                  <Button
+                    onClick={() => navigate('/my-bookings')}
+                    className="bg-[#1E3A5F] hover:bg-[#2d4a6f] text-white text-sm flex items-center gap-2"
+                  >
+                    <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
+                      <Home className="w-3 h-3" />
+                    </div>
+                    My Bookings
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => navigate('/login')}
+                    className="bg-[#1E3A5F] hover:bg-[#2d4a6f] text-white text-sm"
+                    data-testid="funnel-login-btn"
+                  >
+                    Login
+                  </Button>
+                )}
                 <Link to="/centers" className="text-slate-600 hover:text-[#1E3A5F] font-medium transition-colors hidden sm:block">
                   Centers
                 </Link>
