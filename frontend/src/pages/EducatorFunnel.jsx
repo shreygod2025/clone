@@ -90,7 +90,17 @@ const EducatorFunnel = () => {
   useEffect(() => {
     fetchRequirements();
     fetchFormConfig();
+    fetchCenters();
   }, []);
+
+  const fetchCenters = async () => {
+    try {
+      const response = await axios.get(`${API}/centers`);
+      setCenters(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch centers');
+    }
+  };
 
   const fetchFormConfig = async () => {
     try {
