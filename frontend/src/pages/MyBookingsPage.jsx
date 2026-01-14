@@ -67,7 +67,17 @@ const MyBookingsPage = () => {
     setLoading(true);
     try {
       const response = await axios.get(`${API}/user/bookings/${user.phone}?user_type=${user.user_type || 'student'}`);
-      setBookings(response.data || []);
+      // Sort bookings by date - earliest upcoming first
+      const sortedBookings = (response.data || []).sort((a, b) => {
+        const dateA = a.demo_date || a.meeting_date || '9999-12-31';
+        const dateB = b.demo_date || b.meeting_date || '9999-12-31';
+        try {
+          return compareAsc(parseISO(dateA), parseISO(dateB));
+        } catch {
+          return 0;
+        }
+      });
+      setBookings(sortedBookings);
     } catch (error) {
       console.error('Failed to fetch bookings:', error);
       // Don't show error toast, just set empty bookings
