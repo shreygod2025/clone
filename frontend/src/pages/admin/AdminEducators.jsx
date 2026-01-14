@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Eye, Phone, Mail, Calendar, Clock, Plus, ChevronRight, MessageSquare, Archive, CalendarClock, CheckCircle2, User, Briefcase, MapPin, UserPlus, Send, Edit, Save } from 'lucide-react';
+import { Search, Eye, Phone, Mail, Calendar, Clock, Plus, ChevronRight, MessageSquare, Archive, CalendarClock, CheckCircle2, User, Briefcase, MapPin, UserPlus, Send, Edit, Save, Video, Star } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Textarea } from '../../components/ui/textarea';
 import { Calendar as CalendarComponent } from '../../components/ui/calendar';
 import { toast } from 'sonner';
-import { format, addDays } from 'date-fns';
+import { format, addDays, parseISO, isAfter, isBefore, addHours } from 'date-fns';
 import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -22,6 +22,22 @@ const STATUS_SECTIONS = [
 ];
 
 const TIME_SLOTS = ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'];
+
+// Rating sub-pointers
+const RATING_CRITERIA = {
+  personality: {
+    label: 'Personality',
+    subPointers: ['Confidence', 'Enthusiasm', 'Professionalism', 'Approachability']
+  },
+  communication: {
+    label: 'Communication',
+    subPointers: ['Clarity', 'Engagement', 'Responsiveness', 'Language Skills']
+  },
+  expertise: {
+    label: 'Subject Expertise',
+    subPointers: ['Subject Knowledge', 'Teaching Methodology', 'Problem Solving', 'Student Handling']
+  }
+};
 
 const AdminEducators = () => {
   const { getAuthHeaders } = useAuth();
@@ -37,6 +53,7 @@ const AdminEducators = () => {
   const [showScheduleModal, setShowScheduleModal] = useState(null);
   const [showAssignModal, setShowAssignModal] = useState(null);
   const [showCommentModal, setShowCommentModal] = useState(null);
+  const [showRatingModal, setShowRatingModal] = useState(null);
   const [newComment, setNewComment] = useState('');
   const [scheduleData, setScheduleData] = useState({ date: null, time: '' });
   
@@ -44,6 +61,16 @@ const AdminEducators = () => {
   const [editMode, setEditMode] = useState(false);
   const [editData, setEditData] = useState({ name: '', phone: '', email: '', demo_date: '', demo_time: '', notes: '' });
   const [viewComment, setViewComment] = useState('');
+  
+  // Rating state
+  const [ratingData, setRatingData] = useState({
+    personality: { score: 3, sub_scores: {} },
+    communication: { score: 3, sub_scores: {} },
+    expertise: { score: 3, sub_scores: {} },
+    technical: { webcam: true, mic: true, internet: 'good', notes: '' },
+    feedback: '',
+    recommendation: 'pending'
+  });
 
   useEffect(() => {
     fetchEducators();
