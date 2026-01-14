@@ -632,6 +632,12 @@ const AdminStudentCRM = () => {
                     Demo: {inquiry.demo_date} {inquiry.demo_time && `at ${inquiry.demo_time}`}
                   </p>
                 )}
+                {inquiry.assigned_educator_name && (
+                  <p className="flex items-center gap-1 text-green-600">
+                    <User className="w-3 h-3" />
+                    Educator: {inquiry.assigned_educator_name}
+                  </p>
+                )}
                 {inquiry.conversion_amount && (
                   <p className="text-green-600 font-medium">
                     ₹{inquiry.conversion_amount} • {inquiry.sessions_count} sessions
