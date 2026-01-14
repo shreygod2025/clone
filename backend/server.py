@@ -979,38 +979,43 @@ async def send_otp(data: OTPRequest):
     
     # AiSensy WhatsApp API Integration
     AISENSY_API_KEY = os.environ.get("AISENSY_API_KEY", "")
+    # Campaign name must match exactly what's created in AiSensy dashboard
+    AISENSY_CAMPAIGN_NAME = os.environ.get("AISENSY_CAMPAIGN_NAME", "otp_campaign")
     
     if AISENSY_API_KEY:
         try:
-            # Format phone number with country code
-            phone_number = data.phone if data.phone.startswith("91") else f"91{data.phone}"
+            # Format phone number with country code (91 for India)
+            phone_number = data.phone
+            if not phone_number.startswith("91") and not phone_number.startswith("+91"):
+                phone_number = f"91{phone_number}"
             
-            # AiSensy API endpoint
+            # AiSensy API endpoint for sending template messages
             aisensy_url = "https://backend.aisensy.com/campaign/t1/api/v2"
             
             payload = {
                 "apiKey": AISENSY_API_KEY,
-                "campaignName": "otp_verification",
+                "campaignName": AISENSY_CAMPAIGN_NAME,
                 "destination": phone_number,
-                "userName": "OLL Student",
-                "templateParams": [otp],
-                "source": "OLL Platform",
-                "media": {},
-                "buttons": [],
-                "carouselCards": [],
-                "location": {}
+                "userName": data.user_type.capitalize(),
+                "templateParams": [otp]  # Pass OTP as template parameter
             }
             
             async with httpx.AsyncClient() as client:
                 response = await client.post(aisensy_url, json=payload, timeout=30.0)
+                response_data = response.json() if response.text else {}
                 
                 if response.status_code == 200:
+                    print(f"AiSensy OTP sent successfully to {phone_number}")
                     return {"message": "OTP sent via WhatsApp", "sent": True}
                 else:
                     print(f"AiSensy API error: {response.status_code} - {response.text}")
                     # Fallback to mock OTP if API fails
                     otp_store[data.phone]["otp"] = "1111"
-                    return {"message": "OTP sent (test mode)", "hint": "Use 1111 for testing", "sent": False}
+                    return {
+                        "message": "OTP sent (test mode - WhatsApp campaign not configured)", 
+                        "hint": "Use 1111 for testing. To enable WhatsApp OTP, configure AISENSY_CAMPAIGN_NAME in .env", 
+                        "sent": False
+                    }
                     
         except Exception as e:
             print(f"AiSensy error: {str(e)}")
