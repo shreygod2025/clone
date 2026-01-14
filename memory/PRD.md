@@ -61,6 +61,36 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
   - MyBookingsPage: Student link with participant config
   - AdminStudentCRM: Admin link with moderator config
   - CenterDashboard: Added Join Demo button with moderator config
+- ✅ **My Bookings Mobile UI Cleanup:**
+  - Shadow-lifted buttons without borders for cleaner look
+  - Full-width gradient Join Demo button on mobile
+  - Half-half Reschedule/Cancel buttons
+- ✅ **Educator Auto-Assignment:**
+  - Demos automatically assigned to onboarded educators based on skill matching
+  - Round-robin assignment based on current workload
+- ✅ **Educator Portal:**
+  - Separate login at `/login` → "Educator" option
+  - Dashboard at `/educator-dashboard` with assigned demos
+  - Join demo as moderator, mark complete, pass to another educator
+- ✅ **Educator Application Flow Enhancement:**
+  - Added Teaching Mode preference (online, offline home, offline center)
+  - OTP verification before application submission
+  - Success page shows demo link and details
+  - "At OLL Center" option disabled if no center in selected city
+- ✅ **Admin Educator Demo Rating System:**
+  - Rating modal when marking demo complete
+  - Personality rating (confidence, enthusiasm, professionalism, approachability)
+  - Communication rating (clarity, engagement, responsiveness, language)
+  - Expertise rating (subject knowledge, methodology, problem solving, student handling)
+  - Technical check (webcam, mic, internet quality)
+  - Recommendation options: Onboard, Retake, Reject
+- ✅ **Admin Join Demo for Educators:**
+  - Jitsi link visible for demo_scheduled educator applications
+- ✅ **Navbar Educator Handling:**
+  - Educators redirected to educator dashboard instead of student bookings
+  - Different icon color for educators
+- ✅ **Test OTP 1111:**
+  - Backend supports test OTP for development (not shown in frontend)
 - ✅ **Student Form Improvements:**
   - "Book Free Demo Class" button now appears ABOVE "See Course Details" (primary action)
   - "Resend OTP" link now appears BELOW "Confirm Booking" button
