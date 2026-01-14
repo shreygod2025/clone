@@ -729,7 +729,10 @@ const StudentFunnel = () => {
             <div>
               <h3 className="text-base sm:text-lg font-semibold text-[#1E3A5F] mb-1">Verify Your Number</h3>
               <p className="text-slate-500 text-xs sm:text-sm">
-                OTP sent to <strong>{formData.phone}</strong>
+                {otpSentViaWhatsApp 
+                  ? <>OTP sent via <span className="text-green-600 font-medium">WhatsApp</span> to <strong>{formData.phone}</strong></>
+                  : <>OTP sent to <strong>{formData.phone}</strong></>
+                }
               </p>
             </div>
 
@@ -744,9 +747,11 @@ const StudentFunnel = () => {
                   maxLength={4}
                   data-testid="otp-input"
                 />
-                <p className="text-xs text-slate-400 mt-2">
-                  Use <strong>1111</strong> for testing
-                </p>
+                {!otpSentViaWhatsApp && (
+                  <p className="text-xs text-slate-400 mt-2">
+                    Use <strong>1111</strong> for testing
+                  </p>
+                )}
               </div>
 
               {/* Confirm Button */}
