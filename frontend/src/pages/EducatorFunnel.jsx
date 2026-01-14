@@ -271,13 +271,6 @@ const EducatorFunnel = () => {
     e.preventDefault();
     handleProceedToOTP(e);
   };
-      toast.success('Application submitted successfully!');
-    } catch (error) {
-      toast.error('Failed to submit. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   // Handle requirement-specific application
   const handleApplyToRequirement = (req) => {
