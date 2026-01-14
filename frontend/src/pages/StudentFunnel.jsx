@@ -437,6 +437,20 @@ const StudentFunnel = () => {
             </div>
             
             <div className="space-y-3">
+              {/* Book Demo - Primary Action (Above) */}
+              <div
+                className="selection-card p-5 cursor-pointer flex items-center justify-between bg-[#D63031]/5 border-[#D63031]/30"
+                onClick={() => handleActionChoice('book')}
+                data-testid="action-book-demo"
+              >
+                <div className="flex items-center gap-3">
+                  <Calendar className="w-5 h-5 text-[#D63031]" />
+                  <span className="font-medium text-[#D63031]">Book Free Demo Class</span>
+                </div>
+                <ArrowRight className="w-4 h-4 text-[#D63031]" />
+              </div>
+              
+              {/* See Details - Secondary Action (Below) */}
               <div
                 className="selection-card p-5 cursor-pointer flex items-center justify-between"
                 onClick={() => handleActionChoice('details')}
@@ -447,18 +461,6 @@ const StudentFunnel = () => {
                   <span className="font-medium">See Course Details</span>
                 </div>
                 <ArrowRight className="w-4 h-4 text-slate-400" />
-              </div>
-              
-              <div
-                className="selection-card p-5 cursor-pointer flex items-center justify-between bg-[#1E3A5F]/5 border-[#1E3A5F]/30"
-                onClick={() => handleActionChoice('book')}
-                data-testid="action-book-demo"
-              >
-                <div className="flex items-center gap-3">
-                  <Calendar className="w-5 h-5 text-[#1E3A5F]" />
-                  <span className="font-medium text-[#1E3A5F]">Book Free Demo</span>
-                </div>
-                <ArrowRight className="w-4 h-4 text-[#1E3A5F]" />
               </div>
             </div>
           </div>
