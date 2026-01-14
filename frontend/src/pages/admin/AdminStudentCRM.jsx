@@ -1282,7 +1282,7 @@ const AdminStudentCRM = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Assign Lead Modal */}
+      {/* Assign Lead Modal - Updated with Educator Tab */}
       <Dialog open={!!showAssignModal} onOpenChange={() => setShowAssignModal(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -1292,50 +1292,139 @@ const AdminStudentCRM = () => {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            {showAssignModal?.assigned_to && (
-              <div className="bg-indigo-50 rounded-lg p-3">
-                <p className="text-sm text-indigo-700">
-                  Currently assigned to: <strong>{getAssignedUserName(showAssignModal.assigned_to) || 'Unknown'}</strong>
-                </p>
+            {/* Current Assignment Info */}
+            {(showAssignModal?.assigned_to || showAssignModal?.assigned_educator_name) && (
+              <div className="bg-indigo-50 rounded-lg p-3 space-y-1">
+                {showAssignModal?.assigned_to && (
+                  <p className="text-sm text-indigo-700">
+                    Team: <strong>{getAssignedUserName(showAssignModal.assigned_to) || 'Unknown'}</strong>
+                  </p>
+                )}
+                {showAssignModal?.assigned_educator_name && (
+                  <p className="text-sm text-green-700">
+                    Educator: <strong>{showAssignModal.assigned_educator_name}</strong>
+                  </p>
+                )}
               </div>
             )}
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-slate-700">Select Team Member</p>
-              {teamUsers.length === 0 ? (
-                <p className="text-sm text-slate-500 py-4 text-center">No team members found. Create team users in Admin → Team Users.</p>
-              ) : (
-                teamUsers.filter(u => u.is_active).map(teamUser => (
-                  <button
-                    key={teamUser.id}
-                    onClick={() => handleAssignLead(teamUser.id)}
-                    className={`w-full p-3 rounded-lg border text-left transition-all hover:border-indigo-300 hover:bg-indigo-50 ${
-                      showAssignModal?.assigned_to === teamUser.id 
-                        ? 'border-indigo-500 bg-indigo-50' 
-                        : 'border-slate-200'
-                    }`}
-                    data-testid={`assign-to-${teamUser.id}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium text-slate-900">{teamUser.name}</p>
-                        <p className="text-xs text-slate-500">{teamUser.email}</p>
-                      </div>
-                      {showAssignModal?.assigned_to === teamUser.id && (
-                        <span className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded">Current</span>
-                      )}
-                    </div>
-                  </button>
-                ))
-              )}
+
+            {/* Tabs */}
+            <div className="flex gap-2 border-b border-slate-200 pb-2">
+              <button
+                onClick={() => setAssignTab('team')}
+                className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-all ${
+                  assignTab === 'team' 
+                    ? 'text-indigo-600 bg-indigo-50 border-b-2 border-indigo-600' 
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                Team Member
+              </button>
+              <button
+                onClick={() => setAssignTab('educator')}
+                className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-all ${
+                  assignTab === 'educator' 
+                    ? 'text-green-600 bg-green-50 border-b-2 border-green-600' 
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                Educator (Demo)
+              </button>
             </div>
+
+            {/* Team Members Tab */}
+            {assignTab === 'team' && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-slate-700">Select Team Member</p>
+                {teamUsers.length === 0 ? (
+                  <p className="text-sm text-slate-500 py-4 text-center">No team members found.</p>
+                ) : (
+                  teamUsers.filter(u => u.is_active).map(teamUser => (
+                    <button
+                      key={teamUser.id}
+                      onClick={() => handleAssignLead(teamUser.id)}
+                      className={`w-full p-3 rounded-lg border text-left transition-all hover:border-indigo-300 hover:bg-indigo-50 ${
+                        showAssignModal?.assigned_to === teamUser.id 
+                          ? 'border-indigo-500 bg-indigo-50' 
+                          : 'border-slate-200'
+                      }`}
+                      data-testid={`assign-to-${teamUser.id}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-slate-900">{teamUser.name}</p>
+                          <p className="text-xs text-slate-500">{teamUser.email}</p>
+                        </div>
+                        {showAssignModal?.assigned_to === teamUser.id && (
+                          <span className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded">Current</span>
+                        )}
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+
+            {/* Educators Tab */}
+            {assignTab === 'educator' && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-slate-700">Assign Demo to Educator</p>
+                <p className="text-xs text-slate-500 mb-2">
+                  Skill: <span className="font-medium">{showAssignModal?.skill}</span>
+                </p>
+                {onboardedEducators.length === 0 ? (
+                  <p className="text-sm text-slate-500 py-4 text-center">No onboarded educators available.</p>
+                ) : (
+                  <div className="max-h-[300px] overflow-y-auto space-y-2">
+                    {onboardedEducators.map(educator => {
+                      const skillMatch = educator.skills?.some(s => 
+                        s.toLowerCase().includes(showAssignModal?.skill?.toLowerCase() || '')
+                      );
+                      return (
+                        <button
+                          key={educator.id}
+                          onClick={() => handleAssignEducator(educator.id, educator.name)}
+                          className={`w-full p-3 rounded-lg border text-left transition-all hover:border-green-300 hover:bg-green-50 ${
+                            showAssignModal?.assigned_educator_id === educator.id 
+                              ? 'border-green-500 bg-green-50' 
+                              : skillMatch ? 'border-green-200 bg-green-50/30' : 'border-slate-200'
+                          }`}
+                          data-testid={`assign-educator-${educator.id}`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium text-slate-900 flex items-center gap-2">
+                                {educator.name}
+                                {skillMatch && (
+                                  <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded">Skill Match</span>
+                                )}
+                              </p>
+                              <p className="text-xs text-slate-500">{educator.skills?.join(', ')}</p>
+                              <p className="text-xs text-slate-400">{educator.city}</p>
+                            </div>
+                            {showAssignModal?.assigned_educator_id === educator.id && (
+                              <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">Assigned</span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex gap-3 pt-2">
               <Button variant="outline" onClick={() => setShowAssignModal(null)} className="flex-1">
                 Cancel
               </Button>
-              {showAssignModal?.assigned_to && (
+              {(showAssignModal?.assigned_to || showAssignModal?.assigned_educator_id) && (
                 <Button 
                   variant="outline" 
-                  onClick={() => handleAssignLead('')}
+                  onClick={() => {
+                    if (assignTab === 'team') handleAssignLead('');
+                    else handleAssignEducator('', '');
+                  }}
                   className="flex-1 text-red-600 border-red-200 hover:bg-red-50"
                 >
                   Unassign
