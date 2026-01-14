@@ -82,8 +82,8 @@ const StudentFunnel = () => {
     const skillParam = searchParams.get('skill');
     const supportParam = searchParams.get('support');
     
-    // Auto-open support flow if coming from bookings page
-    if (supportParam === 'true') {
+    // Auto-open support flow if coming from bookings page via state or query param
+    if (supportParam === 'true' || location.state?.openSupport) {
       setFlowType('support');
       return;
     }
@@ -100,7 +100,7 @@ const StudentFunnel = () => {
         setCurrentStep(2); // Go to age group selection
       }
     }
-  }, [searchParams, isLoggedIn, user]);
+  }, [searchParams, isLoggedIn, user, location.state]);
 
   // Fetch cities
   useEffect(() => {
