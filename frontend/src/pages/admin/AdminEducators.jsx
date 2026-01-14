@@ -994,6 +994,167 @@ const AdminEducators = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Demo Rating Modal */}
+      <Dialog open={!!showRatingModal} onOpenChange={() => setShowRatingModal(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Star className="w-5 h-5 text-amber-500" />
+              Rate Demo - {showRatingModal?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6">
+            {/* Rating Categories */}
+            {Object.entries(RATING_CRITERIA).map(([key, criteria]) => (
+              <div key={key} className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold text-[#1E3A5F]">{criteria.label}</h4>
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4, 5].map(score => (
+                      <button
+                        key={score}
+                        onClick={() => setRatingData(prev => ({
+                          ...prev,
+                          [key]: { ...prev[key], score }
+                        }))}
+                        className={`w-8 h-8 rounded-lg text-sm font-medium transition-all ${
+                          ratingData[key]?.score >= score
+                            ? 'bg-amber-400 text-white'
+                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                        }`}
+                      >
+                        {score}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {criteria.subPointers.map(pointer => (
+                    <div key={pointer} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2">
+                      <span className="text-sm text-slate-600">{pointer}</span>
+                      <div className="flex gap-0.5">
+                        {[1, 2, 3, 4, 5].map(s => (
+                          <button
+                            key={s}
+                            onClick={() => setRatingData(prev => ({
+                              ...prev,
+                              [key]: {
+                                ...prev[key],
+                                sub_scores: { ...prev[key]?.sub_scores, [pointer.toLowerCase().replace(/\s+/g, '_')]: s }
+                              }
+                            }))}
+                            className={`w-5 h-5 rounded text-xs ${
+                              (ratingData[key]?.sub_scores?.[pointer.toLowerCase().replace(/\s+/g, '_')] || 0) >= s
+                                ? 'bg-amber-300 text-white'
+                                : 'bg-slate-200 text-slate-400'
+                            }`}
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            {/* Technical Check */}
+            <div className="space-y-3 pt-4 border-t">
+              <h4 className="font-semibold text-[#1E3A5F]">Technical Check</h4>
+              <div className="grid grid-cols-3 gap-3">
+                <label className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
+                  <input
+                    type="checkbox"
+                    checked={ratingData.technical.webcam}
+                    onChange={(e) => setRatingData(prev => ({
+                      ...prev,
+                      technical: { ...prev.technical, webcam: e.target.checked }
+                    }))}
+                    className="rounded"
+                  />
+                  <span className="text-sm">Webcam OK</span>
+                </label>
+                <label className="flex items-center gap-2 bg-slate-50 rounded-lg px-3 py-2">
+                  <input
+                    type="checkbox"
+                    checked={ratingData.technical.mic}
+                    onChange={(e) => setRatingData(prev => ({
+                      ...prev,
+                      technical: { ...prev.technical, mic: e.target.checked }
+                    }))}
+                    className="rounded"
+                  />
+                  <span className="text-sm">Mic OK</span>
+                </label>
+                <select
+                  value={ratingData.technical.internet}
+                  onChange={(e) => setRatingData(prev => ({
+                    ...prev,
+                    technical: { ...prev.technical, internet: e.target.value }
+                  }))}
+                  className="bg-slate-50 rounded-lg px-3 py-2 text-sm border-0"
+                >
+                  <option value="excellent">Internet: Excellent</option>
+                  <option value="good">Internet: Good</option>
+                  <option value="average">Internet: Average</option>
+                  <option value="poor">Internet: Poor</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Feedback */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Feedback / Notes</label>
+              <Textarea
+                value={ratingData.feedback}
+                onChange={(e) => setRatingData(prev => ({ ...prev, feedback: e.target.value }))}
+                placeholder="Overall feedback about the demo..."
+                className="min-h-[80px]"
+              />
+            </div>
+
+            {/* Recommendation */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Recommendation</label>
+              <div className="flex gap-2">
+                {[
+                  { value: 'onboard', label: 'Onboard', color: 'bg-green-100 text-green-700 border-green-300' },
+                  { value: 'retake', label: 'Retake Demo', color: 'bg-amber-100 text-amber-700 border-amber-300' },
+                  { value: 'reject', label: 'Reject', color: 'bg-red-100 text-red-700 border-red-300' }
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setRatingData(prev => ({ ...prev, recommendation: opt.value }))}
+                    className={`flex-1 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
+                      ratingData.recommendation === opt.value
+                        ? opt.color
+                        : 'bg-slate-50 text-slate-500 border-slate-200'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" onClick={() => setShowRatingModal(null)} className="flex-1">
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSubmitRating} 
+                className="flex-1 bg-[#D63031] hover:bg-[#b52828]"
+              >
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                Submit Rating
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
