@@ -199,7 +199,7 @@ const StudentFunnel = () => {
       if (response.data.sent) {
         toast.success('OTP sent to your WhatsApp!');
       } else {
-        toast.success('OTP sent! Use 1111 for testing');
+        toast.error('Failed to send OTP. Please try again.');
       }
     } catch (error) {
       toast.error('Failed to send OTP');

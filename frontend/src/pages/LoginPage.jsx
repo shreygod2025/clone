@@ -32,7 +32,7 @@ const LoginPage = () => {
       if (result.sent) {
         toast.success('OTP sent to your WhatsApp!');
       } else {
-        toast.success('OTP sent! Use 1111 for testing');
+        toast.error('Failed to send OTP. Please try again.');
       }
       setStep('otp');
     } else {
