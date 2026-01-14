@@ -710,7 +710,7 @@ const StudentFunnel = () => {
               </p>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div>
                 <Input
                   type="text"
@@ -726,7 +726,7 @@ const StudentFunnel = () => {
                 </p>
               </div>
 
-              {/* Confirm Button - Right below OTP input */}
+              {/* Confirm Button */}
               <Button
                 onClick={handleVerifyAndSubmit}
                 disabled={submitting || otp.length < 4}
@@ -736,14 +736,17 @@ const StudentFunnel = () => {
                 {submitting ? 'Confirming...' : 'Confirm Booking'}
               </Button>
 
-              <button
-                type="button"
-                onClick={handleSendOTP}
-                disabled={otpLoading}
-                className="text-xs sm:text-sm text-[#D63031] hover:underline"
-              >
-                {otpLoading ? 'Sending...' : 'Resend OTP'}
-              </button>
+              {/* Resend OTP - Below Confirm Button */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={handleSendOTP}
+                  disabled={otpLoading}
+                  className="text-xs sm:text-sm text-[#1E3A5F] hover:text-[#D63031] hover:underline transition-colors"
+                >
+                  {otpLoading ? 'Sending...' : "Didn't receive OTP? Resend"}
+                </button>
+              </div>
             </div>
 
             {/* Demo Summary Preview - Compact */}
