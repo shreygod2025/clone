@@ -26,7 +26,7 @@ const COURSES_DATA = [
 
 const MyBookingsPage = () => {
   const navigate = useNavigate();
-  const { user, isLoggedIn, logout } = useUserAuth();
+  const { user, isLoggedIn, logout, loading: authLoading } = useUserAuth();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showReschedule, setShowReschedule] = useState(false);
@@ -48,6 +48,9 @@ const MyBookingsPage = () => {
   ];
 
   useEffect(() => {
+    // Wait for auth loading to complete
+    if (authLoading) return;
+    
     if (!isLoggedIn) {
       navigate('/login');
       return;
@@ -57,7 +60,7 @@ const MyBookingsPage = () => {
       hasFetched.current = true;
       fetchBookings();
     }
-  }, [isLoggedIn, navigate, user?.phone]);
+  }, [isLoggedIn, navigate, user?.phone, authLoading]);
 
   const fetchBookings = async () => {
     if (!user?.phone) {
