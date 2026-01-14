@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Phone, Shield } from 'lucide-react';
+import { ArrowLeft, Phone, Shield, GraduationCap, User } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { toast } from 'sonner';
@@ -9,8 +9,9 @@ import Navbar from '../components/Navbar';
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { sendOTP, verifyOTP } = useUserAuth();
-  const [step, setStep] = useState('phone'); // phone, otp
+  const { sendOTP, verifyOTP, educatorLogin } = useUserAuth();
+  const [step, setStep] = useState('type'); // type, phone, otp
+  const [loginType, setLoginType] = useState('student'); // student, educator
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
@@ -23,8 +24,7 @@ const LoginPage = () => {
       return;
     }
     setLoading(true);
-    // Send OTP without user type - backend will determine based on phone
-    const result = await sendOTP(phone, 'student');
+    const result = await sendOTP(phone, loginType);
     setLoading(false);
     
     if (result.success) {
@@ -46,8 +46,13 @@ const LoginPage = () => {
       return;
     }
     setLoading(true);
-    // Verify OTP - backend returns user type automatically
-    const result = await verifyOTP(phone, otp, 'student');
+    
+    let result;
+    if (loginType === 'educator') {
+      result = await educatorLogin(phone, otp);
+    } else {
+      result = await verifyOTP(phone, otp, loginType);
+    }
     setLoading(false);
     
     if (result.success) {
@@ -55,7 +60,7 @@ const LoginPage = () => {
         toastShownRef.current = true;
         toast.success('Login successful!');
       }
-      navigate('/my-bookings');
+      navigate(loginType === 'educator' ? '/educator-dashboard' : '/my-bookings');
     } else {
       toast.error(result.message);
     }
@@ -65,6 +70,9 @@ const LoginPage = () => {
     if (step === 'otp') {
       setStep('phone');
       setOtp('');
+    } else if (step === 'phone') {
+      setStep('type');
+      setPhone('');
     } else {
       navigate('/');
     }
@@ -84,13 +92,62 @@ const LoginPage = () => {
             Back
           </button>
 
-          {step === 'phone' && (
+          {/* Step 1: Choose Login Type */}
+          {step === 'type' && (
             <>
               <div className="w-16 h-16 rounded-2xl bg-[#1E3A5F]/10 flex items-center justify-center mx-auto mb-6">
                 <Phone className="w-8 h-8 text-[#1E3A5F]" />
               </div>
               <h1 className="text-2xl font-bold text-[#1E3A5F] mb-2 text-center" style={{ fontFamily: 'Manrope, sans-serif' }}>
                 Login to OLL
+              </h1>
+              <p className="text-slate-500 mb-6 text-center">
+                Select how you want to continue
+              </p>
+
+              <div className="space-y-3">
+                <button
+                  onClick={() => { setLoginType('student'); setStep('phone'); }}
+                  className="w-full p-4 rounded-xl border-2 border-slate-200 hover:border-[#1E3A5F] transition-all flex items-center gap-4 group"
+                >
+                  <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                    <User className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-semibold text-[#1E3A5F]">Student / Parent / School</p>
+                    <p className="text-sm text-slate-500">View & manage bookings</p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => { setLoginType('educator'); setStep('phone'); }}
+                  className="w-full p-4 rounded-xl border-2 border-slate-200 hover:border-[#D63031] transition-all flex items-center gap-4 group"
+                >
+                  <div className="w-12 h-12 rounded-lg bg-red-100 flex items-center justify-center group-hover:bg-red-200 transition-colors">
+                    <GraduationCap className="w-6 h-6 text-[#D63031]" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-semibold text-[#1E3A5F]">Educator</p>
+                    <p className="text-sm text-slate-500">View assigned demos</p>
+                  </div>
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* Step 2: Enter Phone */}
+          {step === 'phone' && (
+            <>
+              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 ${
+                loginType === 'educator' ? 'bg-red-100' : 'bg-[#1E3A5F]/10'
+              }`}>
+                {loginType === 'educator' 
+                  ? <GraduationCap className="w-8 h-8 text-[#D63031]" />
+                  : <Phone className="w-8 h-8 text-[#1E3A5F]" />
+                }
+              </div>
+              <h1 className="text-2xl font-bold text-[#1E3A5F] mb-2 text-center" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                {loginType === 'educator' ? 'Educator Login' : 'Login to OLL'}
               </h1>
               <p className="text-slate-500 mb-6 text-center">
                 Enter your phone number to continue
@@ -120,6 +177,7 @@ const LoginPage = () => {
             </>
           )}
 
+          {/* Step 3: Enter OTP */}
           {step === 'otp' && (
             <>
               <div className="w-16 h-16 rounded-2xl bg-green-100 flex items-center justify-center mx-auto mb-6">
@@ -174,10 +232,15 @@ const LoginPage = () => {
             </>
           )}
 
-          <p className="text-center text-sm text-slate-500 mt-6">
-            Don't have a booking?{' '}
-            <Link to="/student" className="text-[#D63031] hover:underline">Book a Demo</Link>
-          </p>
+          {step !== 'type' && (
+            <p className="text-center text-sm text-slate-500 mt-6">
+              {loginType === 'educator' ? (
+                <>Not an educator? <Link to="/educator" className="text-[#D63031] hover:underline">Apply here</Link></>
+              ) : (
+                <>Don't have a booking? <Link to="/student" className="text-[#D63031] hover:underline">Book a Demo</Link></>
+              )}
+            </p>
+          )}
         </div>
       </main>
     </div>
