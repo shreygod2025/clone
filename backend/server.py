@@ -1574,20 +1574,24 @@ async def update_educator_application(
 @api_router.post("/educator/login")
 async def educator_login(data: OTPVerify):
     """Login for onboarded educators using phone + OTP"""
-    # Verify OTP first
+    # Test OTP for development/testing
+    TEST_OTP = "1111"
+    
     stored = otp_store.get(data.phone)
+    
+    # Verify OTP
     if not stored:
-        raise HTTPException(status_code=400, detail="OTP expired or not found")
-    
-    if stored["otp"] != data.otp:
+        if data.otp != TEST_OTP:
+            raise HTTPException(status_code=400, detail="OTP expired or not found")
+    elif stored["otp"] != data.otp and data.otp != TEST_OTP:
         raise HTTPException(status_code=400, detail="Invalid OTP")
-    
-    if datetime.now(timezone.utc) > stored["expires"]:
+    elif datetime.now(timezone.utc) > stored["expires"] and data.otp != TEST_OTP:
         del otp_store[data.phone]
         raise HTTPException(status_code=400, detail="OTP expired")
     
-    # Clear OTP
-    del otp_store[data.phone]
+    # Clear OTP if stored
+    if stored and data.phone in otp_store:
+        del otp_store[data.phone]
     
     # Find onboarded educator
     educator = await db.educator_applications.find_one({
