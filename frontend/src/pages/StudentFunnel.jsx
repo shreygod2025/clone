@@ -392,7 +392,7 @@ const StudentFunnel = () => {
       navigate(`/courses/${formData.skill}`);
     } else {
       // Reset OTP state when going back from OTP step
-      if (activeSteps[currentStep].id === 'otp') {
+      if (currentStepData?.id === 'otp') {
         setOtpSent(false);
         setOtp('');
       }
