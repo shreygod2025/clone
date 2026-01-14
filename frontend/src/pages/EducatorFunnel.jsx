@@ -325,36 +325,150 @@ const EducatorFunnel = () => {
     return days.map(d => d.substring(0, 3)).join(', ');
   };
 
-  // Success Screen
-  if (submitted) {
+  // Generate Jitsi meeting link for educator
+  const generateMeetingLink = (appId) => {
+    const meetCode = appId?.slice(-10) || 'demo-meet';
+    return `https://meet.jit.si/OLLDemo${meetCode}`;
+  };
+
+  // OTP Verification Step
+  if (step === 'otp') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
-        <div className="glass-card rounded-3xl p-8 md:p-12 max-w-lg w-full text-center animate-slide-up">
+        <div className="glass-card rounded-3xl p-8 max-w-md w-full animate-slide-up">
+          <button 
+            onClick={() => setStep('form')}
+            className="flex items-center gap-2 text-slate-600 hover:text-[#1E3A5F] mb-6"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </button>
+
+          <div className="w-16 h-16 rounded-2xl bg-green-100 flex items-center justify-center mx-auto mb-6">
+            <Shield className="w-8 h-8 text-green-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-[#1E3A5F] mb-2 text-center" style={{ fontFamily: 'Manrope, sans-serif' }}>
+            Verify Your Phone
+          </h1>
+          <p className="text-slate-500 mb-6 text-center">
+            OTP sent via <span className="text-green-600 font-medium">WhatsApp</span> to {formData.phone}
+          </p>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Enter OTP</label>
+              <Input
+                type="text"
+                placeholder="••••"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                className="text-2xl text-center tracking-widest"
+                maxLength={4}
+                data-testid="educator-otp"
+              />
+            </div>
+            <Button 
+              onClick={handleVerifyAndSubmit}
+              disabled={submitting || otp.length < 4}
+              className="w-full bg-[#D63031] hover:bg-[#b52828]"
+              data-testid="verify-submit-btn"
+            >
+              {submitting ? 'Submitting...' : 'Verify & Submit Application'}
+            </Button>
+            <button
+              onClick={async () => {
+                setOtp('');
+                const result = await sendOTP(formData.phone, 'educator');
+                if (result.success && result.sent) {
+                  toast.success('OTP resent!');
+                }
+              }}
+              className="w-full text-sm text-slate-500 hover:text-[#1E3A5F]"
+            >
+              Resend OTP
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Success Screen with demo details
+  if (submitted || step === 'success') {
+    const meetingLink = submittedApplication?.meeting_link || generateMeetingLink(submittedApplication?.id);
+    
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
+        <div className="glass-card rounded-3xl p-8 md:p-10 max-w-lg w-full text-center animate-slide-up">
           <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
             <Check className="w-10 h-10 text-green-600" />
           </div>
           <h2 className="text-2xl md:text-3xl font-bold text-[#1E3A5F] mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
             Application Submitted!
           </h2>
-          <p className="text-slate-600 mb-4">
-            Thank you for your interest in joining OLL. Our team will review your application and get back to you within 3-5 business days.
+          <p className="text-slate-600 mb-6">
+            Thank you for your interest in joining OLL. Our team will review your application.
           </p>
           
-          {formData.demo_ready && formData.demo_date && formData.demo_time && (
-            <div className="bg-blue-50 rounded-xl p-4 mb-6 text-left">
-              <p className="text-sm text-slate-500 mb-1">Demo class scheduled for</p>
-              <p className="font-semibold text-[#1E3A5F]">
-                {format(formData.demo_date, 'EEEE, MMMM d, yyyy')} at {formData.demo_time}
-              </p>
-              <p className="text-xs text-slate-500 mt-2">
-                Our team will confirm the demo details via email/phone.
-              </p>
+          {/* Demo Scheduled Info */}
+          {(submittedApplication?.demo_date || (formData.demo_ready && formData.demo_date)) && (
+            <div className="bg-gradient-to-r from-[#1E3A5F]/5 to-[#D63031]/5 rounded-xl p-5 mb-6 text-left border border-slate-200">
+              <div className="flex items-center gap-2 mb-3">
+                <Calendar className="w-5 h-5 text-[#D63031]" />
+                <span className="font-semibold text-[#1E3A5F]">Demo Scheduled</span>
+              </div>
+              <div className="space-y-2 text-sm">
+                <p className="flex justify-between">
+                  <span className="text-slate-500">Date:</span>
+                  <span className="font-medium text-[#1E3A5F]">
+                    {submittedApplication?.demo_date || format(formData.demo_date, 'EEEE, MMM d, yyyy')}
+                  </span>
+                </p>
+                <p className="flex justify-between">
+                  <span className="text-slate-500">Time:</span>
+                  <span className="font-medium text-[#1E3A5F]">
+                    {submittedApplication?.demo_time || formData.demo_time}
+                  </span>
+                </p>
+              </div>
+              
+              {/* Meeting Link */}
+              <div className="mt-4 pt-4 border-t border-slate-200">
+                <p className="text-xs text-slate-500 mb-2">Demo Meeting Link:</p>
+                <a
+                  href={meetingLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-white font-medium text-sm bg-gradient-to-r from-[#1E3A5F] to-[#D63031] hover:from-[#D63031] hover:to-[#1E3A5F] transition-all"
+                  data-testid="join-demo-link"
+                >
+                  <Video className="w-4 h-4" />
+                  Join Demo
+                </a>
+                <p className="text-xs text-slate-400 mt-2 text-center">
+                  Save this link to join your scheduled demo
+                </p>
+              </div>
             </div>
           )}
-          
-          <Button onClick={() => navigate('/')} className="btn-primary w-full" data-testid="back-to-home-btn">
-            Back to Home
-          </Button>
+
+          <div className="space-y-3">
+            <Button 
+              onClick={() => navigate('/login')} 
+              className="w-full bg-[#1E3A5F] hover:bg-[#2d4a6f]"
+              data-testid="login-btn"
+            >
+              Login to View Application
+            </Button>
+            <Button 
+              onClick={() => navigate('/')} 
+              variant="outline"
+              className="w-full"
+              data-testid="back-to-home-btn"
+            >
+              Back to Home
+            </Button>
+          </div>
         </div>
       </div>
     );
