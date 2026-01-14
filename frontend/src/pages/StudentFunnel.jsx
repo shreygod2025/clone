@@ -194,6 +194,7 @@ const StudentFunnel = () => {
         user_type: 'student'
       });
       setOtpSent(true);
+      setOtpSentViaWhatsApp(response.data.sent === true);
       // Show appropriate message based on whether OTP was actually sent
       if (response.data.sent) {
         toast.success('OTP sent to your WhatsApp!');
