@@ -339,6 +339,8 @@ class EducatorApplication(BaseModel):
     comments: List[dict] = []
     demo_date: Optional[str] = None
     demo_time: Optional[str] = None
+    meeting_link: str = ""
+    phone_verified: bool = False
     onboarding_date: Optional[str] = None
     source: str = "website"
     added_by: str = ""
