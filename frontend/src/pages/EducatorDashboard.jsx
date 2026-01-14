@@ -60,7 +60,7 @@ const QUERY_CATEGORIES = [
 
 const EducatorDashboard = () => {
   const navigate = useNavigate();
-  const { user, isLoggedIn, logout, token } = useUserAuth();
+  const { user, isLoggedIn, logout, token, loading: authLoading } = useUserAuth();
   const [demos, setDemos] = useState([]);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
