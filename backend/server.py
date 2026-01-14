@@ -1230,6 +1230,17 @@ async def create_student_inquiry(data: StudentInquiryCreate):
             return StudentInquiry(**existing)
     
     inquiry = StudentInquiry(**data.model_dump())
+    
+    # Auto-assign educator based on skill (for online demos or matching city)
+    if data.skill:
+        educator = await auto_assign_educator(data.skill, data.city, data.learning_mode)
+        if educator:
+            inquiry.assigned_educator_id = educator.get('id', '')
+            inquiry.assigned_educator_name = educator.get('name', '')
+    
+    # Generate meeting link for the booking
+    inquiry.meeting_link = generate_meeting_link(inquiry.id)
+    
     doc = inquiry.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
     doc['updated_at'] = doc['updated_at'].isoformat()
