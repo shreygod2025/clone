@@ -149,7 +149,7 @@ const LoginPage = () => {
                   />
                   {!otpSentViaWhatsApp && (
                     <p className="text-xs text-slate-400 mt-2 text-center">
-                      Use <strong>1111</strong> for testing
+                      Check your WhatsApp for OTP
                     </p>
                   )}
                 </div>

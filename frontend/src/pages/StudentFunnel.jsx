@@ -749,7 +749,7 @@ const StudentFunnel = () => {
                 />
                 {!otpSentViaWhatsApp && (
                   <p className="text-xs text-slate-400 mt-2">
-                    Use <strong>1111</strong> for testing
+                    Check your WhatsApp for OTP
                   </p>
                 )}
               </div>
