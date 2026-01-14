@@ -120,7 +120,7 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ PostHog analytics integration
 
 ## Mocked/Placeholder Features
-- **OTP System:** AiSensy WhatsApp API integrated but requires campaign setup. Falls back to "1111" if not configured.
+- **OTP System:** ✅ AiSensy WhatsApp OTP fully integrated and working
 - **Calendar Integration:** No real Calendly integration yet
 
 ## AiSensy WhatsApp OTP Setup
