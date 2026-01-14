@@ -418,7 +418,8 @@ const StudentFunnel = () => {
   };
 
   const renderStepContent = () => {
-    const stepId = activeSteps[currentStep].id;
+    const stepId = currentStepData?.id;
+    if (!stepId) return null;
     
     switch (stepId) {
       case 'skill':
