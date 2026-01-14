@@ -268,7 +268,9 @@ const StudentFunnel = () => {
   };
 
   const validateStep = () => {
-    const stepId = activeSteps[currentStep].id;
+    const stepId = currentStepData?.id;
+    if (!stepId) return true;
+    
     switch (stepId) {
       case 'skill':
         return formData.skill;
