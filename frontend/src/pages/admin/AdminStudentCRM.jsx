@@ -99,10 +99,12 @@ const AdminStudentCRM = () => {
 
   const fetchOnboardedEducators = async () => {
     try {
-      const response = await axios.get(`${API}/educators?status=onboarded`, {
+      const response = await axios.get(`${API}/educators/applications`, {
         headers: getAuthHeaders()
       });
-      setOnboardedEducators(response.data || []);
+      // Filter to only onboarded educators
+      const onboarded = (response.data || []).filter(e => e.status === 'onboarded');
+      setOnboardedEducators(onboarded);
     } catch (error) {
       console.error('Failed to fetch educators:', error);
     }
