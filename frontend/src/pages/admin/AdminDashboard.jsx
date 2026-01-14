@@ -186,24 +186,21 @@ const AdminDashboard = () => {
 
   // Different stat cards for team members vs admin
   const adminStatCards = [
-    { label: 'Total Student Leads', value: stats.total_students, color: 'bg-blue-500', icon: GraduationCap },
-    { label: 'New Student Leads', value: stats.new_student_leads, color: 'bg-green-500', icon: Users },
-    { label: 'Converted Students', value: stats.converted_students, color: 'bg-emerald-500', icon: Users },
-    { label: 'School Leads', value: stats.total_schools, color: 'bg-purple-500', icon: Building2 },
-    { label: 'New School Leads', value: stats.new_school_leads, color: 'bg-indigo-500', icon: Building2 },
-    { label: 'Educator Applications', value: stats.total_educators, color: 'bg-orange-500', icon: Users },
-    { label: 'New Educators', value: stats.new_educator_applications, color: 'bg-yellow-500', icon: Users },
-    { label: 'Open Support Tickets', value: stats.open_tickets, color: 'bg-red-500', icon: MessageSquare },
+    { label: 'Total Students', value: stats.total_students, color: 'from-blue-500 to-blue-600', icon: GraduationCap, link: '/admin/students' },
+    { label: 'New Leads', value: stats.new_student_leads, color: 'from-green-500 to-emerald-600', icon: Users, link: '/admin/students' },
+    { label: 'Converted', value: stats.converted_students, color: 'from-emerald-500 to-green-600', icon: Users, link: '/admin/students' },
+    { label: 'Schools', value: stats.total_schools, color: 'from-purple-500 to-indigo-600', icon: Building2, link: '/admin/schools' },
+    { label: 'Educators', value: stats.total_educators, color: 'from-orange-500 to-red-500', icon: Users, link: '/admin/educators' },
+    { label: 'Support', value: stats.open_tickets, color: 'from-red-500 to-pink-500', icon: MessageSquare, link: '/admin/support' },
   ];
 
   const teamStatCards = [
-    { label: 'My Student Leads', value: stats.total_students, color: 'bg-blue-500', icon: GraduationCap },
-    { label: 'My New Leads', value: stats.new_student_leads, color: 'bg-green-500', icon: Users },
-    { label: 'My Conversions', value: stats.converted_students, color: 'bg-emerald-500', icon: Users },
-    { label: 'My School Leads', value: stats.total_schools, color: 'bg-purple-500', icon: Building2 },
-    { label: 'Followups Due', value: stats.followups_due || 0, color: 'bg-cyan-500', icon: MessageSquare },
-    { label: 'Leads Added by Me', value: stats.leads_added_by_me || 0, color: 'bg-orange-500', icon: Users },
-    { label: 'My Support Tickets', value: stats.open_tickets, color: 'bg-red-500', icon: MessageSquare },
+    { label: 'My Leads', value: stats.total_students, color: 'from-blue-500 to-blue-600', icon: GraduationCap },
+    { label: 'New', value: stats.new_student_leads, color: 'from-green-500 to-emerald-600', icon: Users },
+    { label: 'Converted', value: stats.converted_students, color: 'from-emerald-500 to-green-600', icon: Users },
+    { label: 'Schools', value: stats.total_schools, color: 'from-purple-500 to-indigo-600', icon: Building2 },
+    { label: 'Followups', value: stats.followups_due || 0, color: 'from-cyan-500 to-blue-500', icon: Calendar },
+    { label: 'Support', value: stats.open_tickets, color: 'from-red-500 to-pink-500', icon: MessageSquare },
   ];
 
   const statCards = stats.is_team_member ? teamStatCards : adminStatCards;
@@ -220,24 +217,44 @@ const AdminDashboard = () => {
         </div>
       ) : (
         <>
-          {stats.is_team_member && (
-            <div className="mb-6 bg-gradient-to-r from-[#1E3A5F] to-[#2E5A8F] rounded-2xl p-6 text-white">
-              <h2 className="text-xl font-bold mb-2">Your Performance Overview</h2>
-              <p className="text-white/70">Track your assigned leads, conversions, and followups</p>
-            </div>
-          )}
-
-          <div className={`grid ${stats.is_team_member ? 'grid-cols-2 md:grid-cols-4 lg:grid-cols-7' : 'grid-cols-2 md:grid-cols-4'} gap-4 mb-8`}>
-            {statCards.map((stat, index) => (
-              <div key={index} className="stat-card" data-testid={`stat-${index}`}>
-                <div className="flex items-center gap-3 mb-3">
-                  <div className={`w-10 h-10 rounded-xl ${stat.color} flex items-center justify-center`}>
-                    <stat.icon className="w-5 h-5 text-white" />
-                  </div>
-                </div>
-                <p className="text-3xl font-bold text-[#1E3A5F]">{stat.value}</p>
-                <p className="text-sm text-slate-500">{stat.label}</p>
+          {/* Welcome Banner */}
+          <div className="mb-6 bg-gradient-to-r from-[#1E3A5F] to-[#3A7BD5] rounded-2xl p-6 text-white shadow-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold mb-1">
+                  {stats.is_team_member ? `Hey ${user?.name?.split(' ')[0] || 'there'}!` : 'Admin Dashboard'}
+                </h2>
+                <p className="text-white/80 text-sm">
+                  {stats.is_team_member 
+                    ? 'Here\'s your performance overview for today'
+                    : `Managing ${stats.total_students + stats.total_schools} total leads`
+                  }
+                </p>
               </div>
+              <div className="hidden md:flex items-center gap-3">
+                <div className="text-right">
+                  <p className="text-white/60 text-xs">Today's Date</p>
+                  <p className="font-medium">{new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Stats Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+            {statCards.map((stat, index) => (
+              <Link 
+                key={index} 
+                to={stat.link || '#'}
+                className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 hover:shadow-md transition-all group cursor-pointer"
+                data-testid={`stat-${index}`}
+              >
+                <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
+                  <stat.icon className="w-5 h-5 text-white" />
+                </div>
+                <p className="text-2xl font-bold text-[#1E3A5F]">{stat.value}</p>
+                <p className="text-xs text-slate-500 mt-1">{stat.label}</p>
+              </Link>
             ))}
           </div>
 
@@ -247,12 +264,12 @@ const AdminDashboard = () => {
               <h3 className="font-semibold text-red-600 mb-4 flex items-center gap-2">
                 <Clock className="w-5 h-5" />
                 Overdue ({stats.total_overdue})
-                <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">Requires Attention</span>
+                <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full animate-pulse">Requires Attention</span>
               </h3>
               <div className="grid md:grid-cols-3 gap-4">
                 {/* Overdue Student Demos */}
                 {stats.overdue_students?.length > 0 && (
-                  <div className="bg-red-50 rounded-2xl p-5 border border-red-200">
+                  <div className="bg-gradient-to-br from-red-50 to-orange-50 rounded-2xl p-5 border border-red-200">
                     <div className="flex items-center gap-2 mb-4">
                       <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
                         <GraduationCap className="w-4 h-4 text-red-600" />
@@ -264,7 +281,7 @@ const AdminDashboard = () => {
                     </div>
                     <div className="space-y-2 max-h-[200px] overflow-y-auto">
                       {stats.overdue_students.map((demo, idx) => (
-                        <div key={idx} className="bg-white rounded-lg p-3 border border-red-100">
+                        <div key={idx} className="bg-white rounded-lg p-3 border border-red-100 hover:border-red-300 transition-colors">
                           <div className="flex items-center justify-between mb-1">
                             <span className="font-medium text-sm text-slate-800">{demo.name}</span>
                             <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
@@ -278,6 +295,7 @@ const AdminDashboard = () => {
                           </div>
                         </div>
                       ))}
+                    </div>
                     </div>
                   </div>
                 )}
