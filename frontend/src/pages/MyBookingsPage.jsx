@@ -469,6 +469,64 @@ const MyBookingsPage = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Cancel Demo Dialog */}
+      <Dialog open={showCancelModal} onOpenChange={setShowCancelModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-600 flex items-center gap-2">
+              <XCircle className="w-5 h-5" />
+              Cancel Demo
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-slate-600 text-sm">
+              Are you sure you want to cancel your demo? Please let us know the reason so we can improve.
+            </p>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Reason for cancellation</label>
+              <div className="space-y-2">
+                {CANCEL_REASONS.map(reason => (
+                  <div
+                    key={reason.value}
+                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                      cancelReason === reason.value 
+                        ? 'border-red-500 bg-red-50' 
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                    onClick={() => setCancelReason(reason.value)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                        cancelReason === reason.value ? 'border-red-500' : 'border-slate-300'
+                      }`}>
+                        {cancelReason === reason.value && (
+                          <div className="w-2 h-2 rounded-full bg-red-500" />
+                        )}
+                      </div>
+                      <span className="text-sm">{reason.label}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" onClick={() => setShowCancelModal(false)} className="flex-1">
+                Keep Demo
+              </Button>
+              <Button 
+                onClick={handleCancelBooking}
+                disabled={cancelling || !cancelReason}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+              >
+                {cancelling ? 'Cancelling...' : 'Confirm Cancel'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
