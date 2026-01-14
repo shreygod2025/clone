@@ -129,7 +129,10 @@ const LoginPage = () => {
                 Enter OTP
               </h1>
               <p className="text-slate-500 mb-6 text-center">
-                OTP sent to {phone}
+                {otpSentViaWhatsApp 
+                  ? <>OTP sent via <span className="text-green-600 font-medium">WhatsApp</span> to {phone}</>
+                  : <>OTP sent to {phone}</>
+                }
               </p>
 
               <div className="space-y-4">
@@ -144,9 +147,11 @@ const LoginPage = () => {
                     maxLength={4}
                     data-testid="login-otp"
                   />
-                  <p className="text-xs text-slate-400 mt-2 text-center">
-                    Use <strong>1111</strong> for testing
-                  </p>
+                  {!otpSentViaWhatsApp && (
+                    <p className="text-xs text-slate-400 mt-2 text-center">
+                      Use <strong>1111</strong> for testing
+                    </p>
+                  )}
                 </div>
                 <Button 
                   onClick={handleVerifyOTP}
