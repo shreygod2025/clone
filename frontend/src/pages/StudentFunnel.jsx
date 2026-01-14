@@ -1055,7 +1055,7 @@ const StudentFunnel = () => {
 
           <div className="glass-card rounded-3xl p-6 md:p-8 animate-slide-up">
             <h2 className="text-xl md:text-2xl font-bold text-[#1E3A5F] mb-6 text-center" style={{ fontFamily: 'Manrope, sans-serif' }}>
-              {activeSteps[currentStep].title}
+              {currentStepData?.title || 'Complete Booking'}
             </h2>
             
             {renderStepContent()}
