@@ -1648,7 +1648,7 @@ async def update_educator_application(
 
 @api_router.post("/educator/login")
 async def educator_login(data: OTPVerify):
-    """Login for onboarded educators using phone + OTP"""
+    """Login for educators (both onboarded and applicants) using phone + OTP"""
     # Test OTP for development/testing
     TEST_OTP = "1111"
     
@@ -1668,10 +1668,9 @@ async def educator_login(data: OTPVerify):
     if stored and data.phone in otp_store:
         del otp_store[data.phone]
     
-    # Find onboarded educator
+    # Find educator by phone (any status, not just onboarded)
     educator = await db.educator_applications.find_one({
-        "phone": data.phone,
-        "status": "onboarded"
+        "phone": data.phone
     }, {"_id": 0})
     
     if not educator:
