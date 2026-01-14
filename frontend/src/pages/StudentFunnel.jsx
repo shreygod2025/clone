@@ -79,6 +79,14 @@ const StudentFunnel = () => {
   // Check for pre-selected skill from URL params (coming from course page)
   useEffect(() => {
     const skillParam = searchParams.get('skill');
+    const supportParam = searchParams.get('support');
+    
+    // Auto-open support flow if coming from bookings page
+    if (supportParam === 'true') {
+      setFlowType('support');
+      return;
+    }
+    
     if (skillParam && SKILL_OPTIONS.find(s => s.value === skillParam)) {
       setFlowType('learn');
       setFormData(prev => ({ ...prev, skill: skillParam }));
