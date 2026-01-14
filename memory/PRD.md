@@ -50,7 +50,17 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## What's Been Implemented (January 2026)
 
-### Latest Session (Jan 14, 2026)
+### Latest Session (Jan 14, 2026) - Jitsi Meet Integration
+- ✅ **Jitsi Meet Video Conferencing with Moderator Control:**
+  - Admin/Center users join as moderators with lobby control enabled
+  - Students join as participants who need moderator approval
+  - Unique meeting rooms generated per booking (`OLLDemo{bookingId}`)
+  - Moderator settings: lobby enabled, can admit/reject participants
+  - Student settings: pre-join page, start muted
+- ✅ **Join Demo Buttons Updated:**
+  - MyBookingsPage: Student link with participant config
+  - AdminStudentCRM: Admin link with moderator config
+  - CenterDashboard: Added Join Demo button with moderator config
 - ✅ **Student Form Improvements:**
   - "Book Free Demo Class" button now appears ABOVE "See Course Details" (primary action)
   - "Resend OTP" link now appears BELOW "Confirm Booking" button
@@ -121,6 +131,7 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## Mocked/Placeholder Features
 - **OTP System:** ✅ AiSensy WhatsApp OTP fully integrated and working
+- **Video Meetings:** ✅ Jitsi Meet with moderator control for admins/centers, lobby for students
 - **Calendar Integration:** No real Calendly integration yet
 
 ## AiSensy WhatsApp OTP Setup
@@ -162,7 +173,6 @@ To enable real WhatsApp OTP:
 
 ### P2 - Medium Priority
 - [ ] Real Calendar Integration (Calendly)
-- [ ] Real WhatsApp OTP (Twilio)
 - [ ] Email/WhatsApp notifications for form submissions
 - [ ] Proposal/MOU generation for Schools (deferred)
 
