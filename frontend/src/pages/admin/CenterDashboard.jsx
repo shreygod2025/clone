@@ -579,8 +579,8 @@ const CenterDashboard = () => {
                   </div>
                 )}
 
-                {/* View Button */}
-                <div className="flex gap-2 mb-3">
+                {/* View Button + Join Demo */}
+                <div className="flex gap-2 mb-3 flex-wrap">
                   <Button
                     variant="outline"
                     size="sm"
@@ -590,6 +590,38 @@ const CenterDashboard = () => {
                   >
                     <Eye className="w-4 h-4 mr-1" /> View
                   </Button>
+                  
+                  {/* Join Demo Button - For online mode */}
+                  {isOnlineMode(inquiry) && inquiry.demo_date && ['new', 'demo_scheduled'].includes(inquiry.status) && (
+                    <a
+                      href={generateMeetingLink(inquiry)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-white font-medium text-xs transition-all duration-300 shadow-sm ${
+                        isDemoJoinable(inquiry)
+                          ? 'bg-gradient-to-r from-[#1E3A5F] to-[#D63031] hover:from-[#D63031] hover:to-[#1E3A5F] animate-pulse'
+                          : 'bg-gradient-to-r from-[#1E3A5F] to-[#D63031] hover:from-[#D63031] hover:to-[#1E3A5F]'
+                      }`}
+                      data-testid={`join-demo-${inquiry.id}`}
+                    >
+                      <Video className="w-3 h-3" />
+                      {isDemoJoinable(inquiry) ? 'Join Now' : 'Join Demo'}
+                    </a>
+                  )}
+
+                  {/* Go to Center Button - For offline center */}
+                  {isOfflineCenter(inquiry) && ['new', 'demo_scheduled'].includes(inquiry.status) && (
+                    <a
+                      href={generateCenterMapsLink(inquiry)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-white font-medium text-xs bg-gradient-to-r from-[#1E3A5F] to-[#D63031] hover:from-[#D63031] hover:to-[#1E3A5F] transition-all duration-300 shadow-sm"
+                      data-testid={`go-to-center-${inquiry.id}`}
+                    >
+                      <Navigation className="w-3 h-3" />
+                      Go to Center
+                    </a>
+                  )}
                 </div>
 
                 {/* Action Buttons based on status */}
