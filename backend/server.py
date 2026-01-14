@@ -1520,11 +1520,80 @@ async def update_school_inquiry(
 @api_router.post("/educators/apply", response_model=EducatorApplication)
 async def create_educator_application(data: EducatorApplicationCreate):
     application = EducatorApplication(**data.model_dump())
-    doc = application.model_dump()
+    
+    # If demo_date is provided, set status to demo_scheduled
+    if data.demo_date:
+        application.status = "demo_scheduled"
+    
+    # Generate meeting link for the educator demo
+    application_dict = application.model_dump()
+    meeting_link = generate_meeting_link(application.id)
+    
+    doc = application_dict
+    doc['meeting_link'] = meeting_link
     doc['created_at'] = doc['created_at'].isoformat()
     doc['updated_at'] = doc['updated_at'].isoformat()
     await db.educator_applications.insert_one(doc)
     return application
+
+# Educator application with OTP verification
+class EducatorApplyWithOTP(BaseModel):
+    phone: str
+    otp: str
+    application_data: EducatorApplicationCreate
+
+@api_router.post("/educators/apply-verified")
+async def create_educator_application_verified(data: EducatorApplyWithOTP):
+    """Create educator application with OTP verification"""
+    # Test OTP for development
+    TEST_OTP = "1111"
+    
+    stored = otp_store.get(data.phone)
+    
+    # Verify OTP
+    if not stored:
+        if data.otp != TEST_OTP:
+            raise HTTPException(status_code=400, detail="OTP expired or not found")
+    elif stored["otp"] != data.otp and data.otp != TEST_OTP:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+    
+    # Clear OTP
+    if stored and data.phone in otp_store:
+        del otp_store[data.phone]
+    
+    # Create the application
+    app_data = data.application_data.model_dump()
+    app_data['phone'] = data.phone  # Ensure phone matches verified phone
+    
+    application = EducatorApplication(**app_data)
+    
+    # If demo_date is provided, set status to demo_scheduled
+    if data.application_data.demo_date:
+        application.status = "demo_scheduled"
+    
+    # Generate meeting link
+    meeting_link = generate_meeting_link(application.id)
+    
+    doc = application.model_dump()
+    doc['meeting_link'] = meeting_link
+    doc['phone_verified'] = True
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    
+    await db.educator_applications.insert_one(doc)
+    
+    return {
+        "success": True,
+        "message": "Application submitted successfully",
+        "application": {
+            "id": application.id,
+            "name": application.name,
+            "status": application.status,
+            "demo_date": application.demo_date,
+            "demo_time": application.demo_time,
+            "meeting_link": meeting_link
+        }
+    }
 
 @api_router.get("/educators/applications", response_model=List[EducatorApplication])
 async def get_educator_applications(
