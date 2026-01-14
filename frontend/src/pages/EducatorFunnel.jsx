@@ -156,6 +156,15 @@ const EducatorFunnel = () => {
     }));
   };
 
+  const toggleTeachingMode = (mode) => {
+    setFormData(prev => ({
+      ...prev,
+      teaching_mode: prev.teaching_mode.includes(mode)
+        ? prev.teaching_mode.filter(m => m !== mode)
+        : [...prev.teaching_mode, mode]
+    }));
+  };
+
   const toggleReqDay = (day) => {
     setReqFormData(prev => ({
       ...prev,
@@ -176,28 +185,92 @@ const EducatorFunnel = () => {
     }
   };
 
-  const handleSubmit = async (e) => {
+  // Check if city has OLL center
+  const cityHasCenter = (cityName) => {
+    return centers.some(c => c.city?.toLowerCase() === cityName?.toLowerCase() && c.is_active);
+  };
+
+  // Get available teaching modes based on city
+  const getAvailableTeachingModes = () => {
+    const selectedCity = showOtherCity ? formData.other_city : formData.city;
+    const hasCenter = cityHasCenter(selectedCity);
+    
+    return TEACHING_MODES.map(mode => ({
+      ...mode,
+      disabled: mode.id === 'offline_center' && !hasCenter,
+      tooltip: mode.id === 'offline_center' && !hasCenter ? 'No OLL center in your city' : null
+    }));
+  };
+
+  // Step 1: Validate and send OTP
+  const handleProceedToOTP = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.email || !formData.phone || formData.skills.length === 0) {
       toast.error('Please fill all required fields');
       return;
     }
-
-    // Validate demo date/time if demo_ready is checked
+    if (formData.phone.length < 10) {
+      toast.error('Please enter a valid phone number');
+      return;
+    }
     if (formData.demo_ready && (!formData.demo_date || !formData.demo_time)) {
       toast.error('Please select your preferred demo date and time');
+      return;
+    }
+    if (formData.teaching_mode.length === 0) {
+      toast.error('Please select at least one preferred teaching mode');
+      return;
+    }
+
+    setOtpSending(true);
+    const result = await sendOTP(formData.phone, 'educator');
+    setOtpSending(false);
+
+    if (result.success && result.sent) {
+      toast.success('OTP sent to your WhatsApp!');
+      setStep('otp');
+    } else {
+      toast.error(result.message || 'Failed to send OTP');
+    }
+  };
+
+  // Step 2: Verify OTP and submit application
+  const handleVerifyAndSubmit = async () => {
+    if (!otp || otp.length < 4) {
+      toast.error('Please enter the OTP');
       return;
     }
 
     setSubmitting(true);
     try {
-      await axios.post(`${API}/educators/apply`, {
-        ...formData,
-        city: showOtherCity ? formData.other_city : formData.city,
-        availability: formData.availability.join(', ') || 'Flexible',
-        demo_date: formData.demo_date ? format(formData.demo_date, 'yyyy-MM-dd') : null,
+      const response = await axios.post(`${API}/educators/apply-verified`, {
+        phone: formData.phone,
+        otp: otp,
+        application_data: {
+          ...formData,
+          city: showOtherCity ? formData.other_city : formData.city,
+          teaching_mode: formData.teaching_mode.join(', '),
+          availability: formData.availability.join(', ') || 'Flexible',
+          demo_date: formData.demo_date ? format(formData.demo_date, 'yyyy-MM-dd') : null,
+        }
       });
+      
+      setSubmittedApplication(response.data.application);
+      setStep('success');
       setSubmitted(true);
+      toast.success('Application submitted successfully!');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to submit. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Old handleSubmit kept for backward compatibility
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    handleProceedToOTP(e);
+  };
       toast.success('Application submitted successfully!');
     } catch (error) {
       toast.error('Failed to submit. Please try again.');
