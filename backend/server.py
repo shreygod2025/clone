@@ -1674,14 +1674,15 @@ async def educator_login(data: OTPVerify):
     }, {"_id": 0})
     
     if not educator:
-        raise HTTPException(status_code=403, detail="Not an onboarded educator. Please contact admin.")
+        raise HTTPException(status_code=403, detail="No application found. Please apply first.")
     
-    # Create JWT token for educator
+    # Create JWT token for educator (any status)
     token = create_access_token({
         "sub": educator["email"],
         "role": "educator",
         "educator_id": educator["id"],
-        "name": educator["name"]
+        "name": educator["name"],
+        "status": educator.get("status", "new")
     })
     
     return {
@@ -1693,9 +1694,86 @@ async def educator_login(data: OTPVerify):
             "email": educator["email"],
             "phone": educator["phone"],
             "skills": educator.get("skills", []),
+            "status": educator.get("status", "new"),
+            "demo_date": educator.get("demo_date"),
+            "demo_time": educator.get("demo_time"),
+            "demo_rating": educator.get("demo_rating"),
+            "meeting_link": educator.get("meeting_link") or generate_meeting_link(educator["id"]),
             "role": "educator"
         }
     }
+
+@api_router.patch("/educator/reschedule-demo")
+async def educator_reschedule_demo(data: dict, user: dict = Depends(get_current_user)):
+    """Allow educator to reschedule their own demo"""
+    educator_id = user.get("educator_id") or user.get("id")
+    
+    if not educator_id:
+        raise HTTPException(status_code=403, detail="Educator not found")
+    
+    new_date = data.get("demo_date")
+    new_time = data.get("demo_time")
+    
+    if not new_date or not new_time:
+        raise HTTPException(status_code=400, detail="Date and time required")
+    
+    # Update educator application
+    await db.educator_applications.update_one(
+        {"id": educator_id},
+        {"$set": {
+            "demo_date": new_date,
+            "demo_time": new_time,
+            "status": "demo_scheduled",
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }, "$push": {
+            "comments": {
+                "id": str(uuid.uuid4()),
+                "text": f"Demo rescheduled by educator to {new_date} at {new_time}",
+                "author": "System",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+        }}
+    )
+    
+    return {"message": "Demo rescheduled successfully"}
+
+@api_router.post("/educator/submit-query")
+async def educator_submit_query(data: dict, user: dict = Depends(get_current_user)):
+    """Submit a query from educator"""
+    educator_id = user.get("educator_id") or user.get("id")
+    query_text = data.get("query", "")
+    
+    if not query_text:
+        raise HTTPException(status_code=400, detail="Query text required")
+    
+    # Create support query
+    query_doc = {
+        "id": str(uuid.uuid4()),
+        "type": "educator_query",
+        "educator_id": educator_id,
+        "educator_name": user.get("name", ""),
+        "educator_phone": user.get("phone", ""),
+        "query": query_text,
+        "status": "new",
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.support_queries.insert_one(query_doc)
+    
+    # Also add as comment to educator application
+    await db.educator_applications.update_one(
+        {"id": educator_id},
+        {"$push": {
+            "comments": {
+                "id": str(uuid.uuid4()),
+                "text": f"Query from educator: {query_text}",
+                "author": user.get("name", "Educator"),
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+        }}
+    )
+    
+    return {"message": "Query submitted successfully"}
 
 @api_router.get("/educator/my-demos")
 async def get_educator_demos(user: dict = Depends(get_current_user)):
