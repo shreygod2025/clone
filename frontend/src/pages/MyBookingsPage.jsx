@@ -372,28 +372,28 @@ const MyBookingsPage = () => {
                           href={generateMeetingLink(booking)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className={`w-full md:w-auto inline-flex items-center justify-center gap-2 px-4 py-3 md:py-2 rounded-lg text-white font-medium text-sm transition-all duration-300 shadow-md hover:shadow-lg ${
+                          className={`w-full md:w-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 md:px-3 md:py-1.5 rounded-lg text-white font-medium text-xs md:text-sm transition-all duration-300 shadow-sm hover:shadow-md ${
                             isDemoJoinable(booking)
                               ? 'bg-gradient-to-r from-[#1E3A5F] to-[#D63031] hover:from-[#D63031] hover:to-[#1E3A5F] animate-pulse'
                               : 'bg-gradient-to-r from-[#1E3A5F] to-[#D63031] hover:from-[#D63031] hover:to-[#1E3A5F]'
                           }`}
                           data-testid={`join-demo-${booking.id}`}
                         >
-                          <Video className="w-4 h-4" />
-                          {isDemoJoinable(booking) ? 'Join Demo Now' : 'Join Demo'}
+                          <Video className="w-3.5 h-3.5" />
+                          {isDemoJoinable(booking) ? 'Join Now' : 'Join Demo'}
                         </a>
                       )}
 
-                      {/* Go to Center Button - Full width on mobile */}
+                      {/* Go to Center Button */}
                       {isOfflineCenter(booking) && ['new', 'confirmed', 'rescheduled'].includes(booking.status) && (
                         <a
                           href={generateCenterMapsLink(booking)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-4 py-3 md:py-2 rounded-lg text-white font-medium text-sm transition-all duration-300 bg-gradient-to-r from-[#1E3A5F] to-[#D63031] hover:from-[#D63031] hover:to-[#1E3A5F] shadow-md hover:shadow-lg"
+                          className="w-full md:w-auto inline-flex items-center justify-center gap-1.5 px-3 py-2 md:px-3 md:py-1.5 rounded-lg text-white font-medium text-xs md:text-sm transition-all duration-300 bg-gradient-to-r from-[#1E3A5F] to-[#D63031] hover:from-[#D63031] hover:to-[#1E3A5F] shadow-sm hover:shadow-md"
                           data-testid={`go-to-center-${booking.id}`}
                         >
-                          <Navigation className="w-4 h-4" />
+                          <Navigation className="w-3.5 h-3.5" />
                           Go to Center
                         </a>
                       )}
