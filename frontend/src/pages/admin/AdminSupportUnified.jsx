@@ -16,16 +16,20 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const QUERY_TYPES = [
   { value: 'demo_related', label: 'Demo Related', icon: MessageSquare, color: 'bg-blue-100 text-blue-700' },
   { value: 'payment', label: 'Payment', icon: CreditCard, color: 'bg-green-100 text-green-700' },
+  { value: 'payment_related', label: 'Payment Related', icon: CreditCard, color: 'bg-green-100 text-green-700' },
   { value: 'course_info', label: 'Course Info', icon: HelpCircle, color: 'bg-purple-100 text-purple-700' },
+  { value: 'ongoing_classes', label: 'Ongoing Classes', icon: HelpCircle, color: 'bg-purple-100 text-purple-700' },
   { value: 'technical', label: 'Technical', icon: Wrench, color: 'bg-orange-100 text-orange-700' },
   { value: 'partnership', label: 'Partnership', icon: Building2, color: 'bg-cyan-100 text-cyan-700' },
   { value: 'feedback', label: 'Feedback', icon: ThumbsUp, color: 'bg-yellow-100 text-yellow-700' },
+  { value: 'educator_query', label: 'Educator Query', icon: UserPlus, color: 'bg-red-100 text-red-700' },
   { value: 'other', label: 'Other', icon: AlertCircle, color: 'bg-slate-100 text-slate-700' },
 ];
 
 const INQUIRY_TYPES = [
   { value: 'student', label: 'Student' },
   { value: 'school', label: 'School' },
+  { value: 'educator', label: 'Educator' },
   { value: 'growth_partner', label: 'Growth Partner' },
   { value: 'teacher', label: 'Teacher' },
   { value: 'team', label: 'Team' },
