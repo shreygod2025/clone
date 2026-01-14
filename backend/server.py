@@ -979,8 +979,7 @@ async def send_otp(data: OTPRequest):
     
     # AiSensy WhatsApp API Integration
     AISENSY_API_KEY = os.environ.get("AISENSY_API_KEY", "")
-    # Campaign name must match exactly what's created in AiSensy dashboard
-    AISENSY_CAMPAIGN_NAME = os.environ.get("AISENSY_CAMPAIGN_NAME", "otp_campaign")
+    AISENSY_CAMPAIGN_NAME = os.environ.get("AISENSY_CAMPAIGN_NAME", "otpollsite")
     
     if AISENSY_API_KEY:
         try:
@@ -988,21 +987,43 @@ async def send_otp(data: OTPRequest):
             phone_number = data.phone
             if not phone_number.startswith("91") and not phone_number.startswith("+91"):
                 phone_number = f"91{phone_number}"
+            # Remove + if present
+            phone_number = phone_number.replace("+", "")
             
-            # AiSensy API endpoint for sending template messages
+            # AiSensy API endpoint
             aisensy_url = "https://backend.aisensy.com/campaign/t1/api/v2"
             
             payload = {
                 "apiKey": AISENSY_API_KEY,
                 "campaignName": AISENSY_CAMPAIGN_NAME,
                 "destination": phone_number,
-                "userName": data.user_type.capitalize(),
-                "templateParams": [otp]  # Pass OTP as template parameter
+                "userName": "OLL User",
+                "templateParams": [otp],
+                "source": "OLL Platform",
+                "media": {},
+                "buttons": [
+                    {
+                        "type": "button",
+                        "sub_type": "url",
+                        "index": 0,
+                        "parameters": [
+                            {
+                                "type": "text",
+                                "text": otp
+                            }
+                        ]
+                    }
+                ],
+                "carouselCards": [],
+                "location": {},
+                "attributes": {},
+                "paramsFallbackValue": {
+                    "FirstName": otp
+                }
             }
             
             async with httpx.AsyncClient() as client:
                 response = await client.post(aisensy_url, json=payload, timeout=30.0)
-                response_data = response.json() if response.text else {}
                 
                 if response.status_code == 200:
                     print(f"AiSensy OTP sent successfully to {phone_number}")
@@ -1012,8 +1033,8 @@ async def send_otp(data: OTPRequest):
                     # Fallback to mock OTP if API fails
                     otp_store[data.phone]["otp"] = "1111"
                     return {
-                        "message": "OTP sent (test mode - WhatsApp campaign not configured)", 
-                        "hint": "Use 1111 for testing. To enable WhatsApp OTP, configure AISENSY_CAMPAIGN_NAME in .env", 
+                        "message": "OTP sent (test mode)", 
+                        "hint": "Use 1111 for testing", 
                         "sent": False
                     }
                     
