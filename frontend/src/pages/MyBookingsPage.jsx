@@ -331,33 +331,52 @@ const MyBookingsPage = () => {
                           <span>{booking.demo_time || booking.meeting_time || 'Time not set'}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-slate-400" />
-                          <span>
-                            {booking.learning_mode === 'online' 
-                              ? 'Online' 
-                              : booking.learning_mode?.includes('center')
-                              ? `At OLL Center - ${booking.city}`
-                              : booking.learning_mode?.includes('home')
-                              ? `At Home - ${booking.city}`
-                              : booking.location || booking.city || 'Location TBD'
-                            }
-                          </span>
+                          {(() => {
+                            const locationInfo = getLocationDisplay(booking);
+                            const LocationIcon = locationInfo.icon;
+                            return (
+                              <>
+                                <LocationIcon className="w-4 h-4 text-slate-400" />
+                                <span className={locationInfo.type === 'home' ? 'text-green-600 font-medium' : ''}>
+                                  {locationInfo.text}
+                                </span>
+                              </>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
-                      {/* Join Demo Button - Only for online classes when joinable */}
-                      {isDemoJoinable(booking) && (
+                      {/* Join Demo Button - For online classes */}
+                      {isOnlineMode(booking) && ['new', 'confirmed', 'rescheduled'].includes(booking.status) && (
                         <a
                           href={generateMeetingLink(booking)}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium text-sm transition-all duration-300 bg-gradient-to-r from-[#1E3A5F] to-[#D63031] hover:from-[#D63031] hover:to-[#1E3A5F] shadow-md hover:shadow-lg"
+                          className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium text-sm transition-all duration-300 shadow-md hover:shadow-lg ${
+                            isDemoJoinable(booking)
+                              ? 'bg-gradient-to-r from-[#1E3A5F] to-[#D63031] hover:from-[#D63031] hover:to-[#1E3A5F] animate-pulse'
+                              : 'bg-gradient-to-r from-[#1E3A5F] to-[#D63031] hover:from-[#D63031] hover:to-[#1E3A5F]'
+                          }`}
                           data-testid={`join-demo-${booking.id}`}
                         >
                           <Video className="w-4 h-4" />
-                          Join Demo
+                          {isDemoJoinable(booking) ? 'Join Demo Now' : 'Join Demo'}
+                        </a>
+                      )}
+
+                      {/* Go to Center Button - For offline center */}
+                      {isOfflineCenter(booking) && ['new', 'confirmed', 'rescheduled'].includes(booking.status) && (
+                        <a
+                          href={generateCenterMapsLink(booking)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium text-sm transition-all duration-300 bg-gradient-to-r from-[#1E3A5F] to-[#D63031] hover:from-[#D63031] hover:to-[#1E3A5F] shadow-md hover:shadow-lg"
+                          data-testid={`go-to-center-${booking.id}`}
+                        >
+                          <Navigation className="w-4 h-4" />
+                          Go to Center
                         </a>
                       )}
                       
