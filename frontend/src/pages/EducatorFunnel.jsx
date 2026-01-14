@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, Briefcase, MapPin, Clock, Users, HelpCircle, Send, Calendar, IndianRupee, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Briefcase, MapPin, Clock, Users, HelpCircle, Send, Calendar, IndianRupee, X, Shield, Video, Home, Building2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import axios from 'axios';
 import { format, addDays } from 'date-fns';
 import Navbar from '../components/Navbar';
+import { useUserAuth } from '../context/UserAuthContext';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -25,10 +26,18 @@ const CITIES = [
 ];
 const TIME_SLOTS = ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'];
 
+const TEACHING_MODES = [
+  { id: 'online', label: 'Online Classes', icon: Video, description: 'Teach via video call' },
+  { id: 'offline_home', label: 'At Student\'s Home', icon: Home, description: 'Visit students for classes' },
+  { id: 'offline_center', label: 'At OLL Center', icon: Building2, description: 'Teach at our learning centers' },
+];
+
 const EducatorFunnel = () => {
   const navigate = useNavigate();
+  const { sendOTP } = useUserAuth();
   const [activeTab, setActiveTab] = useState('apply');
   const [requirements, setRequirements] = useState([]);
+  const [centers, setCenters] = useState([]);
   const [formConfig, setFormConfig] = useState({
     skills: DEFAULT_SKILLS,
     grades: DEFAULT_GRADES,
@@ -40,9 +49,15 @@ const EducatorFunnel = () => {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submittedApplication, setSubmittedApplication] = useState(null);
   const [selectedRequirement, setSelectedRequirement] = useState(null);
   const [showRequirementForm, setShowRequirementForm] = useState(false);
   const [showOtherCity, setShowOtherCity] = useState(false);
+  
+  // OTP verification state
+  const [step, setStep] = useState('form'); // form, otp, success
+  const [otp, setOtp] = useState('');
+  const [otpSending, setOtpSending] = useState(false);
   
   // General application form
   const [formData, setFormData] = useState({
@@ -54,6 +69,7 @@ const EducatorFunnel = () => {
     grades_comfortable: [],
     city: '',
     other_city: '',
+    teaching_mode: [],
     availability: [],
     demo_ready: false,
     demo_date: null,
