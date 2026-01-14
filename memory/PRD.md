@@ -151,7 +151,7 @@ To enable real WhatsApp OTP:
 ## Credentials
 - **Admin:** admin@oll.co / Dagaji03@
 - **Center User:** andheri@oll.co / center123
-- **OTP Code:** 1111
+- **OTP:** Sent via WhatsApp (AiSensy)
 - **Team Users:** Create via Admin Panel → Team Users
 
 ## Backlog
