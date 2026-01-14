@@ -1739,24 +1739,54 @@ async def educator_reschedule_demo(data: dict, user: dict = Depends(get_current_
 
 @api_router.post("/educator/submit-query")
 async def educator_submit_query(data: dict, user: dict = Depends(get_current_user)):
-    """Submit a query from educator"""
+    """Submit a structured query from educator"""
     educator_id = user.get("educator_id") or user.get("id")
-    query_text = data.get("query", "")
     
-    if not query_text:
+    category = data.get("category", "general")
+    subcategory = data.get("subcategory", "")
+    category_label = data.get("category_label", "General")
+    subcategory_label = data.get("subcategory_label", "")
+    query_text = data.get("query", "")
+    related_demo_id = data.get("related_demo_id", "")
+    
+    if not query_text and not subcategory_label:
         raise HTTPException(status_code=400, detail="Query text required")
     
-    # Create support query
+    # Create support query with structured data
     query_doc = {
         "id": str(uuid.uuid4()),
         "type": "educator_query",
+        "category": category,
+        "subcategory": subcategory,
+        "category_label": category_label,
+        "subcategory_label": subcategory_label,
         "educator_id": educator_id,
         "educator_name": user.get("name", ""),
         "educator_phone": user.get("phone", ""),
-        "query": query_text,
+        "educator_email": user.get("email", ""),
+        "query": query_text or subcategory_label,
+        "related_demo_id": related_demo_id,
         "status": "new",
-        "created_at": datetime.now(timezone.utc).isoformat()
+        "priority": "high" if category == "demo_related" else "normal",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
     }
+    
+    # If related to a specific demo, get demo details
+    if related_demo_id:
+        demo = await db.student_inquiries.find_one({"id": related_demo_id}, {"_id": 0})
+        if demo:
+            query_doc["related_demo"] = {
+                "student_name": demo.get("name"),
+                "student_phone": demo.get("phone"),
+                "demo_date": demo.get("demo_date"),
+                "demo_time": demo.get("demo_time"),
+                "skill": demo.get("skill")
+            }
+            
+            # If student not joined, we could trigger a WhatsApp reminder
+            if subcategory == "student_not_joined" and demo.get("phone"):
+                query_doc["action_required"] = "send_reminder_to_student"
     
     await db.support_queries.insert_one(query_doc)
     
@@ -1766,14 +1796,14 @@ async def educator_submit_query(data: dict, user: dict = Depends(get_current_use
         {"$push": {
             "comments": {
                 "id": str(uuid.uuid4()),
-                "text": f"Query from educator: {query_text}",
+                "text": f"[{category_label}] {subcategory_label}: {query_text}",
                 "author": user.get("name", "Educator"),
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
         }}
     )
     
-    return {"message": "Query submitted successfully"}
+    return {"message": "Query submitted successfully", "query_id": query_doc["id"]}
 
 @api_router.get("/educator/my-demos")
 async def get_educator_demos(user: dict = Depends(get_current_user)):
