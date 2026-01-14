@@ -53,6 +53,8 @@ const AdminStudentCRM = () => {
   const [showCommentModal, setShowCommentModal] = useState(null);
   const [showAssignModal, setShowAssignModal] = useState(null);
   const [newComment, setNewComment] = useState('');
+  const [onboardedEducators, setOnboardedEducators] = useState([]);
+  const [assignTab, setAssignTab] = useState('team'); // 'team' or 'educator'
   
   // View/Edit states
   const [editMode, setEditMode] = useState(false);
