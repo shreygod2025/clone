@@ -1050,6 +1050,32 @@ async def reschedule_booking(data: dict):
     await db[collection].update_one({"id": booking_id}, {"$set": update_data})
     return {"message": "Booking rescheduled successfully"}
 
+@api_router.post("/user/cancel-booking")
+async def cancel_booking(data: dict):
+    """Cancel a booking with reason"""
+    collection_map = {
+        "student": "student_inquiries",
+        "educator": "educator_applications",
+        "school": "school_inquiries"
+    }
+    collection = collection_map.get(data.get("user_type", "student"), "student_inquiries")
+    
+    booking_id = data.get("booking_id")
+    reason = data.get("reason", "not specified")
+    
+    if not booking_id:
+        raise HTTPException(status_code=400, detail="Missing booking_id")
+    
+    update_data = {
+        "status": "cancelled",
+        "cancellation_reason": reason,
+        "cancelled_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db[collection].update_one({"id": booking_id}, {"$set": update_data})
+    return {"message": "Booking cancelled successfully"}
+
 # ========================
 # STUDENT INQUIRY ENDPOINTS
 # ========================
