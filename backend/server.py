@@ -330,6 +330,7 @@ class EducatorApplication(BaseModel):
     experience: str
     grades_comfortable: List[str]
     city: str
+    teaching_mode: str = ""  # online, offline_home, offline_center
     availability: str
     demo_ready: bool = False
     requirement_id: Optional[str] = None
@@ -342,6 +343,8 @@ class EducatorApplication(BaseModel):
     meeting_link: str = ""
     phone_verified: bool = False
     onboarding_date: Optional[str] = None
+    # Demo rating fields
+    demo_rating: Optional[dict] = None  # Stores rating data when demo completed
     source: str = "website"
     added_by: str = ""
     assigned_to: str = ""
