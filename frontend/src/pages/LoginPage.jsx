@@ -14,6 +14,7 @@ const LoginPage = () => {
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
+  const [otpSentViaWhatsApp, setOtpSentViaWhatsApp] = useState(false);
   const toastShownRef = useRef(false);
 
   const handleSendOTP = async () => {
@@ -27,7 +28,12 @@ const LoginPage = () => {
     setLoading(false);
     
     if (result.success) {
-      toast.success('OTP sent! Use 1111 for testing');
+      setOtpSentViaWhatsApp(result.sent === true);
+      if (result.sent) {
+        toast.success('OTP sent to your WhatsApp!');
+      } else {
+        toast.success('OTP sent! Use 1111 for testing');
+      }
       setStep('otp');
     } else {
       toast.error(result.message);
