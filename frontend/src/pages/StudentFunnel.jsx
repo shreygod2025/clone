@@ -304,7 +304,8 @@ const StudentFunnel = () => {
       return;
     }
 
-    const stepId = activeSteps[currentStep].id;
+    const stepId = currentStepData?.id;
+    if (!stepId) return;
     
     // If logged in and on schedule step, submit directly (no contact/OTP needed)
     if (isLoggedIn && stepId === 'schedule') {
