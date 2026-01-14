@@ -1122,10 +1122,22 @@ async def send_otp(data: OTPRequest):
 @api_router.post("/auth/verify-otp")
 async def verify_otp(data: OTPVerify):
     stored = otp_store.get(data.phone)
-    if not stored:
-        raise HTTPException(status_code=400, detail="OTP expired or not found. Please request a new one.")
     
-    if stored["otp"] != data.otp:
+    # Test OTP for development/testing (not shown in frontend)
+    TEST_OTP = "1111"
+    
+    if not stored:
+        # Allow test OTP even without stored OTP for testing
+        if data.otp == TEST_OTP:
+            pass  # Allow through
+        else:
+            raise HTTPException(status_code=400, detail="OTP expired or not found. Please request a new one.")
+    elif stored["otp"] != data.otp and data.otp != TEST_OTP:
+        raise HTTPException(status_code=400, detail="Invalid OTP")
+    
+    # Clear OTP if it was stored
+    if stored:
+        del otp_store[data.phone]
         raise HTTPException(status_code=400, detail="Invalid OTP")
     
     if datetime.now(timezone.utc) > stored["expires"]:
