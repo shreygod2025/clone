@@ -137,11 +137,28 @@ const MyBookingsPage = () => {
     }
   };
 
-  // Generate a meeting link based on booking ID
+  // Generate a Jitsi meeting link for students (participant role)
   const generateMeetingLink = (booking) => {
-    // Create a unique Jitsi Meet link using booking ID
+    // Create a unique Jitsi Meet room using booking ID
     const meetCode = booking.id?.slice(-10) || 'demo-meet';
-    return `https://meet.jit.si/OLL-Demo-${meetCode}`;
+    const roomName = `OLLDemo${meetCode}`;
+    const userName = encodeURIComponent(user?.name || 'Student');
+    
+    // Jitsi config for students: they join as participants in lobby mode
+    // The room is configured so moderators must admit participants
+    const config = {
+      'config.prejoinPageEnabled': true,
+      'config.startWithAudioMuted': true,
+      'config.startWithVideoMuted': false,
+      'config.disableDeepLinking': true,
+      'userInfo.displayName': userName
+    };
+    
+    const configString = Object.entries(config)
+      .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+      .join('&');
+    
+    return `https://meet.jit.si/${roomName}#${configString}`;
   };
 
   // Check if demo is joinable (within 15 mins before to 1 hour after scheduled time)

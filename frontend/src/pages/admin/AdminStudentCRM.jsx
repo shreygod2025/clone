@@ -300,9 +300,30 @@ const AdminStudentCRM = () => {
   };
 
   // Helper functions for meeting links and location
+  // Generate a Jitsi meeting link for admin (moderator role)
   const generateMeetingLink = (inquiry) => {
     const meetCode = inquiry.id?.slice(-10) || 'demo-meet';
-    return `https://meet.jit.si/OLL-Demo-${meetCode}`;
+    const roomName = `OLLDemo${meetCode}`;
+    const adminName = encodeURIComponent(user?.name || 'OLL Admin');
+    
+    // Jitsi config for admin/moderator with lobby control enabled
+    // Moderators can admit/reject participants from the lobby
+    const config = {
+      'config.prejoinPageEnabled': true,
+      'config.startWithAudioMuted': false,
+      'config.startWithVideoMuted': false,
+      'config.disableDeepLinking': true,
+      'config.enableLobby': true,
+      'config.lobbyModeEnabled': true,
+      'userInfo.displayName': adminName,
+      'userInfo.moderator': true
+    };
+    
+    const configString = Object.entries(config)
+      .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+      .join('&');
+    
+    return `https://meet.jit.si/${roomName}#${configString}`;
   };
 
   const isDemoJoinable = (inquiry) => {

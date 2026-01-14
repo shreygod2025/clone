@@ -275,6 +275,57 @@ const CenterDashboard = () => {
 
   const getCount = (status) => demos.filter(d => d.status === status).length;
 
+  // Generate a Jitsi meeting link for center user (moderator role)
+  const generateMeetingLink = (inquiry) => {
+    const meetCode = inquiry.id?.slice(-10) || 'demo-meet';
+    const roomName = `OLLDemo${meetCode}`;
+    const centerName = encodeURIComponent(user?.name || 'OLL Center');
+    
+    // Jitsi config for center moderator with lobby control enabled
+    const config = {
+      'config.prejoinPageEnabled': true,
+      'config.startWithAudioMuted': false,
+      'config.startWithVideoMuted': false,
+      'config.disableDeepLinking': true,
+      'config.enableLobby': true,
+      'config.lobbyModeEnabled': true,
+      'userInfo.displayName': centerName,
+      'userInfo.moderator': true
+    };
+    
+    const configString = Object.entries(config)
+      .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+      .join('&');
+    
+    return `https://meet.jit.si/${roomName}#${configString}`;
+  };
+
+  // Check if demo is joinable (within 15 mins before to 1 hour after scheduled time)
+  const isDemoJoinable = (inquiry) => {
+    if (!inquiry.demo_date || !inquiry.demo_time) return false;
+    if (!['new', 'demo_scheduled'].includes(inquiry.status)) return false;
+    
+    try {
+      const demoDateTime = parseISO(`${inquiry.demo_date}T${inquiry.demo_time}:00`);
+      const now = new Date();
+      const joinWindowStart = addHours(demoDateTime, -0.25);
+      const joinWindowEnd = addHours(demoDateTime, 1);
+      return isAfter(now, joinWindowStart) && isBefore(now, joinWindowEnd);
+    } catch {
+      return false;
+    }
+  };
+
+  const isOnlineMode = (inquiry) => inquiry.learning_mode === 'online';
+  const isOfflineCenter = (inquiry) => inquiry.learning_mode === 'offline_center';
+
+  const generateCenterMapsLink = (inquiry) => {
+    const centerName = inquiry.selected_center_name || inquiry.center_name || user?.center_name || 'OLL Center';
+    const city = inquiry.city || '';
+    const query = encodeURIComponent(`${centerName} ${city}`);
+    return `https://www.google.com/maps/search/?api=1&query=${query}`;
+  };
+
   // Check if a demo is overdue
   const isOverdue = (demo) => {
     if (!demo.demo_date || demo.status !== 'new') return false;
