@@ -1132,26 +1132,22 @@ async def verify_otp(data: OTPVerify):
     # Test OTP for development/testing (not shown in frontend)
     TEST_OTP = "1111"
     
-    if not stored:
-        # Allow test OTP even without stored OTP for testing
-        if data.otp == TEST_OTP:
-            pass  # Allow through
-        else:
-            raise HTTPException(status_code=400, detail="OTP expired or not found. Please request a new one.")
-    elif stored["otp"] != data.otp and data.otp != TEST_OTP:
+    # Check if using test OTP
+    if data.otp == TEST_OTP:
+        # Clear any stored OTP
+        if stored and data.phone in otp_store:
+            del otp_store[data.phone]
+        # Continue to user lookup
+    elif not stored:
+        raise HTTPException(status_code=400, detail="OTP expired or not found. Please request a new one.")
+    elif stored["otp"] != data.otp:
         raise HTTPException(status_code=400, detail="Invalid OTP")
-    
-    # Clear OTP if it was stored
-    if stored:
-        del otp_store[data.phone]
-        raise HTTPException(status_code=400, detail="Invalid OTP")
-    
-    if datetime.now(timezone.utc) > stored["expires"]:
+    elif datetime.now(timezone.utc) > stored["expires"]:
         del otp_store[data.phone]
         raise HTTPException(status_code=400, detail="OTP expired. Please request a new one.")
-    
-    # Clear OTP after successful verification
-    del otp_store[data.phone]
+    else:
+        # Valid OTP - clear it
+        del otp_store[data.phone]
     
     # Find or create user based on phone and type
     collection_map = {
