@@ -47,6 +47,7 @@ const StudentFunnel = () => {
   
   // OTP State
   const [otpSent, setOtpSent] = useState(false);
+  const [otpSentViaWhatsApp, setOtpSentViaWhatsApp] = useState(false);
   const [otp, setOtp] = useState('');
   const [otpLoading, setOtpLoading] = useState(false);
   
