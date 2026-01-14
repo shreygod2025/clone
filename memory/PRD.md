@@ -120,8 +120,20 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ PostHog analytics integration
 
 ## Mocked/Placeholder Features
-- **OTP System:** Hardcoded "1111" for verification
+- **OTP System:** AiSensy WhatsApp API integrated but requires campaign setup. Falls back to "1111" if not configured.
 - **Calendar Integration:** No real Calendly integration yet
+
+## AiSensy WhatsApp OTP Setup
+To enable real WhatsApp OTP:
+1. Log in to AiSensy dashboard
+2. Create an OTP template with one parameter: `Your OLL verification code is {{1}}`
+3. Create an API Campaign using that template
+4. Add to `/app/backend/.env`:
+   ```
+   AISENSY_API_KEY=your_api_key
+   AISENSY_CAMPAIGN_NAME=your_campaign_name  # Must match exactly
+   ```
+5. Restart backend: `sudo supervisorctl restart backend`
 
 ## Key API Endpoints
 - `POST /auth/login` - Unified login for admins, team users, and center users
