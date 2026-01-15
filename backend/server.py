@@ -2240,6 +2240,179 @@ async def educator_mark_demo_incomplete(inquiry_id: str, data: dict, user: dict 
     return {"message": "Demo marked as incomplete. Student has been notified."}
 
 # ========================
+# NOT JOINED YET & REMINDER NOTIFICATIONS
+# ========================
+
+@api_router.post("/educator/notify-not-joined/{inquiry_id}")
+async def educator_notify_student_not_joined(inquiry_id: str, user: dict = Depends(get_current_user)):
+    """Educator notifies that student hasn't joined the demo yet"""
+    educator_id = user.get("educator_id") or user.get("id")
+    
+    # Verify educator owns this demo
+    inquiry = await db.student_inquiries.find_one({"id": inquiry_id}, {"_id": 0})
+    if not inquiry:
+        raise HTTPException(status_code=404, detail="Demo not found")
+    
+    if inquiry.get("assigned_educator_id") != educator_id:
+        raise HTTPException(status_code=403, detail="You are not assigned to this demo")
+    
+    # Send "not joined" notification to student
+    await send_not_joined_notification(inquiry, "student")
+    
+    # Log the notification
+    await db.student_inquiries.update_one(
+        {"id": inquiry_id},
+        {"$push": {
+            "comments": {
+                "id": str(uuid.uuid4()),
+                "text": f"Educator sent 'not joined yet' reminder to student",
+                "author": user.get("name", "Educator"),
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+        }}
+    )
+    
+    return {"message": "Student has been notified that they haven't joined yet"}
+
+@api_router.post("/admin/notify-not-joined/{inquiry_id}")
+async def admin_notify_not_joined(inquiry_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Admin notifies student or educator that they haven't joined"""
+    notify_type = data.get("notify_type", "student")  # "student" or "educator"
+    
+    inquiry = await db.student_inquiries.find_one({"id": inquiry_id}, {"_id": 0})
+    if not inquiry:
+        raise HTTPException(status_code=404, detail="Demo not found")
+    
+    # Send notification
+    await send_not_joined_notification(inquiry, notify_type)
+    
+    # Log the notification
+    await db.student_inquiries.update_one(
+        {"id": inquiry_id},
+        {"$push": {
+            "comments": {
+                "id": str(uuid.uuid4()),
+                "text": f"Admin sent 'not joined yet' reminder to {notify_type}",
+                "author": user.get("name", "Admin"),
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+        }}
+    )
+    
+    return {"message": f"{notify_type.title()} has been notified"}
+
+@api_router.post("/notifications/send-reminders")
+async def send_scheduled_reminders(data: dict = None):
+    """
+    Endpoint to send scheduled demo reminders.
+    Can be called by a cron job every 10 minutes.
+    
+    Sends:
+    - 1 hour reminder (for all demos)
+    - 30 min reminder (for offline demos)
+    - 10 min reminder (for online demos)
+    """
+    now = datetime.now(timezone.utc)
+    results = {"sent": [], "errors": []}
+    
+    # Get all upcoming demos
+    upcoming_demos = await db.student_inquiries.find({
+        "status": {"$in": ["new", "confirmed", "rescheduled"]},
+        "demo_date": {"$exists": True},
+        "demo_time": {"$exists": True}
+    }, {"_id": 0}).to_list(500)
+    
+    for demo in upcoming_demos:
+        try:
+            # Parse demo datetime
+            demo_date = demo.get("demo_date")
+            demo_time = demo.get("demo_time")
+            if not demo_date or not demo_time:
+                continue
+            
+            demo_datetime_str = f"{demo_date}T{demo_time}:00"
+            demo_datetime = datetime.fromisoformat(demo_datetime_str).replace(tzinfo=timezone.utc)
+            
+            # Calculate time until demo
+            time_diff = (demo_datetime - now).total_seconds() / 60  # in minutes
+            
+            is_online = demo.get("learning_mode") == "online"
+            student_phone = demo.get("phone")
+            student_name = demo.get("name", "Student")
+            skill = demo.get("skill", "Demo").title()
+            
+            # Get educator info
+            educator = None
+            if demo.get("assigned_educator_id"):
+                educator = await db.educator_applications.find_one(
+                    {"id": demo.get("assigned_educator_id")}, {"_id": 0}
+                )
+            
+            reminders_sent = demo.get("reminders_sent", [])
+            
+            # 1 hour reminder (55-65 min window)
+            if 55 <= time_diff <= 65 and "1hr" not in reminders_sent:
+                if student_phone:
+                    await send_whatsapp_notification(
+                        student_phone, "student_reminder_1hr",
+                        [student_name, skill, demo_time], student_name
+                    )
+                if educator and educator.get("phone"):
+                    await send_whatsapp_notification(
+                        educator.get("phone"), "educator_reminder_1hr",
+                        [educator.get("name"), student_name, skill, demo_time],
+                        educator.get("name")
+                    )
+                await db.student_inquiries.update_one(
+                    {"id": demo.get("id")},
+                    {"$push": {"reminders_sent": "1hr"}}
+                )
+                results["sent"].append(f"1hr reminder for {demo.get('id')}")
+            
+            # 30 min reminder (for offline only, 25-35 min window)
+            if not is_online and 25 <= time_diff <= 35 and "30min" not in reminders_sent:
+                if student_phone:
+                    await send_whatsapp_notification(
+                        student_phone, "student_reminder_30min_offline",
+                        [student_name, skill, demo_time], student_name
+                    )
+                if educator and educator.get("phone"):
+                    await send_whatsapp_notification(
+                        educator.get("phone"), "educator_reminder_30min_offline",
+                        [educator.get("name"), student_name, skill, demo_time],
+                        educator.get("name")
+                    )
+                await db.student_inquiries.update_one(
+                    {"id": demo.get("id")},
+                    {"$push": {"reminders_sent": "30min"}}
+                )
+                results["sent"].append(f"30min offline reminder for {demo.get('id')}")
+            
+            # 10 min reminder (for online only, 8-12 min window)
+            if is_online and 8 <= time_diff <= 12 and "10min" not in reminders_sent:
+                if student_phone:
+                    await send_whatsapp_notification(
+                        student_phone, "student_reminder_10min_online",
+                        [student_name, skill, demo_time], student_name
+                    )
+                if educator and educator.get("phone"):
+                    await send_whatsapp_notification(
+                        educator.get("phone"), "educator_reminder_10min_online",
+                        [educator.get("name"), student_name, skill, demo_time],
+                        educator.get("name")
+                    )
+                await db.student_inquiries.update_one(
+                    {"id": demo.get("id")},
+                    {"$push": {"reminders_sent": "10min"}}
+                )
+                results["sent"].append(f"10min online reminder for {demo.get('id')}")
+                
+        except Exception as e:
+            results["errors"].append(f"Error for demo {demo.get('id')}: {str(e)}")
+    
+    return results
+
+# ========================
 # EDUCATOR APPLICATION MANAGEMENT (For Admin)
 # ========================
 
