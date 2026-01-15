@@ -1902,6 +1902,30 @@ async def get_available_educators(user: dict = Depends(get_current_user)):
     
     return educators
 
+@api_router.patch("/educator/toggle-availability")
+async def toggle_educator_availability(data: dict, user: dict = Depends(get_current_user)):
+    """Toggle educator availability for new demo assignments"""
+    educator_id = user.get("educator_id") or user.get("id")
+    is_available = data.get("is_available", True)
+    
+    if not educator_id:
+        raise HTTPException(status_code=403, detail="Educator not found")
+    
+    # Update educator availability status
+    result = await db.educator_applications.update_one(
+        {"id": educator_id},
+        {"$set": {
+            "is_available": is_available,
+            "availability_updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Educator not found")
+    
+    status_text = "available" if is_available else "unavailable"
+    return {"message": f"You are now {status_text} for new demo assignments", "is_available": is_available}
+
 @api_router.post("/educator/complete-demo/{inquiry_id}")
 async def educator_complete_demo(inquiry_id: str, data: dict, user: dict = Depends(get_current_user)):
     """Mark a demo as completed by educator"""
