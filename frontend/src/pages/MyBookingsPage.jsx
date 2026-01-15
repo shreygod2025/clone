@@ -362,9 +362,20 @@ const MyBookingsPage = () => {
                         </div>
                       </div>
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(booking.status)}`}>
-                        {booking.status?.replace('_', ' ').toUpperCase() || 'NEW'}
+                        {getStatusLabel(booking.status)}
                       </span>
                     </div>
+                    
+                    {/* Incomplete Notice */}
+                    {booking.status === 'incomplete' && (
+                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm">
+                        <p className="text-orange-700 font-medium">We missed you at the demo!</p>
+                        <p className="text-orange-600 text-xs mt-1">
+                          {booking.incomplete_reason || 'The educator reported that you didn\'t join the demo.'}
+                        </p>
+                        <p className="text-slate-600 text-xs mt-2">Please reschedule at your convenience using the button below.</p>
+                      </div>
+                    )}
                     
                     {/* Location Row */}
                     <div className="flex items-center gap-2 text-sm text-slate-600">
