@@ -1993,7 +1993,7 @@ async def educator_mark_demo_incomplete(inquiry_id: str, data: dict, user: dict 
                         timeout=10.0
                     )
         except Exception as e:
-            logger.error(f"Failed to send missed demo notification: {e}")
+            print(f"Failed to send missed demo notification: {e}")
     
     return {"message": "Demo marked as incomplete. Student has been notified."}
 
