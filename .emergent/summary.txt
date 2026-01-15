@@ -5,78 +5,87 @@
 - **Design:** Minimal, clean, fast, glassy design. Red for CTA buttons, blue for trust-building elements.
 - **Funnels:**
     - **Student:** A multi-step inquiry form with dynamic options, OTP verification, and post-booking management.
-    - **Educator:** An application form with dynamic requirements and an Other City option.
+    - **Educator:** An application form with dynamic requirements and an Other City option. OTP verification and a dashboard to manage assigned demos.
     - **School:** A multi-step B2B inquiry form followed by a services showcase page.
 - **Admin Panel:**
     - CRMs for Students, Schools, and Educators with lead tracking.
     - Detailed forms for manually adding leads.
     - Management sections for content, requirements, cities, and centers.
+    - A support section to view queries from all user types.
+    - Ability to rate educator demos and manually assign student demos to educators.
 - **Login & Booking Management:**
     - Phone number + OTP based login system for all user types.
     - A My Bookings page for users to view and reschedule demos/meetings.
+    - An educator-specific dashboard to view assigned demos and application status.
 
 **User's preferred language**: English
 
 **what currently exists?**
-The platform is a mature FastAPI/React application for OLL. The admin panel features comprehensive CRMs (Student, School, Educator, etc.) with an enhanced view/edit modal that allows inline editing and comment management across all lead types. Dashboards for Admin, Team, and Center users display relevant analytics, including a new Overdue Queries section. The Student booking funnel has been significantly improved with bug fixes, UI enhancements, and new features like demo cancellation. A major achievement is the full integration of the AiSensy API for sending real WhatsApp OTPs, with the previous mock 1111 system completely removed.
+The platform is a comprehensive FastAPI/React application. It features a full educator lifecycle management system, including an application funnel with OTP verification, a dedicated dashboard for educators to view their application status and assigned demos, and Jitsi integration for conducting video demos. The admin panel is highly functional, allowing manual assignment of demos to educators (with a skill match helper), a rating system for completed educator demos, and a redesigned dashboard for better analytics visualization. A unified support panel now aggregates queries from students and educators. The student funnel and My Bookings page have seen significant UI/UX improvements. A backend-only test OTP (1111) has been re-implemented to simplify development and testing. However, a critical session persistence bug was introduced, causing logged-in users to be redirected to the login page upon refresh.
 
 **Last working item**:
-    - Last item agent was working: Removing all instances of the hardcoded 1111 mock OTP from the entire application (frontend and backend) after successfully integrating the AiSensy API for live WhatsApp OTPs.
-    - Status: COMPLETED
-    - Agent Testing Done: Y
-    - Which testing method agent to use? NA
-    - User Testing Done: Y
+    - Last item agent was working: Fixing a session persistence bug where refreshing the page as a logged-in user (student or educator) would log them out and redirect to the login page. The agent identified that components were redirecting before the user authentication state was fully loaded from .
+    - Status: IN PROGRESS
+    - Agent Testing Done: N
+    - Which testing method agent to use? Frontend testing agent
+    - User Testing Done: N
 
 **All Pending/In progress Issue list**:
-  - Issue 1: Join Demo button generates a placeholder link, not a real meeting link. (P0)
+  - Issue 1: Logged-in users are redirected to the login page on refresh. (P0)
 
   Issues Detail:
   - Issue 1: 
-     - **Description:** The Join Demo button on the  and in the Admin CRM currently generates a static, non-functional Google Meet link. The user's request was for this to be an automatically created link for a real video meeting.
-     - **Attempted fixes:** A helper function  was created in , but it returns a hardcoded URL.
+     - **Description:** When a logged-in user (student or educator) refreshes the page (e.g., on  or ), they are incorrectly redirected to the  page. This is because the components' authentication checks run before the  object is hydrated from  via the .
+     - **Attempted fixes:** The agent added a  state check to the  hooks in  and .
      - **Next debug checklist:**
-        1. Choose a meeting provider (e.g., Google Meet, or a free alternative that doesn't require complex OAuth).
-        2. Investigate using a library or a simple API to generate unique meeting links on the fly.
-        3. If using a service that requires an API key, call the  subagent.
-        4. Update the  helper function in  and the corresponding functions in the admin CRM components (, ) to use the new link generation logic.
-        5. The link should ideally be generated when the demo is booked and stored with the booking record in the database. This requires a backend modification.
-     - **Why fix this issue and what will be achieved with the fix?** This will complete a core part of the user experience, allowing students and admins to seamlessly join scheduled online demos.
-     - **Status:** NOT STARTED
-     - **Is recurring issue?** N
-     - **Should Test frontend/backend/both after fix?** both
+        1. Verify the  state logic in  is correct and covers all async operations on initial load.
+        2. Test the fix by logging in as both a student and an educator, navigating to their respective dashboards, and refreshing the page.
+        3. Ensure no redirects occur and the user data is displayed correctly after the refresh.
+        4. Check the browser console for any related errors during the page load and hydration process.
+     - **Why fix this issue and what will be achieved with the fix?** This is a critical bug fix that will restore standard session persistence, preventing a frustrating user experience where users have to log back in constantly.
+     - **Status:** IN PROGRESS
+     - **Is recurring issue?** Y
+     - **Should Test frontend/backend/both after fix?** frontend
      - **Blocked on other issue:** None
 
 **In progress Task List**:
-- No tasks are currently in progress.
+- No other tasks are in progress. The session persistence bug is the only active item.
 
 **Upcoming and Future Tasks**
 Upcoming Tasks:
-- **P1: CSV Export:** Add Export to CSV functionality to all CRM pages.
-- **P2: Content Management System:** Implement backend and admin UI for managing content on the Blog, FAQs, and About Us pages.
+- **P1: Educator Demo Management:**
+    - Add an option for educators to mark a demo as incomplete if the student did not join. This should trigger a we missed you message to the student and show an incomplete status on the student's dashboard with a reschedule option.
+- **P2: Educator Post-Demo Feedback:** After an educator marks a demo as complete, prompt them with a form asking: Did the student join?, Were they interested?, Current skill level?, Recommended number of sessions?.
+- **P3: Educator Availability:** Give educators a toggle on their dashboard to set their status to inactive to temporarily stop receiving new demo assignments.
+- **P4: Growth Partner CTA:** On the  page, add a button at the bottom: Open your own OLL center, which redirects to the  page.
+- **P5: Educator Query Improvements:** On the educator dashboard, when Ask a Query is selected, provide categories like Demo related, Payment related, etc. and auto-open the assigned demos list by default.
+- **P6: WhatsApp Template Setup:** Define and configure AiSensy templates for booking confirmations and reminders, including action buttons like Reschedule and Cancel.
 
 Future Tasks:
-- **P2: Real Calendar Integration:** Replace mocked bookings with a real Calendly integration.
-- **P3: Notifications:** Implement email or WhatsApp notifications for form submissions and admin actions.
-- **P3: Admin Dashboard Analytics:** Add a main dashboard with widgets showing lead counts by status, conversion rates, and team performance comparisons.
-- **P3: Lead Scoring:** Implement a system to automatically prioritize high-intent leads.
+- **P2:** CSV Export for all CRM pages.
+- **P2:** Real Calendar Integration (e.g., Calendly).
+- **P3:** Implement a lead scoring system.
+- **P3:** Build a full Content Management System (CMS) for the Blog, FAQs, and About Us pages.
 
 **Completed work in this session**
-- **AiSensy WhatsApp OTP Integration (P0):** Fully integrated the AiSensy API to send real WhatsApp OTPs, configured with the user's API key and campaign name.
-- **Mock OTP Removal (P0):** Removed all hardcoded 1111 mock OTP logic from the frontend and backend.
-- **Generalized Enhanced View/Edit Popup (P0):** Implemented the inline editing and comment management modal across all CRMs (School, Educator, Growth Partner).
-- **Dashboard Enhancements (P0):** Added an Overdue Queries section to the admin/team dashboards for better lead management.
-- **Center Dashboard Upgrade (P0):** Transformed the Center Dashboard into a full-featured Student CRM, showing only leads relevant to that center.
-- **Student Funnel Runtime Error (P0 Bug Fix):** Fixed a critical JavaScript error (Cannot read properties of undefined) that occurred after booking confirmation.
-- **Student & Booking Page UX/UI Fixes (P1):**
-    - Corrected navigation for logged-in users to prevent being logged out or redirected to the wrong page.
-    - Reordered buttons on the student funnel for better flow.
-    - Implemented demo cancellation with a reason modal.
-    - Added Join Demo and Go to Center buttons with dynamic link/map generation.
-    - Added a Need Support button and flow.
-    - Sorted bookings on the My Bookings page by the earliest date.
+- **Full Educator Lifecycle:** Implemented the end-to-end flow for educators: application with OTP, auto-assignment of demos based on skills, a dedicated dashboard to view/join demos, and a manual assignment override for admins.
+- **Admin Rating System:** Created a modal for admins to rate educators on Personality, Communication, and Expertise after a demo is completed.
+- **UI/UX Overhaul:**
+    - Redesigned the Admin Dashboard with modern gradient stat cards.
+    - Refined the My Bookings mobile view with better button layouts.
+    - Styled buttons on the bookings page to be shadow lifted and less cluttered.
+    - Standardized button sizes across different pages.
+- **Role-Based Navigation:** The main navbar now correctly hides the Book Demo button and adjusts the home link for logged-in educators.
+- **Backend Enhancements:**
+    - Added numerous endpoints to support the educator portal (, , etc.).
+    - Created an endpoint for admins to submit demo ratings.
+    - Implemented a structured support query system for educators.
+- **Bug Fixes:**
+    - **Critical OTP Fix:** Resolved a backend logic error that caused the test OTP (1111) to fail verification.
+    - **Admin Panel Data Fetch:** Fixed an error where the admin panel failed to fetch the list of educators for manual assignment.
 
 **Earlier issues found/mentioned but not fixed**
-   - None.
+   - **Jitsi Moderator Control:** The public  server does not support assigning moderator roles via URL parameters. The first person to join becomes the moderator. The user accepted the workaround (admin joins first), deferring a more robust solution like JaaS.
 
 **Known issue recurrence from previous fork**
   - None.
@@ -85,17 +94,19 @@ Future Tasks:
 
 
 **Key Technical Concepts**
-- **3rd Party Integration:** AiSensy API for WhatsApp messaging using  for asynchronous requests from the FastAPI backend.
-- **State Management:** Using  in React to pass state between routes without page reloads, fixing a critical logout bug.
-- **Backend:** FastAPI, Pydantic, adding/modifying endpoints for new features (cancel booking, AiSensy OTP, overdue stats). Securely managing API keys via environment variables.
-- **Frontend:** React (, ), complex conditional rendering for dynamic buttons (Join Demo, Go to Center), date sorting, fixing navigation logic for authenticated users.
+- **Role-Based Access Control (RBAC):** The authentication system now supports an educator role with distinct logic in  (backend) and  (frontend).
+- **Dynamic UI Rendering:** The  component renders entirely different views based on the educator's application status (, , , etc.).
+- **Backend State Machine:** The educator's  field in the  collection acts as a state machine, managed through various API endpoints.
+- **Session Persistence Hydration:** Diagnosed (and attempted to fix) a race condition where components render and check for authentication before the user state is rehydrated from  on page refresh.
+- **Relational Logic in NoSQL:** Linked  with  via  to manage demo assignments.
 
 **key DB schema**
-  - **student_inquiries:** Logic now supports a  status and stores a .
-  - **otp_store (in-memory dict):** The logic for this has changed. It no longer stores a mock 1111 OTP as a fallback.
+  - **student_inquiries:** Added , .
+  - **educator_applications:** Significantly updated to include , ,  (e.g., 'new', 'demo_scheduled', 'onboarded', 'rejected', 'inactive'), , and .
+  - **support_queries:** Now stores structured queries from educators with fields like , , and .
 
 **changes in tech stack**
-  - **Added:**  python library for making async API calls to AiSensy.
+  - None.
 
 **All files of reference**
 - 
@@ -111,66 +122,70 @@ Future Tasks:
 - 
 - 
 - 
-- 
 
 **Areas that need refactoring**:
-- **Critical:** The  monolith remains complex and should be broken into a standard FastAPI project structure (, , ).
-- **High:** The various CRM components (, , etc.) still contain significant duplicated code for modals and card rendering. This logic should be extracted into generic, reusable components or hooks.
+- **Critical:**  is now over 2,000 lines long and urgently needs to be broken into a standard FastAPI project structure (e.g., , , ).
+- **High:**  and  have become very large and contain complex logic that could be extracted into smaller, reusable components.
+- The shared CRM modal logic across different admin pages is still duplicated and should be refactored.
 
 **key api endpoints**
-- ****: **Heavily Modified.** Now integrates with AiSensy to send live WhatsApp OTPs. Returns .
-- ****: **New.** Allows users to cancel their bookings and records a reason.
-- ****: **Modified.** Includes counts for overdue queries.
-- ****: (and others for School, Educator, etc.) are now fully utilized by the enhanced view/edit modals.
+- : New endpoint for educator OTP-based login.
+- : New endpoint for an educator to fetch their own application details and status.
+- : New endpoint for an educator to fetch their assigned student demos.
+- : New endpoint to manage demo status (e.g., pass to another educator).
+- : New endpoint for an admin to submit a performance rating for an educator's demo.
+- : New endpoint for educators to submit structured support queries.
+- : Endpoint updated to include educator queries in its response.
+- : Updated to handle manual assignment of an educator.
+- : Bug fixed to correctly validate the test OTP and handle session logic.
 
 **Critical Info for New Agent**
-- **WhatsApp OTP is LIVE:** The system is fully integrated with AiSensy and no longer uses a mock 1111 OTP. Be cautious with any changes to the  endpoint or related environment variables (, ).
-- **Top Priority Issue:** The next immediate task is to implement real meeting link generation for the Join Demo button, as it currently uses a placeholder. This is a crucial feature for the user journey.
-- **Refactoring Needs:** The two major refactoring opportunities (backend monolith and frontend CRM duplication) are still pending and should be considered for long-term project health.
+- **TOP PRIORITY:** The session persistence bug is the most critical issue. Logged-in users are being logged out on every page refresh. The attempted fix in  and  needs to be verified and potentially expanded.
+- **Test OTP is Active:** A backend-only test OTP  works for all phone numbers for both student and educator login flows. This should be used for testing.
+- **Educator Flow is Complex:** The new educator flow is extensive. Educators can be in various states (, , , , ). The  renders different UI based on this state.
+- **Refactoring Debt:** Be aware that  is a very large monolith. Changes require careful navigation.
 
 **documents and test reports created in this job**
-  -  (updated multiple times)
-  -  (covers the CRM and dashboard enhancements)
+  -  was updated multiple times to reflect new features.
 
 **Last 10 User Messages and any pending HUMAN messages**
-1.  User requested removal of the 1111 mock OTP. (DONE)
-2.  User provided the AiSensy  (). (DONE)
-3.  Agent asked user for the AiSensy campaign name to complete the integration. (RESOLVED)
-4.  User reported bugs with the logged-in user navigation and requested AiSensy integration with an API key. (DONE)
-5.  User reported multiple issues/feature requests for the My Bookings page, including Join Demo links, sorting, and fixing a logout bug. (DONE, except for real meeting links)
-6.  User reported a runtime error after booking and requested several UI fixes in the student funnel. (DONE)
-7.  User confirmed the P0 priority tasks and added more requirements for the admin/center dashboards. (DONE)
-8.  Agent asked for plan confirmation. (RESOLVED)
+1.  **User Request:** Fixes for educator dashboard (auto-open demos), add query categories, fix button sizes, show assigned educator on student CRM cards, and improve admin dashboard UI. (Partially Done)
+2.  **Agent Action:** Implemented all requested UI/UX and feature changes.
+3.  **User Report:** OTP is showing as incorrect. (Resolved)
+4.  **Agent Action:** Investigated and fixed the OTP verification logic in . Verified with curl.
+5.  **User Report:** Refreshing the page logs the user out. (In Progress)
+6.  **User Request:** Add Open your own center button on the centers page.
+7.  **User Request:** Add mark as incomplete option for educators if a student misses a demo.
+8.  **User Request:** Add an educator availability/inactive toggle.
+9.  **User Request:** Add a detailed post-demo feedback form for educators.
+10. **Agent Action:** Started fixing the session persistence issue by adding a  state check to  and .
 
 **Project Health Check:**
-- **Broken:** None.
+- **Broken:**
+    - **Session Persistence:** Logged-in users are logged out on page refresh.
 - **Mocked:**
-    - **Video Meeting Links:** The Join Demo button generates a hardcoded Google Meet URL.
-    - **Calendar Integration:** Booking still uses basic date/time fields, not a service like Calendly.
+    - **Video Meeting Links:** Still uses the public  server where the first person to join becomes the moderator.
+    - **Calendar Integration:** Bookings are still managed by simple date/time fields.
 - **In Progress:**
-    - None.
+    - Fixing the session persistence bug.
 
 **3rd Party Integrations**
-- **AiSensy:** **LIVE**. Used for sending WhatsApp OTPs.
-- **Twilio:** Investigated but not implemented.
-- **Calendly:** Mocked.
-- **YouTube:** Embedded videos on the About page.
+- **AiSensy:** LIVE for sending real WhatsApp OTPs.
+- **Jitsi Meet:** LIVE for video demos, using the free public server ().
 - **PostHog:** Analytics integration is working.
 
 **Testing status**
-  - **Testing agent used after significant changes:** YES, for the first major batch of CRM/Dashboard features.
-  - **Troubleshoot agent used after agent stuck in loop:** NO
-  - **Test files created:** []
-  - **Known regressions:** None.
+  - Testing agent used after significant changes: NO
+  - Troubleshoot agent used after agent stuck in loop: NO
+  - Test files created: []
+  - Known regressions:
+    - Session persistence is broken for logged-in users.
 
 **Credentials to test flow:**
 - **Admin URL:** 
 - **Admin Username:** 
 - **Admin Password:** 
-- **User Funnel OTP:** Now sent via AiSensy to the provided phone number. If the API fails, it will return an error (no mock fallback).
-- **AiSensy Credentials (in ):**
-    - : 
-    - : 
+- **User/Educator Login:** Use any 10-digit phone number with the OTP  for testing.
 
 **What agent forgot to execute**
-- The agent did not implement a real, dynamic meeting link generation for the Join Demo button as requested by the user. It created a placeholder function that returns a static URL. This is now the highest priority pending issue.</analysis>
+- The agent has not yet implemented several features from the user's last two major requests, including the mark demo as incomplete flow, the post-demo educator feedback form, the educator inactive toggle, and the Open your own center button. Work on these was superseded by the need to fix the session persistence bug.</analysis>
