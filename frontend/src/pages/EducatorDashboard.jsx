@@ -125,11 +125,33 @@ const EducatorDashboard = () => {
         headers: getAuthHeaders() 
       });
       setApplicationData(response.data);
+      // Set availability from application data
+      setIsAvailable(response.data.is_available !== false);
     } catch (error) {
       console.error('Failed to fetch application:', error);
       setApplicationData(user);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const toggleAvailability = async () => {
+    setTogglingAvailability(true);
+    try {
+      const newAvailability = !isAvailable;
+      await axios.patch(`${API}/educator/toggle-availability`, {
+        is_available: newAvailability
+      }, { headers: getAuthHeaders() });
+      
+      setIsAvailable(newAvailability);
+      toast.success(newAvailability 
+        ? 'You are now available for new demo assignments' 
+        : 'You are now unavailable. No new demos will be assigned.'
+      );
+    } catch (error) {
+      toast.error('Failed to update availability');
+    } finally {
+      setTogglingAvailability(false);
     }
   };
 
