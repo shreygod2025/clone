@@ -427,6 +427,21 @@ const MyBookingsPage = () => {
                         </a>
                       )}
                       
+                      {/* Reschedule button for incomplete demos - Highlighted */}
+                      {booking.status === 'incomplete' && (
+                        <Button
+                          onClick={() => {
+                            setSelectedBooking(booking);
+                            setShowReschedule(true);
+                          }}
+                          className="w-full bg-orange-500 hover:bg-orange-600 text-white"
+                          data-testid={`reschedule-incomplete-${booking.id}`}
+                        >
+                          <CalendarClock className="w-4 h-4 mr-2" />
+                          Reschedule Demo
+                        </Button>
+                      )}
+                      
                       {/* Reschedule & Cancel - Half-half on mobile */}
                       {['new', 'confirmed', 'rescheduled'].includes(booking.status) && (
                         <div className="flex gap-2 w-full">
