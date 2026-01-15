@@ -601,12 +601,20 @@ const EducatorDashboard = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="flex-1 text-amber-600 border-amber-200 hover:bg-amber-50"
-                            onClick={() => { setShowPassModal(demo); setSelectedEducator(''); setPassReason(''); }}
+                            className="flex-1 text-red-500 border-red-200 hover:bg-red-50"
+                            onClick={() => setShowIncompleteModal(demo)}
                           >
-                            <RefreshCw className="w-3.5 h-3.5 mr-1" /> Pass
+                            <AlertCircle className="w-3.5 h-3.5 mr-1" /> Incomplete
                           </Button>
                         </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full text-amber-600 border-amber-200 hover:bg-amber-50"
+                          onClick={() => { setShowPassModal(demo); setSelectedEducator(''); setPassReason(''); }}
+                        >
+                          <RefreshCw className="w-3.5 h-3.5 mr-1" /> Pass to Another Educator
+                        </Button>
                       </div>
                     )}
                   </div>
