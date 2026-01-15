@@ -197,6 +197,28 @@ const CentersPage = () => {
         </div>
       </section>
 
+      {/* Growth Partner CTA */}
+      <section className="py-16 px-4 bg-gradient-to-r from-amber-500 to-orange-500">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-6">
+            <Building2 className="w-8 h-8 text-white" />
+          </div>
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
+            Want to Open Your Own OLL Center?
+          </h2>
+          <p className="text-white/90 mb-8 text-lg max-w-2xl mx-auto">
+            Become an OLL Growth Partner and bring quality skill education to your city. 
+            Low investment, high impact, full support from OLL team.
+          </p>
+          <Link 
+            to="/growth-partner" 
+            className="bg-white text-orange-600 px-8 py-4 rounded-full font-bold text-lg inline-flex items-center gap-2 hover:bg-orange-50 transition-colors shadow-lg hover:shadow-xl"
+          >
+            Become a Growth Partner <ArrowRight className="w-5 h-5" />
+          </Link>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="bg-[#1E3A5F] text-white py-8 border-t border-white/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
