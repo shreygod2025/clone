@@ -1805,6 +1805,31 @@ async def educator_submit_query(data: dict, user: dict = Depends(get_current_use
     
     return {"message": "Query submitted successfully", "query_id": query_doc["id"]}
 
+@api_router.get("/educator/my-application")
+async def get_educator_my_application(user: dict = Depends(get_current_user)):
+    """Get educator's own application details (alias for /educators/my-application)"""
+    educator_id = user.get("educator_id") or user.get("id")
+    phone = user.get("phone")
+    email = user.get("email")
+    
+    # Find by id, phone, or email
+    application = None
+    if educator_id:
+        application = await db.educator_applications.find_one({"id": educator_id}, {"_id": 0})
+    if not application and phone:
+        application = await db.educator_applications.find_one({"phone": phone}, {"_id": 0})
+    if not application and email:
+        application = await db.educator_applications.find_one({"email": email}, {"_id": 0})
+    
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    # Generate meeting link if not present
+    if not application.get("meeting_link"):
+        application["meeting_link"] = generate_meeting_link(application["id"])
+    
+    return application
+
 @api_router.get("/educator/my-demos")
 async def get_educator_demos(user: dict = Depends(get_current_user)):
     """Get demos assigned to the logged-in educator"""
