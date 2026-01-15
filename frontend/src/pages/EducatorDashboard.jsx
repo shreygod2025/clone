@@ -66,6 +66,8 @@ const EducatorDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('upcoming');
   const [applicationData, setApplicationData] = useState(null);
+  const [isAvailable, setIsAvailable] = useState(true);
+  const [togglingAvailability, setTogglingAvailability] = useState(false);
   
   // Modal states
   const [showPassModal, setShowPassModal] = useState(null);
