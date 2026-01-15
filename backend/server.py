@@ -1933,6 +1933,70 @@ async def educator_complete_demo(inquiry_id: str, data: dict, user: dict = Depen
     
     return {"message": "Demo marked as completed"}
 
+@api_router.post("/educator/incomplete-demo/{inquiry_id}")
+async def educator_mark_demo_incomplete(inquiry_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Mark a demo as incomplete (student didn't join)"""
+    educator_id = user.get("educator_id") or user.get("id")
+    reason = data.get("reason", "Student did not join the demo")
+    
+    # Verify educator owns this demo
+    inquiry = await db.student_inquiries.find_one({"id": inquiry_id}, {"_id": 0})
+    if not inquiry:
+        raise HTTPException(status_code=404, detail="Demo not found")
+    
+    if inquiry.get("assigned_educator_id") != educator_id:
+        raise HTTPException(status_code=403, detail="You are not assigned to this demo")
+    
+    # Update inquiry status to incomplete
+    await db.student_inquiries.update_one(
+        {"id": inquiry_id},
+        {"$set": {
+            "status": "incomplete",
+            "incomplete_reason": reason,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }, "$push": {
+            "comments": {
+                "id": str(uuid.uuid4()),
+                "text": f"Demo marked as incomplete by {user.get('name', 'Educator')}. Reason: {reason}",
+                "author": user.get("name", "Educator"),
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+        }}
+    )
+    
+    # Send WhatsApp notification to student (we missed you message)
+    student_phone = inquiry.get("phone")
+    student_name = inquiry.get("name", "Student")
+    skill = inquiry.get("skill", "the demo")
+    
+    if student_phone:
+        try:
+            # Send "we missed you" message via AiSensy
+            aisensy_api_key = os.environ.get("AISENSY_API_KEY")
+            if aisensy_api_key:
+                async with httpx.AsyncClient() as client:
+                    await client.post(
+                        "https://backend.aisensy.com/campaign/t1/api/v2",
+                        json={
+                            "apiKey": aisensy_api_key,
+                            "campaignName": "missed_demo_notification",
+                            "destination": f"91{student_phone}",
+                            "userName": student_name,
+                            "templateParams": [
+                                student_name,
+                                skill.title(),
+                                "Please reschedule your demo at your convenience."
+                            ],
+                            "source": "OLL Platform",
+                            "media": {}
+                        },
+                        timeout=10.0
+                    )
+        except Exception as e:
+            logger.error(f"Failed to send missed demo notification: {e}")
+    
+    return {"message": "Demo marked as incomplete. Student has been notified."}
+
 # ========================
 # EDUCATOR APPLICATION MANAGEMENT (For Admin)
 # ========================
