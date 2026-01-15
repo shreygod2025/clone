@@ -202,6 +202,29 @@ const EducatorDashboard = () => {
     }
   };
 
+  const handleIncompleteDemo = async () => {
+    if (!incompleteReason) {
+      toast.error('Please select a reason');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const reasonLabel = INCOMPLETE_REASONS.find(r => r.value === incompleteReason)?.label || incompleteReason;
+      await axios.post(`${API}/educator/incomplete-demo/${showIncompleteModal.id}`, {
+        reason: reasonLabel
+      }, { headers: getAuthHeaders() });
+      
+      toast.success('Demo marked as incomplete. Student has been notified.');
+      setShowIncompleteModal(null);
+      setIncompleteReason('');
+      fetchDemos();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to mark demo as incomplete');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleReschedule = async () => {
     if (!rescheduleData.date || !rescheduleData.time) {
       toast.error('Please select date and time');
