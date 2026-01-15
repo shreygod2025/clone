@@ -418,6 +418,18 @@ const AdminStudentCRM = () => {
 
   const getCount = (status) => inquiries.filter(i => i.status === status).length;
 
+  // Notify not joined - for student or educator
+  const handleNotifyNotJoined = async (inquiry, notifyType) => {
+    try {
+      await axios.post(`${API}/admin/notify-not-joined/${inquiry.id}`, {
+        notify_type: notifyType
+      }, { headers: getAuthHeaders() });
+      toast.success(`${notifyType === 'student' ? 'Student' : 'Educator'} has been notified`);
+    } catch (error) {
+      toast.error('Failed to send notification');
+    }
+  };
+
   // Render action buttons based on status
   const renderActionButtons = (inquiry) => {
     const baseButtons = (
@@ -438,6 +450,31 @@ const AdminStudentCRM = () => {
           <MessageSquare className="w-3 h-3" />
           Add Note
         </button>
+        {/* Not Joined notification buttons */}
+        {inquiry.demo_date && inquiry.status === 'new' && (
+          <>
+            <button
+              onClick={() => handleNotifyNotJoined(inquiry, 'student')}
+              className="text-xs px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-700 flex items-center gap-1 font-medium"
+              data-testid={`notify-student-${inquiry.id}`}
+              title="Notify student they haven't joined"
+            >
+              <Bell className="w-3 h-3" />
+              Student?
+            </button>
+            {inquiry.assigned_educator_id && (
+              <button
+                onClick={() => handleNotifyNotJoined(inquiry, 'educator')}
+                className="text-xs px-3 py-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-700 flex items-center gap-1 font-medium"
+                data-testid={`notify-educator-${inquiry.id}`}
+                title="Notify educator they haven't joined"
+              >
+                <Bell className="w-3 h-3" />
+                Educator?
+              </button>
+            )}
+          </>
+        )}
       </>
     );
 
