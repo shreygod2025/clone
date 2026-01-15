@@ -32,6 +32,185 @@ api_router = APIRouter(prefix="/api")
 security = HTTPBearer()
 
 # ========================
+# WHATSAPP NOTIFICATION TEMPLATES (AiSensy)
+# ========================
+
+# Student Templates
+WHATSAPP_TEMPLATES = {
+    # Student templates
+    "student_demo_confirmed_online": "Online Student Demo Confirmation",
+    "student_demo_confirmed_offline": "Offline Student Demo Confirmation",
+    "student_reminder_1hr": "Reminder 1 hour prior Student Demo Confirmation",
+    "student_reminder_30min_offline": "Reminder 30 min before Offline class",
+    "student_reminder_10min_online": "Reminder 10 min before Online class",
+    "student_not_joined": "Class started still not joined",
+    "student_session_complete": "Student Session completion",
+    
+    # Educator templates
+    "educator_demo_confirmed_online": "Online Teacher Demo Confirmation",
+    "educator_demo_confirmed_offline": "Offline Teacher Demo Confirmation",
+    "educator_reminder_1hr": "Reminder 1 hour prior Teacher Demo Confirmation",
+    "educator_reminder_30min_offline": "Reminder 30 min Teacher before Offline class",
+    "educator_reminder_10min_online": "Reminder 10 min Teacher before Online class",
+    "educator_not_joined": "Class started still not joined educator",
+    "educator_session_complete": "Educator Session completion",
+}
+
+async def send_whatsapp_notification(
+    phone: str,
+    template_key: str,
+    params: list = None,
+    user_name: str = "User"
+) -> dict:
+    """
+    Send WhatsApp notification via AiSensy
+    
+    Args:
+        phone: Phone number (10 digits, will add 91 prefix)
+        template_key: Key from WHATSAPP_TEMPLATES dict
+        params: List of template parameters
+        user_name: User's name for the message
+    
+    Returns:
+        dict with success status and message
+    """
+    AISENSY_API_KEY = os.environ.get("AISENSY_API_KEY", "")
+    
+    if not AISENSY_API_KEY:
+        print("WhatsApp notification skipped - API key not configured")
+        return {"success": False, "message": "API key not configured"}
+    
+    campaign_name = WHATSAPP_TEMPLATES.get(template_key)
+    if not campaign_name:
+        print(f"Unknown template key: {template_key}")
+        return {"success": False, "message": f"Unknown template: {template_key}"}
+    
+    try:
+        # Format phone number
+        phone_number = str(phone).replace("+", "").replace(" ", "")
+        if not phone_number.startswith("91"):
+            phone_number = f"91{phone_number}"
+        
+        payload = {
+            "apiKey": AISENSY_API_KEY,
+            "campaignName": campaign_name,
+            "destination": phone_number,
+            "userName": user_name,
+            "templateParams": params or [],
+            "source": "OLL Platform",
+            "media": {},
+            "buttons": [],
+            "carouselCards": [],
+            "location": {},
+            "attributes": {}
+        }
+        
+        async with httpx.AsyncClient() as http_client:
+            response = await http_client.post(
+                "https://backend.aisensy.com/campaign/t1/api/v2",
+                json=payload,
+                timeout=30.0
+            )
+            
+            if response.status_code == 200:
+                print(f"WhatsApp [{template_key}] sent to {phone_number}")
+                return {"success": True, "message": "Notification sent"}
+            else:
+                print(f"AiSensy error [{template_key}]: {response.status_code} - {response.text}")
+                return {"success": False, "message": f"API error: {response.status_code}"}
+                
+    except Exception as e:
+        print(f"WhatsApp notification error [{template_key}]: {str(e)}")
+        return {"success": False, "message": str(e)}
+
+
+async def send_demo_confirmation_notifications(inquiry: dict, educator: dict = None):
+    """Send demo confirmation to student and assigned educator"""
+    student_name = inquiry.get("name", "Student")
+    student_phone = inquiry.get("phone")
+    skill = inquiry.get("skill", "Demo").title()
+    demo_date = inquiry.get("demo_date", "TBD")
+    demo_time = inquiry.get("demo_time", "TBD")
+    learning_mode = inquiry.get("learning_mode", "online")
+    location = inquiry.get("selected_center_name") or inquiry.get("city") or "Online"
+    
+    is_online = learning_mode == "online"
+    
+    # Send to student
+    if student_phone:
+        template = "student_demo_confirmed_online" if is_online else "student_demo_confirmed_offline"
+        await send_whatsapp_notification(
+            phone=student_phone,
+            template_key=template,
+            params=[student_name, skill, demo_date, demo_time, location],
+            user_name=student_name
+        )
+    
+    # Send to educator
+    if educator and educator.get("phone"):
+        educator_name = educator.get("name", "Educator")
+        template = "educator_demo_confirmed_online" if is_online else "educator_demo_confirmed_offline"
+        await send_whatsapp_notification(
+            phone=educator.get("phone"),
+            template_key=template,
+            params=[educator_name, student_name, skill, demo_date, demo_time],
+            user_name=educator_name
+        )
+
+
+async def send_not_joined_notification(inquiry: dict, notify_type: str = "student"):
+    """Send 'class started but not joined' notification"""
+    student_name = inquiry.get("name", "Student")
+    student_phone = inquiry.get("phone")
+    skill = inquiry.get("skill", "Demo").title()
+    
+    if notify_type == "student" and student_phone:
+        await send_whatsapp_notification(
+            phone=student_phone,
+            template_key="student_not_joined",
+            params=[student_name, skill],
+            user_name=student_name
+        )
+    elif notify_type == "educator":
+        educator_id = inquiry.get("assigned_educator_id")
+        if educator_id:
+            educator = await db.educator_applications.find_one({"id": educator_id}, {"_id": 0})
+            if educator and educator.get("phone"):
+                await send_whatsapp_notification(
+                    phone=educator.get("phone"),
+                    template_key="educator_not_joined",
+                    params=[educator.get("name", "Educator"), student_name, skill],
+                    user_name=educator.get("name", "Educator")
+                )
+
+
+async def send_session_complete_notification(inquiry: dict, educator: dict = None):
+    """Send session completion notifications with feedback form"""
+    student_name = inquiry.get("name", "Student")
+    student_phone = inquiry.get("phone")
+    skill = inquiry.get("skill", "Demo").title()
+    feedback_url = f"https://teach-n-learn-2.preview.emergentagent.com/feedback/{inquiry.get('id', '')}"
+    
+    # Send to student
+    if student_phone:
+        await send_whatsapp_notification(
+            phone=student_phone,
+            template_key="student_session_complete",
+            params=[student_name, skill, feedback_url],
+            user_name=student_name
+        )
+    
+    # Send to educator
+    if educator and educator.get("phone"):
+        educator_name = educator.get("name", "Educator")
+        await send_whatsapp_notification(
+            phone=educator.get("phone"),
+            template_key="educator_session_complete",
+            params=[educator_name, student_name, skill],
+            user_name=educator_name
+        )
+
+# ========================
 # PYDANTIC MODELS
 # ========================
 
