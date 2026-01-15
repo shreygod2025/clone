@@ -70,12 +70,14 @@ const EducatorDashboard = () => {
   // Modal states
   const [showPassModal, setShowPassModal] = useState(null);
   const [showCompleteModal, setShowCompleteModal] = useState(null);
+  const [showIncompleteModal, setShowIncompleteModal] = useState(null);
   const [showRescheduleModal, setShowRescheduleModal] = useState(false);
   const [showQueryModal, setShowQueryModal] = useState(false);
   const [availableEducators, setAvailableEducators] = useState([]);
   const [selectedEducator, setSelectedEducator] = useState('');
   const [passReason, setPassReason] = useState('');
   const [feedback, setFeedback] = useState('');
+  const [incompleteReason, setIncompleteReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [rescheduleData, setRescheduleData] = useState({ date: null, time: '' });
   
@@ -85,6 +87,15 @@ const EducatorDashboard = () => {
   const [selectedSubcategory, setSelectedSubcategory] = useState(null);
   const [queryText, setQueryText] = useState('');
   const [relatedDemoId, setRelatedDemoId] = useState('');
+
+  // Incomplete reason options
+  const INCOMPLETE_REASONS = [
+    { value: 'student_no_show', label: 'Student did not join' },
+    { value: 'student_left_early', label: 'Student left early' },
+    { value: 'technical_issues', label: 'Technical issues prevented demo' },
+    { value: 'wrong_time', label: 'Student joined at wrong time' },
+    { value: 'other', label: 'Other reason' }
+  ];
 
   useEffect(() => {
     // Wait for auth loading to complete before checking login status
