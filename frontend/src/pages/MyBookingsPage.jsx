@@ -250,8 +250,23 @@ const MyBookingsPage = () => {
       'rescheduled': 'bg-amber-100 text-amber-700',
       'cancelled': 'bg-red-100 text-red-700',
       'archived': 'bg-slate-100 text-slate-700',
+      'incomplete': 'bg-orange-100 text-orange-700',
     };
     return colors[status] || 'bg-slate-100 text-slate-700';
+  };
+
+  const getStatusLabel = (status) => {
+    const labels = {
+      'new': 'SCHEDULED',
+      'confirmed': 'CONFIRMED',
+      'demo_completed': 'COMPLETED',
+      'converted': 'CONVERTED',
+      'rescheduled': 'RESCHEDULED',
+      'cancelled': 'CANCELLED',
+      'archived': 'ARCHIVED',
+      'incomplete': 'MISSED - RESCHEDULE',
+    };
+    return labels[status] || status?.replace('_', ' ').toUpperCase() || 'NEW';
   };
 
   const formatDate = (dateStr) => {
