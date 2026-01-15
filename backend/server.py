@@ -676,20 +676,23 @@ async def auto_assign_educator(skill: str, city: str = "", learning_mode: str = 
     Auto-assign an onboarded educator based on skill match.
     Returns educator dict with id and name, or empty dict if none found.
     Uses round-robin based on number of current assignments.
+    Only assigns to educators who are available (is_available != False).
     """
     # Normalize skill name for matching
     skill_lower = skill.lower() if skill else ""
     
-    # Find all onboarded educators who teach this skill
+    # Find all onboarded AND available educators who teach this skill
     educators = await db.educator_applications.find({
         "status": "onboarded",
+        "is_available": {"$ne": False},  # Include educators with is_available: True or undefined
         "skills": {"$elemMatch": {"$regex": skill_lower, "$options": "i"}}
     }, {"_id": 0}).to_list(100)
     
     if not educators:
         # Try partial match
         educators = await db.educator_applications.find({
-            "status": "onboarded"
+            "status": "onboarded",
+            "is_available": {"$ne": False}
         }, {"_id": 0}).to_list(100)
         # Filter by skill manually
         educators = [e for e in educators if any(skill_lower in s.lower() for s in e.get('skills', []))]
