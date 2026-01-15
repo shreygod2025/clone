@@ -866,6 +866,69 @@ const EducatorDashboard = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Incomplete Demo Modal */}
+      <Dialog open={!!showIncompleteModal} onOpenChange={() => { setShowIncompleteModal(null); setIncompleteReason(''); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertCircle className="w-5 h-5" />
+              Mark Demo as Incomplete
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-slate-50 rounded-lg p-3">
+              <p className="text-sm text-slate-600"><strong>{showIncompleteModal?.name}</strong> - {showIncompleteModal?.skill}</p>
+              <p className="text-xs text-slate-500 mt-1">{showIncompleteModal?.phone}</p>
+            </div>
+            
+            <div className="bg-amber-50 rounded-lg p-3 text-sm text-amber-700">
+              <p>This will notify the student that they missed the demo and prompt them to reschedule.</p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Reason for incomplete</label>
+              <div className="space-y-2">
+                {INCOMPLETE_REASONS.map(reason => (
+                  <div
+                    key={reason.value}
+                    className={`p-3 rounded-lg border cursor-pointer transition-all ${
+                      incompleteReason === reason.value 
+                        ? 'border-red-500 bg-red-50' 
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                    onClick={() => setIncompleteReason(reason.value)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                        incompleteReason === reason.value ? 'border-red-500' : 'border-slate-300'
+                      }`}>
+                        {incompleteReason === reason.value && (
+                          <div className="w-2 h-2 rounded-full bg-red-500" />
+                        )}
+                      </div>
+                      <span className="text-sm">{reason.label}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => { setShowIncompleteModal(null); setIncompleteReason(''); }} className="flex-1">
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleIncompleteDemo} 
+                disabled={submitting || !incompleteReason} 
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+              >
+                {submitting ? 'Submitting...' : 'Mark Incomplete'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
