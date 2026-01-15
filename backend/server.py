@@ -2169,6 +2169,10 @@ async def educator_complete_demo(inquiry_id: str, data: dict, user: dict = Depen
         }}
     )
     
+    # Send completion notifications to student and educator
+    educator = await db.educator_applications.find_one({"id": educator_id}, {"_id": 0})
+    await send_session_complete_notification(inquiry, educator)
+    
     return {"message": "Demo marked as completed"}
 
 @api_router.post("/educator/incomplete-demo/{inquiry_id}")
