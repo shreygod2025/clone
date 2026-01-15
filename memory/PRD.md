@@ -8,209 +8,122 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - **Design:** Minimal, clean, fast, glassy design. Red for CTA buttons, blue for trust-building elements.
 - **Funnels:**
   - **Student:** Multi-step inquiry form with dynamic options, OTP verification, and post-booking management.
-  - **Educator:** Application form with dynamic requirements and "Other City" option.
+  - **Educator:** Application form with dynamic requirements and "Other City" option, OTP verification, dedicated dashboard.
   - **School:** Multi-step B2B inquiry form followed by services showcase page.
 - **Admin Panel:**
   - CRMs for Students, Schools, and Educators with lead tracking.
   - Detailed forms for manually adding leads.
   - Management sections for content, requirements, cities, and centers.
+  - Demo rating system for educators.
+  - Manual educator assignment with skill matching.
 - **Login & Booking Management:**
   - Phone number + OTP based login system for all user types.
   - "My Bookings" page for users to view and reschedule demos/meetings.
+  - Educator dashboard for managing assigned demos.
 
 ## Architecture
 ```
 /app/
 ├── backend/
-│   └── server.py      # FastAPI backend with multi-user auth (Admin, Team, Center)
+│   └── server.py      # FastAPI backend with multi-user auth, educator portal, demo management
 ├── frontend/
 │   ├── src/
 │   │   ├── pages/
-│   │   │   ├── InquiryPage.jsx         # Internal /add form (mobile-friendly, auto-assign)
-│   │   │   ├── StudentFunnel.jsx       # Student booking flow
-│   │   │   ├── MyBookingsPage.jsx      # User's bookings
-│   │   │   ├── AboutPage.jsx           # About OLL page
-│   │   │   ├── GrowthPartnerPage.jsx   # Growth Partner landing page
-│   │   │   ├── EducatorFunnel.jsx      # Dynamic educator form
+│   │   │   ├── EducatorDashboard.jsx     # Educator portal with availability toggle
+│   │   │   ├── EducatorFunnel.jsx        # Educator application with OTP
+│   │   │   ├── MyBookingsPage.jsx        # Student bookings with incomplete status
+│   │   │   ├── LoginPage.jsx             # Multi-role login (Student/Educator)
+│   │   │   ├── CentersPage.jsx           # Centers with Growth Partner CTA
 │   │   │   └── admin/
-│   │   │       ├── AdminStudentCRM.jsx       # Enhanced View/Edit modal
-│   │   │       ├── AdminSchoolCRM.jsx        # Enhanced View/Edit modal
-│   │   │       ├── AdminEducators.jsx        # Enhanced View/Edit modal
-│   │   │       ├── AdminGrowthPartners.jsx   # Enhanced View/Edit modal
-│   │   │       ├── AdminSupportUnified.jsx
-│   │   │       ├── AdminTeamApplications.jsx
-│   │   │       ├── AdminDashboard.jsx        # Overdue section + Today's Schedule
-│   │   │       ├── CenterDashboard.jsx       # Full Student CRM for centers
-│   │   │       └── AdminCenterUsers.jsx      # Center user management
+│   │   │       ├── AdminStudentCRM.jsx   # Manual educator assignment
+│   │   │       ├── AdminEducators.jsx    # Demo rating modal
+│   │   │       ├── AdminDashboard.jsx    # Analytics dashboard
+│   │   │       └── AdminSupportUnified.jsx
 │   │   └── context/
-│   │       └── AuthContext.jsx         # Multi-user auth (Admin, Team, Center)
+│   │       ├── AuthContext.jsx           # Admin auth
+│   │       └── UserAuthContext.jsx       # Student/Educator auth with loading state
 └── memory/
     └── PRD.md
 ```
 
-## What's Been Implemented (January 2026)
+## Completed Features (Jan 2026)
 
-### Latest Session (Jan 14, 2026) - Jitsi Meet Integration
-- ✅ **Jitsi Meet Video Conferencing with Moderator Control:**
-  - Admin/Center users join as moderators with lobby control enabled
-  - Students join as participants who need moderator approval
-  - Unique meeting rooms generated per booking (`OLLDemo{bookingId}`)
-  - Moderator settings: lobby enabled, can admit/reject participants
-  - Student settings: pre-join page, start muted
-- ✅ **Join Demo Buttons Updated:**
-  - MyBookingsPage: Student link with participant config
-  - AdminStudentCRM: Admin link with moderator config
-  - CenterDashboard: Added Join Demo button with moderator config
-- ✅ **My Bookings Mobile UI Cleanup:**
-  - Shadow-lifted buttons without borders for cleaner look
-  - Full-width gradient Join Demo button on mobile
-  - Half-half Reschedule/Cancel buttons
-- ✅ **Educator Auto-Assignment:**
-  - Demos automatically assigned to onboarded educators based on skill matching
-  - Round-robin assignment based on current workload
-- ✅ **Educator Portal:**
-  - Separate login at `/login` → "Educator" option
-  - Dashboard at `/educator-dashboard` with assigned demos
-  - Join demo as moderator, mark complete, pass to another educator
-- ✅ **Educator Application Flow Enhancement:**
-  - Added Teaching Mode preference (online, offline home, offline center)
-  - OTP verification before application submission
-  - Success page shows demo link and details
-  - "At OLL Center" option disabled if no center in selected city
-- ✅ **Admin Educator Demo Rating System:**
-  - Rating modal when marking demo complete
-  - Personality rating (confidence, enthusiasm, professionalism, approachability)
-  - Communication rating (clarity, engagement, responsiveness, language)
-  - Expertise rating (subject knowledge, methodology, problem solving, student handling)
-  - Technical check (webcam, mic, internet quality)
-  - Recommendation options: Onboard, Retake, Reject
-- ✅ **Admin Join Demo for Educators:**
-  - Jitsi link visible for demo_scheduled educator applications
-- ✅ **Navbar Educator Handling:**
-  - Educators redirected to educator dashboard instead of student bookings
-  - Different icon color for educators
-- ✅ **Test OTP 1111:**
-  - Backend supports test OTP for development (not shown in frontend)
-- ✅ **Student Form Improvements:**
-  - "Book Free Demo Class" button now appears ABOVE "See Course Details" (primary action)
-  - "Resend OTP" link now appears BELOW "Confirm Booking" button
-  - Fixed runtime error after OTP confirmation (currentStepData guard)
-- ✅ **My Bookings Page Enhancements:**
-  - Bookings sorted by earliest upcoming date
-  - **Join Demo button** (blue-red gradient) for online classes - links to Jitsi Meet
-  - **Go to Center button** for offline center bookings - opens Google Maps
-  - **At Home** display for offline home bookings with address
-  - **Cancel Demo** feature with reason selection (5 options)
-  - Support button now navigates without logging out user
-- ✅ **Admin CRM Join/Navigate Buttons:**
-  - Student CRM shows "Join Demo" for online bookings
-  - Student CRM shows "Go to Center" for offline center bookings
-  - Location display enhanced: "Online Class", "Center Name, City", "At Home - Address"
-- ✅ **Navigation Fix:**
-  - Logo click keeps logged-in users on their dashboard (/my-bookings)
+### Session Persistence Bug Fix ✅
+- Added `authLoading` state check to prevent premature redirects
+- Both student and educator sessions now persist correctly after page refresh
 
-### Previous Session (Jan 13, 2026)
-- ✅ **Enhanced View/Edit Popup for ALL CRMs:**
-  - School CRM, Educators CRM, Growth Partners CRM now have inline editing
-  - View popup shows Edit button to switch to edit mode
-  - Edit mode allows changing: name, phone, email, dates, notes
-  - Full Comments section with add comment functionality
-  - Author and timestamp shown for each comment
-- ✅ **Dashboard Overdue Section:**
-  - Shows overdue student demos, school meetings, educator demos
-  - "Requires Attention" badge with total count
-  - Each item shows name, phone, date, and relevant details
-  - Appears above Today's Schedule when items exist
-- ✅ **Center Dashboard Full CRM:**
-  - Center users see full Student CRM for their location
-  - Add Demo functionality with complete form
-  - View/Edit lead details with inline editing
-  - Comment management system
-  - Status management: New → Demo Completed → Converted → Archived
-  - Overdue indicators on lead cards
+### P1: Educator "Mark Demo Incomplete" ✅
+- Endpoint: POST /api/educator/incomplete-demo/{inquiry_id}
+- Allows educators to mark demos as incomplete if student didn't join
+- Adds "incomplete" status to bookings
+- Student sees highlighted notice with reschedule button
+- WhatsApp notification attempted (via AiSensy)
 
-### Previous Session (Jan 12, 2026)
-- ✅ **Center Login & Dashboard:**
-  - Separate authentication for center staff
-  - Dedicated `/center` dashboard
-  - Admin UI to manage center users
-- ✅ **Growth Partner Landing Page:**
-  - Dedicated `/growth-partner` page with detailed form
-- ✅ **Today's Schedule on Dashboard:**
-  - Shows appointments for current day
-  - Separate sections for Student Demos, School Meetings, Educator Demos
-- ✅ **Team User Dashboard with Individual Analytics:**
-  - Shows personalized stats: My Leads, My Conversions, Followups Due, Leads Added by Me
-  - Performance Overview banner
-  - Quick Actions filtered by user permissions
-- ✅ **Multi-select Availability:** Educator forms support multiple availability options
-- ✅ **School CRM Follow-up Feature:** Date/comment visible on cards
+### P3: Educator Availability Toggle ✅
+- Endpoint: PATCH /api/educator/toggle-availability
+- UI toggle on educator dashboard
+- Auto-assignment skips unavailable educators
+- Shows "Available for new demos" / "Not accepting new demos"
 
-### Foundation Features
-- ✅ Student/School/Educator booking funnels
-- ✅ OTP verification system (mocked with 1111)
-- ✅ Admin Panel with multiple CRMs
-- ✅ "Assign Lead" functionality across CRMs
-- ✅ "Comment/Note" functionality
-- ✅ Assignee filter dropdowns
-- ✅ Team User management with permissions
-- ✅ Role-based sidebar navigation
-- ✅ Unified Support Center
-- ✅ Dynamic Educator form configuration
-- ✅ PostHog analytics integration
+### P4: Growth Partner CTA on Centers Page ✅
+- Added orange gradient section at bottom of /centers
+- "Want to Open Your Own OLL Center?" heading
+- "Become a Growth Partner" button linking to /growth-partner
 
-## Mocked/Placeholder Features
-- **OTP System:** ✅ AiSensy WhatsApp OTP fully integrated and working
-- **Video Meetings:** ✅ Jitsi Meet with moderator control for admins/centers, lobby for students
-- **Calendar Integration:** No real Calendly integration yet
+### Educator Lifecycle (Complete) ✅
+- Application with OTP verification
+- Status tracking: new → demo_scheduled → demo_completed → onboarded/rejected
+- Dedicated educator dashboard with demo list
+- Pass demo to another educator
+- Complete demo with feedback
+- Mark demo as incomplete
 
-## AiSensy WhatsApp OTP Setup
-To enable real WhatsApp OTP:
-1. Log in to AiSensy dashboard
-2. Create an OTP template with one parameter: `Your OLL verification code is {{1}}`
-3. Create an API Campaign using that template
-4. Add to `/app/backend/.env`:
-   ```
-   AISENSY_API_KEY=your_api_key
-   AISENSY_CAMPAIGN_NAME=your_campaign_name  # Must match exactly
-   ```
-5. Restart backend: `sudo supervisorctl restart backend`
+## Upcoming Tasks (Prioritized)
 
-## Key API Endpoints
-- `POST /auth/login` - Unified login for admins, team users, and center users
-- `GET /auth/me` - Get current user with role and permissions
-- `GET /dashboard/stats` - Returns overdue items, today's schedule, individual stats for team
-- `PATCH /students/inquiry/{id}` - Update student (name, phone, email, demo_date, notes)
-- `PATCH /schools/inquiry/{id}` - Update school (school_name, contact_name, phone, email, meeting_date, notes)
-- `PATCH /educators/application/{id}` - Update educator (name, phone, email, demo_date, notes)
-- `PATCH /growth-partners/{id}` - Update partner (name, phone, email, city, details, notes)
-- `GET /center/demos` - Get student inquiries for center user's location
-- `PATCH /center/demos/{id}` - Update demo from center dashboard
-- `POST /center/demos/{id}/comment` - Add comment from center dashboard
-- `POST /user/cancel-booking` - Cancel a booking with reason (new)
+### P2: Post-Demo Feedback Form
+- After educator marks demo complete, prompt with form:
+  - Did student join? (Yes/No)
+  - Were they interested? (1-5 rating)
+  - Current skill level? (Beginner/Intermediate/Advanced)
+  - Recommended sessions? (Number)
 
-## Credentials
+### P5: Educator Query Categories
+- On educator dashboard "Ask Query" modal
+- Categories: Demo related, Ongoing Classes, Payment related
+- Auto-open assigned demos list when category selected
+
+### P6: WhatsApp Template Setup (AiSensy)
+- Define templates for booking confirmations
+- Add action buttons: "Reschedule", "Cancel"
+
+## Future/Backlog
+
+### P2 Features
+- CSV Export for all CRM pages
+- Real Calendar Integration (Calendly)
+
+### P3 Features
+- Lead scoring system
+- Full CMS for Blog, FAQs, About Us
+
+## Technical Notes
+
+### Test Credentials
 - **Admin:** admin@oll.co / Dagaji03@
-- **Center User:** andheri@oll.co / center123
-- **OTP:** Sent via WhatsApp (AiSensy)
-- **Team Users:** Create via Admin Panel → Team Users
+- **Test OTP:** 1111 (backend-only, works for all phones)
+- **Test Student:** 9999999999
+- **Test Educator:** 7777777777 (onboarded)
 
-## Backlog
+### Key Integrations
+- **AiSensy:** WhatsApp OTP and notifications (LIVE)
+- **Jitsi Meet:** Video demos (public server, first to join = moderator)
+- **PostHog:** Analytics
 
-### P1 - High Priority
-- [ ] CSV Export for all CRM pages
-- [ ] Content Management (Blog, FAQs, About Us admin)
+### Known Limitations
+- Jitsi moderator control not available on public server
+- WhatsApp templates for incomplete demo may need configuration
 
-### P2 - Medium Priority
-- [ ] Real Calendar Integration (Calendly)
-- [ ] Email/WhatsApp notifications for form submissions
-- [ ] Proposal/MOU generation for Schools (deferred)
-
-### P3 - Future
-- [ ] Lead Scoring system
-- [ ] Admin Dashboard Analytics widgets (charts, graphs)
-- [ ] SEO optimization for course pages
-
-## Refactoring Needs
-- **Critical:** Break down `/app/backend/server.py` into modules (`/routers`, `/models`, `/services`)
-- **High:** Extract shared CRM modal functionality into reusable React component
+## Refactoring Needed
+1. **Critical:** server.py is 2000+ lines, needs modular structure (/routers, /models, /services)
+2. **High:** EducatorFunnel.jsx and AdminEducators.jsx are large, need component extraction
+3. Shared CRM modal logic is duplicated across admin pages
