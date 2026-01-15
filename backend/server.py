@@ -1445,11 +1445,12 @@ async def create_student_inquiry(data: StudentInquiryCreate):
     inquiry = StudentInquiry(**data.model_dump())
     
     # Auto-assign educator based on skill (for online demos or matching city)
+    educator_data = None
     if data.skill:
-        educator = await auto_assign_educator(data.skill, data.city, data.learning_mode)
-        if educator:
-            inquiry.assigned_educator_id = educator.get('id', '')
-            inquiry.assigned_educator_name = educator.get('name', '')
+        educator_data = await auto_assign_educator(data.skill, data.city, data.learning_mode)
+        if educator_data:
+            inquiry.assigned_educator_id = educator_data.get('id', '')
+            inquiry.assigned_educator_name = educator_data.get('name', '')
     
     # Generate meeting link for the booking
     inquiry.meeting_link = generate_meeting_link(inquiry.id)
@@ -1458,6 +1459,11 @@ async def create_student_inquiry(data: StudentInquiryCreate):
     doc['created_at'] = doc['created_at'].isoformat()
     doc['updated_at'] = doc['updated_at'].isoformat()
     await db.student_inquiries.insert_one(doc)
+    
+    # Send WhatsApp confirmation notifications
+    if data.demo_date and data.demo_time:
+        await send_demo_confirmation_notifications(doc, educator_data)
+    
     return inquiry
 
 @api_router.get("/students/inquiries", response_model=List[StudentInquiry])
