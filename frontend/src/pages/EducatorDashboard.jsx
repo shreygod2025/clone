@@ -566,6 +566,29 @@ const EducatorDashboard = () => {
               ))}
             </div>
 
+            {/* Availability Toggle */}
+            <div className={`mb-4 p-3 rounded-xl flex items-center justify-between ${
+              isAvailable ? 'bg-green-50 border border-green-200' : 'bg-orange-50 border border-orange-200'
+            }`}>
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${isAvailable ? 'bg-green-500' : 'bg-orange-500'}`} />
+                <span className="text-sm font-medium text-slate-700">
+                  {isAvailable ? 'Available for new demos' : 'Not accepting new demos'}
+                </span>
+              </div>
+              <button
+                onClick={toggleAvailability}
+                disabled={togglingAvailability}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  isAvailable 
+                    ? 'bg-orange-100 text-orange-700 hover:bg-orange-200' 
+                    : 'bg-green-100 text-green-700 hover:bg-green-200'
+                }`}
+              >
+                {togglingAvailability ? 'Updating...' : isAvailable ? 'Go Unavailable' : 'Go Available'}
+              </button>
+            </div>
+
             {/* Tabs */}
             <div className="flex gap-2 mb-4">
               <button
