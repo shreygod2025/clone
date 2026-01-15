@@ -249,6 +249,15 @@ const EducatorDashboard = () => {
     }
   };
 
+  const handleNotifyStudentNotJoined = async (demo) => {
+    try {
+      await axios.post(`${API}/educator/notify-not-joined/${demo.id}`, {}, { headers: getAuthHeaders() });
+      toast.success('Student has been notified that they haven\'t joined yet');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to send notification');
+    }
+  };
+
   const handleReschedule = async () => {
     if (!rescheduleData.date || !rescheduleData.time) {
       toast.error('Please select date and time');
