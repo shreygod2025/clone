@@ -697,14 +697,24 @@ const EducatorDashboard = () => {
                             <AlertCircle className="w-3.5 h-3.5 mr-1" /> Incomplete
                           </Button>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full text-amber-600 border-amber-200 hover:bg-amber-50"
-                          onClick={() => { setShowPassModal(demo); setSelectedEducator(''); setPassReason(''); }}
-                        >
-                          <RefreshCw className="w-3.5 h-3.5 mr-1" /> Pass to Another Educator
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 text-amber-600 border-amber-200 hover:bg-amber-50"
+                            onClick={() => { setShowPassModal(demo); setSelectedEducator(''); setPassReason(''); }}
+                          >
+                            <RefreshCw className="w-3.5 h-3.5 mr-1" /> Pass
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 text-blue-600 border-blue-200 hover:bg-blue-50"
+                            onClick={() => handleNotifyStudentNotJoined(demo)}
+                          >
+                            <MessageCircle className="w-3.5 h-3.5 mr-1" /> Not Joined?
+                          </Button>
+                        </div>
                       </div>
                     )}
                   </div>
