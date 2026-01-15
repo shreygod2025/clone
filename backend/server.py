@@ -507,11 +507,11 @@ class EducatorApplication(BaseModel):
     email: EmailStr
     phone: str
     skills: List[str]
-    experience: str
-    grades_comfortable: List[str]
-    city: str
+    experience: str = ""
+    grades_comfortable: List[str] = []
+    city: str = ""
     teaching_mode: str = ""  # online, offline_home, offline_center
-    availability: str
+    availability: str = ""
     demo_ready: bool = False
     requirement_id: Optional[str] = None
     requirement_title: Optional[str] = None
