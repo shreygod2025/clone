@@ -7,7 +7,6 @@ import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
