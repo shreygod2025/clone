@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Target, Eye, Award, Users, MapPin, Briefcase, Send, Check, ArrowRight, Play, Building2, GraduationCap } from 'lucide-react';
+import { Target, Eye, Award, Users, MapPin, Briefcase, Send, Check, ArrowRight, Play, Building2, GraduationCap, Instagram, Linkedin, ExternalLink } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Button } from '../components/ui/button';
@@ -15,24 +15,21 @@ const CITIES = [
   'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow', 'Chandigarh', 'Kochi'
 ];
 
-// Team Members Data
-const TEAM_MEMBERS = [
-  {
-    name: 'Shreyaan Daga',
-    role: 'Co-Founder & CEO',
-    image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop&crop=face'
-  },
-  {
-    name: 'Neha Kambli',
-    role: 'Business Head',
-    image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=300&h=300&fit=crop&crop=face'
-  },
-  {
-    name: 'Ritesh Rathore',
-    role: 'Growth Partners',
-    image: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=300&h=300&fit=crop&crop=face'
-  }
-];
+// Founder Info
+const FOUNDER = {
+  name: 'Shreyaan Daga',
+  role: 'Founder & CEO',
+  image: 'https://customer-assets.emergentagent.com/job_teach-n-learn-2/artifacts/8bxvdilp_Shreyaan%20Daga%20%282%29.jpg',
+  instagram: 'https://www.instagram.com/shrey.daga/?hl=en',
+  linkedin: 'https://in.linkedin.com/in/shreyaandaga',
+  timeline: [
+    { age: 8, event: 'Started entrepreneurship journey' },
+    { age: 13, event: 'Started selling paintings and artwork' },
+    { age: 13, event: 'Joined the stock market as an intern' },
+    { age: 14, event: 'Started giving loans to school friends' },
+    { age: 15, event: 'Founded OLL' }
+  ]
+};
 
 // Board of Advisors Data
 const ADVISORS = [
