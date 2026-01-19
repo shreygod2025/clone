@@ -533,125 +533,19 @@ const AboutPage = () => {
             <h2 className="text-2xl md:text-3xl font-bold text-white mb-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
               Join OLL Team
             </h2>
-            <p className="text-white/70">
-              Be part of India's skill learning revolution
+            <p className="text-white/70 mb-8">
+              Be part of India's skill learning revolution. We're looking for passionate individuals who want to make a difference.
             </p>
+            
+            <Link 
+              to="/join-team"
+              className="inline-flex items-center gap-2 bg-white text-[#1E3A5F] hover:bg-white/90 font-semibold px-8 py-3 rounded-full transition-colors"
+              data-testid="join-team-btn"
+            >
+              Apply Now
+              <ArrowRight className="w-5 h-5" />
+            </Link>
           </div>
-
-          {!showTeamForm && !teamSubmitted && (
-            <div className="text-center">
-              <Button 
-                onClick={() => setShowTeamForm(true)}
-                className="bg-white text-[#1E3A5F] hover:bg-white/90 font-semibold px-8 py-3 rounded-full"
-                data-testid="join-team-btn"
-              >
-                Apply Now
-              </Button>
-            </div>
-          )}
-
-          {teamSubmitted && (
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 text-center">
-              <div className="w-16 h-16 rounded-full bg-green-500 flex items-center justify-center mx-auto mb-4">
-                <Check className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-xl font-semibold text-white mb-2">Application Submitted!</h3>
-              <p className="text-white/70">We'll review your application and get back to you soon.</p>
-            </div>
-          )}
-
-          {showTeamForm && !teamSubmitted && (
-            <form onSubmit={handleTeamSubmit} className="bg-white rounded-2xl p-6 md:p-8 animate-slide-up">
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Name *</label>
-                  <Input
-                    placeholder="Your name"
-                    value={teamForm.name}
-                    onChange={(e) => setTeamForm({...teamForm, name: e.target.value})}
-                    data-testid="team-name"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Email *</label>
-                  <Input
-                    type="email"
-                    placeholder="Your email"
-                    value={teamForm.email}
-                    onChange={(e) => setTeamForm({...teamForm, email: e.target.value})}
-                    data-testid="team-email"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Phone</label>
-                  <Input
-                    placeholder="Your phone"
-                    value={teamForm.phone}
-                    onChange={(e) => setTeamForm({...teamForm, phone: e.target.value})}
-                    data-testid="team-phone"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Role Interested In *</label>
-                  <select
-                    value={teamForm.role}
-                    onChange={(e) => setTeamForm({...teamForm, role: e.target.value})}
-                    className="w-full h-10 px-4 border border-slate-200 rounded-lg"
-                    data-testid="team-role"
-                  >
-                    <option value="">Select role</option>
-                    <option value="Educator">Educator / Trainer</option>
-                    <option value="Sales">Sales</option>
-                    <option value="Operations">Operations</option>
-                    <option value="Content">Content</option>
-                    <option value="Technology">Technology</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">City</label>
-                  <select
-                    value={teamForm.city}
-                    onChange={(e) => setTeamForm({...teamForm, city: e.target.value})}
-                    className="w-full h-10 px-4 border border-slate-200 rounded-lg"
-                    data-testid="team-city"
-                  >
-                    <option value="">Select city</option>
-                    {CITIES.map(city => (
-                      <option key={city} value={city}>{city}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Experience</label>
-                  <Input
-                    placeholder="e.g., 3 years in education"
-                    value={teamForm.experience}
-                    onChange={(e) => setTeamForm({...teamForm, experience: e.target.value})}
-                    data-testid="team-experience"
-                  />
-                </div>
-              </div>
-              <div className="mt-4">
-                <label className="block text-sm font-medium text-slate-700 mb-2">Why do you want to join OLL?</label>
-                <Textarea
-                  placeholder="Tell us about yourself..."
-                  value={teamForm.message}
-                  onChange={(e) => setTeamForm({...teamForm, message: e.target.value})}
-                  className="min-h-[100px]"
-                  data-testid="team-message"
-                />
-              </div>
-              <div className="flex gap-3 mt-6">
-                <Button type="button" variant="outline" onClick={() => setShowTeamForm(false)} className="flex-1">
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={submitting} className="btn-primary flex-1">
-                  {submitting ? 'Submitting...' : 'Submit Application'}
-                </Button>
-              </div>
-            </form>
-          )}
         </div>
       </section>
 
