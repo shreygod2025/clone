@@ -97,13 +97,9 @@ function App() {
             <Route path="/admin/growth-partners" element={<ProtectedRoute><AdminGrowthPartners /></ProtectedRoute>} />
             <Route path="/admin/team-applications" element={<ProtectedRoute><AdminTeamApplications /></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
-            <Route path="/admin/center-users" element={<ProtectedRoute><AdminCenterUsers /></ProtectedRoute>} />
             <Route path="/admin/support" element={<ProtectedRoute><AdminSupportUnified /></ProtectedRoute>} />
-            <Route path="/admin/blogs" element={<ProtectedRoute><AdminBlogs /></ProtectedRoute>} />
-            <Route path="/admin/faqs" element={<ProtectedRoute><AdminFAQs /></ProtectedRoute>} />
             <Route path="/admin/requirements" element={<ProtectedRoute><AdminRequirements /></ProtectedRoute>} />
-            <Route path="/admin/cities" element={<ProtectedRoute><AdminCities /></ProtectedRoute>} />
-            <Route path="/admin/centers" element={<ProtectedRoute><AdminCenters /></ProtectedRoute>} />
+            <Route path="/admin/settings" element={<ProtectedRoute><AdminSettings /></ProtectedRoute>} />
             <Route path="/center" element={<ProtectedRoute><CenterDashboard /></ProtectedRoute>} />
           </Routes>
           <Toaster position="top-right" richColors />
