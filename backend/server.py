@@ -2564,6 +2564,134 @@ async def delete_requirement(req_id: str, user: dict = Depends(get_current_user)
     await db.open_requirements.delete_one({"id": req_id})
     return {"message": "Deleted successfully"}
 
+# ========================
+# TEAM APPLICATIONS & REQUIREMENTS
+# ========================
+
+class TeamApplication(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    email: str
+    phone: str
+    role: str
+    experience: str = ""
+    city: str = ""
+    availability: str = ""
+    linkedin: str = ""
+    portfolio: str = ""
+    message: str = ""
+    source: str = "website"
+    status: str = "new"  # new, contacted, interviewing, hired, rejected
+    notes: List[dict] = []
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class TeamRequirement(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    title: str
+    description: str = ""
+    type: str = "Full-time"  # Full-time, Part-time, Internship, Freelance
+    city: str = "Remote"
+    skills_required: List[str] = []
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+@api_router.post("/team-applications")
+async def create_team_application(data: dict):
+    """Submit a team application"""
+    application = TeamApplication(
+        name=data.get("name", ""),
+        email=data.get("email", ""),
+        phone=data.get("phone", ""),
+        role=data.get("role", ""),
+        experience=data.get("experience", ""),
+        city=data.get("city", ""),
+        availability=data.get("availability", ""),
+        linkedin=data.get("linkedin", ""),
+        portfolio=data.get("portfolio", ""),
+        message=data.get("message", ""),
+        source=data.get("source", "website")
+    )
+    
+    doc = application.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    await db.team_applications.insert_one(doc)
+    
+    return {"message": "Application submitted successfully", "id": application.id}
+
+@api_router.get("/team-applications")
+async def get_team_applications(status: Optional[str] = None, user: dict = Depends(get_current_user)):
+    """Get all team applications (admin only)"""
+    query = {}
+    if status:
+        query["status"] = status
+    
+    applications = await db.team_applications.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return applications
+
+@api_router.patch("/team-applications/{app_id}")
+async def update_team_application(app_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Update a team application status or add notes"""
+    update_data = {k: v for k, v in data.items() if v is not None and k != "id"}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    # If adding a note
+    if "note" in data:
+        await db.team_applications.update_one(
+            {"id": app_id},
+            {"$push": {"notes": {
+                "id": str(uuid.uuid4()),
+                "text": data["note"],
+                "author": user.get("name", "Admin"),
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }}}
+        )
+    
+    if update_data:
+        await db.team_applications.update_one({"id": app_id}, {"$set": update_data})
+    
+    application = await db.team_applications.find_one({"id": app_id}, {"_id": 0})
+    return application
+
+@api_router.get("/team-requirements")
+async def get_team_requirements():
+    """Get active team requirements/open positions"""
+    requirements = await db.team_requirements.find({"is_active": True}, {"_id": 0}).sort("created_at", -1).to_list(50)
+    return requirements
+
+@api_router.post("/team-requirements")
+async def create_team_requirement(data: dict, user: dict = Depends(get_current_user)):
+    """Create a new team requirement (admin only)"""
+    requirement = TeamRequirement(
+        title=data.get("title", ""),
+        description=data.get("description", ""),
+        type=data.get("type", "Full-time"),
+        city=data.get("city", "Remote"),
+        skills_required=data.get("skills_required", []),
+        is_active=data.get("is_active", True)
+    )
+    
+    doc = requirement.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    await db.team_requirements.insert_one(doc)
+    
+    return requirement
+
+@api_router.patch("/team-requirements/{req_id}")
+async def update_team_requirement(req_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Update a team requirement"""
+    update_data = {k: v for k, v in data.items() if v is not None and k != "id"}
+    await db.team_requirements.update_one({"id": req_id}, {"$set": update_data})
+    requirement = await db.team_requirements.find_one({"id": req_id}, {"_id": 0})
+    return requirement
+
+@api_router.delete("/team-requirements/{req_id}")
+async def delete_team_requirement(req_id: str, user: dict = Depends(get_current_user)):
+    """Delete a team requirement"""
+    await db.team_requirements.delete_one({"id": req_id})
+    return {"message": "Deleted successfully"}
+
 # Educator Form Configuration
 @api_router.get("/educator-config")
 async def get_educator_config():
