@@ -1,84 +1,82 @@
 # OLL - Skill Education Platform PRD
 
-## Original Problem Statement
-Build a high-conversion, multi-user skill-education platform for "OLL" with separate funnels for Students/Parents, Educators, and Schools. The platform must be SEO-first and include a powerful backend admin panel and CRM system.
+## Latest Changes (Jan 2026)
 
-## Latest Updates (Jan 2026)
+### Join Team Page (/join-team) - Updated ✅
+- **Resume/CV upload** - Supports PDF and Word documents (Max 5MB)
+- **Role** changed from dropdown to **text input field**
+- **Requirements section** shows current openings (from admin)
+- **Scroll to top** fixed on page load
+- Form fields: Name, Email, Phone, City, Role, Experience, Availability, Resume, LinkedIn, Portfolio, Message
 
-### About Page - Founder Section ✅
-- Changed team section to focus on **Shreyaan Daga's story**
-- Tagline: "FOR THE STUDENTS, BY THE STUDENTS"
-- Entrepreneur journey timeline (Age 8-15)
-- Instagram & LinkedIn social links
-- Photo with "Started at 15" badge
+### Admin Panel Reorganization ✅
 
-### Media Features - Embedded Videos ✅
-- **Shark Tank India** video embedded as iframe (no click required)
-- **KBC** video embedded with timestamp (starts at Shreyaan's segment)
-- Videos are visible directly on the page
+**Navigation Changes:**
+- Renamed "Team Users" → **"Users & Roles"**
+- **Removed FAQs** from navigation
+- Created new **"Settings"** page combining:
+  - Cities
+  - Centers
+  - Blogs (with SEO fields)
 
-### Join Team Page (/join-team) ✅
-- Dedicated team application page with shareable URL
-- Form fields: Name, Email, Phone, City, Role, Experience, Availability, LinkedIn, Portfolio, Message
-- Backend endpoints:
-  - `POST /api/team-applications` - Submit application
-  - `GET /api/team-applications` - List applications (admin)
-  - `PATCH /api/team-applications/{id}` - Update status/notes
-  - `GET /api/team-requirements` - Get open positions
-  - `POST /api/team-requirements` - Create position (admin)
+**Settings Page Features:**
+- Tabbed interface for Cities, Centers, Blogs
+- Add/Edit/Delete for all items
+- Search functionality
+- Blog SEO settings: meta_title, meta_description, keywords
+- Publish/Unpublish toggle for blogs
 
-### WhatsApp Integration (AiSensy) ✅
-- 14 templates integrated for Students & Educators
-- Demo confirmation (Online/Offline)
-- Reminders: 1 hour, 30 min (offline), 10 min (online)
-- "Not joined yet" notifications
-- Session completion messages
-- Cron endpoint: `POST /api/notifications/send-reminders`
+### Growth Partner Page - Fixed ✅
+- **Scroll to top** on page load
 
-### Session Persistence ✅
-- Fixed bug where users were logged out on refresh
-- Both student and educator sessions persist correctly
+### Backend Updates ✅
+- **File upload endpoint**: `POST /api/upload`
+  - Supports PDF, DOC, DOCX, PNG, JPG
+  - Max file size: 5MB
+  - Returns URL for uploaded files
+- Static file serving for uploads
 
-### Educator Features ✅
-- "Mark Demo Incomplete" option
-- Availability toggle (Go Available/Unavailable)
-- "Not Joined?" button to notify students
+---
 
-## Completed Features Summary
+## Pending Tasks (From User Request)
 
-| Feature | Status | Route/Component |
-|---------|--------|-----------------|
-| Student Funnel | ✅ | /student |
-| Educator Funnel | ✅ | /educator |
-| School Funnel | ✅ | /school |
-| My Bookings | ✅ | /my-bookings |
-| Educator Dashboard | ✅ | /educator-dashboard |
-| Join Team Page | ✅ | /join-team |
-| Admin Panel | ✅ | /admin/* |
-| WhatsApp Notifications | ✅ | AiSensy integrated |
-| Session Persistence | ✅ | UserAuthContext |
+### 1. Users & Roles System
+- [ ] Create Roles tab in Users page
+- [ ] Each role has fixed set of features/permissions
+- [ ] Admin can add/edit roles
+- [ ] Control which admin pages visible to each role
+- [ ] Merge center users into Users page
+- [ ] Assign roles to users
 
-## Upcoming Tasks
+### 2. Educators Requirements Button
+- [ ] Add "Requirements" button in Educators section
+- [ ] Shows current educator requirements in modal
 
-### P2: Post-Demo Feedback Form
-- After educator marks demo complete, prompt with form
-- Questions: Did student join? Interest level? Skill level? Recommended sessions?
+### 3. Team Requirements
+- [ ] Add requirements management similar to educators
+- [ ] Requirements visible in frontend /join-team page
 
-### P5: Educator Query Categories
-- Categories: Demo related, Ongoing Classes, Payment related
-- Auto-open assigned demos list when category selected
+---
 
-### Admin Panel - Team CRM
-- Create admin page to manage team applications
-- Status tracking: new → contacted → interviewing → hired/rejected
+## Completed Features
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Join Team Page | ✅ | Resume upload, text role input |
+| Scroll to Top Fix | ✅ | JoinTeamPage, GrowthPartnerPage |
+| Admin Settings Page | ✅ | Cities, Centers, Blogs combined |
+| FAQs Removed | ✅ | Removed from admin nav |
+| File Upload API | ✅ | /api/upload endpoint |
+| Blog SEO Fields | ✅ | meta_title, meta_description, keywords |
+
+---
 
 ## Test Credentials
 - **Admin:** admin@oll.co / Dagaji03@
 - **Test OTP:** 1111 (works for all phones)
-- **Test Educator:** 7777777777
 
 ## Key URLs
-- About Page: /about
 - Join Team: /join-team
-- Centers: /centers
 - Growth Partner: /growth-partner
+- Admin Settings: /admin/settings
+- Admin Users: /admin/users
