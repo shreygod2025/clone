@@ -123,34 +123,6 @@ const AboutPage = () => {
     message: ''
   });
 
-  const handleTeamSubmit = async (e) => {
-    e.preventDefault();
-    if (!teamForm.name || !teamForm.email || !teamForm.role) {
-      toast.error('Please fill required fields');
-      return;
-    }
-    setSubmitting(true);
-    try {
-      // Submit to team applications CRM
-      await axios.post(`${API}/team-applications`, {
-        name: teamForm.name,
-        email: teamForm.email,
-        phone: teamForm.phone || '',
-        role: teamForm.role,
-        experience: teamForm.experience,
-        city: teamForm.city,
-        message: teamForm.message,
-        source: 'about_page'
-      });
-      setTeamSubmitted(true);
-      toast.success('Application submitted successfully!');
-    } catch (error) {
-      toast.error('Failed to submit. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const handlePartnerSubmit = async (e) => {
     e.preventDefault();
     if (!partnerForm.name || !partnerForm.email || !partnerForm.city) {
