@@ -141,7 +141,6 @@ const JoinTeamPage = () => {
             </div>
           </div>
         </div>
-        <Footer />
       </div>
     );
   }
