@@ -90,6 +90,11 @@ const GrowthPartnerPage = () => {
     details: '',
   });
 
+  // Scroll to top on mount
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
