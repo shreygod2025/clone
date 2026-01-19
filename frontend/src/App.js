@@ -31,13 +31,9 @@ import AdminEducators from "./pages/admin/AdminEducators";
 import AdminGrowthPartners from "./pages/admin/AdminGrowthPartners";
 import AdminTeamApplications from "./pages/admin/AdminTeamApplications";
 import AdminUsers from "./pages/admin/AdminUsers";
-import AdminBlogs from "./pages/admin/AdminBlogs";
-import AdminFAQs from "./pages/admin/AdminFAQs";
 import AdminRequirements from "./pages/admin/AdminRequirements";
 import AdminSupportUnified from "./pages/admin/AdminSupportUnified";
-import AdminCities from "./pages/admin/AdminCities";
-import AdminCenters from "./pages/admin/AdminCenters";
-import AdminCenterUsers from "./pages/admin/AdminCenterUsers";
+import AdminSettings from "./pages/admin/AdminSettings";
 import CenterDashboard from "./pages/admin/CenterDashboard";
 
 // Auth Context
