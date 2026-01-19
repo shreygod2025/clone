@@ -435,8 +435,6 @@ const JoinTeamPage = () => {
           </div>
         </div>
       </section>
-
-      <Footer />
     </div>
   );
 };
