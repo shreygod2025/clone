@@ -305,30 +305,137 @@ const AboutPage = () => {
         </div>
       )}
 
-      {/* Our Team Section */}
-      <section className="py-16 px-4" data-testid="team-section">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-2xl md:text-3xl font-bold text-[#1E3A5F] text-center mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
-            Our Team
-          </h2>
-          <p className="text-slate-600 text-center mb-12 max-w-2xl mx-auto">
-            Meet the passionate leaders driving OLL's mission forward
-          </p>
+      {/* Founder Story Section */}
+      <section className="py-16 px-4" data-testid="founder-section">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-12">
+            <p className="text-[#D63031] font-bold text-sm tracking-wider uppercase mb-2">A Brand</p>
+            <h2 className="text-2xl md:text-4xl font-bold text-[#1E3A5F] mb-2" style={{ fontFamily: 'Manrope, sans-serif' }}>
+              FOR THE STUDENTS, BY THE STUDENTS
+            </h2>
+          </div>
           
-          <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            {TEAM_MEMBERS.map((member, index) => (
-              <div key={index} className="glass-card rounded-3xl p-6 text-center hover:shadow-xl transition-shadow" data-testid={`team-member-${index}`}>
-                <div className="w-32 h-32 rounded-full overflow-hidden mx-auto mb-4 border-4 border-white shadow-lg">
+          <div className="grid md:grid-cols-2 gap-12 items-center">
+            {/* Founder Image & Info */}
+            <div className="text-center md:text-left">
+              <div className="relative inline-block mb-6">
+                <div className="w-64 h-64 md:w-80 md:h-80 rounded-3xl overflow-hidden mx-auto md:mx-0 shadow-2xl border-4 border-white">
                   <img 
-                    src={member.image} 
-                    alt={member.name}
+                    src={FOUNDER.image}
+                    alt={FOUNDER.name}
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <h3 className="text-lg font-bold text-[#1E3A5F] mb-1">{member.name}</h3>
-                <p className="text-[#D63031] font-medium text-sm">{member.role}</p>
+                <div className="absolute -bottom-4 -right-4 bg-gradient-to-r from-[#D63031] to-[#e74c3c] text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
+                  Started at 15
+                </div>
               </div>
-            ))}
+              
+              <h3 className="text-2xl font-bold text-[#1E3A5F] mb-1">{FOUNDER.name}</h3>
+              <p className="text-[#D63031] font-medium mb-4">{FOUNDER.role}</p>
+              
+              {/* Social Links */}
+              <div className="flex gap-3 justify-center md:justify-start">
+                <a 
+                  href={FOUNDER.instagram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-medium hover:shadow-lg transition-shadow"
+                >
+                  <Instagram className="w-4 h-4" />
+                  Instagram
+                </a>
+                <a 
+                  href={FOUNDER.linkedin}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#0077B5] text-white text-sm font-medium hover:shadow-lg transition-shadow"
+                >
+                  <Linkedin className="w-4 h-4" />
+                  LinkedIn
+                </a>
+              </div>
+            </div>
+            
+            {/* Journey Timeline */}
+            <div>
+              <h4 className="text-lg font-bold text-[#1E3A5F] mb-6">The Entrepreneurial Journey</h4>
+              <div className="space-y-4">
+                {FOUNDER.timeline.map((item, index) => (
+                  <div key={index} className="flex gap-4 items-start">
+                    <div className="flex-shrink-0 w-16 h-16 rounded-full bg-gradient-to-br from-[#1E3A5F] to-[#2d5a8f] flex items-center justify-center text-white font-bold shadow-lg">
+                      <div className="text-center">
+                        <div className="text-xs opacity-70">Age</div>
+                        <div className="text-lg">{item.age}</div>
+                      </div>
+                    </div>
+                    <div className="flex-1 pt-2">
+                      <p className="text-slate-700">{item.event}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              <p className="mt-8 text-slate-600 leading-relaxed">
+                Shreyaan Daga started his entrepreneurship journey at the age of 8, with a burning passion to make a difference. 
+                From selling paintings at 13, interning at the stock market, giving loans to friends at school, 
+                to finally founding OLL at 15 — his mission has always been to <span className="font-bold text-[#1E3A5F]">help students unlock their potential</span>.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Media Features - Shark Tank & KBC Videos */}
+      <section className="py-16 px-4 bg-gradient-to-br from-slate-900 to-slate-800" data-testid="media-features-section">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-2xl md:text-3xl font-bold text-white text-center mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
+            As Seen On
+          </h2>
+          <p className="text-white/70 text-center mb-12 max-w-2xl mx-auto">
+            OLL's journey featured on national television
+          </p>
+          
+          <div className="grid md:grid-cols-2 gap-8">
+            {/* Shark Tank Video */}
+            <div className="glass-card rounded-2xl overflow-hidden bg-white/5 backdrop-blur-sm">
+              <div className="aspect-video">
+                <iframe
+                  width="100%"
+                  height="100%"
+                  src="https://www.youtube.com/embed/aVzl6yzPPTw"
+                  title="OLL on Shark Tank India"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="w-full h-full"
+                />
+              </div>
+              <div className="p-4">
+                <h3 className="text-white font-bold text-lg">Shark Tank India</h3>
+                <p className="text-white/70 text-sm">Featured on Shark Tank India Season 1</p>
+              </div>
+            </div>
+            
+            {/* KBC Video */}
+            <div className="glass-card rounded-2xl overflow-hidden bg-white/5 backdrop-blur-sm">
+              <div className="aspect-video">
+                <iframe
+                  width="100%"
+                  height="100%"
+                  src="https://www.youtube.com/embed/8M3A_InpVKw?start=883"
+                  title="OLL on Kaun Banega Crorepati"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="w-full h-full"
+                />
+              </div>
+              <div className="p-4">
+                <h3 className="text-white font-bold text-lg">Kaun Banega Crorepati</h3>
+                <p className="text-white/70 text-sm">Featured on KBC with Amitabh Bachchan</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
