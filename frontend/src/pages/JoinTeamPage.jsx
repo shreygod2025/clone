@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { User, Mail, Phone, MapPin, Briefcase, FileText, Send, Check, ArrowLeft, Users, Clock, Target, Heart } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Briefcase, Send, Check, ArrowLeft, Users, Clock, Target, Heart, Upload, FileText, X } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Button } from '../components/ui/button';
@@ -13,20 +13,6 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const CITIES = [
   'Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 
   'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow', 'Chandigarh', 'Kochi', 'Other'
-];
-
-const ROLES = [
-  'Marketing & Growth',
-  'Content Creation',
-  'Social Media',
-  'Sales',
-  'Operations',
-  'Technology',
-  'Teaching / Curriculum',
-  'Community Management',
-  'Design',
-  'Video Editing',
-  'Other'
 ];
 
 const EXPERIENCE_LEVELS = [
@@ -48,6 +34,8 @@ const JoinTeamPage = () => {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [openPositions, setOpenPositions] = useState([]);
+  const [resumeFile, setResumeFile] = useState(null);
+  const [uploadingResume, setUploadingResume] = useState(false);
   
   const [form, setForm] = useState({
     name: '',
@@ -60,8 +48,14 @@ const JoinTeamPage = () => {
     availability: '',
     linkedin: '',
     portfolio: '',
+    resume_url: '',
     message: ''
   });
+
+  // Scroll to top on mount
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   useEffect(() => {
     fetchOpenPositions();
@@ -74,6 +68,51 @@ const JoinTeamPage = () => {
     } catch (error) {
       console.error('Failed to fetch positions:', error);
     }
+  };
+
+  const handleResumeUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Please upload a PDF or Word document');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File size must be less than 5MB');
+      return;
+    }
+
+    setResumeFile(file);
+    setUploadingResume(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', 'resume');
+
+      const response = await axios.post(`${API}/upload`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      setForm({ ...form, resume_url: response.data.url });
+      toast.success('Resume uploaded successfully');
+    } catch (error) {
+      toast.error('Failed to upload resume. You can still submit and send it later.');
+      // Keep the file name for display but clear the upload
+      setForm({ ...form, resume_url: '' });
+    } finally {
+      setUploadingResume(false);
+    }
+  };
+
+  const removeResume = () => {
+    setResumeFile(null);
+    setForm({ ...form, resume_url: '' });
   };
 
   const handleSubmit = async (e) => {
@@ -95,6 +134,7 @@ const JoinTeamPage = () => {
         availability: form.availability,
         linkedin: form.linkedin,
         portfolio: form.portfolio,
+        resume_url: form.resume_url,
         message: form.message,
         source: 'website'
       });
@@ -182,19 +222,26 @@ const JoinTeamPage = () => {
         </div>
       </section>
 
-      {/* Open Positions (if any) */}
+      {/* Open Positions (Requirements) */}
       {openPositions.length > 0 && (
         <section className="py-12 px-4">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-xl font-bold text-[#1E3A5F] mb-6 text-center">Current Openings</h2>
             <div className="grid md:grid-cols-2 gap-4">
               {openPositions.map((position, index) => (
-                <div key={index} className="glass-card rounded-xl p-4 border-l-4 border-[#D63031]">
+                <div 
+                  key={index} 
+                  className="glass-card rounded-xl p-4 border-l-4 border-[#D63031] cursor-pointer hover:shadow-lg transition-shadow"
+                  onClick={() => setForm({ ...form, role: position.title })}
+                >
                   <h3 className="font-bold text-[#1E3A5F]">{position.title}</h3>
                   <p className="text-sm text-slate-600 mt-1">{position.description}</p>
-                  <div className="flex gap-2 mt-2">
+                  <div className="flex gap-2 mt-2 flex-wrap">
                     <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{position.type}</span>
                     <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{position.city}</span>
+                    {position.skills_required?.map((skill, i) => (
+                      <span key={i} className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{skill}</span>
+                    ))}
                   </div>
                 </div>
               ))}
@@ -313,18 +360,14 @@ const JoinTeamPage = () => {
                   </label>
                   <div className="relative">
                     <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <select
+                    <Input
                       value={form.role}
                       onChange={(e) => setForm({ ...form, role: e.target.value })}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20 focus:border-[#1E3A5F] bg-white text-sm"
+                      placeholder="e.g., Marketing, Design, Sales..."
+                      className="pl-10"
                       required
-                      data-testid="team-role-select"
-                    >
-                      <option value="">Select role</option>
-                      {ROLES.map(role => (
-                        <option key={role} value={role}>{role}</option>
-                      ))}
-                    </select>
+                      data-testid="team-role-input"
+                    />
                   </div>
                 </div>
                 <div>
@@ -371,6 +414,50 @@ const JoinTeamPage = () => {
                 </div>
               </div>
 
+              {/* Resume Upload */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Resume / CV
+                </label>
+                {!resumeFile ? (
+                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:border-[#1E3A5F] hover:bg-slate-50 transition-all">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <Upload className="w-8 h-8 text-slate-400 mb-2" />
+                      <p className="text-sm text-slate-600">
+                        <span className="font-medium text-[#1E3A5F]">Click to upload</span> or drag and drop
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1">PDF or Word (Max 5MB)</p>
+                    </div>
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      accept=".pdf,.doc,.docx"
+                      onChange={handleResumeUpload}
+                      data-testid="resume-upload-input"
+                    />
+                  </label>
+                ) : (
+                  <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <FileText className="w-8 h-8 text-green-600" />
+                      <div>
+                        <p className="text-sm font-medium text-slate-700">{resumeFile.name}</p>
+                        <p className="text-xs text-slate-500">
+                          {uploadingResume ? 'Uploading...' : form.resume_url ? 'Uploaded successfully' : 'Ready to submit'}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={removeResume}
+                      className="p-1 hover:bg-red-100 rounded-full transition-colors"
+                    >
+                      <X className="w-5 h-5 text-red-500" />
+                    </button>
+                  </div>
+                )}
+              </div>
+
               {/* Links */}
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
@@ -415,7 +502,7 @@ const JoinTeamPage = () => {
 
               <Button
                 type="submit"
-                disabled={submitting}
+                disabled={submitting || uploadingResume}
                 className="w-full bg-gradient-to-r from-[#D63031] to-[#e74c3c] hover:from-[#c0392b] hover:to-[#D63031] text-white py-3 rounded-xl font-semibold text-base"
                 data-testid="team-submit-btn"
               >
