@@ -3426,8 +3426,40 @@ async def update_inquiry_query(query_id: str, data: dict, user: dict = Depends(g
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
 
+# File Upload Endpoint
+@api_router.post("/upload")
+async def upload_file(file: UploadFile = File(...), type: str = "general"):
+    """Upload a file (resume, document, etc.)"""
+    allowed_extensions = {'.pdf', '.doc', '.docx', '.png', '.jpg', '.jpeg'}
+    file_ext = Path(file.filename).suffix.lower()
+    
+    if file_ext not in allowed_extensions:
+        raise HTTPException(status_code=400, detail="File type not allowed")
+    
+    # Check file size (max 5MB)
+    content = await file.read()
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large (max 5MB)")
+    
+    # Generate unique filename
+    unique_filename = f"{type}_{uuid.uuid4().hex}{file_ext}"
+    file_path = UPLOAD_DIR / unique_filename
+    
+    # Save file
+    with open(file_path, "wb") as f:
+        f.write(content)
+    
+    # Return URL (relative path that will be served by static files)
+    base_url = os.environ.get('BASE_URL', '')
+    file_url = f"{base_url}/api/uploads/{unique_filename}"
+    
+    return {"url": file_url, "filename": unique_filename}
+
 # Include router and middleware
 app.include_router(api_router)
+
+# Mount static files for uploads
+app.mount("/api/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
 app.add_middleware(
     CORSMiddleware,
