@@ -109,22 +109,10 @@ const FOUNDER_TIMELINE = [
 ];
 
 const AboutPage = () => {
-  const [showTeamForm, setShowTeamForm] = useState(false);
   const [showPartnerForm, setShowPartnerForm] = useState(false);
-  const [teamSubmitted, setTeamSubmitted] = useState(false);
   const [partnerSubmitted, setPartnerSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [activeVideo, setActiveVideo] = useState(null);
-  
-  const [teamForm, setTeamForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    role: '',
-    experience: '',
-    city: '',
-    message: ''
-  });
 
   const [partnerForm, setPartnerForm] = useState({
     name: '',
