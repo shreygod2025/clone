@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Building2, GraduationCap, FileText, 
-  HelpCircle, Briefcase, MessageSquare, LogOut, Menu, X, ChevronRight,
-  MapPin, Building, Calendar, Clock, Phone, User
+  Briefcase, MessageSquare, LogOut, Menu, X, ChevronRight,
+  MapPin, Building, Calendar, Clock, Phone, User, Settings, Shield
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
@@ -23,15 +23,11 @@ const AdminLayout = ({ children, title }) => {
     { path: '/admin/schools', icon: Building2, label: 'School CRM', permission: 'schools' },
     { path: '/admin/educators', icon: Users, label: 'Educators', permission: 'educators' },
     { path: '/admin/growth-partners', icon: Briefcase, label: 'Growth Partners', permission: 'growth_partners' },
-    { path: '/admin/team-applications', icon: Users, label: 'Team Applications', permission: 'team_applications' },
+    { path: '/admin/team-applications', icon: FileText, label: 'Team Applications', permission: 'team_applications' },
     { path: '/admin/support', icon: MessageSquare, label: 'Support Center', permission: 'support' },
-    { path: '/admin/users', icon: Users, label: 'Team Users', permission: 'admin_only' },
-    { path: '/admin/center-users', icon: Building, label: 'Center Users', permission: 'admin_only' },
+    { path: '/admin/users', icon: Users, label: 'Users & Roles', permission: 'admin_only' },
     { path: '/admin/requirements', icon: FileText, label: 'Requirements', permission: 'admin_only' },
-    { path: '/admin/cities', icon: MapPin, label: 'Cities', permission: 'admin_only' },
-    { path: '/admin/centers', icon: Building, label: 'Centers', permission: 'admin_only' },
-    { path: '/admin/blogs', icon: FileText, label: 'Blogs', permission: 'admin_only' },
-    { path: '/admin/faqs', icon: HelpCircle, label: 'FAQs', permission: 'admin_only' },
+    { path: '/admin/settings', icon: Settings, label: 'Settings', permission: 'admin_only' },
   ];
 
   // Filter nav items based on user role and permissions
