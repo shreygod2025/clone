@@ -92,16 +92,19 @@ const FOUNDER_TIMELINE = [
     year: '2023',
     title: 'Shark Tank India',
     description: 'Featured on Shark Tank India, showcasing our innovative approach to skill education and receiving national recognition.',
-    videoId: 'dQw4w9WgXcQ',
-    videoTitle: 'Shark Tank India Episode'
+    videoId: 'aVzl6yzPPTw',
+    videoTitle: 'Shark Tank India Episode',
+    showEmbed: true
   },
   {
     date: 'Mar 4, 2025',
     year: '2025',
     title: 'Kaun Banega Crorepati',
     description: 'Recognized on KBC for transforming education across India and empowering millions of students.',
-    videoId: 'dQw4w9WgXcQ',
-    videoTitle: 'KBC Episode'
+    videoId: '8M3A_InpVKw',
+    videoTitle: 'KBC Episode',
+    videoStart: 883,
+    showEmbed: true
   }
 ];
 
