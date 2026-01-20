@@ -3,7 +3,7 @@ import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
 import { 
   MapPin, Building, FileText, Plus, Edit2, Trash2, X, Save, Eye, EyeOff,
-  Search, Globe, Calendar, Image, Tag
+  Search, Globe, Calendar, Image, Tag, Briefcase, Users
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -14,20 +14,24 @@ import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+const ROLE_TYPES = ['Full-time', 'Part-time', 'Internship', 'Freelance', 'Contract'];
+
 const AdminSettings = () => {
   const { getAuthHeaders } = useAuth();
-  const [activeTab, setActiveTab] = useState('cities');
+  const [activeTab, setActiveTab] = useState('team-requirements');
   const [loading, setLoading] = useState(true);
   
   // Data states
   const [cities, setCities] = useState([]);
   const [centers, setCenters] = useState([]);
   const [blogs, setBlogs] = useState([]);
+  const [teamRequirements, setTeamRequirements] = useState([]);
   
   // Modal states
   const [showCityModal, setShowCityModal] = useState(false);
   const [showCenterModal, setShowCenterModal] = useState(false);
   const [showBlogModal, setShowBlogModal] = useState(false);
+  const [showTeamReqModal, setShowTeamReqModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   
   // Form states
@@ -39,6 +43,10 @@ const AdminSettings = () => {
     title: '', slug: '', excerpt: '', content: '', image_url: '', 
     author: '', category: '', tags: [], is_published: false,
     meta_title: '', meta_description: '', keywords: ''
+  });
+  const [teamReqForm, setTeamReqForm] = useState({
+    title: '', description: '', type: 'Full-time', city: 'Remote', 
+    skills_required: '', responsibilities: '', qualifications: '', is_active: true
   });
   
   const [searchQuery, setSearchQuery] = useState('');
