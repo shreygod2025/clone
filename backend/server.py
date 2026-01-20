@@ -2175,6 +2175,9 @@ async def create_educator_application_verified(data: EducatorApplyWithOTP):
     
     await db.educator_applications.insert_one(doc)
     
+    # Send application received email
+    await send_educator_application_received_email(doc)
+    
     return {
         "success": True,
         "message": "Application submitted successfully",
