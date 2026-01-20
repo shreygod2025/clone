@@ -868,6 +868,99 @@ const AdminSettings = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Team Requirements Modal */}
+      <Dialog open={showTeamReqModal} onOpenChange={setShowTeamReqModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{editingItem ? 'Edit Opening' : 'Add Team Opening'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+            <div>
+              <label className="block text-sm font-medium mb-1">Position Title *</label>
+              <Input
+                value={teamReqForm.title}
+                onChange={(e) => setTeamReqForm({ ...teamReqForm, title: e.target.value })}
+                placeholder="e.g., Marketing Manager, Content Writer"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Description</label>
+              <Textarea
+                value={teamReqForm.description}
+                onChange={(e) => setTeamReqForm({ ...teamReqForm, description: e.target.value })}
+                placeholder="Brief description of the role"
+                rows={2}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Type</label>
+                <select
+                  value={teamReqForm.type}
+                  onChange={(e) => setTeamReqForm({ ...teamReqForm, type: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg"
+                >
+                  {ROLE_TYPES.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Location</label>
+                <Input
+                  value={teamReqForm.city}
+                  onChange={(e) => setTeamReqForm({ ...teamReqForm, city: e.target.value })}
+                  placeholder="e.g., Remote, Mumbai"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Skills Required (comma-separated)</label>
+              <Input
+                value={typeof teamReqForm.skills_required === 'string' ? teamReqForm.skills_required : teamReqForm.skills_required?.join(', ')}
+                onChange={(e) => setTeamReqForm({ ...teamReqForm, skills_required: e.target.value })}
+                placeholder="e.g., Marketing, Social Media, Communication"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Responsibilities</label>
+              <Textarea
+                value={teamReqForm.responsibilities}
+                onChange={(e) => setTeamReqForm({ ...teamReqForm, responsibilities: e.target.value })}
+                placeholder="Key responsibilities for this role"
+                rows={3}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Qualifications</label>
+              <Textarea
+                value={teamReqForm.qualifications}
+                onChange={(e) => setTeamReqForm({ ...teamReqForm, qualifications: e.target.value })}
+                placeholder="Required qualifications and experience"
+                rows={2}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="teamreq-active"
+                checked={teamReqForm.is_active}
+                onChange={(e) => setTeamReqForm({ ...teamReqForm, is_active: e.target.checked })}
+                className="rounded"
+              />
+              <label htmlFor="teamreq-active" className="text-sm">Active (visible on Join Team page)</label>
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => setShowTeamReqModal(false)} className="flex-1">Cancel</Button>
+              <Button onClick={handleSaveTeamReq} className="flex-1 bg-[#1E3A5F]">
+                <Save className="w-4 h-4 mr-2" />
+                {editingItem ? 'Update' : 'Add'} Opening
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
