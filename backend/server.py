@@ -2661,9 +2661,10 @@ async def update_team_application(app_id: str, data: dict, user: dict = Depends(
     return application
 
 @api_router.get("/team-requirements")
-async def get_team_requirements():
-    """Get active team requirements/open positions"""
-    requirements = await db.team_requirements.find({"is_active": True}, {"_id": 0}).sort("created_at", -1).to_list(50)
+async def get_team_requirements(all: bool = False):
+    """Get team requirements/open positions. By default returns only active ones."""
+    query = {} if all else {"is_active": True}
+    requirements = await db.team_requirements.find(query, {"_id": 0}).sort("created_at", -1).to_list(50)
     return requirements
 
 @api_router.post("/team-requirements")
