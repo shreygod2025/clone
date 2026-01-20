@@ -1111,6 +1111,83 @@ async def team_user_login(data: AdminLogin):
     }
 
 # ========================
+# ROLES MANAGEMENT ENDPOINTS
+# ========================
+
+class Role(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    description: str = ""
+    permissions: List[str] = []
+    is_system: bool = False
+    is_active: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+@api_router.get("/roles")
+async def get_roles(user: dict = Depends(get_current_user)):
+    """Get all roles"""
+    roles = await db.roles.find({}, {"_id": 0}).sort("created_at", 1).to_list(100)
+    return roles
+
+@api_router.post("/roles")
+async def create_role(data: dict, user: dict = Depends(get_current_user)):
+    """Create a new role"""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can create roles")
+    
+    # Check if role name already exists
+    existing = await db.roles.find_one({"name": data.get("name")})
+    if existing:
+        raise HTTPException(status_code=400, detail="Role with this name already exists")
+    
+    role = Role(
+        name=data.get("name", ""),
+        description=data.get("description", ""),
+        permissions=data.get("permissions", []),
+        is_system=data.get("is_system", False),
+        is_active=data.get("is_active", True)
+    )
+    
+    doc = role.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    await db.roles.insert_one(doc)
+    
+    return role
+
+@api_router.patch("/roles/{role_id}")
+async def update_role(role_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Update a role"""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can update roles")
+    
+    update_data = {k: v for k, v in data.items() if v is not None and k not in ["id", "created_at"]}
+    
+    if update_data:
+        await db.roles.update_one({"id": role_id}, {"$set": update_data})
+    
+    role = await db.roles.find_one({"id": role_id}, {"_id": 0})
+    return role
+
+@api_router.delete("/roles/{role_id}")
+async def delete_role(role_id: str, user: dict = Depends(get_current_user)):
+    """Delete a role (non-system roles only)"""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can delete roles")
+    
+    # Check if it's a system role
+    role = await db.roles.find_one({"id": role_id})
+    if role and role.get("is_system"):
+        raise HTTPException(status_code=400, detail="Cannot delete system roles")
+    
+    # Check if any users are assigned to this role
+    users_with_role = await db.team_users.count_documents({"role_id": role_id})
+    if users_with_role > 0:
+        raise HTTPException(status_code=400, detail=f"Cannot delete role. {users_with_role} users are assigned to it.")
+    
+    await db.roles.delete_one({"id": role_id})
+    return {"message": "Role deleted"}
+
+# ========================
 # CENTER USER MANAGEMENT ENDPOINTS
 # ========================
 
