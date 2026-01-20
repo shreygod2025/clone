@@ -310,14 +310,20 @@ const AdminSettings = () => {
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={`Search ${activeTab}...`}
+              placeholder={`Search ${activeTab.replace('-', ' ')}...`}
               className="pl-10"
             />
           </div>
           <Button
             onClick={() => {
               setEditingItem(null);
-              if (activeTab === 'cities') {
+              if (activeTab === 'team-requirements') {
+                setTeamReqForm({
+                  title: '', description: '', type: 'Full-time', city: 'Remote', 
+                  skills_required: '', responsibilities: '', qualifications: '', is_active: true
+                });
+                setShowTeamReqModal(true);
+              } else if (activeTab === 'cities') {
                 setCityForm({ name: '', state: '', is_active: true });
                 setShowCityModal(true);
               } else if (activeTab === 'centers') {
@@ -336,9 +342,89 @@ const AdminSettings = () => {
             data-testid="add-new-btn"
           >
             <Plus className="w-4 h-4 mr-2" />
-            Add {activeTab === 'cities' ? 'City' : activeTab === 'centers' ? 'Center' : 'Blog'}
+            Add {activeTab === 'team-requirements' ? 'Opening' : activeTab === 'cities' ? 'City' : activeTab === 'centers' ? 'Center' : 'Blog'}
           </Button>
         </div>
+
+        {/* Team Requirements Tab */}
+        {activeTab === 'team-requirements' && (
+          <div className="grid gap-4">
+            {filteredTeamReqs.length === 0 ? (
+              <div className="bg-white rounded-xl p-8 text-center text-slate-500">
+                <Briefcase className="w-12 h-12 mx-auto text-slate-300 mb-4" />
+                <p>No team openings yet. Click "Add Opening" to create your first position.</p>
+                <p className="text-sm mt-2">These will be displayed on the Join Team page.</p>
+              </div>
+            ) : (
+              filteredTeamReqs.map(req => (
+                <div key={req.id} className={`bg-white rounded-xl p-4 shadow-sm border-l-4 ${req.is_active ? 'border-green-500' : 'border-slate-300'}`}>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-[#1E3A5F] text-lg">{req.title}</h3>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                          req.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          {req.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                      <p className="text-slate-600 text-sm mt-1">{req.description}</p>
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        <span className="flex items-center gap-1 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                          <Briefcase className="w-3 h-3" />
+                          {req.type}
+                        </span>
+                        <span className="flex items-center gap-1 text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-full">
+                          <MapPin className="w-3 h-3" />
+                          {req.city}
+                        </span>
+                        {req.skills_required?.map((skill, i) => (
+                          <span key={i} className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                      {req.responsibilities && (
+                        <p className="text-xs text-slate-500 mt-2"><strong>Responsibilities:</strong> {req.responsibilities}</p>
+                      )}
+                      {req.qualifications && (
+                        <p className="text-xs text-slate-500 mt-1"><strong>Qualifications:</strong> {req.qualifications}</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 ml-4">
+                      <button
+                        onClick={() => toggleTeamReqActive(req)}
+                        className={`p-1.5 rounded-lg ${req.is_active ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-500'}`}
+                        title={req.is_active ? 'Deactivate' : 'Activate'}
+                      >
+                        {req.is_active ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingItem(req);
+                          setTeamReqForm({
+                            ...req,
+                            skills_required: req.skills_required?.join(', ') || ''
+                          });
+                          setShowTeamReqModal(true);
+                        }}
+                        className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTeamReq(req.id)}
+                        className="p-1.5 hover:bg-red-50 rounded-lg text-red-500"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
 
         {/* Cities Tab */}
         {activeTab === 'cities' && (
