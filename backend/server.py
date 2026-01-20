@@ -217,6 +217,317 @@ async def send_session_complete_notification(inquiry: dict, educator: dict = Non
         )
 
 # ========================
+# EMAIL NOTIFICATION SYSTEM (Resend)
+# ========================
+
+# Initialize Resend
+resend.api_key = os.environ.get("RESEND_API_KEY", "")
+SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
+
+# Email Templates for Educators
+EMAIL_TEMPLATES = {
+    "application_received": {
+        "subject": "Application Received - Welcome to OLL!",
+        "template": """
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #1E3A5F 0%, #2d5a87 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 28px;">OLL</h1>
+                <p style="color: #e0e0e0; margin: 10px 0 0 0;">One Life Learning</p>
+            </div>
+            <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
+                <h2 style="color: #1E3A5F; margin-top: 0;">Hello {name}! 👋</h2>
+                <p style="color: #444; line-height: 1.6;">Thank you for applying to become an OLL Educator! We're excited to have received your application.</p>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h3 style="color: #1E3A5F; margin-top: 0;">Application Details:</h3>
+                    <p style="margin: 5px 0;"><strong>Skills:</strong> {skills}</p>
+                    <p style="margin: 5px 0;"><strong>Experience:</strong> {experience}</p>
+                    <p style="margin: 5px 0;"><strong>City:</strong> {city}</p>
+                </div>
+                <p style="color: #444; line-height: 1.6;">Our team will review your application and get back to you within 2-3 business days. In the meantime, feel free to explore our website to learn more about OLL.</p>
+                <p style="color: #444; line-height: 1.6;">Best regards,<br><strong>The OLL Team</strong></p>
+            </div>
+            <div style="text-align: center; padding: 20px; color: #888; font-size: 12px;">
+                <p>© 2026 OLL - One Life Learning. All rights reserved.</p>
+            </div>
+        </div>
+        """
+    },
+    "demo_scheduled": {
+        "subject": "Demo Scheduled - OLL Educator Selection",
+        "template": """
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #1E3A5F 0%, #2d5a87 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 28px;">OLL</h1>
+                <p style="color: #e0e0e0; margin: 10px 0 0 0;">One Life Learning</p>
+            </div>
+            <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
+                <h2 style="color: #1E3A5F; margin-top: 0;">Great News, {name}! 🎉</h2>
+                <p style="color: #444; line-height: 1.6;">Your demo session has been scheduled. We're looking forward to seeing you teach!</p>
+                <div style="background: #e8f5e9; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #4CAF50;">
+                    <h3 style="color: #2e7d32; margin-top: 0;">📅 Demo Details:</h3>
+                    <p style="margin: 8px 0; font-size: 16px;"><strong>Date:</strong> {demo_date}</p>
+                    <p style="margin: 8px 0; font-size: 16px;"><strong>Time:</strong> {demo_time}</p>
+                    <p style="margin: 8px 0; font-size: 16px;"><strong>Meeting Link:</strong> <a href="{meeting_link}" style="color: #1E3A5F;">{meeting_link}</a></p>
+                </div>
+                <div style="background: #fff3e0; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                    <h4 style="color: #e65100; margin-top: 0;">📝 Tips for your demo:</h4>
+                    <ul style="color: #444; padding-left: 20px;">
+                        <li>Join 5 minutes early to test your connection</li>
+                        <li>Prepare a 15-20 minute teaching segment</li>
+                        <li>Have your materials ready</li>
+                        <li>Ensure good lighting and a quiet environment</li>
+                    </ul>
+                </div>
+                <p style="color: #444; line-height: 1.6;">If you need to reschedule, please contact us as soon as possible.</p>
+                <p style="color: #444; line-height: 1.6;">Best of luck!<br><strong>The OLL Team</strong></p>
+            </div>
+            <div style="text-align: center; padding: 20px; color: #888; font-size: 12px;">
+                <p>© 2026 OLL - One Life Learning. All rights reserved.</p>
+            </div>
+        </div>
+        """
+    },
+    "demo_reminder": {
+        "subject": "Reminder: Your OLL Demo is Tomorrow!",
+        "template": """
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #1E3A5F 0%, #2d5a87 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 28px;">OLL</h1>
+                <p style="color: #e0e0e0; margin: 10px 0 0 0;">One Life Learning</p>
+            </div>
+            <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
+                <h2 style="color: #1E3A5F; margin-top: 0;">Reminder: Demo Tomorrow! ⏰</h2>
+                <p style="color: #444; line-height: 1.6;">Hi {name}, this is a friendly reminder about your upcoming demo session.</p>
+                <div style="background: #e3f2fd; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2196F3;">
+                    <h3 style="color: #1565c0; margin-top: 0;">📅 Demo Details:</h3>
+                    <p style="margin: 8px 0; font-size: 16px;"><strong>Date:</strong> {demo_date}</p>
+                    <p style="margin: 8px 0; font-size: 16px;"><strong>Time:</strong> {demo_time}</p>
+                    <p style="margin: 8px 0; font-size: 16px;"><strong>Meeting Link:</strong> <a href="{meeting_link}" style="color: #1E3A5F;">{meeting_link}</a></p>
+                </div>
+                <p style="color: #444; line-height: 1.6;">We're excited to see your teaching skills in action!</p>
+                <p style="color: #444; line-height: 1.6;">Best regards,<br><strong>The OLL Team</strong></p>
+            </div>
+            <div style="text-align: center; padding: 20px; color: #888; font-size: 12px;">
+                <p>© 2026 OLL - One Life Learning. All rights reserved.</p>
+            </div>
+        </div>
+        """
+    },
+    "demo_completed": {
+        "subject": "Demo Completed - Thank You!",
+        "template": """
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #1E3A5F 0%, #2d5a87 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 28px;">OLL</h1>
+                <p style="color: #e0e0e0; margin: 10px 0 0 0;">One Life Learning</p>
+            </div>
+            <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
+                <h2 style="color: #1E3A5F; margin-top: 0;">Thank You, {name}! 🙏</h2>
+                <p style="color: #444; line-height: 1.6;">Thank you for completing your demo session with us. We truly appreciate your time and effort.</p>
+                <div style="background: #f3e5f5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #9c27b0;">
+                    <h3 style="color: #7b1fa2; margin-top: 0;">What's Next?</h3>
+                    <p style="color: #444; margin: 0;">Our team will review your demo performance and get back to you within 3-5 business days with our decision.</p>
+                </div>
+                <p style="color: #444; line-height: 1.6;">We'll notify you via email and WhatsApp about the next steps.</p>
+                <p style="color: #444; line-height: 1.6;">Best regards,<br><strong>The OLL Team</strong></p>
+            </div>
+            <div style="text-align: center; padding: 20px; color: #888; font-size: 12px;">
+                <p>© 2026 OLL - One Life Learning. All rights reserved.</p>
+            </div>
+        </div>
+        """
+    },
+    "onboarded": {
+        "subject": "🎉 Congratulations! Welcome to the OLL Family!",
+        "template": """
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #1E3A5F 0%, #2d5a87 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 28px;">🎉 OLL</h1>
+                <p style="color: #e0e0e0; margin: 10px 0 0 0;">One Life Learning</p>
+            </div>
+            <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
+                <h2 style="color: #1E3A5F; margin-top: 0;">Congratulations, {name}! 🎊</h2>
+                <p style="color: #444; line-height: 1.6; font-size: 16px;">We are thrilled to welcome you to the <strong>OLL Educator Family!</strong></p>
+                <div style="background: #e8f5e9; padding: 25px; border-radius: 8px; margin: 20px 0; text-align: center;">
+                    <p style="font-size: 24px; margin: 0; color: #2e7d32;">✅ You've been selected!</p>
+                </div>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h3 style="color: #1E3A5F; margin-top: 0;">📋 Onboarding Details:</h3>
+                    <p style="margin: 8px 0;"><strong>Onboarding Date:</strong> {onboarding_date}</p>
+                    <p style="margin: 8px 0;"><strong>Your Skills:</strong> {skills}</p>
+                </div>
+                <div style="background: #e3f2fd; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h3 style="color: #1565c0; margin-top: 0;">🚀 Next Steps:</h3>
+                    <ol style="color: #444; padding-left: 20px;">
+                        <li>You'll receive access to the Educator Dashboard</li>
+                        <li>Complete your profile setup</li>
+                        <li>Review the educator guidelines</li>
+                        <li>Start receiving demo assignments!</li>
+                    </ol>
+                </div>
+                <p style="color: #444; line-height: 1.6;">We're excited to have you on board and can't wait to see the impact you'll make on our students' lives!</p>
+                <p style="color: #444; line-height: 1.6;">Welcome to OLL! 🌟<br><strong>The OLL Team</strong></p>
+            </div>
+            <div style="text-align: center; padding: 20px; color: #888; font-size: 12px;">
+                <p>© 2026 OLL - One Life Learning. All rights reserved.</p>
+            </div>
+        </div>
+        """
+    },
+    "rejected": {
+        "subject": "Update on Your OLL Application",
+        "template": """
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #1E3A5F 0%, #2d5a87 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                <h1 style="color: white; margin: 0; font-size: 28px;">OLL</h1>
+                <p style="color: #e0e0e0; margin: 10px 0 0 0;">One Life Learning</p>
+            </div>
+            <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
+                <h2 style="color: #1E3A5F; margin-top: 0;">Dear {name},</h2>
+                <p style="color: #444; line-height: 1.6;">Thank you for your interest in becoming an OLL Educator and for taking the time to go through our selection process.</p>
+                <p style="color: #444; line-height: 1.6;">After careful consideration, we regret to inform you that we are unable to move forward with your application at this time.</p>
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <p style="color: #444; margin: 0;">This decision was not easy, and it does not diminish your skills or experience. We encourage you to continue your teaching journey and consider reapplying in the future.</p>
+                </div>
+                <p style="color: #444; line-height: 1.6;">We wish you all the best in your future endeavors.</p>
+                <p style="color: #444; line-height: 1.6;">Warm regards,<br><strong>The OLL Team</strong></p>
+            </div>
+            <div style="text-align: center; padding: 20px; color: #888; font-size: 12px;">
+                <p>© 2026 OLL - One Life Learning. All rights reserved.</p>
+            </div>
+        </div>
+        """
+    }
+}
+
+async def send_educator_email(
+    recipient_email: str,
+    template_key: str,
+    template_data: dict
+) -> dict:
+    """
+    Send email notification to educator using Resend
+    
+    Args:
+        recipient_email: Educator's email address
+        template_key: Key from EMAIL_TEMPLATES dict
+        template_data: Dict with values to fill template placeholders
+    
+    Returns:
+        dict with success status and message
+    """
+    if not resend.api_key:
+        print("Email notification skipped - Resend API key not configured")
+        return {"success": False, "message": "API key not configured"}
+    
+    template_info = EMAIL_TEMPLATES.get(template_key)
+    if not template_info:
+        print(f"Unknown email template: {template_key}")
+        return {"success": False, "message": f"Unknown template: {template_key}"}
+    
+    try:
+        # Fill template with data
+        html_content = template_info["template"]
+        for key, value in template_data.items():
+            html_content = html_content.replace("{" + key + "}", str(value))
+        
+        subject = template_info["subject"]
+        
+        params = {
+            "from": SENDER_EMAIL,
+            "to": [recipient_email],
+            "subject": subject,
+            "html": html_content
+        }
+        
+        # Run sync SDK in thread to keep FastAPI non-blocking
+        email_response = await asyncio.to_thread(resend.Emails.send, params)
+        
+        print(f"Email [{template_key}] sent to {recipient_email}")
+        return {"success": True, "message": "Email sent", "email_id": email_response.get("id")}
+        
+    except Exception as e:
+        print(f"Email notification error [{template_key}]: {str(e)}")
+        return {"success": False, "message": str(e)}
+
+
+async def send_educator_application_received_email(educator: dict):
+    """Send application received confirmation email"""
+    await send_educator_email(
+        recipient_email=educator.get("email", ""),
+        template_key="application_received",
+        template_data={
+            "name": educator.get("name", "Educator"),
+            "skills": ", ".join(educator.get("skills", [])),
+            "experience": educator.get("experience", "Not specified"),
+            "city": educator.get("city", "Not specified")
+        }
+    )
+
+
+async def send_educator_demo_scheduled_email(educator: dict):
+    """Send demo scheduled email with details"""
+    await send_educator_email(
+        recipient_email=educator.get("email", ""),
+        template_key="demo_scheduled",
+        template_data={
+            "name": educator.get("name", "Educator"),
+            "demo_date": educator.get("demo_date", "TBD"),
+            "demo_time": educator.get("demo_time", "TBD"),
+            "meeting_link": educator.get("meeting_link", "Will be shared soon")
+        }
+    )
+
+
+async def send_educator_demo_reminder_email(educator: dict):
+    """Send demo reminder email"""
+    await send_educator_email(
+        recipient_email=educator.get("email", ""),
+        template_key="demo_reminder",
+        template_data={
+            "name": educator.get("name", "Educator"),
+            "demo_date": educator.get("demo_date", "TBD"),
+            "demo_time": educator.get("demo_time", "TBD"),
+            "meeting_link": educator.get("meeting_link", "")
+        }
+    )
+
+
+async def send_educator_demo_completed_email(educator: dict):
+    """Send demo completed thank you email"""
+    await send_educator_email(
+        recipient_email=educator.get("email", ""),
+        template_key="demo_completed",
+        template_data={
+            "name": educator.get("name", "Educator")
+        }
+    )
+
+
+async def send_educator_onboarded_email(educator: dict):
+    """Send onboarding/selection congratulations email"""
+    await send_educator_email(
+        recipient_email=educator.get("email", ""),
+        template_key="onboarded",
+        template_data={
+            "name": educator.get("name", "Educator"),
+            "onboarding_date": educator.get("onboarding_date", "To be confirmed"),
+            "skills": ", ".join(educator.get("skills", []))
+        }
+    )
+
+
+async def send_educator_rejected_email(educator: dict):
+    """Send rejection email"""
+    await send_educator_email(
+        recipient_email=educator.get("email", ""),
+        template_key="rejected",
+        template_data={
+            "name": educator.get("name", "Educator")
+        }
+    )
+
+# ========================
 # PYDANTIC MODELS
 # ========================
 
