@@ -2597,6 +2597,8 @@ class TeamRequirement(BaseModel):
     type: str = "Full-time"  # Full-time, Part-time, Internship, Freelance
     city: str = "Remote"
     skills_required: List[str] = []
+    responsibilities: str = ""
+    qualifications: str = ""
     is_active: bool = True
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
