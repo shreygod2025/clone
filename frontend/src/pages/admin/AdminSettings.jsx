@@ -193,11 +193,73 @@ const AdminSettings = () => {
     }
   };
 
+  // Team Requirements handlers
+  const handleSaveTeamReq = async () => {
+    if (!teamReqForm.title) {
+      toast.error('Please enter a title');
+      return;
+    }
+    try {
+      const reqData = {
+        ...teamReqForm,
+        skills_required: typeof teamReqForm.skills_required === 'string' 
+          ? teamReqForm.skills_required.split(',').map(s => s.trim()).filter(Boolean)
+          : teamReqForm.skills_required
+      };
+      
+      if (editingItem) {
+        await axios.patch(`${API}/team-requirements/${editingItem.id}`, reqData, { headers: getAuthHeaders() });
+        toast.success('Requirement updated successfully');
+      } else {
+        await axios.post(`${API}/team-requirements`, reqData, { headers: getAuthHeaders() });
+        toast.success('Requirement added successfully');
+      }
+      setShowTeamReqModal(false);
+      setEditingItem(null);
+      setTeamReqForm({
+        title: '', description: '', type: 'Full-time', city: 'Remote', 
+        skills_required: '', responsibilities: '', qualifications: '', is_active: true
+      });
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to save requirement');
+    }
+  };
+
+  const handleDeleteTeamReq = async (id) => {
+    if (!confirm('Are you sure you want to delete this requirement?')) return;
+    try {
+      await axios.delete(`${API}/team-requirements/${id}`, { headers: getAuthHeaders() });
+      toast.success('Requirement deleted');
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to delete requirement');
+    }
+  };
+
+  const toggleTeamReqActive = async (req) => {
+    try {
+      await axios.patch(`${API}/team-requirements/${req.id}`, { 
+        is_active: !req.is_active 
+      }, { headers: getAuthHeaders() });
+      toast.success(req.is_active ? 'Requirement deactivated' : 'Requirement activated');
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to update requirement');
+    }
+  };
+
   const tabs = [
+    { id: 'team-requirements', label: 'Team Openings', icon: Briefcase, count: teamRequirements.length },
     { id: 'cities', label: 'Cities', icon: MapPin, count: cities.length },
     { id: 'centers', label: 'Centers', icon: Building, count: centers.length },
     { id: 'blogs', label: 'Blogs', icon: FileText, count: blogs.length },
   ];
+
+  const filteredTeamReqs = teamRequirements.filter(r => 
+    r.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    r.city?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const filteredCities = cities.filter(c => 
     c.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
