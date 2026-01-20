@@ -1040,6 +1040,7 @@ async def create_team_user(data: TeamUserCreate, user: dict = Depends(get_curren
         name=data.name,
         username=data.username,
         password_hash=bcrypt.hashpw(data.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
+        role_id=data.role_id,
         permissions=data.permissions
     )
     doc = team_user.model_dump()
