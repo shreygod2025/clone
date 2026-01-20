@@ -215,6 +215,17 @@ const AdminEducators = () => {
     await handleStatusChange(educator, 'archived');
   };
 
+  const handleSendEmail = async (educator, emailType) => {
+    try {
+      await axios.post(`${API}/educators/${educator.id}/send-email/${emailType}`, {}, {
+        headers: getAuthHeaders()
+      });
+      toast.success(`${emailType.replace('_', ' ')} email sent to ${educator.email}`);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to send email');
+    }
+  };
+
   const handleAssignLead = async (userId) => {
     if (!showAssignModal) return;
     try {
