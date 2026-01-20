@@ -2123,6 +2123,10 @@ async def create_educator_application(data: EducatorApplicationCreate):
     doc['created_at'] = doc['created_at'].isoformat()
     doc['updated_at'] = doc['updated_at'].isoformat()
     await db.educator_applications.insert_one(doc)
+    
+    # Send application received email
+    await send_educator_application_received_email(doc)
+    
     return application
 
 # Educator application with OTP verification
