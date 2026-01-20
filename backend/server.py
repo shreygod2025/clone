@@ -2249,6 +2249,57 @@ async def update_educator_application(
     
     return application
 
+# Endpoint to send demo reminder email manually
+@api_router.post("/educators/{app_id}/send-reminder")
+async def send_educator_reminder(
+    app_id: str,
+    user: dict = Depends(get_current_user)
+):
+    """Send demo reminder email to educator"""
+    application = await db.educator_applications.find_one({"id": app_id}, {"_id": 0})
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    await send_educator_demo_reminder_email(application)
+    return {"success": True, "message": f"Reminder email sent to {application.get('email')}"}
+
+# Endpoint to manually trigger any educator email
+@api_router.post("/educators/{app_id}/send-email/{email_type}")
+async def send_educator_email_manual(
+    app_id: str,
+    email_type: str,
+    user: dict = Depends(get_current_user)
+):
+    """Manually send a specific email to educator
+    
+    email_type options:
+    - application_received
+    - demo_scheduled
+    - demo_reminder
+    - demo_completed
+    - onboarded
+    - rejected
+    """
+    application = await db.educator_applications.find_one({"id": app_id}, {"_id": 0})
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    email_functions = {
+        "application_received": send_educator_application_received_email,
+        "demo_scheduled": send_educator_demo_scheduled_email,
+        "demo_reminder": send_educator_demo_reminder_email,
+        "demo_completed": send_educator_demo_completed_email,
+        "onboarded": send_educator_onboarded_email,
+        "rejected": send_educator_rejected_email
+    }
+    
+    email_func = email_functions.get(email_type)
+    if not email_func:
+        raise HTTPException(status_code=400, detail=f"Invalid email type. Valid options: {list(email_functions.keys())}")
+    
+    await email_func(application)
+    return {"success": True, "message": f"{email_type} email sent to {application.get('email')}"}
+
 # ========================
 # EDUCATOR PORTAL ENDPOINTS
 # ========================
