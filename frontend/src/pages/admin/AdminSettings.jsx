@@ -62,7 +62,7 @@ const AdminSettings = () => {
         axios.get(`${API}/cities`, { headers: getAuthHeaders() }),
         axios.get(`${API}/centers`, { headers: getAuthHeaders() }),
         axios.get(`${API}/blogs`, { headers: getAuthHeaders() }),
-        axios.get(`${API}/team-requirements`, { headers: getAuthHeaders() }).catch(() => ({ data: [] }))
+        axios.get(`${API}/team-requirements?all=true`, { headers: getAuthHeaders() }).catch(() => ({ data: [] }))
       ]);
       setCities(citiesRes.data);
       setCenters(centersRes.data);
