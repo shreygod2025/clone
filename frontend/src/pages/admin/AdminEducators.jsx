@@ -828,6 +828,70 @@ const AdminEducators = () => {
                     </div>
                   </div>
 
+                  {/* Email Notifications Section */}
+                  <div className="border-t pt-4">
+                    <h4 className="font-semibold text-[#1E3A5F] mb-3 flex items-center gap-2">
+                      <Mail className="w-4 h-4" />
+                      Send Email Notification
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleSendEmail(viewEducator, 'application_received')}
+                        className="text-xs"
+                      >
+                        <Mail className="w-3 h-3 mr-1" />
+                        Application Received
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleSendEmail(viewEducator, 'demo_scheduled')}
+                        className="text-xs text-purple-600 border-purple-200 hover:bg-purple-50"
+                      >
+                        <Calendar className="w-3 h-3 mr-1" />
+                        Demo Scheduled
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleSendEmail(viewEducator, 'demo_reminder')}
+                        className="text-xs text-orange-600 border-orange-200 hover:bg-orange-50"
+                      >
+                        <Clock className="w-3 h-3 mr-1" />
+                        Demo Reminder
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleSendEmail(viewEducator, 'demo_completed')}
+                        className="text-xs text-blue-600 border-blue-200 hover:bg-blue-50"
+                      >
+                        <CheckCircle2 className="w-3 h-3 mr-1" />
+                        Demo Completed
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleSendEmail(viewEducator, 'onboarded')}
+                        className="text-xs text-green-600 border-green-200 hover:bg-green-50"
+                      >
+                        <Star className="w-3 h-3 mr-1" />
+                        Onboarded
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleSendEmail(viewEducator, 'rejected')}
+                        className="text-xs text-red-600 border-red-200 hover:bg-red-50"
+                      >
+                        <Archive className="w-3 h-3 mr-1" />
+                        Rejected
+                      </Button>
+                    </div>
+                  </div>
+
                   <div className="pt-4 border-t">
                     <div className="flex items-center gap-4 text-sm text-slate-500">
                       <span>Status: <span className="font-medium text-[#1E3A5F] capitalize">{viewEducator.status?.replace('_', ' ')}</span></span>
