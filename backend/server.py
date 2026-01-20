@@ -2222,6 +2222,10 @@ async def update_educator_application(
     data: EducatorApplicationUpdate,
     user: dict = Depends(get_current_user)
 ):
+    # Get current application to check status change
+    current_app = await db.educator_applications.find_one({"id": app_id}, {"_id": 0})
+    old_status = current_app.get("status") if current_app else None
+    
     update_data = {k: v for k, v in data.model_dump().items() if v is not None}
     update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
     await db.educator_applications.update_one({"id": app_id}, {"$set": update_data})
@@ -2230,6 +2234,19 @@ async def update_educator_application(
         application['created_at'] = datetime.fromisoformat(application['created_at'])
     if isinstance(application.get('updated_at'), str):
         application['updated_at'] = datetime.fromisoformat(application['updated_at'])
+    
+    # Send email notifications based on status changes
+    new_status = data.status
+    if new_status and new_status != old_status:
+        if new_status == "demo_scheduled" and (data.demo_date or data.demo_time):
+            await send_educator_demo_scheduled_email(application)
+        elif new_status == "demo_completed":
+            await send_educator_demo_completed_email(application)
+        elif new_status == "onboarded":
+            await send_educator_onboarded_email(application)
+        elif new_status == "archived" or new_status == "rejected":
+            await send_educator_rejected_email(application)
+    
     return application
 
 # ========================
