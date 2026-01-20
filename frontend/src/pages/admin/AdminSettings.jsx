@@ -58,14 +58,16 @@ const AdminSettings = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [citiesRes, centersRes, blogsRes] = await Promise.all([
+      const [citiesRes, centersRes, blogsRes, teamReqRes] = await Promise.all([
         axios.get(`${API}/cities`, { headers: getAuthHeaders() }),
         axios.get(`${API}/centers`, { headers: getAuthHeaders() }),
-        axios.get(`${API}/blogs`, { headers: getAuthHeaders() })
+        axios.get(`${API}/blogs`, { headers: getAuthHeaders() }),
+        axios.get(`${API}/team-requirements`, { headers: getAuthHeaders() }).catch(() => ({ data: [] }))
       ]);
       setCities(citiesRes.data);
       setCenters(centersRes.data);
       setBlogs(blogsRes.data);
+      setTeamRequirements(teamReqRes.data || []);
     } catch (error) {
       console.error('Failed to fetch data:', error);
     } finally {
