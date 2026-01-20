@@ -2675,6 +2675,8 @@ async def create_team_requirement(data: dict, user: dict = Depends(get_current_u
         type=data.get("type", "Full-time"),
         city=data.get("city", "Remote"),
         skills_required=data.get("skills_required", []),
+        responsibilities=data.get("responsibilities", ""),
+        qualifications=data.get("qualifications", ""),
         is_active=data.get("is_active", True)
     )
     
