@@ -2,60 +2,63 @@
 
 ## Latest Changes (Jan 2026)
 
-### Email Notifications for Educators - Completed ✅
+### Educator Onboarding System - Complete ✅
+**URL:** `/educator-onboarding`
+
+**8-Step Onboarding Flow:**
+1. **Welcome** - Introduction video, overview of what's next
+2. **Profile** - Profile photo upload, bio (min 50 chars, visible to students)
+3. **Personal Details** - T-shirt size (XS-XXL), delivery address, emergency contact, Aadhar/PAN upload
+4. **Bank Details** - Bank name, account holder, account number, IFSC, cancelled cheque upload
+5. **Contract** - Digital signature, accept terms checkbox
+6. **Training** - 3 training videos + 5-question quiz (70% pass to continue)
+7. **Curriculum** - 2 curriculum videos + 3-question assessment (70% pass)
+8. **Complete** - Download ID Card and Certificate
+
+**Features:**
+- Progress bar shows completion percentage
+- Step-by-step sidebar navigation
+- Completed steps show green checkmarks
+- File upload for documents (Aadhar, PAN, bank documents, profile photo)
+- Quiz/Assessment retry on failure
+- Automatic redirect from dashboard to onboarding for incomplete onboarding
+
+**Admin Features:**
+- **Direct Onboard** - Add educator directly to onboarding (skips selection process)
+- **Onboarding Progress** - View all educators' progress with percentage bars
+
+**API Endpoints:**
+- `GET /api/educator/onboarding/content` - Get videos, quiz, contract text
+- `GET /api/educator/onboarding/{id}` - Get progress
+- `PATCH /api/educator/onboarding/{id}` - Update progress
+- `POST /api/educator/onboarding/{id}/complete-step` - Mark step done
+- `POST /api/educator/onboarding/{id}/submit-quiz` - Submit training quiz
+- `POST /api/educator/onboarding/{id}/submit-assessment` - Submit curriculum assessment
+- `POST /api/admin/educators/direct-onboard` - Add educator directly
+- `GET /api/admin/educators/onboarding-progress` - View all progress
+
+**⚠️ MOCKED:** Videos are placeholder YouTube embeds. Replace with actual OLL training content.
+
+---
+
+### Email Notifications for Educators - Complete ✅
 **Integration:** Resend API (Free tier: 100 emails/day)
 
-**Email Types:**
-1. **Application Received** - Confirmation when educator submits application
-2. **Demo Scheduled** - Details when demo date/time is set
-3. **Demo Reminder** - Reminder before scheduled demo
-4. **Demo Completed** - Thank you after demo session
-5. **Onboarded** - Congratulations when selected
-6. **Rejected** - Polite rejection notification
+**6 Email Types:**
+- Application Received, Demo Scheduled, Demo Reminder
+- Demo Completed, Onboarded, Rejected
 
-**Automatic Triggers:**
-- Application submission → Application Received email
-- Status change to `demo_scheduled` → Demo Scheduled email
-- Status change to `demo_completed` → Demo Completed email
-- Status change to `onboarded` → Onboarded email
-- Status change to `archived/rejected` → Rejected email
+**⚠️ Action Required:** Verify domain `oll.co` on https://resend.com/domains
 
-**Manual Triggers:**
-- Admin can send any email type from Educator detail modal
-- API: `POST /api/educators/{id}/send-email/{email_type}`
-- API: `POST /api/educators/{id}/send-reminder`
+---
 
-**Setup Required:**
-- Verify domain `oll.co` on https://resend.com/domains for production
-- Update `SENDER_EMAIL` in backend/.env to `info@oll.co` after verification
-
-### Users & Roles System (RBAC) - Completed ✅
+### Users & Roles System (RBAC) - Complete ✅
 **Admin Panel:** `/admin/users`
 
-**Roles Management:**
-- Create custom roles with name, description, and permissions
-- System roles (Center Partner, Growth Partner) cannot be deleted
-- Edit role permissions
-- Delete non-system roles (only if no users assigned)
-
-**Available Permissions:**
-- `dashboard`, `students`, `schools`, `educators`, `growth_partners`
-- `team_applications`, `support`, `settings`, `requirements`, `users`
-
-**Team Users Management:**
-- Create team users with role assignment
-- Toggle user active/inactive status
-- Edit user details and role assignment
-
-### Join Team Page (/join-team) - Completed ✅
-- Resume/CV upload (PDF, Word - Max 5MB)
-- Dynamic requirements section from admin
-- Scroll to top fixed
-
-### Admin Panel Reorganization ✅
-- "Settings" page: Cities, Centers, Blogs (with SEO)
-- "Users & Roles" page: Users and Roles management
-- Removed FAQs from navigation
+**Features:**
+- Create custom roles with permissions
+- Assign roles to team users
+- System roles cannot be deleted
 
 ---
 
@@ -63,50 +66,41 @@
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Email Notifications (Educators) | ✅ | 6 email types via Resend |
-| Users & Roles System (RBAC) | ✅ | Full CRUD with permissions |
-| Join Team Page | ✅ | Resume upload, requirements |
-| WhatsApp Integration | ✅ | AiSensy for OTP and notifications |
-| Educator Availability Toggle | ✅ | Available/Unavailable status |
-| Session Persistence | ✅ | Fixed for students/educators |
-| About Page | ✅ | Founder story, embedded videos |
+| Educator Onboarding (8 steps) | ✅ | Videos MOCKED |
+| Email Notifications | ✅ | Domain verification needed |
+| Users & Roles (RBAC) | ✅ | Full CRUD |
+| WhatsApp Integration | ✅ | AiSensy |
+| Session Persistence | ✅ | Fixed |
 
 ---
 
 ## Pending Tasks
 
 ### P1 - High Priority
-- **Verify oll.co domain on Resend** (required for production emails)
-- **Make Blogs Dynamic** - Full CRUD from admin with SEO
+- Replace placeholder videos with actual OLL content
+- Verify oll.co domain on Resend
 
-### P2 - Medium Priority
-- Migrate Center Users to unified RBAC system
-- Educator post-demo feedback form
-- Categorize educator queries
+### P2 - Medium Priority  
+- Make Blogs Dynamic (full CRUD)
+- Migrate Center Users to RBAC
 
 ### P3 - Lower Priority
-- CSV Export for CRM pages
-- Real Calendar Integration (Calendly)
-- Lead scoring system
+- CSV Export for CRM
+- Calendar Integration (Calendly)
 
 ---
 
-## API Endpoints (Email)
-- `POST /api/educators/{id}/send-email/{type}` - Send specific email
-- `POST /api/educators/{id}/send-reminder` - Send demo reminder
-
 ## Test Credentials
 - **Admin:** admin@oll.co / Dagaji03@
-- **Test OTP:** 1111
+- **Onboarded Educator:** 7777777777 (OTP: 1111)
+- **Test OTP:** 1111 for all phones
+
+## Key URLs
+- Educator Onboarding: /educator-onboarding
+- Admin Educators: /admin/educators (Direct Onboard + Progress buttons)
+- Admin Users: /admin/users
 
 ## Third-Party Integrations
-- **Resend:** Email notifications (requires domain verification)
-- **AiSensy:** WhatsApp OTPs and notifications
+- **Resend:** Email notifications
+- **AiSensy:** WhatsApp notifications
 - **Jitsi Meet:** Video demos
-
-## Environment Variables
-```
-RESEND_API_KEY=re_F3YtumJc_...
-SENDER_EMAIL=OLL Team <onboarding@resend.dev>
-```
-Note: Change SENDER_EMAIL to `info@oll.co` after domain verification
