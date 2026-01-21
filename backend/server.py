@@ -882,6 +882,170 @@ class EducatorApplicationUpdate(BaseModel):
     onboarding_date: Optional[str] = None
     assigned_to: Optional[str] = None
 
+# Educator Onboarding Models
+class EducatorOnboarding(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    educator_id: str  # Reference to educator_applications
+    
+    # Progress tracking (8 steps)
+    current_step: int = 1  # 1-8
+    completed_steps: List[int] = []
+    
+    # Step 1: Welcome Video
+    welcome_video_watched: bool = False
+    
+    # Step 2: Profile
+    profile_photo: str = ""
+    bio: str = ""
+    
+    # Step 3: Personal Details
+    tshirt_size: str = ""  # XS, S, M, L, XL, XXL
+    address_line1: str = ""
+    address_line2: str = ""
+    city: str = ""
+    state: str = ""
+    pincode: str = ""
+    emergency_contact_name: str = ""
+    emergency_contact_phone: str = ""
+    emergency_contact_relation: str = ""
+    aadhar_number: str = ""
+    aadhar_document: str = ""  # File path
+    pan_number: str = ""
+    pan_document: str = ""  # File path
+    id_verification_document: str = ""  # Additional ID
+    
+    # Step 4: Bank Details
+    bank_name: str = ""
+    account_holder_name: str = ""
+    account_number: str = ""
+    ifsc_code: str = ""
+    bank_document: str = ""  # Cancelled cheque/passbook
+    
+    # Step 5: Contract
+    contract_accepted: bool = False
+    contract_accepted_at: Optional[str] = None
+    digital_signature: str = ""  # Base64 or text signature
+    
+    # Step 6: Training Videos + Quiz
+    training_videos_watched: List[str] = []  # List of video IDs watched
+    quiz_attempts: List[dict] = []  # [{score: 80, passed: True, attempted_at: "..."}]
+    quiz_passed: bool = False
+    
+    # Step 7: Curriculum Training + Assessment
+    curriculum_videos_watched: List[str] = []
+    assessment_attempts: List[dict] = []
+    assessment_passed: bool = False
+    
+    # Step 8: Downloadables
+    id_card_generated: bool = False
+    certificate_generated: bool = False
+    
+    # Meta
+    status: str = "in_progress"  # in_progress, completed, on_hold
+    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    completed_at: Optional[str] = None
+    last_activity: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class EducatorOnboardingUpdate(BaseModel):
+    current_step: Optional[int] = None
+    completed_steps: Optional[List[int]] = None
+    welcome_video_watched: Optional[bool] = None
+    profile_photo: Optional[str] = None
+    bio: Optional[str] = None
+    tshirt_size: Optional[str] = None
+    address_line1: Optional[str] = None
+    address_line2: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    pincode: Optional[str] = None
+    emergency_contact_name: Optional[str] = None
+    emergency_contact_phone: Optional[str] = None
+    emergency_contact_relation: Optional[str] = None
+    aadhar_number: Optional[str] = None
+    aadhar_document: Optional[str] = None
+    pan_number: Optional[str] = None
+    pan_document: Optional[str] = None
+    id_verification_document: Optional[str] = None
+    bank_name: Optional[str] = None
+    account_holder_name: Optional[str] = None
+    account_number: Optional[str] = None
+    ifsc_code: Optional[str] = None
+    bank_document: Optional[str] = None
+    contract_accepted: Optional[bool] = None
+    digital_signature: Optional[str] = None
+    training_videos_watched: Optional[List[str]] = None
+    quiz_passed: Optional[bool] = None
+    curriculum_videos_watched: Optional[List[str]] = None
+    assessment_passed: Optional[bool] = None
+    status: Optional[str] = None
+
+# Training content models
+TRAINING_VIDEOS = [
+    {"id": "rules", "title": "Educator Rules & Restrictions", "duration": "10:00", "url": "https://www.youtube.com/embed/dQw4w9WgXcQ"},
+    {"id": "beliefs", "title": "What OLL Believes In", "duration": "8:00", "url": "https://www.youtube.com/embed/dQw4w9WgXcQ"},
+    {"id": "quiz_guide", "title": "Quiz Checking Guidelines", "duration": "12:00", "url": "https://www.youtube.com/embed/dQw4w9WgXcQ"},
+]
+
+CURRICULUM_VIDEOS = [
+    {"id": "curriculum_intro", "title": "Introduction to OLL Curriculum", "duration": "15:00", "url": "https://www.youtube.com/embed/dQw4w9WgXcQ"},
+    {"id": "teaching_methods", "title": "Teaching Methodologies", "duration": "20:00", "url": "https://www.youtube.com/embed/dQw4w9WgXcQ"},
+]
+
+TRAINING_QUIZ = [
+    {
+        "id": "q1",
+        "question": "What is the maximum class duration at OLL?",
+        "options": ["30 minutes", "45 minutes", "60 minutes", "90 minutes"],
+        "correct": 2
+    },
+    {
+        "id": "q2", 
+        "question": "How should you handle a student who is struggling?",
+        "options": ["Skip to next topic", "Provide extra attention and patience", "Ask them to practice more at home", "Complain to parents"],
+        "correct": 1
+    },
+    {
+        "id": "q3",
+        "question": "What is OLL's core teaching philosophy?",
+        "options": ["Rote learning", "Student-centric personalized learning", "Strict discipline", "Competition-based"],
+        "correct": 1
+    },
+    {
+        "id": "q4",
+        "question": "When should you mark attendance?",
+        "options": ["Before class", "At the start of class", "At the end of class", "Next day"],
+        "correct": 1
+    },
+    {
+        "id": "q5",
+        "question": "What should you do if you can't attend a scheduled demo?",
+        "options": ["Skip it", "Inform admin at least 24 hours before", "Send a friend", "Just don't show up"],
+        "correct": 1
+    }
+]
+
+CURRICULUM_ASSESSMENT = [
+    {
+        "id": "a1",
+        "question": "What age group does the Primary curriculum cover?",
+        "options": ["3-5 years", "6-10 years", "11-14 years", "15-18 years"],
+        "correct": 1
+    },
+    {
+        "id": "a2",
+        "question": "How often should progress reports be shared with parents?",
+        "options": ["Daily", "Weekly", "Monthly", "Quarterly"],
+        "correct": 2
+    },
+    {
+        "id": "a3",
+        "question": "What is the recommended homework duration for primary students?",
+        "options": ["No homework", "15-20 minutes", "1 hour", "2 hours"],
+        "correct": 1
+    }
+]
+
 # Open Requirements Models
 class OpenRequirement(BaseModel):
     model_config = ConfigDict(extra="ignore")
