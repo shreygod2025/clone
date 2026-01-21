@@ -2465,6 +2465,321 @@ async def send_educator_email_manual(
     return {"success": True, "message": f"{email_type} email sent to {application.get('email')}"}
 
 # ========================
+# EDUCATOR ONBOARDING ENDPOINTS
+# ========================
+
+@api_router.get("/educator/onboarding/content")
+async def get_onboarding_content():
+    """Get all onboarding content (videos, quiz questions)"""
+    return {
+        "training_videos": TRAINING_VIDEOS,
+        "curriculum_videos": CURRICULUM_VIDEOS,
+        "welcome_video": {
+            "id": "welcome",
+            "title": "Welcome to OLL",
+            "duration": "5:00",
+            "url": "https://www.youtube.com/embed/dQw4w9WgXcQ"
+        },
+        "contract_text": """
+# OLL Educator Agreement
+
+By accepting this agreement, you acknowledge and agree to the following terms:
+
+1. **Professional Conduct**: You will maintain professional behavior at all times while representing OLL.
+
+2. **Confidentiality**: You will keep all student information, teaching materials, and business practices confidential.
+
+3. **Quality Standards**: You will adhere to OLL's teaching methodologies and quality standards.
+
+4. **Attendance**: You will honor all scheduled sessions and inform the admin at least 24 hours in advance if you need to reschedule.
+
+5. **Communication**: You will maintain timely communication with students, parents, and the OLL team.
+
+6. **Training**: You will complete all required training modules and assessments.
+
+7. **Feedback**: You will provide and accept constructive feedback to improve teaching quality.
+
+8. **Payment**: Payments will be processed as per the agreed schedule after verification of completed sessions.
+
+9. **Termination**: Either party may terminate this agreement with 7 days written notice.
+
+10. **Code of Conduct**: You will follow OLL's code of conduct and anti-harassment policies.
+
+By clicking "I Accept", you confirm that you have read, understood, and agree to these terms.
+        """
+    }
+
+@api_router.get("/educator/onboarding/{educator_id}")
+async def get_educator_onboarding(educator_id: str):
+    """Get onboarding progress for an educator"""
+    onboarding = await db.educator_onboarding.find_one({"educator_id": educator_id}, {"_id": 0})
+    
+    if not onboarding:
+        # Create new onboarding record
+        educator = await db.educator_applications.find_one({"id": educator_id}, {"_id": 0})
+        if not educator:
+            raise HTTPException(status_code=404, detail="Educator not found")
+        
+        new_onboarding = EducatorOnboarding(educator_id=educator_id)
+        doc = new_onboarding.model_dump()
+        doc['started_at'] = doc['started_at'].isoformat()
+        doc['last_activity'] = doc['last_activity'].isoformat()
+        await db.educator_onboarding.insert_one(doc)
+        onboarding = doc
+    
+    # Get educator details
+    educator = await db.educator_applications.find_one({"id": educator_id}, {"_id": 0})
+    
+    return {
+        "onboarding": onboarding,
+        "educator": educator
+    }
+
+@api_router.patch("/educator/onboarding/{educator_id}")
+async def update_educator_onboarding(educator_id: str, data: EducatorOnboardingUpdate):
+    """Update onboarding progress"""
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    update_data['last_activity'] = datetime.now(timezone.utc).isoformat()
+    
+    # Check if contract is being accepted
+    if data.contract_accepted:
+        update_data['contract_accepted_at'] = datetime.now(timezone.utc).isoformat()
+    
+    await db.educator_onboarding.update_one(
+        {"educator_id": educator_id}, 
+        {"$set": update_data}
+    )
+    
+    onboarding = await db.educator_onboarding.find_one({"educator_id": educator_id}, {"_id": 0})
+    return onboarding
+
+@api_router.post("/educator/onboarding/{educator_id}/complete-step")
+async def complete_onboarding_step(educator_id: str, data: dict):
+    """Mark a step as completed and move to next"""
+    step = data.get("step")
+    
+    onboarding = await db.educator_onboarding.find_one({"educator_id": educator_id}, {"_id": 0})
+    if not onboarding:
+        raise HTTPException(status_code=404, detail="Onboarding record not found")
+    
+    completed_steps = onboarding.get("completed_steps", [])
+    if step not in completed_steps:
+        completed_steps.append(step)
+    
+    next_step = min(step + 1, 8)
+    
+    update_data = {
+        "completed_steps": completed_steps,
+        "current_step": next_step,
+        "last_activity": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # If all 8 steps completed
+    if len(completed_steps) >= 8:
+        update_data["status"] = "completed"
+        update_data["completed_at"] = datetime.now(timezone.utc).isoformat()
+        
+        # Update educator status to fully onboarded
+        await db.educator_applications.update_one(
+            {"id": educator_id},
+            {"$set": {"onboarding_completed": True}}
+        )
+    
+    await db.educator_onboarding.update_one(
+        {"educator_id": educator_id},
+        {"$set": update_data}
+    )
+    
+    return {"success": True, "next_step": next_step, "completed_steps": completed_steps}
+
+@api_router.post("/educator/onboarding/{educator_id}/submit-quiz")
+async def submit_training_quiz(educator_id: str, data: dict):
+    """Submit training quiz answers and calculate score"""
+    answers = data.get("answers", {})  # {question_id: selected_option_index}
+    
+    correct = 0
+    total = len(TRAINING_QUIZ)
+    
+    for q in TRAINING_QUIZ:
+        if answers.get(q["id"]) == q["correct"]:
+            correct += 1
+    
+    score = (correct / total) * 100
+    passed = score >= 70
+    
+    attempt = {
+        "score": score,
+        "passed": passed,
+        "correct": correct,
+        "total": total,
+        "attempted_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.educator_onboarding.update_one(
+        {"educator_id": educator_id},
+        {
+            "$push": {"quiz_attempts": attempt},
+            "$set": {"quiz_passed": passed, "last_activity": datetime.now(timezone.utc).isoformat()}
+        }
+    )
+    
+    return {
+        "score": score,
+        "passed": passed,
+        "correct": correct,
+        "total": total,
+        "message": "Congratulations! You passed the quiz." if passed else "You need 70% to pass. Please try again."
+    }
+
+@api_router.post("/educator/onboarding/{educator_id}/submit-assessment")
+async def submit_curriculum_assessment(educator_id: str, data: dict):
+    """Submit curriculum assessment answers"""
+    answers = data.get("answers", {})
+    
+    correct = 0
+    total = len(CURRICULUM_ASSESSMENT)
+    
+    for q in CURRICULUM_ASSESSMENT:
+        if answers.get(q["id"]) == q["correct"]:
+            correct += 1
+    
+    score = (correct / total) * 100
+    passed = score >= 70
+    
+    attempt = {
+        "score": score,
+        "passed": passed,
+        "correct": correct,
+        "total": total,
+        "attempted_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.educator_onboarding.update_one(
+        {"educator_id": educator_id},
+        {
+            "$push": {"assessment_attempts": attempt},
+            "$set": {"assessment_passed": passed, "last_activity": datetime.now(timezone.utc).isoformat()}
+        }
+    )
+    
+    return {
+        "score": score,
+        "passed": passed,
+        "correct": correct,
+        "total": total,
+        "message": "Congratulations! You passed the assessment." if passed else "You need 70% to pass. Please try again."
+    }
+
+@api_router.get("/educator/onboarding/{educator_id}/quiz")
+async def get_training_quiz(educator_id: str):
+    """Get quiz questions (without correct answers)"""
+    questions = []
+    for q in TRAINING_QUIZ:
+        questions.append({
+            "id": q["id"],
+            "question": q["question"],
+            "options": q["options"]
+        })
+    return {"questions": questions}
+
+@api_router.get("/educator/onboarding/{educator_id}/assessment")
+async def get_curriculum_assessment(educator_id: str):
+    """Get assessment questions (without correct answers)"""
+    questions = []
+    for q in CURRICULUM_ASSESSMENT:
+        questions.append({
+            "id": q["id"],
+            "question": q["question"],
+            "options": q["options"]
+        })
+    return {"questions": questions}
+
+@api_router.post("/educator/onboarding/{educator_id}/generate-certificate")
+async def generate_certificate(educator_id: str):
+    """Mark certificate and ID card as generated"""
+    await db.educator_onboarding.update_one(
+        {"educator_id": educator_id},
+        {"$set": {
+            "id_card_generated": True,
+            "certificate_generated": True,
+            "last_activity": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    return {"success": True, "message": "Certificate and ID card are ready for download"}
+
+# Admin endpoint to add educator directly to onboarding
+@api_router.post("/admin/educators/direct-onboard")
+async def direct_onboard_educator(data: dict, user: dict = Depends(get_current_user)):
+    """Admin adds educator directly to onboarding (skips selection process)"""
+    if user.get("role") not in ["admin", "team_member"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Create educator application with onboarded status
+    educator = EducatorApplication(
+        name=data.get("name", ""),
+        email=data.get("email", ""),
+        phone=data.get("phone", ""),
+        skills=data.get("skills", []),
+        city=data.get("city", ""),
+        experience=data.get("experience", ""),
+        status="onboarded",
+        source="direct_onboard",
+        added_by=user.get("id", "")
+    )
+    
+    doc = educator.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    await db.educator_applications.insert_one(doc)
+    
+    # Create onboarding record
+    onboarding = EducatorOnboarding(educator_id=educator.id)
+    onb_doc = onboarding.model_dump()
+    onb_doc['started_at'] = onb_doc['started_at'].isoformat()
+    onb_doc['last_activity'] = onb_doc['last_activity'].isoformat()
+    await db.educator_onboarding.insert_one(onb_doc)
+    
+    # Send welcome email
+    await send_educator_onboarded_email(doc)
+    
+    return {
+        "success": True,
+        "educator_id": educator.id,
+        "message": f"Educator {educator.name} added and onboarding started"
+    }
+
+# Admin endpoint to view all onboarding progress
+@api_router.get("/admin/educators/onboarding-progress")
+async def get_all_onboarding_progress(user: dict = Depends(get_current_user)):
+    """Get onboarding progress for all educators"""
+    # Get all onboarded educators
+    educators = await db.educator_applications.find(
+        {"status": "onboarded"},
+        {"_id": 0}
+    ).to_list(500)
+    
+    # Get onboarding records
+    educator_ids = [e["id"] for e in educators]
+    onboarding_records = await db.educator_onboarding.find(
+        {"educator_id": {"$in": educator_ids}},
+        {"_id": 0}
+    ).to_list(500)
+    
+    # Create lookup
+    onboarding_map = {o["educator_id"]: o for o in onboarding_records}
+    
+    result = []
+    for e in educators:
+        onb = onboarding_map.get(e["id"], {})
+        result.append({
+            "educator": e,
+            "onboarding": onb,
+            "progress": len(onb.get("completed_steps", [])) / 8 * 100 if onb else 0
+        })
+    
+    return result
+
+# ========================
 # EDUCATOR PORTAL ENDPOINTS
 # ========================
 
