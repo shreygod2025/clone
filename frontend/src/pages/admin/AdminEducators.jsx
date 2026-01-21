@@ -96,6 +96,36 @@ const AdminEducators = () => {
     }
   };
 
+  const fetchOnboardingProgress = async () => {
+    try {
+      const response = await axios.get(`${API}/admin/educators/onboarding-progress`, {
+        headers: getAuthHeaders()
+      });
+      setOnboardingData(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch onboarding progress:', error);
+    }
+  };
+
+  const handleDirectOnboard = async () => {
+    if (!directOnboardForm.name || !directOnboardForm.email || !directOnboardForm.phone) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+    try {
+      await axios.post(`${API}/admin/educators/direct-onboard`, {
+        ...directOnboardForm,
+        skills: directOnboardForm.skills.split(',').map(s => s.trim()).filter(Boolean)
+      }, { headers: getAuthHeaders() });
+      toast.success('Educator added and onboarding started!');
+      setShowDirectOnboardModal(false);
+      setDirectOnboardForm({ name: '', email: '', phone: '', skills: '', city: '', experience: '' });
+      fetchEducators();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to add educator');
+    }
+  };
+
   const fetchEducators = async () => {
     setLoading(true);
     try {
