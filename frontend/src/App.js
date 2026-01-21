@@ -16,6 +16,7 @@ import MyBookingsPage from "./pages/MyBookingsPage";
 import InquiryPage from "./pages/InquiryPage";
 import GrowthPartnerPage from "./pages/GrowthPartnerPage";
 import EducatorDashboard from "./pages/EducatorDashboard";
+import EducatorOnboarding from "./pages/EducatorOnboarding";
 import JoinTeamPage from "./pages/JoinTeamPage";
 
 // Course SEO Pages
