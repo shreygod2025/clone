@@ -500,6 +500,21 @@ const AdminEducators = () => {
             <option key={u.id} value={u.id}>{u.name}</option>
           ))}
         </select>
+        <Button 
+          onClick={() => { setShowOnboardingProgress(true); fetchOnboardingProgress(); }}
+          variant="outline"
+          className="border-green-300 text-green-700 hover:bg-green-50"
+        >
+          <CheckCircle2 className="w-4 h-4 mr-2" />
+          Onboarding Progress
+        </Button>
+        <Button 
+          onClick={() => setShowDirectOnboardModal(true)}
+          className="bg-[#D63031] hover:bg-[#c0392b]"
+        >
+          <UserPlus className="w-4 h-4 mr-2" />
+          Direct Onboard
+        </Button>
       </div>
 
       {/* Section Tabs */}
