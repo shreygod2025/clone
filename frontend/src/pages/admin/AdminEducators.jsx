@@ -54,8 +54,16 @@ const AdminEducators = () => {
   const [showAssignModal, setShowAssignModal] = useState(null);
   const [showCommentModal, setShowCommentModal] = useState(null);
   const [showRatingModal, setShowRatingModal] = useState(null);
+  const [showDirectOnboardModal, setShowDirectOnboardModal] = useState(false);
+  const [showOnboardingProgress, setShowOnboardingProgress] = useState(false);
+  const [onboardingData, setOnboardingData] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [scheduleData, setScheduleData] = useState({ date: null, time: '' });
+  
+  // Direct onboard form
+  const [directOnboardForm, setDirectOnboardForm] = useState({
+    name: '', email: '', phone: '', skills: '', city: '', experience: ''
+  });
   
   // View/Edit states
   const [editMode, setEditMode] = useState(false);
