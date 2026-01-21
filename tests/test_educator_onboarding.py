@@ -59,21 +59,15 @@ class TestEducatorOnboardingProgress:
         self.admin_token = admin_response.json()["access_token"]
         self.admin_headers = {"Authorization": f"Bearer {self.admin_token}"}
         
-        # Educator login via OTP
-        otp_response = requests.post(f"{BASE_URL}/api/auth/send-otp", json={
-            "phone": TEST_EDUCATOR_PHONE,
-            "user_type": "educator"
-        })
-        assert otp_response.status_code == 200
-        
-        verify_response = requests.post(f"{BASE_URL}/api/auth/verify-otp", json={
+        # Educator login via /api/educator/login endpoint
+        login_response = requests.post(f"{BASE_URL}/api/educator/login", json={
             "phone": TEST_EDUCATOR_PHONE,
             "otp": TEST_OTP,
             "user_type": "educator"
         })
-        if verify_response.status_code == 200:
-            self.educator_token = verify_response.json().get("access_token")
-            self.educator_id = verify_response.json().get("user", {}).get("educator_id") or verify_response.json().get("user", {}).get("id")
+        if login_response.status_code == 200:
+            self.educator_token = login_response.json().get("access_token")
+            self.educator_id = login_response.json().get("user", {}).get("id")
             self.educator_headers = {"Authorization": f"Bearer {self.educator_token}"}
         else:
             self.educator_token = None
