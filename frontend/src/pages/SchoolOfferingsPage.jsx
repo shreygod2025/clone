@@ -333,6 +333,57 @@ const SchoolOfferingsPage = () => {
           </div>
         </section>
 
+        {/* School Case Studies - Dynamic from Admin */}
+        {caseStudies.length > 0 && (
+          <section className="py-16 bg-slate-50">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="text-center mb-12">
+                <h2 className="text-3xl md:text-4xl font-bold text-[#1E3A5F] mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                  School Case Studies
+                </h2>
+                <p className="text-slate-600 max-w-2xl mx-auto">
+                  Watch how OLL is transforming education in schools across India
+                </p>
+              </div>
+
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {caseStudies.map((study) => (
+                  <div 
+                    key={study.id}
+                    className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow"
+                    data-testid={`case-study-${study.id}`}
+                  >
+                    <div className="aspect-video relative group">
+                      <img 
+                        src={`https://img.youtube.com/vi/${study.video_id}/maxresdefault.jpg`} 
+                        alt={study.school_name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => { e.target.src = `https://img.youtube.com/vi/${study.video_id}/hqdefault.jpg`; }}
+                      />
+                      <a 
+                        href={`https://www.youtube.com/watch?v=${study.video_id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <div className="w-16 h-16 bg-white/90 rounded-full flex items-center justify-center hover:scale-110 transition-transform">
+                          <Play className="w-6 h-6 text-[#D63031] ml-1" />
+                        </div>
+                      </a>
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-bold text-[#1E3A5F] mb-1">{study.school_name}</h3>
+                      {study.description && (
+                        <p className="text-sm text-slate-600 line-clamp-2">{study.description}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* Our Events */}
         <section className="py-16 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
