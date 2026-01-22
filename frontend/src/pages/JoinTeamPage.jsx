@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { User, Mail, Phone, MapPin, Briefcase, Send, Check, ArrowLeft, Users, Clock, Target, Heart, Upload, FileText, X } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Briefcase, Send, Check, Users, Clock, Target, Heart, Upload, FileText, X, ChevronRight, Building2 } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
 import axios from 'axios';
-import Navbar from '../components/Navbar';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -31,11 +30,13 @@ const AVAILABILITY = [
 ];
 
 const JoinTeamPage = () => {
+  const [activeTab, setActiveTab] = useState('general');
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [openPositions, setOpenPositions] = useState([]);
   const [resumeFile, setResumeFile] = useState(null);
   const [uploadingResume, setUploadingResume] = useState(false);
+  const [selectedPosition, setSelectedPosition] = useState(null);
   
   const [form, setForm] = useState({
     name: '',
@@ -52,7 +53,6 @@ const JoinTeamPage = () => {
     message: ''
   });
 
-  // Scroll to top on mount
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
@@ -74,70 +74,55 @@ const JoinTeamPage = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validate file type
     const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
     if (!allowedTypes.includes(file.type)) {
       toast.error('Please upload a PDF or Word document');
       return;
     }
 
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
-      toast.error('File size must be less than 5MB');
+      toast.error('File size should be less than 5MB');
       return;
     }
 
-    setResumeFile(file);
     setUploadingResume(true);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', 'resume');
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('type', 'resume');
-
       const response = await axios.post(`${API}/upload`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-
-      setForm({ ...form, resume_url: response.data.url });
-      toast.success('Resume uploaded successfully');
+      setForm(prev => ({ ...prev, resume_url: response.data.url }));
+      setResumeFile(file);
+      toast.success('Resume uploaded successfully!');
     } catch (error) {
-      toast.error('Failed to upload resume. You can still submit and send it later.');
-      // Keep the file name for display but clear the upload
-      setForm({ ...form, resume_url: '' });
+      toast.error('Failed to upload resume');
     } finally {
       setUploadingResume(false);
     }
   };
 
-  const removeResume = () => {
-    setResumeFile(null);
-    setForm({ ...form, resume_url: '' });
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.name || !form.email || !form.role || !form.phone) {
+    
+    if (!form.name || !form.email || !form.phone) {
       toast.error('Please fill in all required fields');
       return;
     }
-    
+
     setSubmitting(true);
     try {
-      await axios.post(`${API}/team-applications`, {
-        name: form.name,
-        email: form.email,
-        phone: form.phone,
-        role: form.role,
-        experience: form.experience,
+      const submitData = {
+        ...form,
         city: form.city === 'Other' ? form.otherCity : form.city,
-        availability: form.availability,
-        linkedin: form.linkedin,
-        portfolio: form.portfolio,
-        resume_url: form.resume_url,
-        message: form.message,
-        source: 'website'
-      });
+        role: selectedPosition ? selectedPosition.title : form.role,
+        applied_position_id: selectedPosition?.id || null,
+        source: selectedPosition ? 'open_position' : 'general'
+      };
+      
+      await axios.post(`${API}/team-applications`, submitData);
       setSubmitted(true);
       toast.success('Application submitted successfully!');
     } catch (error) {
@@ -147,38 +132,43 @@ const JoinTeamPage = () => {
     }
   };
 
+  const applyForPosition = (position) => {
+    setSelectedPosition(position);
+    setForm(prev => ({ ...prev, role: position.title }));
+    setActiveTab('general');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-        <Navbar />
-        <div className="flex items-center justify-center min-h-[80vh] px-4">
-          <div className="glass-card rounded-3xl p-8 md:p-12 text-center max-w-lg mx-auto">
-            <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
+      <div className="min-h-screen bg-slate-50 flex flex-col">
+        {/* Header with Logo */}
+        <header className="bg-white border-b border-slate-200 py-4">
+          <div className="max-w-7xl mx-auto px-4 flex items-center justify-between">
+            <Link to="/" className="flex items-center gap-2">
+              <img 
+                src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png" 
+                alt="OLL" 
+                className="h-10"
+              />
+            </Link>
+          </div>
+        </header>
+
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="max-w-md w-full text-center">
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <Check className="w-10 h-10 text-green-600" />
             </div>
-            <h2 className="text-2xl md:text-3xl font-bold text-[#1E3A5F] mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
-              Application Submitted! 🎉
-            </h2>
-            <p className="text-slate-600 mb-6">
-              Thank you for your interest in joining OLL! We'll review your application and get back to you soon.
+            <h1 className="text-2xl font-bold text-[#1E3A5F] mb-4">Application Submitted!</h1>
+            <p className="text-slate-600 mb-8">
+              Thank you for your interest in joining OLL. Our team will review your application and get back to you within 5-7 business days.
             </p>
-            <p className="text-sm text-slate-500 mb-8">
-              In the meantime, follow us on social media to stay updated with our journey!
-            </p>
-            <div className="flex gap-4 justify-center">
-              <Link 
-                to="/" 
-                className="px-6 py-2.5 rounded-full bg-[#1E3A5F] text-white font-medium hover:bg-[#2d5a8f] transition-colors"
-              >
+            <Link to="/">
+              <Button className="bg-[#1E3A5F] hover:bg-[#2d4a6f]">
                 Back to Home
-              </Link>
-              <Link 
-                to="/about" 
-                className="px-6 py-2.5 rounded-full border-2 border-[#1E3A5F] text-[#1E3A5F] font-medium hover:bg-[#1E3A5F]/5 transition-colors"
-              >
-                About OLL
-              </Link>
-            </div>
+              </Button>
+            </Link>
           </div>
         </div>
       </div>
@@ -186,106 +176,105 @@ const JoinTeamPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <Navbar />
-      
-      {/* Hero Section */}
-      <section className="pt-24 pb-12 px-4 bg-gradient-to-br from-[#1E3A5F] to-[#2d5a8f]">
-        <div className="max-w-4xl mx-auto text-center">
-          <Link 
-            to="/about" 
-            className="inline-flex items-center gap-2 text-white/70 hover:text-white mb-6 transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to About
+    <div className="min-h-screen bg-slate-50">
+      {/* Header with Logo */}
+      <header className="bg-white border-b border-slate-200 py-4 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2">
+            <img 
+              src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png" 
+              alt="OLL" 
+              className="h-10"
+            />
           </Link>
-          <h1 className="text-3xl md:text-5xl font-bold text-white mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
-            Join the OLL Team
-          </h1>
-          <p className="text-lg text-white/80 mb-6 max-w-2xl mx-auto">
-            Be part of a student-led revolution in skill education. We're building something special, and we want passionate people to join us.
-          </p>
-          <div className="flex flex-wrap justify-center gap-6 text-white/70 text-sm">
-            <span className="flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Young & Dynamic Team
-            </span>
-            <span className="flex items-center gap-2">
-              <Target className="w-4 h-4" />
-              Mission-Driven Work
-            </span>
-            <span className="flex items-center gap-2">
-              <Heart className="w-4 h-4" />
-              For Students, By Students
-            </span>
-          </div>
+          <div className="text-sm text-slate-500">Join Our Team</div>
         </div>
-      </section>
+      </header>
 
-      {/* Open Positions (Requirements) */}
-      {openPositions.length > 0 && (
-        <section className="py-12 px-4">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-xl font-bold text-[#1E3A5F] mb-6 text-center">Current Openings</h2>
-            <div className="grid md:grid-cols-2 gap-4">
-              {openPositions.map((position, index) => (
-                <div 
-                  key={index} 
-                  className="glass-card rounded-xl p-4 border-l-4 border-[#D63031] cursor-pointer hover:shadow-lg transition-shadow"
-                  onClick={() => setForm({ ...form, role: position.title })}
-                >
-                  <h3 className="font-bold text-[#1E3A5F]">{position.title}</h3>
-                  <p className="text-sm text-slate-600 mt-1">{position.description}</p>
-                  <div className="flex gap-2 mt-2 flex-wrap">
-                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{position.type}</span>
-                    <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{position.city}</span>
-                    {position.skills_required?.map((skill, i) => (
-                      <span key={i} className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{skill}</span>
-                    ))}
-                  </div>
-                </div>
-              ))}
+      {/* Hero Section */}
+      <div className="bg-gradient-to-br from-[#1E3A5F] to-[#2C5282] py-12 px-4">
+        <div className="max-w-4xl mx-auto text-center">
+          <Users className="w-16 h-16 text-white/80 mx-auto mb-4" />
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
+            Join OLL Team
+          </h1>
+          <p className="text-white/80 text-lg max-w-2xl mx-auto">
+            Be part of India's skill learning revolution. We're looking for passionate individuals.
+          </p>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="max-w-4xl mx-auto px-4 py-6">
+        <div className="flex gap-2 mb-6 bg-white p-1 rounded-xl shadow-sm">
+          <button
+            onClick={() => setActiveTab('general')}
+            className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
+              activeTab === 'general'
+                ? 'bg-[#1E3A5F] text-white'
+                : 'text-slate-600 hover:bg-slate-100'
+            }`}
+            data-testid="tab-general"
+          >
+            <div className="flex items-center justify-center gap-2">
+              <User className="w-4 h-4" />
+              General Application
             </div>
-          </div>
-        </section>
-      )}
+          </button>
+          <button
+            onClick={() => setActiveTab('positions')}
+            className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
+              activeTab === 'positions'
+                ? 'bg-[#1E3A5F] text-white'
+                : 'text-slate-600 hover:bg-slate-100'
+            }`}
+            data-testid="tab-positions"
+          >
+            <div className="flex items-center justify-center gap-2">
+              <Briefcase className="w-4 h-4" />
+              Open Requirements ({openPositions.length})
+            </div>
+          </button>
+        </div>
 
-      {/* Application Form */}
-      <section className="py-12 px-4">
-        <div className="max-w-2xl mx-auto">
-          <div className="glass-card rounded-3xl p-6 md:p-8">
-            <h2 className="text-xl font-bold text-[#1E3A5F] mb-2 text-center" style={{ fontFamily: 'Manrope, sans-serif' }}>
-              Apply Now
-            </h2>
-            <p className="text-slate-600 text-center mb-8 text-sm">
-              Tell us about yourself and the role you're interested in
-            </p>
-
+        {/* Tab Content */}
+        {activeTab === 'general' ? (
+          <div className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
+            {selectedPosition && (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+                <p className="text-sm text-blue-700">
+                  Applying for: <strong>{selectedPosition.title}</strong>
+                  <button 
+                    onClick={() => setSelectedPosition(null)}
+                    className="ml-2 text-blue-500 hover:text-blue-700"
+                  >
+                    (Clear)
+                  </button>
+                </p>
+              </div>
+            )}
+            
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Personal Info */}
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Full Name <span className="text-red-500">*</span>
-                  </label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Full Name *</label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <Input
                       value={form.name}
                       onChange={(e) => setForm({ ...form, name: e.target.value })}
-                      placeholder="Your full name"
+                      placeholder="Enter your full name"
                       className="pl-10"
                       required
-                      data-testid="team-name-input"
+                      data-testid="input-name"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Email <span className="text-red-500">*</span>
-                  </label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Email *</label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <Input
                       type="email"
                       value={form.email}
@@ -293,7 +282,7 @@ const JoinTeamPage = () => {
                       placeholder="your@email.com"
                       className="pl-10"
                       required
-                      data-testid="team-email-input"
+                      data-testid="input-email"
                     />
                   </div>
                 </div>
@@ -301,227 +290,255 @@ const JoinTeamPage = () => {
 
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Phone <span className="text-red-500">*</span>
-                  </label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Phone *</label>
                   <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <Input
                       type="tel"
                       value={form.phone}
                       onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                      placeholder="10-digit phone number"
+                      placeholder="10-digit mobile number"
                       className="pl-10"
                       required
-                      data-testid="team-phone-input"
+                      data-testid="input-phone"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    City
-                  </label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Role Interested In</label>
                   <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <select
-                      value={form.city}
-                      onChange={(e) => setForm({ ...form, city: e.target.value })}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20 focus:border-[#1E3A5F] bg-white text-sm"
-                      data-testid="team-city-select"
-                    >
-                      <option value="">Select city</option>
-                      {CITIES.map(city => (
-                        <option key={city} value={city}>{city}</option>
-                      ))}
-                    </select>
+                    <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <Input
+                      value={form.role}
+                      onChange={(e) => setForm({ ...form, role: e.target.value })}
+                      placeholder="e.g., Content Writer, Developer"
+                      className="pl-10"
+                      data-testid="input-role"
+                    />
                   </div>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Experience Level</label>
+                  <select
+                    value={form.experience}
+                    onChange={(e) => setForm({ ...form, experience: e.target.value })}
+                    className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white"
+                    data-testid="select-experience"
+                  >
+                    <option value="">Select experience</option>
+                    {EXPERIENCE_LEVELS.map(level => (
+                      <option key={level} value={level}>{level}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">City</label>
+                  <select
+                    value={form.city}
+                    onChange={(e) => setForm({ ...form, city: e.target.value })}
+                    className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white"
+                    data-testid="select-city"
+                  >
+                    <option value="">Select city</option>
+                    {CITIES.map(city => (
+                      <option key={city} value={city}>{city}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
               {form.city === 'Other' && (
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Your City
-                  </label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Your City</label>
                   <Input
                     value={form.otherCity}
                     onChange={(e) => setForm({ ...form, otherCity: e.target.value })}
                     placeholder="Enter your city"
-                    data-testid="team-other-city-input"
+                    data-testid="input-other-city"
                   />
                 </div>
               )}
 
-              {/* Role & Experience */}
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Role Interested In <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <Input
-                      value={form.role}
-                      onChange={(e) => setForm({ ...form, role: e.target.value })}
-                      placeholder="e.g., Marketing, Design, Sales..."
-                      className="pl-10"
-                      required
-                      data-testid="team-role-input"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Experience Level
-                  </label>
-                  <div className="relative">
-                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <select
-                      value={form.experience}
-                      onChange={(e) => setForm({ ...form, experience: e.target.value })}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/20 focus:border-[#1E3A5F] bg-white text-sm"
-                      data-testid="team-experience-select"
-                    >
-                      <option value="">Select experience</option>
-                      {EXPERIENCE_LEVELS.map(level => (
-                        <option key={level} value={level}>{level}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Availability</label>
+                <select
+                  value={form.availability}
+                  onChange={(e) => setForm({ ...form, availability: e.target.value })}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white"
+                  data-testid="select-availability"
+                >
+                  <option value="">Select availability</option>
+                  {AVAILABILITY.map(avail => (
+                    <option key={avail} value={avail}>{avail}</option>
+                  ))}
+                </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Availability
-                </label>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {AVAILABILITY.map(option => (
-                    <button
-                      key={option}
-                      type="button"
-                      onClick={() => setForm({ ...form, availability: option })}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                        form.availability === option
-                          ? 'bg-[#1E3A5F] text-white'
-                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                      }`}
-                      data-testid={`availability-${option.toLowerCase().replace(/\s+/g, '-')}`}
-                    >
-                      {option}
-                    </button>
-                  ))}
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">LinkedIn Profile</label>
+                  <Input
+                    value={form.linkedin}
+                    onChange={(e) => setForm({ ...form, linkedin: e.target.value })}
+                    placeholder="https://linkedin.com/in/..."
+                    data-testid="input-linkedin"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Portfolio / Website</label>
+                  <Input
+                    value={form.portfolio}
+                    onChange={(e) => setForm({ ...form, portfolio: e.target.value })}
+                    placeholder="https://..."
+                    data-testid="input-portfolio"
+                  />
                 </div>
               </div>
 
               {/* Resume Upload */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Resume / CV
-                </label>
-                {!resumeFile ? (
-                  <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:border-[#1E3A5F] hover:bg-slate-50 transition-all">
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      <Upload className="w-8 h-8 text-slate-400 mb-2" />
-                      <p className="text-sm text-slate-600">
-                        <span className="font-medium text-[#1E3A5F]">Click to upload</span> or drag and drop
-                      </p>
-                      <p className="text-xs text-slate-500 mt-1">PDF or Word (Max 5MB)</p>
-                    </div>
-                    <input 
-                      type="file" 
-                      className="hidden" 
-                      accept=".pdf,.doc,.docx"
-                      onChange={handleResumeUpload}
-                      data-testid="resume-upload-input"
-                    />
-                  </label>
-                ) : (
-                  <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <FileText className="w-8 h-8 text-green-600" />
-                      <div>
-                        <p className="text-sm font-medium text-slate-700">{resumeFile.name}</p>
-                        <p className="text-xs text-slate-500">
-                          {uploadingResume ? 'Uploading...' : form.resume_url ? 'Uploaded successfully' : 'Ready to submit'}
-                        </p>
-                      </div>
-                    </div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Resume</label>
+                {resumeFile || form.resume_url ? (
+                  <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <FileText className="w-5 h-5 text-green-600" />
+                    <span className="text-sm text-green-700 flex-1">
+                      {resumeFile?.name || 'Resume uploaded'}
+                    </span>
                     <button
                       type="button"
-                      onClick={removeResume}
-                      className="p-1 hover:bg-red-100 rounded-full transition-colors"
+                      onClick={() => {
+                        setResumeFile(null);
+                        setForm(prev => ({ ...prev, resume_url: '' }));
+                      }}
+                      className="p-1 hover:bg-green-100 rounded"
                     >
-                      <X className="w-5 h-5 text-red-500" />
+                      <X className="w-4 h-4 text-green-600" />
                     </button>
                   </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:border-[#1E3A5F] transition-colors">
+                    <Upload className="w-6 h-6 text-slate-400 mb-1" />
+                    <span className="text-sm text-slate-500">
+                      {uploadingResume ? 'Uploading...' : 'Upload Resume (PDF/DOC)'}
+                    </span>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept=".pdf,.doc,.docx"
+                      onChange={handleResumeUpload}
+                      disabled={uploadingResume}
+                      data-testid="input-resume"
+                    />
+                  </label>
                 )}
               </div>
 
-              {/* Links */}
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    LinkedIn Profile
-                  </label>
-                  <Input
-                    type="url"
-                    value={form.linkedin}
-                    onChange={(e) => setForm({ ...form, linkedin: e.target.value })}
-                    placeholder="https://linkedin.com/in/..."
-                    data-testid="team-linkedin-input"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Portfolio / Website
-                  </label>
-                  <Input
-                    type="url"
-                    value={form.portfolio}
-                    onChange={(e) => setForm({ ...form, portfolio: e.target.value })}
-                    placeholder="https://..."
-                    data-testid="team-portfolio-input"
-                  />
-                </div>
-              </div>
-
-              {/* Message */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Why do you want to join OLL?
-                </label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Why do you want to join OLL?</label>
                 <Textarea
                   value={form.message}
                   onChange={(e) => setForm({ ...form, message: e.target.value })}
-                  placeholder="Tell us about yourself and why you're excited to join OLL..."
+                  placeholder="Tell us about yourself and why you'd be a great fit..."
                   rows={4}
-                  data-testid="team-message-textarea"
+                  data-testid="input-message"
                 />
               </div>
 
               <Button
                 type="submit"
-                disabled={submitting || uploadingResume}
-                className="w-full bg-gradient-to-r from-[#D63031] to-[#e74c3c] hover:from-[#c0392b] hover:to-[#D63031] text-white py-3 rounded-xl font-semibold text-base"
-                data-testid="team-submit-btn"
+                disabled={submitting}
+                className="w-full bg-[#D63031] hover:bg-[#b52828] py-6"
+                data-testid="submit-btn"
               >
                 {submitting ? (
-                  <span className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Submitting...
-                  </span>
+                  'Submitting...'
                 ) : (
-                  <span className="flex items-center gap-2">
-                    <Send className="w-4 h-4" />
+                  <>
+                    <Send className="w-5 h-5 mr-2" />
                     Submit Application
-                  </span>
+                  </>
                 )}
               </Button>
             </form>
           </div>
+        ) : (
+          <div className="space-y-4">
+            {openPositions.length === 0 ? (
+              <div className="bg-white rounded-2xl p-8 text-center">
+                <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-slate-600 mb-2">No Open Positions</h3>
+                <p className="text-slate-500 mb-4">
+                  We don't have any specific openings right now, but we're always looking for talented people.
+                </p>
+                <Button onClick={() => setActiveTab('general')} className="bg-[#1E3A5F]">
+                  Submit General Application
+                </Button>
+              </div>
+            ) : (
+              openPositions.map((position) => (
+                <div
+                  key={position.id}
+                  className="bg-white rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow"
+                  data-testid={`position-${position.id}`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-bold text-[#1E3A5F] mb-1">{position.title}</h3>
+                      <div className="flex flex-wrap gap-2 text-sm text-slate-500 mb-3">
+                        <span className="flex items-center gap-1">
+                          <Building2 className="w-4 h-4" />
+                          {position.department}
+                        </span>
+                        {position.location && (
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-4 h-4" />
+                            {position.location}
+                          </span>
+                        )}
+                        <span className="px-2 py-0.5 bg-slate-100 rounded text-xs">
+                          {position.type?.replace('_', ' ')}
+                        </span>
+                      </div>
+                      {position.description && (
+                        <p className="text-slate-600 text-sm mb-4 line-clamp-2">
+                          {position.description}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      onClick={() => applyForPosition(position)}
+                      className="bg-[#D63031] hover:bg-[#b52828] shrink-0"
+                      data-testid={`apply-${position.id}`}
+                    >
+                      Apply Now
+                      <ChevronRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* Why Join OLL */}
+        <div className="mt-12 grid md:grid-cols-4 gap-4">
+          {[
+            { icon: Target, title: 'Mission-Driven', desc: 'Work towards transforming education' },
+            { icon: Users, title: 'Great Team', desc: 'Collaborate with passionate people' },
+            { icon: Clock, title: 'Flexibility', desc: 'Remote & hybrid options' },
+            { icon: Heart, title: 'Growth', desc: 'Learn and grow with us' },
+          ].map((item, i) => (
+            <div key={i} className="text-center p-4 bg-white rounded-xl shadow-sm">
+              <item.icon className="w-8 h-8 text-[#D63031] mx-auto mb-2" />
+              <h4 className="font-semibold text-[#1E3A5F] text-sm">{item.title}</h4>
+              <p className="text-xs text-slate-500">{item.desc}</p>
+            </div>
+          ))}
         </div>
-      </section>
+      </div>
     </div>
   );
 };
