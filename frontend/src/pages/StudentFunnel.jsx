@@ -557,6 +557,26 @@ const StudentFunnel = () => {
           </div>
         );
 
+      case 'learning_goal':
+        const goals = LEARNING_GOALS[formData.age_group] || LEARNING_GOALS['10-14'];
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600 text-center mb-4">What do you want to achieve?</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {goals.map((goal) => (
+                <div
+                  key={goal.value}
+                  className={`selection-card p-4 cursor-pointer ${formData.learning_goal === goal.value ? 'selected' : ''}`}
+                  onClick={() => handleSingleSelect('learning_goal', goal.value)}
+                  data-testid={`goal-${goal.value}`}
+                >
+                  <div className="font-semibold text-[#1E3A5F]">{goal.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+
       case 'mode':
         return (
           <div className="space-y-4">
