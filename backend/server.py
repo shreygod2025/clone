@@ -2715,6 +2715,29 @@ async def generate_certificate(educator_id: str):
     )
     return {"success": True, "message": "Certificate and ID card are ready for download"}
 
+# Admin endpoint to verify educator documents
+@api_router.post("/admin/educators/{educator_id}/verify-documents")
+async def verify_educator_documents(educator_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Admin verifies educator onboarding documents"""
+    if user.get("role") not in ["admin", "team_member"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    verified = data.get("verified", False)
+    notes = data.get("notes", "")
+    
+    await db.educator_onboarding.update_one(
+        {"educator_id": educator_id},
+        {"$set": {
+            "documents_verified": verified,
+            "documents_verified_by": user.get("id", ""),
+            "documents_verified_at": datetime.now(timezone.utc).isoformat(),
+            "verification_notes": notes,
+            "last_activity": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {"success": True, "message": "Documents verified" if verified else "Documents rejected", "verified": verified}
+
 # Admin endpoint to add educator directly to onboarding
 @api_router.post("/admin/educators/direct-onboard")
 async def direct_onboard_educator(data: dict, user: dict = Depends(get_current_user)):
