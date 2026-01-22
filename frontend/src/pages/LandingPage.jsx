@@ -65,7 +65,7 @@ const LandingPage = () => {
   return (
     <>
       <Helmet>
-        <title>OLL - India's Leading Skill Education Platform | Robotics, Coding, AI</title>
+        <title>OLL - India&apos;s Leading Skill Education Platform | Robotics, Coding, AI</title>
         <meta name="description" content="OLL (Open Learning Labs) - India's #1 platform for Robotics, Coding, AI & Entrepreneurship education. Programs for students, educators & schools. Book a free demo today!" />
         <meta name="keywords" content="robotics classes India, coding classes for kids, AI courses, entrepreneurship education, skill development, STEM education, school programs, learn robotics, kids coding" />
         <link rel="canonical" href="https://oll.co" />
