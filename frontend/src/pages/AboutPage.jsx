@@ -458,6 +458,71 @@ const AboutPage = () => {
         </div>
       </section>
 
+      {/* Schools We Work With */}
+      <section className="py-12 px-4 bg-gradient-to-br from-slate-900 to-slate-800">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-2xl md:text-3xl font-bold text-white text-center mb-8" style={{ fontFamily: 'Manrope, sans-serif' }}>
+            Schools We Work With
+          </h2>
+          <div className="flex flex-wrap justify-center gap-3 mb-8">
+            {['Delhi Public School', 'Ryan International', 'DAV Public School', 'Kendriya Vidyalaya', 
+              'St. Xavier\'s', 'The Heritage School', 'Podar International', 'Vibgyor High', 
+              'Euro School', 'Billabong High', 'Orchid International', 'GEMS Education'].map((school, idx) => (
+              <span key={idx} className="px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-white text-sm">
+                {school}
+              </span>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Our Events */}
+      <section className="py-12 px-4">
+        <div className="max-w-7xl mx-auto">
+          <h2 className="text-2xl md:text-3xl font-bold text-[#1E3A5F] text-center mb-8" style={{ fontFamily: 'Manrope, sans-serif' }}>
+            Our Events
+          </h2>
+          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+            <div className="glass-card rounded-2xl overflow-hidden">
+              <div className="aspect-video bg-slate-100 relative">
+                <img 
+                  src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600" 
+                  alt="Skill Titans"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-4">
+                  <span className="px-3 py-1 bg-[#D63031] text-white text-xs rounded-full">
+                    National TV Show
+                  </span>
+                </div>
+              </div>
+              <div className="p-4">
+                <h3 className="font-bold text-[#1E3A5F] mb-1">Skill Titans</h3>
+                <p className="text-sm text-slate-600">Funding student entrepreneurs on National TV</p>
+              </div>
+            </div>
+            <div className="glass-card rounded-2xl overflow-hidden">
+              <div className="aspect-video bg-slate-100 relative">
+                <img 
+                  src="https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=600" 
+                  alt="IIT Bombay Techfest"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-4">
+                  <span className="px-3 py-1 bg-[#1E3A5F] text-white text-xs rounded-full">
+                    Competition
+                  </span>
+                </div>
+              </div>
+              <div className="p-4">
+                <h3 className="font-bold text-[#1E3A5F] mb-1">IIT Bombay Techfest</h3>
+                <p className="text-sm text-slate-600">National level robotics competition</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Join OLL Team Section */}
       <section className="py-12 px-4 bg-[#1E3A5F]">
         <div className="max-w-4xl mx-auto">
