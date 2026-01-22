@@ -795,6 +795,13 @@ const TrainingStep = ({ content, onboarding, quizQuestions, quizAnswers, setQuiz
   const allVideosWatched = content?.training_videos?.every(v => watchedVideos.includes(v.id));
   const quizPassed = onboarding?.quiz_passed;
   
+  // If quiz just passed, go back to show success screen
+  useEffect(() => {
+    if (quizPassed && showQuiz) {
+      setShowQuiz(false);
+    }
+  }, [quizPassed]);
+  
   const markVideoWatched = (videoId) => {
     if (!watchedVideos.includes(videoId)) {
       const updated = [...watchedVideos, videoId];
