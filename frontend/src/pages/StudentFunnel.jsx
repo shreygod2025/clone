@@ -567,13 +567,21 @@ const StudentFunnel = () => {
                 <div
                   key={goal.value}
                   className={`selection-card p-4 cursor-pointer ${formData.learning_goal === goal.value ? 'selected' : ''}`}
-                  onClick={() => handleSingleSelect('learning_goal', goal.value)}
+                  onClick={() => updateForm('learning_goal', goal.value)}
                   data-testid={`goal-${goal.value}`}
                 >
                   <div className="font-semibold text-[#1E3A5F]">{goal.label}</div>
                 </div>
               ))}
             </div>
+            {formData.learning_goal && (
+              <Button 
+                onClick={() => setCurrentStep(prev => prev + 1)}
+                className="w-full bg-[#D63031] hover:bg-[#b52828] mt-4"
+              >
+                Continue
+              </Button>
+            )}
           </div>
         );
 
