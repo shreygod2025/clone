@@ -443,16 +443,23 @@ const AdminEducators = () => {
           </div>
         );
       
-      case 'demo_completed':
+      case 'onboarding':
         return (
           <div className="flex gap-1 flex-wrap">
             <button
-              onClick={() => handleOnboard(educator)}
+              onClick={() => setViewEducator(educator)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 flex items-center gap-1 font-medium"
+            >
+              <Eye className="w-3 h-3" />
+              View Progress
+            </button>
+            <button
+              onClick={() => handleActivate(educator)}
               className="text-xs px-3 py-1.5 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 flex items-center gap-1 font-medium"
-              data-testid={`onboard-${educator.id}`}
+              data-testid={`activate-${educator.id}`}
             >
               <CheckCircle2 className="w-3 h-3" />
-              Onboard
+              Activate
             </button>
             <button
               onClick={() => handleArchive(educator)}
@@ -465,7 +472,7 @@ const AdminEducators = () => {
           </div>
         );
       
-      case 'onboarded':
+      case 'active':
       case 'archived':
         return null;
       
