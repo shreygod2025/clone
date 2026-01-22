@@ -65,6 +65,10 @@ const AdminEducators = () => {
     name: '', email: '', phone: '', skills: '', city: '', experience: ''
   });
   
+  // Onboarding detail state
+  const [selectedOnboarding, setSelectedOnboarding] = useState(null);
+  const [verificationNotes, setVerificationNotes] = useState('');
+  
   // View/Edit states
   const [editMode, setEditMode] = useState(false);
   const [editData, setEditData] = useState({ name: '', phone: '', email: '', demo_date: '', demo_time: '', notes: '' });
