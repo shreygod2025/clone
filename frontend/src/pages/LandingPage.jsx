@@ -20,26 +20,35 @@ const LandingPage = () => {
     window.scrollTo(0, 0);
   }, []);
 
-  // Show footer on scroll
+  // Show footer on scroll (desktop) or immediately (mobile)
   useEffect(() => {
+    const isMobile = window.innerWidth < 768;
+    
+    if (isMobile) {
+      // On mobile, show footer immediately
+      setShowFooter(true);
+      return;
+    }
+    
     const handleScroll = () => {
       const scrollPosition = window.scrollY;
-      // Show footer when scrolled more than 100px
-      if (scrollPosition > 100) {
+      // Show footer when scrolled more than 150px on desktop
+      if (scrollPosition > 150) {
         setShowFooter(true);
+      } else {
+        setShowFooter(false);
       }
     };
 
     window.addEventListener('scroll', handleScroll);
-    
-    // Also show footer after a short delay if page is small
-    const timeout = setTimeout(() => {
-      setShowFooter(true);
-    }, 2000);
+    window.addEventListener('resize', () => {
+      if (window.innerWidth < 768) {
+        setShowFooter(true);
+      }
+    });
     
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      clearTimeout(timeout);
     };
   }, []);
 
