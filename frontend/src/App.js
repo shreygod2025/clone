@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "./components/ui/sonner";
+import ScrollToTop from "./components/ScrollToTop";
 
 // Public Pages
 import LandingPage from "./pages/LandingPage";
@@ -21,6 +22,9 @@ import EducatorDashboard from "./pages/EducatorDashboard";
 import EducatorOnboarding from "./pages/EducatorOnboarding";
 import JoinTeamPage from "./pages/JoinTeamPage";
 import OfferingsPage from "./pages/OfferingsPage";
+import TermsPage from "./pages/TermsPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import RefundPolicyPage from "./pages/RefundPolicyPage";
 
 // Course SEO Pages
 import CoursesListPage from "./pages/courses/CoursesListPage";
