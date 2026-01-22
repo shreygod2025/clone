@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { Calendar, User, ArrowRight, Search } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { format } from 'date-fns';
