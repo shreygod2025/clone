@@ -195,7 +195,7 @@ async def send_session_complete_notification(inquiry: dict, educator: dict = Non
     student_name = inquiry.get("name", "Student")
     student_phone = inquiry.get("phone")
     skill = inquiry.get("skill", "Demo").title()
-    feedback_url = f"https://oll-platform.preview.emergentagent.com/feedback/{inquiry.get('id', '')}"
+    feedback_url = f"https://skill-academy-32.preview.emergentagent.com/feedback/{inquiry.get('id', '')}"
     
     # Send to student
     if student_phone:
