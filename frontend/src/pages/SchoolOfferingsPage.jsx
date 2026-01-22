@@ -93,20 +93,20 @@ const PARTNER_SCHOOLS = [
 // Events
 const OUR_EVENTS = [
   {
-    id: 'skill-titans',
-    title: 'Skill Titans',
-    subtitle: 'Funding Student Entrepreneurs on National TV',
-    description: 'India\'s first TV show where school students pitch their business ideas to real investors.',
-    videoId: 'dQw4w9WgXcQ', // Placeholder
-    image: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600'
+    id: 'techfest',
+    title: 'OLL Robotics Competition at IIT Bombay Techfest 2025',
+    subtitle: 'National Level Competition',
+    description: 'Our students compete at India\'s largest science and technology festival.',
+    videoId: 'B0n8-RYegVc',
+    image: 'https://img.youtube.com/vi/B0n8-RYegVc/maxresdefault.jpg'
   },
   {
-    id: 'iit-techfest',
-    title: 'IIT Bombay Techfest',
-    subtitle: 'National Level Robotics Competition',
-    description: 'Our students compete at the prestigious IIT Bombay Techfest, showcasing their robotics skills.',
-    videoId: 'dQw4w9WgXcQ', // Placeholder
-    image: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=600'
+    id: 'skill-titans',
+    title: 'Skill Titans - TV Show on CNBC TV18',
+    subtitle: 'Funding Student Entrepreneurs',
+    description: 'India\'s first TV show where school students pitch their business ideas to real investors.',
+    videoId: 'KJMH8EAB6NI',
+    image: 'https://img.youtube.com/vi/KJMH8EAB6NI/maxresdefault.jpg'
   }
 ];
 
