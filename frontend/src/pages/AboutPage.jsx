@@ -433,33 +433,6 @@ const AboutPage = () => {
         </div>
       </section>
 
-      {/* Our Investors Section */}
-      <section className="py-16 px-4 bg-white" data-testid="investors-section">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-2xl md:text-3xl font-bold text-[#1E3A5F] text-center mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
-            Our Investors
-          </h2>
-          <p className="text-slate-600 text-center mb-12 max-w-2xl mx-auto">
-            Backed by visionaries who believe in transforming education
-          </p>
-          
-          <div className="flex flex-wrap justify-center items-center gap-8">
-            <div className="glass-card rounded-2xl p-8 text-center">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#1E3A5F] to-[#D63031] flex items-center justify-center mx-auto mb-4">
-                <Building2 className="w-10 h-10 text-white" />
-              </div>
-              <p className="text-slate-600 text-sm">Angel Investors & Strategic Partners</p>
-            </div>
-            <div className="glass-card rounded-2xl p-8 text-center">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#D63031] to-[#1E3A5F] flex items-center justify-center mx-auto mb-4">
-                <GraduationCap className="w-10 h-10 text-white" />
-              </div>
-              <p className="text-slate-600 text-sm">EdTech Industry Leaders</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* What We Do */}
       <section className="py-12 px-4">
         <div className="max-w-7xl mx-auto">
