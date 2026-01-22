@@ -2783,9 +2783,9 @@ async def direct_onboard_educator(data: dict, user: dict = Depends(get_current_u
 @api_router.get("/admin/educators/onboarding-progress")
 async def get_all_onboarding_progress(user: dict = Depends(get_current_user)):
     """Get onboarding progress for all educators"""
-    # Get all onboarded educators
+    # Get all educators in onboarding status
     educators = await db.educator_applications.find(
-        {"status": "onboarded"},
+        {"status": {"$in": ["onboarding", "onboarded"]}},
         {"_id": 0}
     ).to_list(500)
     
