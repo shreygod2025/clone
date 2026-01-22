@@ -65,6 +65,7 @@ const AdminStudentCRM = () => {
   // Form states
   const [rescheduleData, setRescheduleData] = useState({ date: null, time: '', reason: '' });
   const [convertData, setConvertData] = useState({ amount: '', sessions: '' });
+  const [cancelDemoReason, setCancelDemoReason] = useState('');
   const [newLead, setNewLead] = useState({
     name: '',
     phone: '',
