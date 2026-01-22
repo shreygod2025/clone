@@ -4,212 +4,237 @@ import { Helmet } from 'react-helmet-async';
 import { 
   ArrowLeft, CheckCircle, Phone, Calendar, Users, Clock, 
   Award, Target, BookOpen, Play, Download, Menu, X,
-  Cpu, Code, Brain, Lightbulb, TrendingUp, GraduationCap
+  Cpu, Code, Brain, Lightbulb, TrendingUp, GraduationCap, School
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 
-const OFFERINGS_DATA = {
-  'robotics-lab': {
-    id: 'robotics-lab',
-    title: 'Robotics Lab Setup',
-    subtitle: 'Complete Lab Infrastructure',
-    description: 'Transform your school with a state-of-the-art robotics lab. We provide complete setup including equipment, curriculum, and trained educators.',
-    longDescription: `Our Robotics Lab Setup program provides schools with everything needed to run a world-class robotics program. From hardware to curriculum to trained educators - we handle it all.
-
-The program is designed to cater to students from Grade 1 to Grade 12, with age-appropriate modules that progressively build skills. Students start with basic robotics concepts and move on to advanced programming and AI-powered robots.`,
-    icon: Cpu,
-    color: '#D63031',
-    gradient: 'from-red-500 to-orange-500',
-    features: [
-      'Complete lab equipment & robotics kits',
-      'Age-appropriate curriculum (Grade 1-12)',
-      'Trained OLL educators provided',
-      'Annual maintenance & upgrade support',
-      'Student certifications from OLL',
-      'Inter-school robotics competitions',
-      'Parent showcase events',
-      'Dedicated lab manager support'
-    ],
-    curriculum: [
-      { grade: 'Grade 1-3', topics: 'Basic mechanics, Simple machines, Block-based programming' },
-      { grade: 'Grade 4-6', topics: 'Motors & sensors, Scratch programming, Mini projects' },
-      { grade: 'Grade 7-9', topics: 'Arduino basics, Python programming, IoT projects' },
-      { grade: 'Grade 10-12', topics: 'Advanced robotics, AI integration, Competition prep' }
-    ],
-    pricing: 'Custom pricing based on school size',
-    duration: '1 Academic Year (Renewable)',
-    support: '24/7 Technical Support',
-    videoId: 'dQw4w9WgXcQ'
+// All offerings data
+const ALL_OFFERINGS = {
+  // Robotics
+  'robotics-curriculum-kits': {
+    category: 'robotics',
+    title: 'Robotics Curriculum with Take-home Kits & Books',
+    description: 'Complete robotics curriculum with kits that students can take home for practice.',
+    features: ['Age-appropriate kits for each grade', 'Comprehensive workbooks', 'Video tutorials', 'Parent involvement activities', 'Progress tracking'],
+    ideal: 'Schools wanting hands-on learning without lab setup',
+    duration: '1 Academic Year'
   },
-  'coding-program': {
-    id: 'coding-program',
-    title: 'Coding & Programming',
-    subtitle: 'School-Wide Program',
-    description: 'Comprehensive coding curriculum from block-based programming to advanced languages. Perfect for integrating into your school timetable.',
-    longDescription: `Our Coding & Programming program is designed to make every student code-literate. Starting from visual block-based programming, students progress through text-based languages like Python, JavaScript, and beyond.
-
-The curriculum aligns with international CS education standards and prepares students for competitive exams, olympiads, and real-world tech careers.`,
-    icon: Code,
-    color: '#1E3A5F',
-    gradient: 'from-blue-600 to-cyan-500',
-    features: [
-      'Scratch to Python learning pathway',
-      'Web & Mobile App Development',
-      'Integrated with academic timetable',
-      'Project-based learning approach',
-      'Monthly hackathons & competitions',
-      'GitHub portfolio for each student',
-      'Industry mentor sessions',
-      'Coding olympiad preparation'
-    ],
-    curriculum: [
-      { grade: 'Grade 1-3', topics: 'Scratch Jr, Logic building, Fun animations' },
-      { grade: 'Grade 4-6', topics: 'Scratch, HTML basics, Simple games' },
-      { grade: 'Grade 7-9', topics: 'Python, Web development, Data structures' },
-      { grade: 'Grade 10-12', topics: 'Advanced Python, App development, Competitive coding' }
-    ],
-    pricing: 'Per-student pricing available',
-    duration: 'Year-round Program',
-    support: 'Dedicated Program Manager',
-    videoId: 'dQw4w9WgXcQ'
+  'robotics-lab-setup': {
+    category: 'robotics',
+    title: 'Robotics Curriculum with Lab Setup & Books',
+    description: 'Full lab infrastructure with equipment, curriculum, and trained educators.',
+    features: ['Complete lab equipment', 'Multiple workstations', 'Advanced robotics kits', 'Trained educators', 'Maintenance support'],
+    ideal: 'Schools ready to invest in infrastructure',
+    duration: '1 Academic Year'
   },
-  'ai-ml-program': {
-    id: 'ai-ml-program',
-    title: 'AI & Machine Learning',
-    subtitle: 'Future-Ready Skills',
-    description: 'Introduce your students to the world of Artificial Intelligence. Hands-on projects with real AI tools and platforms.',
-    longDescription: `The AI & Machine Learning program demystifies artificial intelligence for students of all ages. Through hands-on projects and real-world applications, students understand how AI works and create their own AI models.
-
-Students learn to use industry-standard tools and platforms, preparing them for the AI-driven future job market.`,
-    icon: Brain,
-    color: '#8B5CF6',
-    gradient: 'from-purple-600 to-pink-500',
-    features: [
-      'AI fundamentals for all age groups',
-      'Machine Learning basics with projects',
-      'ChatGPT & Generative AI training',
-      'Data science introduction',
-      'Real-world AI project building',
-      'AI ethics & responsible use',
-      'Cloud AI platforms training',
-      'AI research paper writing'
-    ],
-    curriculum: [
-      { grade: 'Grade 1-5', topics: 'AI awareness, Teachable Machine, AI games' },
-      { grade: 'Grade 6-8', topics: 'ML basics, Image recognition, Chatbots' },
-      { grade: 'Grade 9-10', topics: 'Python for AI, Neural networks, NLP basics' },
-      { grade: 'Grade 11-12', topics: 'Deep learning, Computer vision, AI projects' }
-    ],
-    pricing: 'Module-based pricing',
-    duration: '6 Months Program',
-    support: 'AI Expert Support',
-    videoId: 'dQw4w9WgXcQ'
+  'robotics-exhibition-prep': {
+    category: 'robotics',
+    title: 'Robotics Exhibition Preparation',
+    description: 'Prepare students for robotics exhibitions and science fairs.',
+    features: ['Project ideation workshops', 'Building & programming sessions', 'Presentation training', 'Judging criteria preparation', 'Mock exhibitions'],
+    ideal: 'Schools participating in exhibitions',
+    duration: '2-3 Months'
   },
-  'entrepreneurship': {
-    id: 'entrepreneurship',
-    title: 'Entrepreneurship Program',
-    subtitle: 'Business & Innovation',
-    description: 'Nurture the next generation of entrepreneurs. Students learn ideation, business planning, and pitch their ideas to real investors.',
-    longDescription: `Our Entrepreneurship Program transforms students into innovative thinkers and future business leaders. Through a structured curriculum, students learn the complete journey from idea to execution.
-
-The program culminates in a "Shark Tank" style pitch competition where students present their business ideas to real investors and entrepreneurs.`,
-    icon: Lightbulb,
-    color: '#F59E0B',
-    gradient: 'from-yellow-500 to-orange-500',
-    features: [
-      'Idea generation & validation workshops',
-      'Business model canvas training',
-      'Financial literacy & planning',
-      'Marketing & branding basics',
-      'Pitch competitions with real investors',
-      'Mentorship from successful founders',
-      'Startup incubation support',
-      'Networking with entrepreneur ecosystem'
-    ],
-    curriculum: [
-      { grade: 'Grade 5-7', topics: 'Problem solving, Creative thinking, Mini business' },
-      { grade: 'Grade 8-9', topics: 'Business planning, Market research, Prototyping' },
-      { grade: 'Grade 10-11', topics: 'Financial planning, Marketing, Team building' },
-      { grade: 'Grade 12', topics: 'Startup launch, Investor pitching, Scaling' }
-    ],
-    pricing: 'Semester-based pricing',
-    duration: '1 Semester',
-    support: 'Founder Mentors',
-    videoId: 'dQw4w9WgXcQ'
+  'host-robotics-exhibition': {
+    category: 'robotics',
+    title: 'Host a Robotics Exhibition in Your School',
+    description: 'Turn your school into a robotics showcase venue.',
+    features: ['Event planning & coordination', 'Equipment & setup', 'Judging panel', 'Certificates & prizes', 'Media coverage support'],
+    ideal: 'Schools wanting to host events',
+    duration: '1-2 Days Event'
   },
-  'financial-literacy': {
-    id: 'financial-literacy',
-    title: 'Financial Literacy',
-    subtitle: 'Money Management',
-    description: 'Essential life skills for managing money. From savings to investments, students learn practical financial concepts.',
-    longDescription: `Financial Literacy is a crucial life skill often missing from traditional education. Our program fills this gap by teaching students practical money management skills they'll use throughout their lives.
-
-Through simulations, games, and real-world exercises, students learn about savings, budgeting, investing, and building wealth responsibly.`,
-    icon: TrendingUp,
-    color: '#10B981',
-    gradient: 'from-green-500 to-teal-500',
-    features: [
-      'Personal finance fundamentals',
-      'Savings & budgeting techniques',
-      'Introduction to investing',
-      'Stock market simulation games',
-      'Cryptocurrency awareness',
-      'Tax basics & compliance',
-      'Real estate & asset building',
-      'Financial goal planning'
-    ],
-    curriculum: [
-      { grade: 'Grade 4-6', topics: 'Money basics, Saving habits, Needs vs wants' },
-      { grade: 'Grade 7-8', topics: 'Budgeting, Banking basics, Compound interest' },
-      { grade: 'Grade 9-10', topics: 'Stock market, Mutual funds, Portfolio building' },
-      { grade: 'Grade 11-12', topics: 'Advanced investing, Tax planning, Wealth creation' }
-    ],
-    pricing: 'Flexible pricing',
-    duration: '3 Months Program',
-    support: 'Finance Expert Support',
-    videoId: 'dQw4w9WgXcQ'
+  'iit-bombay-competitions': {
+    category: 'robotics',
+    title: 'Participate in Robotics Competitions at IIT Bombay',
+    description: 'Train students for national-level robotics competitions.',
+    features: ['Competition-specific training', 'Practice sessions', 'Travel coordination', 'Team mentorship', 'Post-competition analysis'],
+    ideal: 'Advanced students ready for competition',
+    duration: '3-4 Months'
   },
-  'teacher-training': {
-    id: 'teacher-training',
-    title: 'Teacher Training',
-    subtitle: 'Train Your Own Staff',
-    description: 'Empower your teachers to deliver skill education. Comprehensive training programs with certification.',
-    longDescription: `The Teacher Training program enables schools to build internal capacity for skill education. We train your existing teachers to become certified OLL educators who can independently run skill programs.
+  'robotics-competition-prep': {
+    category: 'robotics',
+    title: 'Preparation for Robotics Competitions',
+    description: 'General preparation for various robotics competitions.',
+    features: ['Competition landscape overview', 'Skill building workshops', 'Mock competitions', 'Team formation', 'Strategy sessions'],
+    ideal: 'Schools wanting competition exposure',
+    duration: '2-3 Months'
+  },
+  'icse-group3-kits': {
+    category: 'robotics',
+    title: 'Grade 9 & 10 ICSE Group 3 Subject Kits',
+    description: 'Specialized kits for ICSE curriculum Group 3 subjects.',
+    features: ['Curriculum-aligned content', 'Practical experiments', 'Theory integration', 'Exam preparation', 'Board-approved materials'],
+    ideal: 'ICSE schools',
+    duration: '2 Academic Years'
+  },
+  'afterschool-robotics': {
+    category: 'robotics',
+    title: 'Afterschool Robotics Classes',
+    description: 'Regular robotics classes after school hours.',
+    features: ['Flexible timings', 'Small batch sizes', 'Progressive curriculum', 'Regular assessments', 'Parent updates'],
+    ideal: 'Schools wanting extra-curricular programs',
+    duration: 'Ongoing'
+  },
+  'robotics-summer-camp': {
+    category: 'robotics',
+    title: 'Robotics Summer Camp',
+    description: 'Intensive summer program for robotics enthusiasts.',
+    features: ['Daily sessions', 'Project-based learning', 'Fun activities', 'Final showcase', 'Certificate of completion'],
+    ideal: 'Summer vacation engagement',
+    duration: '2-4 Weeks'
+  },
+  'robotics-ai-seminar': {
+    category: 'robotics',
+    title: 'Robotics & AI Seminar for Students',
+    description: 'One-day awareness seminar on robotics and AI.',
+    features: ['Interactive demos', 'Hands-on activities', 'Career guidance', 'Q&A sessions', 'Take-home materials'],
+    ideal: 'Introductory exposure',
+    duration: '1 Day'
+  },
+  'robotics-books': {
+    category: 'robotics',
+    title: 'Robotics Books',
+    description: 'Comprehensive robotics textbooks and workbooks.',
+    features: ['Grade-wise content', 'Illustrated guides', 'Activity sheets', 'Assessment tools', 'Digital resources'],
+    ideal: 'Self-paced learning',
+    duration: 'N/A'
+  },
+  'robotics-kits': {
+    category: 'robotics',
+    title: 'Robotics Kits',
+    description: 'Quality robotics kits for hands-on learning.',
+    features: ['Multiple skill levels', 'Reusable components', 'Instruction manuals', 'Online support', 'Replacement parts available'],
+    ideal: 'Practical learning',
+    duration: 'N/A'
+  },
 
-This approach ensures sustainability and reduces dependency on external educators over time.`,
-    icon: GraduationCap,
-    color: '#EC4899',
-    gradient: 'from-pink-500 to-rose-500',
-    features: [
-      'Skill-specific training modules',
-      'Modern pedagogy workshops',
-      'Hands-on practice sessions',
-      'OLL Educator Certification',
-      'Ongoing support & refresher courses',
-      'Access to OLL curriculum & materials',
-      'Community of trained educators',
-      'Annual re-certification programs'
-    ],
-    curriculum: [
-      { grade: 'Week 1', topics: 'Skill fundamentals, Teaching methodology, Tools training' },
-      { grade: 'Week 2', topics: 'Hands-on practice, Live teaching, Feedback sessions' },
-      { grade: 'Post-Training', topics: 'Ongoing support, Monthly check-ins, Resource updates' }
-    ],
-    pricing: 'Per-teacher pricing',
-    duration: '2 Weeks Intensive',
-    support: 'Continuous Support',
-    videoId: 'dQw4w9WgXcQ'
-  }
+  // Financial Literacy & Entrepreneurship
+  'entrepreneurship-workshop': {
+    category: 'financial-literacy',
+    title: 'Entrepreneurship 3 Day Workshop',
+    description: 'Intensive workshop to ignite entrepreneurial thinking.',
+    features: ['Idea generation', 'Business model basics', 'Pitch training', 'Mentor sessions', 'Mini pitch competition'],
+    ideal: 'Quick exposure to entrepreneurship',
+    duration: '3 Days'
+  },
+  'skill-titans-olympiad': {
+    category: 'financial-literacy',
+    title: 'Skill Titans TV Show & Entrepreneurship Olympiad',
+    description: 'Participate in India\'s first student entrepreneur TV show.',
+    features: ['School-level selection', 'Regional rounds', 'TV appearance opportunity', 'Investor pitching', 'Prizes & recognition'],
+    ideal: 'Aspiring young entrepreneurs',
+    duration: '3-4 Months'
+  },
+  'fl-curriculum': {
+    category: 'financial-literacy',
+    title: 'Financial Literacy & Entrepreneurship Program',
+    description: 'Comprehensive program integrated into school curriculum.',
+    features: ['Weekly classes', 'Interactive simulations', 'Real-world projects', 'Assessments', 'Certification'],
+    ideal: 'Long-term skill development',
+    duration: '1 Academic Year'
+  },
+  'ecell-opening': {
+    category: 'financial-literacy',
+    title: 'E-Cell Opening in School',
+    description: 'Establish an Entrepreneurship Cell in your school.',
+    features: ['Setup support', 'Student council formation', 'Event calendar', 'Mentorship network', 'Inter-school connections'],
+    ideal: 'Schools building entrepreneur culture',
+    duration: 'Ongoing'
+  },
+  'fl-summer-camp': {
+    category: 'financial-literacy',
+    title: 'Financial Literacy & Entrepreneurship Summer Camp',
+    description: 'Summer program combining money skills and business thinking.',
+    features: ['Fun learning activities', 'Stock market games', 'Business plan creation', 'Market day event', 'Certificates'],
+    ideal: 'Summer vacation engagement',
+    duration: '2-3 Weeks'
+  },
+
+  // AI
+  'ai-center-excellence': {
+    category: 'ai',
+    title: 'Launch an AI Center for Excellence',
+    description: 'Establish a dedicated AI learning hub in your school.',
+    features: ['Infrastructure setup', 'Hardware & software', 'Curriculum design', 'Trainer deployment', 'Industry partnerships'],
+    ideal: 'Schools investing in future tech',
+    duration: '1 Academic Year'
+  },
+  'agentic-ai-workshop': {
+    category: 'ai',
+    title: 'Agentic AI Workshop for Students',
+    description: 'Hands-on workshop on building AI agents.',
+    features: ['AI fundamentals', 'Agent building basics', 'Practical projects', 'Tool training', 'Take-home resources'],
+    ideal: 'Tech-enthusiast students',
+    duration: '2-3 Days'
+  },
+  'ai-seminar': {
+    category: 'ai',
+    title: 'AI Seminar',
+    description: 'Awareness seminar on AI and its applications.',
+    features: ['AI overview', 'Live demos', 'Career opportunities', 'Q&A', 'Resource kit'],
+    ideal: 'Introductory exposure',
+    duration: '1 Day'
+  },
+  'agentic-ai-summer-camp': {
+    category: 'ai',
+    title: 'Agentic AI Summer Camp',
+    description: 'Intensive summer program on AI and automation.',
+    features: ['Daily sessions', 'Project building', 'AI tools training', 'Final showcase', 'Certification'],
+    ideal: 'Summer vacation engagement',
+    duration: '2-4 Weeks'
+  },
+  'ai-services-agency-course': {
+    category: 'ai',
+    title: 'Start AI Services Agency Course',
+    description: 'Learn to build and run an AI services business.',
+    features: ['Business model training', 'AI tools mastery', 'Client management', 'Portfolio building', 'Mentorship'],
+    ideal: 'College students',
+    duration: '2-3 Months'
+  },
+
+  // Coding
+  'vibe-coding-seminar': {
+    category: 'coding',
+    title: 'Vibe Coding Seminar',
+    description: 'Fun and engaging coding awareness session.',
+    features: ['Interactive demos', 'Simple coding activities', 'Career insights', 'Q&A', 'Follow-up resources'],
+    ideal: 'Introductory exposure',
+    duration: '1 Day'
+  },
+  'coding-afterschool': {
+    category: 'coding',
+    title: 'Coding & Logic Building After School Classes',
+    description: 'Regular coding classes after school hours.',
+    features: ['Progressive curriculum', 'Small batches', 'Project-based', 'Regular assessments', 'Parent updates'],
+    ideal: 'Extra-curricular coding',
+    duration: 'Ongoing'
+  },
+  'coding-summer-camp': {
+    category: 'coding',
+    title: 'Coding Summer Camp',
+    description: 'Summer program for aspiring coders.',
+    features: ['Scratch to Python', 'Game development', 'Web basics', 'Final project', 'Certification'],
+    ideal: 'Summer vacation engagement',
+    duration: '2-4 Weeks'
+  },
+};
+
+const CATEGORY_INFO = {
+  'robotics': { icon: Cpu, color: '#D63031', gradient: 'from-red-500 to-orange-500', title: 'Robotics' },
+  'financial-literacy': { icon: TrendingUp, color: '#10B981', gradient: 'from-green-500 to-teal-500', title: 'Financial Literacy & Entrepreneurship' },
+  'ai': { icon: Brain, color: '#8B5CF6', gradient: 'from-purple-600 to-pink-500', title: 'AI & Machine Learning' },
+  'coding': { icon: Code, color: '#1E3A5F', gradient: 'from-blue-600 to-cyan-500', title: 'Coding & Programming' },
 };
 
 const SchoolOfferingDetailPage = () => {
   const navigate = useNavigate();
-  const { offeringId } = useParams();
+  const { categoryId, offeringId } = useParams();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
-  const offering = OFFERINGS_DATA[offeringId];
+  const offering = ALL_OFFERINGS[offeringId];
+  const category = CATEGORY_INFO[categoryId];
   
-  if (!offering) {
+  if (!offering || !category) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -223,14 +248,13 @@ const SchoolOfferingDetailPage = () => {
     );
   }
 
-  const IconComponent = offering.icon;
+  const IconComponent = category.icon;
 
   return (
     <>
       <Helmet>
         <title>{offering.title} | OLL School Programs</title>
         <meta name="description" content={offering.description} />
-        <link rel="canonical" href={`https://oll.co/school-offerings/${offering.id}`} />
       </Helmet>
 
       <div className="min-h-screen bg-slate-50">
@@ -248,7 +272,6 @@ const SchoolOfferingDetailPage = () => {
               
               <div className="hidden md:flex items-center gap-8">
                 <Link to="/school-offerings" className="text-slate-600 hover:text-[#1E3A5F] font-medium">All Programs</Link>
-                <Link to="/about" className="text-slate-600 hover:text-[#1E3A5F] font-medium">About</Link>
                 <Button 
                   onClick={() => navigate('/school')}
                   className="bg-[#D63031] hover:bg-[#b52828] text-white"
@@ -257,19 +280,12 @@ const SchoolOfferingDetailPage = () => {
                   Book a Meeting
                 </Button>
               </div>
-
-              <button 
-                className="md:hidden p-2"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              >
-                {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-              </button>
             </div>
           </div>
         </nav>
 
-        {/* Hero Section */}
-        <section className={`bg-gradient-to-br ${offering.gradient} py-16 md:py-20`}>
+        {/* Hero */}
+        <section className={`bg-gradient-to-br ${category.gradient} py-16`}>
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <Button 
               variant="ghost" 
@@ -277,15 +293,16 @@ const SchoolOfferingDetailPage = () => {
               className="text-white/80 hover:text-white hover:bg-white/10 mb-6"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              All Programs
+              Back to Programs
             </Button>
             
             <div className="grid md:grid-cols-2 gap-8 items-center">
               <div>
-                <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center mb-6">
-                  <IconComponent className="w-8 h-8 text-white" />
+                <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm mb-4">
+                  <IconComponent className="w-4 h-4" />
+                  {category.title}
                 </div>
-                <h1 className="text-4xl md:text-5xl font-bold text-white mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                <h1 className="text-3xl md:text-4xl font-bold text-white mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
                   {offering.title}
                 </h1>
                 <p className="text-white/80 text-lg mb-6">
@@ -300,14 +317,6 @@ const SchoolOfferingDetailPage = () => {
                     <Phone className="w-5 h-5 mr-2" />
                     Get Started
                   </Button>
-                  <Button 
-                    size="lg"
-                    variant="outline"
-                    className="border-white text-white hover:bg-white/10"
-                  >
-                    <Download className="w-5 h-5 mr-2" />
-                    Download Brochure
-                  </Button>
                 </div>
               </div>
               
@@ -321,17 +330,10 @@ const SchoolOfferingDetailPage = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Users className="w-5 h-5 text-white" />
+                    <Target className="w-5 h-5 text-white" />
                     <div>
-                      <div className="text-white/60 text-sm">Support</div>
-                      <div className="text-white font-medium">{offering.support}</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Award className="w-5 h-5 text-white" />
-                    <div>
-                      <div className="text-white/60 text-sm">Pricing</div>
-                      <div className="text-white font-medium">{offering.pricing}</div>
+                      <div className="text-white/60 text-sm">Ideal For</div>
+                      <div className="text-white font-medium">{offering.ideal}</div>
                     </div>
                   </div>
                 </div>
@@ -340,110 +342,36 @@ const SchoolOfferingDetailPage = () => {
           </div>
         </section>
 
-        {/* Content Section */}
+        {/* Content */}
         <section className="py-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid lg:grid-cols-3 gap-8">
-              {/* Main Content */}
-              <div className="lg:col-span-2 space-y-8">
-                {/* Description */}
-                <div className="bg-white rounded-2xl p-6 shadow-sm">
-                  <h2 className="text-2xl font-bold text-[#1E3A5F] mb-4">About This Program</h2>
-                  <div className="text-slate-600 whitespace-pre-line">
-                    {offering.longDescription}
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            {/* Features */}
+            <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm mb-8">
+              <h2 className="text-2xl font-bold text-[#1E3A5F] mb-6">What's Included</h2>
+              <div className="grid sm:grid-cols-2 gap-4">
+                {offering.features.map((feature, idx) => (
+                  <div key={idx} className="flex items-start gap-3">
+                    <CheckCircle className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
+                    <span className="text-slate-600">{feature}</span>
                   </div>
-                </div>
-
-                {/* Features */}
-                <div className="bg-white rounded-2xl p-6 shadow-sm">
-                  <h2 className="text-2xl font-bold text-[#1E3A5F] mb-4">What's Included</h2>
-                  <div className="grid sm:grid-cols-2 gap-3">
-                    {offering.features.map((feature, idx) => (
-                      <div key={idx} className="flex items-start gap-3">
-                        <CheckCircle className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
-                        <span className="text-slate-600">{feature}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Curriculum */}
-                <div className="bg-white rounded-2xl p-6 shadow-sm">
-                  <h2 className="text-2xl font-bold text-[#1E3A5F] mb-4">Curriculum Overview</h2>
-                  <div className="space-y-4">
-                    {offering.curriculum.map((item, idx) => (
-                      <div key={idx} className="border-l-4 border-[#D63031] pl-4 py-2">
-                        <div className="font-semibold text-[#1E3A5F]">{item.grade}</div>
-                        <div className="text-slate-600 text-sm">{item.topics}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                ))}
               </div>
+            </div>
 
-              {/* Sidebar */}
-              <div className="space-y-6">
-                {/* CTA Card */}
-                <div className="bg-gradient-to-br from-[#1E3A5F] to-[#2C5282] rounded-2xl p-6 text-white">
-                  <h3 className="text-xl font-bold mb-2">Ready to Get Started?</h3>
-                  <p className="text-white/80 text-sm mb-4">
-                    Schedule a call with our school partnerships team to discuss implementation.
-                  </p>
-                  <Button 
-                    onClick={() => navigate('/school')}
-                    className="w-full bg-white text-[#1E3A5F] hover:bg-slate-100"
-                  >
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Book a Meeting
-                  </Button>
-                </div>
-
-                {/* Quick Info */}
-                <div className="bg-white rounded-2xl p-6 shadow-sm">
-                  <h3 className="font-bold text-[#1E3A5F] mb-4">Quick Info</h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
-                        <Clock className="w-5 h-5 text-slate-600" />
-                      </div>
-                      <div>
-                        <div className="text-xs text-slate-500">Duration</div>
-                        <div className="font-medium text-slate-900">{offering.duration}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
-                        <Users className="w-5 h-5 text-slate-600" />
-                      </div>
-                      <div>
-                        <div className="text-xs text-slate-500">Support Level</div>
-                        <div className="font-medium text-slate-900">{offering.support}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center">
-                        <Target className="w-5 h-5 text-slate-600" />
-                      </div>
-                      <div>
-                        <div className="text-xs text-slate-500">Pricing</div>
-                        <div className="font-medium text-slate-900">{offering.pricing}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Contact */}
-                <div className="bg-slate-100 rounded-2xl p-6">
-                  <h3 className="font-bold text-[#1E3A5F] mb-2">Have Questions?</h3>
-                  <p className="text-slate-600 text-sm mb-4">
-                    Our team is here to help you choose the right program.
-                  </p>
-                  <Button variant="outline" className="w-full">
-                    <Phone className="w-4 h-4 mr-2" />
-                    Contact Us
-                  </Button>
-                </div>
-              </div>
+            {/* CTA */}
+            <div className="bg-gradient-to-br from-[#1E3A5F] to-[#2C5282] rounded-2xl p-8 text-center">
+              <h3 className="text-2xl font-bold text-white mb-4">Interested in this program?</h3>
+              <p className="text-white/80 mb-6">
+                Schedule a call with our team to discuss implementation for your school.
+              </p>
+              <Button 
+                size="lg"
+                onClick={() => navigate('/school')}
+                className="bg-white text-[#1E3A5F] hover:bg-slate-100"
+              >
+                <Calendar className="w-5 h-5 mr-2" />
+                Book a Meeting
+              </Button>
             </div>
           </div>
         </section>
