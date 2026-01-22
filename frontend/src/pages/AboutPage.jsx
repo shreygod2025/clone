@@ -465,9 +465,17 @@ const AboutPage = () => {
             Schools We Work With
           </h2>
           <div className="flex flex-wrap justify-center gap-3 mb-8">
-            {['Delhi Public School', 'Ryan International', 'DAV Public School', 'Kendriya Vidyalaya', 
-              'St. Xavier\'s', 'The Heritage School', 'Podar International', 'Vibgyor High', 
-              'Euro School', 'Billabong High', 'Orchid International', 'GEMS Education'].map((school, idx) => (
+            {[
+              'Greenlawns High School', 'G.D. Somani Memorial School', 'N.L. Dalmia High School',
+              'Hiranandani Foundation School', 'JBCN International School', 'Seven Square Academy',
+              'Goregaon Education Society English Medium School', 'Sanjeevani World School',
+              'Fravashi International Academy', 'Maneckji Cooper Education Trust', 'Excelsior School',
+              'J.N. Petit School', 'Seth Anandram Jaipuria School', 'St. Kabir School',
+              'St. Gregorios High School', 'St. Anne\'s High School Fort', 'St. Wilfred\'s School',
+              'Manav Mandir High School', 'Jankidevi Public School', 'Guardian School',
+              'Parle Tilak Vidyalaya', 'JB Vachha High School', 'Vedas International School',
+              'C.N.M. & N.D. Parekh ICSE School', 'Ram Ratna International School', 'Navodaya Central School'
+            ].map((school, idx) => (
               <span key={idx} className="px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-white text-sm">
                 {school}
               </span>
@@ -484,39 +492,57 @@ const AboutPage = () => {
           </h2>
           <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
             <div className="glass-card rounded-2xl overflow-hidden">
-              <div className="aspect-video bg-slate-100 relative">
+              <div className="aspect-video bg-slate-100 relative group">
                 <img 
-                  src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600" 
+                  src="https://img.youtube.com/vi/KJMH8EAB6NI/maxresdefault.jpg" 
                   alt="Skill Titans"
                   className="w-full h-full object-cover"
+                  onError={(e) => { e.target.src = 'https://img.youtube.com/vi/KJMH8EAB6NI/hqdefault.jpg'; }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-4">
                   <span className="px-3 py-1 bg-[#D63031] text-white text-xs rounded-full">
                     National TV Show
                   </span>
                 </div>
+                <a 
+                  href="https://www.youtube.com/watch?v=KJMH8EAB6NI"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-white/90 rounded-full flex items-center justify-center hover:scale-110 transition-transform"
+                >
+                  <Play className="w-6 h-6 text-[#D63031] ml-1" />
+                </a>
               </div>
               <div className="p-4">
-                <h3 className="font-bold text-[#1E3A5F] mb-1">Skill Titans</h3>
-                <p className="text-sm text-slate-600">Funding student entrepreneurs on National TV</p>
+                <h3 className="font-bold text-[#1E3A5F] mb-1">Skill Titans - TV Show on CNBC TV18</h3>
+                <p className="text-sm text-slate-600">India's first show where school students pitch to real investors</p>
               </div>
             </div>
             <div className="glass-card rounded-2xl overflow-hidden">
-              <div className="aspect-video bg-slate-100 relative">
+              <div className="aspect-video bg-slate-100 relative group">
                 <img 
-                  src="https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=600" 
+                  src="https://img.youtube.com/vi/B0n8-RYegVc/maxresdefault.jpg" 
                   alt="IIT Bombay Techfest"
                   className="w-full h-full object-cover"
+                  onError={(e) => { e.target.src = 'https://img.youtube.com/vi/B0n8-RYegVc/hqdefault.jpg'; }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-4">
                   <span className="px-3 py-1 bg-[#1E3A5F] text-white text-xs rounded-full">
-                    Competition
+                    National Level Competition
                   </span>
                 </div>
+                <a 
+                  href="https://www.youtube.com/watch?v=B0n8-RYegVc"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-white/90 rounded-full flex items-center justify-center hover:scale-110 transition-transform"
+                >
+                  <Play className="w-6 h-6 text-[#D63031] ml-1" />
+                </a>
               </div>
               <div className="p-4">
-                <h3 className="font-bold text-[#1E3A5F] mb-1">IIT Bombay Techfest</h3>
-                <p className="text-sm text-slate-600">National level robotics competition</p>
+                <h3 className="font-bold text-[#1E3A5F] mb-1">OLL Robotics Competition at IIT Bombay Techfest 2025</h3>
+                <p className="text-sm text-slate-600">Our students compete at India's largest science and technology festival</p>
               </div>
             </div>
           </div>
