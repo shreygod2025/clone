@@ -50,6 +50,9 @@ const AdminSettings = () => {
     title: '', description: '', type: 'Full-time', city: 'Remote', 
     skills_required: '', responsibilities: '', qualifications: '', is_active: true
   });
+  const [caseStudyForm, setCaseStudyForm] = useState({
+    school_name: '', video_id: '', description: '', order: 0, is_active: true
+  });
   
   const [searchQuery, setSearchQuery] = useState('');
 
