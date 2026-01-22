@@ -116,6 +116,14 @@ const OUR_EVENTS = [
 const SchoolOfferingsPage = () => {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [caseStudies, setCaseStudies] = useState([]);
+
+  useEffect(() => {
+    // Fetch case studies from backend
+    axios.get(`${API}/case-studies`)
+      .then(res => setCaseStudies(res.data || []))
+      .catch(() => setCaseStudies([]));
+  }, []);
 
   return (
     <>
