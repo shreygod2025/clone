@@ -186,6 +186,31 @@ const AdminStudentCRM = () => {
     }
   };
 
+  const handleCancelDemo = async () => {
+    if (!cancelDemoReason.trim()) {
+      toast.error('Please provide a reason for cancellation');
+      return;
+    }
+    try {
+      await axios.patch(`${API}/students/inquiry/${showCancelDemoModal.id}`, {
+        demo_date: null,
+        demo_time: null,
+        demo_cancelled: true,
+        notes: showCancelDemoModal.notes 
+          ? `${showCancelDemoModal.notes}\n\n[DEMO CANCELLED] ${format(new Date(), 'MMM d, yyyy')}: ${cancelDemoReason}` 
+          : `[DEMO CANCELLED] ${format(new Date(), 'MMM d, yyyy')}: ${cancelDemoReason}`
+      }, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Demo cancelled successfully');
+      setShowCancelDemoModal(null);
+      setCancelDemoReason('');
+      fetchInquiries();
+    } catch (error) {
+      toast.error('Failed to cancel demo');
+    }
+  };
+
   const handleConvert = async () => {
     if (!convertData.amount || !convertData.sessions) {
       toast.error('Please enter amount and number of sessions');
