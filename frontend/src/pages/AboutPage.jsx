@@ -615,6 +615,7 @@ const AboutPage = () => {
 
       <Footer />
     </div>
+    </>
   );
 };
 
