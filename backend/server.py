@@ -3930,6 +3930,44 @@ async def delete_team_requirement(req_id: str, user: dict = Depends(get_current_
     await db.team_requirements.delete_one({"id": req_id})
     return {"message": "Deleted successfully"}
 
+# ========================
+# SCHOOL CASE STUDIES
+# ========================
+
+@api_router.get("/case-studies")
+async def get_case_studies(all: bool = False):
+    query = {} if all else {"is_active": True}
+    case_studies = await db.case_studies.find(query, {"_id": 0}).sort("order", 1).to_list(50)
+    return case_studies
+
+@api_router.post("/case-studies")
+async def create_case_study(data: dict, user: dict = Depends(get_current_user)):
+    doc = {
+        "id": str(uuid.uuid4()),
+        "school_name": data.get("school_name", ""),
+        "video_id": data.get("video_id", ""),
+        "description": data.get("description", ""),
+        "order": data.get("order", 0),
+        "is_active": data.get("is_active", True),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": user.get("email")
+    }
+    await db.case_studies.insert_one(doc)
+    return {"message": "Case study created", "id": doc["id"]}
+
+@api_router.patch("/case-studies/{study_id}")
+async def update_case_study(study_id: str, data: dict, user: dict = Depends(get_current_user)):
+    update_data = {k: v for k, v in data.items() if k != "id"}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.case_studies.update_one({"id": study_id}, {"$set": update_data})
+    study = await db.case_studies.find_one({"id": study_id}, {"_id": 0})
+    return study
+
+@api_router.delete("/case-studies/{study_id}")
+async def delete_case_study(study_id: str, user: dict = Depends(get_current_user)):
+    await db.case_studies.delete_one({"id": study_id})
+    return {"message": "Deleted successfully"}
+
 # Educator Form Configuration
 @api_router.get("/educator-config")
 async def get_educator_config():
