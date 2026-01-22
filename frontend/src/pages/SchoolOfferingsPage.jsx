@@ -79,10 +79,15 @@ const SCHOOL_CATEGORIES = [
 
 // Partner Schools
 const PARTNER_SCHOOLS = [
-  'Delhi Public School', 'Ryan International', 'DAV Public School',
-  'Kendriya Vidyalaya', 'St. Xavier\'s', 'The Heritage School',
-  'Podar International', 'Vibgyor High', 'Euro School',
-  'Billabong High', 'Orchid International', 'GEMS Education'
+  'Greenlawns High School', 'G.D. Somani Memorial School', 'N.L. Dalmia High School',
+  'Hiranandani Foundation School', 'JBCN International School', 'Seven Square Academy',
+  'Goregaon Education Society English Medium School', 'Sanjeevani World School',
+  'Fravashi International Academy', 'Maneckji Cooper Education Trust', 'Excelsior School',
+  'J.N. Petit School', 'Seth Anandram Jaipuria School', 'St. Kabir School',
+  'St. Gregorios High School', 'St. Anne\'s High School Fort', 'St. Wilfred\'s School',
+  'Manav Mandir High School', 'Jankidevi Public School', 'Guardian School',
+  'Parle Tilak Vidyalaya', 'JB Vachha High School', 'Vedas International School',
+  'C.N.M. & N.D. Parekh ICSE School', 'Ram Ratna International School', 'Navodaya Central School'
 ];
 
 // Events
