@@ -1105,6 +1105,87 @@ const AdminSettings = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Case Study Modal */}
+      <Dialog open={showCaseStudyModal} onOpenChange={setShowCaseStudyModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Video className="w-5 h-5 text-[#D63031]" />
+              {editingItem ? 'Edit' : 'Add'} Case Study
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">School Name *</label>
+              <Input
+                value={caseStudyForm.school_name}
+                onChange={(e) => setCaseStudyForm({ ...caseStudyForm, school_name: e.target.value })}
+                placeholder="e.g., Greenlawns High School"
+                data-testid="case-study-school-name"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">YouTube Video ID *</label>
+              <Input
+                value={caseStudyForm.video_id}
+                onChange={(e) => setCaseStudyForm({ ...caseStudyForm, video_id: e.target.value })}
+                placeholder="e.g., dQw4w9WgXcQ"
+                data-testid="case-study-video-id"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Enter only the video ID from the YouTube URL (e.g., for youtube.com/watch?v=<strong>dQw4w9WgXcQ</strong>, enter dQw4w9WgXcQ)
+              </p>
+            </div>
+            {caseStudyForm.video_id && (
+              <div className="border rounded-lg overflow-hidden">
+                <img 
+                  src={`https://img.youtube.com/vi/${caseStudyForm.video_id}/mqdefault.jpg`} 
+                  alt="Video thumbnail preview"
+                  className="w-full aspect-video object-cover"
+                />
+              </div>
+            )}
+            <div>
+              <label className="block text-sm font-medium mb-1">Description (optional)</label>
+              <Textarea
+                value={caseStudyForm.description}
+                onChange={(e) => setCaseStudyForm({ ...caseStudyForm, description: e.target.value })}
+                placeholder="Brief description of the case study"
+                rows={2}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Display Order</label>
+                <Input
+                  type="number"
+                  value={caseStudyForm.order}
+                  onChange={(e) => setCaseStudyForm({ ...caseStudyForm, order: parseInt(e.target.value) || 0 })}
+                  placeholder="0"
+                />
+              </div>
+              <div className="flex items-center gap-2 pt-6">
+                <input
+                  type="checkbox"
+                  id="case-study-active"
+                  checked={caseStudyForm.is_active}
+                  onChange={(e) => setCaseStudyForm({ ...caseStudyForm, is_active: e.target.checked })}
+                  className="rounded"
+                />
+                <label htmlFor="case-study-active" className="text-sm">Visible on website</label>
+              </div>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => setShowCaseStudyModal(false)} className="flex-1">Cancel</Button>
+              <Button onClick={handleSaveCaseStudy} className="flex-1 bg-[#D63031] hover:bg-[#c0392b]">
+                <Save className="w-4 h-4 mr-2" />
+                {editingItem ? 'Update' : 'Add'} Case Study
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
