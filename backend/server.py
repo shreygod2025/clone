@@ -941,6 +941,12 @@ class EducatorOnboarding(BaseModel):
     id_card_generated: bool = False
     certificate_generated: bool = False
     
+    # Admin verification
+    documents_verified: bool = False
+    documents_verified_by: str = ""
+    documents_verified_at: Optional[str] = None
+    verification_notes: str = ""
+    
     # Meta
     status: str = "in_progress"  # in_progress, completed, on_hold
     started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -978,6 +984,8 @@ class EducatorOnboardingUpdate(BaseModel):
     quiz_passed: Optional[bool] = None
     curriculum_videos_watched: Optional[List[str]] = None
     assessment_passed: Optional[bool] = None
+    documents_verified: Optional[bool] = None
+    verification_notes: Optional[str] = None
     status: Optional[str] = None
 
 # Training content models
