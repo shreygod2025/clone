@@ -194,6 +194,65 @@ const AdminTeamApplications = () => {
     }
   };
 
+  const handleSaveRequirement = async () => {
+    if (!requirementForm.title || !requirementForm.department) {
+      toast.error('Please fill required fields');
+      return;
+    }
+    try {
+      if (editingRequirement) {
+        await axios.patch(`${API}/team-requirements/${editingRequirement.id}`, requirementForm, {
+          headers: getAuthHeaders()
+        });
+        toast.success('Requirement updated');
+      } else {
+        await axios.post(`${API}/team-requirements`, requirementForm, {
+          headers: getAuthHeaders()
+        });
+        toast.success('Requirement created');
+      }
+      setEditingRequirement(null);
+      setRequirementForm({
+        title: '',
+        department: '',
+        location: '',
+        type: 'full_time',
+        description: '',
+        requirements: '',
+        is_active: true
+      });
+      fetchTeamRequirements();
+    } catch (error) {
+      toast.error('Failed to save requirement');
+    }
+  };
+
+  const handleDeleteRequirement = async (id) => {
+    if (!window.confirm('Delete this requirement?')) return;
+    try {
+      await axios.delete(`${API}/team-requirements/${id}`, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Requirement deleted');
+      fetchTeamRequirements();
+    } catch (error) {
+      toast.error('Failed to delete requirement');
+    }
+  };
+
+  const handleEditRequirement = (req) => {
+    setEditingRequirement(req);
+    setRequirementForm({
+      title: req.title || '',
+      department: req.department || '',
+      location: req.location || '',
+      type: req.type || 'full_time',
+      description: req.description || '',
+      requirements: req.requirements || '',
+      is_active: req.is_active !== false
+    });
+  };
+
   const filteredApplications = applications.filter(app => {
     const matchesSearch = !searchQuery || 
       app.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
