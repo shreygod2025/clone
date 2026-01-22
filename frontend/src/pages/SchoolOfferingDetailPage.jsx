@@ -250,11 +250,48 @@ const SchoolOfferingDetailPage = () => {
 
   const IconComponent = category.icon;
 
+  // Generate rich SEO keywords based on category and offering
+  const seoKeywords = `${offering.title}, ${category.title} for schools, school ${category.title.toLowerCase()} program, ${category.title.toLowerCase()} curriculum India, OLL ${category.title.toLowerCase()}, school skill education`;
+
   return (
     <>
       <Helmet>
-        <title>{offering.title} | OLL School Programs</title>
-        <meta name="description" content={offering.description} />
+        <title>{offering.title} for Schools | OLL - India's #1 Skill Education</title>
+        <meta name="description" content={`${offering.description} Best ${category.title.toLowerCase()} program for schools in India. Duration: ${offering.duration}. Ideal for: ${offering.ideal}. Book a demo today!`} />
+        <meta name="keywords" content={seoKeywords} />
+        <link rel="canonical" href={`https://oll.co/school-offerings/${categoryId}/${offeringId}`} />
+        
+        {/* Open Graph */}
+        <meta property="og:title" content={`${offering.title} | OLL School Programs`} />
+        <meta property="og:description" content={offering.description} />
+        <meta property="og:type" content="product" />
+        <meta property="og:url" content={`https://oll.co/school-offerings/${categoryId}/${offeringId}`} />
+        
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={`${offering.title} | OLL`} />
+        <meta name="twitter:description" content={offering.description} />
+        
+        {/* Structured Data */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Course",
+            "name": offering.title,
+            "description": offering.description,
+            "provider": {
+              "@type": "Organization",
+              "name": "OLL - Open Learning Labs",
+              "sameAs": "https://oll.co"
+            },
+            "educationalLevel": "K-12",
+            "isAccessibleForFree": false,
+            "offers": {
+              "@type": "Offer",
+              "category": "Educational Program"
+            }
+          })}
+        </script>
       </Helmet>
 
       <div className="min-h-screen bg-slate-50">
