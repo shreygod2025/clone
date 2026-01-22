@@ -600,19 +600,7 @@ const AboutPage = () => {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-[#1E3A5F] text-white py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <img 
-            src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/rugags0w_OLL-horizontal-logo-white.png" 
-            alt="OLL" 
-            className="h-10 mx-auto mb-4"
-          />
-          <p className="text-white/70 text-sm">
-            © 2024 OLL. All rights reserved.
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };
