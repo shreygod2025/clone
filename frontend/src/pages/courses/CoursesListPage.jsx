@@ -114,9 +114,6 @@ const CoursesListPage = () => {
                     <div className="absolute inset-0 flex items-center justify-center">
                       <span className="text-6xl">{course.emoji}</span>
                     </div>
-                    <div className="absolute top-4 right-4 bg-white/20 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm">
-                      {course.ageGroups[0].split(' ')[0]} - {course.ageGroups[course.ageGroups.length - 1].split(' ')[0]}
-                    </div>
                   </div>
                   
                   {/* Course Content */}
