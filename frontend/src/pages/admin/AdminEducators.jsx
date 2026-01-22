@@ -16,8 +16,8 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const STATUS_SECTIONS = [
   { value: 'new', label: 'New Applications', color: 'bg-blue-500' },
   { value: 'demo_scheduled', label: 'Demo Scheduled', color: 'bg-purple-500' },
-  { value: 'demo_completed', label: 'Demo Completed', color: 'bg-orange-500' },
-  { value: 'onboarded', label: 'Onboarded', color: 'bg-green-500' },
+  { value: 'onboarding', label: 'Onboarding', color: 'bg-orange-500' },
+  { value: 'active', label: 'Active Educators', color: 'bg-green-500' },
   { value: 'archived', label: 'Archived', color: 'bg-slate-400' },
 ];
 
