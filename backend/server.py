@@ -2745,7 +2745,7 @@ async def direct_onboard_educator(data: dict, user: dict = Depends(get_current_u
     if user.get("role") not in ["admin", "team_member"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
-    # Create educator application with onboarded status
+    # Create educator application with onboarding status
     educator = EducatorApplication(
         name=data.get("name", ""),
         email=data.get("email", ""),
@@ -2753,7 +2753,7 @@ async def direct_onboard_educator(data: dict, user: dict = Depends(get_current_u
         skills=data.get("skills", []),
         city=data.get("city", ""),
         experience=data.get("experience", ""),
-        status="onboarded",
+        status="onboarding",
         source="direct_onboard",
         added_by=user.get("id", "")
     )
