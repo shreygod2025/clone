@@ -20,6 +20,7 @@ import GrowthPartnerPage from "./pages/GrowthPartnerPage";
 import EducatorDashboard from "./pages/EducatorDashboard";
 import EducatorOnboarding from "./pages/EducatorOnboarding";
 import JoinTeamPage from "./pages/JoinTeamPage";
+import OfferingsPage from "./pages/OfferingsPage";
 
 // Course SEO Pages
 import CoursesListPage from "./pages/courses/CoursesListPage";
