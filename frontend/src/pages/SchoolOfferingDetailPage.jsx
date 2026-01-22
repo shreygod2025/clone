@@ -761,7 +761,39 @@ const SchoolOfferingDetailPage = () => {
 
         {/* Content */}
         <section className="py-16">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            
+            {/* Program Details Grid */}
+            <div className="grid md:grid-cols-3 gap-6 mb-12">
+              <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
+                <Clock className="w-8 h-8 text-[#D63031] mb-3" />
+                <h3 className="font-semibold text-[#1E3A5F] mb-1">Duration</h3>
+                <p className="text-slate-600">{offering.duration}</p>
+              </div>
+              <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
+                <GraduationCap className="w-8 h-8 text-[#D63031] mb-3" />
+                <h3 className="font-semibold text-[#1E3A5F] mb-1">Grade Level</h3>
+                <p className="text-slate-600">{offering.grades || 'All grades'}</p>
+              </div>
+              <div className="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
+                <Users className="w-8 h-8 text-[#D63031] mb-3" />
+                <h3 className="font-semibold text-[#1E3A5F] mb-1">Batch Size</h3>
+                <p className="text-slate-600">{offering.batchSize || 'Flexible'}</p>
+              </div>
+            </div>
+
+            {/* Long Description */}
+            {offering.longDescription && (
+              <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm mb-8">
+                <h2 className="text-2xl font-bold text-[#1E3A5F] mb-6">Program Overview</h2>
+                <div className="prose prose-slate max-w-none">
+                  {offering.longDescription.split('\n\n').map((para, idx) => (
+                    <p key={idx} className="text-slate-600 mb-4 whitespace-pre-line">{para}</p>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Features */}
             <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm mb-8">
               <h2 className="text-2xl font-bold text-[#1E3A5F] mb-6">What's Included</h2>
@@ -775,20 +807,57 @@ const SchoolOfferingDetailPage = () => {
               </div>
             </div>
 
+            {/* Learning Outcomes */}
+            {offering.outcomes && (
+              <div className="bg-gradient-to-br from-slate-50 to-white rounded-2xl p-6 md:p-8 shadow-sm border border-slate-100 mb-8">
+                <h2 className="text-2xl font-bold text-[#1E3A5F] mb-6">Learning Outcomes</h2>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {offering.outcomes.map((outcome, idx) => (
+                    <div key={idx} className="flex items-center gap-3 bg-white p-3 rounded-lg shadow-sm">
+                      <Award className="w-5 h-5 text-[#D63031] shrink-0" />
+                      <span className="text-slate-700 font-medium">{outcome}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Ideal For */}
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 mb-8">
+              <div className="flex items-start gap-4">
+                <Target className="w-8 h-8 text-blue-600 shrink-0" />
+                <div>
+                  <h3 className="text-lg font-bold text-blue-800 mb-2">Ideal For</h3>
+                  <p className="text-blue-700">{offering.ideal}</p>
+                </div>
+              </div>
+            </div>
+
             {/* CTA */}
             <div className="bg-gradient-to-br from-[#1E3A5F] to-[#2C5282] rounded-2xl p-8 text-center">
-              <h3 className="text-2xl font-bold text-white mb-4">Interested in this program?</h3>
-              <p className="text-white/80 mb-6">
-                Schedule a call with our team to discuss implementation for your school.
+              <h3 className="text-2xl font-bold text-white mb-4">Ready to bring {category.title} to your school?</h3>
+              <p className="text-white/80 mb-6 max-w-xl mx-auto">
+                Schedule a call with our team to discuss how we can implement this program at your school.
               </p>
-              <Button 
-                size="lg"
-                onClick={() => navigate('/school')}
-                className="bg-white text-[#1E3A5F] hover:bg-slate-100"
-              >
-                <Calendar className="w-5 h-5 mr-2" />
-                Book a Meeting
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button 
+                  size="lg"
+                  onClick={() => navigate('/school')}
+                  className="bg-white text-[#1E3A5F] hover:bg-slate-100"
+                >
+                  <Calendar className="w-5 h-5 mr-2" />
+                  Book a Meeting
+                </Button>
+                <Button 
+                  size="lg"
+                  variant="outline"
+                  onClick={() => navigate('/school-offerings')}
+                  className="border-white text-white hover:bg-white/10"
+                >
+                  <ArrowLeft className="w-5 h-5 mr-2" />
+                  View All Programs
+                </Button>
+              </div>
             </div>
           </div>
         </section>
