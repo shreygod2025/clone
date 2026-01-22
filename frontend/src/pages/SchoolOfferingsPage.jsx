@@ -136,7 +136,7 @@ const SchoolOfferingsPage = () => {
               </Link>
               
               <div className="hidden md:flex items-center gap-8">
-                <Link to="/courses" className="text-slate-600 hover:text-[#1E3A5F] font-medium">Courses</Link>
+                <Link to="/offerings" className="text-slate-600 hover:text-[#1E3A5F] font-medium">Offerings</Link>
                 <Link to="/about" className="text-slate-600 hover:text-[#1E3A5F] font-medium">About</Link>
                 <Button 
                   onClick={() => navigate('/school')}
