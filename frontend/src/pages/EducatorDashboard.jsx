@@ -660,6 +660,43 @@ const EducatorDashboard = () => {
               ))}
             </div>
 
+            {/* Downloads Section */}
+            <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100 mb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                    <Award className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-[#1E3A5F]">Your Documents</h3>
+                    <p className="text-xs text-slate-500">Download your official OLL credentials</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={downloadIDCard} 
+                    disabled={downloading.idCard}
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                  >
+                    {downloading.idCard ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <CreditCard className="w-3 h-3 mr-1" />}
+                    ID Card
+                  </Button>
+                  <Button 
+                    onClick={downloadCertificate} 
+                    disabled={downloading.certificate}
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                  >
+                    {downloading.certificate ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Award className="w-3 h-3 mr-1" />}
+                    Certificate
+                  </Button>
+                </div>
+              </div>
+            </div>
+
             {/* Availability Toggle */}
             <div className={`mb-4 p-3 rounded-xl flex items-center justify-between ${
               isAvailable ? 'bg-green-50 border border-green-200' : 'bg-orange-50 border border-orange-200'
