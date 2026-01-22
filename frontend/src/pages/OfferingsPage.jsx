@@ -404,11 +404,6 @@ const OfferingsPage = () => {
                 </div>
               </div>
             </section>
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                </div>
-              </div>
-            </section>
 
             {/* Partner Schools */}
             <section className="py-16 bg-gradient-to-br from-slate-900 to-slate-800">
