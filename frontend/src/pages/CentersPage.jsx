@@ -234,6 +234,7 @@ const CentersPage = () => {
 
       <Footer />
     </div>
+    </>
   );
 };
 
