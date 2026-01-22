@@ -110,10 +110,9 @@ const EducatorDashboard = () => {
     fetchApplicationData();
     
     // Check if educator needs to complete onboarding
-    if (user?.status === 'onboarding') {
-      // Redirect to onboarding for educators in onboarding status
-      navigate('/educator-onboarding');
-      return;
+    if (user?.status === 'onboarding' || user?.status === 'onboarded') {
+      // Check onboarding completion status
+      checkOnboardingStatus();
     }
     
     if (user?.status === 'active') {
@@ -121,6 +120,28 @@ const EducatorDashboard = () => {
       fetchAvailableEducators();
     }
   }, [isLoggedIn, user, navigate, authLoading]);
+
+  const checkOnboardingStatus = async () => {
+    try {
+      const educatorId = user?.educator_id || user?.id;
+      const response = await axios.get(`${API}/educator/onboarding/${educatorId}`, {
+        headers: getAuthHeaders()
+      });
+      const onboarding = response.data?.onboarding;
+      // If onboarding not completed, redirect to onboarding page
+      if (!onboarding || onboarding.status !== 'completed') {
+        navigate('/educator-onboarding');
+      } else {
+        // Onboarding complete, show demos
+        fetchDemos();
+        fetchAvailableEducators();
+      }
+    } catch (error) {
+      console.error('Failed to check onboarding status:', error);
+      // If no onboarding record, redirect to onboarding
+      navigate('/educator-onboarding');
+    }
+  };
 
   const getAuthHeaders = () => ({
     'Authorization': `Bearer ${token}`,
