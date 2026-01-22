@@ -223,7 +223,10 @@ const LandingPage = () => {
         </DialogContent>
       </Dialog>
       
-      <Footer variant="compact" />
+      {/* Footer - shows on scroll */}
+      <div className={`transition-all duration-500 ${showFooter ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`}>
+        <Footer />
+      </div>
     </div>
     </>
   );
