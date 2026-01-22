@@ -2718,6 +2718,8 @@ async def get_curriculum_assessment(educator_id: str):
 # PDF Generation Helper Functions
 def generate_id_card_pdf(educator_data, onboarding_data) -> BytesIO:
     """Generate ID Card PDF based on OLL template"""
+    from reportlab.lib.utils import ImageReader
+    
     buffer = BytesIO()
     
     # ID Card dimensions (similar to credit card - 3.375 x 2.125 inches, scaled up)
@@ -2754,6 +2756,11 @@ def generate_id_card_pdf(educator_data, onboarding_data) -> BytesIO:
     c.setLineWidth(3)
     c.circle(width/2, height - 180, 70, stroke=1, fill=0)
     
+    # Add text inside placeholder
+    c.setFillColor(HexColor('#CCCCCC'))
+    c.setFont("Helvetica", 10)
+    c.drawCentredString(width/2, height - 185, "Photo")
+    
     # Name
     c.setFillColor(black)
     c.setFont("Helvetica-Bold", 22)
@@ -2762,30 +2769,37 @@ def generate_id_card_pdf(educator_data, onboarding_data) -> BytesIO:
     
     # Title/Role
     c.setFont("Helvetica", 16)
+    c.setFillColor(red)
     c.drawCentredString(width/2, height - 305, "OLL Educator")
     
-    # Phone number with icon
+    # Phone number
+    c.setFillColor(black)
     c.setFont("Helvetica", 12)
     phone = educator_data.get('phone', '')
-    c.drawString(40, 130, f"📞 +91 {phone}")
+    c.drawString(40, 130, f"Phone: +91 {phone}")
     
     # ID Number
     educator_id = educator_data.get('id', '')[:8].upper()
-    c.drawString(40, 105, f"🆔 ID: {educator_id}")
+    c.drawString(40, 105, f"ID: {educator_id}")
     
-    # Generate QR Code
+    # Generate QR Code and save to temp file
     qr = qrcode.QRCode(version=1, box_size=3, border=1)
     qr.add_data(f"OLL-EDU-{educator_id}")
     qr.make(fit=True)
     qr_img = qr.make_image(fill_color="black", back_color="white")
     
-    # Save QR to temp file and draw
-    qr_buffer = BytesIO()
-    qr_img.save(qr_buffer, format='PNG')
-    qr_buffer.seek(0)
+    # Save QR to temp file
+    qr_temp_path = UPLOAD_DIR / f"qr_temp_{educator_id}.png"
+    qr_img.save(str(qr_temp_path))
     
     # Draw QR code
-    c.drawImage(qr_buffer, width - 100, 85, width=70, height=70)
+    c.drawImage(str(qr_temp_path), width - 100, 85, width=70, height=70)
+    
+    # Clean up temp file
+    try:
+        os.remove(qr_temp_path)
+    except:
+        pass
     
     c.save()
     buffer.seek(0)
