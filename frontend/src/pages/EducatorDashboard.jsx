@@ -83,6 +83,7 @@ const EducatorDashboard = () => {
   const [incompleteReason, setIncompleteReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [rescheduleData, setRescheduleData] = useState({ date: null, time: '' });
+  const [downloading, setDownloading] = useState({ idCard: false, certificate: false });
   
   // Query state
   const [queryStep, setQueryStep] = useState('category'); // category, subcategory, details
