@@ -528,6 +528,19 @@ const AdminStudentCRM = () => {
               <CalendarClock className="w-3 h-3" />
               {inquiry.demo_date ? 'Reschedule' : 'Add Demo'}
             </button>
+            {inquiry.demo_date && (
+              <button
+                onClick={() => {
+                  setShowCancelDemoModal(inquiry);
+                  setCancelDemoReason('');
+                }}
+                className="text-xs px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 font-medium"
+                data-testid={`cancel-demo-${inquiry.id}`}
+              >
+                <X className="w-3 h-3" />
+                Cancel Demo
+              </button>
+            )}
             {baseButtons}
             <button
               onClick={() => handleArchive(inquiry)}
