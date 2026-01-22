@@ -218,7 +218,7 @@ const SchoolOfferingsPage = () => {
           </div>
         </section>
 
-        {/* Offerings by Category */}
+        {/* Offerings by Category - All Expanded */}
         <section id="offerings" className="py-16 md:py-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
@@ -230,7 +230,7 @@ const SchoolOfferingsPage = () => {
               </p>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-8">
               {SCHOOL_CATEGORIES.map((category) => (
                 <div 
                   key={category.id}
@@ -238,38 +238,38 @@ const SchoolOfferingsPage = () => {
                   data-testid={`category-${category.id}`}
                 >
                   {/* Category Header */}
-                  <button
-                    onClick={() => setExpandedCategory(expandedCategory === category.id ? null : category.id)}
-                    className={`w-full p-6 flex items-center justify-between bg-gradient-to-r ${category.gradient} text-white`}
-                  >
+                  <div className={`p-5 bg-gradient-to-r ${category.gradient} text-white`}>
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
                         <category.icon className="w-6 h-6" />
                       </div>
-                      <div className="text-left">
+                      <div>
                         <h3 className="text-xl font-bold">{category.title}</h3>
-                        <p className="text-white/70 text-sm">{category.subtitle} • {category.offerings.length} programs</p>
+                        <p className="text-white/80 text-sm">{category.subtitle} • {category.offerings.length} programs</p>
                       </div>
                     </div>
-                    <ChevronRight className={`w-6 h-6 transition-transform ${expandedCategory === category.id ? 'rotate-90' : ''}`} />
-                  </button>
+                  </div>
 
-                  {/* Offerings List */}
-                  {expandedCategory === category.id && (
-                    <div className="p-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {/* Offerings Grid - Always Visible */}
+                  <div className="p-6">
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       {category.offerings.map((offering) => (
                         <Link
                           key={offering.id}
                           to={`/school-offerings/${category.id}/${offering.id}`}
-                          className="flex items-center gap-3 p-4 rounded-xl border border-slate-200 hover:border-[#D63031] hover:bg-red-50/30 transition-all group"
+                          className="group flex items-center gap-3 p-4 rounded-xl bg-slate-50 border-2 border-transparent hover:border-[#D63031] hover:bg-red-50/50 transition-all cursor-pointer"
                           data-testid={`offering-${offering.id}`}
                         >
-                          <CheckCircle className="w-5 h-5 text-slate-400 group-hover:text-[#D63031] shrink-0" />
-                          <span className="text-slate-700 text-sm group-hover:text-[#D63031]">{offering.title}</span>
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${category.color}15` }}>
+                            <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" style={{ color: category.color }} />
+                          </div>
+                          <span className="text-slate-700 text-sm font-medium group-hover:text-[#D63031] transition-colors leading-tight">
+                            {offering.title}
+                          </span>
                         </Link>
                       ))}
                     </div>
-                  )}
+                  </div>
                 </div>
               ))}
             </div>
