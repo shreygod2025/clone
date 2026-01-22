@@ -71,6 +71,7 @@ function App() {
     <AuthProvider>
       <UserAuthProvider>
         <BrowserRouter>
+          <ScrollToTop />
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={<LandingPage />} />
@@ -85,7 +86,13 @@ function App() {
             <Route path="/blogs" element={<BlogsPage />} />
             <Route path="/blogs/:slug" element={<BlogDetailPage />} />
             <Route path="/faq" element={<FAQPage />} />
+            <Route path="/faqs" element={<FAQPage />} />
             <Route path="/centers" element={<CentersPage />} />
+            
+            {/* Legal Pages */}
+            <Route path="/terms" element={<TermsPage />} />
+            <Route path="/privacy" element={<PrivacyPage />} />
+            <Route path="/refund-policy" element={<RefundPolicyPage />} />
             
             {/* User Auth Routes */}
             <Route path="/login" element={<LoginPage />} />
