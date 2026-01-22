@@ -342,11 +342,12 @@ const SchoolOfferingsPage = () => {
                   className="bg-slate-50 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow"
                   data-testid={`event-${event.id}`}
                 >
-                  <div className="aspect-video relative">
+                  <div className="aspect-video relative group">
                     <img 
                       src={event.image} 
                       alt={event.title}
                       className="w-full h-full object-cover"
+                      onError={(e) => { e.target.src = `https://img.youtube.com/vi/${event.videoId}/hqdefault.jpg`; }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent flex items-end p-6">
                       <div>
@@ -355,9 +356,14 @@ const SchoolOfferingsPage = () => {
                         </span>
                       </div>
                     </div>
-                    <button className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-white/90 rounded-full flex items-center justify-center hover:scale-110 transition-transform">
+                    <a 
+                      href={`https://www.youtube.com/watch?v=${event.videoId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-white/90 rounded-full flex items-center justify-center hover:scale-110 transition-transform"
+                    >
                       <Play className="w-6 h-6 text-[#D63031] ml-1" />
-                    </button>
+                    </a>
                   </div>
                   <div className="p-6">
                     <h3 className="text-xl font-bold text-[#1E3A5F] mb-2">{event.title}</h3>
