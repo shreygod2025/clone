@@ -414,7 +414,7 @@ const AdminSettings = () => {
             {filteredCaseStudies.length === 0 ? (
               <div className="bg-white rounded-xl p-8 text-center text-slate-500">
                 <Video className="w-12 h-12 mx-auto text-slate-300 mb-4" />
-                <p>No case studies yet. Click "Add Case Study" to add school success stories.</p>
+                <p>No case studies yet. Click &quot;Add Case Study&quot; to add school success stories.</p>
                 <p className="text-sm mt-2">These will be displayed on the School Offerings and About pages.</p>
               </div>
             ) : (
