@@ -182,14 +182,17 @@ const EducatorOnboarding = () => {
     formData.append('file', file);
     
     try {
-      const response = await axios.post(`${API}/upload-file`, formData, {
+      const response = await axios.post(`${API}/upload`, formData, {
         headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
       });
       
-      setFormData(prev => ({ ...prev, [field]: response.data.file_path }));
+      setFormData(prev => ({ ...prev, [field]: response.data.url }));
       toast.success('File uploaded successfully');
+      return response.data.url;
     } catch (error) {
-      toast.error('Failed to upload file');
+      console.error('Upload error:', error);
+      toast.error(error.response?.data?.detail || 'Failed to upload file');
+      return null;
     }
   };
 
