@@ -24,15 +24,23 @@ const LandingPage = () => {
   useEffect(() => {
     const handleScroll = () => {
       const scrollPosition = window.scrollY;
-      const windowHeight = window.innerHeight;
-      // Show footer when scrolled more than 50% of viewport height
-      if (scrollPosition > windowHeight * 0.3) {
+      // Show footer when scrolled more than 100px
+      if (scrollPosition > 100) {
         setShowFooter(true);
       }
     };
 
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    
+    // Also show footer after a short delay if page is small
+    const timeout = setTimeout(() => {
+      setShowFooter(true);
+    }, 2000);
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      clearTimeout(timeout);
+    };
   }, []);
 
   // Redirect logged-in students to their bookings page
