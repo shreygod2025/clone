@@ -5,7 +5,46 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## What's Been Implemented
 
-### Session: January 22, 2025
+### Session: January 22, 2025 (Latest)
+
+#### Offerings Page Restructure & Media Content ✅
+- Created new `/offerings` page as the main offerings landing page
+- Added "For Individuals" tab showing existing courses (Robotics, Coding, AI, Entrepreneurship, Financial Literacy)
+- Added "For Schools" tab with:
+  - School program categories linking to `/school-offerings`
+  - 26 partner schools in "Schools We Work With" section
+  - Main testimonial video (YouTube: OavfLmAdprc)
+  - 6 School Case Studies with real YouTube videos:
+    - Parle Tilak Vidyalaya ICSE (XGmUDHjPaq0)
+    - Goregaon English Medium School (MM36G7rmAOU)
+    - Maneckji Cooper Education Trust (vOik-WmE_n8)
+    - Tayiah Biyah High School (dWo2wr02mq4)
+    - Greenlawns High School Warden Road (YoIu5akBkr0)
+    - OLL Success Story (q6mHoHsdmhA)
+  - "Our Events" section with IIT Bombay Techfest (B0n8-RYegVc) and Skill Titans (KJMH8EAB6NI)
+
+#### Updated Partner Schools List
+Replaced generic school placeholders with actual partner schools across `/offerings`, `/about`, and `/school-offerings`:
+- Greenlawns High School, G.D. Somani Memorial School, N.L. Dalmia High School
+- Hiranandani Foundation School, JBCN International School, Seven Square Academy
+- Goregaon Education Society English Medium School, Sanjeevani World School
+- Fravashi International Academy, Maneckji Cooper Education Trust, Excelsior School
+- J.N. Petit School, Seth Anandram Jaipuria School, St. Kabir School
+- St. Gregorios High School, St. Anne's High School Fort, St. Wilfred's School
+- Manav Mandir High School, Jankidevi Public School, Guardian School
+- Parle Tilak Vidyalaya, JB Vachha High School, Vedas International School
+- C.N.M. & N.D. Parekh ICSE School, Ram Ratna International School, Navodaya Central School
+
+#### Updated Events Section with Real Videos
+- About page and School Offerings page now show actual YouTube thumbnails
+- IIT Bombay Techfest video (B0n8-RYegVc) with clickable play button
+- Skill Titans CNBC TV18 video (KJMH8EAB6NI) with clickable play button
+
+#### Navigation Update
+- Changed "Courses" to "Offerings" in navbar
+- Added route for `/offerings` page
+
+### Previous Session: January 22, 2025
 
 #### Educator Onboarding Flow Fixes ✅
 - Fixed training step progression - educators no longer get stuck after quiz
@@ -17,7 +56,7 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 **1. Join Team Page Redesign**
 - Added OLL logo header with redirect to home
-- Two tabs like educator page: "General Application" and "Open Requirements"
+- Two tabs: "General Application" and "Open Requirements"
 - Fetches open positions from admin panel
 
 **2. Growth Partner Page**
@@ -27,85 +66,43 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - Removed Investors section
 - Updated Shreyaan's timeline (age 8 selling paintings, OLL founded April 4, 2020)
 - Navbar shows "Join Team" and "Partner With Us" instead of Book Demo/Login
-- Added "Schools We Work With" section with 12 partner schools
-- Added "Our Events" section with Skill Titans and IIT Bombay Techfest
+- Added "Schools We Work With" section with 26 partner schools
+- Added "Our Events" section with Skill Titans and IIT Bombay Techfest videos
 
 **4. School Landing Page (`/school-offerings`)**
 - Complete redesign with expandable categories
-- **Robotics** (12 offerings):
-  - Robotics Curriculum with Take-home Kits & Books
-  - Robotics Curriculum with Lab Setup & Books
-  - Robotics Exhibition Preparation
-  - Host a Robotics Exhibition in Your School
-  - Participate in Robotics Competitions at IIT Bombay
-  - Preparation for Robotics Competitions
-  - Grade 9 & 10 ICSE Group 3 Subject Kits
-  - Afterschool Robotics Classes
-  - Robotics Summer Camp
-  - Robotics & AI Seminar for Students
-  - Robotics Books
-  - Robotics Kits
-
-- **Financial Literacy & Entrepreneurship** (5 offerings):
-  - Entrepreneurship 3 Day Workshop
-  - Skill Titans TV Show & Entrepreneurship Olympiad
-  - Financial Literacy & Entrepreneurship Program as Part of Curriculum
-  - E-Cell Opening in School
-  - Financial Literacy & Entrepreneurship Summer Camp
-
-- **AI & Machine Learning** (5 offerings):
-  - Launch an AI Center for Excellence
-  - Agentic AI Workshop for Students
-  - AI Seminar
-  - Agentic AI Summer Camp
-  - Start AI Services Agency Course for College Students
-
-- **Coding & Programming** (3 offerings):
-  - Vibe Coding Seminar
-  - Coding & Logic Building After School Classes
-  - Coding Summer Camp
-
-- Added "Schools We Work With" section
-- Added "Our Events" section (Skill Titans, IIT Bombay Techfest)
+- **Robotics** (12 offerings)
+- **Financial Literacy & Entrepreneurship** (5 offerings)
+- **AI & Machine Learning** (5 offerings)
+- **Coding & Programming** (3 offerings)
 - Each offering links to detailed page at `/school-offerings/:categoryId/:offeringId`
 
 **5. Landing Page - School Card**
 - Clicking "School" now shows dialog with "View Offerings" and "Book Meeting" options
 
-**6. Courses Page**
-- Removed age group badge display from course cards
-
-**7. Student Demo Form**
+**6. Student Demo Form**
 - Replaced 18+ years with: Young Adult, Homemaker, Working Professional, Senior Citizen
 - Added new "Learning Goal" step with goals customized per age category
 
-**8. Admin Panel - Team Requirements**
+**7. Admin Panel - Team Requirements**
 - Added "Team Requirements" button in Admin Team Applications page
 - Can create, edit, delete open positions
-- Positions appear in Join Team page under "Open Requirements" tab
-
-**9. Admin Panel - Educator Requirements**
-- Added "Educator Requirements" button linking to requirements page
 
 ## Key Files Modified/Created
 
 ### New Files
+- `/app/frontend/src/pages/OfferingsPage.jsx` - Main offerings landing with tabs
 - `/app/frontend/src/pages/SchoolOfferingsPage.jsx` - School programs landing with categories
 - `/app/frontend/src/pages/SchoolOfferingDetailPage.jsx` - Individual offering detail pages
 
 ### Modified Files
-- `/app/frontend/src/pages/JoinTeamPage.jsx` - Two-tab design with logo
-- `/app/frontend/src/pages/GrowthPartnerPage.jsx` - Added logo header
-- `/app/frontend/src/pages/LandingPage.jsx` - School dialog with options
-- `/app/frontend/src/pages/AboutPage.jsx` - Schools, Events, removed Investors
-- `/app/frontend/src/pages/StudentFunnel.jsx` - New age groups, learning goals
-- `/app/frontend/src/pages/courses/CoursesListPage.jsx` - Removed age group display
-- `/app/frontend/src/pages/admin/AdminTeamApplications.jsx` - Team requirements modal
-- `/app/frontend/src/pages/admin/AdminEducators.jsx` - Educator requirements button
-- `/app/frontend/src/components/Navbar.jsx` - About page variant
-- `/app/frontend/src/App.js` - New routes
+- `/app/frontend/src/pages/AboutPage.jsx` - Updated schools list, events with real videos
+- `/app/frontend/src/pages/SchoolOfferingsPage.jsx` - Updated schools list, events, testimonial video
+- `/app/frontend/src/components/Navbar.jsx` - Changed "Courses" to "Offerings"
+- `/app/frontend/src/App.js` - Added `/offerings` route
 
-## Routes Added
+## Routes
+- `/offerings` - Main offerings page (For Individuals / For Schools)
 - `/school-offerings` - School programs landing page
 - `/school-offerings/:categoryId/:offeringId` - Individual program pages
 
