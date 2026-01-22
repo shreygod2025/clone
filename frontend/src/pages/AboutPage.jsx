@@ -73,7 +73,8 @@ const ADVISORS = [
 // Timeline/Founder Journey Data
 const FOUNDER_TIMELINE = [
   {
-    year: '2019',
+    year: '2020',
+    date: 'April 4, 2020',
     title: 'The Beginning',
     description: 'OLL was founded with a vision to democratize skill education for students across India.',
     videoId: '5FUd_nUqpf4',
