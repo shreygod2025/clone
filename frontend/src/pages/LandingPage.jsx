@@ -1,7 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { GraduationCap, Users, Building2, ArrowRight, Eye, Calendar } from 'lucide-react';
 import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 import { useUserAuth } from '../context/UserAuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
@@ -10,6 +12,11 @@ const LandingPage = () => {
   const navigate = useNavigate();
   const { isLoggedIn, user } = useUserAuth();
   const [showSchoolDialog, setShowSchoolDialog] = useState(false);
+
+  // Scroll to top on mount
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   // Redirect logged-in students to their bookings page
   useEffect(() => {
