@@ -938,6 +938,13 @@ const CurriculumStep = ({ content, onboarding, assessmentQuestions, assessmentAn
   const allWatched = content?.curriculum_videos?.every(v => watchedCurriculum.includes(v.id));
   const assessmentPassed = onboarding?.assessment_passed;
   
+  // If assessment just passed, go back to show success screen
+  useEffect(() => {
+    if (assessmentPassed && showAssessment) {
+      setShowAssessment(false);
+    }
+  }, [assessmentPassed]);
+  
   useEffect(() => {
     if (showAssessment && assessmentQuestions.length === 0) {
       fetchAssessment();
