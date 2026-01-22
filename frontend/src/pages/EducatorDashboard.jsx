@@ -420,7 +420,7 @@ const EducatorDashboard = () => {
   if (!isLoggedIn || user?.role !== 'educator') return null;
 
   const appStatus = applicationData?.status || user?.status;
-  const isOnboarded = appStatus === 'onboarded';
+  const isOnboarded = appStatus === 'onboarded' || appStatus === 'active';
   const isDemoScheduled = appStatus === 'demo_scheduled' || appStatus === 'new';
   const isDemoCompleted = appStatus === 'demo_completed';
   const isArchived = appStatus === 'archived';
