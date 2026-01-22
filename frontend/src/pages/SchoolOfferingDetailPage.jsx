@@ -7,6 +7,7 @@ import {
   Cpu, Code, Brain, Lightbulb, TrendingUp, GraduationCap, School
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import Footer from '../components/Footer';
 
 // All offerings data with rich SEO content
 const ALL_OFFERINGS = {
