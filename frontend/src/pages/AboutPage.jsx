@@ -153,7 +153,7 @@ const AboutPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       {/* Header */}
-      <Navbar showBookDemo onBookDemo={() => window.location.href = '/student'} />
+      <Navbar variant="about" />
 
       {/* Hero */}
       <section className="pt-12 pb-8 px-4">
