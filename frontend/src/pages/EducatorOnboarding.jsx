@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUserAuth } from '../context/UserAuthContext';
 import { 
   Play, CheckCircle, Circle, Upload, User, MapPin, Phone, CreditCard, 
   FileText, Video, Award, Download, ChevronRight, ChevronLeft, Loader2,
-  AlertCircle, Check, X, Camera, Building, Heart
+  AlertCircle, Check, X, Camera, Building, Heart, Clock, Linkedin, Copy, ExternalLink
 } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
@@ -23,9 +23,82 @@ const STEPS = [
   { id: 3, title: 'Personal Details', icon: MapPin, description: 'Address, ID & Emergency Contact' },
   { id: 4, title: 'Bank Details', icon: CreditCard, description: 'Payment information' },
   { id: 5, title: 'Contract', icon: FileText, description: 'Terms & Agreement' },
-  { id: 6, title: 'Training', icon: Video, description: 'Guidelines & Quiz' },
-  { id: 7, title: 'Curriculum', icon: Award, description: 'Training & Assessment' },
+  { id: 6, title: 'Training', icon: Video, description: 'Guidelines & Videos' },
+  { id: 7, title: 'Review', icon: Clock, description: 'Awaiting Approval' },
   { id: 8, title: 'Complete', icon: Download, description: 'ID Card & Certificate' },
+];
+
+// Training videos with their quizzes
+const TRAINING_CONTENT = [
+  {
+    id: 'rules',
+    title: 'Educator Rules & Restrictions',
+    duration: '10:00',
+    url: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    description: 'Learn about the dos and donts as an OLL Educator',
+    quiz: [
+      {
+        id: 'rules_q1',
+        question: 'What is the maximum time you should take to respond to a student query?',
+        options: ['1 hour', '24 hours', '48 hours', '1 week'],
+        correct: 1
+      },
+      {
+        id: 'rules_q2',
+        question: 'Can you share your personal contact details with students?',
+        options: ['Yes, always', 'Only if they ask', 'No, never', 'Only with parents permission'],
+        correct: 2
+      }
+    ],
+    requiresVideoUpload: true,
+    uploadPrompt: 'Record a 1-minute video introducing yourself as an OLL Educator'
+  },
+  {
+    id: 'beliefs',
+    title: 'What OLL Believes In',
+    duration: '8:00',
+    url: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    description: 'Understanding OLL\'s core values and teaching philosophy',
+    quiz: [
+      {
+        id: 'beliefs_q1',
+        question: 'What is OLL\'s primary focus?',
+        options: ['Rote learning', 'Student-centric personalized learning', 'Exam preparation only', 'Competition-based learning'],
+        correct: 1
+      },
+      {
+        id: 'beliefs_q2',
+        question: 'How does OLL approach student mistakes?',
+        options: ['Punish them', 'Ignore them', 'Use them as learning opportunities', 'Report to parents immediately'],
+        correct: 2
+      }
+    ],
+    requiresVideoUpload: true,
+    uploadPrompt: 'Record a video explaining what student-centric learning means to you'
+  },
+  {
+    id: 'quiz_checking',
+    title: 'Quiz Checking Guidelines',
+    duration: '12:00',
+    url: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+    description: 'How to evaluate and provide constructive feedback',
+    quiz: [
+      {
+        id: 'quiz_q1',
+        question: 'When providing feedback, you should focus on:',
+        options: ['Only the mistakes', 'Only the correct answers', 'Both strengths and areas of improvement', 'Just give a score'],
+        correct: 2
+      },
+      {
+        id: 'quiz_q2',
+        question: 'How soon should quiz results be shared with students?',
+        options: ['Within 24 hours', 'Within 1 week', 'Within 1 month', 'Whenever convenient'],
+        correct: 0
+      }
+    ],
+    requiresVideoUpload: true,
+    uploadPrompt: 'Record a video demonstrating how you would provide feedback on a sample quiz'
+  }
 ];
 
 const EducatorOnboarding = () => {
@@ -64,12 +137,11 @@ const EducatorOnboarding = () => {
     digital_signature: ''
   });
   
-  // Quiz/Assessment states
-  const [quizQuestions, setQuizQuestions] = useState([]);
+  // Training states
+  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+  const [videoProgress, setVideoProgress] = useState({});
   const [quizAnswers, setQuizAnswers] = useState({});
-  const [assessmentQuestions, setAssessmentQuestions] = useState([]);
-  const [assessmentAnswers, setAssessmentAnswers] = useState({});
-  const [watchedVideos, setWatchedVideos] = useState([]);
+  const [videoUploads, setVideoUploads] = useState({});
 
   const getAuthHeaders = () => ({ Authorization: `Bearer ${token}` });
 
@@ -100,7 +172,8 @@ const EducatorOnboarding = () => {
           ...onb,
           city: onb.city || response.data.educator?.city || ''
         }));
-        setWatchedVideos(onb.training_videos_watched || []);
+        setVideoProgress(onb.video_progress || {});
+        setVideoUploads(onb.video_uploads || {});
       }
     } catch (error) {
       console.error('Failed to fetch onboarding data:', error);
@@ -119,37 +192,15 @@ const EducatorOnboarding = () => {
     }
   };
 
-  const fetchQuiz = async () => {
-    try {
-      const educatorId = user?.educator_id || user?.id;
-      const response = await axios.get(`${API}/educator/onboarding/${educatorId}/quiz`, {
-        headers: getAuthHeaders()
-      });
-      setQuizQuestions(response.data.questions);
-    } catch (error) {
-      console.error('Failed to fetch quiz:', error);
-    }
-  };
-
-  const fetchAssessment = async () => {
-    try {
-      const educatorId = user?.educator_id || user?.id;
-      const response = await axios.get(`${API}/educator/onboarding/${educatorId}/assessment`, {
-        headers: getAuthHeaders()
-      });
-      setAssessmentQuestions(response.data.questions);
-    } catch (error) {
-      console.error('Failed to fetch assessment:', error);
-    }
-  };
-
   const saveProgress = async (data = {}) => {
     setSaving(true);
     try {
       const educatorId = user?.educator_id || user?.id;
       await axios.patch(`${API}/educator/onboarding/${educatorId}`, {
         ...formData,
-        ...data
+        ...data,
+        video_progress: videoProgress,
+        video_uploads: videoUploads
       }, { headers: getAuthHeaders() });
     } catch (error) {
       console.error('Failed to save:', error);
@@ -178,11 +229,11 @@ const EducatorOnboarding = () => {
   };
 
   const handleFileUpload = async (file, field) => {
-    const formData = new FormData();
-    formData.append('file', file);
+    const formDataUpload = new FormData();
+    formDataUpload.append('file', file);
     
     try {
-      const response = await axios.post(`${API}/upload`, formData, {
+      const response = await axios.post(`${API}/upload`, formDataUpload, {
         headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
       });
       
@@ -196,69 +247,11 @@ const EducatorOnboarding = () => {
     }
   };
 
-  const submitQuiz = async () => {
-    if (Object.keys(quizAnswers).length < quizQuestions.length) {
-      toast.error('Please answer all questions');
-      return;
-    }
-    
-    try {
-      const educatorId = user?.educator_id || user?.id;
-      const response = await axios.post(`${API}/educator/onboarding/${educatorId}/submit-quiz`,
-        { answers: quizAnswers },
-        { headers: getAuthHeaders() }
-      );
-      
-      if (response.data.passed) {
-        toast.success(`🎉 ${response.data.message} Score: ${response.data.score}%`);
-        fetchOnboardingData();
-      } else {
-        toast.error(`${response.data.message} Score: ${response.data.score}%`);
-      }
-    } catch (error) {
-      toast.error('Failed to submit quiz');
-    }
-  };
-
-  const submitAssessment = async () => {
-    if (Object.keys(assessmentAnswers).length < assessmentQuestions.length) {
-      toast.error('Please answer all questions');
-      return;
-    }
-    
-    try {
-      const educatorId = user?.educator_id || user?.id;
-      const response = await axios.post(`${API}/educator/onboarding/${educatorId}/submit-assessment`,
-        { answers: assessmentAnswers },
-        { headers: getAuthHeaders() }
-      );
-      
-      if (response.data.passed) {
-        toast.success(`🎉 ${response.data.message} Score: ${response.data.score}%`);
-        fetchOnboardingData();
-      } else {
-        toast.error(`${response.data.message} Score: ${response.data.score}%`);
-      }
-    } catch (error) {
-      toast.error('Failed to submit assessment');
-    }
-  };
-
-  const generateCertificate = async () => {
-    try {
-      const educatorId = user?.educator_id || user?.id;
-      await axios.post(`${API}/educator/onboarding/${educatorId}/generate-certificate`, {}, {
-        headers: getAuthHeaders()
-      });
-      toast.success('Certificate and ID Card generated!');
-      fetchOnboardingData();
-    } catch (error) {
-      toast.error('Failed to generate certificate');
-    }
-  };
-
   const isStepCompleted = (step) => onboarding?.completed_steps?.includes(step);
   const canAccessStep = (step) => step <= currentStep || isStepCompleted(step);
+
+  // Check if educator is approved (moved to active status)
+  const isApproved = educator?.status === 'active';
 
   if (loading) {
     return (
@@ -289,20 +282,17 @@ const EducatorOnboarding = () => {
         return <ContractStep content={content} formData={formData} setFormData={setFormData}
           onSave={() => saveProgress({ contract_accepted: true })} onComplete={() => completeStep(5)} />;
       case 6:
-        return <TrainingStep content={content} onboarding={onboarding}
-          quizQuestions={quizQuestions} quizAnswers={quizAnswers} setQuizAnswers={setQuizAnswers}
-          fetchQuiz={fetchQuiz} submitQuiz={submitQuiz}
-          watchedVideos={watchedVideos} setWatchedVideos={setWatchedVideos}
+        return <TrainingStep 
+          videoProgress={videoProgress} setVideoProgress={setVideoProgress}
+          quizAnswers={quizAnswers} setQuizAnswers={setQuizAnswers}
+          videoUploads={videoUploads} setVideoUploads={setVideoUploads}
+          currentVideoIndex={currentVideoIndex} setCurrentVideoIndex={setCurrentVideoIndex}
           saveProgress={saveProgress} onComplete={() => completeStep(6)} />;
       case 7:
-        return <CurriculumStep content={content} onboarding={onboarding}
-          assessmentQuestions={assessmentQuestions} assessmentAnswers={assessmentAnswers} 
-          setAssessmentAnswers={setAssessmentAnswers}
-          fetchAssessment={fetchAssessment} submitAssessment={submitAssessment}
+        return <ReviewStep educator={educator} onboarding={onboarding} isApproved={isApproved}
           onComplete={() => completeStep(7)} />;
       case 8:
-        return <CompleteStep educator={educator} onboarding={onboarding}
-          generateCertificate={generateCertificate} />;
+        return <CompleteStep educator={educator} onboarding={onboarding} isApproved={isApproved} />;
       default:
         return null;
     }
@@ -420,7 +410,8 @@ const WelcomeStep = ({ content, educator, onComplete }) => (
         <li>• Complete your profile with a photo and bio</li>
         <li>• Submit your documents for verification</li>
         <li>• Sign the educator agreement</li>
-        <li>• Complete training and receive your certificate!</li>
+        <li>• Complete training videos and assessments</li>
+        <li>• Get approved and receive your certificate!</li>
       </ul>
     </div>
     
@@ -450,7 +441,6 @@ const ProfileStep = ({ formData, setFormData, onSave, onComplete, onFileUpload }
         <p className="text-slate-600">This information will be visible to students and parents</p>
       </div>
       
-      {/* Profile Photo */}
       <div className="flex items-start gap-6">
         <div className="shrink-0">
           <div className="w-32 h-32 rounded-2xl bg-slate-100 border-2 border-dashed border-slate-300 flex items-center justify-center overflow-hidden relative group">
@@ -485,9 +475,7 @@ const ProfileStep = ({ formData, setFormData, onSave, onComplete, onFileUpload }
       </div>
       
       <div className="flex gap-3 pt-4">
-        <Button variant="outline" onClick={onSave} className="flex-1">
-          Save Progress
-        </Button>
+        <Button variant="outline" onClick={onSave} className="flex-1">Save Progress</Button>
         <Button 
           onClick={() => { onSave(); onComplete(); }} 
           disabled={!canContinue}
@@ -539,34 +527,14 @@ const PersonalDetailsStep = ({ formData, setFormData, onSave, onComplete, onFile
         </h3>
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
-            <Input
-              value={formData.address_line1}
-              onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })}
-              placeholder="Address Line 1 *"
-            />
+            <Input value={formData.address_line1} onChange={(e) => setFormData({ ...formData, address_line1: e.target.value })} placeholder="Address Line 1 *" />
           </div>
           <div className="col-span-2">
-            <Input
-              value={formData.address_line2}
-              onChange={(e) => setFormData({ ...formData, address_line2: e.target.value })}
-              placeholder="Address Line 2"
-            />
+            <Input value={formData.address_line2} onChange={(e) => setFormData({ ...formData, address_line2: e.target.value })} placeholder="Address Line 2" />
           </div>
-          <Input
-            value={formData.city}
-            onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-            placeholder="City *"
-          />
-          <Input
-            value={formData.state}
-            onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-            placeholder="State *"
-          />
-          <Input
-            value={formData.pincode}
-            onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
-            placeholder="Pincode *"
-          />
+          <Input value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} placeholder="City *" />
+          <Input value={formData.state} onChange={(e) => setFormData({ ...formData, state: e.target.value })} placeholder="State *" />
+          <Input value={formData.pincode} onChange={(e) => setFormData({ ...formData, pincode: e.target.value })} placeholder="Pincode *" />
         </div>
       </div>
       
@@ -576,21 +544,9 @@ const PersonalDetailsStep = ({ formData, setFormData, onSave, onComplete, onFile
           <Heart className="w-4 h-4" /> Emergency Contact
         </h3>
         <div className="grid grid-cols-3 gap-4">
-          <Input
-            value={formData.emergency_contact_name}
-            onChange={(e) => setFormData({ ...formData, emergency_contact_name: e.target.value })}
-            placeholder="Contact Name *"
-          />
-          <Input
-            value={formData.emergency_contact_phone}
-            onChange={(e) => setFormData({ ...formData, emergency_contact_phone: e.target.value })}
-            placeholder="Phone Number *"
-          />
-          <Input
-            value={formData.emergency_contact_relation}
-            onChange={(e) => setFormData({ ...formData, emergency_contact_relation: e.target.value })}
-            placeholder="Relation"
-          />
+          <Input value={formData.emergency_contact_name} onChange={(e) => setFormData({ ...formData, emergency_contact_name: e.target.value })} placeholder="Contact Name *" />
+          <Input value={formData.emergency_contact_phone} onChange={(e) => setFormData({ ...formData, emergency_contact_phone: e.target.value })} placeholder="Phone Number *" />
+          <Input value={formData.emergency_contact_relation} onChange={(e) => setFormData({ ...formData, emergency_contact_relation: e.target.value })} placeholder="Relation" />
         </div>
       </div>
       
@@ -602,46 +558,28 @@ const PersonalDetailsStep = ({ formData, setFormData, onSave, onComplete, onFile
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Aadhar Number *</label>
-            <Input
-              value={formData.aadhar_number}
-              onChange={(e) => setFormData({ ...formData, aadhar_number: e.target.value })}
-              placeholder="XXXX XXXX XXXX"
-              maxLength={14}
-            />
+            <Input value={formData.aadhar_number} onChange={(e) => setFormData({ ...formData, aadhar_number: e.target.value })} placeholder="XXXX XXXX XXXX" maxLength={14} />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Upload Aadhar Card *</label>
-            <label className={`flex items-center gap-2 px-4 py-2 border rounded-lg cursor-pointer hover:bg-slate-50 ${
-              !formData.aadhar_document ? 'border-red-300' : 'border-green-300 bg-green-50'
-            }`}>
+            <label className={`flex items-center gap-2 px-4 py-2 border rounded-lg cursor-pointer hover:bg-slate-50 ${!formData.aadhar_document ? 'border-red-300' : 'border-green-300 bg-green-50'}`}>
               <Upload className="w-4 h-4 text-slate-500" />
               <span className={`text-sm ${formData.aadhar_document ? 'text-green-600' : 'text-slate-600'}`}>
                 {formData.aadhar_document ? 'Uploaded ✓' : 'Choose file (Required)'}
               </span>
-              <input type="file" accept=".pdf,.jpg,.jpeg,.png" 
-                onChange={(e) => e.target.files?.[0] && onFileUpload(e.target.files[0], 'aadhar_document')} 
-                className="hidden" />
+              <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => e.target.files?.[0] && onFileUpload(e.target.files[0], 'aadhar_document')} className="hidden" />
             </label>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">PAN Number</label>
-            <Input
-              value={formData.pan_number}
-              onChange={(e) => setFormData({ ...formData, pan_number: e.target.value.toUpperCase() })}
-              placeholder="ABCDE1234F"
-              maxLength={10}
-            />
+            <Input value={formData.pan_number} onChange={(e) => setFormData({ ...formData, pan_number: e.target.value.toUpperCase() })} placeholder="ABCDE1234F" maxLength={10} />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Upload PAN Card</label>
             <label className="flex items-center gap-2 px-4 py-2 border rounded-lg cursor-pointer hover:bg-slate-50">
               <Upload className="w-4 h-4 text-slate-500" />
-              <span className="text-sm text-slate-600">
-                {formData.pan_document ? 'Uploaded ✓' : 'Choose file'}
-              </span>
-              <input type="file" accept=".pdf,.jpg,.jpeg,.png"
-                onChange={(e) => e.target.files?.[0] && onFileUpload(e.target.files[0], 'pan_document')}
-                className="hidden" />
+              <span className="text-sm text-slate-600">{formData.pan_document ? 'Uploaded ✓' : 'Choose file'}</span>
+              <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => e.target.files?.[0] && onFileUpload(e.target.files[0], 'pan_document')} className="hidden" />
             </label>
           </div>
         </div>
@@ -649,11 +587,7 @@ const PersonalDetailsStep = ({ formData, setFormData, onSave, onComplete, onFile
       
       <div className="flex gap-3 pt-4">
         <Button variant="outline" onClick={onSave} className="flex-1">Save Progress</Button>
-        <Button 
-          onClick={() => { onSave(); onComplete(); }}
-          disabled={!canContinue}
-          className="flex-1 bg-[#D63031] hover:bg-[#c0392b]"
-        >
+        <Button onClick={() => { onSave(); onComplete(); }} disabled={!canContinue} className="flex-1 bg-[#D63031] hover:bg-[#c0392b]">
           Continue <ChevronRight className="w-4 h-4 ml-2" />
         </Button>
       </div>
@@ -662,8 +596,7 @@ const PersonalDetailsStep = ({ formData, setFormData, onSave, onComplete, onFile
 };
 
 const BankDetailsStep = ({ formData, setFormData, onSave, onComplete, onFileUpload }) => {
-  const canContinue = formData.bank_name && formData.account_holder_name && 
-    formData.account_number && formData.ifsc_code;
+  const canContinue = formData.bank_name && formData.account_holder_name && formData.account_number && formData.ifsc_code;
   
   return (
     <div className="space-y-6">
@@ -682,60 +615,33 @@ const BankDetailsStep = ({ formData, setFormData, onSave, onComplete, onFileUplo
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">Bank Name *</label>
-          <Input
-            value={formData.bank_name}
-            onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })}
-            placeholder="e.g., State Bank of India"
-          />
+          <Input value={formData.bank_name} onChange={(e) => setFormData({ ...formData, bank_name: e.target.value })} placeholder="e.g., State Bank of India" />
         </div>
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">Account Holder Name *</label>
-          <Input
-            value={formData.account_holder_name}
-            onChange={(e) => setFormData({ ...formData, account_holder_name: e.target.value })}
-            placeholder="As per bank records"
-          />
+          <Input value={formData.account_holder_name} onChange={(e) => setFormData({ ...formData, account_holder_name: e.target.value })} placeholder="As per bank records" />
         </div>
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">Account Number *</label>
-          <Input
-            type="password"
-            value={formData.account_number}
-            onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
-            placeholder="Enter account number"
-          />
+          <Input type="password" value={formData.account_number} onChange={(e) => setFormData({ ...formData, account_number: e.target.value })} placeholder="Enter account number" />
         </div>
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">IFSC Code *</label>
-          <Input
-            value={formData.ifsc_code}
-            onChange={(e) => setFormData({ ...formData, ifsc_code: e.target.value.toUpperCase() })}
-            placeholder="e.g., SBIN0001234"
-          />
+          <Input value={formData.ifsc_code} onChange={(e) => setFormData({ ...formData, ifsc_code: e.target.value.toUpperCase() })} placeholder="e.g., SBIN0001234" />
         </div>
         <div className="col-span-2">
-          <label className="block text-sm font-medium text-slate-700 mb-1">
-            Upload Cancelled Cheque / Passbook First Page
-          </label>
+          <label className="block text-sm font-medium text-slate-700 mb-1">Upload Cancelled Cheque / Passbook First Page</label>
           <label className="flex items-center justify-center gap-2 px-4 py-8 border-2 border-dashed rounded-xl cursor-pointer hover:bg-slate-50">
             <Upload className="w-5 h-5 text-slate-500" />
-            <span className="text-slate-600">
-              {formData.bank_document ? 'Document Uploaded ✓' : 'Click to upload'}
-            </span>
-            <input type="file" accept=".pdf,.jpg,.jpeg,.png"
-              onChange={(e) => e.target.files?.[0] && onFileUpload(e.target.files[0], 'bank_document')}
-              className="hidden" />
+            <span className="text-slate-600">{formData.bank_document ? 'Document Uploaded ✓' : 'Click to upload'}</span>
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => e.target.files?.[0] && onFileUpload(e.target.files[0], 'bank_document')} className="hidden" />
           </label>
         </div>
       </div>
       
       <div className="flex gap-3 pt-4">
         <Button variant="outline" onClick={onSave} className="flex-1">Save Progress</Button>
-        <Button 
-          onClick={() => { onSave(); onComplete(); }}
-          disabled={!canContinue}
-          className="flex-1 bg-[#D63031] hover:bg-[#c0392b]"
-        >
+        <Button onClick={() => { onSave(); onComplete(); }} disabled={!canContinue} className="flex-1 bg-[#D63031] hover:bg-[#c0392b]">
           Continue <ChevronRight className="w-4 h-4 ml-2" />
         </Button>
       </div>
@@ -759,339 +665,461 @@ const ContractStep = ({ content, formData, setFormData, onSave, onComplete }) =>
       
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-2">Digital Signature</label>
-        <Input
-          value={formData.digital_signature}
-          onChange={(e) => setFormData({ ...formData, digital_signature: e.target.value })}
-          placeholder="Type your full name as signature"
-        />
+        <Input value={formData.digital_signature} onChange={(e) => setFormData({ ...formData, digital_signature: e.target.value })} placeholder="Type your full name as signature" />
       </div>
       
       <div className="flex items-start gap-3 p-4 bg-green-50 rounded-xl border border-green-100">
-        <Checkbox 
-          id="agree" 
-          checked={agreed}
-          onCheckedChange={(checked) => { setAgreed(checked); setFormData({ ...formData, contract_accepted: checked }); }}
-        />
+        <Checkbox id="agree" checked={agreed} onCheckedChange={(checked) => { setAgreed(checked); setFormData({ ...formData, contract_accepted: checked }); }} />
         <label htmlFor="agree" className="text-sm text-green-800 cursor-pointer">
           I have read and agree to the OLL Educator Agreement. I understand and accept all terms and conditions.
         </label>
       </div>
       
-      <Button 
-        onClick={() => { onSave(); onComplete(); }}
-        disabled={!agreed || !formData.digital_signature}
-        className="w-full bg-[#D63031] hover:bg-[#c0392b]"
-      >
+      <Button onClick={() => { onSave(); onComplete(); }} disabled={!agreed || !formData.digital_signature} className="w-full bg-[#D63031] hover:bg-[#c0392b]">
         <Check className="w-4 h-4 mr-2" /> Accept & Continue
       </Button>
     </div>
   );
 };
 
-const TrainingStep = ({ content, onboarding, quizQuestions, quizAnswers, setQuizAnswers, 
-  fetchQuiz, submitQuiz, watchedVideos, setWatchedVideos, saveProgress, onComplete }) => {
+// New Training Step - Videos one by one with quiz after each
+const TrainingStep = ({ videoProgress, setVideoProgress, quizAnswers, setQuizAnswers, 
+  videoUploads, setVideoUploads, currentVideoIndex, setCurrentVideoIndex, saveProgress, onComplete }) => {
   
   const [showQuiz, setShowQuiz] = useState(false);
-  const allVideosWatched = content?.training_videos?.every(v => watchedVideos.includes(v.id));
-  const quizPassed = onboarding?.quiz_passed;
+  const [showUpload, setShowUpload] = useState(false);
+  const currentVideo = TRAINING_CONTENT[currentVideoIndex];
   
-  // If quiz just passed, go back to show success screen
-  useEffect(() => {
-    if (quizPassed && showQuiz) {
+  const isVideoWatched = videoProgress[currentVideo?.id]?.watched;
+  const isQuizPassed = videoProgress[currentVideo?.id]?.quizPassed;
+  const hasVideoUpload = videoUploads[currentVideo?.id];
+  
+  const allCompleted = TRAINING_CONTENT.every(v => 
+    videoProgress[v.id]?.watched && videoProgress[v.id]?.quizPassed && 
+    (!v.requiresVideoUpload || videoUploads[v.id])
+  );
+
+  const markVideoWatched = () => {
+    const updated = { ...videoProgress, [currentVideo.id]: { ...videoProgress[currentVideo.id], watched: true } };
+    setVideoProgress(updated);
+    saveProgress({ video_progress: updated });
+    setShowQuiz(true);
+  };
+
+  const submitQuiz = () => {
+    const answers = quizAnswers[currentVideo.id] || {};
+    let correct = 0;
+    currentVideo.quiz.forEach(q => {
+      if (answers[q.id] === q.correct) correct++;
+    });
+    
+    const passed = correct >= Math.ceil(currentVideo.quiz.length * 0.7);
+    
+    if (passed) {
+      const updated = { ...videoProgress, [currentVideo.id]: { ...videoProgress[currentVideo.id], quizPassed: true } };
+      setVideoProgress(updated);
+      saveProgress({ video_progress: updated });
+      toast.success(`Quiz passed! ${correct}/${currentVideo.quiz.length} correct`);
       setShowQuiz(false);
-    }
-  }, [quizPassed]);
-  
-  const markVideoWatched = (videoId) => {
-    if (!watchedVideos.includes(videoId)) {
-      const updated = [...watchedVideos, videoId];
-      setWatchedVideos(updated);
-      saveProgress({ training_videos_watched: updated });
+      
+      if (currentVideo.requiresVideoUpload) {
+        setShowUpload(true);
+      } else if (currentVideoIndex < TRAINING_CONTENT.length - 1) {
+        setCurrentVideoIndex(currentVideoIndex + 1);
+      }
+    } else {
+      toast.error(`Quiz failed. ${correct}/${currentVideo.quiz.length} correct. You need 70% to pass.`);
     }
   };
-  
-  useEffect(() => {
-    if (showQuiz && quizQuestions.length === 0) {
-      fetchQuiz();
+
+  const handleVideoLinkUpload = (link) => {
+    const updated = { ...videoUploads, [currentVideo.id]: link };
+    setVideoUploads(updated);
+    saveProgress({ video_uploads: updated });
+    toast.success('Video link saved!');
+    setShowUpload(false);
+    
+    if (currentVideoIndex < TRAINING_CONTENT.length - 1) {
+      setCurrentVideoIndex(currentVideoIndex + 1);
     }
-  }, [showQuiz]);
-  
+  };
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-[#1E3A5F] mb-2">Training & Guidelines</h2>
-        <p className="text-slate-600">Watch all videos and pass the quiz to continue</p>
+        <p className="text-slate-600">Complete all videos, quizzes, and assessments</p>
       </div>
-      
-      {!showQuiz ? (
-        <>
-          {/* Videos */}
-          <div className="space-y-4">
-            {content?.training_videos?.map((video) => (
-              <div key={video.id} className={`border rounded-xl overflow-hidden ${
-                watchedVideos.includes(video.id) ? 'border-green-300 bg-green-50' : 'border-slate-200'
-              }`}>
-                <div className="aspect-video bg-slate-900">
-                  <iframe
-                    src={video.url}
-                    className="w-full h-full"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    title={video.title}
-                  />
-                </div>
-                <div className="p-4 flex items-center justify-between">
-                  <div>
-                    <h4 className="font-medium text-[#1E3A5F]">{video.title}</h4>
-                    <p className="text-sm text-slate-500">Duration: {video.duration}</p>
-                  </div>
-                  <Button 
-                    size="sm"
-                    variant={watchedVideos.includes(video.id) ? "outline" : "default"}
-                    onClick={() => markVideoWatched(video.id)}
-                    className={watchedVideos.includes(video.id) ? 'text-green-600 border-green-300' : 'bg-[#1E3A5F]'}
-                  >
-                    {watchedVideos.includes(video.id) ? (
-                      <><Check className="w-4 h-4 mr-1" /> Watched</>
-                    ) : (
-                      'Mark as Watched'
-                    )}
-                  </Button>
-                </div>
-              </div>
-            ))}
+
+      {/* Progress indicator */}
+      <div className="flex gap-2">
+        {TRAINING_CONTENT.map((v, idx) => {
+          const completed = videoProgress[v.id]?.quizPassed && (!v.requiresVideoUpload || videoUploads[v.id]);
+          const current = idx === currentVideoIndex;
+          return (
+            <div key={v.id} className={`flex-1 h-2 rounded-full ${completed ? 'bg-green-500' : current ? 'bg-orange-500' : 'bg-slate-200'}`} />
+          );
+        })}
+      </div>
+
+      <div className="text-sm text-slate-500">
+        Video {currentVideoIndex + 1} of {TRAINING_CONTENT.length}: <span className="font-medium text-[#1E3A5F]">{currentVideo?.title}</span>
+      </div>
+
+      {!showQuiz && !showUpload ? (
+        /* Video View */
+        <div className="space-y-4">
+          <div className="aspect-video bg-slate-900 rounded-xl overflow-hidden">
+            <iframe src={currentVideo?.url} className="w-full h-full" allowFullScreen title={currentVideo?.title} />
           </div>
+          <p className="text-sm text-slate-600">{currentVideo?.description}</p>
           
-          {/* Quiz Button */}
-          <div className="pt-4">
-            {quizPassed ? (
-              <div className="bg-green-50 rounded-xl p-4 text-center">
-                <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-2" />
-                <p className="font-medium text-green-800">Quiz Passed! ✓</p>
-                <Button onClick={onComplete} className="mt-4 bg-[#D63031]">
-                  Continue to Next Step <ChevronRight className="w-4 h-4 ml-2" />
-                </Button>
-              </div>
-            ) : (
-              <Button 
-                onClick={() => setShowQuiz(true)}
-                disabled={!allVideosWatched}
-                className="w-full bg-[#D63031]"
-              >
-                {allVideosWatched ? 'Take Quiz' : 'Watch all videos to unlock quiz'}
-              </Button>
-            )}
-          </div>
-        </>
-      ) : (
-        /* Quiz Section */
-        <div className="space-y-6">
-          <Button variant="outline" onClick={() => setShowQuiz(false)}>
-            <ChevronLeft className="w-4 h-4 mr-2" /> Back to Videos
-          </Button>
+          {isVideoWatched && isQuizPassed ? (
+            <div className="bg-green-50 p-4 rounded-xl text-green-700 flex items-center gap-2">
+              <CheckCircle className="w-5 h-5" />
+              <span>Completed! {hasVideoUpload ? 'Video uploaded.' : ''}</span>
+            </div>
+          ) : (
+            <Button onClick={markVideoWatched} disabled={isVideoWatched} className="w-full bg-[#1E3A5F]">
+              {isVideoWatched ? 'Video Watched ✓ - Take Quiz' : 'I\'ve Watched This Video'}
+            </Button>
+          )}
           
-          <div className="space-y-6">
-            {quizQuestions.map((q, idx) => (
-              <div key={q.id} className="bg-slate-50 rounded-xl p-4">
-                <p className="font-medium text-[#1E3A5F] mb-3">{idx + 1}. {q.question}</p>
-                <div className="space-y-2">
-                  {q.options.map((option, optIdx) => (
-                    <label key={optIdx} className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
-                      quizAnswers[q.id] === optIdx 
-                        ? 'bg-[#1E3A5F] text-white' 
-                        : 'bg-white hover:bg-slate-100'
-                    }`}>
-                      <input
-                        type="radio"
-                        name={q.id}
-                        checked={quizAnswers[q.id] === optIdx}
-                        onChange={() => setQuizAnswers({ ...quizAnswers, [q.id]: optIdx })}
-                        className="sr-only"
-                      />
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                        quizAnswers[q.id] === optIdx ? 'border-white' : 'border-slate-300'
-                      }`}>
-                        {quizAnswers[q.id] === optIdx && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
-                      </div>
-                      <span>{option}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-          
-          <Button onClick={submitQuiz} className="w-full bg-[#D63031]">
-            Submit Quiz
-          </Button>
+          {isVideoWatched && !isQuizPassed && (
+            <Button onClick={() => setShowQuiz(true)} className="w-full bg-[#D63031]">
+              Take Quiz for This Video
+            </Button>
+          )}
         </div>
-      )}
+      ) : showQuiz ? (
+        /* Quiz View */
+        <div className="space-y-4">
+          <div className="bg-blue-50 p-4 rounded-xl">
+            <h3 className="font-semibold text-blue-800 mb-1">Quiz: {currentVideo?.title}</h3>
+            <p className="text-sm text-blue-600">Answer all questions correctly to proceed (70% required)</p>
+          </div>
+          
+          {currentVideo?.quiz.map((q, idx) => (
+            <div key={q.id} className="bg-slate-50 rounded-xl p-4">
+              <p className="font-medium text-[#1E3A5F] mb-3">{idx + 1}. {q.question}</p>
+              <div className="space-y-2">
+                {q.options.map((option, optIdx) => (
+                  <label key={optIdx} className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
+                    quizAnswers[currentVideo.id]?.[q.id] === optIdx ? 'bg-[#1E3A5F] text-white' : 'bg-white hover:bg-slate-100'
+                  }`}>
+                    <input type="radio" name={q.id} checked={quizAnswers[currentVideo.id]?.[q.id] === optIdx}
+                      onChange={() => setQuizAnswers({ ...quizAnswers, [currentVideo.id]: { ...quizAnswers[currentVideo.id], [q.id]: optIdx } })}
+                      className="sr-only" />
+                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                      quizAnswers[currentVideo.id]?.[q.id] === optIdx ? 'border-white' : 'border-slate-300'
+                    }`}>
+                      {quizAnswers[currentVideo.id]?.[q.id] === optIdx && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
+                    </div>
+                    <span>{option}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
+          
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={() => setShowQuiz(false)} className="flex-1">
+              <ChevronLeft className="w-4 h-4 mr-2" /> Back to Video
+            </Button>
+            <Button onClick={submitQuiz} className="flex-1 bg-[#D63031]">Submit Quiz</Button>
+          </div>
+        </div>
+      ) : showUpload ? (
+        /* Video Upload View */
+        <div className="space-y-4">
+          <div className="bg-purple-50 p-4 rounded-xl">
+            <h3 className="font-semibold text-purple-800 mb-1">Video Assessment</h3>
+            <p className="text-sm text-purple-600">{currentVideo?.uploadPrompt}</p>
+          </div>
+          
+          <div className="border-2 border-dashed border-purple-200 rounded-xl p-8 text-center">
+            <Video className="w-12 h-12 text-purple-400 mx-auto mb-4" />
+            <p className="text-slate-600 mb-4">Upload your video to Google Drive and paste the link below</p>
+            <Input
+              placeholder="Paste Google Drive link here..."
+              value={videoUploads[currentVideo?.id] || ''}
+              onChange={(e) => setVideoUploads({ ...videoUploads, [currentVideo.id]: e.target.value })}
+              className="mb-4"
+            />
+            <Button onClick={() => handleVideoLinkUpload(videoUploads[currentVideo?.id])} 
+              disabled={!videoUploads[currentVideo?.id]}
+              className="bg-purple-600 hover:bg-purple-700">
+              <Upload className="w-4 h-4 mr-2" /> Submit Video Link
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Navigation & Complete */}
+      <div className="flex gap-3 pt-4 border-t">
+        {currentVideoIndex > 0 && (
+          <Button variant="outline" onClick={() => { setCurrentVideoIndex(currentVideoIndex - 1); setShowQuiz(false); setShowUpload(false); }}>
+            <ChevronLeft className="w-4 h-4 mr-2" /> Previous Video
+          </Button>
+        )}
+        
+        {currentVideoIndex < TRAINING_CONTENT.length - 1 && isQuizPassed && (!currentVideo?.requiresVideoUpload || hasVideoUpload) && (
+          <Button variant="outline" onClick={() => { setCurrentVideoIndex(currentVideoIndex + 1); setShowQuiz(false); setShowUpload(false); }}>
+            Next Video <ChevronRight className="w-4 h-4 ml-2" />
+          </Button>
+        )}
+        
+        {allCompleted && (
+          <Button onClick={onComplete} className="ml-auto bg-[#D63031] hover:bg-[#c0392b]">
+            Complete Training <ChevronRight className="w-4 h-4 ml-2" />
+          </Button>
+        )}
+      </div>
     </div>
   );
 };
 
-const CurriculumStep = ({ content, onboarding, assessmentQuestions, assessmentAnswers, 
-  setAssessmentAnswers, fetchAssessment, submitAssessment, onComplete }) => {
-  
-  const [showAssessment, setShowAssessment] = useState(false);
-  const [watchedCurriculum, setWatchedCurriculum] = useState(onboarding?.curriculum_videos_watched || []);
-  const allWatched = content?.curriculum_videos?.every(v => watchedCurriculum.includes(v.id));
-  const assessmentPassed = onboarding?.assessment_passed;
-  
-  // If assessment just passed, go back to show success screen
-  useEffect(() => {
-    if (assessmentPassed && showAssessment) {
-      setShowAssessment(false);
-    }
-  }, [assessmentPassed]);
-  
-  useEffect(() => {
-    if (showAssessment && assessmentQuestions.length === 0) {
-      fetchAssessment();
-    }
-  }, [showAssessment]);
-  
+// Review Step - Waiting for admin approval
+const ReviewStep = ({ educator, onboarding, isApproved, onComplete }) => {
+  if (isApproved) {
+    return (
+      <div className="space-y-6 text-center py-8">
+        <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+          <CheckCircle className="w-12 h-12 text-green-600" />
+        </div>
+        <h2 className="text-2xl font-bold text-[#1E3A5F]">You're Approved! 🎉</h2>
+        <p className="text-slate-600">Congratulations! Your documents have been verified and you are now an active OLL Educator.</p>
+        <Button onClick={onComplete} className="bg-[#D63031] hover:bg-[#c0392b]">
+          Continue to Download Your Certificate <ChevronRight className="w-4 h-4 ml-2" />
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 text-center py-8">
+      <div className="w-24 h-24 bg-orange-100 rounded-full flex items-center justify-center mx-auto">
+        <Clock className="w-12 h-12 text-orange-600" />
+      </div>
+      <h2 className="text-2xl font-bold text-[#1E3A5F]">Under Review</h2>
+      <p className="text-slate-600 max-w-md mx-auto">
+        Thank you for completing your onboarding! Our team is reviewing your documents and submissions. 
+        Once approved, you will be onboarded as an active OLL Educator.
+      </p>
+      <div className="bg-blue-50 rounded-xl p-6 max-w-md mx-auto">
+        <h3 className="font-semibold text-blue-800 mb-2">What happens next?</h3>
+        <ul className="text-sm text-blue-700 text-left space-y-2">
+          <li>✓ Our team will review your documents</li>
+          <li>✓ We'll verify your training videos</li>
+          <li>✓ Once approved, you'll receive a notification</li>
+          <li>✓ You can then download your ID card & certificate</li>
+        </ul>
+      </div>
+      <p className="text-sm text-slate-500">This usually takes 1-2 business days</p>
+    </div>
+  );
+};
+
+// Complete Step - Certificate, ID Card, LinkedIn
+const CompleteStep = ({ educator, onboarding, isApproved }) => {
+  const [linkedinCopied, setLinkedinCopied] = useState(false);
+  const idCardRef = useRef(null);
+  const certificateRef = useRef(null);
+
+  const linkedinPost = `🎉 Excited to share that I've joined @OLL (One Life Learning) as an Educator!
+
+I'm thrilled to be part of a team that believes in student-centric, personalized learning. Looking forward to making a positive impact on young minds.
+
+#OLL #Educator #NewBeginnings #Education #Teaching #OneLifeLearning`;
+
+  const copyLinkedinPost = () => {
+    navigator.clipboard.writeText(linkedinPost);
+    setLinkedinCopied(true);
+    toast.success('LinkedIn post copied to clipboard!');
+    setTimeout(() => setLinkedinCopied(false), 3000);
+  };
+
+  const downloadIDCard = () => {
+    // Generate ID Card HTML and download
+    const idCardHTML = `
+      <html>
+      <head>
+        <style>
+          body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+          .card { width: 350px; height: 200px; background: linear-gradient(135deg, #1E3A5F 0%, #2d5a87 100%); border-radius: 20px; padding: 20px; color: white; position: relative; }
+          .logo { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+          .photo { width: 80px; height: 80px; border-radius: 50%; background: white; margin: 10px 0; object-fit: cover; }
+          .name { font-size: 18px; font-weight: bold; }
+          .role { font-size: 14px; color: #D63031; }
+          .details { font-size: 12px; margin-top: 10px; }
+          .id { position: absolute; bottom: 20px; right: 20px; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <div class="logo">OLL</div>
+          <img class="photo" src="${onboarding?.profile_photo || ''}" alt="Photo" />
+          <div class="name">${educator?.name || ''}</div>
+          <div class="role">OLL Educator</div>
+          <div class="details">📞 ${educator?.phone || ''}</div>
+          <div class="id">ID: ${educator?.id?.substring(0, 8) || ''}</div>
+        </div>
+      </body>
+      </html>
+    `;
+    
+    const blob = new Blob([idCardHTML], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `OLL_ID_Card_${educator?.name?.replace(/\s/g, '_')}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('ID Card downloaded!');
+  };
+
+  const downloadCertificate = () => {
+    const certHTML = `
+      <html>
+      <head>
+        <style>
+          body { margin: 0; padding: 40px; font-family: Georgia, serif; background: white; }
+          .cert { border: 8px double #1E3A5F; padding: 40px; text-align: center; max-width: 800px; margin: auto; }
+          .title { font-size: 32px; color: #1E3A5F; margin-bottom: 20px; }
+          .subtitle { font-size: 14px; color: #666; margin-bottom: 30px; }
+          .name { font-size: 36px; font-weight: bold; color: #000; margin: 20px 0; }
+          .role { font-size: 18px; color: #D63031; margin-bottom: 20px; }
+          .text { font-size: 14px; color: #444; margin: 20px 0; }
+          .signature { margin-top: 40px; }
+          .sig-name { font-weight: bold; }
+          .logo { font-size: 28px; font-weight: bold; color: #1E3A5F; margin-bottom: 20px; }
+        </style>
+      </head>
+      <body>
+        <div class="cert">
+          <div class="logo">OLL</div>
+          <div class="title">CERTIFICATE OF COMPLETION</div>
+          <div class="subtitle">This is to certify that</div>
+          <div class="name">${educator?.name || ''}</div>
+          <div class="role">OLL Educator</div>
+          <div class="text">Has successfully completed the OLL Educator Training Program and is hereby certified as an official OLL Educator.</div>
+          <div class="text">Date: ${new Date().toLocaleDateString()}</div>
+          <div class="signature">
+            <div class="sig-name">Shreyaan Daga</div>
+            <div>Cofounder - OLL</div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+    
+    const blob = new Blob([certHTML], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `OLL_Certificate_${educator?.name?.replace(/\s/g, '_')}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Certificate downloaded!');
+  };
+
+  const downloadLinkedinImage = () => {
+    // For now, redirect to template or generate
+    toast.success('LinkedIn image template - coming soon!');
+  };
+
+  if (!isApproved) {
+    return (
+      <div className="space-y-6 text-center py-8">
+        <div className="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mx-auto">
+          <Clock className="w-12 h-12 text-slate-400" />
+        </div>
+        <h2 className="text-2xl font-bold text-slate-600">Awaiting Approval</h2>
+        <p className="text-slate-500">Complete Step 7 (Review) first. Your documents need to be approved before you can access your certificate and ID card.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-[#1E3A5F] mb-2">Curriculum Training</h2>
-        <p className="text-slate-600">Learn about OLL curriculum and teaching methodology</p>
-      </div>
-      
-      {!showAssessment ? (
-        <>
-          <div className="space-y-4">
-            {content?.curriculum_videos?.map((video) => (
-              <div key={video.id} className={`border rounded-xl overflow-hidden ${
-                watchedCurriculum.includes(video.id) ? 'border-green-300 bg-green-50' : 'border-slate-200'
-              }`}>
-                <div className="aspect-video bg-slate-900">
-                  <iframe src={video.url} className="w-full h-full" allowFullScreen title={video.title} />
-                </div>
-                <div className="p-4 flex items-center justify-between">
-                  <div>
-                    <h4 className="font-medium text-[#1E3A5F]">{video.title}</h4>
-                    <p className="text-sm text-slate-500">Duration: {video.duration}</p>
-                  </div>
-                  <Button 
-                    size="sm"
-                    variant={watchedCurriculum.includes(video.id) ? "outline" : "default"}
-                    onClick={() => !watchedCurriculum.includes(video.id) && setWatchedCurriculum([...watchedCurriculum, video.id])}
-                    className={watchedCurriculum.includes(video.id) ? 'text-green-600 border-green-300' : 'bg-[#1E3A5F]'}
-                  >
-                    {watchedCurriculum.includes(video.id) ? <><Check className="w-4 h-4 mr-1" /> Watched</> : 'Mark as Watched'}
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-          
-          <div className="pt-4">
-            {assessmentPassed ? (
-              <div className="bg-green-50 rounded-xl p-4 text-center">
-                <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-2" />
-                <p className="font-medium text-green-800">Assessment Passed! ✓</p>
-                <Button onClick={onComplete} className="mt-4 bg-[#D63031]">
-                  Continue to Final Step <ChevronRight className="w-4 h-4 ml-2" />
-                </Button>
-              </div>
-            ) : (
-              <Button onClick={() => setShowAssessment(true)} disabled={!allWatched} className="w-full bg-[#D63031]">
-                {allWatched ? 'Take Assessment' : 'Watch all videos to unlock assessment'}
-              </Button>
-            )}
-          </div>
-        </>
-      ) : (
-        <div className="space-y-6">
-          <Button variant="outline" onClick={() => setShowAssessment(false)}>
-            <ChevronLeft className="w-4 h-4 mr-2" /> Back to Videos
-          </Button>
-          
-          <div className="space-y-6">
-            {assessmentQuestions.map((q, idx) => (
-              <div key={q.id} className="bg-slate-50 rounded-xl p-4">
-                <p className="font-medium text-[#1E3A5F] mb-3">{idx + 1}. {q.question}</p>
-                <div className="space-y-2">
-                  {q.options.map((option, optIdx) => (
-                    <label key={optIdx} className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
-                      assessmentAnswers[q.id] === optIdx ? 'bg-[#1E3A5F] text-white' : 'bg-white hover:bg-slate-100'
-                    }`}>
-                      <input
-                        type="radio"
-                        name={q.id}
-                        checked={assessmentAnswers[q.id] === optIdx}
-                        onChange={() => setAssessmentAnswers({ ...assessmentAnswers, [q.id]: optIdx })}
-                        className="sr-only"
-                      />
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                        assessmentAnswers[q.id] === optIdx ? 'border-white' : 'border-slate-300'
-                      }`}>
-                        {assessmentAnswers[q.id] === optIdx && <div className="w-2.5 h-2.5 rounded-full bg-white" />}
-                      </div>
-                      <span>{option}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-          
-          <Button onClick={submitAssessment} className="w-full bg-[#D63031]">Submit Assessment</Button>
+      <div className="text-center py-4">
+        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <Award className="w-10 h-10 text-green-600" />
         </div>
-      )}
-    </div>
-  );
-};
+        <h2 className="text-2xl font-bold text-[#1E3A5F]">Congratulations, {educator?.name}! 🎉</h2>
+        <p className="text-slate-600">You are now an official OLL Educator!</p>
+      </div>
 
-const CompleteStep = ({ educator, onboarding, generateCertificate }) => {
-  const certificateReady = onboarding?.certificate_generated;
-  
-  return (
-    <div className="space-y-6 text-center">
-      <div className="py-8">
-        <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Award className="w-12 h-12 text-green-600" />
-        </div>
-        <h2 className="text-3xl font-bold text-[#1E3A5F] mb-2">Congratulations, {educator?.name}! 🎉</h2>
-        <p className="text-slate-600 text-lg">You have successfully completed the OLL Educator Onboarding!</p>
-      </div>
-      
-      {!certificateReady ? (
-        <Button onClick={generateCertificate} className="bg-[#D63031] hover:bg-[#c0392b]">
-          Generate Certificate & ID Card
-        </Button>
-      ) : (
-        <div className="space-y-4">
-          <div className="bg-green-50 rounded-xl p-6">
-            <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
-            <p className="font-medium text-green-800 mb-4">Your documents are ready!</p>
-            
-            <div className="flex gap-4 justify-center">
-              <Button variant="outline" className="border-[#1E3A5F] text-[#1E3A5F]">
-                <Download className="w-4 h-4 mr-2" /> Download ID Card
-              </Button>
-              <Button variant="outline" className="border-[#1E3A5F] text-[#1E3A5F]">
-                <Download className="w-4 h-4 mr-2" /> Download Certificate
-              </Button>
-            </div>
+      {/* Downloads Section */}
+      <div className="grid md:grid-cols-2 gap-4">
+        <div className="border rounded-xl p-6 text-center hover:shadow-lg transition-shadow">
+          <div className="w-16 h-16 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <CreditCard className="w-8 h-8 text-blue-600" />
           </div>
-          
-          <div className="bg-blue-50 rounded-xl p-4">
-            <p className="text-blue-800">
-              <strong>What's next?</strong><br />
-              You can now access your Educator Dashboard and start receiving demo assignments!
-            </p>
-          </div>
-          
-          <Button 
-            onClick={() => window.location.href = '/educator-dashboard'}
-            className="bg-[#1E3A5F]"
-          >
-            Go to Educator Dashboard <ChevronRight className="w-4 h-4 ml-2" />
+          <h3 className="font-semibold text-[#1E3A5F] mb-2">ID Card</h3>
+          <p className="text-sm text-slate-500 mb-4">Your official OLL Educator ID Card</p>
+          <Button onClick={downloadIDCard} className="w-full bg-[#1E3A5F]">
+            <Download className="w-4 h-4 mr-2" /> Download ID Card
           </Button>
         </div>
-      )}
+
+        <div className="border rounded-xl p-6 text-center hover:shadow-lg transition-shadow">
+          <div className="w-16 h-16 bg-purple-100 rounded-xl flex items-center justify-center mx-auto mb-4">
+            <Award className="w-8 h-8 text-purple-600" />
+          </div>
+          <h3 className="font-semibold text-[#1E3A5F] mb-2">Certificate</h3>
+          <p className="text-sm text-slate-500 mb-4">Your completion certificate</p>
+          <Button onClick={downloadCertificate} className="w-full bg-purple-600 hover:bg-purple-700">
+            <Download className="w-4 h-4 mr-2" /> Download Certificate
+          </Button>
+        </div>
+      </div>
+
+      {/* LinkedIn Section */}
+      <div className="border rounded-xl p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-12 h-12 bg-[#0077B5] rounded-xl flex items-center justify-center">
+            <Linkedin className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-[#1E3A5F]">Share on LinkedIn</h3>
+            <p className="text-sm text-slate-500">Announce your new role!</p>
+          </div>
+        </div>
+
+        <div className="bg-slate-50 rounded-xl p-4 mb-4">
+          <pre className="text-sm text-slate-700 whitespace-pre-wrap font-sans">{linkedinPost}</pre>
+        </div>
+
+        <div className="flex gap-3">
+          <Button onClick={copyLinkedinPost} variant="outline" className="flex-1">
+            {linkedinCopied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
+            {linkedinCopied ? 'Copied!' : 'Copy Post'}
+          </Button>
+          <Button onClick={downloadLinkedinImage} className="flex-1 bg-[#0077B5] hover:bg-[#005885]">
+            <Download className="w-4 h-4 mr-2" /> Download Image
+          </Button>
+          <Button asChild className="flex-1 bg-[#D63031] hover:bg-[#c0392b]">
+            <a href="https://www.linkedin.com/feed/" target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="w-4 h-4 mr-2" /> Post on LinkedIn
+            </a>
+          </Button>
+        </div>
+      </div>
+
+      {/* Next Steps */}
+      <div className="bg-green-50 rounded-xl p-6">
+        <h3 className="font-semibold text-green-800 mb-3">🚀 What's Next?</h3>
+        <ul className="text-sm text-green-700 space-y-2">
+          <li>✓ Your Educator Dashboard is now active</li>
+          <li>✓ You'll start receiving demo assignments</li>
+          <li>✓ Complete demos and build your teaching profile</li>
+          <li>✓ Earn based on completed sessions</li>
+        </ul>
+        <Button asChild className="mt-4 bg-green-600 hover:bg-green-700">
+          <a href="/educator-dashboard">Go to Educator Dashboard <ChevronRight className="w-4 h-4 ml-2" /></a>
+        </Button>
+      </div>
     </div>
   );
 };
