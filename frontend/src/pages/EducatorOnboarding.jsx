@@ -1002,11 +1002,6 @@ I'm thrilled to be part of a team that believes in student-centric, personalized
       setDownloading(prev => ({ ...prev, certificate: false }));
     }
   };
-    a.download = `OLL_Certificate_${educator?.name?.replace(/\s/g, '_')}.html`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success('Certificate downloaded!');
-  };
 
   const downloadLinkedinImage = () => {
     // For now, redirect to template or generate
@@ -1042,9 +1037,10 @@ I'm thrilled to be part of a team that believes in student-centric, personalized
             <CreditCard className="w-8 h-8 text-blue-600" />
           </div>
           <h3 className="font-semibold text-[#1E3A5F] mb-2">ID Card</h3>
-          <p className="text-sm text-slate-500 mb-4">Your official OLL Educator ID Card</p>
-          <Button onClick={downloadIDCard} className="w-full bg-[#1E3A5F]">
-            <Download className="w-4 h-4 mr-2" /> Download ID Card
+          <p className="text-sm text-slate-500 mb-4">Your official OLL Educator ID Card (PDF)</p>
+          <Button onClick={downloadIDCard} disabled={downloading.idCard} className="w-full bg-[#1E3A5F]">
+            {downloading.idCard ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+            {downloading.idCard ? 'Generating...' : 'Download ID Card'}
           </Button>
         </div>
 
@@ -1053,9 +1049,10 @@ I'm thrilled to be part of a team that believes in student-centric, personalized
             <Award className="w-8 h-8 text-purple-600" />
           </div>
           <h3 className="font-semibold text-[#1E3A5F] mb-2">Certificate</h3>
-          <p className="text-sm text-slate-500 mb-4">Your completion certificate</p>
-          <Button onClick={downloadCertificate} className="w-full bg-purple-600 hover:bg-purple-700">
-            <Download className="w-4 h-4 mr-2" /> Download Certificate
+          <p className="text-sm text-slate-500 mb-4">Your completion certificate (PDF)</p>
+          <Button onClick={downloadCertificate} disabled={downloading.certificate} className="w-full bg-purple-600 hover:bg-purple-700">
+            {downloading.certificate ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+            {downloading.certificate ? 'Generating...' : 'Download Certificate'}
           </Button>
         </div>
       </div>
