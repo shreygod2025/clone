@@ -1569,69 +1569,6 @@ const AdminEducators = () => {
           </div>
         </DialogContent>
       </Dialog>
-
-      {/* Onboarding Progress Modal */}
-      <Dialog open={showOnboardingProgress} onOpenChange={setShowOnboardingProgress}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-[#1E3A5F]">Educator Onboarding Progress</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            {onboardingData.length === 0 ? (
-              <p className="text-center text-slate-500 py-8">No educators in onboarding yet</p>
-            ) : (
-              <div className="space-y-3">
-                {onboardingData.map((item) => {
-                  const progress = item.progress || 0;
-                  const steps = item.onboarding?.completed_steps || [];
-                  return (
-                    <div key={item.educator?.id} className="border rounded-xl p-4 hover:bg-slate-50">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-[#1E3A5F] rounded-full flex items-center justify-center text-white font-bold">
-                            {item.educator?.name?.charAt(0) || '?'}
-                          </div>
-                          <div>
-                            <h4 className="font-medium text-[#1E3A5F]">{item.educator?.name}</h4>
-                            <p className="text-xs text-slate-500">{item.educator?.email}</p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-lg text-[#1E3A5F]">{Math.round(progress)}%</p>
-                          <p className="text-xs text-slate-500">{steps.length}/8 steps</p>
-                        </div>
-                      </div>
-                      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full transition-all ${progress >= 100 ? 'bg-green-500' : 'bg-[#D63031]'}`}
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
-                      <div className="flex gap-1 mt-3">
-                        {[1,2,3,4,5,6,7,8].map(step => (
-                          <div 
-                            key={step}
-                            className={`flex-1 h-1 rounded ${steps.includes(step) ? 'bg-green-500' : 'bg-slate-200'}`}
-                            title={`Step ${step}`}
-                          />
-                        ))}
-                      </div>
-                      <div className="flex justify-between items-center mt-3 text-xs text-slate-500">
-                        <span>Started: {item.onboarding?.started_at ? new Date(item.onboarding.started_at).toLocaleDateString() : 'N/A'}</span>
-                        <span className={`px-2 py-0.5 rounded-full ${
-                          item.onboarding?.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-                        }`}>
-                          {item.onboarding?.status || 'Not started'}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </AdminLayout>
   );
 };
