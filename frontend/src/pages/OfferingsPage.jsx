@@ -467,7 +467,7 @@ const OfferingsPage = () => {
               </div>
             </section>
 
-            {/* School Case Studies */}
+            {/* School Case Studies - Dynamic from Admin with Static Fallback */}
             <section className="py-16 bg-slate-50">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center mb-12">
@@ -480,24 +480,29 @@ const OfferingsPage = () => {
                 </div>
 
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {CASE_STUDIES.map((study, idx) => (
+                  {(caseStudies.length > 0 ? caseStudies : CASE_STUDIES.map(s => ({ 
+                    id: s.school, 
+                    school_name: s.school, 
+                    video_id: s.videoId, 
+                    description: s.description 
+                  }))).map((study, idx) => (
                     <div 
-                      key={idx}
+                      key={study.id || idx}
                       className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow"
                       data-testid={`case-study-${idx}`}
                     >
                       <div className="aspect-video relative group">
                         <img 
-                          src={`https://img.youtube.com/vi/${study.videoId}/maxresdefault.jpg`}
-                          alt={study.school}
+                          src={`https://img.youtube.com/vi/${study.video_id || study.videoId}/maxresdefault.jpg`}
+                          alt={study.school_name || study.school}
                           className="w-full h-full object-cover"
                           onError={(e) => {
-                            e.target.src = `https://img.youtube.com/vi/${study.videoId}/hqdefault.jpg`;
+                            e.target.src = `https://img.youtube.com/vi/${study.video_id || study.videoId}/hqdefault.jpg`;
                           }}
                         />
                         <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors flex items-center justify-center">
                           <a 
-                            href={`https://www.youtube.com/watch?v=${study.videoId}`}
+                            href={`https://www.youtube.com/watch?v=${study.video_id || study.videoId}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="w-16 h-16 bg-white/90 rounded-full flex items-center justify-center hover:scale-110 transition-transform"
@@ -507,7 +512,7 @@ const OfferingsPage = () => {
                         </div>
                       </div>
                       <div className="p-4">
-                        <h3 className="font-bold text-[#1E3A5F] mb-1">{study.school}</h3>
+                        <h3 className="font-bold text-[#1E3A5F] mb-1">{study.school_name || study.school}</h3>
                         <p className="text-sm text-slate-600">{study.description}</p>
                       </div>
                     </div>
