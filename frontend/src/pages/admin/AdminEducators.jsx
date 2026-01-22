@@ -553,7 +553,12 @@ const AdminEducators = () => {
         {STATUS_SECTIONS.map(section => (
           <button
             key={section.value}
-            onClick={() => setActiveSection(section.value)}
+            onClick={() => {
+              setActiveSection(section.value);
+              if (section.value === 'onboarding') {
+                fetchOnboardingProgress();
+              }
+            }}
             className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all flex items-center gap-2 ${
               activeSection === section.value
                 ? 'bg-[#1E3A5F] text-white'
@@ -571,6 +576,58 @@ const AdminEducators = () => {
           </button>
         ))}
       </div>
+
+      {/* Onboarding Progress View - Show when onboarding section is active */}
+      {activeSection === 'onboarding' && onboardingData.length > 0 && (
+        <div className="mb-6 bg-gradient-to-r from-orange-50 to-amber-50 rounded-2xl p-6 border border-orange-100">
+          <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
+            <CheckCircle2 className="w-5 h-5 text-orange-500" />
+            Onboarding Progress Overview
+          </h3>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {onboardingData.map((item) => {
+              const progress = item.progress || 0;
+              const steps = item.onboarding?.completed_steps || [];
+              const verified = item.onboarding?.documents_verified;
+              return (
+                <div key={item.educator?.id} className="bg-white rounded-xl p-4 shadow-sm">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-[#1E3A5F] rounded-full flex items-center justify-center text-white font-bold">
+                      {item.educator?.name?.charAt(0) || '?'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-[#1E3A5F] truncate">{item.educator?.name}</h4>
+                      <p className="text-xs text-slate-500">{steps.length}/8 steps</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-lg text-[#1E3A5F]">{Math.round(progress)}%</p>
+                    </div>
+                  </div>
+                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
+                    <div 
+                      className={`h-full transition-all ${progress >= 100 ? 'bg-green-500' : 'bg-orange-500'}`}
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className={`px-2 py-0.5 rounded-full ${
+                      verified ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                    }`}>
+                      {verified ? '✓ Docs Verified' : 'Docs Pending'}
+                    </span>
+                    <button 
+                      onClick={() => setViewEducator(educators.find(e => e.id === item.educator?.id))}
+                      className="text-[#D63031] hover:underline"
+                    >
+                      View Details
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Educator Cards */}
       {loading ? (
