@@ -3,7 +3,7 @@ import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
 import { 
   MapPin, Building, FileText, Plus, Edit2, Trash2, X, Save, Eye, EyeOff,
-  Search, Globe, Calendar, Image, Tag, Briefcase, Users
+  Search, Globe, Calendar, Image, Tag, Briefcase, Users, Video, Play
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
