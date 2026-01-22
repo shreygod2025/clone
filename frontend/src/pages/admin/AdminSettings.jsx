@@ -742,7 +742,7 @@ const AdminSettings = () => {
             ))}
             {filteredBlogs.length === 0 && (
               <div className="bg-white rounded-xl p-8 text-center text-slate-500">
-                No blogs found. Click "Add Blog" to create your first blog post.
+                No blogs found. Click &quot;Add Blog&quot; to create your first blog post.
               </div>
             )}
           </div>
