@@ -181,12 +181,13 @@ const StudentFunnel = () => {
     fetchCenters();
   }, [formData.city, formData.offline_type]);
 
-  // Dynamic steps - SKILL FIRST, then AGE, then ACTION CHOICE (removed learner type)
+  // Dynamic steps - SKILL FIRST, then AGE, then LEARNING GOAL, then ACTION CHOICE (removed learner type)
   const getActiveSteps = () => {
     const steps = [
       { id: 'skill', title: 'Choose a Skill' },
       { id: 'action', title: 'What would you like to do?' },
       { id: 'age', title: 'Select Age Group' },
+      { id: 'learning_goal', title: 'Your Learning Goal' },
       { id: 'mode', title: 'Learning Mode' },
     ];
     
