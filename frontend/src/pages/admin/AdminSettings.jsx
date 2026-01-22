@@ -376,7 +376,10 @@ const AdminSettings = () => {
           <Button
             onClick={() => {
               setEditingItem(null);
-              if (activeTab === 'team-requirements') {
+              if (activeTab === 'case-studies') {
+                setCaseStudyForm({ school_name: '', video_id: '', description: '', order: 0, is_active: true });
+                setShowCaseStudyModal(true);
+              } else if (activeTab === 'team-requirements') {
                 setTeamReqForm({
                   title: '', description: '', type: 'Full-time', city: 'Remote', 
                   skills_required: '', responsibilities: '', qualifications: '', is_active: true
@@ -401,9 +404,91 @@ const AdminSettings = () => {
             data-testid="add-new-btn"
           >
             <Plus className="w-4 h-4 mr-2" />
-            Add {activeTab === 'team-requirements' ? 'Opening' : activeTab === 'cities' ? 'City' : activeTab === 'centers' ? 'Center' : 'Blog'}
+            Add {activeTab === 'case-studies' ? 'Case Study' : activeTab === 'team-requirements' ? 'Opening' : activeTab === 'cities' ? 'City' : activeTab === 'centers' ? 'Center' : 'Blog'}
           </Button>
         </div>
+
+        {/* Case Studies Tab */}
+        {activeTab === 'case-studies' && (
+          <div className="grid gap-4">
+            {filteredCaseStudies.length === 0 ? (
+              <div className="bg-white rounded-xl p-8 text-center text-slate-500">
+                <Video className="w-12 h-12 mx-auto text-slate-300 mb-4" />
+                <p>No case studies yet. Click "Add Case Study" to add school success stories.</p>
+                <p className="text-sm mt-2">These will be displayed on the School Offerings and About pages.</p>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredCaseStudies.map(study => (
+                  <div key={study.id} className={`bg-white rounded-xl overflow-hidden shadow-sm border ${study.is_active ? 'border-green-200' : 'border-slate-200 opacity-60'}`}>
+                    <div className="aspect-video bg-slate-100 relative">
+                      <img 
+                        src={`https://img.youtube.com/vi/${study.video_id}/mqdefault.jpg`} 
+                        alt={study.school_name}
+                        className="w-full h-full object-cover"
+                      />
+                      <a 
+                        href={`https://www.youtube.com/watch?v=${study.video_id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 hover:opacity-100 transition-opacity"
+                      >
+                        <Play className="w-12 h-12 text-white" />
+                      </a>
+                      <span className={`absolute top-2 right-2 px-2 py-0.5 rounded text-xs font-medium ${
+                        study.is_active ? 'bg-green-500 text-white' : 'bg-slate-500 text-white'
+                      }`}>
+                        {study.is_active ? 'Visible' : 'Hidden'}
+                      </span>
+                    </div>
+                    <div className="p-4">
+                      <h3 className="font-semibold text-[#1E3A5F] mb-1">{study.school_name}</h3>
+                      {study.description && (
+                        <p className="text-sm text-slate-600 line-clamp-2">{study.description}</p>
+                      )}
+                      <p className="text-xs text-slate-400 mt-2">Order: {study.order || 0}</p>
+                      <div className="flex gap-2 mt-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setEditingItem(study);
+                            setCaseStudyForm({
+                              school_name: study.school_name,
+                              video_id: study.video_id,
+                              description: study.description || '',
+                              order: study.order || 0,
+                              is_active: study.is_active
+                            });
+                            setShowCaseStudyModal(true);
+                          }}
+                        >
+                          <Edit2 className="w-3 h-3 mr-1" /> Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => toggleCaseStudyActive(study)}
+                        >
+                          {study.is_active ? <EyeOff className="w-3 h-3 mr-1" /> : <Eye className="w-3 h-3 mr-1" />}
+                          {study.is_active ? 'Hide' : 'Show'}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 hover:bg-red-50"
+                          onClick={() => handleDeleteCaseStudy(study.id)}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Team Requirements Tab */}
         {activeTab === 'team-requirements' && (
