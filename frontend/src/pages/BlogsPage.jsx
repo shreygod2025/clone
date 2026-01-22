@@ -5,6 +5,7 @@ import { Input } from '../components/ui/input';
 import { format } from 'date-fns';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
