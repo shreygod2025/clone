@@ -1063,6 +1063,102 @@ const AdminEducators = () => {
                     </div>
                   </div>
 
+                  {/* Document Verification Section - Only for onboarding educators */}
+                  {viewEducator.status === 'onboarding' && (
+                    <div className="border-t pt-4">
+                      <h4 className="font-semibold text-[#1E3A5F] mb-3 flex items-center gap-2">
+                        <FileText className="w-4 h-4" />
+                        Document Verification
+                        {selectedOnboarding?.documents_verified && (
+                          <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-700 text-xs">✓ Verified</span>
+                        )}
+                      </h4>
+                      
+                      {!selectedOnboarding ? (
+                        <Button size="sm" variant="outline" onClick={() => fetchOnboardingDetails(viewEducator.id)}>
+                          Load Onboarding Details
+                        </Button>
+                      ) : (
+                        <div className="space-y-3">
+                          {/* Document Links */}
+                          <div className="grid grid-cols-2 gap-3 text-sm">
+                            <div className="p-3 bg-slate-50 rounded-lg">
+                              <p className="text-slate-500 text-xs mb-1">Profile Photo</p>
+                              {selectedOnboarding.profile_photo ? (
+                                <a href={selectedOnboarding.profile_photo} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1">
+                                  <Eye className="w-3 h-3" /> View Photo
+                                </a>
+                              ) : <span className="text-slate-400">Not uploaded</span>}
+                            </div>
+                            <div className="p-3 bg-slate-50 rounded-lg">
+                              <p className="text-slate-500 text-xs mb-1">Aadhar Card</p>
+                              {selectedOnboarding.aadhar_document ? (
+                                <a href={selectedOnboarding.aadhar_document} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1">
+                                  <Eye className="w-3 h-3" /> View Document
+                                </a>
+                              ) : <span className="text-slate-400">Not uploaded</span>}
+                              {selectedOnboarding.aadhar_number && <p className="text-xs text-slate-500 mt-1">No: {selectedOnboarding.aadhar_number}</p>}
+                            </div>
+                            <div className="p-3 bg-slate-50 rounded-lg">
+                              <p className="text-slate-500 text-xs mb-1">PAN Card</p>
+                              {selectedOnboarding.pan_document ? (
+                                <a href={selectedOnboarding.pan_document} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1">
+                                  <Eye className="w-3 h-3" /> View Document
+                                </a>
+                              ) : <span className="text-slate-400">Not uploaded</span>}
+                              {selectedOnboarding.pan_number && <p className="text-xs text-slate-500 mt-1">No: {selectedOnboarding.pan_number}</p>}
+                            </div>
+                            <div className="p-3 bg-slate-50 rounded-lg">
+                              <p className="text-slate-500 text-xs mb-1">Bank Document</p>
+                              {selectedOnboarding.bank_document ? (
+                                <a href={selectedOnboarding.bank_document} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1">
+                                  <Eye className="w-3 h-3" /> View Document
+                                </a>
+                              ) : <span className="text-slate-400">Not uploaded</span>}
+                            </div>
+                          </div>
+                          
+                          {/* Verification Actions */}
+                          {!selectedOnboarding.documents_verified ? (
+                            <div className="space-y-2">
+                              <Textarea
+                                value={verificationNotes}
+                                onChange={(e) => setVerificationNotes(e.target.value)}
+                                placeholder="Add verification notes (optional)..."
+                                className="text-sm"
+                                rows={2}
+                              />
+                              <div className="flex gap-2">
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => handleVerifyDocuments(viewEducator.id, true)}
+                                  className="bg-green-600 hover:bg-green-700"
+                                >
+                                  <CheckCircle2 className="w-3 h-3 mr-1" /> Verify Documents
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={() => handleVerifyDocuments(viewEducator.id, false)}
+                                  className="text-red-600 border-red-200 hover:bg-red-50"
+                                >
+                                  <Archive className="w-3 h-3 mr-1" /> Reject
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="p-3 bg-green-50 rounded-lg text-green-700 text-sm">
+                              ✓ Documents verified on {new Date(selectedOnboarding.documents_verified_at).toLocaleDateString()}
+                              {selectedOnboarding.verification_notes && (
+                                <p className="text-xs text-green-600 mt-1">Notes: {selectedOnboarding.verification_notes}</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="pt-4 border-t">
                     <div className="flex items-center gap-4 text-sm text-slate-500">
                       <span>Status: <span className="font-medium text-[#1E3A5F] capitalize">{viewEducator.status?.replace('_', ' ')}</span></span>
