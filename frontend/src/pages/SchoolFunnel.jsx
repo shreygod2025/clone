@@ -50,18 +50,48 @@ const FEE_RANGES = [
 ];
 
 const PROGRAMS = [
-  { value: 'stem', label: 'STEM / Robotics', description: 'Hands-on science & tech' },
-  { value: 'coding', label: 'Coding & AI', description: 'Programming skills' },
-  { value: 'entrepreneurship', label: 'Entrepreneurship', description: 'Business mindset' },
-  { value: 'financial', label: 'Financial Literacy', description: 'Money management' },
+  { value: 'robotics', label: 'Robotics', description: 'Hands-on robotics education' },
+  { value: 'coding', label: 'Coding & Programming', description: 'Programming skills development' },
+  { value: 'ai', label: 'AI & Machine Learning', description: 'Future-ready AI skills' },
+  { value: 'entrepreneurship', label: 'Financial Literacy & Entrepreneurship', description: 'Business & money skills' },
 ];
 
-const SUPPORT_OPTIONS = [
-  { value: 'curriculum', label: 'Curriculum Design', description: 'Course structure & content' },
-  { value: 'lab', label: 'Lab Setup', description: 'Infrastructure & equipment' },
-  { value: 'competitions', label: 'Competitions', description: 'Events & championships' },
-  { value: 'training', label: 'Teacher Training', description: 'Faculty development' },
-];
+// Support options matching school offerings
+const SUPPORT_OPTIONS = {
+  robotics: [
+    { value: 'robotics-curriculum-kits', label: 'Robotics Curriculum with Take-home Kits' },
+    { value: 'robotics-lab-setup', label: 'Robotics Lab Setup' },
+    { value: 'robotics-exhibition-prep', label: 'Exhibition Preparation' },
+    { value: 'host-robotics-exhibition', label: 'Host an Exhibition' },
+    { value: 'iit-bombay-competitions', label: 'IIT Bombay Competition Training' },
+    { value: 'robotics-competition-prep', label: 'General Competition Prep' },
+    { value: 'icse-group3-kits', label: 'ICSE Group 3 Subject Kits' },
+    { value: 'afterschool-robotics', label: 'Afterschool Classes' },
+    { value: 'robotics-summer-camp', label: 'Summer Camp' },
+    { value: 'robotics-ai-seminar', label: 'Robotics & AI Seminar' },
+    { value: 'robotics-books', label: 'Robotics Books' },
+    { value: 'robotics-kits', label: 'Robotics Kits Only' },
+  ],
+  coding: [
+    { value: 'vibe-coding-seminar', label: 'Vibe Coding Seminar' },
+    { value: 'coding-afterschool', label: 'Afterschool Coding Classes' },
+    { value: 'coding-summer-camp', label: 'Coding Summer Camp' },
+  ],
+  ai: [
+    { value: 'ai-center-excellence', label: 'AI Center for Excellence' },
+    { value: 'agentic-ai-workshop', label: 'Agentic AI Workshop' },
+    { value: 'ai-seminar', label: 'AI Awareness Seminar' },
+    { value: 'agentic-ai-summer-camp', label: 'AI Summer Camp' },
+    { value: 'ai-services-agency-course', label: 'AI Services Agency Course' },
+  ],
+  entrepreneurship: [
+    { value: 'entrepreneurship-workshop', label: '3-Day Entrepreneurship Workshop' },
+    { value: 'skill-titans-olympiad', label: 'Skill Titans TV Show & Olympiad' },
+    { value: 'fl-curriculum', label: 'Financial Literacy Curriculum' },
+    { value: 'ecell-opening', label: 'E-Cell Opening' },
+    { value: 'fl-summer-camp', label: 'Summer Camp' },
+  ],
+};
 
 const TIME_SLOTS = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'];
 
