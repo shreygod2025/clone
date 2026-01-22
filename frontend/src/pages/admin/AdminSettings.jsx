@@ -256,12 +256,64 @@ const AdminSettings = () => {
     }
   };
 
+  // Case Study handlers
+  const handleSaveCaseStudy = async () => {
+    if (!caseStudyForm.school_name || !caseStudyForm.video_id) {
+      toast.error('Please enter school name and YouTube video ID');
+      return;
+    }
+    try {
+      if (editingItem) {
+        await axios.patch(`${API}/case-studies/${editingItem.id}`, caseStudyForm, { headers: getAuthHeaders() });
+        toast.success('Case study updated successfully');
+      } else {
+        await axios.post(`${API}/case-studies`, caseStudyForm, { headers: getAuthHeaders() });
+        toast.success('Case study added successfully');
+      }
+      setShowCaseStudyModal(false);
+      setEditingItem(null);
+      setCaseStudyForm({ school_name: '', video_id: '', description: '', order: 0, is_active: true });
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to save case study');
+    }
+  };
+
+  const handleDeleteCaseStudy = async (id) => {
+    if (!confirm('Are you sure you want to delete this case study?')) return;
+    try {
+      await axios.delete(`${API}/case-studies/${id}`, { headers: getAuthHeaders() });
+      toast.success('Case study deleted');
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to delete case study');
+    }
+  };
+
+  const toggleCaseStudyActive = async (study) => {
+    try {
+      await axios.patch(`${API}/case-studies/${study.id}`, { 
+        is_active: !study.is_active 
+      }, { headers: getAuthHeaders() });
+      toast.success(study.is_active ? 'Case study hidden' : 'Case study visible');
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to update case study');
+    }
+  };
+
   const tabs = [
+    { id: 'case-studies', label: 'School Case Studies', icon: Video, count: caseStudies.length },
     { id: 'team-requirements', label: 'Team Openings', icon: Briefcase, count: teamRequirements.length },
     { id: 'cities', label: 'Cities', icon: MapPin, count: cities.length },
     { id: 'centers', label: 'Centers', icon: Building, count: centers.length },
     { id: 'blogs', label: 'Blogs', icon: FileText, count: blogs.length },
   ];
+
+  const filteredCaseStudies = caseStudies.filter(s => 
+    s.school_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    s.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const filteredTeamReqs = teamRequirements.filter(r => 
     r.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
