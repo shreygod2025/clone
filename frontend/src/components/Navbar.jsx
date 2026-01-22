@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Menu, X, User, LogIn, GraduationCap } from 'lucide-react';
+import { Menu, X, User, LogIn, GraduationCap, Users, Handshake } from 'lucide-react';
 import { Button } from './ui/button';
 import { useUserAuth } from '../context/UserAuthContext';
 
-const Navbar = ({ showBookDemo = false, onBookDemo }) => {
+const Navbar = ({ showBookDemo = false, onBookDemo, variant = 'default' }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -12,6 +12,9 @@ const Navbar = ({ showBookDemo = false, onBookDemo }) => {
 
   // Check if user is an educator
   const isEducator = user?.role === 'educator';
+  
+  // For About page, show different action buttons
+  const isAboutVariant = variant === 'about';
 
   // Removed Blog and FAQ from navbar - moved to footer
   const navLinks = [
@@ -62,83 +65,130 @@ const Navbar = ({ showBookDemo = false, onBookDemo }) => {
               </Link>
             ))}
             
-            {/* Login / Profile - Dark Blue Button */}
-            {isLoggedIn ? (
-              <button
-                onClick={() => navigate(getProfileLink())}
-                className="flex items-center gap-2 text-slate-600 hover:text-[#1E3A5F] font-medium"
-                data-testid="profile-btn"
-              >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  isEducator ? 'bg-[#D63031]' : 'bg-[#1E3A5F]'
-                }`}>
-                  {isEducator ? (
-                    <GraduationCap className="w-4 h-4 text-white" />
-                  ) : (
-                    <User className="w-4 h-4 text-white" />
-                  )}
-                </div>
-                <span className="hidden lg:inline">{user?.name?.split(' ')[0] || 'Profile'}</span>
-              </button>
+            {/* About page variant: Join Team & Partner With Us */}
+            {isAboutVariant ? (
+              <>
+                <Button
+                  onClick={() => navigate('/join-team')}
+                  variant="outline"
+                  className="border-[#1E3A5F] text-[#1E3A5F] hover:bg-[#1E3A5F] hover:text-white"
+                  data-testid="join-team-btn"
+                >
+                  <Users className="w-4 h-4 mr-2" />
+                  Join Team
+                </Button>
+                <Button
+                  onClick={() => navigate('/growth-partner')}
+                  className="bg-[#D63031] hover:bg-[#b52828] text-white"
+                  data-testid="partner-btn"
+                >
+                  <Handshake className="w-4 h-4 mr-2" />
+                  Partner With Us
+                </Button>
+              </>
             ) : (
-              <Button
-                onClick={() => navigate('/login')}
-                className="bg-[#1E3A5F] hover:bg-[#2d4a6f] text-white"
-                data-testid="login-btn"
-              >
-                <LogIn className="w-4 h-4 mr-2" />
-                Login
-              </Button>
-            )}
-            
-            {/* Hide Book Demo for educators */}
-            {showBookDemo && !isEducator && (
-              <Button 
-                onClick={onBookDemo}
-                className="bg-[#D63031] hover:bg-[#b52828] text-white ml-2"
-                data-testid="nav-book-demo-btn"
-              >
-                Book Free Demo
-              </Button>
+              <>
+                {/* Login / Profile - Dark Blue Button */}
+                {isLoggedIn ? (
+                  <button
+                    onClick={() => navigate(getProfileLink())}
+                    className="flex items-center gap-2 text-slate-600 hover:text-[#1E3A5F] font-medium"
+                    data-testid="profile-btn"
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      isEducator ? 'bg-[#D63031]' : 'bg-[#1E3A5F]'
+                    }`}>
+                      {isEducator ? (
+                        <GraduationCap className="w-4 h-4 text-white" />
+                      ) : (
+                        <User className="w-4 h-4 text-white" />
+                      )}
+                    </div>
+                    <span className="hidden lg:inline">{user?.name?.split(' ')[0] || 'Profile'}</span>
+                  </button>
+                ) : (
+                  <Button
+                    onClick={() => navigate('/login')}
+                    className="bg-[#1E3A5F] hover:bg-[#2d4a6f] text-white"
+                    data-testid="login-btn"
+                  >
+                    <LogIn className="w-4 h-4 mr-2" />
+                    Login
+                  </Button>
+                )}
+                
+                {/* Hide Book Demo for educators */}
+                {showBookDemo && !isEducator && (
+                  <Button 
+                    onClick={onBookDemo}
+                    className="bg-[#D63031] hover:bg-[#b52828] text-white ml-2"
+                    data-testid="nav-book-demo-btn"
+                  >
+                    Book Free Demo
+                  </Button>
+                )}
+              </>
             )}
           </div>
 
           {/* Mobile Menu Button */}
           <div className="flex items-center gap-2 md:hidden">
-            {isLoggedIn && (
-              <button
-                onClick={() => navigate(getProfileLink())}
-                className="p-2"
-                data-testid="mobile-profile-btn"
-              >
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                  isEducator ? 'bg-[#D63031]' : 'bg-[#1E3A5F]'
-                }`}>
-                  {isEducator ? (
-                    <GraduationCap className="w-4 h-4 text-white" />
-                  ) : (
-                    <User className="w-4 h-4 text-white" />
-                  )}
-                </div>
-              </button>
-            )}
-            {!isLoggedIn && (
-              <Button
-                onClick={() => navigate('/login')}
-                className="bg-[#1E3A5F] hover:bg-[#2d4a6f] text-white text-sm px-3 py-1 h-8"
-                data-testid="mobile-login-btn"
-              >
-                Login
-              </Button>
-            )}
-            {showBookDemo && !isEducator && (
-              <Button 
-                onClick={onBookDemo}
-                className="bg-[#D63031] hover:bg-[#b52828] text-white text-sm px-3 py-1 h-8"
-                data-testid="mobile-book-demo-btn"
-              >
-                Book Demo
-              </Button>
+            {isAboutVariant ? (
+              <>
+                <Button
+                  onClick={() => navigate('/join-team')}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs px-2"
+                >
+                  Join Team
+                </Button>
+                <Button
+                  onClick={() => navigate('/growth-partner')}
+                  size="sm"
+                  className="bg-[#D63031] text-xs px-2"
+                >
+                  Partner
+                </Button>
+              </>
+            ) : (
+              <>
+                {isLoggedIn && (
+                  <button
+                    onClick={() => navigate(getProfileLink())}
+                    className="p-2"
+                    data-testid="mobile-profile-btn"
+                  >
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      isEducator ? 'bg-[#D63031]' : 'bg-[#1E3A5F]'
+                    }`}>
+                      {isEducator ? (
+                        <GraduationCap className="w-4 h-4 text-white" />
+                      ) : (
+                        <User className="w-4 h-4 text-white" />
+                      )}
+                    </div>
+                  </button>
+                )}
+                {!isLoggedIn && (
+                  <Button
+                    onClick={() => navigate('/login')}
+                    className="bg-[#1E3A5F] hover:bg-[#2d4a6f] text-white text-sm px-3 py-1 h-8"
+                    data-testid="mobile-login-btn"
+                  >
+                    Login
+                  </Button>
+                )}
+                {showBookDemo && !isEducator && (
+                  <Button 
+                    onClick={onBookDemo}
+                    className="bg-[#D63031] hover:bg-[#b52828] text-white text-sm px-3 py-1 h-8"
+                    data-testid="mobile-book-demo-btn"
+                  >
+                    Book Demo
+                  </Button>
+                )}
+              </>
             )}
             <button 
               className="p-2"
