@@ -540,6 +540,8 @@ const JoinTeamPage = () => {
           ))}
         </div>
       </div>
+
+      <Footer />
     </div>
   );
 };
