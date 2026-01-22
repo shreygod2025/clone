@@ -26,12 +26,14 @@ const AdminSettings = () => {
   const [centers, setCenters] = useState([]);
   const [blogs, setBlogs] = useState([]);
   const [teamRequirements, setTeamRequirements] = useState([]);
+  const [caseStudies, setCaseStudies] = useState([]);
   
   // Modal states
   const [showCityModal, setShowCityModal] = useState(false);
   const [showCenterModal, setShowCenterModal] = useState(false);
   const [showBlogModal, setShowBlogModal] = useState(false);
   const [showTeamReqModal, setShowTeamReqModal] = useState(false);
+  const [showCaseStudyModal, setShowCaseStudyModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   
   // Form states
