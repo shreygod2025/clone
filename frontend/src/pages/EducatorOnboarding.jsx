@@ -774,10 +774,21 @@ const TrainingStep = ({ videoProgress, setVideoProgress, quizAnswers, setQuizAns
           </div>
           <p className="text-sm text-slate-600">{currentVideo?.description}</p>
           
-          {isVideoWatched && isQuizPassed ? (
+          {isVideoWatched && isQuizPassed && (!currentVideo?.requiresVideoUpload || hasVideoUpload) ? (
             <div className="bg-green-50 p-4 rounded-xl text-green-700 flex items-center gap-2">
               <CheckCircle className="w-5 h-5" />
               <span>Completed! {hasVideoUpload ? 'Video uploaded.' : ''}</span>
+            </div>
+          ) : isVideoWatched && isQuizPassed && currentVideo?.requiresVideoUpload && !hasVideoUpload ? (
+            /* Quiz passed but video upload still needed */
+            <div className="space-y-3">
+              <div className="bg-green-50 p-4 rounded-xl text-green-700 flex items-center gap-2">
+                <CheckCircle className="w-5 h-5" />
+                <span>Quiz passed! Now upload your video assessment.</span>
+              </div>
+              <Button onClick={() => setShowUpload(true)} className="w-full bg-purple-600 hover:bg-purple-700">
+                <Upload className="w-4 h-4 mr-2" /> Upload Video Assessment
+              </Button>
             </div>
           ) : (
             <Button onClick={markVideoWatched} disabled={isVideoWatched} className="w-full bg-[#1E3A5F]">
