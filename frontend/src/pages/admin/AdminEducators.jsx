@@ -130,6 +130,32 @@ const AdminEducators = () => {
     }
   };
 
+  const fetchOnboardingDetails = async (educatorId) => {
+    try {
+      const response = await axios.get(`${API}/educator/onboarding/${educatorId}`, {
+        headers: getAuthHeaders()
+      });
+      setSelectedOnboarding(response.data?.onboarding);
+    } catch (error) {
+      console.error('Failed to fetch onboarding details:', error);
+      setSelectedOnboarding(null);
+    }
+  };
+
+  const handleVerifyDocuments = async (educatorId, verified) => {
+    try {
+      await axios.post(`${API}/admin/educators/${educatorId}/verify-documents`, {
+        verified,
+        notes: verificationNotes
+      }, { headers: getAuthHeaders() });
+      toast.success(verified ? 'Documents verified!' : 'Verification rejected');
+      fetchOnboardingDetails(educatorId);
+      fetchOnboardingProgress();
+    } catch (error) {
+      toast.error('Failed to update verification status');
+    }
+  };
+
   const fetchEducators = async () => {
     setLoading(true);
     try {
