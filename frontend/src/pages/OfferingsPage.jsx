@@ -225,6 +225,14 @@ const OUR_EVENTS = [
 const OfferingsPage = () => {
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState('individuals');
+  const [caseStudies, setCaseStudies] = useState([]);
+
+  useEffect(() => {
+    // Fetch case studies from backend
+    axios.get(`${API}/case-studies`)
+      .then(res => setCaseStudies(res.data || []))
+      .catch(() => setCaseStudies([]));
+  }, []);
 
   return (
     <>
