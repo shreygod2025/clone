@@ -25,8 +25,57 @@ const AGE_OPTIONS = [
   { value: '6-9', label: '6-9 years', description: 'Foundation Level' },
   { value: '10-14', label: '10-14 years', description: 'Intermediate Level' },
   { value: '15-18', label: '15-18 years', description: 'Advanced Level' },
-  { value: '18+', label: '18+ years', description: 'Adult Learners' },
+  { value: 'young_adult', label: 'Young Adult (18-25)', description: 'Career Starters' },
+  { value: 'homemaker', label: 'Homemaker', description: 'Life Skills & Upskilling' },
+  { value: 'working_professional', label: 'Working Professional', description: 'Career Advancement' },
+  { value: 'senior_citizen', label: 'Senior Citizen', description: 'Lifelong Learning' },
 ];
+
+// Learning goals based on age group
+const LEARNING_GOALS = {
+  '6-9': [
+    { value: 'creativity', label: 'Develop Creativity & Imagination' },
+    { value: 'basics', label: 'Learn Technology Basics' },
+    { value: 'fun_learning', label: 'Fun & Interactive Learning' },
+    { value: 'problem_solving', label: 'Build Problem-Solving Skills' },
+  ],
+  '10-14': [
+    { value: 'coding_basics', label: 'Learn Coding & Programming' },
+    { value: 'robotics', label: 'Build & Program Robots' },
+    { value: 'academics', label: 'Support Academic Learning' },
+    { value: 'future_skills', label: 'Prepare for Future Careers' },
+  ],
+  '15-18': [
+    { value: 'career_prep', label: 'Career Preparation' },
+    { value: 'advanced_tech', label: 'Advanced Technology Skills' },
+    { value: 'entrepreneurship', label: 'Start a Business/Startup' },
+    { value: 'competitive', label: 'Competitive Exams & Olympiads' },
+  ],
+  'young_adult': [
+    { value: 'job_skills', label: 'Job-Ready Skills' },
+    { value: 'freelancing', label: 'Freelancing & Side Income' },
+    { value: 'startup', label: 'Launch a Startup' },
+    { value: 'upskilling', label: 'Upskill for Promotions' },
+  ],
+  'homemaker': [
+    { value: 'digital_literacy', label: 'Digital Literacy' },
+    { value: 'income_generation', label: 'Generate Additional Income' },
+    { value: 'hobby', label: 'Pursue a New Hobby' },
+    { value: 'child_support', label: 'Help Children with Studies' },
+  ],
+  'working_professional': [
+    { value: 'career_switch', label: 'Career Switch to Tech' },
+    { value: 'ai_skills', label: 'Learn AI & Automation' },
+    { value: 'leadership', label: 'Leadership & Management' },
+    { value: 'passive_income', label: 'Build Passive Income Streams' },
+  ],
+  'senior_citizen': [
+    { value: 'stay_updated', label: 'Stay Updated with Technology' },
+    { value: 'mental_fitness', label: 'Mental Fitness & Engagement' },
+    { value: 'connect_family', label: 'Connect with Family Online' },
+    { value: 'new_hobby', label: 'Learn Something New' },
+  ],
+};
 
 const TIME_SLOTS = ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'];
 
