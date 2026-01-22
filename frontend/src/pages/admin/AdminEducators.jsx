@@ -244,9 +244,39 @@ const AdminEducators = () => {
   };
 
   const handleOnboard = async (educator) => {
-    await handleStatusChange(educator, 'onboarded', {
+    await handleStatusChange(educator, 'onboarding', {
       onboarding_date: new Date().toISOString().split('T')[0]
     });
+    // Create onboarding record
+    try {
+      await axios.get(`${API}/educator/onboarding/${educator.id}`, {
+        headers: getAuthHeaders()
+      });
+    } catch (error) {
+      console.error('Failed to create onboarding record:', error);
+    }
+  };
+
+  const handleActivate = async (educator) => {
+    // Check if onboarding is complete and documents verified
+    try {
+      const response = await axios.get(`${API}/educator/onboarding/${educator.id}`, {
+        headers: getAuthHeaders()
+      });
+      const onboarding = response.data?.onboarding;
+      
+      if (!onboarding?.documents_verified) {
+        toast.error('Please verify educator documents before activating');
+        return;
+      }
+      
+      await handleStatusChange(educator, 'active');
+      toast.success(`${educator.name} is now an active educator!`);
+    } catch (error) {
+      // If no onboarding record, still allow activation
+      await handleStatusChange(educator, 'active');
+      toast.success(`${educator.name} is now an active educator!`);
+    }
   };
 
   const handleArchive = async (educator) => {
