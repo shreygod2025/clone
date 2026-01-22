@@ -339,6 +339,15 @@ const AdminTeamApplications = () => {
             data-testid="search-input"
           />
         </div>
+        <Button 
+          variant="outline" 
+          onClick={() => setShowRequirementsModal(true)} 
+          className="border-[#1E3A5F] text-[#1E3A5F]"
+          data-testid="team-requirements-btn"
+        >
+          <Settings className="w-4 h-4 mr-2" />
+          Team Requirements ({teamRequirements.filter(r => r.is_active).length})
+        </Button>
         <Button onClick={() => setShowAddForm(true)} className="bg-[#D63031] hover:bg-[#b52828]" data-testid="add-application-btn">
           <Plus className="w-4 h-4 mr-2" />
           Add Application
