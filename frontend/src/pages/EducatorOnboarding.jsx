@@ -934,8 +934,7 @@ const ReviewStep = ({ educator, onboarding, isApproved, onComplete }) => {
 // Complete Step - Certificate, ID Card, LinkedIn
 const CompleteStep = ({ educator, onboarding, isApproved }) => {
   const [linkedinCopied, setLinkedinCopied] = useState(false);
-  const idCardRef = useRef(null);
-  const certificateRef = useRef(null);
+  const [downloading, setDownloading] = useState({ idCard: false, certificate: false });
 
   const linkedinPost = `🎉 Excited to share that I've joined @OLL (One Life Learning) as an Educator!
 
@@ -950,84 +949,59 @@ I'm thrilled to be part of a team that believes in student-centric, personalized
     setTimeout(() => setLinkedinCopied(false), 3000);
   };
 
-  const downloadIDCard = () => {
-    // Generate ID Card HTML and download
-    const idCardHTML = `
-      <html>
-      <head>
-        <style>
-          body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
-          .card { width: 350px; height: 200px; background: linear-gradient(135deg, #1E3A5F 0%, #2d5a87 100%); border-radius: 20px; padding: 20px; color: white; position: relative; }
-          .logo { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
-          .photo { width: 80px; height: 80px; border-radius: 50%; background: white; margin: 10px 0; object-fit: cover; }
-          .name { font-size: 18px; font-weight: bold; }
-          .role { font-size: 14px; color: #D63031; }
-          .details { font-size: 12px; margin-top: 10px; }
-          .id { position: absolute; bottom: 20px; right: 20px; font-size: 12px; }
-        </style>
-      </head>
-      <body>
-        <div class="card">
-          <div class="logo">OLL</div>
-          <img class="photo" src="${onboarding?.profile_photo || ''}" alt="Photo" />
-          <div class="name">${educator?.name || ''}</div>
-          <div class="role">OLL Educator</div>
-          <div class="details">📞 ${educator?.phone || ''}</div>
-          <div class="id">ID: ${educator?.id?.substring(0, 8) || ''}</div>
-        </div>
-      </body>
-      </html>
-    `;
-    
-    const blob = new Blob([idCardHTML], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `OLL_ID_Card_${educator?.name?.replace(/\s/g, '_')}.html`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success('ID Card downloaded!');
+  const downloadIDCard = async () => {
+    setDownloading(prev => ({ ...prev, idCard: true }));
+    try {
+      const educatorId = educator?.id;
+      const response = await fetch(`${API}/educator/onboarding/${educatorId}/download-id-card`);
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Failed to download ID card');
+      }
+      
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `OLL_ID_Card_${educator?.name?.replace(/\s/g, '_')}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('ID Card downloaded!');
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error(error.message || 'Failed to download ID card');
+    } finally {
+      setDownloading(prev => ({ ...prev, idCard: false }));
+    }
   };
 
-  const downloadCertificate = () => {
-    const certHTML = `
-      <html>
-      <head>
-        <style>
-          body { margin: 0; padding: 40px; font-family: Georgia, serif; background: white; }
-          .cert { border: 8px double #1E3A5F; padding: 40px; text-align: center; max-width: 800px; margin: auto; }
-          .title { font-size: 32px; color: #1E3A5F; margin-bottom: 20px; }
-          .subtitle { font-size: 14px; color: #666; margin-bottom: 30px; }
-          .name { font-size: 36px; font-weight: bold; color: #000; margin: 20px 0; }
-          .role { font-size: 18px; color: #D63031; margin-bottom: 20px; }
-          .text { font-size: 14px; color: #444; margin: 20px 0; }
-          .signature { margin-top: 40px; }
-          .sig-name { font-weight: bold; }
-          .logo { font-size: 28px; font-weight: bold; color: #1E3A5F; margin-bottom: 20px; }
-        </style>
-      </head>
-      <body>
-        <div class="cert">
-          <div class="logo">OLL</div>
-          <div class="title">CERTIFICATE OF COMPLETION</div>
-          <div class="subtitle">This is to certify that</div>
-          <div class="name">${educator?.name || ''}</div>
-          <div class="role">OLL Educator</div>
-          <div class="text">Has successfully completed the OLL Educator Training Program and is hereby certified as an official OLL Educator.</div>
-          <div class="text">Date: ${new Date().toLocaleDateString()}</div>
-          <div class="signature">
-            <div class="sig-name">Shreyaan Daga</div>
-            <div>Cofounder - OLL</div>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
-    
-    const blob = new Blob([certHTML], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
+  const downloadCertificate = async () => {
+    setDownloading(prev => ({ ...prev, certificate: true }));
+    try {
+      const educatorId = educator?.id;
+      const response = await fetch(`${API}/educator/onboarding/${educatorId}/download-certificate`);
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Failed to download certificate');
+      }
+      
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `OLL_Certificate_${educator?.name?.replace(/\s/g, '_')}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Certificate downloaded!');
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error(error.message || 'Failed to download certificate');
+    } finally {
+      setDownloading(prev => ({ ...prev, certificate: false }));
+    }
+  };
     a.download = `OLL_Certificate_${educator?.name?.replace(/\s/g, '_')}.html`;
     a.click();
     URL.revokeObjectURL(url);
