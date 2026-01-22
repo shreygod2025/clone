@@ -311,6 +311,8 @@ const FAQPage = () => {
           </div>
         </div>
       )}
+
+      <Footer />
     </div>
   );
 };
