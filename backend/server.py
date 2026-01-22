@@ -2715,6 +2715,229 @@ async def get_curriculum_assessment(educator_id: str):
         })
     return {"questions": questions}
 
+# PDF Generation Helper Functions
+def generate_id_card_pdf(educator_data, onboarding_data) -> BytesIO:
+    """Generate ID Card PDF based on OLL template"""
+    buffer = BytesIO()
+    
+    # ID Card dimensions (similar to credit card - 3.375 x 2.125 inches, scaled up)
+    width, height = 400, 550
+    c = canvas.Canvas(buffer, pagesize=(width, height))
+    
+    # Colors
+    dark_blue = HexColor('#1E3A5F')
+    red = HexColor('#D63031')
+    
+    # Background
+    c.setFillColor(white)
+    c.rect(0, 0, width, height, fill=1)
+    
+    # Left blue border
+    c.setFillColor(dark_blue)
+    c.rect(0, 0, 15, height, fill=1)
+    
+    # Bottom curved section
+    c.setFillColor(dark_blue)
+    c.rect(0, 0, width, 60, fill=1)
+    
+    # Red accent in corner
+    c.setFillColor(red)
+    c.circle(30, 30, 15, fill=1)
+    
+    # OLL Logo at top right
+    c.setFillColor(dark_blue)
+    c.setFont("Helvetica-Bold", 32)
+    c.drawRightString(width - 30, height - 50, "OLL")
+    
+    # Profile photo placeholder circle
+    c.setStrokeColor(dark_blue)
+    c.setLineWidth(3)
+    c.circle(width/2, height - 180, 70, stroke=1, fill=0)
+    
+    # Name
+    c.setFillColor(black)
+    c.setFont("Helvetica-Bold", 22)
+    name = educator_data.get('name', 'Educator Name')
+    c.drawCentredString(width/2, height - 280, name)
+    
+    # Title/Role
+    c.setFont("Helvetica", 16)
+    c.drawCentredString(width/2, height - 305, "OLL Educator")
+    
+    # Phone number with icon
+    c.setFont("Helvetica", 12)
+    phone = educator_data.get('phone', '')
+    c.drawString(40, 130, f"📞 +91 {phone}")
+    
+    # ID Number
+    educator_id = educator_data.get('id', '')[:8].upper()
+    c.drawString(40, 105, f"🆔 ID: {educator_id}")
+    
+    # Generate QR Code
+    qr = qrcode.QRCode(version=1, box_size=3, border=1)
+    qr.add_data(f"OLL-EDU-{educator_id}")
+    qr.make(fit=True)
+    qr_img = qr.make_image(fill_color="black", back_color="white")
+    
+    # Save QR to temp file and draw
+    qr_buffer = BytesIO()
+    qr_img.save(qr_buffer, format='PNG')
+    qr_buffer.seek(0)
+    
+    # Draw QR code
+    c.drawImage(qr_buffer, width - 100, 85, width=70, height=70)
+    
+    c.save()
+    buffer.seek(0)
+    return buffer
+
+def generate_certificate_pdf(educator_data) -> BytesIO:
+    """Generate Certificate of Completion PDF"""
+    buffer = BytesIO()
+    
+    # A4 Landscape
+    width, height = landscape(A4)
+    c = canvas.Canvas(buffer, pagesize=(width, height))
+    
+    # Colors
+    dark_blue = HexColor('#1E3A5F')
+    red = HexColor('#D63031')
+    
+    # White background
+    c.setFillColor(white)
+    c.rect(0, 0, width, height, fill=1)
+    
+    # Decorative border
+    c.setStrokeColor(dark_blue)
+    c.setLineWidth(8)
+    c.rect(30, 30, width-60, height-60, stroke=1, fill=0)
+    
+    # Inner border
+    c.setLineWidth(2)
+    c.rect(40, 40, width-80, height-80, stroke=1, fill=0)
+    
+    # OLL Logo at top center
+    c.setFillColor(dark_blue)
+    c.setFont("Helvetica-Bold", 36)
+    c.drawCentredString(width/2, height - 100, "OLL")
+    
+    # Title
+    c.setFont("Helvetica-Bold", 32)
+    c.drawCentredString(width/2, height - 160, "CERTIFICATE OF COMPLETION")
+    
+    # Subtitle
+    c.setFillColor(HexColor('#666666'))
+    c.setFont("Helvetica", 14)
+    c.drawCentredString(width/2, height - 190, "This is to certify that")
+    
+    # Recipient Name
+    c.setFillColor(black)
+    c.setFont("Helvetica-Bold", 40)
+    name = educator_data.get('name', 'Educator Name')
+    c.drawCentredString(width/2, height - 250, name)
+    
+    # Role/Title in Red
+    c.setFillColor(red)
+    c.setFont("Helvetica-Bold", 20)
+    c.drawCentredString(width/2, height - 290, "OLL Educator")
+    
+    # Description
+    c.setFillColor(black)
+    c.setFont("Helvetica", 14)
+    today = datetime.now().strftime("%d %B %Y")
+    c.drawCentredString(width/2, height - 330, 
+        f"Has successfully completed the OLL Educator Training Program")
+    c.drawCentredString(width/2, height - 355,
+        f"and is hereby certified as an official OLL Educator.")
+    
+    # Date
+    c.setFont("Helvetica", 12)
+    c.drawCentredString(width/2, height - 390, f"Date: {today}")
+    
+    # Signature section
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(width - 250, 100, "SHREYAAN DAGA")
+    c.setFont("Helvetica", 12)
+    c.drawString(width - 250, 80, "Cofounder - OLL")
+    
+    # Signature line
+    c.setStrokeColor(black)
+    c.setLineWidth(1)
+    c.line(width - 280, 115, width - 150, 115)
+    
+    c.save()
+    buffer.seek(0)
+    return buffer
+
+@api_router.get("/educator/onboarding/{educator_id}/download-id-card")
+async def download_id_card(educator_id: str):
+    """Generate and download ID Card PDF"""
+    # Get educator data
+    educator = await db.educator_applications.find_one({"id": educator_id}, {"_id": 0})
+    if not educator:
+        raise HTTPException(status_code=404, detail="Educator not found")
+    
+    # Get onboarding data
+    onboarding = await db.educator_onboarding.find_one({"educator_id": educator_id}, {"_id": 0})
+    
+    # Check if approved
+    if educator.get('status') != 'active':
+        raise HTTPException(status_code=403, detail="Educator must be approved to download ID card")
+    
+    # Generate PDF
+    pdf_buffer = generate_id_card_pdf(educator, onboarding)
+    
+    # Save to file
+    filename = f"OLL_ID_Card_{educator.get('name', 'Educator').replace(' ', '_')}.pdf"
+    filepath = UPLOAD_DIR / filename
+    with open(filepath, 'wb') as f:
+        f.write(pdf_buffer.getvalue())
+    
+    # Update onboarding record
+    await db.educator_onboarding.update_one(
+        {"educator_id": educator_id},
+        {"$set": {"id_card_generated": True, "last_activity": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return FileResponse(
+        path=str(filepath),
+        filename=filename,
+        media_type='application/pdf'
+    )
+
+@api_router.get("/educator/onboarding/{educator_id}/download-certificate")
+async def download_certificate(educator_id: str):
+    """Generate and download Certificate PDF"""
+    # Get educator data
+    educator = await db.educator_applications.find_one({"id": educator_id}, {"_id": 0})
+    if not educator:
+        raise HTTPException(status_code=404, detail="Educator not found")
+    
+    # Check if approved
+    if educator.get('status') != 'active':
+        raise HTTPException(status_code=403, detail="Educator must be approved to download certificate")
+    
+    # Generate PDF
+    pdf_buffer = generate_certificate_pdf(educator)
+    
+    # Save to file
+    filename = f"OLL_Certificate_{educator.get('name', 'Educator').replace(' ', '_')}.pdf"
+    filepath = UPLOAD_DIR / filename
+    with open(filepath, 'wb') as f:
+        f.write(pdf_buffer.getvalue())
+    
+    # Update onboarding record
+    await db.educator_onboarding.update_one(
+        {"educator_id": educator_id},
+        {"$set": {"certificate_generated": True, "last_activity": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return FileResponse(
+        path=str(filepath),
+        filename=filename,
+        media_type='application/pdf'
+    )
+
 @api_router.post("/educator/onboarding/{educator_id}/generate-certificate")
 async def generate_certificate(educator_id: str):
     """Mark certificate and ID card as generated"""
