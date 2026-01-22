@@ -113,7 +113,6 @@ const OUR_EVENTS = [
 const SchoolOfferingsPage = () => {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [expandedCategory, setExpandedCategory] = useState(null);
 
   return (
     <>
