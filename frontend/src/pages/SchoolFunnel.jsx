@@ -550,31 +550,59 @@ const SchoolFunnel = () => {
         );
 
       case 'support':
+        // Get available support options based on selected programs
+        const selectedPrograms = formData.programs_interested || [];
+        const availableSupportOptions = selectedPrograms.length > 0 
+          ? selectedPrograms.flatMap(prog => SUPPORT_OPTIONS[prog] || [])
+          : Object.values(SUPPORT_OPTIONS).flat();
+        
         return (
-          <div className="space-y-2 sm:space-y-3">
-            <p className="text-slate-600 mb-2 text-sm sm:text-base">Select all that apply</p>
-            {SUPPORT_OPTIONS.map(option => (
-              <div
-                key={option.value}
-                className={`selection-card p-3 sm:p-5 flex items-center gap-3 sm:gap-4 ${formData.support_needed.includes(option.value) ? 'selected' : ''}`}
-                onClick={() => toggleArrayItem('support_needed', option.value)}
-                data-testid={`support-${option.value}`}
-              >
-                <div className={`w-5 h-5 sm:w-6 sm:h-6 rounded-lg border-2 flex items-center justify-center transition-all flex-shrink-0 ${
-                  formData.support_needed.includes(option.value) 
-                    ? 'bg-[#D63031] border-[#D63031]' 
-                    : 'border-slate-300'
-                }`}>
-                  {formData.support_needed.includes(option.value) && (
-                    <Check className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-[#1E3A5F] text-sm sm:text-base">{option.label}</h3>
-                  <p className="text-xs sm:text-sm text-slate-500 truncate">{option.description}</p>
-                </div>
+          <div className="space-y-4">
+            <p className="text-slate-600 mb-2 text-sm sm:text-base">
+              {selectedPrograms.length > 0 
+                ? `Based on your interest in ${selectedPrograms.map(p => PROGRAMS.find(pr => pr.value === p)?.label).join(', ')}, here are specific offerings:`
+                : 'Select specific programs you need:'}
+            </p>
+            
+            {selectedPrograms.length > 0 ? (
+              selectedPrograms.map(progKey => {
+                const progInfo = PROGRAMS.find(p => p.value === progKey);
+                const options = SUPPORT_OPTIONS[progKey] || [];
+                
+                return (
+                  <div key={progKey} className="mb-6">
+                    <h3 className="font-semibold text-[#1E3A5F] mb-3 text-sm sm:text-base border-b pb-2">
+                      {progInfo?.label} Offerings:
+                    </h3>
+                    <div className="space-y-2">
+                      {options.map(option => (
+                        <div
+                          key={option.value}
+                          className={`selection-card p-3 sm:p-4 flex items-center gap-3 ${formData.support_needed.includes(option.value) ? 'selected' : ''}`}
+                          onClick={() => toggleArrayItem('support_needed', option.value)}
+                          data-testid={`support-${option.value}`}
+                        >
+                          <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all flex-shrink-0 ${
+                            formData.support_needed.includes(option.value) 
+                              ? 'bg-[#D63031] border-[#D63031]' 
+                              : 'border-slate-300'
+                          }`}>
+                            {formData.support_needed.includes(option.value) && (
+                              <Check className="w-3 h-3 text-white" />
+                            )}
+                          </div>
+                          <span className="text-slate-700 text-sm">{option.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-center py-8 text-slate-500">
+                <p>Please go back and select at least one program area to see specific offerings.</p>
               </div>
-            ))}
+            )}
           </div>
         );
 
