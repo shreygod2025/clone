@@ -18,7 +18,7 @@ const Navbar = ({ showBookDemo = false, onBookDemo, variant = 'default' }) => {
 
   // Removed Blog and FAQ from navbar - moved to footer
   const navLinks = [
-    { path: '/courses', label: 'Courses' },
+    { path: '/offerings', label: 'Offerings' },
     { path: '/about', label: 'About' },
     { path: '/centers', label: 'Centers' },
   ];
