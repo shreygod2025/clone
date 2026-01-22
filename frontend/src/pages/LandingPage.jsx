@@ -205,7 +205,10 @@ const LandingPage = () => {
           </div>
         </DialogContent>
       </Dialog>
+      
+      <Footer variant="compact" />
     </div>
+    </>
   );
 };
 
