@@ -1121,6 +1121,53 @@ const AdminStudentCRM = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Cancel Demo Modal */}
+      <Dialog open={!!showCancelDemoModal} onOpenChange={() => setShowCancelDemoModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <X className="w-5 h-5" />
+              Cancel Demo - {showCancelDemoModal?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {showCancelDemoModal?.demo_date && (
+              <div className="bg-slate-50 p-3 rounded-lg text-sm">
+                <span className="text-slate-600">Scheduled Demo: </span>
+                <span className="font-medium text-slate-800">
+                  {showCancelDemoModal.demo_date} {showCancelDemoModal.demo_time && `at ${showCancelDemoModal.demo_time}`}
+                </span>
+              </div>
+            )}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Reason for Cancellation <span className="text-red-500">*</span>
+              </label>
+              <Textarea
+                placeholder="Enter reason for cancelling the demo..."
+                value={cancelDemoReason}
+                onChange={(e) => setCancelDemoReason(e.target.value)}
+                rows={3}
+                data-testid="cancel-demo-reason"
+              />
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" onClick={() => setShowCancelDemoModal(null)} className="flex-1">
+                Go Back
+              </Button>
+              <Button 
+                onClick={handleCancelDemo} 
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                data-testid="confirm-cancel-demo"
+              >
+                <X className="w-4 h-4 mr-1" />
+                Cancel Demo
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Add Lead Dialog */}
       <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
