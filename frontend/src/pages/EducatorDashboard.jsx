@@ -346,6 +346,60 @@ const EducatorDashboard = () => {
     setRelatedDemoId('');
   };
 
+  const downloadIDCard = async () => {
+    setDownloading(prev => ({ ...prev, idCard: true }));
+    try {
+      const educatorId = user?.educator_id || user?.id;
+      const response = await fetch(`${API}/educator/onboarding/${educatorId}/download-id-card`);
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Failed to download ID card');
+      }
+      
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `OLL_ID_Card_${user?.name?.replace(/\s/g, '_')}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('ID Card downloaded!');
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error(error.message || 'Failed to download ID card');
+    } finally {
+      setDownloading(prev => ({ ...prev, idCard: false }));
+    }
+  };
+
+  const downloadCertificate = async () => {
+    setDownloading(prev => ({ ...prev, certificate: true }));
+    try {
+      const educatorId = user?.educator_id || user?.id;
+      const response = await fetch(`${API}/educator/onboarding/${educatorId}/download-certificate`);
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Failed to download certificate');
+      }
+      
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `OLL_Certificate_${user?.name?.replace(/\s/g, '_')}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Certificate downloaded!');
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error(error.message || 'Failed to download certificate');
+    } finally {
+      setDownloading(prev => ({ ...prev, certificate: false }));
+    }
+  };
+
   const handleLogout = () => {
     logout();
     navigate('/');
