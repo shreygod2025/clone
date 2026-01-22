@@ -97,6 +97,17 @@ const BlogsPage = () => {
   });
 
   return (
+    <>
+      <Helmet>
+        <title>OLL Blog - Skill Education Insights | Robotics, Coding, AI for Kids</title>
+        <meta name="description" content="Read the latest articles on skill education, robotics for kids, coding tips, AI learning, and entrepreneurship. Expert insights for students, parents, educators, and schools." />
+        <meta name="keywords" content="robotics blog, coding for kids, AI education articles, skill development tips, STEM education blog, entrepreneurship for students" />
+        <link rel="canonical" href="https://oll.co/blogs" />
+        <meta property="og:title" content="OLL Blog - Skill Education Insights" />
+        <meta property="og:description" content="Expert articles on Robotics, Coding, AI and Entrepreneurship education for kids and schools." />
+        <meta property="og:type" content="website" />
+      </Helmet>
+      
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <Navbar showBookDemo onBookDemo={() => window.location.href = '/student'} />
 
