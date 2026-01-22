@@ -4,7 +4,8 @@ import { useUserAuth } from '../context/UserAuthContext';
 import { 
   Calendar, Clock, User, Phone, MapPin, Video, LogOut, 
   RefreshCw, CheckCircle2, Users, BookOpen,
-  Send, MessageCircle, CalendarClock, AlertCircle, HelpCircle, ChevronRight
+  Send, MessageCircle, CalendarClock, AlertCircle, HelpCircle, ChevronRight,
+  Download, Award, CreditCard, Loader2
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
