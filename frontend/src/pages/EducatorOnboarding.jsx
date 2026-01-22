@@ -610,11 +610,13 @@ const PersonalDetailsStep = ({ formData, setFormData, onSave, onComplete, onFile
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Upload Aadhar Card</label>
-            <label className="flex items-center gap-2 px-4 py-2 border rounded-lg cursor-pointer hover:bg-slate-50">
+            <label className="block text-sm font-medium text-slate-700 mb-1">Upload Aadhar Card *</label>
+            <label className={`flex items-center gap-2 px-4 py-2 border rounded-lg cursor-pointer hover:bg-slate-50 ${
+              !formData.aadhar_document ? 'border-red-300' : 'border-green-300 bg-green-50'
+            }`}>
               <Upload className="w-4 h-4 text-slate-500" />
-              <span className="text-sm text-slate-600">
-                {formData.aadhar_document ? 'Uploaded ✓' : 'Choose file'}
+              <span className={`text-sm ${formData.aadhar_document ? 'text-green-600' : 'text-slate-600'}`}>
+                {formData.aadhar_document ? 'Uploaded ✓' : 'Choose file (Required)'}
               </span>
               <input type="file" accept=".pdf,.jpg,.jpeg,.png" 
                 onChange={(e) => e.target.files?.[0] && onFileUpload(e.target.files[0], 'aadhar_document')} 
