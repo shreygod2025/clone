@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { 
@@ -7,6 +7,9 @@ import {
   GraduationCap, Award, Target, Clock, Phone, Play, ChevronRight, School
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import axios from 'axios';
+
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 // School Offerings Data - Categories with sub-offerings
 const SCHOOL_CATEGORIES = [
