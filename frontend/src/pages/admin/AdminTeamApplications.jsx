@@ -28,6 +28,7 @@ const AdminTeamApplications = () => {
   const { getAuthHeaders, user } = useAuth();
   const [applications, setApplications] = useState([]);
   const [teamUsers, setTeamUsers] = useState([]);
+  const [teamRequirements, setTeamRequirements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSection, setActiveSection] = useState('new');
@@ -37,6 +38,8 @@ const AdminTeamApplications = () => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showCommentModal, setShowCommentModal] = useState(null);
   const [showAssignModal, setShowAssignModal] = useState(null);
+  const [showRequirementsModal, setShowRequirementsModal] = useState(false);
+  const [editingRequirement, setEditingRequirement] = useState(null);
   const [newComment, setNewComment] = useState('');
   
   const [newApplication, setNewApplication] = useState({
@@ -50,10 +53,32 @@ const AdminTeamApplications = () => {
     source: 'admin_added'
   });
 
+  const [requirementForm, setRequirementForm] = useState({
+    title: '',
+    department: '',
+    location: '',
+    type: 'full_time',
+    description: '',
+    requirements: '',
+    is_active: true
+  });
+
   useEffect(() => {
     fetchApplications();
     fetchTeamUsers();
+    fetchTeamRequirements();
   }, []);
+
+  const fetchTeamRequirements = async () => {
+    try {
+      const response = await axios.get(`${API}/team-requirements`, {
+        headers: getAuthHeaders()
+      });
+      setTeamRequirements(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch team requirements:', error);
+    }
+  };
 
   const fetchTeamUsers = async () => {
     try {
