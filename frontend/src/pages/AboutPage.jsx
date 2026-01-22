@@ -23,8 +23,7 @@ const FOUNDER = {
   instagram: 'https://www.instagram.com/shrey.daga/?hl=en',
   linkedin: 'https://in.linkedin.com/in/shreyaandaga',
   timeline: [
-    { age: 8, event: 'Started entrepreneurship journey' },
-    { age: 13, event: 'Started selling paintings and artwork' },
+    { age: 8, event: 'Started entrepreneurship journey by selling paintings' },
     { age: 13, event: 'Joined the stock market as an intern' },
     { age: 14, event: 'Started giving loans to school friends' },
     { age: 15, event: 'Founded OLL' }
