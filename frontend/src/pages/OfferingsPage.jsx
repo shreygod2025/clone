@@ -68,35 +68,72 @@ const INDIVIDUAL_COURSES = [
   }
 ];
 
-// School Offerings Categories
+// School Offerings Categories with full offerings
 const SCHOOL_CATEGORIES = [
   {
     id: 'robotics',
-    title: 'Robotics Programs',
-    count: 12,
+    title: 'Robotics',
+    subtitle: 'Complete Robotics Solutions',
     icon: Cpu,
-    gradient: 'from-red-500 to-orange-500'
+    color: '#D63031',
+    gradient: 'from-red-500 to-orange-500',
+    offerings: [
+      { id: 'robotics-curriculum-kits', title: 'Robotics Curriculum with Take-home Kits & Books' },
+      { id: 'robotics-lab-setup', title: 'Robotics Curriculum with Lab Setup & Books' },
+      { id: 'robotics-exhibition-prep', title: 'Robotics Exhibition Preparation' },
+      { id: 'host-robotics-exhibition', title: 'Host a Robotics Exhibition in Your School' },
+      { id: 'iit-bombay-competitions', title: 'Participate in Robotics Competitions at IIT Bombay' },
+      { id: 'robotics-competition-prep', title: 'Preparation for Robotics Competitions' },
+      { id: 'icse-group3-kits', title: 'Grade 9 & 10 ICSE Group 3 Subject Kits' },
+      { id: 'afterschool-robotics', title: 'Afterschool Robotics Classes' },
+      { id: 'robotics-summer-camp', title: 'Robotics Summer Camp' },
+      { id: 'robotics-ai-seminar', title: 'Robotics & AI Seminar for Students' },
+      { id: 'robotics-books', title: 'Robotics Books' },
+      { id: 'robotics-kits', title: 'Robotics Kits' },
+    ]
   },
   {
     id: 'financial-literacy',
     title: 'Financial Literacy & Entrepreneurship',
-    count: 5,
+    subtitle: 'Business & Money Skills',
     icon: TrendingUp,
-    gradient: 'from-green-500 to-teal-500'
+    color: '#10B981',
+    gradient: 'from-green-500 to-teal-500',
+    offerings: [
+      { id: 'entrepreneurship-workshop', title: 'Entrepreneurship 3 Day Workshop' },
+      { id: 'skill-titans-olympiad', title: 'Skill Titans TV Show & Entrepreneurship Olympiad' },
+      { id: 'fl-curriculum', title: 'Financial Literacy & Entrepreneurship Program as Part of Curriculum' },
+      { id: 'ecell-opening', title: 'E-Cell Opening in School' },
+      { id: 'fl-summer-camp', title: 'Financial Literacy & Entrepreneurship Summer Camp' },
+    ]
   },
   {
     id: 'ai',
     title: 'AI & Machine Learning',
-    count: 5,
+    subtitle: 'Future-Ready AI Skills',
     icon: Brain,
-    gradient: 'from-purple-600 to-pink-500'
+    color: '#8B5CF6',
+    gradient: 'from-purple-600 to-pink-500',
+    offerings: [
+      { id: 'ai-center-excellence', title: 'Launch an AI Center for Excellence' },
+      { id: 'agentic-ai-workshop', title: 'Agentic AI Workshop for Students' },
+      { id: 'ai-seminar', title: 'AI Seminar' },
+      { id: 'agentic-ai-summer-camp', title: 'Agentic AI Summer Camp' },
+      { id: 'ai-services-agency-course', title: 'Start AI Services Agency Course for College Students' },
+    ]
   },
   {
     id: 'coding',
     title: 'Coding & Programming',
-    count: 3,
+    subtitle: 'Build Future Developers',
     icon: Code,
-    gradient: 'from-blue-600 to-cyan-500'
+    color: '#1E3A5F',
+    gradient: 'from-blue-600 to-cyan-500',
+    offerings: [
+      { id: 'vibe-coding-seminar', title: 'Vibe Coding Seminar' },
+      { id: 'coding-afterschool', title: 'Coding & Logic Building After School Classes' },
+      { id: 'coding-summer-camp', title: 'Coding Summer Camp' },
+    ]
   }
 ];
 
