@@ -567,6 +567,15 @@ const AdminEducators = () => {
             <option key={u.id} value={u.id}>{u.name}</option>
           ))}
         </select>
+        <Button 
+          variant="outline"
+          onClick={() => window.location.href = '/admin/requirements'}
+          className="border-[#1E3A5F] text-[#1E3A5F]"
+          data-testid="educator-requirements-btn"
+        >
+          <Briefcase className="w-4 h-4 mr-2" />
+          Educator Requirements
+        </Button>
         {activeSection === 'onboarding' && (
           <Button 
             onClick={() => setShowDirectOnboardModal(true)}
