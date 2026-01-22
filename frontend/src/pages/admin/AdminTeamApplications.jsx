@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Eye, Phone, Mail, Clock, Plus, ChevronRight, MessageSquare, Archive, CheckCircle2, User, MapPin, Briefcase, Send, UserPlus, Calendar } from 'lucide-react';
+import { Search, Eye, Phone, Mail, Clock, Plus, ChevronRight, MessageSquare, Archive, CheckCircle2, User, MapPin, Briefcase, Send, UserPlus, Calendar, Settings, Edit2, Trash2, X } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Textarea } from '../../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
+import { Switch } from '../../components/ui/switch';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import axios from 'axios';
