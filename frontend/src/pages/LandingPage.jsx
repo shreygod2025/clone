@@ -63,6 +63,49 @@ const LandingPage = () => {
   ];
 
   return (
+    <>
+      <Helmet>
+        <title>OLL - India's Leading Skill Education Platform | Robotics, Coding, AI</title>
+        <meta name="description" content="OLL (Open Learning Labs) - India's #1 platform for Robotics, Coding, AI & Entrepreneurship education. Programs for students, educators & schools. Book a free demo today!" />
+        <meta name="keywords" content="robotics classes India, coding classes for kids, AI courses, entrepreneurship education, skill development, STEM education, school programs, learn robotics, kids coding" />
+        <link rel="canonical" href="https://oll.co" />
+        
+        {/* Open Graph */}
+        <meta property="og:title" content="OLL - India's Leading Skill Education Platform" />
+        <meta property="og:description" content="Learn Robotics, Coding, AI & Entrepreneurship with India's #1 skill education platform. Programs for all ages." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://oll.co" />
+        
+        {/* Twitter Card */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="OLL - India's Leading Skill Education" />
+        <meta name="twitter:description" content="Learn future-ready skills with OLL - Robotics, Coding, AI & more" />
+        
+        {/* Structured Data - Organization */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "EducationalOrganization",
+            "name": "OLL - Open Learning Labs",
+            "alternateName": "OLL",
+            "url": "https://oll.co",
+            "description": "India's leading platform for Robotics, Coding, AI & Entrepreneurship education",
+            "sameAs": [
+              "https://facebook.com/ollrobotics",
+              "https://instagram.com/ollrobotics",
+              "https://linkedin.com/company/ollrobotics",
+              "https://youtube.com/@ollrobotics"
+            ],
+            "address": {
+              "@type": "PostalAddress",
+              "addressLocality": "Mumbai",
+              "addressRegion": "Maharashtra",
+              "addressCountry": "IN"
+            }
+          })}
+        </script>
+      </Helmet>
+      
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <Navbar />
 
