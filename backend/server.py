@@ -927,15 +927,15 @@ class EducatorOnboarding(BaseModel):
     contract_accepted_at: Optional[str] = None
     digital_signature: str = ""  # Base64 or text signature
     
-    # Step 6: Training Videos + Quiz
-    training_videos_watched: List[str] = []  # List of video IDs watched
-    quiz_attempts: List[dict] = []  # [{score: 80, passed: True, attempted_at: "..."}]
+    # Step 6: Training Videos + Quiz (new format - per video)
+    video_progress: dict = {}  # {video_id: {watched: bool, quizPassed: bool}}
+    video_uploads: dict = {}  # {video_id: drive_link}
+    training_videos_watched: List[str] = []  # Legacy
+    quiz_attempts: List[dict] = []
     quiz_passed: bool = False
     
-    # Step 7: Curriculum Training + Assessment
-    curriculum_videos_watched: List[str] = []
-    assessment_attempts: List[dict] = []
-    assessment_passed: bool = False
+    # Step 7: Review (documents verified by admin)
+    # Educator waits here until admin approves
     
     # Step 8: Downloadables
     id_card_generated: bool = False
@@ -978,6 +978,8 @@ class EducatorOnboardingUpdate(BaseModel):
     account_number: Optional[str] = None
     ifsc_code: Optional[str] = None
     bank_document: Optional[str] = None
+    video_progress: Optional[dict] = None
+    video_uploads: Optional[dict] = None
     contract_accepted: Optional[bool] = None
     digital_signature: Optional[str] = None
     training_videos_watched: Optional[List[str]] = None
