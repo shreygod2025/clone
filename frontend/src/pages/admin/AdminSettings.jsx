@@ -496,7 +496,7 @@ const AdminSettings = () => {
             {filteredTeamReqs.length === 0 ? (
               <div className="bg-white rounded-xl p-8 text-center text-slate-500">
                 <Briefcase className="w-12 h-12 mx-auto text-slate-300 mb-4" />
-                <p>No team openings yet. Click "Add Opening" to create your first position.</p>
+                <p>No team openings yet. Click &quot;Add Opening&quot; to create your first position.</p>
                 <p className="text-sm mt-2">These will be displayed on the Join Team page.</p>
               </div>
             ) : (
