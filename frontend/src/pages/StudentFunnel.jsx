@@ -102,6 +102,7 @@ const StudentFunnel = () => {
   
   const [formData, setFormData] = useState({
     age_group: '',
+    learning_goal: '',
     skill: '',
     city: '',
     learning_mode: '',
