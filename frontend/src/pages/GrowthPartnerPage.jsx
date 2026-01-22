@@ -148,8 +148,11 @@ const GrowthPartnerPage = () => {
       <header className="bg-white/80 backdrop-blur-md border-b border-slate-100 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <ArrowLeft className="w-5 h-5 text-slate-600" />
-            <span className="font-bold text-xl text-[#1E3A5F]" style={{ fontFamily: 'Manrope, sans-serif' }}>OLL</span>
+            <img 
+              src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png" 
+              alt="OLL" 
+              className="h-10"
+            />
           </Link>
           <Link to="/about" className="text-sm text-slate-600 hover:text-[#1E3A5F]">
             About Us
