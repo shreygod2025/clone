@@ -701,6 +701,160 @@ const AdminTeamApplications = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Team Requirements Modal */}
+      <Dialog open={showRequirementsModal} onOpenChange={setShowRequirementsModal}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings className="w-5 h-5 text-[#1E3A5F]" />
+              Team Requirements / Open Positions
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* Add/Edit Form */}
+            <div className="bg-slate-50 rounded-xl p-4 space-y-4">
+              <h4 className="font-medium text-slate-700">
+                {editingRequirement ? 'Edit Requirement' : 'Add New Requirement'}
+              </h4>
+              <div className="grid grid-cols-2 gap-4">
+                <Input
+                  placeholder="Job Title *"
+                  value={requirementForm.title}
+                  onChange={(e) => setRequirementForm({ ...requirementForm, title: e.target.value })}
+                  data-testid="req-title"
+                />
+                <Input
+                  placeholder="Department *"
+                  value={requirementForm.department}
+                  onChange={(e) => setRequirementForm({ ...requirementForm, department: e.target.value })}
+                  data-testid="req-department"
+                />
+                <Input
+                  placeholder="Location"
+                  value={requirementForm.location}
+                  onChange={(e) => setRequirementForm({ ...requirementForm, location: e.target.value })}
+                  data-testid="req-location"
+                />
+                <Select
+                  value={requirementForm.type}
+                  onValueChange={(value) => setRequirementForm({ ...requirementForm, type: value })}
+                >
+                  <SelectTrigger data-testid="req-type">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="full_time">Full Time</SelectItem>
+                    <SelectItem value="part_time">Part Time</SelectItem>
+                    <SelectItem value="contract">Contract</SelectItem>
+                    <SelectItem value="internship">Internship</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Textarea
+                placeholder="Job Description"
+                value={requirementForm.description}
+                onChange={(e) => setRequirementForm({ ...requirementForm, description: e.target.value })}
+                className="min-h-[80px]"
+                data-testid="req-description"
+              />
+              <Textarea
+                placeholder="Requirements (one per line)"
+                value={requirementForm.requirements}
+                onChange={(e) => setRequirementForm({ ...requirementForm, requirements: e.target.value })}
+                className="min-h-[60px]"
+                data-testid="req-requirements"
+              />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={requirementForm.is_active}
+                    onCheckedChange={(checked) => setRequirementForm({ ...requirementForm, is_active: checked })}
+                    data-testid="req-active"
+                  />
+                  <span className="text-sm text-slate-600">Active (shown on Join Team page)</span>
+                </div>
+                <div className="flex gap-2">
+                  {editingRequirement && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setEditingRequirement(null);
+                        setRequirementForm({
+                          title: '',
+                          department: '',
+                          location: '',
+                          type: 'full_time',
+                          description: '',
+                          requirements: '',
+                          is_active: true
+                        });
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                  <Button onClick={handleSaveRequirement} className="bg-[#D63031] hover:bg-[#b52828]" data-testid="save-req">
+                    {editingRequirement ? 'Update' : 'Add'} Requirement
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Existing Requirements List */}
+            <div className="space-y-3">
+              <h4 className="font-medium text-slate-700">
+                Current Requirements ({teamRequirements.length})
+              </h4>
+              {teamRequirements.length === 0 ? (
+                <p className="text-sm text-slate-500 py-4 text-center">No requirements added yet.</p>
+              ) : (
+                teamRequirements.map((req) => (
+                  <div 
+                    key={req.id}
+                    className={`p-4 rounded-xl border ${req.is_active ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-100'}`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h5 className="font-semibold text-[#1E3A5F]">{req.title}</h5>
+                          <span className={`text-xs px-2 py-0.5 rounded ${
+                            req.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-600'
+                          }`}>
+                            {req.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+                        <p className="text-sm text-slate-600">{req.department} • {req.location || 'Remote'}</p>
+                        <p className="text-xs text-slate-500 mt-1">{req.type?.replace('_', ' ')}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEditRequirement(req)}
+                          className="p-2 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-[#1E3A5F]"
+                          data-testid={`edit-req-${req.id}`}
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteRequirement(req.id)}
+                          className="p-2 rounded-lg hover:bg-red-50 text-slate-500 hover:text-red-600"
+                          data-testid={`delete-req-${req.id}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                    {req.description && (
+                      <p className="text-sm text-slate-600 mt-2 line-clamp-2">{req.description}</p>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
