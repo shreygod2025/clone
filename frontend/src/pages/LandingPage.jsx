@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { GraduationCap, Users, Building2, ArrowRight, Eye, Calendar } from 'lucide-react';
 import Navbar from '../components/Navbar';
@@ -12,10 +12,27 @@ const LandingPage = () => {
   const navigate = useNavigate();
   const { isLoggedIn, user } = useUserAuth();
   const [showSchoolDialog, setShowSchoolDialog] = useState(false);
+  const [showFooter, setShowFooter] = useState(false);
+  const mainContentRef = useRef(null);
 
   // Scroll to top on mount
   useEffect(() => {
     window.scrollTo(0, 0);
+  }, []);
+
+  // Show footer on scroll
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollPosition = window.scrollY;
+      const windowHeight = window.innerHeight;
+      // Show footer when scrolled more than 50% of viewport height
+      if (scrollPosition > windowHeight * 0.3) {
+        setShowFooter(true);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   // Redirect logged-in students to their bookings page
