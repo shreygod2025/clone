@@ -75,6 +75,7 @@ function App() {
             <Route path="/school" element={<SchoolFunnel />} />
             <Route path="/school-offerings" element={<SchoolOfferingsPage />} />
             <Route path="/school-offerings/:categoryId/:offeringId" element={<SchoolOfferingDetailPage />} />
+            <Route path="/offerings" element={<OfferingsPage />} />
             <Route path="/about" element={<AboutPage />} />
             <Route path="/join-team" element={<JoinTeamPage />} />
             <Route path="/blogs" element={<BlogsPage />} />
