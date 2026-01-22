@@ -1079,48 +1079,163 @@ const AdminEducators = () => {
                           Load Onboarding Details
                         </Button>
                       ) : (
-                        <div className="space-y-3">
-                          {/* Document Links */}
-                          <div className="grid grid-cols-2 gap-3 text-sm">
-                            <div className="p-3 bg-slate-50 rounded-lg">
-                              <p className="text-slate-500 text-xs mb-1">Profile Photo</p>
+                        <div className="space-y-4">
+                          {/* Progress Overview */}
+                          <div className="bg-slate-50 rounded-lg p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-medium text-slate-700">Progress</span>
+                              <span className="text-sm font-bold text-[#1E3A5F]">
+                                {Math.round((selectedOnboarding.completed_steps?.length || 0) / 8 * 100)}%
+                              </span>
+                            </div>
+                            <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-orange-500 transition-all"
+                                style={{ width: `${(selectedOnboarding.completed_steps?.length || 0) / 8 * 100}%` }}
+                              />
+                            </div>
+                            <p className="text-xs text-slate-500 mt-1">
+                              Step {selectedOnboarding.current_step}/8 • 
+                              {selectedOnboarding.quiz_passed ? ' Quiz ✓' : ' Quiz pending'} • 
+                              {selectedOnboarding.assessment_passed ? ' Assessment ✓' : ' Assessment pending'}
+                            </p>
+                          </div>
+
+                          {/* Profile Info */}
+                          <div className="border rounded-lg p-3">
+                            <h5 className="font-medium text-[#1E3A5F] mb-2 text-sm">Profile</h5>
+                            <div className="flex gap-3">
                               {selectedOnboarding.profile_photo ? (
-                                <a href={selectedOnboarding.profile_photo} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1">
-                                  <Eye className="w-3 h-3" /> View Photo
-                                </a>
-                              ) : <span className="text-slate-400">Not uploaded</span>}
+                                <img src={selectedOnboarding.profile_photo} alt="Profile" className="w-16 h-16 rounded-lg object-cover" />
+                              ) : (
+                                <div className="w-16 h-16 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400">
+                                  <User className="w-6 h-6" />
+                                </div>
+                              )}
+                              <div className="flex-1">
+                                <p className="text-sm text-slate-700">{selectedOnboarding.bio || 'No bio provided'}</p>
+                              </div>
                             </div>
-                            <div className="p-3 bg-slate-50 rounded-lg">
-                              <p className="text-slate-500 text-xs mb-1">Aadhar Card</p>
-                              {selectedOnboarding.aadhar_document ? (
-                                <a href={selectedOnboarding.aadhar_document} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1">
-                                  <Eye className="w-3 h-3" /> View Document
-                                </a>
-                              ) : <span className="text-slate-400">Not uploaded</span>}
-                              {selectedOnboarding.aadhar_number && <p className="text-xs text-slate-500 mt-1">No: {selectedOnboarding.aadhar_number}</p>}
+                          </div>
+
+                          {/* Personal Details */}
+                          <div className="border rounded-lg p-3">
+                            <h5 className="font-medium text-[#1E3A5F] mb-2 text-sm">Personal Details</h5>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div>
+                                <span className="text-slate-500">T-Shirt Size:</span>
+                                <span className="ml-1 font-medium">{selectedOnboarding.tshirt_size || 'N/A'}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500">Aadhar:</span>
+                                <span className="ml-1 font-medium">{selectedOnboarding.aadhar_number || 'N/A'}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500">PAN:</span>
+                                <span className="ml-1 font-medium">{selectedOnboarding.pan_number || 'N/A'}</span>
+                              </div>
+                              <div className="col-span-2">
+                                <span className="text-slate-500">Address:</span>
+                                <span className="ml-1 font-medium">
+                                  {selectedOnboarding.address_line1 ? 
+                                    `${selectedOnboarding.address_line1}, ${selectedOnboarding.city}, ${selectedOnboarding.state} - ${selectedOnboarding.pincode}` 
+                                    : 'N/A'}
+                                </span>
+                              </div>
                             </div>
-                            <div className="p-3 bg-slate-50 rounded-lg">
-                              <p className="text-slate-500 text-xs mb-1">PAN Card</p>
-                              {selectedOnboarding.pan_document ? (
-                                <a href={selectedOnboarding.pan_document} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1">
-                                  <Eye className="w-3 h-3" /> View Document
-                                </a>
-                              ) : <span className="text-slate-400">Not uploaded</span>}
-                              {selectedOnboarding.pan_number && <p className="text-xs text-slate-500 mt-1">No: {selectedOnboarding.pan_number}</p>}
+                          </div>
+
+                          {/* Emergency Contact */}
+                          <div className="border rounded-lg p-3">
+                            <h5 className="font-medium text-[#1E3A5F] mb-2 text-sm">Emergency Contact</h5>
+                            <div className="grid grid-cols-3 gap-2 text-xs">
+                              <div>
+                                <span className="text-slate-500">Name:</span>
+                                <span className="ml-1 font-medium">{selectedOnboarding.emergency_contact_name || 'N/A'}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500">Phone:</span>
+                                <span className="ml-1 font-medium">{selectedOnboarding.emergency_contact_phone || 'N/A'}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500">Relation:</span>
+                                <span className="ml-1 font-medium">{selectedOnboarding.emergency_contact_relation || 'N/A'}</span>
+                              </div>
                             </div>
-                            <div className="p-3 bg-slate-50 rounded-lg">
-                              <p className="text-slate-500 text-xs mb-1">Bank Document</p>
-                              {selectedOnboarding.bank_document ? (
-                                <a href={selectedOnboarding.bank_document} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline flex items-center gap-1">
-                                  <Eye className="w-3 h-3" /> View Document
-                                </a>
-                              ) : <span className="text-slate-400">Not uploaded</span>}
+                          </div>
+
+                          {/* Bank Details */}
+                          <div className="border rounded-lg p-3">
+                            <h5 className="font-medium text-[#1E3A5F] mb-2 text-sm">Bank Details</h5>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                              <div>
+                                <span className="text-slate-500">Bank:</span>
+                                <span className="ml-1 font-medium">{selectedOnboarding.bank_name || 'N/A'}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500">Account Holder:</span>
+                                <span className="ml-1 font-medium">{selectedOnboarding.account_holder_name || 'N/A'}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500">Account No:</span>
+                                <span className="ml-1 font-medium">{selectedOnboarding.account_number ? '****' + selectedOnboarding.account_number.slice(-4) : 'N/A'}</span>
+                              </div>
+                              <div>
+                                <span className="text-slate-500">IFSC:</span>
+                                <span className="ml-1 font-medium">{selectedOnboarding.ifsc_code || 'N/A'}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Contract Status */}
+                          <div className="border rounded-lg p-3">
+                            <h5 className="font-medium text-[#1E3A5F] mb-2 text-sm">Contract</h5>
+                            <div className="flex items-center gap-2 text-xs">
+                              {selectedOnboarding.contract_accepted ? (
+                                <>
+                                  <CheckCircle2 className="w-4 h-4 text-green-500" />
+                                  <span className="text-green-700">Accepted on {new Date(selectedOnboarding.contract_accepted_at).toLocaleDateString()}</span>
+                                  {selectedOnboarding.digital_signature && (
+                                    <span className="ml-2 text-slate-500">Signature: {selectedOnboarding.digital_signature}</span>
+                                  )}
+                                </>
+                              ) : (
+                                <>
+                                  <Clock className="w-4 h-4 text-amber-500" />
+                                  <span className="text-amber-700">Pending</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Document Links */}
+                          <div className="border rounded-lg p-3">
+                            <h5 className="font-medium text-[#1E3A5F] mb-2 text-sm">Uploaded Documents</h5>
+                            <div className="grid grid-cols-2 gap-2">
+                              {[
+                                { label: 'Profile Photo', key: 'profile_photo' },
+                                { label: 'Aadhar Card', key: 'aadhar_document' },
+                                { label: 'PAN Card', key: 'pan_document' },
+                                { label: 'Bank Document', key: 'bank_document' },
+                              ].map(doc => (
+                                <div key={doc.key} className="p-2 bg-slate-50 rounded text-xs">
+                                  <span className="text-slate-500">{doc.label}: </span>
+                                  {selectedOnboarding[doc.key] ? (
+                                    <a href={selectedOnboarding[doc.key]} target="_blank" rel="noopener noreferrer" 
+                                       className="text-blue-600 hover:underline">
+                                      View ↗
+                                    </a>
+                                  ) : (
+                                    <span className="text-red-500">Missing</span>
+                                  )}
+                                </div>
+                              ))}
                             </div>
                           </div>
                           
                           {/* Verification Actions */}
                           {!selectedOnboarding.documents_verified ? (
-                            <div className="space-y-2">
+                            <div className="space-y-2 border-t pt-3">
                               <Textarea
                                 value={verificationNotes}
                                 onChange={(e) => setVerificationNotes(e.target.value)}
