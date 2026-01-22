@@ -1,95 +1,80 @@
-# OLL - Skill Education Platform PRD
+# OLL Platform - Product Requirements Document
 
-## Latest Changes (Jan 2026)
+## Original Problem Statement
+Build a high-conversion, multi-user skill-education platform for "OLL" with separate funnels for Students/Parents, Educators, and Schools. The platform must be SEO-first and include a powerful backend admin panel and CRM system.
 
-### Admin Educators Section Reorganization ✅
-**Changed Status Flow:**
-- `new` → New Applications
-- `demo_scheduled` → Demo Scheduled  
-- `onboarding` → Onboarding (previously "demo_completed")
-- `active` → Active Educators (previously "onboarded")
-- `archived` → Archived
+## What's Been Implemented
 
-**Onboarding Section Features:**
-- **Inline Progress Overview** - Shows when "Onboarding" tab is selected
-- **Direct Onboard button** - Only visible in Onboarding section
-- **Progress cards** for each educator showing:
-  - Completion percentage and steps (e.g., "25% - 2/8 steps")
-  - "Docs Verified" or "Docs Pending" status
-  - "View Details" button
+### Session: January 22, 2025
 
-**Document Verification:**
-- Admin can view uploaded documents (Profile Photo, Aadhar, PAN, Bank)
-- Verify/Reject documents with optional notes
-- Educators can only be activated after document verification
-- API: `POST /api/admin/educators/{id}/verify-documents`
+#### P0: Educator Onboarding Flow Fixes ✅
+- Fixed training step progression - educators no longer get stuck after quiz
+- Added "Upload Video Assessment" button when quiz is passed but video upload is needed
+- Implemented PDF generation for ID Card and Certificate using ReportLab with QR codes
+- Added download buttons to educator dashboard for active educators
 
-### Educator Onboarding Fixes ✅
-**Bug Fixes:**
-- ✅ Fixed file upload endpoint (was `/upload-file`, now `/upload`)
-- ✅ Fixed file path response (was `file_path`, now `url`)
-- ✅ Made Aadhar Card upload mandatory (red border, "Required" text)
-- ✅ Step 3 validation now requires Aadhar document
+#### UI/UX Changes ✅
+1. **About Page Navbar** - Shows "Join Team" and "Partner With Us" instead of "Book Demo" and "Login"
+2. **About Page Timeline** - Fixed Shreyaan's journey (age 8 selling paintings, OLL founded April 4, 2020)
+3. **School Landing Page** - Created `/school-offerings` with 6 program cards (Robotics Lab, Coding, AI/ML, Entrepreneurship, Financial Literacy, Teacher Training)
+4. **School Offering Details** - Created `/school-offerings/:id` with detailed program information
+5. **School Card Dialog** - When clicking "School" on landing page, shows dialog with "View Offerings" and "Book Meeting" options
+6. **Courses Page** - Removed age group badge from course cards
+7. **Student Funnel Age Groups** - Replaced 18+ with Young Adult, Homemaker, Working Professional, Senior Citizen
+8. **Learning Goal Step** - Added new step in student funnel with goals customized per age group
+9. **Team Requirements** - Added "Team Requirements" button in Admin Team Applications to manage open positions
+10. **Educator Requirements** - Added "Educator Requirements" button in Admin Educators section
 
-**Status Redirect Logic:**
-- Educators with `onboarding` OR `onboarded` status → Check onboarding completion
-- If onboarding not completed → Redirect to `/educator-onboarding`
-- If onboarding completed → Show dashboard
+## Key Technical Implementation
 
----
+### New Files Created
+- `/app/frontend/src/pages/SchoolOfferingsPage.jsx` - School programs landing page
+- `/app/frontend/src/pages/SchoolOfferingDetailPage.jsx` - Individual program detail pages
 
-### Educator Onboarding System - Complete ✅
-**URL:** `/educator-onboarding`
+### Modified Files
+- `/app/frontend/src/pages/LandingPage.jsx` - Added school dialog with two options
+- `/app/frontend/src/components/Navbar.jsx` - Added `variant="about"` prop for different button set
+- `/app/frontend/src/pages/AboutPage.jsx` - Updated timeline, uses about navbar variant
+- `/app/frontend/src/pages/StudentFunnel.jsx` - New age groups, learning goals step
+- `/app/frontend/src/pages/courses/CoursesListPage.jsx` - Removed age group display
+- `/app/frontend/src/pages/admin/AdminTeamApplications.jsx` - Team requirements modal
+- `/app/frontend/src/pages/admin/AdminEducators.jsx` - Educator requirements button
+- `/app/backend/server.py` - PDF generation endpoints with ReportLab
 
-**8-Step Flow:**
-1. Welcome Video
-2. Profile (photo, bio)
-3. Personal Details (T-shirt, address, emergency contact, Aadhar*, PAN)
-4. Bank Details
-5. Contract Signing
-6. Training Videos + Quiz (70% pass)
-7. Curriculum + Assessment (70% pass)
-8. Complete (ID Card, Certificate)
+### Routes Added
+- `/school-offerings` - School programs landing page
+- `/school-offerings/:offeringId` - Individual program pages
 
-**Admin Features:**
-- View onboarding progress inline in Onboarding section
-- Direct onboard educators (skip selection)
-- Verify documents before activation
-- "Activate" button only works after document verification
+## Database Schema Updates
+- `team_requirements` collection for open positions (already existed)
+- `educator_onboarding` - Added `id_card_generated`, `certificate_generated` fields
 
----
+## 3rd Party Integrations
+- **ReportLab** - PDF generation for ID cards and certificates
+- **qrcode** - QR code generation for ID cards
 
-## Status Flow
-```
-NEW → DEMO_SCHEDULED → ONBOARDING → ACTIVE → (ARCHIVED)
-                                ↓
-                        Document Verification Required
-```
+## Prioritized Backlog
 
----
+### P1 (Next Priority)
+- LinkedIn Post Feature - Pre-written post template in final onboarding step
+- Make Blogs Dynamic - Admin CMS for blog posts
+- Merge User Types into RBAC
 
-## Completed Features
+### P2
+- Enforce RBAC Permissions across app
+- CSV Export for CRM pages
 
-| Feature | Status |
-|---------|--------|
-| Admin Onboarding Section | ✅ |
-| Document Verification | ✅ |
-| File Upload Fix | ✅ |
-| Aadhar Mandatory | ✅ |
-| Status Rename (onboarded→active) | ✅ |
-| Inline Progress View | ✅ |
+### P3+
+- Full School and SEO Course Funnels
+- Real Calendar Integration (Calendly)
+- Lead scoring system
+- Automated follow-up reminders
 
----
+## Known Limitations
+- **Resend Emails** - Domain verification pending on `oll.co`
+- **Jitsi Moderator** - Public server doesn't support programmatic moderator roles
+- **PDF Photos** - ID card shows placeholder circle instead of actual educator photo
 
 ## Test Credentials
-- **Admin:** admin@oll.co / Dagaji03@
-- **Educator (in onboarding):** 7777777777 (OTP: 1111)
-- **Test OTP:** 1111
-
-## Key URLs
-- Admin Educators: /admin/educators (click "Onboarding" tab)
-- Educator Onboarding: /educator-onboarding
-
-## ⚠️ MOCKED
-- Training videos are placeholder YouTube embeds
-- ID Card/Certificate generation (placeholder buttons)
+- **Admin**: admin@oll.co / Dagaji03@
+- **Educator**: Any 10-digit phone with OTP 1111
