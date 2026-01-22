@@ -503,7 +503,7 @@ const ProfileStep = ({ formData, setFormData, onSave, onComplete, onFileUpload }
 const PersonalDetailsStep = ({ formData, setFormData, onSave, onComplete, onFileUpload }) => {
   const canContinue = formData.address_line1 && formData.city && formData.state && 
     formData.pincode && formData.emergency_contact_name && formData.emergency_contact_phone &&
-    formData.aadhar_number && formData.tshirt_size;
+    formData.aadhar_number && formData.aadhar_document && formData.tshirt_size;
   
   return (
     <div className="space-y-6">
