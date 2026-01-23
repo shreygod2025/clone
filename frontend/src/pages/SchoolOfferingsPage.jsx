@@ -119,12 +119,18 @@ const SchoolOfferingsPage = () => {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [caseStudies, setCaseStudies] = useState([]);
+  const [partnerSchools, setPartnerSchools] = useState([]);
 
   useEffect(() => {
     // Fetch case studies from backend
     axios.get(`${API}/case-studies`)
       .then(res => setCaseStudies(res.data || []))
       .catch(() => setCaseStudies([]));
+    
+    // Fetch partner schools
+    axios.get(`${API}/partner-schools`)
+      .then(res => setPartnerSchools(res.data || []))
+      .catch(() => setPartnerSchools(PARTNER_SCHOOLS));
   }, []);
 
   return (
