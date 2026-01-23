@@ -4932,6 +4932,522 @@ async def upload_file(file: UploadFile = File(...), type: str = "general"):
     
     return {"url": file_url, "filename": unique_filename}
 
+# ========================
+# ADMIN REPORTS ENDPOINTS
+# ========================
+
+class ReportsDateFilter(BaseModel):
+    start_date: Optional[str] = None  # YYYY-MM-DD
+    end_date: Optional[str] = None    # YYYY-MM-DD
+    period: Optional[str] = None      # day, week, month, year
+
+def get_date_range(start_date: Optional[str], end_date: Optional[str], period: Optional[str]):
+    """Get date range for filtering"""
+    now = datetime.now(timezone.utc)
+    
+    if start_date and end_date:
+        start = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        end = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
+    elif period == "day":
+        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end = now
+    elif period == "week":
+        start = (now - timedelta(days=7)).replace(hour=0, minute=0, second=0, microsecond=0)
+        end = now
+    elif period == "month":
+        start = (now - timedelta(days=30)).replace(hour=0, minute=0, second=0, microsecond=0)
+        end = now
+    elif period == "year":
+        start = (now - timedelta(days=365)).replace(hour=0, minute=0, second=0, microsecond=0)
+        end = now
+    else:
+        # Default to all time
+        start = datetime(2020, 1, 1, tzinfo=timezone.utc)
+        end = now
+    
+    return start, end
+
+def parse_date_field(date_val):
+    """Parse date field from various formats"""
+    if not date_val:
+        return None
+    if isinstance(date_val, datetime):
+        return date_val.replace(tzinfo=timezone.utc) if date_val.tzinfo is None else date_val
+    if isinstance(date_val, str):
+        try:
+            return datetime.fromisoformat(date_val.replace('Z', '+00:00'))
+        except:
+            try:
+                return datetime.strptime(date_val, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            except:
+                return None
+    return None
+
+@api_router.get("/admin/reports/overview")
+async def get_reports_overview(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    period: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    """Get overall metrics for the dashboard"""
+    start, end = get_date_range(start_date, end_date, period)
+    
+    # Get all student inquiries for date filtering
+    all_student_inquiries = await db.student_inquiries.find({}, {"_id": 0}).to_list(10000)
+    student_inquiries = []
+    for inq in all_student_inquiries:
+        created = parse_date_field(inq.get('created_at'))
+        if created and start <= created <= end:
+            student_inquiries.append(inq)
+    
+    # Get all school inquiries
+    all_school_inquiries = await db.school_inquiries.find({}, {"_id": 0}).to_list(10000)
+    school_inquiries = []
+    for inq in all_school_inquiries:
+        created = parse_date_field(inq.get('created_at'))
+        if created and start <= created <= end:
+            school_inquiries.append(inq)
+    
+    # Get all educator applications
+    all_educators = await db.educator_applications.find({}, {"_id": 0}).to_list(10000)
+    educators = []
+    for edu in all_educators:
+        created = parse_date_field(edu.get('created_at'))
+        if created and start <= created <= end:
+            educators.append(edu)
+    
+    # Get demo bookings
+    all_demos = await db.demo_bookings.find({}, {"_id": 0}).to_list(10000)
+    demos = []
+    for demo in all_demos:
+        created = parse_date_field(demo.get('created_at'))
+        if created and start <= created <= end:
+            demos.append(demo)
+    
+    # Calculate metrics
+    total_students = len(student_inquiries)
+    paid_students = len([s for s in student_inquiries if s.get('status') == 'converted' or s.get('payment_status') == 'paid'])
+    
+    total_schools = len(school_inquiries)
+    converted_schools = len([s for s in school_inquiries if s.get('status') == 'converted'])
+    
+    total_educators = len(educators)
+    active_educators = len([e for e in educators if e.get('status') == 'active'])
+    
+    total_demos = len(demos)
+    completed_demos = len([d for d in demos if d.get('status') == 'completed'])
+    
+    # Revenue calculation (simplified - sum of paid amounts)
+    total_revenue = sum(float(s.get('amount_paid', 0) or 0) for s in student_inquiries if s.get('payment_status') == 'paid')
+    total_revenue += sum(float(s.get('amount_paid', 0) or 0) for s in school_inquiries if s.get('status') == 'converted')
+    
+    return {
+        "overview": {
+            "total_revenue": total_revenue,
+            "paid_students": paid_students,
+            "converted_schools": converted_schools,
+            "active_educators": active_educators,
+        },
+        "students": {
+            "total": total_students,
+            "new": len([s for s in student_inquiries if s.get('status') == 'new']),
+            "demo_scheduled": len([s for s in student_inquiries if s.get('status') == 'demo_scheduled']),
+            "demo_completed": len([s for s in student_inquiries if s.get('status') == 'demo_completed']),
+            "converted": paid_students,
+        },
+        "schools": {
+            "total": total_schools,
+            "new": len([s for s in school_inquiries if s.get('status') == 'new']),
+            "meeting_scheduled": len([s for s in school_inquiries if s.get('status') == 'meeting_scheduled']),
+            "proposal_sent": len([s for s in school_inquiries if s.get('status') == 'proposal_sent']),
+            "converted": converted_schools,
+        },
+        "educators": {
+            "total": total_educators,
+            "new": len([e for e in educators if e.get('status') == 'new']),
+            "demo_scheduled": len([e for e in educators if e.get('status') == 'demo_scheduled']),
+            "onboarding": len([e for e in educators if e.get('status') == 'onboarding']),
+            "active": active_educators,
+        },
+        "demos": {
+            "total": total_demos,
+            "scheduled": len([d for d in demos if d.get('status') == 'scheduled']),
+            "completed": completed_demos,
+        },
+        "period": {
+            "start": start.isoformat(),
+            "end": end.isoformat(),
+        }
+    }
+
+@api_router.get("/admin/reports/sales-funnel")
+async def get_sales_funnel_report(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    period: Optional[str] = None,
+    user_type: str = "students",  # students, schools
+    user: dict = Depends(get_current_user)
+):
+    """Get sales funnel metrics with conversion rates"""
+    start, end = get_date_range(start_date, end_date, period)
+    
+    if user_type == "students":
+        collection = db.student_inquiries
+    else:
+        collection = db.school_inquiries
+    
+    all_items = await collection.find({}, {"_id": 0}).to_list(10000)
+    items = []
+    for item in all_items:
+        created = parse_date_field(item.get('created_at'))
+        if created and start <= created <= end:
+            items.append(item)
+    
+    total = len(items)
+    if total == 0:
+        return {
+            "funnel": [],
+            "conversion_rates": {},
+            "revenue": 0,
+            "period": {"start": start.isoformat(), "end": end.isoformat()}
+        }
+    
+    # Define stages based on user type
+    if user_type == "students":
+        stages = [
+            {"name": "New Leads", "status": "new"},
+            {"name": "Demo Scheduled", "status": "demo_scheduled"},
+            {"name": "Demo Completed", "status": "demo_completed"},
+            {"name": "Converted", "status": "converted"},
+        ]
+    else:
+        stages = [
+            {"name": "New Leads", "status": "new"},
+            {"name": "Meeting Scheduled", "status": "meeting_scheduled"},
+            {"name": "Proposal Sent", "status": "proposal_sent"},
+            {"name": "Negotiation", "status": "negotiation"},
+            {"name": "Converted", "status": "converted"},
+        ]
+    
+    funnel = []
+    for i, stage in enumerate(stages):
+        count = len([item for item in items if item.get('status') == stage['status']])
+        # Include all later stages in the count (funnel logic)
+        for later_stage in stages[i+1:]:
+            count += len([item for item in items if item.get('status') == later_stage['status']])
+        funnel.append({
+            "stage": stage['name'],
+            "count": count,
+            "percentage": round(count / total * 100, 1) if total > 0 else 0
+        })
+    
+    # Calculate conversion rates
+    converted = len([item for item in items if item.get('status') == 'converted'])
+    demo_scheduled = len([item for item in items if item.get('status') in ['demo_scheduled', 'demo_completed', 'converted', 'meeting_scheduled', 'proposal_sent', 'negotiation']])
+    
+    conversion_rates = {
+        "lead_to_demo": round(demo_scheduled / total * 100, 1) if total > 0 else 0,
+        "demo_to_conversion": round(converted / demo_scheduled * 100, 1) if demo_scheduled > 0 else 0,
+        "overall_conversion": round(converted / total * 100, 1) if total > 0 else 0,
+    }
+    
+    # Revenue
+    revenue = sum(float(item.get('amount_paid', 0) or 0) for item in items if item.get('status') == 'converted' or item.get('payment_status') == 'paid')
+    
+    return {
+        "funnel": funnel,
+        "conversion_rates": conversion_rates,
+        "revenue": revenue,
+        "total_leads": total,
+        "period": {"start": start.isoformat(), "end": end.isoformat()}
+    }
+
+@api_router.get("/admin/reports/lead-analytics")
+async def get_lead_analytics(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    period: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    """Get lead analytics - source, age group, course interest breakdown"""
+    start, end = get_date_range(start_date, end_date, period)
+    
+    all_items = await db.student_inquiries.find({}, {"_id": 0}).to_list(10000)
+    items = []
+    for item in all_items:
+        created = parse_date_field(item.get('created_at'))
+        if created and start <= created <= end:
+            items.append(item)
+    
+    # Source breakdown
+    sources = {}
+    for item in items:
+        source = item.get('source', 'website') or 'website'
+        sources[source] = sources.get(source, 0) + 1
+    
+    # Age group breakdown
+    age_groups = {}
+    for item in items:
+        age = item.get('child_age') or item.get('age_group', 'Unknown')
+        if isinstance(age, (int, float)):
+            if age < 6:
+                age_group = "Under 6"
+            elif age < 10:
+                age_group = "6-9"
+            elif age < 14:
+                age_group = "10-13"
+            else:
+                age_group = "14+"
+        else:
+            age_group = str(age) if age else "Unknown"
+        age_groups[age_group] = age_groups.get(age_group, 0) + 1
+    
+    # Course interest breakdown
+    courses = {}
+    for item in items:
+        course = item.get('course_interest') or item.get('skill', 'Not Specified')
+        if isinstance(course, list):
+            for c in course:
+                courses[c] = courses.get(c, 0) + 1
+        else:
+            courses[course] = courses.get(course, 0) + 1
+    
+    # Stage breakdown
+    stages = {}
+    for item in items:
+        stage = item.get('status', 'new')
+        stages[stage] = stages.get(stage, 0) + 1
+    
+    return {
+        "by_source": [{"name": k, "count": v} for k, v in sorted(sources.items(), key=lambda x: -x[1])],
+        "by_age_group": [{"name": k, "count": v} for k, v in sorted(age_groups.items(), key=lambda x: -x[1])],
+        "by_course": [{"name": k, "count": v} for k, v in sorted(courses.items(), key=lambda x: -x[1])],
+        "by_stage": [{"name": k, "count": v} for k, v in sorted(stages.items(), key=lambda x: -x[1])],
+        "total": len(items),
+        "period": {"start": start.isoformat(), "end": end.isoformat()}
+    }
+
+@api_router.get("/admin/reports/educator-metrics")
+async def get_educator_metrics(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    period: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    """Get educator/teacher quality metrics"""
+    start, end = get_date_range(start_date, end_date, period)
+    
+    # Get all educators
+    all_educators = await db.educator_applications.find({}, {"_id": 0}).to_list(10000)
+    
+    # Filter by date range for new educators
+    new_educators = []
+    all_active = []
+    for edu in all_educators:
+        created = parse_date_field(edu.get('created_at'))
+        if created and start <= created <= end:
+            new_educators.append(edu)
+        if edu.get('status') == 'active':
+            all_active.append(edu)
+    
+    # Get demo bookings to calculate demos per educator
+    all_demos = await db.demo_bookings.find({}, {"_id": 0}).to_list(10000)
+    demos_in_period = []
+    for demo in all_demos:
+        created = parse_date_field(demo.get('created_at'))
+        if created and start <= created <= end:
+            demos_in_period.append(demo)
+    
+    # Calculate demos per active educator
+    educator_demo_count = {}
+    for demo in demos_in_period:
+        edu_id = demo.get('educator_id')
+        if edu_id:
+            educator_demo_count[edu_id] = educator_demo_count.get(edu_id, 0) + 1
+    
+    total_demos = sum(educator_demo_count.values())
+    active_count = len(all_active)
+    avg_demos_per_educator = round(total_demos / active_count, 1) if active_count > 0 else 0
+    
+    # Calculate earnings per educator (simplified)
+    # Assuming each completed demo has a fixed earning or from demo_bookings
+    demo_earning = 500  # Default earning per demo
+    total_earnings = total_demos * demo_earning
+    avg_earnings = round(total_earnings / active_count, 0) if active_count > 0 else 0
+    
+    # Status breakdown
+    status_breakdown = {}
+    for edu in new_educators:
+        status = edu.get('status', 'new')
+        status_breakdown[status] = status_breakdown.get(status, 0) + 1
+    
+    # Top performers (by demo count)
+    top_educators = []
+    for edu in all_active[:10]:
+        demo_count = educator_demo_count.get(edu.get('id'), 0)
+        if demo_count > 0:
+            top_educators.append({
+                "name": edu.get('name'),
+                "demos": demo_count,
+                "earnings": demo_count * demo_earning
+            })
+    top_educators.sort(key=lambda x: -x['demos'])
+    
+    return {
+        "summary": {
+            "new_educators": len(new_educators),
+            "total_active": active_count,
+            "avg_demos_per_educator": avg_demos_per_educator,
+            "avg_earnings_per_educator": avg_earnings,
+            "total_demos_conducted": total_demos,
+        },
+        "by_status": [{"name": k, "count": v} for k, v in sorted(status_breakdown.items(), key=lambda x: -x[1])],
+        "top_performers": top_educators[:5],
+        "period": {"start": start.isoformat(), "end": end.isoformat()}
+    }
+
+@api_router.get("/admin/reports/support-metrics")
+async def get_support_metrics(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    period: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    """Get support query metrics"""
+    start, end = get_date_range(start_date, end_date, period)
+    
+    # Get all support queries
+    all_queries = await db.support_queries.find({}, {"_id": 0}).to_list(10000)
+    queries = []
+    for q in all_queries:
+        created = parse_date_field(q.get('created_at'))
+        if created and start <= created <= end:
+            queries.append(q)
+    
+    total = len(queries)
+    
+    # Status breakdown
+    new_queries = len([q for q in queries if q.get('status') == 'new'])
+    open_queries = len([q for q in queries if q.get('status') in ['new', 'open', 'in_progress']])
+    resolved_queries = len([q for q in queries if q.get('status') in ['resolved', 'closed']])
+    
+    # Query type breakdown
+    query_types = {}
+    for q in queries:
+        qtype = q.get('query_type') or q.get('category', 'General')
+        query_types[qtype] = query_types.get(qtype, 0) + 1
+    
+    # Calculate average resolution time (for resolved queries)
+    resolution_times = []
+    for q in queries:
+        if q.get('status') in ['resolved', 'closed']:
+            created = parse_date_field(q.get('created_at'))
+            resolved = parse_date_field(q.get('resolved_at') or q.get('updated_at'))
+            if created and resolved:
+                diff = (resolved - created).total_seconds() / 3600  # hours
+                resolution_times.append(diff)
+    
+    avg_resolution_time = round(sum(resolution_times) / len(resolution_times), 1) if resolution_times else 0
+    
+    # Priority breakdown
+    priority_breakdown = {}
+    for q in queries:
+        priority = q.get('priority', 'normal')
+        priority_breakdown[priority] = priority_breakdown.get(priority, 0) + 1
+    
+    return {
+        "summary": {
+            "total": total,
+            "new": new_queries,
+            "open": open_queries,
+            "resolved": resolved_queries,
+            "avg_resolution_time_hours": avg_resolution_time,
+        },
+        "by_type": [{"name": k, "count": v} for k, v in sorted(query_types.items(), key=lambda x: -x[1])],
+        "by_priority": [{"name": k, "count": v} for k, v in sorted(priority_breakdown.items(), key=lambda x: -x[1])],
+        "period": {"start": start.isoformat(), "end": end.isoformat()}
+    }
+
+@api_router.get("/admin/reports/user-stages")
+async def get_user_stages_report(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    period: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    """Get all user types and their stages"""
+    start, end = get_date_range(start_date, end_date, period)
+    
+    # Students
+    all_students = await db.student_inquiries.find({}, {"_id": 0}).to_list(10000)
+    students = [s for s in all_students if start <= (parse_date_field(s.get('created_at')) or start) <= end]
+    
+    student_stages = {}
+    for s in students:
+        stage = s.get('status', 'new')
+        student_stages[stage] = student_stages.get(stage, 0) + 1
+    
+    # Schools
+    all_schools = await db.school_inquiries.find({}, {"_id": 0}).to_list(10000)
+    schools = [s for s in all_schools if start <= (parse_date_field(s.get('created_at')) or start) <= end]
+    
+    school_stages = {}
+    for s in schools:
+        stage = s.get('status', 'new')
+        school_stages[stage] = school_stages.get(stage, 0) + 1
+    
+    # Educators
+    all_educators = await db.educator_applications.find({}, {"_id": 0}).to_list(10000)
+    educators = [e for e in all_educators if start <= (parse_date_field(e.get('created_at')) or start) <= end]
+    
+    educator_stages = {}
+    for e in educators:
+        stage = e.get('status', 'new')
+        educator_stages[stage] = educator_stages.get(stage, 0) + 1
+    
+    # Team applications
+    all_team = await db.team_applications.find({}, {"_id": 0}).to_list(10000)
+    team = [t for t in all_team if start <= (parse_date_field(t.get('created_at')) or start) <= end]
+    
+    team_stages = {}
+    for t in team:
+        stage = t.get('status', 'new')
+        team_stages[stage] = team_stages.get(stage, 0) + 1
+    
+    # Growth Partners
+    all_gps = await db.growth_partners.find({}, {"_id": 0}).to_list(10000)
+    gps = [g for g in all_gps if start <= (parse_date_field(g.get('created_at')) or start) <= end]
+    
+    gp_stages = {}
+    for g in gps:
+        stage = g.get('status', 'new')
+        gp_stages[stage] = gp_stages.get(stage, 0) + 1
+    
+    return {
+        "students": {
+            "total": len(students),
+            "stages": [{"name": k, "count": v} for k, v in sorted(student_stages.items(), key=lambda x: -x[1])]
+        },
+        "schools": {
+            "total": len(schools),
+            "stages": [{"name": k, "count": v} for k, v in sorted(school_stages.items(), key=lambda x: -x[1])]
+        },
+        "educators": {
+            "total": len(educators),
+            "stages": [{"name": k, "count": v} for k, v in sorted(educator_stages.items(), key=lambda x: -x[1])]
+        },
+        "team": {
+            "total": len(team),
+            "stages": [{"name": k, "count": v} for k, v in sorted(team_stages.items(), key=lambda x: -x[1])]
+        },
+        "growth_partners": {
+            "total": len(gps),
+            "stages": [{"name": k, "count": v} for k, v in sorted(gp_stages.items(), key=lambda x: -x[1])]
+        },
+        "period": {"start": start.isoformat(), "end": end.isoformat()}
+    }
+
 # Include router and middleware
 app.include_router(api_router)
 
