@@ -4597,6 +4597,74 @@ async def update_session(session_id: str, data: dict, user: dict = Depends(get_c
     
     return {"message": "Session updated successfully"}
 
+@api_router.get("/user/my-sessions/{phone}")
+async def get_user_sessions(phone: str):
+    """Get sessions for a student by phone number (no auth required for user flow)"""
+    # First find the student inquiry by phone
+    student = await db.student_inquiries.find_one({"phone": phone, "status": "converted"}, {"_id": 0})
+    
+    if not student:
+        return {"sessions": [], "student": None}
+    
+    # Get sessions for this student
+    sessions = await db.sessions.find({"student_id": student["id"]}, {"_id": 0}).sort("date", 1).to_list(100)
+    
+    # Enrich sessions with batch info
+    for session in sessions:
+        if session.get("batch_id"):
+            batch = await db.batches.find_one({"id": session["batch_id"]}, {"_id": 0, "name": 1, "skill": 1})
+            if batch:
+                session["batch_name"] = batch.get("name")
+                session["skill"] = batch.get("skill") or session.get("skill")
+    
+    return {
+        "sessions": sessions,
+        "student": {
+            "id": student.get("id"),
+            "name": student.get("name"),
+            "skill": student.get("skill"),
+            "batch_id": student.get("batch_id"),
+            "batch_name": student.get("batch_name"),
+            "sessions_total": student.get("sessions_total", 0),
+            "sessions_completed": student.get("sessions_completed", 0)
+        }
+    }
+
+@api_router.get("/educator/my-sessions")
+async def get_educator_sessions(user: dict = Depends(get_current_user)):
+    """Get all sessions assigned to the logged-in educator"""
+    educator_id = user.get("educator_id") or user.get("id")
+    
+    if not educator_id:
+        # Try to find educator by email
+        educator = await db.educator_applications.find_one({"email": user.get("email")}, {"_id": 0})
+        if educator:
+            educator_id = educator["id"]
+    
+    if not educator_id:
+        raise HTTPException(status_code=403, detail="Educator not found")
+    
+    # Get all sessions for this educator
+    sessions = await db.sessions.find({"educator_id": educator_id}, {"_id": 0}).sort("date", 1).to_list(500)
+    
+    # Enrich with student and batch info
+    for session in sessions:
+        # Get student info
+        if session.get("student_id"):
+            student = await db.student_inquiries.find_one({"id": session["student_id"]}, {"_id": 0, "name": 1, "phone": 1, "email": 1})
+            if student:
+                session["student_name"] = student.get("name")
+                session["student_phone"] = student.get("phone")
+                session["student_email"] = student.get("email")
+        
+        # Get batch info
+        if session.get("batch_id"):
+            batch = await db.batches.find_one({"id": session["batch_id"]}, {"_id": 0, "name": 1, "skill": 1})
+            if batch:
+                session["batch_name"] = batch.get("name")
+    
+    return sessions
+
 # ========================
 # SCHOOL ONBOARDING
 # ========================
