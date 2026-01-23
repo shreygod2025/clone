@@ -180,6 +180,68 @@ const AdminSchoolCRM = () => {
     await handleStatusChange(inquiry, 'archived');
   };
 
+  const handleOnboardSchool = async () => {
+    if (!showOnboardModal) return;
+    
+    try {
+      // Calculate totals
+      const totalStudents = onboardData.grade_pricing.reduce((sum, g) => sum + (parseInt(g.students) || 0), 0);
+      const totalAmount = onboardData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
+      
+      await axios.post(`${API}/schools/onboard`, {
+        school_id: showOnboardModal.id,
+        model: onboardData.model,
+        grade_pricing: onboardData.grade_pricing.filter(g => g.grade && g.students),
+        total_students: totalStudents,
+        total_amount: totalAmount,
+        school_contacts: onboardData.school_contacts.filter(c => c.name && c.phone),
+        payment_mode: onboardData.payment_mode,
+        contract_start: onboardData.contract_start,
+        contract_end: onboardData.contract_end,
+      }, { headers: getAuthHeaders() });
+      
+      toast.success('School onboarded successfully!');
+      setShowOnboardModal(null);
+      setOnboardData({
+        model: '', grade_pricing: [{ grade: '', students: '', price_per_student: '' }],
+        total_students: 0, total_amount: 0, school_contacts: [{ name: '', phone: '', email: '', role: '' }],
+        payment_mode: 'monthly', contract_start: '', contract_end: ''
+      });
+      fetchInquiries();
+    } catch (error) {
+      toast.error('Failed to onboard school');
+      console.error(error);
+    }
+  };
+
+  const addGradePricing = () => {
+    setOnboardData(prev => ({
+      ...prev,
+      grade_pricing: [...prev.grade_pricing, { grade: '', students: '', price_per_student: '' }]
+    }));
+  };
+
+  const updateGradePricing = (index, field, value) => {
+    setOnboardData(prev => ({
+      ...prev,
+      grade_pricing: prev.grade_pricing.map((g, i) => i === index ? { ...g, [field]: value } : g)
+    }));
+  };
+
+  const addSchoolContact = () => {
+    setOnboardData(prev => ({
+      ...prev,
+      school_contacts: [...prev.school_contacts, { name: '', phone: '', email: '', role: '' }]
+    }));
+  };
+
+  const updateSchoolContact = (index, field, value) => {
+    setOnboardData(prev => ({
+      ...prev,
+      school_contacts: prev.school_contacts.map((c, i) => i === index ? { ...c, [field]: value } : c)
+    }));
+  };
+
   const handleAddLead = async () => {
     if (!newLead.school_name || !newLead.contact_name || !newLead.phone) {
       toast.error('School name, contact name and phone are required');
