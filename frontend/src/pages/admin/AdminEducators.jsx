@@ -106,7 +106,21 @@ const AdminEducators = () => {
   useEffect(() => {
     fetchEducators();
     fetchTeamUsers();
+    fetchRequirements();
   }, []);
+
+  const fetchRequirements = async () => {
+    try {
+      const [reqRes, citiesRes] = await Promise.all([
+        axios.get(`${API}/requirements`, { headers: getAuthHeaders() }),
+        axios.get(`${API}/cities`, { headers: getAuthHeaders() })
+      ]);
+      setRequirements(reqRes.data || []);
+      setCities(citiesRes.data || []);
+    } catch (error) {
+      console.error('Failed to fetch requirements:', error);
+    }
+  };
 
   const fetchTeamUsers = async () => {
     try {
