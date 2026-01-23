@@ -5,29 +5,50 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## What's Been Implemented
 
-### Session: January 23, 2025 (Latest - P0 CRM & Data Center Complete)
+### Session: January 23, 2025 (Latest - P0 CRM & Data Center Complete + Feature Updates)
+
+#### Latest Updates (16/16 tests passed - 100% success) ✅
+
+**1. Amount Field in Student Onboarding**
+- Added **Amount (₹)** field at top of Convert & Onboard modal
+- Amount is mandatory and validates before submission
+- Saves to `conversion_amount` field in student record
+- **Revenue Reports now include conversion_amount** in calculations
+
+**2. Data Center - Team & Growth Partners Added**
+- **5 Stat Cards:** Students (70), Schools (29), Educators (23), **Team (4)**, **Growth Partners (8)**
+- Type filter dropdown includes "Team" and "Growth Partners" options
+- Status breakdown for all 5 categories
+
+**3. Autocomplete in Add Lead Forms**
+- Student CRM & School CRM Add Lead forms now have **autocomplete**
+- Type 3+ characters in Name, Phone, or Email to search existing records
+- Click suggestion to **auto-fill** the entire form
+- Hint banner shows: "💡 Type at least 3 characters..."
+
+---
 
 #### 1. Data Center - Unified View ✅ VERIFIED & TESTED
-- Single unified list showing ALL Students, Schools, Educators
+- Single unified list showing ALL Students, Schools, Educators, **Team, Growth Partners**
 - **No tabs** - one searchable/filterable list with Type badge for each record
-- **Stats Overview:** Total Students (67), Schools (23), Educators (23) with status breakdowns
+- **Stats Overview:** 5 categories with status breakdowns
 - **Search:** Global search across all records by name/phone/email
-- **Filters:** Type, Status, City, Age Group, Skill, Fee Range, Student Count, Availability
+- **Filters:** Type (5 options), Status, City, Age Group, Skill, Fee Range, Student Count, Availability
 - **Export to CSV** functionality
-- Backend endpoints fully working (18/18 tests passed)
+- Backend endpoints fully working
 
 #### 2. Student CRM - Convert & Onboard Flow ✅ VERIFIED & TESTED
 - **4 Status Tabs:** New Leads, Demo Completed, Converted, Archived
 - **Convert & Onboard button** appears on Demo Completed leads
-- **Mandatory Payment Receipt Upload** at top of onboard modal
+- **Amount (₹)** field at top of modal (mandatory)
+- **Mandatory Payment Receipt Upload** below amount
 - **Batch Options:** Create New Batch / Join Existing Batch
-- **Create New Batch form:** Batch name, Start Date, Time Slot, Days (Mon-Sun), No. of Sessions, Mode, Educator, Skill
-- **File upload** uses `/api/upload` endpoint (works, tested)
-- Status transitions: new → demo_completed → converted (with payment_receipt_url)
+- **Autocomplete** in Add Lead form for existing records
+- Status transitions: new → demo_completed → converted (with payment_receipt_url, conversion_amount)
 
 #### 3. School CRM - New Status Tabs ✅ VERIFIED & TESTED
 - **7 Status Tabs:** New Leads, Meeting Done, Converted, **Active Schools**, **Renewed**, **Lost**, Archived
-- Active schools can be marked as **Renewed** or **Lost**
+- **Autocomplete** in Add Lead form for existing records
 - Onboarding flow for converted schools with custom model, pricing, contacts
 
 #### 4. Previous Features (Still Working)
