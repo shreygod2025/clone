@@ -5,55 +5,37 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## What's Been Implemented
 
-### Session: January 23, 2025 (Latest - Major Feature Update)
+### Session: January 23, 2025 (Latest - P0 CRM & Data Center Complete)
 
-#### 1. Support Ticket Creation from Admin ✅ NEW
-- "Create Ticket" button in Support Center
-- Modal with: Name, Phone, Email, Query Type, User Type, Priority, Message
-- Backend endpoint: `POST /api/support/queries/create`
-
-#### 2. Student Onboarding System ✅ NEW
-- **"Onboard" button** on converted students in CRM
-- **Create New Batch:**
-  - Batch name, Start date, Days selection (Mon-Sun)
-  - Time slot, No. of sessions, Mode (Online/Offline/Hybrid)
-  - Educator assignment
-- **Join Existing Batch:** Select from active batches
-- **Auto-generates sessions** with Jitsi links for online mode
-- Backend endpoints:
-  - `POST /api/batches` - Create batch
-  - `GET /api/batches` - List batches
-  - `POST /api/batches/{id}/add-student` - Add student to batch
-  - `GET /api/sessions` - Get sessions (filterable)
-  - `PUT /api/sessions/{id}` - Update session status
-
-#### 3. School Onboarding System ✅ NEW
-- **"Onboard" button** on converted schools in CRM
-- **Full customization:**
-  - Model selection (Robotics Lab, STEM, After School, etc.)
-  - Grade-wise student count & pricing table (dynamically add rows)
-  - Multiple school team contacts (name, phone, email, role)
-  - Payment mode (Monthly/Quarterly/Annual/etc.)
-  - Contract start & end dates
-- Backend endpoint: `POST /api/schools/onboard`
-
-#### 4. Data Center ✅ NEW
-- New admin page at `/admin/data-center`
-- **Stats Overview:** Total Students, Schools, Educators with status breakdowns
+#### 1. Data Center - Unified View ✅ VERIFIED & TESTED
+- Single unified list showing ALL Students, Schools, Educators
+- **No tabs** - one searchable/filterable list with Type badge for each record
+- **Stats Overview:** Total Students (67), Schools (23), Educators (23) with status breakdowns
 - **Search:** Global search across all records by name/phone/email
-- **Filters:**
-  - Data type (All/Students/Schools/Educators)
-  - Status, City, Age Group, Board, Skill
-- **Export to CSV**
-- **Quick view details** with "Open in CRM" option
-- Backend endpoints:
-  - `GET /api/data-center/search` - Unified search
-  - `GET /api/data-center/stats` - Statistics
-  - `GET /api/data-center/autocomplete` - For form auto-fill
+- **Filters:** Type, Status, City, Age Group, Skill, Fee Range, Student Count, Availability
+- **Export to CSV** functionality
+- Backend endpoints fully working (18/18 tests passed)
 
-#### 5. Support Assignment Fix ✅
-- Deadline is now **optional** (collapsed by default)
-- Direct click assignment to team members
+#### 2. Student CRM - Convert & Onboard Flow ✅ VERIFIED & TESTED
+- **4 Status Tabs:** New Leads, Demo Completed, Converted, Archived
+- **Convert & Onboard button** appears on Demo Completed leads
+- **Mandatory Payment Receipt Upload** at top of onboard modal
+- **Batch Options:** Create New Batch / Join Existing Batch
+- **Create New Batch form:** Batch name, Start Date, Time Slot, Days (Mon-Sun), No. of Sessions, Mode, Educator, Skill
+- **File upload** uses `/api/upload` endpoint (works, tested)
+- Status transitions: new → demo_completed → converted (with payment_receipt_url)
+
+#### 3. School CRM - New Status Tabs ✅ VERIFIED & TESTED
+- **7 Status Tabs:** New Leads, Meeting Done, Converted, **Active Schools**, **Renewed**, **Lost**, Archived
+- Active schools can be marked as **Renewed** or **Lost**
+- Onboarding flow for converted schools with custom model, pricing, contacts
+
+#### 4. Previous Features (Still Working)
+- Support Ticket Creation from Admin
+- Student Onboarding System with batch/session creation
+- School Onboarding System with custom configuration
+- Support Assignment (deadline optional)
+- Admin Reports Dashboard
 
 ### Previous Sessions (Summary)
 
