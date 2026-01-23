@@ -83,6 +83,7 @@ const AdminStudentCRM = () => {
     mode: 'online',
     payment_receipt: null,
     payment_receipt_url: '',
+    amount: '', // Payment amount
   });
   const [newLead, setNewLead] = useState({
     name: '',
