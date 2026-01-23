@@ -5,28 +5,43 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## What's Been Implemented
 
-### Session: January 23, 2025 (Latest - P0 CRM & Data Center Complete + Feature Updates)
+### Session: January 23, 2025 (Latest - School Onboarding Overhaul + Autocomplete Fix)
 
-#### Latest Updates (16/16 tests passed - 100% success) ✅
+#### Latest Updates ✅
 
-**1. Amount Field in Student Onboarding**
-- Added **Amount (₹)** field at top of Convert & Onboard modal
-- Amount is mandatory and validates before submission
-- Saves to `conversion_amount` field in student record
-- **Revenue Reports now include conversion_amount** in calculations
+**1. School Onboarding Modal - Major Enhancements**
+- **Select Offering** dropdown - populated from `/api/school-offerings` endpoint
+- **Book Type** dropdown - "Individual Books" / "No Books" options
+- **Kit Type** dropdown - "Lab Setup" / "Individual Kit" / "No Kit"
+- **Training Type** dropdown - "Student Training" / "Teacher Training" / "Both"
+- **MOU Document Upload** - optional file upload for MOU documents
+- **Payment Mode** - "From School" / "From Student"
+- **Payment Method** - "Cheque" / "NEFT" / "Online" / "Cash"
+- **Payment Tranches** - Multiple tranches with:
+  - % field → auto-calculates Amount
+  - Amount field → auto-calculates %
+  - Date picker for each tranche
+  - Notes field
+- **Save as Draft** button - saves progress without completing onboarding
+- **Draft Progress Bar** - shows on school cards when onboarding is in draft state with "Continue →" button
 
-**2. Data Center - Team & Growth Partners Added**
-- **5 Stat Cards:** Students (70), Schools (29), Educators (23), **Team (4)**, **Growth Partners (8)**
-- Type filter dropdown includes "Team" and "Growth Partners" options
-- Status breakdown for all 5 categories
+**2. Public /add Page - Autocomplete Fixed**
+- Created new **public endpoint** `/api/public/autocomplete` (no auth required)
+- Works for both Lead and Query submissions
+- Type 3+ characters in Name, Phone, or Email to see suggestions
+- Auto-fills form when suggestion is clicked
 
-**3. Autocomplete in Add Lead Forms**
-- Student CRM & School CRM Add Lead forms now have **autocomplete**
-- Type 3+ characters in Name, Phone, or Email to search existing records
-- Click suggestion to **auto-fill** the entire form
-- Hint banner shows: "💡 Type at least 3 characters..."
+**3. Support Center - Autocomplete Added**
+- Create Ticket modal now has autocomplete on Name, Phone, Email fields
+- Uses existing data to auto-fill customer information
+
+**4. Backend - New Endpoints**
+- `GET /api/public/autocomplete` - Public autocomplete for /add page
+- `GET /api/school-offerings` - Returns available offerings for school onboarding
 
 ---
+
+### Previous Session Updates
 
 #### 1. Data Center - Unified View ✅ VERIFIED & TESTED
 - Single unified list showing ALL Students, Schools, Educators, **Team, Growth Partners**
