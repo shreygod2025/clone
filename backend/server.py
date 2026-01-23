@@ -4401,6 +4401,430 @@ async def update_support_ticket(ticket_id: str, status: str, user: dict = Depend
     return {"message": "Updated successfully"}
 
 # ========================
+# ADMIN CREATE SUPPORT TICKET
+# ========================
+
+@api_router.post("/support/queries/create")
+async def create_support_query(data: dict, user: dict = Depends(get_current_user)):
+    """Create a new support query from admin"""
+    query_id = str(uuid.uuid4())
+    doc = {
+        "id": query_id,
+        "name": data.get("name", ""),
+        "phone": data.get("phone", ""),
+        "email": data.get("email", ""),
+        "query_type": data.get("query_type", "other"),
+        "inquiry_type": data.get("inquiry_type", "student"),
+        "message": data.get("message", ""),
+        "priority": data.get("priority", "normal"),
+        "status": "open",
+        "source": "admin_created",
+        "created_by": user.get("email", "admin"),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "comments": [],
+        "assigned_to": data.get("assigned_to"),
+    }
+    await db.support_queries.insert_one(doc)
+    return {"message": "Query created successfully", "id": query_id}
+
+# ========================
+# BATCH MANAGEMENT
+# ========================
+
+@api_router.post("/batches")
+async def create_batch(data: dict, user: dict = Depends(get_current_user)):
+    """Create a new batch for student sessions"""
+    batch_id = str(uuid.uuid4())
+    doc = {
+        "id": batch_id,
+        "name": data.get("name", f"Batch-{batch_id[:8]}"),
+        "skill": data.get("skill", ""),
+        "start_date": data.get("start_date"),
+        "days": data.get("days", []),  # ['monday', 'wednesday', 'friday']
+        "time_slot": data.get("time_slot", ""),
+        "num_sessions": data.get("num_sessions", 12),
+        "educator_id": data.get("educator_id"),
+        "educator_name": data.get("educator_name", ""),
+        "mode": data.get("mode", "online"),  # online, offline, hybrid
+        "status": "active",
+        "students": [],  # List of student IDs
+        "created_by": user.get("email", "admin"),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.batches.insert_one(doc)
+    return {"message": "Batch created successfully", "id": batch_id, "batch": {k: v for k, v in doc.items() if k != '_id'}}
+
+@api_router.get("/batches")
+async def get_batches(status: Optional[str] = None, user: dict = Depends(get_current_user)):
+    """Get all batches"""
+    query = {}
+    if status:
+        query["status"] = status
+    batches = await db.batches.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return batches
+
+@api_router.get("/batches/{batch_id}")
+async def get_batch(batch_id: str, user: dict = Depends(get_current_user)):
+    """Get batch by ID"""
+    batch = await db.batches.find_one({"id": batch_id}, {"_id": 0})
+    if not batch:
+        raise HTTPException(status_code=404, detail="Batch not found")
+    return batch
+
+@api_router.put("/batches/{batch_id}")
+async def update_batch(batch_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Update batch"""
+    update_data = {k: v for k, v in data.items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.batches.update_one({"id": batch_id}, {"$set": update_data})
+    return {"message": "Batch updated successfully"}
+
+@api_router.post("/batches/{batch_id}/add-student")
+async def add_student_to_batch(batch_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Add a student to a batch and generate sessions"""
+    student_id = data.get("student_id")
+    if not student_id:
+        raise HTTPException(status_code=400, detail="student_id is required")
+    
+    batch = await db.batches.find_one({"id": batch_id}, {"_id": 0})
+    if not batch:
+        raise HTTPException(status_code=404, detail="Batch not found")
+    
+    # Add student to batch
+    if student_id not in batch.get("students", []):
+        await db.batches.update_one(
+            {"id": batch_id},
+            {"$push": {"students": student_id}}
+        )
+    
+    # Generate sessions for this student
+    sessions = await generate_student_sessions(batch, student_id)
+    
+    # Update student inquiry with batch info
+    await db.student_inquiries.update_one(
+        {"id": student_id},
+        {"$set": {
+            "batch_id": batch_id,
+            "batch_name": batch.get("name"),
+            "onboarding_status": "active",
+            "sessions_total": len(sessions),
+            "sessions_completed": 0,
+        }}
+    )
+    
+    return {"message": "Student added to batch", "sessions_created": len(sessions)}
+
+async def generate_student_sessions(batch: dict, student_id: str):
+    """Generate session records for a student based on batch config"""
+    from datetime import datetime, timedelta
+    
+    sessions = []
+    start_date = datetime.strptime(batch["start_date"], "%Y-%m-%d") if isinstance(batch["start_date"], str) else batch["start_date"]
+    days_map = {"monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3, "friday": 4, "saturday": 5, "sunday": 6}
+    batch_days = [days_map.get(d.lower(), 0) for d in batch.get("days", [])]
+    
+    num_sessions = batch.get("num_sessions", 12)
+    current_date = start_date
+    session_count = 0
+    
+    # Generate Jitsi room name for online sessions
+    jitsi_room = f"oll-{batch['id'][:8]}-{student_id[:8]}" if batch.get("mode") == "online" else None
+    
+    while session_count < num_sessions:
+        if current_date.weekday() in batch_days:
+            session_id = str(uuid.uuid4())
+            session = {
+                "id": session_id,
+                "batch_id": batch["id"],
+                "student_id": student_id,
+                "educator_id": batch.get("educator_id"),
+                "educator_name": batch.get("educator_name"),
+                "session_number": session_count + 1,
+                "date": current_date.strftime("%Y-%m-%d"),
+                "time": batch.get("time_slot", ""),
+                "skill": batch.get("skill", ""),
+                "mode": batch.get("mode", "online"),
+                "status": "scheduled",  # scheduled, completed, cancelled, rescheduled
+                "jitsi_room": jitsi_room,
+                "jitsi_link": f"https://meet.jit.si/{jitsi_room}" if jitsi_room else None,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+            await db.sessions.insert_one(session)
+            sessions.append(session)
+            session_count += 1
+        current_date += timedelta(days=1)
+    
+    return sessions
+
+@api_router.get("/sessions")
+async def get_sessions(
+    student_id: Optional[str] = None,
+    educator_id: Optional[str] = None,
+    batch_id: Optional[str] = None,
+    status: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    """Get sessions with filters"""
+    query = {}
+    if student_id:
+        query["student_id"] = student_id
+    if educator_id:
+        query["educator_id"] = educator_id
+    if batch_id:
+        query["batch_id"] = batch_id
+    if status:
+        query["status"] = status
+    
+    sessions = await db.sessions.find(query, {"_id": 0}).sort("date", 1).to_list(500)
+    return sessions
+
+@api_router.put("/sessions/{session_id}")
+async def update_session(session_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Update a session status"""
+    update_data = {k: v for k, v in data.items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.sessions.update_one({"id": session_id}, {"$set": update_data})
+    
+    # If marking as completed, update student's completed count
+    if data.get("status") == "completed":
+        session = await db.sessions.find_one({"id": session_id}, {"_id": 0})
+        if session:
+            await db.student_inquiries.update_one(
+                {"id": session["student_id"]},
+                {"$inc": {"sessions_completed": 1}}
+            )
+    
+    return {"message": "Session updated successfully"}
+
+# ========================
+# SCHOOL ONBOARDING
+# ========================
+
+@api_router.post("/schools/onboard")
+async def onboard_school(data: dict, user: dict = Depends(get_current_user)):
+    """Onboard a converted school with contract details"""
+    school_id = data.get("school_id")
+    if not school_id:
+        raise HTTPException(status_code=400, detail="school_id is required")
+    
+    # Create onboarding record
+    onboarding_id = str(uuid.uuid4())
+    doc = {
+        "id": onboarding_id,
+        "school_id": school_id,
+        "model": data.get("model", ""),  # From school offerings
+        "grade_pricing": data.get("grade_pricing", []),  # [{grade: "1-5", students: 50, price_per_student: 500}]
+        "total_students": data.get("total_students", 0),
+        "total_amount": data.get("total_amount", 0),
+        "school_contacts": data.get("school_contacts", []),  # [{name, phone, email, role}]
+        "payment_schedule": data.get("payment_schedule", []),  # [{date, amount, mode, status}]
+        "payment_mode": data.get("payment_mode", "monthly"),  # monthly, quarterly, annual
+        "contract_start": data.get("contract_start"),
+        "contract_end": data.get("contract_end"),
+        "status": "active",
+        "created_by": user.get("email", "admin"),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.school_onboarding.insert_one(doc)
+    
+    # Update school inquiry status
+    await db.school_inquiries.update_one(
+        {"id": school_id},
+        {"$set": {
+            "onboarding_id": onboarding_id,
+            "onboarding_status": "active",
+            "model": data.get("model"),
+            "total_students": data.get("total_students"),
+        }}
+    )
+    
+    return {"message": "School onboarded successfully", "id": onboarding_id}
+
+@api_router.get("/schools/onboarding/{school_id}")
+async def get_school_onboarding(school_id: str, user: dict = Depends(get_current_user)):
+    """Get school onboarding details"""
+    onboarding = await db.school_onboarding.find_one({"school_id": school_id}, {"_id": 0})
+    if not onboarding:
+        raise HTTPException(status_code=404, detail="Onboarding not found")
+    return onboarding
+
+@api_router.put("/schools/onboarding/{onboarding_id}")
+async def update_school_onboarding(onboarding_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Update school onboarding details"""
+    update_data = {k: v for k, v in data.items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    await db.school_onboarding.update_one({"id": onboarding_id}, {"$set": update_data})
+    return {"message": "Onboarding updated successfully"}
+
+# ========================
+# DATA CENTER - UNIFIED DATABASE
+# ========================
+
+@api_router.get("/data-center/search")
+async def search_data_center(
+    q: Optional[str] = None,
+    data_type: Optional[str] = None,  # students, schools, educators, all
+    status: Optional[str] = None,
+    city: Optional[str] = None,
+    age_group: Optional[str] = None,
+    board: Optional[str] = None,
+    skill: Optional[str] = None,
+    limit: int = 100,
+    user: dict = Depends(get_current_user)
+):
+    """Search across all data types"""
+    results = {"students": [], "schools": [], "educators": [], "total": 0}
+    
+    # Build search regex
+    search_regex = {"$regex": q, "$options": "i"} if q else None
+    
+    # Search students
+    if data_type in [None, "all", "students"]:
+        student_query = {}
+        if search_regex:
+            student_query["$or"] = [
+                {"name": search_regex},
+                {"phone": search_regex},
+                {"email": search_regex},
+                {"city": search_regex},
+            ]
+        if status:
+            student_query["status"] = status
+        if city:
+            student_query["city"] = {"$regex": city, "$options": "i"}
+        if age_group:
+            student_query["age_group"] = age_group
+        if skill:
+            student_query["skill"] = skill
+        
+        students = await db.student_inquiries.find(student_query, {"_id": 0}).limit(limit).to_list(limit)
+        results["students"] = students
+    
+    # Search schools
+    if data_type in [None, "all", "schools"]:
+        school_query = {}
+        if search_regex:
+            school_query["$or"] = [
+                {"school_name": search_regex},
+                {"contact_name": search_regex},
+                {"phone": search_regex},
+                {"email": search_regex},
+                {"location": search_regex},
+            ]
+        if status:
+            school_query["status"] = status
+        if city:
+            school_query["location"] = {"$regex": city, "$options": "i"}
+        if board:
+            school_query["board"] = board
+        
+        schools = await db.school_inquiries.find(school_query, {"_id": 0}).limit(limit).to_list(limit)
+        results["schools"] = schools
+    
+    # Search educators
+    if data_type in [None, "all", "educators"]:
+        educator_query = {}
+        if search_regex:
+            educator_query["$or"] = [
+                {"name": search_regex},
+                {"phone": search_regex},
+                {"email": search_regex},
+                {"city": search_regex},
+            ]
+        if status:
+            educator_query["status"] = status
+        if city:
+            educator_query["city"] = {"$regex": city, "$options": "i"}
+        if skill:
+            educator_query["skills"] = {"$regex": skill, "$options": "i"}
+        
+        educators = await db.educator_applications.find(educator_query, {"_id": 0}).limit(limit).to_list(limit)
+        results["educators"] = educators
+    
+    results["total"] = len(results["students"]) + len(results["schools"]) + len(results["educators"])
+    return results
+
+@api_router.get("/data-center/stats")
+async def get_data_center_stats(user: dict = Depends(get_current_user)):
+    """Get statistics for data center"""
+    student_count = await db.student_inquiries.count_documents({})
+    school_count = await db.school_inquiries.count_documents({})
+    educator_count = await db.educator_applications.count_documents({})
+    
+    # Get status breakdowns
+    student_statuses = {}
+    async for doc in db.student_inquiries.aggregate([{"$group": {"_id": "$status", "count": {"$sum": 1}}}]):
+        student_statuses[doc["_id"] or "unknown"] = doc["count"]
+    
+    school_statuses = {}
+    async for doc in db.school_inquiries.aggregate([{"$group": {"_id": "$status", "count": {"$sum": 1}}}]):
+        school_statuses[doc["_id"] or "unknown"] = doc["count"]
+    
+    educator_statuses = {}
+    async for doc in db.educator_applications.aggregate([{"$group": {"_id": "$status", "count": {"$sum": 1}}}]):
+        educator_statuses[doc["_id"] or "unknown"] = doc["count"]
+    
+    return {
+        "totals": {
+            "students": student_count,
+            "schools": school_count,
+            "educators": educator_count,
+        },
+        "by_status": {
+            "students": student_statuses,
+            "schools": school_statuses,
+            "educators": educator_statuses,
+        }
+    }
+
+@api_router.get("/data-center/autocomplete")
+async def autocomplete_search(
+    q: str,
+    data_type: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    """Autocomplete search for forms"""
+    if len(q) < 2:
+        return []
+    
+    search_regex = {"$regex": q, "$options": "i"}
+    results = []
+    
+    # Search students
+    if data_type in [None, "students"]:
+        students = await db.student_inquiries.find(
+            {"$or": [{"name": search_regex}, {"phone": search_regex}]},
+            {"_id": 0, "id": 1, "name": 1, "phone": 1, "email": 1, "city": 1, "age_group": 1, "skill": 1}
+        ).limit(5).to_list(5)
+        for s in students:
+            s["type"] = "student"
+            results.append(s)
+    
+    # Search schools
+    if data_type in [None, "schools"]:
+        schools = await db.school_inquiries.find(
+            {"$or": [{"school_name": search_regex}, {"contact_name": search_regex}, {"phone": search_regex}]},
+            {"_id": 0, "id": 1, "school_name": 1, "contact_name": 1, "phone": 1, "email": 1, "location": 1, "board": 1}
+        ).limit(5).to_list(5)
+        for s in schools:
+            s["type"] = "school"
+            s["name"] = s.get("school_name") or s.get("contact_name")
+            results.append(s)
+    
+    # Search educators
+    if data_type in [None, "educators"]:
+        educators = await db.educator_applications.find(
+            {"$or": [{"name": search_regex}, {"phone": search_regex}]},
+            {"_id": 0, "id": 1, "name": 1, "phone": 1, "email": 1, "city": 1, "skills": 1}
+        ).limit(5).to_list(5)
+        for e in educators:
+            e["type"] = "educator"
+            results.append(e)
+    
+    return results[:10]
+
+# ========================
 # ABOUT PAGE ENDPOINTS
 # ========================
 
