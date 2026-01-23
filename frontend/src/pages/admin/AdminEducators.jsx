@@ -13,12 +13,19 @@ import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-const STATUS_SECTIONS = [
-  { value: 'new', label: 'New Applications', color: 'bg-blue-500' },
-  { value: 'demo_scheduled', label: 'Demo Scheduled', color: 'bg-purple-500' },
+// Main tabs for the educator section
+const MAIN_TABS = [
+  { value: 'requirements', label: 'Requirements', color: 'bg-indigo-500' },
+  { value: 'applicants', label: 'Applicants', color: 'bg-blue-500' },
   { value: 'onboarding', label: 'Onboarding', color: 'bg-orange-500' },
   { value: 'active', label: 'Active Educators', color: 'bg-green-500' },
   { value: 'archived', label: 'Archived', color: 'bg-slate-400' },
+];
+
+// Sub-status for applicants (New + Demo Scheduled merged)
+const APPLICANT_STATUS = [
+  { value: 'new', label: 'New (Demo Pending)', color: 'bg-blue-500' },
+  { value: 'demo_scheduled', label: 'Demo Scheduled', color: 'bg-purple-500' },
 ];
 
 const TIME_SLOTS = ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'];
