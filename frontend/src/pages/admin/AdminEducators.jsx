@@ -959,7 +959,18 @@ const AdminEducators = () => {
                       )}
                     </div>
                     <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                      <span className="text-xs text-slate-500">{matchingApps} applications</span>
+                      <button
+                        onClick={() => {
+                          setActiveTab('applicants');
+                          setApplicantSubFilter('all');
+                          // Filter by requirement - we'll add a filter state
+                          setRequirementFilter(req.id);
+                        }}
+                        className="text-xs text-[#D63031] hover:underline flex items-center gap-1"
+                      >
+                        <Eye className="w-3 h-3" />
+                        View {matchingApps} applicant(s)
+                      </button>
                       <div className="flex gap-2">
                         <button
                           onClick={() => {
