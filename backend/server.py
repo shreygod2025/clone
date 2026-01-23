@@ -4294,17 +4294,22 @@ async def update_support_query(query_id: str, data: dict, user: dict = Depends(g
 
 @api_router.post("/support/queries/{query_id}/assign")
 async def assign_support_query(query_id: str, data: dict, user: dict = Depends(get_current_user)):
-    """Assign a support query to a user with deadline and send notifications"""
+    """Assign a support query to a user with optional deadline and send notifications"""
     assigned_to = data.get("assigned_to")
     deadline = data.get("deadline")  # ISO format datetime string
-    
-    if not assigned_to:
-        raise HTTPException(status_code=400, detail="assigned_to is required")
     
     # Get the query
     query = await db.support_queries.find_one({"id": query_id}, {"_id": 0})
     if not query:
         raise HTTPException(status_code=404, detail="Query not found")
+    
+    # Handle unassign case
+    if not assigned_to or assigned_to == "":
+        await db.support_queries.update_one(
+            {"id": query_id}, 
+            {"$set": {"assigned_to": None, "deadline": None}}
+        )
+        return {"message": "Query unassigned"}
     
     # Get the user being assigned
     assignee = await db.team_users.find_one({"id": assigned_to}, {"_id": 0})
