@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, Users, Building2, GraduationCap, FileText, 
   Briefcase, MessageSquare, LogOut, Menu, X, ChevronRight,
-  MapPin, Building, Calendar, Clock, Phone, User, Settings, Shield
+  MapPin, Building, Calendar, Clock, Phone, User, Settings, Shield, BarChart3
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
@@ -25,6 +25,7 @@ const AdminLayout = ({ children, title }) => {
     { path: '/admin/growth-partners', icon: Briefcase, label: 'Growth Partners', permission: 'growth_partners' },
     { path: '/admin/team-applications', icon: FileText, label: 'Team Applications', permission: 'team_applications' },
     { path: '/admin/support', icon: MessageSquare, label: 'Support Center', permission: 'support' },
+    { path: '/admin/reports', icon: BarChart3, label: 'Reports', permission: 'admin_only' },
     { path: '/admin/users', icon: Users, label: 'Users & Roles', permission: 'admin_only' },
     { path: '/admin/settings', icon: Settings, label: 'Settings', permission: 'admin_only' },
   ];
