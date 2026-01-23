@@ -634,6 +634,103 @@ const AdminSupportUnified = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Create Ticket Modal */}
+      <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="w-5 h-5 text-[#D63031]" />
+              Create Support Ticket
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium text-slate-700">Name *</label>
+                <Input
+                  value={newTicket.name}
+                  onChange={(e) => setNewTicket({ ...newTicket, name: e.target.value })}
+                  placeholder="Customer name"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Phone *</label>
+                <Input
+                  value={newTicket.phone}
+                  onChange={(e) => setNewTicket({ ...newTicket, phone: e.target.value })}
+                  placeholder="Phone number"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-700">Email</label>
+              <Input
+                type="email"
+                value={newTicket.email}
+                onChange={(e) => setNewTicket({ ...newTicket, email: e.target.value })}
+                placeholder="Email address"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium text-slate-700">Query Type</label>
+                <select
+                  value={newTicket.query_type}
+                  onChange={(e) => setNewTicket({ ...newTicket, query_type: e.target.value })}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                >
+                  {QUERY_TYPES.map(t => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">User Type</label>
+                <select
+                  value={newTicket.inquiry_type}
+                  onChange={(e) => setNewTicket({ ...newTicket, inquiry_type: e.target.value })}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                >
+                  {INQUIRY_TYPES.map(t => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-700">Priority</label>
+              <select
+                value={newTicket.priority}
+                onChange={(e) => setNewTicket({ ...newTicket, priority: e.target.value })}
+                className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+              >
+                <option value="low">Low</option>
+                <option value="normal">Normal</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-700">Message</label>
+              <Textarea
+                value={newTicket.message}
+                onChange={(e) => setNewTicket({ ...newTicket, message: e.target.value })}
+                placeholder="Describe the issue..."
+                rows={3}
+              />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => setShowCreateModal(false)} className="flex-1">
+                Cancel
+              </Button>
+              <Button onClick={handleCreateTicket} className="flex-1 bg-[#D63031] hover:bg-red-600">
+                Create Ticket
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
