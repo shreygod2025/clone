@@ -21,7 +21,7 @@ const INDIVIDUAL_COURSES = [
     tagline: 'Build, program, and innovate with robots',
     emoji: '🤖',
     icon: Cpu,
-    gradient: 'from-red-500 to-orange-500',
+    gradient: 'from-[#D63031] to-[#e84142]',
     color: '#D63031',
     duration: '3-6 months',
     classSize: '1:5 ratio'
@@ -32,7 +32,7 @@ const INDIVIDUAL_COURSES = [
     tagline: 'Master programming from basics to advanced',
     emoji: '💻',
     icon: Code,
-    gradient: 'from-blue-600 to-cyan-500',
+    gradient: 'from-[#1E3A5F] to-[#2C5282]',
     color: '#1E3A5F',
     duration: '6-12 months',
     classSize: '1:4 ratio'
@@ -43,8 +43,8 @@ const INDIVIDUAL_COURSES = [
     tagline: 'Explore artificial intelligence and ML',
     emoji: '🧠',
     icon: Brain,
-    gradient: 'from-purple-600 to-pink-500',
-    color: '#8B5CF6',
+    gradient: 'from-[#D63031] to-[#1E3A5F]',
+    color: '#D63031',
     duration: '3-6 months',
     classSize: '1:4 ratio'
   },
@@ -54,8 +54,8 @@ const INDIVIDUAL_COURSES = [
     tagline: 'Learn to build and run a business',
     emoji: '💡',
     icon: Lightbulb,
-    gradient: 'from-yellow-500 to-orange-500',
-    color: '#F59E0B',
+    gradient: 'from-[#1E3A5F] to-[#D63031]',
+    color: '#1E3A5F',
     duration: '2-3 months',
     classSize: '1:6 ratio'
   },
@@ -65,8 +65,8 @@ const INDIVIDUAL_COURSES = [
     tagline: 'Master money management and investing',
     emoji: '📈',
     icon: TrendingUp,
-    gradient: 'from-green-500 to-teal-500',
-    color: '#10B981',
+    gradient: 'from-[#1E3A5F] to-[#2C5282]',
+    color: '#1E3A5F',
     duration: '2-3 months',
     classSize: '1:6 ratio'
   }
@@ -80,7 +80,7 @@ const SCHOOL_CATEGORIES = [
     subtitle: 'Complete Robotics Solutions',
     icon: Cpu,
     color: '#D63031',
-    gradient: 'from-red-500 to-orange-500',
+    gradient: 'from-[#D63031] to-[#e84142]',
     offerings: [
       { id: 'robotics-curriculum-kits', title: 'Robotics Curriculum with Take-home Kits & Books' },
       { id: 'robotics-lab-setup', title: 'Robotics Curriculum with Lab Setup & Books' },
@@ -101,8 +101,8 @@ const SCHOOL_CATEGORIES = [
     title: 'Financial Literacy & Entrepreneurship',
     subtitle: 'Business & Money Skills',
     icon: TrendingUp,
-    color: '#10B981',
-    gradient: 'from-green-500 to-teal-500',
+    color: '#1E3A5F',
+    gradient: 'from-[#1E3A5F] to-[#2C5282]',
     offerings: [
       { id: 'entrepreneurship-workshop', title: 'Entrepreneurship 3 Day Workshop' },
       { id: 'skill-titans-olympiad', title: 'Skill Titans TV Show & Entrepreneurship Olympiad' },
@@ -116,8 +116,8 @@ const SCHOOL_CATEGORIES = [
     title: 'AI & Machine Learning',
     subtitle: 'Future-Ready AI Skills',
     icon: Brain,
-    color: '#8B5CF6',
-    gradient: 'from-purple-600 to-pink-500',
+    color: '#D63031',
+    gradient: 'from-[#D63031] to-[#1E3A5F]',
     offerings: [
       { id: 'ai-center-excellence', title: 'Launch an AI Center for Excellence' },
       { id: 'agentic-ai-workshop', title: 'Agentic AI Workshop for Students' },
@@ -132,7 +132,7 @@ const SCHOOL_CATEGORIES = [
     subtitle: 'Build Future Developers',
     icon: Code,
     color: '#1E3A5F',
-    gradient: 'from-blue-600 to-cyan-500',
+    gradient: 'from-[#1E3A5F] to-[#2C5282]',
     offerings: [
       { id: 'vibe-coding-seminar', title: 'Vibe Coding Seminar' },
       { id: 'coding-afterschool', title: 'Coding & Logic Building After School Classes' },
