@@ -206,6 +206,15 @@ const EducatorDashboard = () => {
     }
   };
 
+  const fetchSessions = async () => {
+    try {
+      const response = await axios.get(`${API}/educator/my-sessions`, { headers: getAuthHeaders() });
+      setSessions(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch sessions:', error);
+    }
+  };
+
   const fetchAvailableEducators = async () => {
     try {
       const response = await axios.get(`${API}/educator/available-educators`, { 
