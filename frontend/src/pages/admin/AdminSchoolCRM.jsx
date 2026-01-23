@@ -1757,11 +1757,15 @@ const AdminSchoolCRM = () => {
             <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="text-sm font-medium text-slate-700">Book Type</label>
-                <Input
-                  placeholder="e.g., Level 1, Beginner"
+                <select
                   value={onboardData.book_type}
                   onChange={(e) => setOnboardData(prev => ({ ...prev, book_type: e.target.value }))}
-                />
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                >
+                  <option value="">Select book type</option>
+                  <option value="individual_books">Individual Books</option>
+                  <option value="no_books">No Books</option>
+                </select>
               </div>
               <div>
                 <label className="text-sm font-medium text-slate-700">Kit Type *</label>
@@ -1788,6 +1792,51 @@ const AdminSchoolCRM = () => {
                   <option value="teacher_training">Teacher Training</option>
                   <option value="both">Both (Student & Teacher)</option>
                 </select>
+              </div>
+            </div>
+
+            {/* MOU Upload */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <label className="text-sm font-medium text-blue-800 flex items-center gap-2">
+                <Upload className="w-4 h-4" />
+                MOU Document (Optional)
+              </label>
+              <div className="mt-2">
+                {onboardData.mou_url ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-green-700 flex items-center gap-1">
+                      <CheckCircle2 className="w-4 h-4" />
+                      MOU uploaded
+                    </span>
+                    <a 
+                      href={onboardData.mou_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-600 underline"
+                    >
+                      View
+                    </a>
+                    <button 
+                      onClick={() => setOnboardData(prev => ({ ...prev, mou_url: '' }))}
+                      className="text-xs text-red-600 underline"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="file"
+                      accept=".pdf,.doc,.docx,image/*"
+                      onChange={(e) => handleMOUUpload(e.target.files[0])}
+                      className="text-sm"
+                      disabled={uploadingMOU}
+                    />
+                    {uploadingMOU && (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
