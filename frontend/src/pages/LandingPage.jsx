@@ -9,7 +9,6 @@ import { useUserAuth } from '../context/UserAuthContext';
 const LandingPage = () => {
   const navigate = useNavigate();
   const { isLoggedIn, user } = useUserAuth();
-  const [showSchoolDialog, setShowSchoolDialog] = useState(false);
 
   // Scroll to top on mount
   useEffect(() => {
