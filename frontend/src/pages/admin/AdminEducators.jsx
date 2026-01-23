@@ -1425,9 +1425,10 @@ const AdminEducators = () => {
                       </h4>
                       
                       {!selectedOnboarding ? (
-                        <Button size="sm" variant="outline" onClick={() => fetchOnboardingDetails(viewEducator.id)}>
-                          Load Onboarding Details
-                        </Button>
+                        <div className="space-y-2">
+                          <p className="text-sm text-slate-500">Loading onboarding details...</p>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#D63031]"></div>
+                        </div>
                       ) : (
                         <div className="space-y-4">
                           {/* Progress Overview */}
@@ -1435,17 +1436,17 @@ const AdminEducators = () => {
                             <div className="flex items-center justify-between mb-2">
                               <span className="text-sm font-medium text-slate-700">Progress</span>
                               <span className="text-sm font-bold text-[#1E3A5F]">
-                                {Math.round((selectedOnboarding.completed_steps?.length || 0) / 8 * 100)}%
+                                {Math.round((selectedOnboarding.completed_steps?.length || 0) / 7 * 100)}%
                               </span>
                             </div>
                             <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
                               <div 
                                 className="h-full bg-orange-500 transition-all"
-                                style={{ width: `${(selectedOnboarding.completed_steps?.length || 0) / 8 * 100}%` }}
+                                style={{ width: `${(selectedOnboarding.completed_steps?.length || 0) / 7 * 100}%` }}
                               />
                             </div>
                             <p className="text-xs text-slate-500 mt-1">
-                              Step {selectedOnboarding.current_step}/8 • 
+                              Step {selectedOnboarding.current_step || selectedOnboarding.completed_steps?.length || 0}/7 • 
                               {selectedOnboarding.quiz_passed ? ' Quiz ✓' : ' Quiz pending'} • 
                               {selectedOnboarding.assessment_passed ? ' Assessment ✓' : ' Assessment pending'}
                             </p>
