@@ -124,20 +124,30 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## Pending Tasks
 
+### P0 - Immediate Priority
+- ✅ COMPLETED: Data Center unified view, Student CRM onboarding with payment receipt, School CRM new tabs
+
 ### P1 - High Priority
-- Student & Educator Dashboard (view sessions)
+- Session Visibility: Sessions created during onboarding should show on Student & Educator dashboards
 - Make Blogs Dynamic (Admin CRUD)
 - Auto-fill forms from Data Center search
 
 ### P2 - Medium Priority
-- CSV Export for all CRM pages
+- CSV Export for all CRM pages (Data Center export already done)
 - Real Calendar Integration (Calendly)
-- Enforce RBAC permissions
+- Enforce RBAC permissions on frontend/backend
 
 ### P3 - Future/Backlog
 - Lead scoring system
+- Automated follow-up reminders for educators before demos
+- Automated SMS/Email reminders for students before sessions
 - LinkedIn share in educator onboarding
 - Payment gateway integration
+- Merge Center Users and Growth Partners into main RBAC
+
+## Backend Refactoring (Recommended)
+- `/app/backend/server.py` is ~5,400+ lines - should split into `/routers`, `/models`, `/services`
+- Large admin components should be broken into smaller focused components
 
 ## Test Credentials
 - Admin: admin@oll.co / Dagaji03@
