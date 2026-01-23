@@ -52,8 +52,20 @@ const AdminEducators = () => {
   const [teamUsers, setTeamUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeSection, setActiveSection] = useState('new');
+  const [activeTab, setActiveTab] = useState('requirements'); // Main tab
+  const [applicantSubFilter, setApplicantSubFilter] = useState('all'); // 'all', 'new', 'demo_scheduled'
   const [assigneeFilter, setAssigneeFilter] = useState('all');
+  
+  // Requirements state
+  const [requirements, setRequirements] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [showRequirementModal, setShowRequirementModal] = useState(false);
+  const [editingRequirement, setEditingRequirement] = useState(null);
+  const [requirementForm, setRequirementForm] = useState({
+    title: '', skill: '', city: '', area: '', description: '',
+    positions: 1, days: [], timing_from: '', timing_to: '',
+    pay_amount: '', pay_type: 'per_session', is_active: true
+  });
   
   // Modal states
   const [viewEducator, setViewEducator] = useState(null);
