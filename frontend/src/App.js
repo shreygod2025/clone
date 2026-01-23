@@ -7,6 +7,7 @@ import LandingPage from "./pages/LandingPage";
 import StudentFunnel from "./pages/StudentFunnel";
 import EducatorFunnel from "./pages/EducatorFunnel";
 import SchoolFunnel from "./pages/SchoolFunnel";
+import SchoolLandingPage from "./pages/SchoolLandingPage";
 import SchoolOfferingsPage from "./pages/SchoolOfferingsPage";
 import SchoolOfferingDetailPage from "./pages/SchoolOfferingDetailPage";
 import AboutPage from "./pages/AboutPage";
