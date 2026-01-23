@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Calendar, Clock, MapPin, ArrowRight, CalendarClock, LogOut, Check, X, ChevronRight, BookOpen, Users, Video, MessageCircle, XCircle, Navigation, Home } from 'lucide-react';
+import { Calendar, Clock, MapPin, ArrowRight, CalendarClock, LogOut, Check, X, ChevronRight, BookOpen, Users, Video, MessageCircle, XCircle, Navigation, Home, PlayCircle, CheckCircle2, Circle } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Calendar as CalendarComponent } from '../components/ui/calendar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Textarea } from '../components/ui/textarea';
 import { toast } from 'sonner';
 import { useUserAuth } from '../context/UserAuthContext';
-import { format, addDays, parseISO, isAfter, isBefore, addHours, compareAsc } from 'date-fns';
+import { format, addDays, parseISO, isAfter, isBefore, addHours, compareAsc, isToday, isTomorrow } from 'date-fns';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 
@@ -28,6 +28,9 @@ const MyBookingsPage = () => {
   const navigate = useNavigate();
   const { user, isLoggedIn, logout, loading: authLoading } = useUserAuth();
   const [bookings, setBookings] = useState([]);
+  const [sessions, setSessions] = useState([]);
+  const [studentInfo, setStudentInfo] = useState(null);
+  const [activeTab, setActiveTab] = useState('bookings'); // 'bookings' or 'sessions'
   const [loading, setLoading] = useState(true);
   const [showReschedule, setShowReschedule] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -59,8 +62,27 @@ const MyBookingsPage = () => {
     if (!hasFetched.current && user?.phone) {
       hasFetched.current = true;
       fetchBookings();
+      // Also fetch sessions for students
+      if (user?.user_type === 'student' || !user?.user_type) {
+        fetchSessions();
+      }
     }
   }, [isLoggedIn, navigate, user?.phone, authLoading]);
+
+  const fetchSessions = async () => {
+    if (!user?.phone) return;
+    try {
+      const response = await axios.get(`${API}/user/my-sessions/${user.phone}`);
+      setSessions(response.data.sessions || []);
+      setStudentInfo(response.data.student);
+      // If user has sessions, default to sessions tab
+      if (response.data.sessions?.length > 0) {
+        setActiveTab('sessions');
+      }
+    } catch (error) {
+      console.error('Failed to fetch sessions:', error);
+    }
+  };
 
   const fetchBookings = async () => {
     if (!user?.phone) {
