@@ -443,7 +443,20 @@ const AdminEducators = () => {
     const matchesSearch = edu.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       edu.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       edu.phone?.includes(searchQuery);
-    const matchesSection = edu.status === activeSection;
+    
+    // For applicants tab, filter by new and demo_scheduled
+    let matchesTab = false;
+    if (activeTab === 'applicants') {
+      if (applicantSubFilter === 'all') {
+        matchesTab = edu.status === 'new' || edu.status === 'demo_scheduled';
+      } else {
+        matchesTab = edu.status === applicantSubFilter;
+      }
+    } else if (activeTab === 'requirements') {
+      matchesTab = false; // Requirements tab doesn't show educators
+    } else {
+      matchesTab = edu.status === activeTab;
+    }
     
     // Assignee filter
     let matchesAssignee = true;
@@ -455,10 +468,18 @@ const AdminEducators = () => {
       }
     }
     
-    return matchesSearch && matchesSection && matchesAssignee;
+    return matchesSearch && matchesTab && matchesAssignee;
   });
 
-  const getCount = (status) => educators.filter(e => e.status === status).length;
+  const getCount = (status) => {
+    if (status === 'applicants') {
+      return educators.filter(e => e.status === 'new' || e.status === 'demo_scheduled').length;
+    }
+    if (status === 'requirements') {
+      return requirements.length;
+    }
+    return educators.filter(e => e.status === status).length;
+  };
 
   // Render action buttons based on status
   const renderActionButtons = (educator) => {
