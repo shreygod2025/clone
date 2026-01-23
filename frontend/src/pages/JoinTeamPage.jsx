@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { User, Mail, Phone, MapPin, Briefcase, Send, Check, Users, Clock, Target, Heart, Upload, FileText, X, ChevronRight, Building2 } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';

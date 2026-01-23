@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, Check, Users, Building2, GraduationCap, Briefcase, DollarSign, Award, BookOpen, School, UserCheck, Handshake, ChevronRight, Phone, Mail, MapPin, User } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
