@@ -122,6 +122,15 @@ const AdminEducators = () => {
     fetchRequirements();
   }, []);
 
+  // Auto-load onboarding details when viewing an onboarding educator
+  useEffect(() => {
+    if (viewEducator && viewEducator.status === 'onboarding') {
+      fetchOnboardingDetails(viewEducator.id);
+    } else {
+      setSelectedOnboarding(null);
+    }
+  }, [viewEducator]);
+
   const fetchRequirements = async () => {
     try {
       const [reqRes, citiesRes] = await Promise.all([
