@@ -621,16 +621,7 @@ const AdminEducators = () => {
             <option key={u.id} value={u.id}>{u.name}</option>
           ))}
         </select>
-        <Button 
-          variant="outline"
-          onClick={() => window.location.href = '/admin/requirements'}
-          className="border-[#1E3A5F] text-[#1E3A5F]"
-          data-testid="educator-requirements-btn"
-        >
-          <Briefcase className="w-4 h-4 mr-2" />
-          Educator Requirements
-        </Button>
-        {activeSection === 'onboarding' && (
+        {activeTab === 'onboarding' && (
           <Button 
             onClick={() => setShowDirectOnboardModal(true)}
             className="bg-[#D63031] hover:bg-[#c0392b]"
@@ -639,39 +630,78 @@ const AdminEducators = () => {
             Direct Onboard
           </Button>
         )}
+        {activeTab === 'requirements' && (
+          <Button 
+            onClick={() => setShowRequirementModal(true)}
+            className="bg-[#D63031] hover:bg-[#c0392b]"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Requirement
+          </Button>
+        )}
       </div>
 
-      {/* Section Tabs */}
-      <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-        {STATUS_SECTIONS.map(section => (
+      {/* Main Tabs */}
+      <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+        {MAIN_TABS.map(tab => (
           <button
-            key={section.value}
+            key={tab.value}
             onClick={() => {
-              setActiveSection(section.value);
-              if (section.value === 'onboarding') {
+              setActiveTab(tab.value);
+              if (tab.value === 'onboarding') {
                 fetchOnboardingProgress();
               }
             }}
             className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all flex items-center gap-2 ${
-              activeSection === section.value
+              activeTab === tab.value
                 ? 'bg-[#1E3A5F] text-white'
                 : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
             }`}
-            data-testid={`section-${section.value}`}
+            data-testid={`tab-${tab.value}`}
           >
-            <span className={`w-2 h-2 rounded-full ${section.color}`} />
-            {section.label}
+            <span className={`w-2 h-2 rounded-full ${tab.color}`} />
+            {tab.label}
             <span className={`px-2 py-0.5 rounded-full text-xs ${
-              activeSection === section.value ? 'bg-white/20' : 'bg-slate-100'
+              activeTab === tab.value ? 'bg-white/20' : 'bg-slate-100'
             }`}>
-              {getCount(section.value)}
+              {getCount(tab.value)}
             </span>
           </button>
         ))}
       </div>
 
-      {/* Onboarding Progress View - Show when onboarding section is active */}
-      {activeSection === 'onboarding' && onboardingData.length > 0 && (
+      {/* Sub-filter for Applicants tab */}
+      {activeTab === 'applicants' && (
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => setApplicantSubFilter('all')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              applicantSubFilter === 'all' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
+            }`}
+          >
+            All ({educators.filter(e => e.status === 'new' || e.status === 'demo_scheduled').length})
+          </button>
+          <button
+            onClick={() => setApplicantSubFilter('new')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              applicantSubFilter === 'new' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
+            }`}
+          >
+            Demo Pending ({educators.filter(e => e.status === 'new').length})
+          </button>
+          <button
+            onClick={() => setApplicantSubFilter('demo_scheduled')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              applicantSubFilter === 'demo_scheduled' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-600'
+            }`}
+          >
+            Demo Scheduled ({educators.filter(e => e.status === 'demo_scheduled').length})
+          </button>
+        </div>
+      )}
+
+      {/* Onboarding Progress View - Show when onboarding tab is active */}
+      {activeTab === 'onboarding' && onboardingData.length > 0 && (
         <div className="mb-6 bg-gradient-to-r from-orange-50 to-amber-50 rounded-2xl p-6 border border-orange-100">
           <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-orange-500" />
