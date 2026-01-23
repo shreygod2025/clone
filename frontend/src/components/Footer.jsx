@@ -227,39 +227,44 @@ const Footer = ({ variant = 'full' }) => {
           {/* Brand & Description */}
           <div className="col-span-2">
             <Link to="/" className="flex items-center gap-2 mb-4" itemProp="url">
-              <div className="w-10 h-10 bg-gradient-to-br from-[#D63031] to-[#e84142] rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xl">O</span>
-              </div>
-              <span className="text-xl font-bold" itemProp="name">OLL</span>
+              <img 
+                src="https://customer-assets.emergentagent.com/job_oll-skill-edu/artifacts/wzn0gh6k_OLL-horizontal-logo-white.png"
+                alt="OLL Logo - Open Learning Labs"
+                title="OLL - Skill Education Platform"
+                loading="lazy"
+                width="120"
+                height="40"
+                className="h-10 w-auto"
+              />
             </Link>
             <p className="text-slate-400 text-sm mb-4" itemProp="description">
               India&apos;s leading skill education platform. Empowering students with Robotics, Coding, AI, and Entrepreneurship skills since 2020.
             </p>
             {/* Social Links */}
             <div className="flex gap-3">
-              <a href="https://facebook.com/ollrobotics" target="_blank" rel="noopener noreferrer" 
+              <a href="https://www.facebook.com/ollcompany" target="_blank" rel="noopener noreferrer" 
                 className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center hover:bg-[#D63031] transition-colors"
                 aria-label="Facebook" itemProp="sameAs">
                 <Facebook className="w-4 h-4" />
               </a>
-              <a href="https://instagram.com/ollrobotics" target="_blank" rel="noopener noreferrer"
+              <a href="https://www.instagram.com/oll.co_/" target="_blank" rel="noopener noreferrer"
                 className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center hover:bg-[#D63031] transition-colors"
                 aria-label="Instagram" itemProp="sameAs">
                 <Instagram className="w-4 h-4" />
               </a>
-              <a href="https://linkedin.com/company/ollrobotics" target="_blank" rel="noopener noreferrer"
+              <a href="https://www.linkedin.com/company/ollcompany/" target="_blank" rel="noopener noreferrer"
                 className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center hover:bg-[#D63031] transition-colors"
                 aria-label="LinkedIn" itemProp="sameAs">
                 <Linkedin className="w-4 h-4" />
               </a>
-              <a href="https://youtube.com/@ollrobotics" target="_blank" rel="noopener noreferrer"
+              <a href="https://www.youtube.com/channel/UCwQyfX_lsVCLBUV5Or-rZ8g" target="_blank" rel="noopener noreferrer"
                 className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center hover:bg-[#D63031] transition-colors"
                 aria-label="YouTube" itemProp="sameAs">
                 <Youtube className="w-4 h-4" />
               </a>
-              <a href="https://twitter.com/ollrobotics" target="_blank" rel="noopener noreferrer"
+              <a href="https://x.com/Onlinelivelearn" target="_blank" rel="noopener noreferrer"
                 className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center hover:bg-[#D63031] transition-colors"
-                aria-label="Twitter" itemProp="sameAs">
+                aria-label="Twitter/X" itemProp="sameAs">
                 <Twitter className="w-4 h-4" />
               </a>
             </div>
