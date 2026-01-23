@@ -206,8 +206,11 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - Make Blogs Dynamic (Admin CRUD)
 - Auto-fill forms from Data Center search
 
-### P2 - Medium Priority
+### P1 - High Priority
+- Draft Notifications: Show reminders to admins when school onboarding is saved as draft
 - CSV Export for all CRM pages (Data Center export already done)
+
+### P2 - Medium Priority
 - Real Calendar Integration (Calendly)
 - Enforce RBAC permissions on frontend/backend
 
