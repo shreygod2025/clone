@@ -1668,6 +1668,213 @@ const AdminStudentCRM = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Student Onboarding Modal */}
+      <Dialog open={!!showOnboardModal} onOpenChange={() => setShowOnboardModal(null)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarClock className="w-5 h-5 text-green-600" />
+              Onboard Student: {showOnboardModal?.name}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Batch Mode Selection */}
+            <div className="flex gap-2 bg-slate-100 p-1 rounded-lg">
+              <button
+                onClick={() => setOnboardData(prev => ({ ...prev, batch_mode: 'new' }))}
+                className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  onboardData.batch_mode === 'new' ? 'bg-white text-[#1E3A5F] shadow-sm' : 'text-slate-600'
+                }`}
+              >
+                Create New Batch
+              </button>
+              <button
+                onClick={() => setOnboardData(prev => ({ ...prev, batch_mode: 'existing' }))}
+                className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                  onboardData.batch_mode === 'existing' ? 'bg-white text-[#1E3A5F] shadow-sm' : 'text-slate-600'
+                }`}
+              >
+                Join Existing Batch
+              </button>
+            </div>
+
+            {onboardData.batch_mode === 'existing' ? (
+              /* Select Existing Batch */
+              <div className="space-y-3">
+                <label className="text-sm font-medium text-slate-700">Select Batch</label>
+                {batches.length === 0 ? (
+                  <p className="text-sm text-slate-500 py-4 text-center bg-slate-50 rounded-lg">
+                    No active batches available. Create a new one.
+                  </p>
+                ) : (
+                  <div className="max-h-60 overflow-y-auto space-y-2">
+                    {batches.map(batch => (
+                      <button
+                        key={batch.id}
+                        onClick={() => setOnboardData(prev => ({ ...prev, batch_id: batch.id }))}
+                        className={`w-full p-3 rounded-lg border text-left transition-all ${
+                          onboardData.batch_id === batch.id 
+                            ? 'border-green-500 bg-green-50' 
+                            : 'border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <p className="font-medium text-slate-900">{batch.name}</p>
+                        <p className="text-xs text-slate-500">
+                          {batch.skill} • {batch.educator_name} • {batch.mode}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          {batch.days?.join(', ')} at {batch.time_slot} • {batch.num_sessions} sessions
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Create New Batch Form */
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-slate-700">Batch Name (optional)</label>
+                  <Input
+                    value={onboardData.name}
+                    onChange={(e) => setOnboardData(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder={`${showOnboardModal?.name}'s Batch`}
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Start Date *</label>
+                    <Input
+                      type="date"
+                      value={onboardData.start_date}
+                      onChange={(e) => setOnboardData(prev => ({ ...prev, start_date: e.target.value }))}
+                      min={format(new Date(), 'yyyy-MM-dd')}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Time Slot *</label>
+                    <select
+                      value={onboardData.time_slot}
+                      onChange={(e) => setOnboardData(prev => ({ ...prev, time_slot: e.target.value }))}
+                      className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                    >
+                      <option value="">Select time</option>
+                      <option value="09:00 AM">09:00 AM</option>
+                      <option value="10:00 AM">10:00 AM</option>
+                      <option value="11:00 AM">11:00 AM</option>
+                      <option value="12:00 PM">12:00 PM</option>
+                      <option value="02:00 PM">02:00 PM</option>
+                      <option value="03:00 PM">03:00 PM</option>
+                      <option value="04:00 PM">04:00 PM</option>
+                      <option value="05:00 PM">05:00 PM</option>
+                      <option value="06:00 PM">06:00 PM</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-slate-700">Days *</label>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map(day => (
+                      <button
+                        key={day}
+                        onClick={() => {
+                          setOnboardData(prev => ({
+                            ...prev,
+                            days: prev.days.includes(day) 
+                              ? prev.days.filter(d => d !== day)
+                              : [...prev.days, day]
+                          }));
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${
+                          onboardData.days.includes(day)
+                            ? 'bg-green-500 text-white'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                        }`}
+                      >
+                        {day.slice(0, 3)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">No. of Sessions</label>
+                    <Input
+                      type="number"
+                      value={onboardData.num_sessions}
+                      onChange={(e) => setOnboardData(prev => ({ ...prev, num_sessions: e.target.value }))}
+                      min="1"
+                      max="100"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Mode *</label>
+                    <select
+                      value={onboardData.mode}
+                      onChange={(e) => setOnboardData(prev => ({ ...prev, mode: e.target.value }))}
+                      className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                    >
+                      <option value="online">Online</option>
+                      <option value="offline">Offline</option>
+                      <option value="hybrid">Hybrid</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-slate-700">Assign Educator *</label>
+                  <select
+                    value={onboardData.educator_id}
+                    onChange={(e) => {
+                      const edu = onboardedEducators.find(ed => ed.id === e.target.value);
+                      setOnboardData(prev => ({ 
+                        ...prev, 
+                        educator_id: e.target.value,
+                        educator_name: edu?.name || ''
+                      }));
+                    }}
+                    className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                  >
+                    <option value="">Select educator</option>
+                    {onboardedEducators.map(edu => (
+                      <option key={edu.id} value={edu.id}>{edu.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-slate-700">Skill</label>
+                  <select
+                    value={onboardData.skill}
+                    onChange={(e) => setOnboardData(prev => ({ ...prev, skill: e.target.value }))}
+                    className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                  >
+                    <option value="">Select skill</option>
+                    <option value="Robotics">Robotics</option>
+                    <option value="Coding">Coding</option>
+                    <option value="AI">AI</option>
+                    <option value="Entrepreneurship">Entrepreneurship</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => setShowOnboardModal(null)} className="flex-1">
+                Cancel
+              </Button>
+              <Button onClick={handleOnboardStudent} className="flex-1 bg-green-600 hover:bg-green-700">
+                Onboard Student
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
