@@ -98,6 +98,7 @@ const AdminSchoolCRM = () => {
   useEffect(() => {
     fetchInquiries();
     fetchTeamUsers();
+    fetchOfferings();
   }, []);
 
   const fetchTeamUsers = async () => {
@@ -108,6 +109,15 @@ const AdminSchoolCRM = () => {
       setTeamUsers(response.data || []);
     } catch (error) {
       console.error('Failed to fetch team users:', error);
+    }
+  };
+
+  const fetchOfferings = async () => {
+    try {
+      const response = await axios.get(`${API}/school-offerings`);
+      setOfferings(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch offerings:', error);
     }
   };
 
