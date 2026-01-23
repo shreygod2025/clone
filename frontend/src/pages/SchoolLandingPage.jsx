@@ -1,12 +1,8 @@
-import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { ArrowRight, Eye, Calendar, Award, School, GraduationCap, Users } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import axios from 'axios';
-
-const API = process.env.REACT_APP_BACKEND_URL;
 
 const HIGHLIGHTS = [
   { icon: School, value: '500+', label: 'Partner Schools' },
@@ -17,25 +13,6 @@ const HIGHLIGHTS = [
 
 const SchoolLandingPage = () => {
   const navigate = useNavigate();
-  const [partnerSchools, setPartnerSchools] = useState([]);
-
-  useEffect(() => {
-    const fetchPartnerSchools = async () => {
-      try {
-        const response = await axios.get(`${API}/api/partner-schools`);
-        setPartnerSchools(response.data || []);
-      } catch (error) {
-        // Fallback to default schools
-        setPartnerSchools([
-          'Greenlawns High School', 'G.D. Somani Memorial School', 'N.L. Dalmia High School',
-          'Hiranandani Foundation School', 'JBCN International School', 'Seven Square Academy',
-          'Sanjeevani World School', 'Fravashi International Academy', 'Maneckji Cooper Education Trust',
-          'Excelsior School', 'J.N. Petit School', 'Seth Anandram Jaipuria School', 'St. Kabir School',
-        ]);
-      }
-    };
-    fetchPartnerSchools();
-  }, []);
 
   return (
     <>
