@@ -338,7 +338,7 @@ const AdminStudentCRM = () => {
       setOnboardData({
         batch_mode: 'new', batch_id: '', name: '', skill: '', start_date: '',
         days: [], time_slot: '', num_sessions: 12, educator_id: '', educator_name: '', mode: 'online',
-        payment_receipt: null, payment_receipt_url: ''
+        payment_receipt: null, payment_receipt_url: '', amount: ''
       });
       fetchInquiries();
       fetchBatches();
