@@ -4784,10 +4784,12 @@ async def search_data_center(
 
 @api_router.get("/data-center/stats")
 async def get_data_center_stats(user: dict = Depends(get_current_user)):
-    """Get statistics for data center"""
+    """Get statistics for data center including team and growth partners"""
     student_count = await db.student_inquiries.count_documents({})
     school_count = await db.school_inquiries.count_documents({})
     educator_count = await db.educator_applications.count_documents({})
+    team_count = await db.team_users.count_documents({})
+    gp_count = await db.growth_partners.count_documents({})
     
     # Get status breakdowns
     student_statuses = {}
@@ -4802,16 +4804,30 @@ async def get_data_center_stats(user: dict = Depends(get_current_user)):
     async for doc in db.educator_applications.aggregate([{"$group": {"_id": "$status", "count": {"$sum": 1}}}]):
         educator_statuses[doc["_id"] or "unknown"] = doc["count"]
     
+    # Team status breakdown (active/inactive)
+    team_active = await db.team_users.count_documents({"is_active": True})
+    team_inactive = await db.team_users.count_documents({"is_active": False})
+    team_statuses = {"active": team_active, "inactive": team_inactive}
+    
+    # Growth partners status breakdown
+    gp_statuses = {}
+    async for doc in db.growth_partners.aggregate([{"$group": {"_id": "$status", "count": {"$sum": 1}}}]):
+        gp_statuses[doc["_id"] or "unknown"] = doc["count"]
+    
     return {
         "totals": {
             "students": student_count,
             "schools": school_count,
             "educators": educator_count,
+            "team": team_count,
+            "growth_partners": gp_count,
         },
         "by_status": {
             "students": student_statuses,
             "schools": school_statuses,
             "educators": educator_statuses,
+            "team": team_statuses,
+            "growth_partners": gp_statuses,
         }
     }
 
