@@ -222,52 +222,9 @@ const SchoolOfferingsPage = () => {
               <br />
               <span className="text-yellow-400">Future-Ready Skills</span>
             </h1>
-            <p className="text-white/80 text-lg md:text-xl max-w-3xl mx-auto mb-8">
+            <p className="text-white/80 text-lg md:text-xl max-w-3xl mx-auto">
               Complete programs in Robotics, AI, Coding, Entrepreneurship & Financial Literacy.
             </p>
-            <div className="flex flex-wrap gap-4 justify-center">
-              <Button 
-                size="lg"
-                onClick={() => navigate('/school')}
-                className="bg-white text-[#1E3A5F] hover:bg-slate-100"
-              >
-                <Phone className="w-5 h-5 mr-2" />
-                Book a Meeting
-              </Button>
-              <Button 
-                size="lg"
-                variant="outline"
-                onClick={() => document.getElementById('offerings').scrollIntoView({ behavior: 'smooth' })}
-                className="border-white text-white hover:bg-white/10"
-              >
-                Explore Programs
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
-            </div>
-          </div>
-        </section>
-
-        {/* Stats */}
-        <section className="py-12 bg-white border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-              <div>
-                <div className="text-3xl md:text-4xl font-bold text-[#1E3A5F]">500+</div>
-                <div className="text-slate-600 text-sm mt-1">Partner Schools</div>
-              </div>
-              <div>
-                <div className="text-3xl md:text-4xl font-bold text-[#D63031]">1M+</div>
-                <div className="text-slate-600 text-sm mt-1">Students Trained</div>
-              </div>
-              <div>
-                <div className="text-3xl md:text-4xl font-bold text-[#1E3A5F]">50+</div>
-                <div className="text-slate-600 text-sm mt-1">Cities Covered</div>
-              </div>
-              <div>
-                <div className="text-3xl md:text-4xl font-bold text-[#D63031]">98%</div>
-                <div className="text-slate-600 text-sm mt-1">Satisfaction Rate</div>
-              </div>
-            </div>
           </div>
         </section>
 
