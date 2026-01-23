@@ -4968,19 +4968,34 @@ def get_date_range(start_date: Optional[str], end_date: Optional[str], period: O
     return start, end
 
 def parse_date_field(date_val):
-    """Parse date field from various formats"""
+    """Parse date field from various formats and ensure timezone awareness"""
     if not date_val:
         return None
     if isinstance(date_val, datetime):
-        return date_val.replace(tzinfo=timezone.utc) if date_val.tzinfo is None else date_val
+        if date_val.tzinfo is None:
+            return date_val.replace(tzinfo=timezone.utc)
+        return date_val
     if isinstance(date_val, str):
         try:
-            return datetime.fromisoformat(date_val.replace('Z', '+00:00'))
+            # Handle ISO format with Z
+            dt = datetime.fromisoformat(date_val.replace('Z', '+00:00'))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt
         except:
-            try:
-                return datetime.strptime(date_val, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-            except:
-                return None
+            pass
+        try:
+            # Handle simple date format
+            dt = datetime.strptime(date_val, "%Y-%m-%d")
+            return dt.replace(tzinfo=timezone.utc)
+        except:
+            pass
+        try:
+            # Handle datetime without timezone
+            dt = datetime.strptime(date_val, "%Y-%m-%dT%H:%M:%S")
+            return dt.replace(tzinfo=timezone.utc)
+        except:
+            pass
     return None
 
 @api_router.get("/admin/reports/overview")
