@@ -368,7 +368,7 @@ const AboutPage = () => {
             As Seen On
           </h2>
           <p className="text-white/70 text-center mb-12 max-w-2xl mx-auto">
-            OLL's journey featured on national television
+            OLL&apos;s journey featured on national television
           </p>
           
           <div className="grid md:grid-cols-2 gap-8">
@@ -511,7 +511,7 @@ const AboutPage = () => {
               </div>
               <div className="p-4">
                 <h3 className="font-bold text-[#1E3A5F] mb-1">Skill Titans - TV Show on CNBC TV18</h3>
-                <p className="text-sm text-slate-600">India's first show where school students pitch to real investors</p>
+                <p className="text-sm text-slate-600">India&apos;s first show where school students pitch to real investors</p>
               </div>
             </div>
             <div className="glass-card rounded-2xl overflow-hidden">
@@ -538,7 +538,7 @@ const AboutPage = () => {
               </div>
               <div className="p-4">
                 <h3 className="font-bold text-[#1E3A5F] mb-1">OLL Robotics Competition at IIT Bombay Techfest 2025</h3>
-                <p className="text-sm text-slate-600">Our students compete at India's largest science and technology festival</p>
+                <p className="text-sm text-slate-600">Our students compete at India&apos;s largest science and technology festival</p>
               </div>
             </div>
           </div>
@@ -554,7 +554,7 @@ const AboutPage = () => {
               Join OLL Team
             </h2>
             <p className="text-white/70 mb-8">
-              Be part of India's skill learning revolution. We're looking for passionate individuals who want to make a difference.
+              Be part of India&apos;s skill learning revolution. We&apos;re looking for passionate individuals who want to make a difference.
             </p>
             
             <Link 
