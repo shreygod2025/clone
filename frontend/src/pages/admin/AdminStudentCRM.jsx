@@ -1352,37 +1352,102 @@ const AdminStudentCRM = () => {
             <DialogTitle>Add New Student Lead</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Auto-fill hint */}
+            <div className="bg-blue-50 text-blue-700 text-xs p-2 rounded-lg">
+              💡 Type at least 3 characters in Name, Phone, or Email to auto-fill from existing records
+            </div>
+            
             {/* Basic Info */}
             <div className="grid grid-cols-2 gap-4">
-              <div>
+              <div className="relative">
                 <label className="block text-sm font-medium text-slate-700 mb-2">Name *</label>
                 <Input
                   placeholder="Student / Parent name"
                   value={newLead.name}
-                  onChange={(e) => setNewLead({...newLead, name: e.target.value})}
+                  onChange={(e) => {
+                    setNewLead({...newLead, name: e.target.value});
+                    searchAutocomplete(e.target.value, 'name');
+                  }}
+                  onFocus={() => newLead.name.length >= 3 && searchAutocomplete(newLead.name, 'name')}
                   data-testid="new-lead-name"
                 />
+                {/* Autocomplete dropdown */}
+                {showAutocomplete && autocompleteField === 'name' && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {autocompleteSuggestions.map((s, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleAutocompleteFill(s)}
+                        className="w-full px-3 py-2 text-left hover:bg-slate-50 border-b last:border-b-0"
+                      >
+                        <p className="font-medium text-sm">{s.name}</p>
+                        <p className="text-xs text-slate-500">{s.phone} • {s.email || 'No email'}</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div>
+              <div className="relative">
                 <label className="block text-sm font-medium text-slate-700 mb-2">Phone *</label>
                 <Input
                   placeholder="Phone number"
                   value={newLead.phone}
-                  onChange={(e) => setNewLead({...newLead, phone: e.target.value})}
+                  onChange={(e) => {
+                    setNewLead({...newLead, phone: e.target.value});
+                    searchAutocomplete(e.target.value, 'phone');
+                  }}
+                  onFocus={() => newLead.phone.length >= 3 && searchAutocomplete(newLead.phone, 'phone')}
                   data-testid="new-lead-phone"
                 />
+                {/* Autocomplete dropdown */}
+                {showAutocomplete && autocompleteField === 'phone' && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    {autocompleteSuggestions.map((s, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleAutocompleteFill(s)}
+                        className="w-full px-3 py-2 text-left hover:bg-slate-50 border-b last:border-b-0"
+                      >
+                        <p className="font-medium text-sm">{s.name}</p>
+                        <p className="text-xs text-slate-500">{s.phone} • {s.email || 'No email'}</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
             
-            <div>
+            <div className="relative">
               <label className="block text-sm font-medium text-slate-700 mb-2">Email</label>
               <Input
                 type="email"
                 placeholder="Email address (optional)"
                 value={newLead.email}
-                onChange={(e) => setNewLead({...newLead, email: e.target.value})}
+                onChange={(e) => {
+                  setNewLead({...newLead, email: e.target.value});
+                  searchAutocomplete(e.target.value, 'email');
+                }}
+                onFocus={() => newLead.email.length >= 3 && searchAutocomplete(newLead.email, 'email')}
                 data-testid="new-lead-email"
               />
+              {/* Autocomplete dropdown */}
+              {showAutocomplete && autocompleteField === 'email' && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {autocompleteSuggestions.map((s, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleAutocompleteFill(s)}
+                      className="w-full px-3 py-2 text-left hover:bg-slate-50 border-b last:border-b-0"
+                    >
+                      <p className="font-medium text-sm">{s.name}</p>
+                      <p className="text-xs text-slate-500">{s.phone} • {s.email || 'No email'}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Age & Skill */}
