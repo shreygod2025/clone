@@ -242,38 +242,55 @@ const AdminStudentCRM = () => {
   };
 
   const handleConvert = async () => {
-    if (!convertData.amount || !convertData.sessions) {
-      toast.error('Please enter amount and number of sessions');
-      return;
-    }
-    try {
-      await axios.patch(`${API}/students/inquiry/${showConvertModal.id}`, {
-        status: 'converted',
-        conversion_amount: convertData.amount,
-        sessions_count: convertData.sessions,
-        notes: showConvertModal.notes 
-          ? `${showConvertModal.notes}\n\nConverted: ₹${convertData.amount} for ${convertData.sessions} sessions` 
-          : `Converted: ₹${convertData.amount} for ${convertData.sessions} sessions`
-      }, {
-        headers: getAuthHeaders()
-      });
-      toast.success('Lead converted successfully!');
-      setShowConvertModal(null);
-      setConvertData({ amount: '', sessions: '' });
-      fetchInquiries();
-    } catch (error) {
-      toast.error('Failed to convert');
-    }
+    // This function is now part of onboarding - see handleOnboardStudent
   };
 
   const handleArchive = async (inquiry) => {
     await handleStatusChange(inquiry, 'archived');
   };
 
+  const handleReceiptUpload = async (file) => {
+    if (!file) return;
+    setUploadingReceipt(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await axios.post(`${API}/upload`, formData, {
+        headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
+      });
+      setOnboardData(prev => ({ 
+        ...prev, 
+        payment_receipt_url: response.data.url || response.data.file_url 
+      }));
+      toast.success('Receipt uploaded successfully');
+    } catch (error) {
+      toast.error('Failed to upload receipt');
+    } finally {
+      setUploadingReceipt(false);
+    }
+  };
+
   const handleOnboardStudent = async () => {
     if (!showOnboardModal) return;
     
+    // Validate payment receipt
+    if (!onboardData.payment_receipt_url) {
+      toast.error('Payment receipt is mandatory');
+      return;
+    }
+    
     try {
+      // First update to converted status with payment info
+      await axios.patch(`${API}/students/inquiry/${showOnboardModal.id}`, {
+        status: 'converted',
+        payment_receipt_url: onboardData.payment_receipt_url,
+        notes: showOnboardModal.notes 
+          ? `${showOnboardModal.notes}\n\nConverted with payment receipt` 
+          : `Converted with payment receipt`
+      }, {
+        headers: getAuthHeaders()
+      });
+      
       let batchId = onboardData.batch_id;
       
       // Create new batch if needed
