@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { 
   Search, Database, Users, Building2, GraduationCap, 
   Filter, Download, Eye, Phone, Mail, MapPin, 
-  X, RefreshCw
+  X, RefreshCw, UserCog, TrendingUp
 } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
@@ -19,6 +19,8 @@ const STATUSES = {
   students: ['new', 'demo_scheduled', 'demo_completed', 'converted', 'archived', 'rescheduled'],
   schools: ['new', 'meeting_scheduled', 'meeting_done', 'proposal_sent', 'negotiation', 'converted', 'active', 'renewed', 'lost', 'archived'],
   educators: ['new', 'demo_scheduled', 'demo_completed', 'onboarding', 'onboarded', 'active', 'archived'],
+  team: ['active', 'inactive'],
+  growth_partners: ['new', 'active', 'inactive', 'archived'],
 };
 
 const AGE_GROUPS = ['6-8 years', '9-12 years', '13-16 years', '17+ years'];
@@ -37,6 +39,7 @@ const StatusBadge = ({ status }) => {
     meeting_done: 'bg-indigo-100 text-indigo-700',
     converted: 'bg-green-100 text-green-700',
     active: 'bg-green-100 text-green-700',
+    inactive: 'bg-slate-100 text-slate-500',
     renewed: 'bg-emerald-100 text-emerald-700',
     lost: 'bg-red-100 text-red-700',
     onboarded: 'bg-green-100 text-green-700',
@@ -57,13 +60,15 @@ const TypeBadge = ({ type }) => {
     student: { bg: 'bg-blue-50', text: 'text-blue-700', icon: Users },
     school: { bg: 'bg-purple-50', text: 'text-purple-700', icon: Building2 },
     educator: { bg: 'bg-orange-50', text: 'text-orange-700', icon: GraduationCap },
+    team: { bg: 'bg-cyan-50', text: 'text-cyan-700', icon: UserCog },
+    growth_partner: { bg: 'bg-emerald-50', text: 'text-emerald-700', icon: TrendingUp },
   };
   const { bg, text, icon: Icon } = config[type] || config.student;
   
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${bg} ${text}`}>
       <Icon className="w-3 h-3" />
-      {type}
+      {type?.replace(/_/g, ' ')}
     </span>
   );
 };
