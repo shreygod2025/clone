@@ -376,7 +376,7 @@ const GrowthPartnerPage = () => {
       <footer className="py-8 px-4 bg-[#1E3A5F] text-white">
         <div className="max-w-7xl mx-auto text-center">
           <p className="text-white/60 text-sm">
-            © 2024 OLL - Open Learning Labs. All rights reserved.
+            © 2024 Clonefutura Live Solutions. All rights reserved.
           </p>
         </div>
       </footer>

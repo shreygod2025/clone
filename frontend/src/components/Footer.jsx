@@ -78,7 +78,7 @@ const Footer = ({ variant = 'full' }) => {
       <footer className="bg-[#1E3A5F] text-white py-6 mt-auto">
         <div className="max-w-6xl mx-auto px-4 text-center">
           <p className="text-white/60 text-sm">
-            © {currentYear} OLL - Open Learning Labs. All rights reserved.
+            © {currentYear} OLL - Clonefutura Live Solutions. All rights reserved.
           </p>
           <div className="flex justify-center gap-4 mt-2 text-xs text-white/50">
             <Link to="/terms" className="hover:text-white">Terms</Link>
@@ -333,7 +333,7 @@ const Footer = ({ variant = 'full' }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-slate-500 text-sm">
-              © {currentYear} OLL - Open Learning Labs Pvt. Ltd. All rights reserved.
+              © {currentYear} Clonefutura Live Solutions Pvt. Ltd. All rights reserved.
             </p>
             <div className="flex flex-wrap justify-center gap-4 text-sm text-slate-400">
               <Link to="/terms" className="hover:text-white transition-colors flex items-center gap-1">

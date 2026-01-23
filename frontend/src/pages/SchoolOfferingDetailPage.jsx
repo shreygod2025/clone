@@ -662,7 +662,7 @@ const SchoolOfferingDetailPage = () => {
             "description": offering.description,
             "provider": {
               "@type": "Organization",
-              "name": "OLL - Open Learning Labs",
+              "name": "OLL - Clonefutura Live Solutions",
               "sameAs": "https://oll.co"
             },
             "educationalLevel": "K-12",
