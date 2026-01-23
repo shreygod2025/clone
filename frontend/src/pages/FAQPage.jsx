@@ -278,7 +278,7 @@ const FAQPage = () => {
                   className="w-full h-12 px-4 bg-white/50 border border-slate-200 rounded-xl"
                   data-testid="support-user-type"
                 >
-                  <option value="student">Student / Parent</option>
+                  <option value="student">Learner</option>
                   <option value="educator">Educator</option>
                   <option value="school">School</option>
                 </select>

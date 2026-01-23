@@ -114,7 +114,7 @@ const LoginPage = () => {
                     <User className="w-6 h-6 text-blue-600" />
                   </div>
                   <div className="text-left">
-                    <p className="font-semibold text-[#1E3A5F]">Student / Parent / School</p>
+                    <p className="font-semibold text-[#1E3A5F]">Learner / School</p>
                     <p className="text-sm text-slate-500">View & manage bookings</p>
                   </div>
                 </button>

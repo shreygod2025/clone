@@ -32,7 +32,7 @@ const LandingPage = () => {
   const userTypes = [
     {
       id: 'student',
-      title: 'Student / Parent',
+      title: 'Learner',
       subtitle: 'Learn Future-Ready Skills',
       description: 'Robotics, Coding, AI & more',
       icon: GraduationCap,
