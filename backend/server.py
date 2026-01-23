@@ -71,6 +71,9 @@ WHATSAPP_TEMPLATES = {
     "educator_reminder_10min_online": "Reminder 10 min Teacher before Online class",
     "educator_not_joined": "Class started still not joined educator",
     "educator_session_complete": "Educator Session completion",
+    
+    # Support ticket templates
+    "ticket_assigned": "Support Ticket Assignment",
 }
 
 async def send_whatsapp_notification(
