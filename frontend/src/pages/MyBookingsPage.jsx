@@ -740,6 +740,8 @@ const MyBookingsPage = () => {
               </button>
             </div>
           )}
+            </>
+          )}
 
           {/* Other Courses Section - Show for all logged in users (except schools) */}
           {user?.user_type !== 'school' && (
