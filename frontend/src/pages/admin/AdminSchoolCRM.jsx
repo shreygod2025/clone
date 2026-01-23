@@ -203,7 +203,12 @@ const AdminSchoolCRM = () => {
         contract_end: onboardData.contract_end,
       }, { headers: getAuthHeaders() });
       
-      toast.success('School onboarded successfully!');
+      // Update school status to 'active' after onboarding
+      await axios.patch(`${API}/schools/inquiry/${showOnboardModal.id}`, {
+        status: 'active'
+      }, { headers: getAuthHeaders() });
+      
+      toast.success('School onboarded and moved to Active!');
       setShowOnboardModal(null);
       setOnboardData({
         model: '', grade_pricing: [{ grade: '', students: '', price_per_student: '' }],
