@@ -102,6 +102,41 @@ const AdminSchoolCRM = () => {
     }
   };
 
+  // Autocomplete search for existing records
+  const searchAutocomplete = async (query, field) => {
+    if (!query || query.length < 3) {
+      setAutocompleteSuggestions([]);
+      setShowAutocomplete(false);
+      return;
+    }
+    try {
+      const response = await axios.get(`${API}/data-center/autocomplete?q=${encodeURIComponent(query)}&data_type=schools`, {
+        headers: getAuthHeaders()
+      });
+      setAutocompleteSuggestions(response.data || []);
+      setAutocompleteField(field);
+      setShowAutocomplete(response.data && response.data.length > 0);
+    } catch (error) {
+      console.error('Autocomplete error:', error);
+    }
+  };
+
+  const handleAutocompleteFill = (suggestion) => {
+    setNewLead({
+      ...newLead,
+      school_name: suggestion.school_name || '',
+      contact_name: suggestion.contact_name || '',
+      phone: suggestion.phone || '',
+      email: suggestion.email || '',
+      location: suggestion.location || '',
+      board: suggestion.board || '',
+      student_count: suggestion.student_count || '',
+      meeting_type: suggestion.meeting_type || 'offline',
+    });
+    setShowAutocomplete(false);
+    toast.info('Form auto-filled from existing record');
+  };
+
   const fetchInquiries = async () => {
     setLoading(true);
     try {
