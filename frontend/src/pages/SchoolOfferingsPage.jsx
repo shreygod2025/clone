@@ -323,53 +323,6 @@ const SchoolOfferingsPage = () => {
           </div>
         </section>
 
-        {/* Schools We Work With */}
-        <section className="py-16 bg-gradient-to-br from-slate-900 to-slate-800">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
-                Schools We Work With
-              </h2>
-              <p className="text-white/70 max-w-2xl mx-auto">
-                Trusted by leading educational institutions across India
-              </p>
-            </div>
-
-            <div className="flex flex-wrap justify-center gap-4 mb-12">
-              {PARTNER_SCHOOLS.map((school, idx) => (
-                <div 
-                  key={idx}
-                  className="px-6 py-3 bg-white/10 backdrop-blur-sm rounded-full text-white text-sm"
-                >
-                  <School className="w-4 h-4 inline mr-2" />
-                  {school}
-                </div>
-              ))}
-            </div>
-
-            {/* Testimonial Video */}
-            <div className="max-w-3xl mx-auto">
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4">
-                <div className="aspect-video rounded-xl overflow-hidden bg-slate-800">
-                  <iframe
-                    width="100%"
-                    height="100%"
-                    src="https://www.youtube.com/embed/OavfLmAdprc"
-                    title="School Testimonials"
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    className="w-full h-full"
-                  />
-                </div>
-                <p className="text-center text-white/60 text-sm mt-4">
-                  Hear from our partner schools about their experience with OLL
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
         {/* School Case Studies - Dynamic from Admin */}
         {caseStudies.length > 0 && (
           <section className="py-16 bg-slate-50">
