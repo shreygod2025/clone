@@ -5,127 +5,164 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## What's Been Implemented
 
-### Session: January 23, 2025 (Latest - Reports & Bug Fixes)
+### Session: January 23, 2025 (Latest - Major Feature Update)
 
-#### Admin Reports Section ✅ NEW
-1. **Comprehensive Analytics Dashboard at `/admin/reports`:**
-   - **Key Metrics Row:** Total Revenue, Paid Students, Converted Schools, Active Educators, Support Open, Team Apps
-   - **All Pipelines Section:** 6 pipeline cards showing stages for Students, Schools, Educators, Support, Team Apps, Growth Partners
-   - **Conversion Rates:** Student & School funnels with Lead→Demo, Demo→Convert, Overall conversion percentages
-   - **Analytics Breakdown:** 4 donut charts for Leads by Source, Age Group, Course Interest, Support by Type
-   - **Educator Quality Metrics:** New educators, Active, Avg demos/educator, Avg earnings, Top performers
-   - **Support Metrics:** New tickets, Open, Resolved, Avg resolution time, Priority breakdown
-   - **User Stage Distribution:** 5 donut charts showing stage breakdown for all user types
-   
-2. **Date Filters:** Today, This Week, This Month, This Year, All Time, Custom date range
+#### 1. Support Ticket Creation from Admin ✅ NEW
+- "Create Ticket" button in Support Center
+- Modal with: Name, Phone, Email, Query Type, User Type, Priority, Message
+- Backend endpoint: `POST /api/support/queries/create`
 
-3. **Backend Endpoints:**
-   - `GET /api/admin/reports/overview` - Overall metrics
-   - `GET /api/admin/reports/sales-funnel` - Sales funnel with conversion rates
-   - `GET /api/admin/reports/lead-analytics` - Lead source, age group, course breakdown
-   - `GET /api/admin/reports/educator-metrics` - Teacher quality metrics
-   - `GET /api/admin/reports/support-metrics` - Support query analytics
-   - `GET /api/admin/reports/user-stages` - All user types stage distribution
+#### 2. Student Onboarding System ✅ NEW
+- **"Onboard" button** on converted students in CRM
+- **Create New Batch:**
+  - Batch name, Start date, Days selection (Mon-Sun)
+  - Time slot, No. of sessions, Mode (Online/Offline/Hybrid)
+  - Educator assignment
+- **Join Existing Batch:** Select from active batches
+- **Auto-generates sessions** with Jitsi links for online mode
+- Backend endpoints:
+  - `POST /api/batches` - Create batch
+  - `GET /api/batches` - List batches
+  - `POST /api/batches/{id}/add-student` - Add student to batch
+  - `GET /api/sessions` - Get sessions (filterable)
+  - `PUT /api/sessions/{id}` - Update session status
 
-#### Support Assignment Fix ✅
-- Removed mandatory deadline requirement
-- Deadline is now optional (hidden behind collapsible section)
-- Users can assign tickets by simply clicking on a team member
-- Unassign functionality preserved
+#### 3. School Onboarding System ✅ NEW
+- **"Onboard" button** on converted schools in CRM
+- **Full customization:**
+  - Model selection (Robotics Lab, STEM, After School, etc.)
+  - Grade-wise student count & pricing table (dynamically add rows)
+  - Multiple school team contacts (name, phone, email, role)
+  - Payment mode (Monthly/Quarterly/Annual/etc.)
+  - Contract start & end dates
+- Backend endpoint: `POST /api/schools/onboard`
 
-#### Admin Educators Bugs Fixed ✅
-1. **Onboarding Step Count:** Fixed from /8 to /7 (step 7 is admin verification)
-2. **View Applicants Button:** Now properly filters applicants by requirement ID
-3. **Auto-load Onboarding Details:** Documents load automatically when viewing educator
+#### 4. Data Center ✅ NEW
+- New admin page at `/admin/data-center`
+- **Stats Overview:** Total Students, Schools, Educators with status breakdowns
+- **Search:** Global search across all records by name/phone/email
+- **Filters:**
+  - Data type (All/Students/Schools/Educators)
+  - Status, City, Age Group, Board, Skill
+- **Export to CSV**
+- **Quick view details** with "Open in CRM" option
+- Backend endpoints:
+  - `GET /api/data-center/search` - Unified search
+  - `GET /api/data-center/stats` - Statistics
+  - `GET /api/data-center/autocomplete` - For form auto-fill
 
-### Session: January 23, 2025 (Earlier - Educator Management & Bulk Import)
+#### 5. Support Assignment Fix ✅
+- Deadline is now **optional** (collapsed by default)
+- Direct click assignment to team members
 
-#### Educator Admin Fixes ✅
-1. **Edit Requirement Modal:** Fixed - now opens properly
-2. **Applicants Tab:** Fixed with sub-filters
-3. **Removed "Requirements" from sidebar:** Managed within Educators tab
+### Previous Sessions (Summary)
 
-#### Add Single Active Educator ✅
-- Modal form with name, email, phone, city, skills, experience
-- Backend endpoint: `POST /api/educators/add-active`
-- Skips application process, immediately active
+#### Admin Reports Section ✅
+- Comprehensive analytics dashboard at `/admin/reports`
+- Key metrics, All pipelines, Conversion rates, Analytics charts
+- Date filters (Today/Week/Month/Year/Custom)
 
-#### Bulk Import Educators ✅
-- CSV upload with preview
-- Sample CSV download
-- Backend endpoint: `POST /api/educators/bulk-import`
+#### Admin Educator Management ✅
+- Tab-based interface (Requirements, Applicants, Onboarding, Active)
+- Bulk import via CSV
+- Onboarding flow with document verification
 
-#### Footer & SEO Updates ✅
-- White OLL logo, updated social links
-- Shortened titles <65 chars, canonical URLs
+#### Site-wide Features ✅
+- Rebranding to "Learner" and "Clonefutura Live Solutions"
+- School Case Studies (16 schools)
+- SEO optimization across all pages
 
-### Session: January 23, 2025 (Support & Admin Improvements)
+## Database Collections (New)
 
-#### Support Center Ticket Assignment ✅
-- User-specific filtering (non-admins see only their tickets)
-- Admin assignment with optional deadline
-- WhatsApp + Email notifications
+### batches
+```javascript
+{
+  id: string,
+  name: string,
+  skill: string,
+  start_date: string,
+  days: ['monday', 'wednesday', 'friday'],
+  time_slot: '10:00 AM',
+  num_sessions: 12,
+  educator_id: string,
+  educator_name: string,
+  mode: 'online' | 'offline' | 'hybrid',
+  status: 'active' | 'completed' | 'cancelled',
+  students: [student_ids],
+  created_at: datetime
+}
+```
 
-#### Educator Tab Restructuring ✅
-- Tab-based interface: Requirements, Applicants, Onboarding, Active, Archived
-- Status mapping (new + demo_scheduled → applicants)
+### sessions
+```javascript
+{
+  id: string,
+  batch_id: string,
+  student_id: string,
+  educator_id: string,
+  session_number: 1,
+  date: '2025-01-25',
+  time: '10:00 AM',
+  skill: string,
+  mode: 'online',
+  status: 'scheduled' | 'completed' | 'cancelled',
+  jitsi_room: 'oll-batch123-student456',
+  jitsi_link: 'https://meet.jit.si/oll-batch123-student456',
+  created_at: datetime
+}
+```
 
-### Previous Sessions
-
-#### Site-Wide Rebranding ✅
-- "Student / Parent" → "Learner"
-- Company: "Clonefutura Live Solutions Pvt Ltd"
-
-#### Student Funnel UX ✅
-- Grouped time slots (Morning/Afternoon/Evening)
-- Auto-advance on selection
-
-#### School Case Studies ✅
-- 16 schools seeded with video links
-- Displayed on About Us and School Offerings pages
-
-#### Landing Page Redesign ✅
-- New design with user type selector
-- Permanent footer
-
-## Pending Tasks
-
-### P0 - Critical
-- None (all critical bugs fixed)
-
-### P1 - High Priority
-- Make Blogs Dynamic (Admin CRUD)
-- CSV Export for all CRM pages
-
-### P2 - Medium Priority
-- Real Calendar Integration (Calendly)
-- Enforce RBAC permissions frontend/backend
-- Lead scoring system
-- Automated follow-up reminders for educators
-
-### P3 - Future/Backlog
-- Filter school case studies by board type (ICSE/CBSE/IB)
-- LinkedIn "Share Post" in educator onboarding
-- Merge "Center Users" and "Growth Partners" into RBAC
-
-## Known Issues/Limitations
-- **Jitsi Moderator Control:** Public meet.jit.si doesn't support programmatic moderator assignment
-- **Resend Domain:** User must verify oll.co domain for email sending
-
-## Tech Stack
-- Frontend: React + Tailwind CSS + Shadcn UI
-- Backend: FastAPI + MongoDB
-- Integrations: AiSensy (WhatsApp), Jitsi (Video), PostHog (Analytics), Resend (Email)
+### school_onboarding
+```javascript
+{
+  id: string,
+  school_id: string,
+  model: 'robotics_lab' | 'stem_curriculum' | etc,
+  grade_pricing: [{ grade: '1-5', students: 50, price_per_student: 500 }],
+  total_students: 200,
+  total_amount: 100000,
+  school_contacts: [{ name, phone, email, role }],
+  payment_mode: 'monthly' | 'quarterly' | 'annual',
+  contract_start: date,
+  contract_end: date,
+  status: 'active',
+  created_at: datetime
+}
+```
 
 ## Key Admin URLs
 - Dashboard: `/admin`
-- Students: `/admin/students`
-- Schools: `/admin/schools`
+- Student CRM: `/admin/students`
+- School CRM: `/admin/schools`
 - Educators: `/admin/educators`
-- Reports: `/admin/reports` ← NEW
+- **Reports: `/admin/reports`**
+- **Data Center: `/admin/data-center`** ← NEW
 - Support: `/admin/support`
 - Settings: `/admin/settings`
+
+## Pending Tasks
+
+### P1 - High Priority
+- Student & Educator Dashboard (view sessions)
+- Make Blogs Dynamic (Admin CRUD)
+- Auto-fill forms from Data Center search
+
+### P2 - Medium Priority
+- CSV Export for all CRM pages
+- Real Calendar Integration (Calendly)
+- Enforce RBAC permissions
+
+### P3 - Future/Backlog
+- Lead scoring system
+- LinkedIn share in educator onboarding
+- Payment gateway integration
 
 ## Test Credentials
 - Admin: admin@oll.co / Dagaji03@
 - User Login: Any 10-digit phone with OTP 1111
+
+## Tech Stack
+- Frontend: React + Tailwind CSS + Shadcn UI
+- Backend: FastAPI + MongoDB
+- Video: Jitsi Meet (auto-generated rooms for online sessions)
+- Integrations: AiSensy (WhatsApp), PostHog (Analytics), Resend (Email)
