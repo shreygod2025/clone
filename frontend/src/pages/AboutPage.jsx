@@ -472,26 +472,16 @@ const AboutPage = () => {
         subtitle="Hear from the schools transforming education with OLL"
       />
 
-      {/* Schools We Work With - Names */}
+      {/* Schools We Work With - Names (Dynamic) */}
       <section className="py-12 px-4 bg-gradient-to-br from-slate-900 to-slate-800">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-2xl md:text-3xl font-bold text-white text-center mb-8" style={{ fontFamily: 'Manrope, sans-serif' }}>
             Schools We Work With
           </h2>
-          <div className="flex flex-wrap justify-center gap-3 mb-8">
-            {[
-              'Greenlawns High School', 'G.D. Somani Memorial School', 'N.L. Dalmia High School',
-              'Hiranandani Foundation School', 'JBCN International School', 'Seven Square Academy',
-              'Goregaon Education Society English Medium School', 'Sanjeevani World School',
-              'Fravashi International Academy', 'Maneckji Cooper Education Trust', 'Excelsior School',
-              'J.N. Petit School', 'Seth Anandram Jaipuria School', 'St. Kabir School',
-              'St. Gregorios High School', 'St. Anne\'s High School Fort', 'St. Wilfred\'s School',
-              'Manav Mandir High School', 'Jankidevi Public School', 'Guardian School',
-              'Parle Tilak Vidyalaya', 'JB Vachha High School', 'Vedas International School',
-              'C.N.M. & N.D. Parekh ICSE School', 'Ram Ratna International School', 'Navodaya Central School'
-            ].map((school, idx) => (
-              <span key={idx} className="px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-white text-sm">
-                {school}
+          <div className="flex flex-wrap justify-center gap-2 md:gap-3 mb-8">
+            {partnerSchools.map((school, idx) => (
+              <span key={idx} className="px-3 py-1.5 md:px-4 md:py-2 bg-white/10 backdrop-blur-sm rounded-full text-white text-xs md:text-sm">
+                {typeof school === 'string' ? school : school.name}
               </span>
             ))}
           </div>
