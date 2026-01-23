@@ -2010,6 +2010,298 @@ const AdminEducators = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Requirement Modal */}
+      <Dialog open={showRequirementModal} onOpenChange={(open) => {
+        if (!open) {
+          setShowRequirementModal(false);
+          setEditingRequirement(null);
+        }
+      }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-[#1E3A5F]">
+              {editingRequirement ? 'Edit Requirement' : 'Add New Requirement'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Title *</label>
+              <Input
+                value={requirementForm.title}
+                onChange={(e) => setRequirementForm({ ...requirementForm, title: e.target.value })}
+                placeholder="e.g., Robotics Educator for Weekend Classes"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Skill *</label>
+                <select
+                  value={requirementForm.skill}
+                  onChange={(e) => setRequirementForm({ ...requirementForm, skill: e.target.value })}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                >
+                  <option value="">Select Skill</option>
+                  <option value="Robotics">Robotics</option>
+                  <option value="Coding">Coding</option>
+                  <option value="AI">AI & ML</option>
+                  <option value="Entrepreneurship">Entrepreneurship</option>
+                  <option value="Financial Literacy">Financial Literacy</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">City *</label>
+                <select
+                  value={requirementForm.city}
+                  onChange={(e) => setRequirementForm({ ...requirementForm, city: e.target.value })}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                >
+                  <option value="">Select City</option>
+                  {cities.map(c => (
+                    <option key={c.name} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Area</label>
+              <Input
+                value={requirementForm.area}
+                onChange={(e) => setRequirementForm({ ...requirementForm, area: e.target.value })}
+                placeholder="e.g., Andheri West"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+              <Textarea
+                value={requirementForm.description}
+                onChange={(e) => setRequirementForm({ ...requirementForm, description: e.target.value })}
+                placeholder="Job description and requirements..."
+                rows={3}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Positions</label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={requirementForm.positions}
+                  onChange={(e) => setRequirementForm({ ...requirementForm, positions: parseInt(e.target.value) || 1 })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Pay Type</label>
+                <select
+                  value={requirementForm.pay_type}
+                  onChange={(e) => setRequirementForm({ ...requirementForm, pay_type: e.target.value })}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                >
+                  <option value="per_session">Per Session</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Pay Amount (₹)</label>
+                <Input
+                  value={requirementForm.pay_amount}
+                  onChange={(e) => setRequirementForm({ ...requirementForm, pay_amount: e.target.value })}
+                  placeholder="e.g., 500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                <select
+                  value={requirementForm.is_active ? 'active' : 'inactive'}
+                  onChange={(e) => setRequirementForm({ ...requirementForm, is_active: e.target.value === 'active' })}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" onClick={() => setShowRequirementModal(false)} className="flex-1">
+                Cancel
+              </Button>
+              <Button onClick={handleSaveRequirement} className="flex-1 bg-[#D63031] hover:bg-[#c0392b]">
+                {editingRequirement ? 'Update' : 'Create'} Requirement
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Single Educator Modal */}
+      <Dialog open={showAddEducatorModal} onOpenChange={setShowAddEducatorModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-[#1E3A5F]">Add Active Educator</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Name *</label>
+              <Input
+                value={addEducatorForm.name}
+                onChange={(e) => setAddEducatorForm({ ...addEducatorForm, name: e.target.value })}
+                placeholder="Full name"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Email *</label>
+              <Input
+                type="email"
+                value={addEducatorForm.email}
+                onChange={(e) => setAddEducatorForm({ ...addEducatorForm, email: e.target.value })}
+                placeholder="email@example.com"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Phone *</label>
+              <Input
+                value={addEducatorForm.phone}
+                onChange={(e) => setAddEducatorForm({ ...addEducatorForm, phone: e.target.value })}
+                placeholder="10-digit phone number"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">City</label>
+              <select
+                value={addEducatorForm.city}
+                onChange={(e) => setAddEducatorForm({ ...addEducatorForm, city: e.target.value })}
+                className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+              >
+                <option value="">Select City</option>
+                {cities.map(c => (
+                  <option key={c.name} value={c.name}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Skills</label>
+              <div className="flex flex-wrap gap-2">
+                {['Robotics', 'Coding', 'AI', 'Entrepreneurship', 'Financial Literacy'].map(skill => (
+                  <button
+                    key={skill}
+                    type="button"
+                    onClick={() => {
+                      const skills = addEducatorForm.skills || [];
+                      if (skills.includes(skill)) {
+                        setAddEducatorForm({ ...addEducatorForm, skills: skills.filter(s => s !== skill) });
+                      } else {
+                        setAddEducatorForm({ ...addEducatorForm, skills: [...skills, skill] });
+                      }
+                    }}
+                    className={`px-3 py-1 rounded-full text-sm ${
+                      (addEducatorForm.skills || []).includes(skill)
+                        ? 'bg-[#D63031] text-white'
+                        : 'bg-slate-100 text-slate-600'
+                    }`}
+                  >
+                    {skill}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Experience</label>
+              <Input
+                value={addEducatorForm.experience}
+                onChange={(e) => setAddEducatorForm({ ...addEducatorForm, experience: e.target.value })}
+                placeholder="e.g., 3 years"
+              />
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" onClick={() => setShowAddEducatorModal(false)} className="flex-1">
+                Cancel
+              </Button>
+              <Button onClick={handleAddSingleEducator} className="flex-1 bg-[#D63031] hover:bg-[#c0392b]">
+                Add Educator
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Import Modal */}
+      <Dialog open={showBulkImportModal} onOpenChange={setShowBulkImportModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-[#1E3A5F]">Bulk Import Educators</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-slate-50 rounded-lg p-4">
+              <p className="text-sm text-slate-600 mb-3">
+                Upload a CSV file with educator details. The file should have these columns:
+              </p>
+              <code className="text-xs bg-slate-200 px-2 py-1 rounded block">
+                name, email, phone, skills, city, experience
+              </code>
+              <Button
+                variant="link"
+                onClick={downloadSampleCSV}
+                className="text-[#D63031] p-0 h-auto mt-2"
+              >
+                Download Sample CSV
+              </Button>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Select CSV File</label>
+              <input
+                type="file"
+                accept=".csv"
+                onChange={handleBulkImportFile}
+                className="w-full text-sm border border-slate-200 rounded-lg p-2"
+              />
+            </div>
+
+            {bulkImportPreview.length > 0 && (
+              <div>
+                <p className="text-sm font-medium text-slate-700 mb-2">Preview (first 5 rows):</p>
+                <div className="bg-slate-50 rounded-lg p-3 text-xs overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left p-1">Name</th>
+                        <th className="text-left p-1">Email</th>
+                        <th className="text-left p-1">Phone</th>
+                        <th className="text-left p-1">City</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bulkImportPreview.map((row, idx) => (
+                        <tr key={idx} className="border-b border-slate-200">
+                          <td className="p-1">{row.name}</td>
+                          <td className="p-1">{row.email}</td>
+                          <td className="p-1">{row.phone}</td>
+                          <td className="p-1">{row.city}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" onClick={() => setShowBulkImportModal(false)} className="flex-1">
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleBulkImport} 
+                disabled={!bulkImportFile || bulkImportLoading}
+                className="flex-1 bg-[#D63031] hover:bg-[#c0392b]"
+              >
+                {bulkImportLoading ? 'Importing...' : 'Import Educators'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
