@@ -89,6 +89,36 @@ const AdminSupportUnified = () => {
     }
   };
 
+  // Autocomplete search for existing records
+  const searchAutocomplete = async (query, field) => {
+    if (!query || query.length < 3) {
+      setAutocompleteSuggestions([]);
+      setShowAutocomplete(false);
+      return;
+    }
+    try {
+      const response = await axios.get(`${API}/data-center/autocomplete?q=${encodeURIComponent(query)}`, {
+        headers: getAuthHeaders()
+      });
+      setAutocompleteSuggestions(response.data || []);
+      setAutocompleteField(field);
+      setShowAutocomplete(response.data && response.data.length > 0);
+    } catch (error) {
+      console.error('Autocomplete error:', error);
+    }
+  };
+
+  const handleAutocompleteFill = (suggestion) => {
+    setNewTicket({
+      ...newTicket,
+      name: suggestion.name || suggestion.school_name || '',
+      phone: suggestion.phone || '',
+      email: suggestion.email || '',
+      inquiry_type: suggestion.type === 'school' ? 'school' : suggestion.type === 'educator' ? 'teacher' : 'student',
+    });
+    setShowAutocomplete(false);
+  };
+
   // Initial effect handled above
 
   const fetchAllQueries = async () => {
