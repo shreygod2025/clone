@@ -908,6 +908,34 @@ const AdminSchoolCRM = () => {
                 </div>
               )}
 
+              {/* Draft Progress Bar - Show if onboarding is in draft state */}
+              {inquiry.onboarding_status === 'draft' && inquiry.onboarding_id && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs text-yellow-700 font-medium flex items-center gap-1">
+                      <Clock className="w-3 h-3" /> Onboarding Draft
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-xs text-yellow-700 hover:bg-yellow-100"
+                      onClick={() => setShowOnboardModal(inquiry)}
+                    >
+                      Continue →
+                    </Button>
+                  </div>
+                  <div className="w-full bg-yellow-200 rounded-full h-2">
+                    <div 
+                      className="bg-yellow-500 h-2 rounded-full transition-all" 
+                      style={{ width: `${inquiry.total_students ? 60 : 25}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-yellow-600 mt-1">
+                    {inquiry.total_students ? `${inquiry.total_students} students added` : 'Click Continue to complete'}
+                  </p>
+                </div>
+              )}
+
               {/* View Button */}
               <div className="flex gap-2 mb-3">
                 <Button
