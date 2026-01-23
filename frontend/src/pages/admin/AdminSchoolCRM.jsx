@@ -362,6 +362,40 @@ const AdminSchoolCRM = () => {
     }
   };
 
+  // MOU file upload handler
+  const handleMOUUpload = async (file) => {
+    if (!file) return;
+    setUploadingMOU(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await axios.post(`${API}/upload`, formData, {
+        headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
+      });
+      setOnboardData(prev => ({ ...prev, mou_url: response.data.url }));
+      toast.success('MOU uploaded successfully');
+    } catch (error) {
+      toast.error('Failed to upload MOU');
+    } finally {
+      setUploadingMOU(false);
+    }
+  };
+
+  // Calculate onboarding progress for drafts
+  const calculateOnboardingProgress = (inquiry) => {
+    if (!inquiry.onboarding_id || inquiry.onboarding_status !== 'draft') return null;
+    let progress = 0;
+    const steps = [];
+    
+    // Check which fields are filled (we'd need to fetch onboarding data, but for now use inquiry data)
+    if (inquiry.model) { progress += 15; steps.push('Model selected'); }
+    if (inquiry.total_students > 0) { progress += 20; steps.push('Students added'); }
+    // Basic progress based on onboarding started
+    if (inquiry.onboarding_id) { progress += 25; steps.push('Onboarding started'); }
+    
+    return { progress: Math.min(progress, 100), steps };
+  };
+
   const handleAddLead = async () => {
     if (!newLead.school_name || !newLead.contact_name || !newLead.phone) {
       toast.error('School name, contact name and phone are required');
