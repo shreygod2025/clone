@@ -336,6 +336,16 @@ const AdminSupportUnified = () => {
             {closedCount}
           </span>
         </button>
+        
+        {/* Create Ticket Button */}
+        <Button
+          onClick={() => setShowCreateModal(true)}
+          className="ml-auto bg-[#D63031] hover:bg-red-600"
+          data-testid="create-ticket-btn"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Create Ticket
+        </Button>
       </div>
 
       {/* Filters */}
