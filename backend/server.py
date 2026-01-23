@@ -3164,7 +3164,7 @@ async def get_all_onboarding_progress(user: dict = Depends(get_current_user)):
         result.append({
             "educator": e,
             "onboarding": onb,
-            "progress": len(onb.get("completed_steps", [])) / 8 * 100 if onb else 0
+            "progress": len(onb.get("completed_steps", [])) / 7 * 100 if onb else 0
         })
     
     return result
