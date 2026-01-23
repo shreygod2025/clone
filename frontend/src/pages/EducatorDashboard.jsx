@@ -64,6 +64,7 @@ const EducatorDashboard = () => {
   const { user, isLoggedIn, logout, token, loading: authLoading } = useUserAuth();
   const [demos, setDemos] = useState([]);
   const [history, setHistory] = useState([]);
+  const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('upcoming');
   const [applicationData, setApplicationData] = useState(null);
@@ -120,6 +121,7 @@ const EducatorDashboard = () => {
     if (user?.status === 'active') {
       fetchDemos();
       fetchAvailableEducators();
+      fetchSessions();
     }
   }, [isLoggedIn, user, navigate, authLoading]);
 
