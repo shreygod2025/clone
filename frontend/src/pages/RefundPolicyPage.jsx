@@ -13,7 +13,7 @@ const RefundPolicyPage = () => {
   return (
     <>
       <Helmet>
-        <title>Refund Policy | OLL - Open Learning Labs</title>
+        <title>Refund Policy | OLL - Clonefutura Live Solutions</title>
         <meta name="description" content="OLL's refund policy for courses, kits, and educational services. Learn about our cancellation and refund procedures." />
         <link rel="canonical" href="https://oll.co/refund-policy" />
       </Helmet>
@@ -174,11 +174,11 @@ const RefundPolicyPage = () => {
                 <h2 className="text-xl font-semibold text-[#1E3A5F] mb-3">6. Contact Us</h2>
                 <p>For refund inquiries or special circumstances:</p>
                 <div className="mt-3 flex flex-col sm:flex-row gap-4">
-                  <a href="mailto:support@oll.co" className="flex items-center gap-2 text-[#D63031] hover:underline">
-                    <Mail className="w-4 h-4" /> support@oll.co
+                  <a href="mailto:info@oll.co" className="flex items-center gap-2 text-[#D63031] hover:underline">
+                    <Mail className="w-4 h-4" /> info@oll.co
                   </a>
-                  <a href="tel:+919876543210" className="flex items-center gap-2 text-[#D63031] hover:underline">
-                    <Phone className="w-4 h-4" /> +91 98765 43210
+                  <a href="tel:+919920188188" className="flex items-center gap-2 text-[#D63031] hover:underline">
+                    <Phone className="w-4 h-4" /> +91 99201 88188
                   </a>
                 </div>
                 <p className="mt-3 text-sm text-slate-500 flex items-center gap-2">
