@@ -515,7 +515,7 @@ const AdminSupportUnified = () => {
       </Dialog>
 
       {/* Assign Modal */}
-      <Dialog open={!!showAssignModal} onOpenChange={() => setShowAssignModal(null)}>
+      <Dialog open={!!showAssignModal} onOpenChange={() => { setShowAssignModal(null); setAssignDeadline(''); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -536,37 +536,53 @@ const AdminSupportUnified = () => {
                   </p>
                 </div>
               )}
+              
+              {/* Deadline Input */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700">Resolution Deadline</label>
+                <Input
+                  type="datetime-local"
+                  value={assignDeadline}
+                  onChange={(e) => setAssignDeadline(e.target.value)}
+                  className="w-full"
+                  min={new Date().toISOString().slice(0, 16)}
+                />
+                <p className="text-xs text-slate-500">The assignee will receive email & WhatsApp notification with this deadline</p>
+              </div>
+              
               <div className="space-y-2">
                 <p className="text-sm font-medium text-slate-700">Select Team Member</p>
                 {teamUsers.length === 0 ? (
                   <p className="text-sm text-slate-500 py-4 text-center">No team members found.</p>
                 ) : (
-                  teamUsers.filter(u => u.is_active).map(teamUser => (
-                    <button
-                      key={teamUser.id}
-                      onClick={() => handleAssignQuery(teamUser.id)}
-                      className={`w-full p-3 rounded-lg border text-left transition-all hover:border-indigo-300 hover:bg-indigo-50 ${
-                        showAssignModal.assigned_to === teamUser.id 
-                          ? 'border-indigo-500 bg-indigo-50' 
-                          : 'border-slate-200'
-                      }`}
-                      data-testid={`assign-to-${teamUser.id}`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-slate-900">{teamUser.name}</p>
-                          <p className="text-xs text-slate-500">{teamUser.email}</p>
+                  <div className="max-h-48 overflow-y-auto space-y-2">
+                    {teamUsers.filter(u => u.is_active).map(teamUser => (
+                      <button
+                        key={teamUser.id}
+                        onClick={() => handleAssignQuery(teamUser.id)}
+                        className={`w-full p-3 rounded-lg border text-left transition-all hover:border-indigo-300 hover:bg-indigo-50 ${
+                          showAssignModal.assigned_to === teamUser.id 
+                            ? 'border-indigo-500 bg-indigo-50' 
+                            : 'border-slate-200'
+                        }`}
+                        data-testid={`assign-to-${teamUser.id}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium text-slate-900">{teamUser.name}</p>
+                            <p className="text-xs text-slate-500">{teamUser.email}</p>
+                          </div>
+                          {showAssignModal.assigned_to === teamUser.id && (
+                            <span className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded">Current</span>
+                          )}
                         </div>
-                        {showAssignModal.assigned_to === teamUser.id && (
-                          <span className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded">Current</span>
-                        )}
-                      </div>
-                    </button>
-                  ))
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
               <div className="flex gap-3 pt-2">
-                <Button variant="outline" onClick={() => setShowAssignModal(null)} className="flex-1">
+                <Button variant="outline" onClick={() => { setShowAssignModal(null); setAssignDeadline(''); }} className="flex-1">
                   Cancel
                 </Button>
                 {showAssignModal.assigned_to && (
