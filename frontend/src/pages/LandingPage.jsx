@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { GraduationCap, Users, Building2, ArrowRight, Eye, Calendar } from 'lucide-react';
 import Navbar from '../components/Navbar';
@@ -12,44 +12,10 @@ const LandingPage = () => {
   const navigate = useNavigate();
   const { isLoggedIn, user } = useUserAuth();
   const [showSchoolDialog, setShowSchoolDialog] = useState(false);
-  const [showFooter, setShowFooter] = useState(false);
-  const mainContentRef = useRef(null);
 
   // Scroll to top on mount
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, []);
-
-  // Show footer on scroll (desktop) or immediately (mobile)
-  useEffect(() => {
-    const isMobile = window.innerWidth < 768;
-    
-    if (isMobile) {
-      // On mobile, show footer immediately
-      setShowFooter(true);
-      return;
-    }
-    
-    const handleScroll = () => {
-      const scrollPosition = window.scrollY;
-      // Show footer when scrolled more than 150px on desktop
-      if (scrollPosition > 150) {
-        setShowFooter(true);
-      } else {
-        setShowFooter(false);
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    window.addEventListener('resize', () => {
-      if (window.innerWidth < 768) {
-        setShowFooter(true);
-      }
-    });
-    
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
   }, []);
 
   // Redirect logged-in students to their bookings page
@@ -140,42 +106,42 @@ const LandingPage = () => {
         </script>
       </Helmet>
       
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col">
       <Navbar />
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col px-4 py-4 md:py-6">
+      {/* Main Content - Desktop: Centered with max height cards */}
+      <main className="flex-1 flex flex-col justify-center px-4 py-8 md:py-12">
         {/* Tagline */}
-        <div className="text-center mb-4 md:mb-6 shrink-0">
-          <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-[#1E3A5F]" style={{ fontFamily: 'Manrope, sans-serif' }}>
+        <div className="text-center mb-6 md:mb-10">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-[#1E3A5F] leading-tight" style={{ fontFamily: 'Manrope, sans-serif' }}>
             Leading a Skill Learning Revolution
           </h1>
-          <p className="text-sm md:text-base text-slate-500 mt-1">
+          <p className="text-base md:text-lg text-slate-500 mt-2">
             Choose your path
           </p>
         </div>
 
-        {/* User Type Cards - Flexible Grid */}
-        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-6 max-w-7xl mx-auto w-full">
+        {/* User Type Cards - Tall cards on desktop */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 max-w-6xl mx-auto w-full px-4">
           {userTypes.map((type) => (
             <div
               key={type.id}
               onClick={type.onClick}
-              className={`relative rounded-2xl md:rounded-3xl bg-gradient-to-br ${type.gradient} p-4 md:p-6 lg:p-8 flex flex-col cursor-pointer hover:scale-[1.02] transition-all duration-300 shadow-lg hover:shadow-xl`}
+              className={`relative rounded-2xl md:rounded-3xl bg-gradient-to-br ${type.gradient} p-6 md:p-8 flex flex-col cursor-pointer hover:scale-[1.02] transition-all duration-300 shadow-lg hover:shadow-xl min-h-[180px] md:min-h-[400px]`}
               data-testid={`${type.id}-card`}
             >
               {/* Icon */}
-              <div className="w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center mb-2 md:mb-auto">
-                <type.icon className="w-5 h-5 md:w-7 md:h-7 text-white" />
+              <div className="w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center mb-4">
+                <type.icon className="w-6 h-6 md:w-8 md:h-8 text-white" />
               </div>
               
-              {/* Content */}
-              <div>
+              {/* Content - pushed to bottom on desktop */}
+              <div className="md:mt-auto">
                 <p className="text-white/70 text-xs md:text-sm font-medium">{type.subtitle}</p>
-                <h2 className="text-lg md:text-2xl lg:text-3xl font-bold text-white" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                <h2 className="text-xl md:text-3xl lg:text-4xl font-bold text-white mt-1" style={{ fontFamily: 'Manrope, sans-serif' }}>
                   {type.title}
                 </h2>
-                <p className="text-white/60 text-xs md:text-sm mt-1">{type.description}</p>
+                <p className="text-white/60 text-sm md:text-base mt-2">{type.description}</p>
               </div>
               
               {/* Arrow positioned at bottom right */}
@@ -240,10 +206,8 @@ const LandingPage = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Footer - shows on scroll */}
-      <div className={`transition-all duration-500 ${showFooter ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`}>
-        <Footer />
-      </div>
+      {/* Footer - Always visible */}
+      <Footer />
     </div>
     </>
   );
