@@ -62,7 +62,11 @@ const AdminSupportUnified = () => {
   const [assigneeFilter, setAssigneeFilter] = useState('all');
   const [showReplyModal, setShowReplyModal] = useState(null);
   const [showAssignModal, setShowAssignModal] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [replyText, setReplyText] = useState('');
+  const [newTicket, setNewTicket] = useState({
+    name: '', phone: '', email: '', query_type: 'other', inquiry_type: 'student', message: '', priority: 'normal'
+  });
 
   useEffect(() => {
     fetchAllQueries();
