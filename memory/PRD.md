@@ -7,6 +7,23 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ### Session: January 23, 2025 (Latest - UX Improvements & School Case Studies)
 
+#### "Learner" Rebranding ✅
+Changed "Student / Parent" to "Learner" across all pages:
+- Landing page card title
+- Login page user type selector
+- FAQ page dropdown
+- Footer section header ("For Learners")
+
+#### Updated Learning Goals by Age ✅
+All age groups now have consistent, practical goal options:
+- **6-9 years:** Regular Weekly Classes, Certification Courses, Project Support, Competition Preparation, Fun & Interactive Learning
+- **10-14 years:** Regular Weekly Classes, Certification Courses, Project/Assignment Support, Competition Preparation, Resume/Portfolio Building
+- **15-18 years:** Regular Weekly Classes, Certification Courses, Project/Research Support, Olympiad & Competition Prep, Resume/College Application
+- **Young Adults:** Skill Development Classes, Professional Certification, Project/Portfolio Building, Job-Ready Skills, Freelancing
+- **Homemakers:** Regular Learning Classes, Certification Courses, Digital Literacy, Income Generation, Help Children
+- **Working Professionals:** Weekend/Evening Classes, Professional Certification, Career Switch, AI & Automation, Upskilling
+- **Senior Citizens:** Regular Learning Sessions, Digital Literacy, Stay Updated, Connect with Family, Learn Something New
+
 #### Student Funnel UX Enhancements ✅
 1. **Time Slots Divided by Time of Day:**
    - Morning (9 AM - 12 PM): 4 slots
