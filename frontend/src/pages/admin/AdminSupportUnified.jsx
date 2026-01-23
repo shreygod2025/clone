@@ -187,6 +187,24 @@ const AdminSupportUnified = () => {
 
   const [assignDeadline, setAssignDeadline] = useState('');
 
+  const handleCreateTicket = async () => {
+    if (!newTicket.name || !newTicket.phone) {
+      toast.error('Name and phone are required');
+      return;
+    }
+    try {
+      await axios.post(`${API}/support/queries/create`, newTicket, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Ticket created successfully');
+      setShowCreateModal(false);
+      setNewTicket({ name: '', phone: '', email: '', query_type: 'other', inquiry_type: 'student', message: '', priority: 'normal' });
+      fetchAllQueries();
+    } catch (error) {
+      toast.error('Failed to create ticket');
+    }
+  };
+
   const handleAssignQuery = async (userId) => {
     if (!showAssignModal) return;
     try {
