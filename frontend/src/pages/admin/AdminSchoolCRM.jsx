@@ -41,6 +41,7 @@ const AdminSchoolCRM = () => {
   const [showAssignModal, setShowAssignModal] = useState(null);
   const [showCommentModal, setShowCommentModal] = useState(null);
   const [showFollowupModal, setShowFollowupModal] = useState(null);
+  const [showOnboardModal, setShowOnboardModal] = useState(null);
   const [newComment, setNewComment] = useState('');
   
   // View/Edit states
@@ -52,6 +53,16 @@ const AdminSchoolCRM = () => {
   const [rescheduleData, setRescheduleData] = useState({ date: null, time: '', meeting_type: 'offline', reason: '' });
   const [convertData, setConvertData] = useState({ amount: '' });
   const [followupData, setFollowupData] = useState({ date: null, comment: '' });
+  const [onboardData, setOnboardData] = useState({
+    model: '',
+    grade_pricing: [{ grade: '', students: '', price_per_student: '' }],
+    total_students: 0,
+    total_amount: 0,
+    school_contacts: [{ name: '', phone: '', email: '', role: '' }],
+    payment_mode: 'monthly',
+    contract_start: '',
+    contract_end: '',
+  });
   const [newLead, setNewLead] = useState({
     school_name: '',
     contact_name: '',
