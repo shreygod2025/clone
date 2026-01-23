@@ -42,6 +42,7 @@ import AdminUsers from "./pages/admin/AdminUsers";
 import AdminRequirements from "./pages/admin/AdminRequirements";
 import AdminSupportUnified from "./pages/admin/AdminSupportUnified";
 import AdminSettings from "./pages/admin/AdminSettings";
+import AdminReports from "./pages/admin/AdminReports";
 import CenterDashboard from "./pages/admin/CenterDashboard";
 
 // Auth Context
@@ -118,6 +119,7 @@ function App() {
             <Route path="/admin/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
             <Route path="/admin/support" element={<ProtectedRoute><AdminSupportUnified /></ProtectedRoute>} />
             <Route path="/admin/requirements" element={<ProtectedRoute><AdminRequirements /></ProtectedRoute>} />
+            <Route path="/admin/reports" element={<ProtectedRoute><AdminReports /></ProtectedRoute>} />
             <Route path="/admin/settings" element={<ProtectedRoute><AdminSettings /></ProtectedRoute>} />
             <Route path="/center" element={<ProtectedRoute><CenterDashboard /></ProtectedRoute>} />
           </Routes>
