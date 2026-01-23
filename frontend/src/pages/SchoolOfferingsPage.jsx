@@ -494,11 +494,31 @@ const SchoolOfferingsPage = () => {
           </div>
         </section>
 
-        {/* School Case Studies */}
-        <SchoolCaseStudies 
-          title="Success Stories from Our Partner Schools" 
-          subtitle="Watch testimonials from principals and educators"
-        />
+        {/* Schools We Work With - Names Section (moved to bottom after case studies) */}
+        <section className="py-16 bg-gradient-to-br from-slate-900 to-slate-800">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
+                Schools We Work With
+              </h2>
+              <p className="text-white/70 max-w-2xl mx-auto">
+                Trusted by leading educational institutions across India
+              </p>
+            </div>
+
+            <div className="flex flex-wrap justify-center gap-4 mb-12">
+              {PARTNER_SCHOOLS.map((school, idx) => (
+                <div 
+                  key={idx}
+                  className="px-6 py-3 bg-white/10 backdrop-blur-sm rounded-full text-white text-sm"
+                >
+                  <School className="w-4 h-4 inline mr-2" />
+                  {school}
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
         <Footer />
       </div>
