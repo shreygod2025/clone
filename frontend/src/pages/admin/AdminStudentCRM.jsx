@@ -101,6 +101,7 @@ const AdminStudentCRM = () => {
     fetchInquiries();
     fetchTeamUsers();
     fetchOnboardedEducators();
+    fetchBatches();
   }, []);
 
   const fetchTeamUsers = async () => {
@@ -111,6 +112,17 @@ const AdminStudentCRM = () => {
       setTeamUsers(response.data || []);
     } catch (error) {
       console.error('Failed to fetch team users:', error);
+    }
+  };
+
+  const fetchBatches = async () => {
+    try {
+      const response = await axios.get(`${API}/batches?status=active`, {
+        headers: getAuthHeaders()
+      });
+      setBatches(response.data || []);
+    } catch (error) {
+      console.error('Failed to fetch batches:', error);
     }
   };
 
