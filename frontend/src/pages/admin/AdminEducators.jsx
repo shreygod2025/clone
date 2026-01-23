@@ -891,7 +891,7 @@ const AdminEducators = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h4 className="font-medium text-[#1E3A5F] truncate">{item.educator?.name}</h4>
-                      <p className="text-xs text-slate-500">{steps.length}/8 steps</p>
+                      <p className="text-xs text-slate-500">{steps.length}/7 steps completed</p>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-lg text-[#1E3A5F]">{Math.round(progress)}%</p>
