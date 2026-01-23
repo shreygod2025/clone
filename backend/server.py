@@ -5658,8 +5658,12 @@ async def get_sales_funnel_report(
         "overall_conversion": round(converted / total * 100, 1) if total > 0 else 0,
     }
     
-    # Revenue
-    revenue = sum(float(item.get('amount_paid', 0) or 0) for item in items if item.get('status') == 'converted' or item.get('payment_status') == 'paid')
+    # Revenue - includes conversion_amount from onboarding
+    revenue = 0
+    for item in items:
+        if item.get('status') == 'converted' or item.get('payment_status') == 'paid':
+            amount = float(item.get('conversion_amount') or item.get('amount_paid') or 0)
+            revenue += amount
     
     return {
         "funnel": funnel,
