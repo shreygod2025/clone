@@ -156,12 +156,12 @@ const AboutPage = () => {
   return (
     <>
       <Helmet>
-        <title>About OLL - India&apos;s Leading Skill Education Platform | Our Mission & Team</title>
-        <meta name="description" content="Learn about OLL (Clonefutura Live Solutions) - Founded in 2020, we're on a mission to empower 1 billion learners with Robotics, Coding, AI & Entrepreneurship skills. Meet our team and advisors." />
+        <title>About OLL - Skill Education & Robotics Classes India</title>
+        <meta name="description" content="Learn about OLL - India's leading skill education platform. Mission for 1 Billion Learners. Meet founder Shreyaan Daga and our advisors." />
         <meta name="keywords" content="about OLL, skill education India, robotics education company, coding for kids, AI education, entrepreneurship training, Shreyaan Daga, Clonefutura Live Solutions" />
         <link rel="canonical" href="https://oll.co/about" />
-        <meta property="og:title" content="About OLL - India's Leading Skill Education Platform" />
-        <meta property="og:description" content="On a mission for 1 Billion Daily Learners. Learn about our journey, team, and vision for skill education in India." />
+        <meta property="og:title" content="About OLL - Skill Education Platform" />
+        <meta property="og:description" content="Mission for 1 Billion Daily Learners. Learn about our journey and vision." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://oll.co/about" />
       </Helmet>
