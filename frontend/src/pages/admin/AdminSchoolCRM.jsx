@@ -16,7 +16,10 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const STATUS_SECTIONS = [
   { value: 'new', label: 'New Leads', color: 'bg-blue-500' },
   { value: 'meeting_done', label: 'Meeting Done', color: 'bg-purple-500' },
-  { value: 'converted', label: 'Converted', color: 'bg-green-500' },
+  { value: 'converted', label: 'Converted', color: 'bg-orange-500' },
+  { value: 'active', label: 'Active Schools', color: 'bg-green-500' },
+  { value: 'renewed', label: 'Renewed', color: 'bg-emerald-500' },
+  { value: 'lost', label: 'Lost', color: 'bg-red-500' },
   { value: 'archived', label: 'Archived', color: 'bg-slate-400' },
 ];
 
