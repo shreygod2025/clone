@@ -148,6 +148,42 @@ const AdminStudentCRM = () => {
     }
   };
 
+  // Autocomplete search for existing records
+  const searchAutocomplete = async (query, field) => {
+    if (!query || query.length < 3) {
+      setAutocompleteSuggestions([]);
+      setShowAutocomplete(false);
+      return;
+    }
+    try {
+      const response = await axios.get(`${API}/data-center/autocomplete?q=${encodeURIComponent(query)}&data_type=students`, {
+        headers: getAuthHeaders()
+      });
+      setAutocompleteSuggestions(response.data || []);
+      setAutocompleteField(field);
+      setShowAutocomplete(response.data && response.data.length > 0);
+    } catch (error) {
+      console.error('Autocomplete error:', error);
+    }
+  };
+
+  const handleAutocompleteFill = (suggestion) => {
+    setNewLead({
+      ...newLead,
+      name: suggestion.name || '',
+      phone: suggestion.phone || '',
+      email: suggestion.email || '',
+      city: suggestion.city || '',
+      age_group: suggestion.age_group || '',
+      skill: suggestion.skill || '',
+      learning_mode: suggestion.learning_mode || 'online',
+      learning_goal: suggestion.learning_goal || '',
+      address: suggestion.address || '',
+    });
+    setShowAutocomplete(false);
+    toast.info('Form auto-filled from existing record');
+  };
+
   const fetchInquiries = async () => {
     setLoading(true);
     try {
