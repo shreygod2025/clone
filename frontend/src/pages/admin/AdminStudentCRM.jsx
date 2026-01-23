@@ -658,14 +658,19 @@ const AdminStudentCRM = () => {
           <div className="flex gap-1 flex-wrap">
             <button
               onClick={() => {
-                setShowConvertModal(inquiry);
-                setConvertData({ amount: '', sessions: '' });
+                setOnboardData(prev => ({ 
+                  ...prev, 
+                  skill: inquiry.skill, 
+                  mode: inquiry.learning_mode || 'online',
+                  payment_receipt_url: ''
+                }));
+                setShowOnboardModal(inquiry);
               }}
               className="text-xs px-3 py-1.5 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 flex items-center gap-1 font-medium"
               data-testid={`convert-${inquiry.id}`}
             >
               <CheckCircle2 className="w-3 h-3" />
-              Converted
+              Convert & Onboard
             </button>
             {baseButtons}
             <button
