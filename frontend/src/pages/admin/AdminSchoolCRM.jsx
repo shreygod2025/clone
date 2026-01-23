@@ -268,6 +268,7 @@ const AdminSchoolCRM = () => {
         payment_tranches: onboardData.payment_tranches.filter(t => t.amount || t.percentage),
         contract_start: onboardData.contract_start,
         contract_end: onboardData.contract_end,
+        mou_url: onboardData.mou_url,
         is_draft: saveAsDraft,
       }, { headers: getAuthHeaders() });
       
@@ -287,7 +288,7 @@ const AdminSchoolCRM = () => {
         grade_pricing: [{ grade: '', students: '', price_per_student: '' }],
         total_students: 0, total_amount: 0, school_contacts: [{ name: '', phone: '', email: '', role: '' }],
         payment_mode: 'from_school', payment_method: '', payment_tranches: [{ amount: '', percentage: '', date: '', notes: '' }],
-        contract_start: '', contract_end: '', is_draft: false
+        contract_start: '', contract_end: '', mou_url: '', is_draft: false
       });
       fetchInquiries();
     } catch (error) {
