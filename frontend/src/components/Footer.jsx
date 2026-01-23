@@ -111,7 +111,7 @@ const Footer = ({ variant = 'full' }) => {
               <div>
                 <h4 className="font-semibold text-[#D63031] mb-4 flex items-center gap-2">
                   <GraduationCap className="w-5 h-5" />
-                  For Students & Individuals
+                  For Learners
                 </h4>
                 <ul className="space-y-2">
                   {STUDENT_OFFERINGS.map((offering) => (
@@ -267,7 +267,7 @@ const Footer = ({ variant = 'full' }) => {
 
           {/* For Students */}
           <div>
-            <h4 className="font-semibold mb-4 text-white">For Students</h4>
+            <h4 className="font-semibold mb-4 text-white">For Learners</h4>
             <ul className="space-y-2 text-sm text-slate-400">
               <li><Link to="/offerings" className="hover:text-white transition-colors">All Courses</Link></li>
               <li><Link to="/courses/robotics" className="hover:text-white transition-colors">Robotics</Link></li>
