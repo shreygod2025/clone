@@ -763,12 +763,39 @@ const AdminEducators = () => {
         )}
         {activeTab === 'requirements' && (
           <Button 
-            onClick={() => setShowRequirementModal(true)}
+            onClick={() => {
+              setEditingRequirement(null);
+              setRequirementForm({
+                title: '', skill: '', city: '', area: '', description: '',
+                positions: 1, days: [], timing_from: '', timing_to: '',
+                pay_amount: '', pay_type: 'per_session', is_active: true
+              });
+              setShowRequirementModal(true);
+            }}
             className="bg-[#D63031] hover:bg-[#c0392b]"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Requirement
           </Button>
+        )}
+        {activeTab === 'active' && (
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => setShowAddEducatorModal(true)}
+              className="bg-[#D63031] hover:bg-[#c0392b]"
+            >
+              <UserPlus className="w-4 h-4 mr-2" />
+              Add Educator
+            </Button>
+            <Button 
+              onClick={() => setShowBulkImportModal(true)}
+              variant="outline"
+              className="border-[#1E3A5F] text-[#1E3A5F]"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Bulk Import
+            </Button>
+          </div>
         )}
       </div>
 
