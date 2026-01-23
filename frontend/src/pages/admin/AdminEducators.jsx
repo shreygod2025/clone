@@ -134,6 +134,125 @@ const AdminEducators = () => {
     }
   };
 
+  const handleSaveRequirement = async () => {
+    if (!requirementForm.title || !requirementForm.skill || !requirementForm.city) {
+      toast.error('Please fill in required fields');
+      return;
+    }
+    try {
+      if (editingRequirement) {
+        await axios.put(`${API}/requirements/${editingRequirement.id}`, requirementForm, {
+          headers: getAuthHeaders()
+        });
+        toast.success('Requirement updated');
+      } else {
+        await axios.post(`${API}/requirements`, requirementForm, {
+          headers: getAuthHeaders()
+        });
+        toast.success('Requirement created');
+      }
+      setShowRequirementModal(false);
+      setEditingRequirement(null);
+      setRequirementForm({
+        title: '', skill: '', city: '', area: '', description: '',
+        positions: 1, days: [], timing_from: '', timing_to: '',
+        pay_amount: '', pay_type: 'per_session', is_active: true
+      });
+      fetchRequirements();
+    } catch (error) {
+      toast.error('Failed to save requirement');
+    }
+  };
+
+  const handleAddSingleEducator = async () => {
+    if (!addEducatorForm.name || !addEducatorForm.email || !addEducatorForm.phone) {
+      toast.error('Please fill in name, email and phone');
+      return;
+    }
+    try {
+      await axios.post(`${API}/educators/add-active`, {
+        ...addEducatorForm,
+        status: 'active'
+      }, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Educator added successfully');
+      setShowAddEducatorModal(false);
+      setAddEducatorForm({ name: '', email: '', phone: '', skills: [], city: '', experience: '' });
+      fetchEducators();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to add educator');
+    }
+  };
+
+  const handleBulkImportFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    setBulkImportFile(file);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target.result;
+      const lines = text.split('\n').filter(line => line.trim());
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+      
+      const preview = lines.slice(1, 6).map(line => {
+        const values = line.split(',');
+        const obj = {};
+        headers.forEach((h, i) => {
+          obj[h] = values[i]?.trim() || '';
+        });
+        return obj;
+      });
+      setBulkImportPreview(preview);
+    };
+    reader.readAsText(file);
+  };
+
+  const handleBulkImport = async () => {
+    if (!bulkImportFile) {
+      toast.error('Please select a file');
+      return;
+    }
+    
+    setBulkImportLoading(true);
+    const formData = new FormData();
+    formData.append('file', bulkImportFile);
+    
+    try {
+      const response = await axios.post(`${API}/educators/bulk-import`, formData, {
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      toast.success(`Successfully imported ${response.data.imported} educators`);
+      setShowBulkImportModal(false);
+      setBulkImportFile(null);
+      setBulkImportPreview([]);
+      fetchEducators();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to import educators');
+    } finally {
+      setBulkImportLoading(false);
+    }
+  };
+
+  const downloadSampleCSV = () => {
+    const headers = 'name,email,phone,skills,city,experience';
+    const sample1 = 'John Doe,john@example.com,9876543210,"Robotics,Coding",Mumbai,3 years';
+    const sample2 = 'Jane Smith,jane@example.com,9876543211,"AI,Python",Pune,5 years';
+    const csv = [headers, sample1, sample2].join('\n');
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'educators_sample.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   const fetchTeamUsers = async () => {
     try {
       const response = await axios.get(`${API}/team-users`, {
