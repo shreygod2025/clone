@@ -609,37 +609,96 @@ const InquiryPage = () => {
                 <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#1E3A5F] text-white text-xs sm:text-sm flex items-center justify-center">3</span>
                 Contact Details
               </h2>
+              {/* Auto-fill hint */}
+              <div className="bg-blue-50 text-blue-700 text-xs p-2 rounded-lg mb-3">
+                💡 Type 3+ characters in Name, Phone, or Email to auto-fill from existing records
+              </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div>
+                <div className="relative">
                   <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Name *</label>
                   <Input
                     placeholder="Full name"
                     value={formData.name}
-                    onChange={(e) => updateForm('name', e.target.value)}
+                    onChange={(e) => {
+                      updateForm('name', e.target.value);
+                      searchAutocomplete(e.target.value, 'name');
+                    }}
                     className="h-10 sm:h-11"
                     data-testid="input-name"
                   />
+                  {showAutocomplete && autocompleteField === 'name' && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {autocompleteSuggestions.map((s, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => handleAutocompleteFill(s)}
+                          className="w-full px-3 py-2 text-left hover:bg-slate-50 border-b last:border-b-0"
+                        >
+                          <p className="font-medium text-sm">{s.name || s.school_name}</p>
+                          <p className="text-xs text-slate-500">{s.phone} • {s.type}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div>
+                <div className="relative">
                   <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Phone *</label>
                   <Input
                     placeholder="10-digit number"
                     value={formData.phone}
-                    onChange={(e) => updateForm('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    onChange={(e) => {
+                      const phone = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      updateForm('phone', phone);
+                      searchAutocomplete(phone, 'phone');
+                    }}
                     className="h-10 sm:h-11"
                     data-testid="input-phone"
                   />
+                  {showAutocomplete && autocompleteField === 'phone' && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {autocompleteSuggestions.map((s, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => handleAutocompleteFill(s)}
+                          className="w-full px-3 py-2 text-left hover:bg-slate-50 border-b last:border-b-0"
+                        >
+                          <p className="font-medium text-sm">{s.name || s.school_name}</p>
+                          <p className="text-xs text-slate-500">{s.phone} • {s.type}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div>
+                <div className="relative">
                   <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Email</label>
                   <Input
                     type="email"
                     placeholder="Email address"
                     value={formData.email}
-                    onChange={(e) => updateForm('email', e.target.value)}
+                    onChange={(e) => {
+                      updateForm('email', e.target.value);
+                      searchAutocomplete(e.target.value, 'email');
+                    }}
                     className="h-10 sm:h-11"
                     data-testid="input-email"
                   />
+                  {showAutocomplete && autocompleteField === 'email' && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {autocompleteSuggestions.map((s, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => handleAutocompleteFill(s)}
+                          className="w-full px-3 py-2 text-left hover:bg-slate-50 border-b last:border-b-0"
+                        >
+                          <p className="font-medium text-sm">{s.name || s.school_name}</p>
+                          <p className="text-xs text-slate-500">{s.phone} • {s.type}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Source</label>
