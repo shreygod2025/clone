@@ -209,7 +209,8 @@ async def send_session_complete_notification(inquiry: dict, educator: dict = Non
     student_name = inquiry.get("name", "Student")
     student_phone = inquiry.get("phone")
     skill = inquiry.get("skill", "Demo").title()
-    feedback_url = f"https://eduskill-crm.preview.emergentagent.com/feedback/{inquiry.get('id', '')}"
+    frontend_url = os.environ.get("FRONTEND_URL", os.environ.get("REACT_APP_BACKEND_URL", "https://oll.co").replace("/api", ""))
+    feedback_url = f"{frontend_url}/feedback/{inquiry.get('id', '')}"
     
     # Send to student
     if student_phone:
