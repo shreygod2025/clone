@@ -5394,9 +5394,15 @@ async def get_user_stages_report(
     """Get all user types and their stages"""
     start, end = get_date_range(start_date, end_date, period)
     
+    def is_in_range(item):
+        created = parse_date_field(item.get('created_at'))
+        if created is None:
+            return True  # Include items without dates
+        return start <= created <= end
+    
     # Students
     all_students = await db.student_inquiries.find({}, {"_id": 0}).to_list(10000)
-    students = [s for s in all_students if start <= (parse_date_field(s.get('created_at')) or start) <= end]
+    students = [s for s in all_students if is_in_range(s)]
     
     student_stages = {}
     for s in students:
@@ -5405,7 +5411,7 @@ async def get_user_stages_report(
     
     # Schools
     all_schools = await db.school_inquiries.find({}, {"_id": 0}).to_list(10000)
-    schools = [s for s in all_schools if start <= (parse_date_field(s.get('created_at')) or start) <= end]
+    schools = [s for s in all_schools if is_in_range(s)]
     
     school_stages = {}
     for s in schools:
@@ -5414,7 +5420,7 @@ async def get_user_stages_report(
     
     # Educators
     all_educators = await db.educator_applications.find({}, {"_id": 0}).to_list(10000)
-    educators = [e for e in all_educators if start <= (parse_date_field(e.get('created_at')) or start) <= end]
+    educators = [e for e in all_educators if is_in_range(e)]
     
     educator_stages = {}
     for e in educators:
@@ -5423,7 +5429,7 @@ async def get_user_stages_report(
     
     # Team applications
     all_team = await db.team_applications.find({}, {"_id": 0}).to_list(10000)
-    team = [t for t in all_team if start <= (parse_date_field(t.get('created_at')) or start) <= end]
+    team = [t for t in all_team if is_in_range(t)]
     
     team_stages = {}
     for t in team:
