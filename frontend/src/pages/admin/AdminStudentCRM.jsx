@@ -267,6 +267,58 @@ const AdminStudentCRM = () => {
     await handleStatusChange(inquiry, 'archived');
   };
 
+  const handleOnboardStudent = async () => {
+    if (!showOnboardModal) return;
+    
+    try {
+      let batchId = onboardData.batch_id;
+      
+      // Create new batch if needed
+      if (onboardData.batch_mode === 'new') {
+        if (!onboardData.start_date || onboardData.days.length === 0 || !onboardData.time_slot || !onboardData.educator_id) {
+          toast.error('Please fill all required fields for new batch');
+          return;
+        }
+        
+        const batchResponse = await axios.post(`${API}/batches`, {
+          name: onboardData.name || `${showOnboardModal.name}'s Batch`,
+          skill: onboardData.skill || showOnboardModal.skill,
+          start_date: onboardData.start_date,
+          days: onboardData.days,
+          time_slot: onboardData.time_slot,
+          num_sessions: parseInt(onboardData.num_sessions) || 12,
+          educator_id: onboardData.educator_id,
+          educator_name: onboardData.educator_name,
+          mode: onboardData.mode,
+        }, { headers: getAuthHeaders() });
+        
+        batchId = batchResponse.data.id;
+      }
+      
+      if (!batchId) {
+        toast.error('Please select or create a batch');
+        return;
+      }
+      
+      // Add student to batch
+      await axios.post(`${API}/batches/${batchId}/add-student`, {
+        student_id: showOnboardModal.id
+      }, { headers: getAuthHeaders() });
+      
+      toast.success('Student onboarded successfully! Sessions created.');
+      setShowOnboardModal(null);
+      setOnboardData({
+        batch_mode: 'new', batch_id: '', name: '', skill: '', start_date: '',
+        days: [], time_slot: '', num_sessions: 12, educator_id: '', educator_name: '', mode: 'online'
+      });
+      fetchInquiries();
+      fetchBatches();
+    } catch (error) {
+      toast.error('Failed to onboard student');
+      console.error(error);
+    }
+  };
+
   const handleAddLead = async () => {
     if (!newLead.name || !newLead.phone) {
       toast.error('Name and phone are required');
