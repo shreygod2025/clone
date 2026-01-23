@@ -79,6 +79,11 @@ const InquiryPage = () => {
   const [teamUser, setTeamUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(!!username);
   
+  // Autocomplete states for existing record lookup
+  const [autocompleteSuggestions, setAutocompleteSuggestions] = useState([]);
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const [autocompleteField, setAutocompleteField] = useState('');
+  
   const [formData, setFormData] = useState({
     inquiry_type: '',
     action_type: '', // lead or query
