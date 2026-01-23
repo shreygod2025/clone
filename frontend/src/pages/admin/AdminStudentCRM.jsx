@@ -659,6 +659,29 @@ const AdminStudentCRM = () => {
         );
       
       case 'converted':
+        return (
+          <div className="flex gap-1 flex-wrap">
+            {baseButtons}
+            {!inquiry.batch_id && (
+              <button
+                onClick={() => {
+                  setOnboardData(prev => ({ ...prev, skill: inquiry.skill, mode: inquiry.learning_mode || 'online' }));
+                  setShowOnboardModal(inquiry);
+                }}
+                className="text-xs px-3 py-1.5 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 flex items-center gap-1 font-medium"
+                data-testid={`onboard-${inquiry.id}`}
+              >
+                <CalendarClock className="w-3 h-3" />
+                Onboard
+              </button>
+            )}
+            {inquiry.batch_id && (
+              <span className="text-xs px-3 py-1.5 rounded-lg bg-blue-100 text-blue-700 font-medium">
+                ✓ In Batch
+              </span>
+            )}
+          </div>
+        );
       case 'archived':
         return <div className="flex gap-1 flex-wrap">{baseButtons}</div>;
       
