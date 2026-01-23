@@ -752,8 +752,81 @@ const AdminEducators = () => {
         </div>
       )}
 
-      {/* Educator Cards */}
-      {loading ? (
+      {/* Requirements Tab Content */}
+      {activeTab === 'requirements' && (
+        <div className="space-y-4">
+          {requirements.length === 0 ? (
+            <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">
+              <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+              <p className="text-slate-500">No requirements posted yet</p>
+              <Button 
+                onClick={() => setShowRequirementModal(true)}
+                className="mt-4 bg-[#D63031] hover:bg-[#c0392b]"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add First Requirement
+              </Button>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {requirements.map((req) => {
+                const matchingApps = educators.filter(e => e.requirement_id === req.id).length;
+                return (
+                  <div key={req.id} className={`bg-white rounded-2xl border p-5 ${req.is_active ? 'border-slate-100' : 'border-slate-200 bg-slate-50 opacity-60'}`}>
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h3 className="font-semibold text-[#1E3A5F]">{req.title}</h3>
+                        <p className="text-sm text-slate-500">{req.skill}</p>
+                      </div>
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${req.is_active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
+                        {req.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                    <div className="space-y-2 text-sm text-slate-600 mb-3">
+                      <p className="flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-slate-400" /> {req.city} {req.area && `- ${req.area}`}
+                      </p>
+                      <p className="flex items-center gap-1">
+                        <Users className="w-3 h-3 text-slate-400" /> {req.positions} position(s)
+                      </p>
+                      {req.timing_from && (
+                        <p className="flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-slate-400" /> {req.timing_from} - {req.timing_to}
+                        </p>
+                      )}
+                      {req.pay_amount && (
+                        <p className="flex items-center gap-1 text-green-600 font-medium">
+                          ₹{req.pay_amount} / {req.pay_type === 'per_session' ? 'session' : 'month'}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                      <span className="text-xs text-slate-500">{matchingApps} applications</span>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setEditingRequirement(req);
+                            setRequirementForm(req);
+                            setShowRequirementModal(true);
+                          }}
+                          className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                        >
+                          <Edit className="w-4 h-4 text-slate-500" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Educator Cards - Show for applicants, onboarding, active, archived tabs */}
+      {activeTab !== 'requirements' && (
+        <>
+          {loading ? (
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D63031] mx-auto"></div>
         </div>
