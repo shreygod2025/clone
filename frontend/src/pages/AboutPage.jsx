@@ -116,6 +116,24 @@ const AboutPage = () => {
   const [partnerSubmitted, setPartnerSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [activeVideo, setActiveVideo] = useState(null);
+  const [partnerSchools, setPartnerSchools] = useState([]);
+
+  useEffect(() => {
+    const fetchPartnerSchools = async () => {
+      try {
+        const response = await axios.get(`${API}/partner-schools`);
+        setPartnerSchools(response.data || []);
+      } catch (error) {
+        // Fallback
+        setPartnerSchools([
+          'Greenlawns High School', 'G.D. Somani Memorial School', 'N.L. Dalmia High School',
+          'Hiranandani Foundation School', 'JBCN International School', 'Seven Square Academy',
+          'Sanjeevani World School', 'Fravashi International Academy', 'Maneckji Cooper Education Trust',
+        ]);
+      }
+    };
+    fetchPartnerSchools();
+  }, []);
 
   const [partnerForm, setPartnerForm] = useState({
     name: '',
