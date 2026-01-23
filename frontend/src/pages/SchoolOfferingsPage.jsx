@@ -166,6 +166,36 @@ const SchoolOfferingsPage = () => {
                 {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
               </button>
             </div>
+
+            {/* Mobile Menu */}
+            {mobileMenuOpen && (
+              <div className="md:hidden bg-white border-t border-slate-100 py-4 px-4 space-y-3">
+                <Link 
+                  to="/offerings" 
+                  className="block py-2 text-slate-600 hover:text-[#1E3A5F] font-medium"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Offerings
+                </Link>
+                <Link 
+                  to="/about" 
+                  className="block py-2 text-slate-600 hover:text-[#1E3A5F] font-medium"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  About
+                </Link>
+                <Button 
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    navigate('/school');
+                  }}
+                  className="w-full bg-[#D63031] hover:bg-[#b52828] text-white"
+                >
+                  <Phone className="w-4 h-4 mr-2" />
+                  Book a Meeting
+                </Button>
+              </div>
+            )}
           </div>
         </nav>
 
