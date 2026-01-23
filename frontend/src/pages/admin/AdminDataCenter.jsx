@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { 
   Search, Database, Users, Building2, GraduationCap, 
   Filter, Download, Eye, Phone, Mail, MapPin, 
-  ChevronDown, X, RefreshCw
+  X, RefreshCw
 } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
@@ -17,14 +17,16 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const STATUSES = {
   students: ['new', 'demo_scheduled', 'demo_completed', 'converted', 'archived', 'rescheduled'],
-  schools: ['new', 'meeting_scheduled', 'meeting_done', 'proposal_sent', 'negotiation', 'converted', 'archived'],
+  schools: ['new', 'meeting_scheduled', 'meeting_done', 'proposal_sent', 'negotiation', 'converted', 'active', 'renewed', 'lost', 'archived'],
   educators: ['new', 'demo_scheduled', 'demo_completed', 'onboarding', 'onboarded', 'active', 'archived'],
 };
 
 const AGE_GROUPS = ['6-8 years', '9-12 years', '13-16 years', '17+ years'];
-const BOARDS = ['CBSE', 'ICSE', 'IGCSE', 'State Board', 'IB'];
 const SKILLS = ['Robotics', 'Coding', 'AI', 'Entrepreneurship', 'Financial Literacy'];
 const CITIES = ['Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 'Pune', 'Ahmedabad'];
+const FEE_RANGES = ['Under 50k', '50k-1L', '1L-2L', '2L-5L', 'Above 5L'];
+const STUDENT_COUNTS = ['Under 500', '500-1000', '1000-2000', '2000-5000', 'Above 5000'];
+const AVAILABILITY = ['Full Time', 'Part Time', 'Weekends Only', 'Evenings Only'];
 
 const StatusBadge = ({ status }) => {
   const colors = {
@@ -35,6 +37,8 @@ const StatusBadge = ({ status }) => {
     meeting_done: 'bg-indigo-100 text-indigo-700',
     converted: 'bg-green-100 text-green-700',
     active: 'bg-green-100 text-green-700',
+    renewed: 'bg-emerald-100 text-emerald-700',
+    lost: 'bg-red-100 text-red-700',
     onboarded: 'bg-green-100 text-green-700',
     onboarding: 'bg-orange-100 text-orange-700',
     archived: 'bg-slate-100 text-slate-700',
@@ -48,68 +52,19 @@ const StatusBadge = ({ status }) => {
   );
 };
 
-const DataCard = ({ item, type, onClick }) => {
-  const getIcon = () => {
-    if (type === 'student') return <Users className="w-5 h-5 text-blue-500" />;
-    if (type === 'school') return <Building2 className="w-5 h-5 text-purple-500" />;
-    return <GraduationCap className="w-5 h-5 text-orange-500" />;
+const TypeBadge = ({ type }) => {
+  const config = {
+    student: { bg: 'bg-blue-50', text: 'text-blue-700', icon: Users },
+    school: { bg: 'bg-purple-50', text: 'text-purple-700', icon: Building2 },
+    educator: { bg: 'bg-orange-50', text: 'text-orange-700', icon: GraduationCap },
   };
-
-  const getName = () => {
-    if (type === 'school') return item.school_name || item.contact_name;
-    return item.name;
-  };
-
+  const { bg, text, icon: Icon } = config[type] || config.student;
+  
   return (
-    <div 
-      className="bg-white rounded-xl border border-slate-100 p-4 hover:shadow-md transition-shadow cursor-pointer"
-      onClick={onClick}
-    >
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
-            {getIcon()}
-          </div>
-          <div>
-            <p className="font-medium text-[#1E3A5F]">{getName()}</p>
-            <p className="text-xs text-slate-500 capitalize">{type}</p>
-          </div>
-        </div>
-        <StatusBadge status={item.status} />
-      </div>
-      
-      <div className="space-y-1 text-sm">
-        {item.phone && (
-          <div className="flex items-center gap-2 text-slate-600">
-            <Phone className="w-3 h-3" />
-            <span>{item.phone}</span>
-          </div>
-        )}
-        {item.email && (
-          <div className="flex items-center gap-2 text-slate-600">
-            <Mail className="w-3 h-3" />
-            <span className="truncate">{item.email}</span>
-          </div>
-        )}
-        {(item.city || item.location) && (
-          <div className="flex items-center gap-2 text-slate-600">
-            <MapPin className="w-3 h-3" />
-            <span>{item.city || item.location}</span>
-          </div>
-        )}
-      </div>
-      
-      {item.skill && (
-        <div className="mt-2 pt-2 border-t border-slate-50">
-          <span className="text-xs px-2 py-1 bg-blue-50 text-blue-700 rounded">{item.skill}</span>
-        </div>
-      )}
-      {item.board && (
-        <div className="mt-2 pt-2 border-t border-slate-50">
-          <span className="text-xs px-2 py-1 bg-purple-50 text-purple-700 rounded">{item.board}</span>
-        </div>
-      )}
-    </div>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${bg} ${text}`}>
+      <Icon className="w-3 h-3" />
+      {type}
+    </span>
   );
 };
 
@@ -121,8 +76,10 @@ const AdminDataCenter = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [cityFilter, setCityFilter] = useState('');
   const [ageFilter, setAgeFilter] = useState('');
-  const [boardFilter, setBoardFilter] = useState('');
   const [skillFilter, setSkillFilter] = useState('');
+  const [feeRangeFilter, setFeeRangeFilter] = useState('');
+  const [studentCountFilter, setStudentCountFilter] = useState('');
+  const [availabilityFilter, setAvailabilityFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   
   const [results, setResults] = useState({ students: [], schools: [], educators: [], total: 0 });
@@ -137,9 +94,11 @@ const AdminDataCenter = () => {
       if (dataType !== 'all') params.append('data_type', dataType);
       if (statusFilter) params.append('status', statusFilter);
       if (cityFilter) params.append('city', cityFilter);
-      if (ageFilter) params.append('age_group', ageFilter);
-      if (boardFilter) params.append('board', boardFilter);
+      if (ageFilter && dataType === 'students') params.append('age_group', ageFilter);
       if (skillFilter) params.append('skill', skillFilter);
+      if (feeRangeFilter && dataType === 'schools') params.append('fee_range', feeRangeFilter);
+      if (studentCountFilter && dataType === 'schools') params.append('student_count', studentCountFilter);
+      if (availabilityFilter && dataType === 'educators') params.append('availability', availabilityFilter);
       
       const response = await axios.get(`${API}/data-center/search?${params.toString()}`, {
         headers: getAuthHeaders()
@@ -173,7 +132,7 @@ const AdminDataCenter = () => {
       fetchData();
     }, 300);
     return () => clearTimeout(debounce);
-  }, [searchQuery, dataType, statusFilter, cityFilter, ageFilter, boardFilter, skillFilter]);
+  }, [searchQuery, dataType, statusFilter, cityFilter, ageFilter, skillFilter, feeRangeFilter, studentCountFilter, availabilityFilter]);
 
   const clearFilters = () => {
     setSearchQuery('');
@@ -181,27 +140,30 @@ const AdminDataCenter = () => {
     setStatusFilter('');
     setCityFilter('');
     setAgeFilter('');
-    setBoardFilter('');
     setSkillFilter('');
+    setFeeRangeFilter('');
+    setStudentCountFilter('');
+    setAvailabilityFilter('');
   };
 
-  const hasActiveFilters = statusFilter || cityFilter || ageFilter || boardFilter || skillFilter;
+  const hasActiveFilters = statusFilter || cityFilter || ageFilter || skillFilter || feeRangeFilter || studentCountFilter || availabilityFilter;
+
+  // Combine all results into a single list
+  const allItems = [
+    ...results.students.map(s => ({ ...s, _type: 'student' })),
+    ...results.schools.map(s => ({ ...s, _type: 'school' })),
+    ...results.educators.map(e => ({ ...e, _type: 'educator' })),
+  ].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
   const exportToCSV = () => {
-    const allData = [
-      ...results.students.map(s => ({ ...s, type: 'student' })),
-      ...results.schools.map(s => ({ ...s, type: 'school' })),
-      ...results.educators.map(e => ({ ...e, type: 'educator' })),
-    ];
-    
-    if (allData.length === 0) {
+    if (allItems.length === 0) {
       toast.error('No data to export');
       return;
     }
     
     const headers = ['Type', 'Name', 'Phone', 'Email', 'City', 'Status', 'Created At'];
-    const rows = allData.map(item => [
-      item.type,
+    const rows = allItems.map(item => [
+      item._type,
       item.name || item.school_name || item.contact_name,
       item.phone,
       item.email,
@@ -218,6 +180,11 @@ const AdminDataCenter = () => {
     a.download = `data-center-export-${format(new Date(), 'yyyy-MM-dd')}.csv`;
     a.click();
     toast.success('Data exported successfully');
+  };
+
+  const getName = (item) => {
+    if (item._type === 'school') return item.school_name || item.contact_name;
+    return item.name;
   };
 
   return (
@@ -292,22 +259,17 @@ const AdminDataCenter = () => {
             />
           </div>
           
-          {/* Data Type Tabs */}
-          <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
-            {['all', 'students', 'schools', 'educators'].map(type => (
-              <button
-                key={type}
-                onClick={() => setDataType(type)}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  dataType === type
-                    ? 'bg-white text-[#1E3A5F] shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                {type === 'all' ? 'All' : type.charAt(0).toUpperCase() + type.slice(1)}
-              </button>
-            ))}
-          </div>
+          {/* Data Type Filter */}
+          <select
+            value={dataType}
+            onChange={(e) => setDataType(e.target.value)}
+            className="h-10 px-4 border border-slate-200 rounded-lg bg-white text-sm font-medium"
+          >
+            <option value="all">All Types</option>
+            <option value="students">Students</option>
+            <option value="schools">Schools</option>
+            <option value="educators">Educators</option>
+          </select>
           
           <Button
             variant="outline"
@@ -355,7 +317,8 @@ const AdminDataCenter = () => {
                 ))}
               </select>
               
-              {dataType !== 'schools' && (
+              {/* Age filter - ONLY for students */}
+              {dataType === 'students' && (
                 <select
                   value={ageFilter}
                   onChange={(e) => setAgeFilter(e.target.value)}
@@ -368,29 +331,61 @@ const AdminDataCenter = () => {
                 </select>
               )}
               
-              {dataType !== 'educators' && (
+              {/* Fee Range filter - ONLY for schools */}
+              {dataType === 'schools' && (
                 <select
-                  value={boardFilter}
-                  onChange={(e) => setBoardFilter(e.target.value)}
+                  value={feeRangeFilter}
+                  onChange={(e) => setFeeRangeFilter(e.target.value)}
                   className="h-10 px-3 border border-slate-200 rounded-lg bg-white text-sm"
                 >
-                  <option value="">All Boards</option>
-                  {BOARDS.map(b => (
-                    <option key={b} value={b}>{b}</option>
+                  <option value="">All Fee Ranges</option>
+                  {FEE_RANGES.map(f => (
+                    <option key={f} value={f}>{f}</option>
                   ))}
                 </select>
               )}
               
-              <select
-                value={skillFilter}
-                onChange={(e) => setSkillFilter(e.target.value)}
-                className="h-10 px-3 border border-slate-200 rounded-lg bg-white text-sm"
-              >
-                <option value="">All Skills</option>
-                {SKILLS.map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
+              {/* Student Count filter - ONLY for schools */}
+              {dataType === 'schools' && (
+                <select
+                  value={studentCountFilter}
+                  onChange={(e) => setStudentCountFilter(e.target.value)}
+                  className="h-10 px-3 border border-slate-200 rounded-lg bg-white text-sm"
+                >
+                  <option value="">All Student Counts</option>
+                  {STUDENT_COUNTS.map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              )}
+              
+              {/* Availability filter - ONLY for educators */}
+              {dataType === 'educators' && (
+                <select
+                  value={availabilityFilter}
+                  onChange={(e) => setAvailabilityFilter(e.target.value)}
+                  className="h-10 px-3 border border-slate-200 rounded-lg bg-white text-sm"
+                >
+                  <option value="">All Availability</option>
+                  {AVAILABILITY.map(a => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+                </select>
+              )}
+              
+              {/* Skill filter - for students and educators */}
+              {(dataType === 'students' || dataType === 'educators' || dataType === 'all') && (
+                <select
+                  value={skillFilter}
+                  onChange={(e) => setSkillFilter(e.target.value)}
+                  className="h-10 px-3 border border-slate-200 rounded-lg bg-white text-sm"
+                >
+                  <option value="">All Skills</option>
+                  {SKILLS.map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              )}
               
               {hasActiveFilters && (
                 <Button variant="ghost" size="sm" onClick={clearFilters} className="text-slate-500">
@@ -403,7 +398,7 @@ const AdminDataCenter = () => {
         )}
       </div>
 
-      {/* Results */}
+      {/* Results - Unified List */}
       {loading ? (
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D63031] mx-auto"></div>
@@ -416,58 +411,60 @@ const AdminDataCenter = () => {
             {searchQuery && ` for "${searchQuery}"`}
           </p>
           
-          {results.total === 0 ? (
+          {allItems.length === 0 ? (
             <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">
               <Database className="w-12 h-12 text-slate-300 mx-auto mb-4" />
               <p className="text-slate-500">No results found</p>
               <p className="text-sm text-slate-400 mt-1">Try adjusting your search or filters</p>
             </div>
           ) : (
-            <div className="space-y-6">
-              {/* Students */}
-              {results.students.length > 0 && (
-                <div>
-                  <h3 className="font-semibold text-[#1E3A5F] mb-3 flex items-center gap-2">
-                    <Users className="w-5 h-5 text-blue-500" />
-                    Students ({results.students.length})
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {results.students.map(item => (
-                      <DataCard key={item.id} item={item} type="student" onClick={() => setViewItem({ ...item, _type: 'student' })} />
-                    ))}
-                  </div>
-                </div>
-              )}
+            <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+              {/* Table Header */}
+              <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase">
+                <div className="col-span-1">Type</div>
+                <div className="col-span-3">Name</div>
+                <div className="col-span-2">Phone</div>
+                <div className="col-span-2">City</div>
+                <div className="col-span-2">Status</div>
+                <div className="col-span-1">Date</div>
+                <div className="col-span-1">Action</div>
+              </div>
               
-              {/* Schools */}
-              {results.schools.length > 0 && (
-                <div>
-                  <h3 className="font-semibold text-[#1E3A5F] mb-3 flex items-center gap-2">
-                    <Building2 className="w-5 h-5 text-purple-500" />
-                    Schools ({results.schools.length})
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {results.schools.map(item => (
-                      <DataCard key={item.id} item={item} type="school" onClick={() => setViewItem({ ...item, _type: 'school' })} />
-                    ))}
+              {/* Table Body */}
+              <div className="divide-y divide-slate-100">
+                {allItems.map((item, idx) => (
+                  <div 
+                    key={`${item._type}-${item.id || idx}`} 
+                    className="grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="col-span-1">
+                      <TypeBadge type={item._type} />
+                    </div>
+                    <div className="col-span-3">
+                      <p className="font-medium text-slate-900 truncate">{getName(item)}</p>
+                      {item.email && <p className="text-xs text-slate-500 truncate">{item.email}</p>}
+                    </div>
+                    <div className="col-span-2 text-sm text-slate-600">{item.phone}</div>
+                    <div className="col-span-2 text-sm text-slate-600">{item.city || item.location || '-'}</div>
+                    <div className="col-span-2">
+                      <StatusBadge status={item.status} />
+                    </div>
+                    <div className="col-span-1 text-xs text-slate-500">
+                      {item.created_at ? format(new Date(item.created_at), 'MMM d') : '-'}
+                    </div>
+                    <div className="col-span-1">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => setViewItem(item)}
+                        className="p-2"
+                      >
+                        <Eye className="w-4 h-4 text-slate-500" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              )}
-              
-              {/* Educators */}
-              {results.educators.length > 0 && (
-                <div>
-                  <h3 className="font-semibold text-[#1E3A5F] mb-3 flex items-center gap-2">
-                    <GraduationCap className="w-5 h-5 text-orange-500" />
-                    Educators ({results.educators.length})
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {results.educators.map(item => (
-                      <DataCard key={item.id} item={item} type="educator" onClick={() => setViewItem({ ...item, _type: 'educator' })} />
-                    ))}
-                  </div>
-                </div>
-              )}
+                ))}
+              </div>
             </div>
           )}
         </>
@@ -493,10 +490,11 @@ const AdminDataCenter = () => {
                   {viewItem._type === 'educator' && <GraduationCap className="w-8 h-8 text-orange-500" />}
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold text-[#1E3A5F]">
-                    {viewItem.name || viewItem.school_name || viewItem.contact_name}
-                  </h3>
-                  <StatusBadge status={viewItem.status} />
+                  <h3 className="text-xl font-semibold text-[#1E3A5F]">{getName(viewItem)}</h3>
+                  <div className="flex items-center gap-2 mt-1">
+                    <TypeBadge type={viewItem._type} />
+                    <StatusBadge status={viewItem.status} />
+                  </div>
                 </div>
               </div>
               
