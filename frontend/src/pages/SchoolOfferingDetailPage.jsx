@@ -601,10 +601,10 @@ Track 3: App Development (advanced)
 };
 
 const CATEGORY_INFO = {
-  'robotics': { icon: Cpu, color: '#D63031', gradient: 'from-red-500 to-orange-500', title: 'Robotics' },
-  'financial-literacy': { icon: TrendingUp, color: '#10B981', gradient: 'from-green-500 to-teal-500', title: 'Financial Literacy & Entrepreneurship' },
-  'ai': { icon: Brain, color: '#8B5CF6', gradient: 'from-purple-600 to-pink-500', title: 'AI & Machine Learning' },
-  'coding': { icon: Code, color: '#1E3A5F', gradient: 'from-blue-600 to-cyan-500', title: 'Coding & Programming' },
+  'robotics': { icon: Cpu, color: '#D63031', gradient: 'from-[#D63031] to-[#e84142]', title: 'Robotics' },
+  'financial-literacy': { icon: TrendingUp, color: '#1E3A5F', gradient: 'from-[#1E3A5F] to-[#2C5282]', title: 'Financial Literacy & Entrepreneurship' },
+  'ai': { icon: Brain, color: '#D63031', gradient: 'from-[#D63031] to-[#1E3A5F]', title: 'AI & Machine Learning' },
+  'coding': { icon: Code, color: '#1E3A5F', gradient: 'from-[#1E3A5F] to-[#2C5282]', title: 'Coding & Programming' },
 };
 
 const SchoolOfferingDetailPage = () => {
