@@ -4230,30 +4230,39 @@ async def assign_support_query(query_id: str, data: dict, user: dict = Depends(g
         # Send WhatsApp notification
         if assignee_phone:
             try:
-                await send_whatsapp_message(
+                await send_whatsapp_notification(
                     assignee_phone,
                     "ticket_assigned",
-                    params=[assignee_name, query_type, query_details, deadline_str]
+                    params=[assignee_name, query_type, query_details, deadline_str],
+                    user_name=assignee_name
                 )
             except Exception as e:
                 print(f"Failed to send WhatsApp: {e}")
         
-        # Send Email notification
-        if assignee_email:
+        # Send Email notification using resend
+        if assignee_email and resend.api_key:
             try:
-                await send_email(
-                    to_email=assignee_email,
-                    subject=f"New Support Ticket Assigned - {query_type}",
-                    template_name="ticket_assigned",
-                    context={
-                        "assignee_name": assignee_name,
-                        "query_type": query_type,
-                        "query_details": query_details,
-                        "deadline": deadline_str,
-                        "customer_name": query.get("name", "Customer"),
-                        "customer_phone": query.get("phone", "N/A")
-                    }
-                )
+                email_params = {
+                    "from": SENDER_EMAIL,
+                    "to": [assignee_email],
+                    "subject": f"New Support Ticket Assigned - {query_type}",
+                    "html": f"""
+                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                        <h2 style="color: #1E3A5F;">New Support Ticket Assigned</h2>
+                        <p>Hi {assignee_name},</p>
+                        <p>A new support ticket has been assigned to you:</p>
+                        <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                            <p><strong>Type:</strong> {query_type}</p>
+                            <p><strong>Details:</strong> {query_details}...</p>
+                            <p><strong>Customer:</strong> {query.get("name", "Customer")} ({query.get("phone", "N/A")})</p>
+                            <p><strong>Deadline:</strong> {deadline_str}</p>
+                        </div>
+                        <p>Please resolve this ticket before the deadline.</p>
+                        <p>Best regards,<br>OLL Team</p>
+                    </div>
+                    """
+                }
+                await asyncio.to_thread(resend.Emails.send, email_params)
             except Exception as e:
                 print(f"Failed to send email: {e}")
     
