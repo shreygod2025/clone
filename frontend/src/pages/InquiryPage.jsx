@@ -181,7 +181,7 @@ const InquiryPage = () => {
     fetchCenters();
   }, [formData.city, formData.learning_mode]);
 
-  // Autocomplete search for existing records
+  // Autocomplete search for existing records (PUBLIC endpoint - no auth needed)
   const searchAutocomplete = async (query, field) => {
     if (!query || query.length < 3) {
       setAutocompleteSuggestions([]);
@@ -196,7 +196,8 @@ const InquiryPage = () => {
       else if (formData.inquiry_type === 'teacher') dataType = 'educators';
       
       const typeParam = dataType ? `&data_type=${dataType}` : '';
-      const response = await axios.get(`${API}/data-center/autocomplete?q=${encodeURIComponent(query)}${typeParam}`);
+      // Use PUBLIC endpoint (no auth required)
+      const response = await axios.get(`${API}/public/autocomplete?q=${encodeURIComponent(query)}${typeParam}`);
       setAutocompleteSuggestions(response.data || []);
       setAutocompleteField(field);
       setShowAutocomplete(response.data && response.data.length > 0);
