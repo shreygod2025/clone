@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, ArrowRight, Check, Building2, Users, Award, Clock, Calendar, Send, BookOpen, Cog, Trophy, GraduationCap, Lightbulb, Target, ChevronRight, Play, Star, Phone } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -704,6 +705,10 @@ const SchoolFunnel = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <Helmet>
+        <title>School Partnership | OLL - Skill Education Programs for Schools</title>
+        <meta name="description" content="Partner with OLL to bring Robotics, Coding, AI, and STEM labs to your school. Curriculum support, teacher training, and competitions. Schedule a free meeting today." />
+      </Helmet>
       <Navbar />
 
       {/* Main Content */}

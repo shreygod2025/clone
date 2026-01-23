@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, ArrowRight, Check, Briefcase, MapPin, Clock, Users, HelpCircle, Send, Calendar, IndianRupee, X, Shield, Video, Home, Building2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -476,6 +477,10 @@ const EducatorFunnel = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <Helmet>
+        <title>Become an Educator | OLL - Teach Robotics, Coding & AI</title>
+        <meta name="description" content="Join OLL as an educator and teach Robotics, Coding, AI, and more. Flexible hours, competitive pay, and the opportunity to shape young minds across India." />
+      </Helmet>
       <Navbar />
 
       {/* Main Content */}

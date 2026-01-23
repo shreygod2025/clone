@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, ArrowRight, Check, Calendar, Clock, BookOpen, MapPin, HelpCircle, MessageCircle, Building2, Home, Phone, Shield, Eye } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -1106,6 +1107,10 @@ const StudentFunnel = () => {
   // Learning Flow
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col">
+      <Helmet>
+        <title>Book a Free Demo | OLL - Robotics, Coding & AI Classes for Kids</title>
+        <meta name="description" content="Book a free demo class for Robotics, Coding, AI, Entrepreneurship or Financial Literacy. Expert tutors, flexible timings, online or at our centers across India." />
+      </Helmet>
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-slate-200/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
