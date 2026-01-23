@@ -67,6 +67,18 @@ const AdminEducators = () => {
     pay_amount: '', pay_type: 'per_session', is_active: true
   });
   
+  // Add Single Educator state
+  const [showAddEducatorModal, setShowAddEducatorModal] = useState(false);
+  const [addEducatorForm, setAddEducatorForm] = useState({
+    name: '', email: '', phone: '', skills: [], city: '', experience: ''
+  });
+  
+  // Bulk Import state
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false);
+  const [bulkImportFile, setBulkImportFile] = useState(null);
+  const [bulkImportPreview, setBulkImportPreview] = useState([]);
+  const [bulkImportLoading, setBulkImportLoading] = useState(false);
+  
   // Modal states
   const [viewEducator, setViewEducator] = useState(null);
   const [showScheduleModal, setShowScheduleModal] = useState(null);
