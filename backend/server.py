@@ -2752,7 +2752,8 @@ async def add_active_educator(data: dict, user: dict = Depends(get_current_user)
     }
     
     await db.educator_applications.insert_one(educator)
-    del educator["_id"] if "_id" in educator else None
+    if "_id" in educator:
+        del educator["_id"]
     
     return {"message": "Educator added successfully", "educator": educator}
 
