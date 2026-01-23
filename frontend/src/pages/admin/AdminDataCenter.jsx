@@ -158,6 +158,8 @@ const AdminDataCenter = () => {
     ...results.students.map(s => ({ ...s, _type: 'student' })),
     ...results.schools.map(s => ({ ...s, _type: 'school' })),
     ...results.educators.map(e => ({ ...e, _type: 'educator' })),
+    ...(results.team || []).map(t => ({ ...t, _type: 'team' })),
+    ...(results.growth_partners || []).map(g => ({ ...g, _type: 'growth_partner' })),
   ].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
   const exportToCSV = () => {
