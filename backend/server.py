@@ -4890,6 +4890,71 @@ async def autocomplete_search(
     
     return results[:10]
 
+# Public autocomplete endpoint (no auth required) for /add page
+@api_router.get("/public/autocomplete")
+async def public_autocomplete_search(
+    q: str,
+    data_type: Optional[str] = None
+):
+    """Public autocomplete for /add page - search by name, phone, or email"""
+    if len(q) < 3:
+        return []
+    
+    search_regex = {"$regex": q, "$options": "i"}
+    results = []
+    
+    # Search students
+    if data_type in [None, "students"]:
+        students = await db.student_inquiries.find(
+            {"$or": [{"name": search_regex}, {"phone": search_regex}, {"email": search_regex}]},
+            {"_id": 0, "name": 1, "phone": 1, "email": 1, "city": 1, "age_group": 1, "skill": 1, "learning_mode": 1}
+        ).limit(5).to_list(5)
+        for s in students:
+            s["type"] = "student"
+            results.append(s)
+    
+    # Search schools
+    if data_type in [None, "schools"]:
+        schools = await db.school_inquiries.find(
+            {"$or": [{"school_name": search_regex}, {"contact_name": search_regex}, {"phone": search_regex}, {"email": search_regex}]},
+            {"_id": 0, "school_name": 1, "contact_name": 1, "phone": 1, "email": 1, "location": 1, "board": 1, "student_count": 1}
+        ).limit(5).to_list(5)
+        for s in schools:
+            s["type"] = "school"
+            s["name"] = s.get("school_name") or s.get("contact_name")
+            results.append(s)
+    
+    # Search educators
+    if data_type in [None, "educators"]:
+        educators = await db.educator_applications.find(
+            {"$or": [{"name": search_regex}, {"phone": search_regex}, {"email": search_regex}]},
+            {"_id": 0, "name": 1, "phone": 1, "email": 1, "city": 1, "skills": 1}
+        ).limit(5).to_list(5)
+        for e in educators:
+            e["type"] = "educator"
+            results.append(e)
+    
+    return results[:10]
+
+# School Offerings endpoint
+@api_router.get("/school-offerings")
+async def get_school_offerings():
+    """Get all school offerings for selection"""
+    offerings = await db.school_offerings.find({}, {"_id": 0}).to_list(100)
+    if not offerings:
+        # Return default offerings if none exist
+        return [
+            {"id": "robotics_lab", "title": "Robotics Lab Setup", "category": "lab"},
+            {"id": "stem_curriculum", "title": "STEM Curriculum Integration", "category": "curriculum"},
+            {"id": "after_school", "title": "After School Program", "category": "program"},
+            {"id": "teacher_training", "title": "Teacher Training Program", "category": "training"},
+            {"id": "coding_lab", "title": "Coding Lab Setup", "category": "lab"},
+            {"id": "ai_program", "title": "AI & Robotics Program", "category": "program"},
+            {"id": "entrepreneurship", "title": "Entrepreneurship Program", "category": "program"},
+            {"id": "full_partnership", "title": "Full School Partnership", "category": "partnership"},
+        ]
+    return offerings
+
 # ========================
 # ABOUT PAGE ENDPOINTS
 # ========================
