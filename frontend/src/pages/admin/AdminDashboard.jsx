@@ -25,6 +25,7 @@ const AdminLayout = ({ children, title }) => {
     { path: '/admin/growth-partners', icon: Briefcase, label: 'Growth Partners', permission: 'growth_partners' },
     { path: '/admin/team-applications', icon: FileText, label: 'Team Applications', permission: 'team_applications' },
     { path: '/admin/support', icon: MessageSquare, label: 'Support Center', permission: 'support' },
+    { path: '/admin/blogs', icon: PenSquare, label: 'Blogs', permission: 'admin_only' },
     { path: '/admin/reports', icon: BarChart3, label: 'Reports', permission: 'admin_only' },
     { path: '/admin/data-center', icon: Database, label: 'Data Center', permission: 'admin_only' },
     { path: '/admin/users', icon: Users, label: 'Users & Roles', permission: 'admin_only' },
