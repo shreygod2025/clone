@@ -459,6 +459,12 @@ const SchoolOfferingsPage = () => {
           </div>
         </section>
 
+        {/* School Case Studies */}
+        <SchoolCaseStudies 
+          title="Success Stories from Our Partner Schools" 
+          subtitle="Watch testimonials from principals and educators"
+        />
+
         <Footer />
       </div>
     </>
