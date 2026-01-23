@@ -181,20 +181,21 @@ const AdminSupportUnified = () => {
     }
   };
 
+  const [assignDeadline, setAssignDeadline] = useState('');
+
   const handleAssignQuery = async (userId) => {
     if (!showAssignModal) return;
     try {
-      if (showAssignModal._source === 'inquiry') {
-        await axios.patch(`${API}/inquiry/queries/${showAssignModal.id}`, { assigned_to: userId }, {
-          headers: getAuthHeaders()
-        });
-      } else if (showAssignModal._source === 'user_support') {
-        await axios.patch(`${API}/support/queries/${showAssignModal.id}`, { assigned_to: userId }, {
-          headers: getAuthHeaders()
-        });
-      }
-      toast.success('Query assigned successfully');
+      // Use the new assign endpoint with deadline and notifications
+      await axios.post(`${API}/support/queries/${showAssignModal.id}/assign`, {
+        assigned_to: userId,
+        deadline: assignDeadline || null
+      }, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Query assigned and notifications sent');
       setShowAssignModal(null);
+      setAssignDeadline('');
       fetchAllQueries();
     } catch (error) {
       toast.error('Failed to assign query');
