@@ -179,6 +179,10 @@ const JoinTeamPage = () => {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <Helmet>
+        <title>Careers at OLL | Join India's Leading Skill Education Team</title>
+        <meta name="description" content="Join OLL's mission to empower India's youth with future-ready skills. Explore career opportunities in education, technology, sales, and operations across India." />
+      </Helmet>
       {/* Header with Logo */}
       <header className="bg-white border-b border-slate-200 py-4 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 flex items-center justify-between">

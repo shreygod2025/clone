@@ -135,6 +135,10 @@ const FAQPage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <Helmet>
+        <title>FAQ - OLL | Robotics, Coding & AI Classes for Kids</title>
+        <meta name="description" content="Find answers to frequently asked questions about OLL's skill education programs. Learn about course fees, demo sessions, age groups, online vs offline classes, and more." />
+      </Helmet>
       <Navbar showBookDemo onBookDemo={() => window.location.href = '/student'} />
 
       {/* Main Content */}
