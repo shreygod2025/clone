@@ -1714,48 +1714,68 @@ const AdminStudentCRM = () => {
           </DialogHeader>
           
           <div className="space-y-4">
-            {/* Payment Receipt Upload - MANDATORY */}
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-              <label className="text-sm font-medium text-yellow-800 flex items-center gap-2">
-                <Upload className="w-4 h-4" />
-                Payment Receipt (Mandatory) *
-              </label>
-              <div className="mt-2">
-                {onboardData.payment_receipt_url ? (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-green-700 flex items-center gap-1">
-                      <CheckCircle2 className="w-4 h-4" />
-                      Receipt uploaded
-                    </span>
-                    <a 
-                      href={onboardData.payment_receipt_url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-xs text-blue-600 underline"
-                    >
-                      View
-                    </a>
-                    <button 
-                      onClick={() => setOnboardData(prev => ({ ...prev, payment_receipt_url: '' }))}
-                      className="text-xs text-red-600 underline"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Input
-                      type="file"
-                      accept="image/*,.pdf"
-                      onChange={(e) => handleReceiptUpload(e.target.files[0])}
-                      className="text-sm"
-                      disabled={uploadingReceipt}
-                    />
-                    {uploadingReceipt && (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600"></div>
-                    )}
-                  </div>
-                )}
+            {/* Payment Amount & Receipt - MANDATORY */}
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-3">
+              {/* Amount Field */}
+              <div>
+                <label className="text-sm font-medium text-yellow-800 flex items-center gap-2">
+                  Amount (₹) *
+                </label>
+                <div className="mt-1">
+                  <Input
+                    type="number"
+                    placeholder="Enter payment amount"
+                    value={onboardData.amount}
+                    onChange={(e) => setOnboardData(prev => ({ ...prev, amount: e.target.value }))}
+                    className="bg-white"
+                    data-testid="onboard-amount"
+                  />
+                </div>
+              </div>
+              
+              {/* Receipt Upload */}
+              <div>
+                <label className="text-sm font-medium text-yellow-800 flex items-center gap-2">
+                  <Upload className="w-4 h-4" />
+                  Payment Receipt (Mandatory) *
+                </label>
+                <div className="mt-2">
+                  {onboardData.payment_receipt_url ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-green-700 flex items-center gap-1">
+                        <CheckCircle2 className="w-4 h-4" />
+                        Receipt uploaded
+                      </span>
+                      <a 
+                        href={onboardData.payment_receipt_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-600 underline"
+                      >
+                        View
+                      </a>
+                      <button 
+                        onClick={() => setOnboardData(prev => ({ ...prev, payment_receipt_url: '' }))}
+                        className="text-xs text-red-600 underline"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="file"
+                        accept="image/*,.pdf"
+                        onChange={(e) => handleReceiptUpload(e.target.files[0])}
+                        className="text-sm"
+                        disabled={uploadingReceipt}
+                      />
+                      {uploadingReceipt && (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600"></div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
