@@ -181,6 +181,54 @@ const InquiryPage = () => {
     fetchCenters();
   }, [formData.city, formData.learning_mode]);
 
+  // Autocomplete search for existing records
+  const searchAutocomplete = async (query, field) => {
+    if (!query || query.length < 3) {
+      setAutocompleteSuggestions([]);
+      setShowAutocomplete(false);
+      return;
+    }
+    try {
+      // Determine data_type based on inquiry_type
+      let dataType = null;
+      if (formData.inquiry_type === 'student') dataType = 'students';
+      else if (formData.inquiry_type === 'school') dataType = 'schools';
+      else if (formData.inquiry_type === 'teacher') dataType = 'educators';
+      
+      const typeParam = dataType ? `&data_type=${dataType}` : '';
+      const response = await axios.get(`${API}/data-center/autocomplete?q=${encodeURIComponent(query)}${typeParam}`);
+      setAutocompleteSuggestions(response.data || []);
+      setAutocompleteField(field);
+      setShowAutocomplete(response.data && response.data.length > 0);
+    } catch (error) {
+      console.error('Autocomplete error:', error);
+    }
+  };
+
+  const handleAutocompleteFill = (suggestion) => {
+    const updates = {
+      name: suggestion.name || suggestion.school_name || '',
+      phone: suggestion.phone || '',
+      email: suggestion.email || '',
+      city: suggestion.city || suggestion.location || '',
+    };
+    
+    // Add type-specific fields
+    if (suggestion.type === 'student') {
+      updates.age_group = suggestion.age_group || '';
+      updates.skill = suggestion.skill || '';
+      updates.learning_mode = suggestion.learning_mode || '';
+    } else if (suggestion.type === 'school') {
+      updates.school_name = suggestion.school_name || '';
+      updates.school_size = suggestion.student_count || '';
+      updates.board = suggestion.board || '';
+    }
+    
+    setFormData(prev => ({ ...prev, ...updates }));
+    setShowAutocomplete(false);
+    toast.info('Form auto-filled from existing record');
+  };
+
   const updateForm = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
