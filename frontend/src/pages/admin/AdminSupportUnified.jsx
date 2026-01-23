@@ -67,6 +67,11 @@ const AdminSupportUnified = () => {
   const [newTicket, setNewTicket] = useState({
     name: '', phone: '', email: '', query_type: 'other', inquiry_type: 'student', message: '', priority: 'normal'
   });
+  
+  // Autocomplete states
+  const [autocompleteSuggestions, setAutocompleteSuggestions] = useState([]);
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const [autocompleteField, setAutocompleteField] = useState('');
 
   useEffect(() => {
     fetchAllQueries();
