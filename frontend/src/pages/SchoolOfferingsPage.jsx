@@ -130,8 +130,9 @@ const SchoolOfferingsPage = () => {
   return (
     <>
       <Helmet>
-        <title>School Programs | OLL - Skill Education for Schools</title>
-        <meta name="description" content="Partner with OLL for comprehensive skill education programs in your school. Robotics labs, coding curriculum, AI training, and more." />
+        <title>School Programs | OLL - Robotics & AI for Schools</title>
+        <meta name="description" content="Partner with OLL for skill education in your school. Robotics labs, coding curriculum, AI training, competitions & more." />
+        <link rel="canonical" href="https://oll.co/school-offerings" />
       </Helmet>
 
       <div className="min-h-screen bg-slate-50">
@@ -142,8 +143,12 @@ const SchoolOfferingsPage = () => {
               <Link to="/" className="flex items-center gap-2">
                 <img 
                   src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png" 
-                  alt="OLL" 
-                  className="h-10"
+                  alt="OLL Logo - Skill Education Platform"
+                  title="OLL - School Programs"
+                  loading="eager"
+                  width="120"
+                  height="40"
+                  className="h-10 w-auto"
                 />
               </Link>
               
