@@ -87,7 +87,7 @@ const AdminDataCenter = () => {
   const [availabilityFilter, setAvailabilityFilter] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   
-  const [results, setResults] = useState({ students: [], schools: [], educators: [], total: 0 });
+  const [results, setResults] = useState({ students: [], schools: [], educators: [], team: [], growth_partners: [], total: 0 });
   const [stats, setStats] = useState(null);
   const [viewItem, setViewItem] = useState(null);
 
