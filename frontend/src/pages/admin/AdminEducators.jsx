@@ -1024,7 +1024,19 @@ const AdminEducators = () => {
       ) : filteredEducators.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">
           <User className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-          <p className="text-slate-500">No applications in this section</p>
+          <p className="text-slate-500">
+            {requirementFilter 
+              ? `No applicants found for "${requirements.find(r => r.id === requirementFilter)?.title || 'this requirement'}"`
+              : 'No applications in this section'}
+          </p>
+          {requirementFilter && (
+            <button 
+              onClick={() => setRequirementFilter(null)}
+              className="mt-3 text-sm text-[#D63031] hover:underline"
+            >
+              Clear filter to see all applicants
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
