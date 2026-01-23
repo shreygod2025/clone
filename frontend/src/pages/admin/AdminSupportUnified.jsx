@@ -537,19 +537,6 @@ const AdminSupportUnified = () => {
                 </div>
               )}
               
-              {/* Deadline Input */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">Resolution Deadline</label>
-                <Input
-                  type="datetime-local"
-                  value={assignDeadline}
-                  onChange={(e) => setAssignDeadline(e.target.value)}
-                  className="w-full"
-                  min={new Date().toISOString().slice(0, 16)}
-                />
-                <p className="text-xs text-slate-500">The assignee will receive email & WhatsApp notification with this deadline</p>
-              </div>
-              
               <div className="space-y-2">
                 <p className="text-sm font-medium text-slate-700">Select Team Member</p>
                 {teamUsers.length === 0 ? (
@@ -581,6 +568,22 @@ const AdminSupportUnified = () => {
                   </div>
                 )}
               </div>
+              
+              {/* Optional Deadline - Collapsible */}
+              <details className="border rounded-lg p-3">
+                <summary className="text-sm font-medium text-slate-600 cursor-pointer">+ Add deadline (optional)</summary>
+                <div className="mt-3 space-y-2">
+                  <Input
+                    type="datetime-local"
+                    value={assignDeadline}
+                    onChange={(e) => setAssignDeadline(e.target.value)}
+                    className="w-full"
+                    min={new Date().toISOString().slice(0, 16)}
+                  />
+                  <p className="text-xs text-slate-500">Assignee will receive notification with deadline</p>
+                </div>
+              </details>
+              
               <div className="flex gap-3 pt-2">
                 <Button variant="outline" onClick={() => { setShowAssignModal(null); setAssignDeadline(''); }} className="flex-1">
                   Cancel
