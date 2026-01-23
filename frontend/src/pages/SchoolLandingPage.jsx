@@ -172,7 +172,7 @@ const SchoolLandingPage = () => {
               Ready to Transform Your School?
             </h2>
             <p className="text-slate-600 mb-8 max-w-2xl mx-auto">
-              Join the future of education. Let's discuss how OLL can help your students excel.
+              Join the future of education. Let&apos;s discuss how OLL can help your students excel.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 
