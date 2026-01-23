@@ -169,7 +169,7 @@ const LandingPage = () => {
               <Button
                 onClick={() => {
                   setShowSchoolDialog(false);
-                  navigate('/school-offerings');
+                  navigate('/for-schools');
                 }}
                 variant="outline"
                 className="h-auto py-4 flex items-center justify-between px-4 border-2 hover:border-[#1E3A5F] hover:bg-slate-50"
