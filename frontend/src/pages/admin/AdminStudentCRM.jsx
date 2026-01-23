@@ -53,9 +53,11 @@ const AdminStudentCRM = () => {
   const [showCommentModal, setShowCommentModal] = useState(null);
   const [showAssignModal, setShowAssignModal] = useState(null);
   const [showCancelDemoModal, setShowCancelDemoModal] = useState(null);
+  const [showOnboardModal, setShowOnboardModal] = useState(null);
   const [newComment, setNewComment] = useState('');
   const [onboardedEducators, setOnboardedEducators] = useState([]);
   const [assignTab, setAssignTab] = useState('team'); // 'team' or 'educator'
+  const [batches, setBatches] = useState([]);
   
   // View/Edit states
   const [editMode, setEditMode] = useState(false);
@@ -66,6 +68,19 @@ const AdminStudentCRM = () => {
   const [rescheduleData, setRescheduleData] = useState({ date: null, time: '', reason: '' });
   const [convertData, setConvertData] = useState({ amount: '', sessions: '' });
   const [cancelDemoReason, setCancelDemoReason] = useState('');
+  const [onboardData, setOnboardData] = useState({
+    batch_mode: 'new', // 'new' or 'existing'
+    batch_id: '',
+    name: '',
+    skill: '',
+    start_date: '',
+    days: [],
+    time_slot: '',
+    num_sessions: 12,
+    educator_id: '',
+    educator_name: '',
+    mode: 'online',
+  });
   const [newLead, setNewLead] = useState({
     name: '',
     phone: '',
