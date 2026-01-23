@@ -123,18 +123,23 @@ Created a new standard Footer component used across all pages:
 
 ## Prioritized Backlog
 
+### P0 (Resolved)
+- ~~Admin Student CRM Bug~~ - Was not a bug, URL was /admin/students not /admin/student-crm ✅
+
 ### P1 (Next Priority)
+- LinkedIn Post Feature in educator onboarding (pre-written text + share button)
+- Make Blogs Dynamic (full CRUD in admin CMS)
 - Add sitemap.xml and robots.txt
-- LinkedIn Post Feature in educator onboarding
-- Make Blogs Dynamic (admin CMS)
 
 ### P2
-- Merge User Types into RBAC
-- Enforce RBAC Permissions
+- Merge Center Users and Growth Partners into RBAC Users & Roles system
+- Enforce RBAC Permissions on frontend/backend
 
 ### P3+
 - Real Calendar Integration (Calendly)
-- CSV Export for CRM
+- CSV Export for CRM pages
+- Lead scoring system
+- Automated follow-up reminders
 
 ## Test Credentials
 - **Admin**: admin@oll.co / Dagaji03@
