@@ -448,32 +448,13 @@ const AboutPage = () => {
         </div>
       </section>
 
-      {/* What We Do */}
-      <section className="py-12 px-4">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-2xl md:text-3xl font-bold text-[#1E3A5F] text-center mb-8" style={{ fontFamily: 'Manrope, sans-serif' }}>
-            What We Do
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { icon: '🤖', title: 'Skill Education', desc: 'Robotics, Coding, AI' },
-              { icon: '🏆', title: 'Competitions', desc: 'National & International' },
-              { icon: '🔬', title: 'Lab Setup', desc: 'Complete infrastructure' },
-              { icon: '👨‍🏫', title: 'Teacher Training', desc: 'Certified programs' },
-            ].map((item, i) => (
-              <div key={i} className="text-center p-4 glass-card rounded-2xl">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#1E3A5F] to-[#D63031] flex items-center justify-center mx-auto mb-3">
-                  <span className="text-2xl">{item.icon}</span>
-                </div>
-                <h3 className="font-semibold text-[#1E3A5F] text-sm md:text-base">{item.title}</h3>
-                <p className="text-xs md:text-sm text-slate-500">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* Our School Partners - Videos First */}
+      <SchoolCaseStudies 
+        title="Our School Partners" 
+        subtitle="Hear from the schools transforming education with OLL"
+      />
 
-      {/* Schools We Work With */}
+      {/* Schools We Work With - Names */}
       <section className="py-12 px-4 bg-gradient-to-br from-slate-900 to-slate-800">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-2xl md:text-3xl font-bold text-white text-center mb-8" style={{ fontFamily: 'Manrope, sans-serif' }}>
