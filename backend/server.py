@@ -4608,38 +4608,51 @@ async def onboard_school(data: dict, user: dict = Depends(get_current_user)):
     if not school_id:
         raise HTTPException(status_code=400, detail="school_id is required")
     
+    # Check if this is a draft save
+    is_draft = data.get("is_draft", False)
+    
     # Create onboarding record
     onboarding_id = str(uuid.uuid4())
     doc = {
         "id": onboarding_id,
         "school_id": school_id,
+        "offering": data.get("offering", ""),  # Selected offering ID
         "model": data.get("model", ""),  # From school offerings
+        "book_type": data.get("book_type", ""),  # e.g., Level 1, Beginner
+        "kit_type": data.get("kit_type", ""),  # lab_setup, individual, no_kit
+        "training_type": data.get("training_type", ""),  # student_training, teacher_training, both
         "grade_pricing": data.get("grade_pricing", []),  # [{grade: "1-5", students: 50, price_per_student: 500}]
         "total_students": data.get("total_students", 0),
         "total_amount": data.get("total_amount", 0),
         "school_contacts": data.get("school_contacts", []),  # [{name, phone, email, role}]
-        "payment_schedule": data.get("payment_schedule", []),  # [{date, amount, mode, status}]
-        "payment_mode": data.get("payment_mode", "monthly"),  # monthly, quarterly, annual
+        "payment_mode": data.get("payment_mode", "from_school"),  # from_school, from_student
+        "payment_method": data.get("payment_method", ""),  # cheque, neft, online, cash
+        "payment_tranches": data.get("payment_tranches", []),  # [{percentage, amount, date, notes}]
         "contract_start": data.get("contract_start"),
         "contract_end": data.get("contract_end"),
-        "status": "active",
+        "status": "draft" if is_draft else "active",
+        "is_draft": is_draft,
         "created_by": user.get("email", "admin"),
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.school_onboarding.insert_one(doc)
     
-    # Update school inquiry status
+    # Update school inquiry status only if not a draft
+    update_fields = {
+        "onboarding_id": onboarding_id,
+        "onboarding_status": "draft" if is_draft else "active",
+        "model": data.get("model"),
+        "total_students": data.get("total_students"),
+    }
+    if not is_draft:
+        update_fields["status"] = "active"
+    
     await db.school_inquiries.update_one(
         {"id": school_id},
-        {"$set": {
-            "onboarding_id": onboarding_id,
-            "onboarding_status": "active",
-            "model": data.get("model"),
-            "total_students": data.get("total_students"),
-        }}
+        {"$set": update_fields}
     )
     
-    return {"message": "School onboarded successfully", "id": onboarding_id}
+    return {"message": "School onboarded successfully" if not is_draft else "Draft saved successfully", "id": onboarding_id}
 
 @api_router.get("/schools/onboarding/{school_id}")
 async def get_school_onboarding(school_id: str, user: dict = Depends(get_current_user)):
