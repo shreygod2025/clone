@@ -64,6 +64,11 @@ const AdminStudentCRM = () => {
   const [editData, setEditData] = useState({ name: '', phone: '', email: '', demo_date: '', demo_time: '', notes: '' });
   const [viewComment, setViewComment] = useState('');
   
+  // Autocomplete states
+  const [autocompleteSuggestions, setAutocompleteSuggestions] = useState([]);
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const [autocompleteField, setAutocompleteField] = useState('');
+  
   // Form states
   const [rescheduleData, setRescheduleData] = useState({ date: null, time: '', reason: '' });
   const [convertData, setConvertData] = useState({ amount: '', sessions: '', payment_receipt: null });
