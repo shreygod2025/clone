@@ -80,6 +80,7 @@ function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/student" element={<StudentFunnel />} />
             <Route path="/educator" element={<EducatorFunnel />} />
+            <Route path="/for-schools" element={<SchoolLandingPage />} />
             <Route path="/school" element={<SchoolFunnel />} />
             <Route path="/school-offerings" element={<SchoolOfferingsPage />} />
             <Route path="/school-offerings/:categoryId/:offeringId" element={<SchoolOfferingDetailPage />} />
