@@ -584,6 +584,10 @@ const AdminEducators = () => {
       } else {
         matchesTab = edu.status === applicantSubFilter;
       }
+      // Apply requirement filter if set
+      if (requirementFilter && matchesTab) {
+        matchesTab = edu.requirement_id === requirementFilter;
+      }
     } else if (activeTab === 'requirements') {
       matchesTab = false; // Requirements tab doesn't show educators
     } else {
