@@ -65,21 +65,21 @@ const LandingPage = () => {
   return (
     <>
       <Helmet>
-        <title>OLL - India&apos;s Leading Skill Education Platform | Robotics, Coding, AI</title>
-        <meta name="description" content="OLL (Clonefutura Live Solutions) - India's #1 platform for Robotics, Coding, AI & Entrepreneurship education. Programs for students, educators & schools. Book a free demo today!" />
+        <title>OLL - Robotics, Coding & AI Classes for Kids | Book Demo</title>
+        <meta name="description" content="OLL - India's #1 skill education platform. Learn Robotics, Coding, AI & Entrepreneurship. Expert tutors, flexible timings. Book a free demo today!" />
         <meta name="keywords" content="robotics classes India, coding classes for kids, AI courses, entrepreneurship education, skill development, STEM education, school programs, learn robotics, kids coding" />
         <link rel="canonical" href="https://oll.co" />
         
         {/* Open Graph */}
-        <meta property="og:title" content="OLL - India's Leading Skill Education Platform" />
-        <meta property="og:description" content="Learn Robotics, Coding, AI & Entrepreneurship with India's #1 skill education platform. Programs for all ages." />
+        <meta property="og:title" content="OLL - Robotics, Coding & AI Classes" />
+        <meta property="og:description" content="Learn Robotics, Coding, AI & Entrepreneurship with India's #1 skill education platform." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://oll.co" />
         
         {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="OLL - India's Leading Skill Education" />
-        <meta name="twitter:description" content="Learn future-ready skills with OLL - Robotics, Coding, AI & more" />
+        <meta name="twitter:title" content="OLL - Skill Education Platform" />
+        <meta name="twitter:description" content="Learn future-ready skills - Robotics, Coding, AI & more" />
         
         {/* Structured Data - Organization */}
         <script type="application/ld+json">
@@ -91,10 +91,11 @@ const LandingPage = () => {
             "url": "https://oll.co",
             "description": "India's leading platform for Robotics, Coding, AI & Entrepreneurship education",
             "sameAs": [
-              "https://facebook.com/ollrobotics",
-              "https://instagram.com/ollrobotics",
-              "https://linkedin.com/company/ollrobotics",
-              "https://youtube.com/@ollrobotics"
+              "https://www.facebook.com/ollcompany",
+              "https://www.instagram.com/oll.co_/",
+              "https://www.linkedin.com/company/ollcompany/",
+              "https://www.youtube.com/channel/UCwQyfX_lsVCLBUV5Or-rZ8g",
+              "https://x.com/Onlinelivelearn"
             ],
             "address": {
               "@type": "PostalAddress",
