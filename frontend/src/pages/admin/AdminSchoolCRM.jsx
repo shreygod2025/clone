@@ -498,15 +498,12 @@ const AdminSchoolCRM = () => {
         return (
           <div className="flex gap-1 flex-wrap">
             <button
-              onClick={() => {
-                setShowConvertModal(inquiry);
-                setConvertData({ amount: '' });
-              }}
+              onClick={() => handleStatusChange(inquiry, 'converted')}
               className="text-xs px-3 py-1.5 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 flex items-center gap-1 font-medium"
               data-testid={`convert-${inquiry.id}`}
             >
               <CheckCircle2 className="w-3 h-3" />
-              Converted
+              Mark Converted
             </button>
             {followupButton}
             {baseButtons}
@@ -524,22 +521,68 @@ const AdminSchoolCRM = () => {
       case 'converted':
         return (
           <div className="flex gap-1 flex-wrap">
+            <button
+              onClick={() => setShowOnboardModal(inquiry)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 flex items-center gap-1 font-medium"
+              data-testid={`onboard-${inquiry.id}`}
+            >
+              <CalendarClock className="w-3 h-3" />
+              Onboard School
+            </button>
             {baseButtons}
-            {!inquiry.onboarding_id && (
-              <button
-                onClick={() => setShowOnboardModal(inquiry)}
-                className="text-xs px-3 py-1.5 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 flex items-center gap-1 font-medium"
-                data-testid={`onboard-${inquiry.id}`}
-              >
-                <CalendarClock className="w-3 h-3" />
-                Onboard
-              </button>
-            )}
-            {inquiry.onboarding_id && (
-              <span className="text-xs px-3 py-1.5 rounded-lg bg-blue-100 text-blue-700 font-medium">
-                ✓ Onboarded
-              </span>
-            )}
+          </div>
+        );
+      
+      case 'active':
+        return (
+          <div className="flex gap-1 flex-wrap">
+            <button
+              onClick={() => handleStatusChange(inquiry, 'renewed')}
+              className="text-xs px-3 py-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-700 flex items-center gap-1 font-medium"
+              data-testid={`renew-${inquiry.id}`}
+            >
+              <RefreshCw className="w-3 h-3" />
+              Renewed
+            </button>
+            <button
+              onClick={() => handleStatusChange(inquiry, 'lost')}
+              className="text-xs px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 font-medium"
+              data-testid={`lost-${inquiry.id}`}
+            >
+              <X className="w-3 h-3" />
+              Lost
+            </button>
+            {baseButtons}
+          </div>
+        );
+      
+      case 'renewed':
+        return (
+          <div className="flex gap-1 flex-wrap">
+            <button
+              onClick={() => handleStatusChange(inquiry, 'lost')}
+              className="text-xs px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 font-medium"
+              data-testid={`lost-${inquiry.id}`}
+            >
+              <X className="w-3 h-3" />
+              Lost
+            </button>
+            {baseButtons}
+          </div>
+        );
+      
+      case 'lost':
+        return (
+          <div className="flex gap-1 flex-wrap">
+            <button
+              onClick={() => handleStatusChange(inquiry, 'active')}
+              className="text-xs px-3 py-1.5 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 flex items-center gap-1 font-medium"
+              data-testid={`reactivate-${inquiry.id}`}
+            >
+              <RefreshCw className="w-3 h-3" />
+              Reactivate
+            </button>
+            {baseButtons}
           </div>
         );
       
