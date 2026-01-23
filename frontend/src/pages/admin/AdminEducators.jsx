@@ -947,6 +947,8 @@ const AdminEducators = () => {
           ))}
         </div>
       )}
+        </>
+      )}
 
       {/* View/Edit Details Dialog */}
       <Dialog open={!!viewEducator} onOpenChange={() => { setViewEducator(null); setEditMode(false); }}>
