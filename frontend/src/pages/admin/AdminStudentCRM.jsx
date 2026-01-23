@@ -280,14 +280,21 @@ const AdminStudentCRM = () => {
       return;
     }
     
+    // Validate amount
+    if (!onboardData.amount || parseFloat(onboardData.amount) <= 0) {
+      toast.error('Please enter a valid amount');
+      return;
+    }
+    
     try {
       // First update to converted status with payment info
       await axios.patch(`${API}/students/inquiry/${showOnboardModal.id}`, {
         status: 'converted',
         payment_receipt_url: onboardData.payment_receipt_url,
+        conversion_amount: onboardData.amount,
         notes: showOnboardModal.notes 
-          ? `${showOnboardModal.notes}\n\nConverted with payment receipt` 
-          : `Converted with payment receipt`
+          ? `${showOnboardModal.notes}\n\nConverted with payment receipt - ₹${onboardData.amount}` 
+          : `Converted with payment receipt - ₹${onboardData.amount}`
       }, {
         headers: getAuthHeaders()
       });
