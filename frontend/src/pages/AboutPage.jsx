@@ -595,12 +595,6 @@ const AboutPage = () => {
         </div>
       </section>
 
-      {/* School Case Studies */}
-      <SchoolCaseStudies 
-        title="Our School Partners" 
-        subtitle="Hear from the schools transforming education with OLL"
-      />
-
       <Footer />
     </div>
     </>
