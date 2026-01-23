@@ -1446,6 +1446,157 @@ const AdminSchoolCRM = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* School Onboarding Modal */}
+      <Dialog open={!!showOnboardModal} onOpenChange={() => setShowOnboardModal(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CalendarClock className="w-5 h-5 text-green-600" />
+              Onboard School: {showOnboardModal?.school_name}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Model Selection */}
+            <div>
+              <label className="text-sm font-medium text-slate-700">Select Model *</label>
+              <select
+                value={onboardData.model}
+                onChange={(e) => setOnboardData(prev => ({ ...prev, model: e.target.value }))}
+                className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+              >
+                <option value="">Select school offering model</option>
+                <option value="robotics_lab">Robotics Lab Setup</option>
+                <option value="stem_curriculum">STEM Curriculum Integration</option>
+                <option value="after_school">After School Program</option>
+                <option value="teacher_training">Teacher Training</option>
+                <option value="full_partnership">Full School Partnership</option>
+              </select>
+            </div>
+
+            {/* Grade-wise Pricing */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium text-slate-700">Grade-wise Student Count & Pricing</label>
+                <Button variant="ghost" size="sm" onClick={addGradePricing} className="text-blue-600">
+                  <Plus className="w-4 h-4 mr-1" /> Add Grade
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {onboardData.grade_pricing.map((gp, idx) => (
+                  <div key={idx} className="grid grid-cols-4 gap-2">
+                    <Input
+                      placeholder="Grade (e.g., 1-5)"
+                      value={gp.grade}
+                      onChange={(e) => updateGradePricing(idx, 'grade', e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="No. of students"
+                      value={gp.students}
+                      onChange={(e) => updateGradePricing(idx, 'students', e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Price/student"
+                      value={gp.price_per_student}
+                      onChange={(e) => updateGradePricing(idx, 'price_per_student', e.target.value)}
+                    />
+                    <div className="flex items-center justify-center text-sm text-slate-600">
+                      ₹{((parseInt(gp.students) || 0) * (parseFloat(gp.price_per_student) || 0)).toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2 p-2 bg-green-50 rounded-lg text-sm">
+                <span className="font-medium">Total: </span>
+                {onboardData.grade_pricing.reduce((sum, g) => sum + (parseInt(g.students) || 0), 0)} students • 
+                ₹{onboardData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0).toLocaleString()}
+              </div>
+            </div>
+
+            {/* School Contacts */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium text-slate-700">School Team Contacts</label>
+                <Button variant="ghost" size="sm" onClick={addSchoolContact} className="text-blue-600">
+                  <Plus className="w-4 h-4 mr-1" /> Add Contact
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {onboardData.school_contacts.map((contact, idx) => (
+                  <div key={idx} className="grid grid-cols-4 gap-2">
+                    <Input
+                      placeholder="Name"
+                      value={contact.name}
+                      onChange={(e) => updateSchoolContact(idx, 'name', e.target.value)}
+                    />
+                    <Input
+                      placeholder="Phone"
+                      value={contact.phone}
+                      onChange={(e) => updateSchoolContact(idx, 'phone', e.target.value)}
+                    />
+                    <Input
+                      placeholder="Email"
+                      value={contact.email}
+                      onChange={(e) => updateSchoolContact(idx, 'email', e.target.value)}
+                    />
+                    <Input
+                      placeholder="Role (Principal, etc)"
+                      value={contact.role}
+                      onChange={(e) => updateSchoolContact(idx, 'role', e.target.value)}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Payment Details */}
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="text-sm font-medium text-slate-700">Payment Mode</label>
+                <select
+                  value={onboardData.payment_mode}
+                  onChange={(e) => setOnboardData(prev => ({ ...prev, payment_mode: e.target.value }))}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                >
+                  <option value="monthly">Monthly</option>
+                  <option value="quarterly">Quarterly</option>
+                  <option value="half_yearly">Half Yearly</option>
+                  <option value="annual">Annual</option>
+                  <option value="one_time">One Time</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Contract Start</label>
+                <Input
+                  type="date"
+                  value={onboardData.contract_start}
+                  onChange={(e) => setOnboardData(prev => ({ ...prev, contract_start: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Contract End</label>
+                <Input
+                  type="date"
+                  value={onboardData.contract_end}
+                  onChange={(e) => setOnboardData(prev => ({ ...prev, contract_end: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => setShowOnboardModal(null)} className="flex-1">
+                Cancel
+              </Button>
+              <Button onClick={handleOnboardSchool} className="flex-1 bg-green-600 hover:bg-green-700">
+                Onboard School
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
