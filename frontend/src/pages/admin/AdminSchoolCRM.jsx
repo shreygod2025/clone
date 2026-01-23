@@ -309,6 +309,44 @@ const AdminSchoolCRM = () => {
     }));
   };
 
+  // Payment tranche helpers
+  const addPaymentTranche = () => {
+    setOnboardData(prev => ({
+      ...prev,
+      payment_tranches: [...prev.payment_tranches, { amount: '', percentage: '', date: '', notes: '' }]
+    }));
+  };
+
+  const updatePaymentTranche = (index, field, value) => {
+    const totalAmount = onboardData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
+    
+    setOnboardData(prev => {
+      const newTranches = prev.payment_tranches.map((t, i) => {
+        if (i !== index) return t;
+        const updated = { ...t, [field]: value };
+        
+        // Auto-calculate based on input
+        if (field === 'percentage' && value && totalAmount > 0) {
+          updated.amount = Math.round((parseFloat(value) / 100) * totalAmount).toString();
+        } else if (field === 'amount' && value && totalAmount > 0) {
+          updated.percentage = ((parseFloat(value) / totalAmount) * 100).toFixed(1);
+        }
+        
+        return updated;
+      });
+      return { ...prev, payment_tranches: newTranches };
+    });
+  };
+
+  const removePaymentTranche = (index) => {
+    if (onboardData.payment_tranches.length > 1) {
+      setOnboardData(prev => ({
+        ...prev,
+        payment_tranches: prev.payment_tranches.filter((_, i) => i !== index)
+      }));
+    }
+  };
+
   const handleAddLead = async () => {
     if (!newLead.school_name || !newLead.contact_name || !newLead.phone) {
       toast.error('School name, contact name and phone are required');
