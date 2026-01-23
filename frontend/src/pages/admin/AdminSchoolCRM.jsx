@@ -242,7 +242,7 @@ const AdminSchoolCRM = () => {
     await handleStatusChange(inquiry, 'archived');
   };
 
-  const handleOnboardSchool = async () => {
+  const handleOnboardSchool = async (saveAsDraft = false) => {
     if (!showOnboardModal) return;
     
     try {
@@ -252,27 +252,40 @@ const AdminSchoolCRM = () => {
       
       await axios.post(`${API}/schools/onboard`, {
         school_id: showOnboardModal.id,
+        offering: onboardData.offering,
         model: onboardData.model,
+        book_type: onboardData.book_type,
+        kit_type: onboardData.kit_type,
+        training_type: onboardData.training_type,
         grade_pricing: onboardData.grade_pricing.filter(g => g.grade && g.students),
         total_students: totalStudents,
         total_amount: totalAmount,
         school_contacts: onboardData.school_contacts.filter(c => c.name && c.phone),
         payment_mode: onboardData.payment_mode,
+        payment_method: onboardData.payment_method,
+        payment_tranches: onboardData.payment_tranches.filter(t => t.amount || t.percentage),
         contract_start: onboardData.contract_start,
         contract_end: onboardData.contract_end,
+        is_draft: saveAsDraft,
       }, { headers: getAuthHeaders() });
       
-      // Update school status to 'active' after onboarding
-      await axios.patch(`${API}/schools/inquiry/${showOnboardModal.id}`, {
-        status: 'active'
-      }, { headers: getAuthHeaders() });
+      // Update school status based on save mode
+      if (!saveAsDraft) {
+        await axios.patch(`${API}/schools/inquiry/${showOnboardModal.id}`, {
+          status: 'active'
+        }, { headers: getAuthHeaders() });
+        toast.success('School onboarded and moved to Active!');
+      } else {
+        toast.success('Draft saved! You can continue later.');
+      }
       
-      toast.success('School onboarded and moved to Active!');
       setShowOnboardModal(null);
       setOnboardData({
-        model: '', grade_pricing: [{ grade: '', students: '', price_per_student: '' }],
+        offering: '', model: '', book_type: '', kit_type: '', training_type: '',
+        grade_pricing: [{ grade: '', students: '', price_per_student: '' }],
         total_students: 0, total_amount: 0, school_contacts: [{ name: '', phone: '', email: '', role: '' }],
-        payment_mode: 'monthly', contract_start: '', contract_end: ''
+        payment_mode: 'from_school', payment_method: '', payment_tranches: [{ amount: '', percentage: '', date: '', notes: '' }],
+        contract_start: '', contract_end: '', is_draft: false
       });
       fetchInquiries();
     } catch (error) {
