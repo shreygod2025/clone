@@ -198,52 +198,86 @@ const AdminDataCenter = () => {
     <AdminLayout title="Data Center">
       {/* Stats Overview */}
       {stats && (
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-white rounded-2xl border border-slate-100 p-5">
+        <div className="grid grid-cols-5 gap-4 mb-6">
+          <div className="bg-white rounded-2xl border border-slate-100 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500">Total Students</p>
-                <p className="text-3xl font-bold text-blue-600">{stats.totals?.students || 0}</p>
+                <p className="text-xs text-slate-500">Students</p>
+                <p className="text-2xl font-bold text-blue-600">{stats.totals?.students || 0}</p>
               </div>
-              <Users className="w-10 h-10 text-blue-200" />
+              <Users className="w-8 h-8 text-blue-200" />
             </div>
-            <div className="mt-3 flex flex-wrap gap-1">
-              {Object.entries(stats.by_status?.students || {}).slice(0, 4).map(([status, count]) => (
-                <span key={status} className="text-xs px-2 py-0.5 bg-slate-100 rounded">
+            <div className="mt-2 flex flex-wrap gap-1">
+              {Object.entries(stats.by_status?.students || {}).slice(0, 3).map(([status, count]) => (
+                <span key={status} className="text-xs px-1.5 py-0.5 bg-slate-100 rounded">
                   {status}: {count}
                 </span>
               ))}
             </div>
           </div>
           
-          <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <div className="bg-white rounded-2xl border border-slate-100 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500">Total Schools</p>
-                <p className="text-3xl font-bold text-purple-600">{stats.totals?.schools || 0}</p>
+                <p className="text-xs text-slate-500">Schools</p>
+                <p className="text-2xl font-bold text-purple-600">{stats.totals?.schools || 0}</p>
               </div>
-              <Building2 className="w-10 h-10 text-purple-200" />
+              <Building2 className="w-8 h-8 text-purple-200" />
             </div>
-            <div className="mt-3 flex flex-wrap gap-1">
-              {Object.entries(stats.by_status?.schools || {}).slice(0, 4).map(([status, count]) => (
-                <span key={status} className="text-xs px-2 py-0.5 bg-slate-100 rounded">
+            <div className="mt-2 flex flex-wrap gap-1">
+              {Object.entries(stats.by_status?.schools || {}).slice(0, 3).map(([status, count]) => (
+                <span key={status} className="text-xs px-1.5 py-0.5 bg-slate-100 rounded">
                   {status}: {count}
                 </span>
               ))}
             </div>
           </div>
           
-          <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <div className="bg-white rounded-2xl border border-slate-100 p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-500">Total Educators</p>
-                <p className="text-3xl font-bold text-orange-600">{stats.totals?.educators || 0}</p>
+                <p className="text-xs text-slate-500">Educators</p>
+                <p className="text-2xl font-bold text-orange-600">{stats.totals?.educators || 0}</p>
               </div>
-              <GraduationCap className="w-10 h-10 text-orange-200" />
+              <GraduationCap className="w-8 h-8 text-orange-200" />
             </div>
-            <div className="mt-3 flex flex-wrap gap-1">
-              {Object.entries(stats.by_status?.educators || {}).slice(0, 4).map(([status, count]) => (
-                <span key={status} className="text-xs px-2 py-0.5 bg-slate-100 rounded">
+            <div className="mt-2 flex flex-wrap gap-1">
+              {Object.entries(stats.by_status?.educators || {}).slice(0, 3).map(([status, count]) => (
+                <span key={status} className="text-xs px-1.5 py-0.5 bg-slate-100 rounded">
+                  {status}: {count}
+                </span>
+              ))}
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-2xl border border-slate-100 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-slate-500">Team</p>
+                <p className="text-2xl font-bold text-cyan-600">{stats.totals?.team || 0}</p>
+              </div>
+              <UserCog className="w-8 h-8 text-cyan-200" />
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1">
+              {Object.entries(stats.by_status?.team || {}).map(([status, count]) => (
+                <span key={status} className="text-xs px-1.5 py-0.5 bg-slate-100 rounded">
+                  {status}: {count}
+                </span>
+              ))}
+            </div>
+          </div>
+          
+          <div className="bg-white rounded-2xl border border-slate-100 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-slate-500">Growth Partners</p>
+                <p className="text-2xl font-bold text-emerald-600">{stats.totals?.growth_partners || 0}</p>
+              </div>
+              <TrendingUp className="w-8 h-8 text-emerald-200" />
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1">
+              {Object.entries(stats.by_status?.growth_partners || {}).slice(0, 3).map(([status, count]) => (
+                <span key={status} className="text-xs px-1.5 py-0.5 bg-slate-100 rounded">
                   {status}: {count}
                 </span>
               ))}
@@ -276,6 +310,8 @@ const AdminDataCenter = () => {
             <option value="students">Students</option>
             <option value="schools">Schools</option>
             <option value="educators">Educators</option>
+            <option value="team">Team</option>
+            <option value="growth_partners">Growth Partners</option>
           </select>
           
           <Button
