@@ -2718,6 +2718,111 @@ async def get_curriculum_assessment(educator_id: str):
         })
     return {"questions": questions}
 
+@api_router.post("/educators/add-active")
+async def add_active_educator(data: dict, user: dict = Depends(get_current_user)):
+    """Add an educator directly as active (skip application process)"""
+    name = data.get("name")
+    email = data.get("email")
+    phone = data.get("phone")
+    
+    if not name or not email or not phone:
+        raise HTTPException(status_code=400, detail="Name, email and phone are required")
+    
+    # Check if educator already exists
+    existing = await db.educator_applications.find_one(
+        {"$or": [{"email": email}, {"phone": phone}]},
+        {"_id": 0}
+    )
+    if existing:
+        raise HTTPException(status_code=400, detail="Educator with this email or phone already exists")
+    
+    educator = {
+        "id": str(uuid.uuid4()),
+        "name": name,
+        "email": email,
+        "phone": phone,
+        "city": data.get("city", ""),
+        "skills": data.get("skills", []),
+        "experience": data.get("experience", ""),
+        "status": "active",
+        "source": "direct_add",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "added_by": user.get("email", "admin"),
+        "onboarding_completed": True
+    }
+    
+    await db.educator_applications.insert_one(educator)
+    del educator["_id"] if "_id" in educator else None
+    
+    return {"message": "Educator added successfully", "educator": educator}
+
+@api_router.post("/educators/bulk-import")
+async def bulk_import_educators(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
+    """Bulk import educators from CSV file"""
+    import csv
+    from io import StringIO
+    
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="File must be a CSV")
+    
+    content = await file.read()
+    text = content.decode('utf-8')
+    
+    reader = csv.DictReader(StringIO(text))
+    
+    imported = 0
+    errors = []
+    
+    for idx, row in enumerate(reader, start=2):  # Start at 2 because row 1 is header
+        try:
+            name = row.get('name', '').strip()
+            email = row.get('email', '').strip()
+            phone = row.get('phone', '').strip()
+            
+            if not name or not email or not phone:
+                errors.append(f"Row {idx}: Missing required fields")
+                continue
+            
+            # Check for duplicates
+            existing = await db.educator_applications.find_one(
+                {"$or": [{"email": email}, {"phone": phone}]},
+                {"_id": 0}
+            )
+            if existing:
+                errors.append(f"Row {idx}: Educator with email {email} or phone {phone} already exists")
+                continue
+            
+            # Parse skills
+            skills_str = row.get('skills', '')
+            skills = [s.strip() for s in skills_str.split(',') if s.strip()] if skills_str else []
+            
+            educator = {
+                "id": str(uuid.uuid4()),
+                "name": name,
+                "email": email,
+                "phone": phone,
+                "city": row.get('city', '').strip(),
+                "skills": skills,
+                "experience": row.get('experience', '').strip(),
+                "status": "active",
+                "source": "bulk_import",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "added_by": user.get("email", "admin"),
+                "onboarding_completed": True
+            }
+            
+            await db.educator_applications.insert_one(educator)
+            imported += 1
+            
+        except Exception as e:
+            errors.append(f"Row {idx}: {str(e)}")
+    
+    return {
+        "imported": imported,
+        "errors": errors[:10] if errors else [],  # Return first 10 errors
+        "total_errors": len(errors)
+    }
+
 # PDF Generation Helper Functions
 def generate_id_card_pdf(educator_data, onboarding_data) -> BytesIO:
     """Generate ID Card PDF based on OLL template"""
