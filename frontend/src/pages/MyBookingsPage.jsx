@@ -277,6 +277,16 @@ const MyBookingsPage = () => {
     return colors[status] || 'bg-slate-100 text-slate-700';
   };
 
+  const getSessionStatusColor = (status) => {
+    const colors = {
+      'scheduled': 'bg-blue-100 text-blue-700',
+      'completed': 'bg-green-100 text-green-700',
+      'cancelled': 'bg-red-100 text-red-700',
+      'missed': 'bg-orange-100 text-orange-700',
+    };
+    return colors[status] || 'bg-slate-100 text-slate-700';
+  };
+
   const getStatusLabel = (status) => {
     const labels = {
       'new': 'SCHEDULED',
@@ -301,7 +311,64 @@ const MyBookingsPage = () => {
     }
   };
 
+  const formatSessionDate = (dateStr) => {
+    if (!dateStr) return 'TBD';
+    try {
+      const date = typeof dateStr === 'string' ? parseISO(dateStr) : dateStr;
+      if (isToday(date)) return 'Today';
+      if (isTomorrow(date)) return 'Tomorrow';
+      return format(date, 'EEE, MMM d');
+    } catch {
+      return dateStr;
+    }
+  };
+
+  // Check if session is joinable (within 15 mins before to 1 hour after)
+  const isSessionJoinable = (session) => {
+    if (!session.date || !session.time) return false;
+    if (session.status !== 'scheduled') return false;
+    if (session.mode !== 'online') return false;
+    
+    try {
+      const sessionDateTime = parseISO(`${session.date}T${session.time}:00`);
+      const now = new Date();
+      const joinWindowStart = addHours(sessionDateTime, -0.25); // 15 mins before
+      const joinWindowEnd = addHours(sessionDateTime, 1); // 1 hour after
+      
+      return isAfter(now, joinWindowStart) && isBefore(now, joinWindowEnd);
+    } catch {
+      return false;
+    }
+  };
+
+  // Generate session Jitsi link
+  const generateSessionLink = (session) => {
+    const roomName = session.jitsi_room || `oll-${session.batch_id?.slice(0,8)}-${session.student_id?.slice(0,8)}`;
+    const userName = encodeURIComponent(user?.name || 'Student');
+    const config = {
+      'config.prejoinPageEnabled': true,
+      'config.startWithAudioMuted': true,
+      'config.startWithVideoMuted': false,
+      'config.disableDeepLinking': true,
+      'userInfo.displayName': userName
+    };
+    const configString = Object.entries(config)
+      .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+      .join('&');
+    return session.jitsi_link || `https://meet.jit.si/${roomName}#${configString}`;
+  };
+
+  // Calculate session stats
+  const sessionStats = {
+    total: sessions.length,
+    completed: sessions.filter(s => s.status === 'completed').length,
+    upcoming: sessions.filter(s => s.status === 'scheduled').length,
+  };
+
   if (!isLoggedIn) return null;
+
+  // Check if user has sessions (converted student)
+  const hasActiveSessions = sessions.length > 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col">
@@ -310,10 +377,10 @@ const MyBookingsPage = () => {
       <main className="flex-1 py-8 px-4">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-6">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-[#1E3A5F]" style={{ fontFamily: 'Manrope, sans-serif' }}>
-                My Bookings
+                {hasActiveSessions ? 'My Learning' : 'My Bookings'}
               </h1>
               <p className="text-slate-500">
                 Welcome back, {user?.name || user?.phone}
@@ -330,14 +397,165 @@ const MyBookingsPage = () => {
             </Button>
           </div>
 
-          {/* Bookings List */}
-          {loading ? (
-            <div className="text-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D63031] mx-auto"></div>
-              <p className="text-slate-500 mt-4">Loading your bookings...</p>
+          {/* Tabs - Only show if user has sessions */}
+          {hasActiveSessions && (
+            <div className="flex gap-2 mb-6">
+              <button
+                onClick={() => setActiveTab('sessions')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  activeTab === 'sessions' 
+                    ? 'bg-[#1E3A5F] text-white' 
+                    : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
+                }`}
+                data-testid="sessions-tab"
+              >
+                <PlayCircle className="w-4 h-4 inline-block mr-1.5" />
+                My Sessions ({sessions.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('bookings')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  activeTab === 'bookings' 
+                    ? 'bg-[#1E3A5F] text-white' 
+                    : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
+                }`}
+                data-testid="bookings-tab"
+              >
+                <Calendar className="w-4 h-4 inline-block mr-1.5" />
+                Demo Bookings ({bookings.length})
+              </button>
             </div>
-          ) : bookings.length === 0 ? (
-            <div className="glass-card rounded-2xl p-6 text-center">
+          )}
+
+          {/* Sessions View */}
+          {hasActiveSessions && activeTab === 'sessions' && (
+            <>
+              {/* Session Stats Card */}
+              {studentInfo && (
+                <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-100 mb-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h3 className="font-semibold text-[#1E3A5F]">{studentInfo.skill || 'Learning'} Classes</h3>
+                      <p className="text-sm text-slate-500">{studentInfo.batch_name || 'Your Batch'}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-[#1E3A5F]">{sessionStats.completed}/{sessionStats.total}</p>
+                      <p className="text-xs text-slate-500">Sessions Completed</p>
+                    </div>
+                  </div>
+                  {/* Progress Bar */}
+                  <div className="w-full bg-slate-100 rounded-full h-2">
+                    <div 
+                      className="bg-gradient-to-r from-[#1E3A5F] to-[#D63031] h-2 rounded-full transition-all duration-500"
+                      style={{ width: `${sessionStats.total > 0 ? (sessionStats.completed / sessionStats.total) * 100 : 0}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Sessions List */}
+              {sessions.length === 0 ? (
+                <div className="bg-white rounded-xl p-8 text-center shadow-sm border border-slate-100">
+                  <PlayCircle className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                  <p className="text-slate-500">No sessions scheduled yet</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {sessions.map((session, index) => (
+                    <div 
+                      key={session.id}
+                      className={`bg-white rounded-xl p-4 shadow-sm border transition-all ${
+                        session.status === 'completed' 
+                          ? 'border-green-200 bg-green-50/30' 
+                          : isSessionJoinable(session) 
+                            ? 'border-[#D63031] ring-2 ring-[#D63031]/20' 
+                            : 'border-slate-100'
+                      }`}
+                      data-testid={`session-card-${session.id}`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-3">
+                          {/* Session Number Icon */}
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${
+                            session.status === 'completed' 
+                              ? 'bg-green-100' 
+                              : 'bg-[#1E3A5F]/10'
+                          }`}>
+                            {session.status === 'completed' ? (
+                              <CheckCircle2 className="w-5 h-5 text-green-600" />
+                            ) : (
+                              <span className="text-sm font-bold text-[#1E3A5F]">{session.session_number || index + 1}</span>
+                            )}
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-[#1E3A5F]">
+                              Session {session.session_number || index + 1}
+                            </h3>
+                            <p className="text-sm text-slate-500">{session.skill || studentInfo?.skill || 'Class'}</p>
+                          </div>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getSessionStatusColor(session.status)}`}>
+                          {session.status?.toUpperCase() || 'SCHEDULED'}
+                        </span>
+                      </div>
+
+                      {/* Session Details */}
+                      <div className="flex flex-wrap gap-3 mt-3 text-sm text-slate-600">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                          {formatSessionDate(session.date)}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5 text-slate-400" />
+                          {session.time || 'TBD'}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          {session.mode === 'online' ? (
+                            <Video className="w-3.5 h-3.5 text-blue-500" />
+                          ) : (
+                            <MapPin className="w-3.5 h-3.5 text-red-500" />
+                          )}
+                          {session.mode === 'online' ? 'Online' : 'In-person'}
+                        </span>
+                      </div>
+
+                      {/* Join Button for Online Sessions */}
+                      {session.mode === 'online' && session.status === 'scheduled' && (
+                        <div className="mt-3 pt-3 border-t border-slate-100">
+                          <a
+                            href={generateSessionLink(session)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={`w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-white font-medium text-sm transition-all ${
+                              isSessionJoinable(session)
+                                ? 'bg-gradient-to-r from-[#1E3A5F] to-[#D63031] animate-pulse'
+                                : 'bg-gradient-to-r from-[#1E3A5F] to-[#2d5a87] hover:from-[#2d5a87] hover:to-[#1E3A5F]'
+                            }`}
+                            data-testid={`join-session-${session.id}`}
+                          >
+                            <Video className="w-4 h-4" />
+                            {isSessionJoinable(session) ? 'Join Now' : 'Join Class'}
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Bookings View (Original) */}
+          {(!hasActiveSessions || activeTab === 'bookings') && (
+            <>
+              {/* Bookings List */}
+              {loading ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D63031] mx-auto"></div>
+                  <p className="text-slate-500 mt-4">Loading your bookings...</p>
+                </div>
+              ) : bookings.length === 0 ? (
+                <div className="glass-card rounded-2xl p-6 text-center">
               <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3">
                 <Calendar className="w-7 h-7 text-slate-400" />
               </div>
