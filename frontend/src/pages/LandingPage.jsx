@@ -151,58 +151,6 @@ const LandingPage = () => {
         </div>
       </main>
 
-      {/* School Options Dialog */}
-      <Dialog open={showSchoolDialog} onOpenChange={setShowSchoolDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-center text-xl font-bold text-[#1E3A5F]">
-              Welcome, Schools!
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <p className="text-center text-slate-600 text-sm">What would you like to do?</p>
-            
-            <div className="grid gap-3">
-              <Button
-                onClick={() => {
-                  setShowSchoolDialog(false);
-                  navigate('/for-schools');
-                }}
-                variant="outline"
-                className="h-auto py-4 flex items-center justify-between px-4 border-2 hover:border-[#1E3A5F] hover:bg-slate-50"
-                data-testid="view-offerings-btn"
-              >
-                <div className="flex items-center gap-3">
-                  <Eye className="w-5 h-5 text-[#1E3A5F]" />
-                  <div className="text-left">
-                    <div className="font-semibold text-[#1E3A5F]">View Our Offerings</div>
-                    <div className="text-xs text-slate-500">Explore programs for your school</div>
-                  </div>
-                </div>
-                <ArrowRight className="w-5 h-5 text-slate-400" />
-              </Button>
-              
-              <Button
-                onClick={() => {
-                  setShowSchoolDialog(false);
-                  navigate('/school');
-                }}
-                className="h-auto py-4 flex items-center justify-between px-4 bg-[#D63031] hover:bg-[#b52828]"
-                data-testid="book-meeting-btn"
-              >
-                <div className="flex items-center gap-3">
-                  <Calendar className="w-5 h-5 text-white" />
-                  <div className="text-left">
-                    <div className="font-semibold text-white">Book a Meeting</div>
-                    <div className="text-xs text-white/70">Schedule a partnership discussion</div>
-                  </div>
-                </div>
-                <ArrowRight className="w-5 h-5 text-white/70" />
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
       
       {/* Footer - Always visible */}
       <Footer />
