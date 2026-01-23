@@ -66,8 +66,9 @@ const AdminStudentCRM = () => {
   
   // Form states
   const [rescheduleData, setRescheduleData] = useState({ date: null, time: '', reason: '' });
-  const [convertData, setConvertData] = useState({ amount: '', sessions: '' });
+  const [convertData, setConvertData] = useState({ amount: '', sessions: '', payment_receipt: null });
   const [cancelDemoReason, setCancelDemoReason] = useState('');
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
   const [onboardData, setOnboardData] = useState({
     batch_mode: 'new', // 'new' or 'existing'
     batch_id: '',
@@ -80,6 +81,8 @@ const AdminStudentCRM = () => {
     educator_id: '',
     educator_name: '',
     mode: 'online',
+    payment_receipt: null,
+    payment_receipt_url: '',
   });
   const [newLead, setNewLead] = useState({
     name: '',
