@@ -62,15 +62,24 @@ const AdminSchoolCRM = () => {
   const [convertData, setConvertData] = useState({ amount: '' });
   const [followupData, setFollowupData] = useState({ date: null, comment: '' });
   const [onboardData, setOnboardData] = useState({
+    offering: '', // Select from offerings
     model: '',
+    book_type: '',
+    kit_type: '', // lab_setup, individual, no_kit
+    training_type: '', // student_training, teacher_training
     grade_pricing: [{ grade: '', students: '', price_per_student: '' }],
     total_students: 0,
     total_amount: 0,
     school_contacts: [{ name: '', phone: '', email: '', role: '' }],
-    payment_mode: 'monthly',
+    // Payment details
+    payment_mode: 'from_school', // from_school, from_student
+    payment_method: '', // cheque, neft, online, cash
+    payment_tranches: [{ amount: '', percentage: '', date: '', notes: '' }],
     contract_start: '',
     contract_end: '',
+    is_draft: false,
   });
+  const [offerings, setOfferings] = useState([]);
   const [newLead, setNewLead] = useState({
     school_name: '',
     contact_name: '',
