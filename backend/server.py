@@ -4664,7 +4664,7 @@ async def update_school_onboarding(onboarding_id: str, data: dict, user: dict = 
 @api_router.get("/data-center/search")
 async def search_data_center(
     q: Optional[str] = None,
-    data_type: Optional[str] = None,  # students, schools, educators, all
+    data_type: Optional[str] = None,  # students, schools, educators, team, growth_partners, all
     status: Optional[str] = None,
     city: Optional[str] = None,
     age_group: Optional[str] = None,
@@ -4673,8 +4673,8 @@ async def search_data_center(
     limit: int = 100,
     user: dict = Depends(get_current_user)
 ):
-    """Search across all data types"""
-    results = {"students": [], "schools": [], "educators": [], "total": 0}
+    """Search across all data types including team and growth partners"""
+    results = {"students": [], "schools": [], "educators": [], "team": [], "growth_partners": [], "total": 0}
     
     # Build search regex
     search_regex = {"$regex": q, "$options": "i"} if q else None
@@ -4742,7 +4742,44 @@ async def search_data_center(
         educators = await db.educator_applications.find(educator_query, {"_id": 0}).limit(limit).to_list(limit)
         results["educators"] = educators
     
-    results["total"] = len(results["students"]) + len(results["schools"]) + len(results["educators"])
+    # Search team members
+    if data_type in [None, "all", "team"]:
+        team_query = {}
+        if search_regex:
+            team_query["$or"] = [
+                {"name": search_regex},
+                {"phone": search_regex},
+                {"email": search_regex},
+                {"username": search_regex},
+            ]
+        if status:
+            team_query["is_active"] = status == "active"
+        
+        team_members = await db.team_users.find(team_query, {"_id": 0, "password_hash": 0}).limit(limit).to_list(limit)
+        # Add status field for consistency
+        for t in team_members:
+            t["status"] = "active" if t.get("is_active", True) else "inactive"
+        results["team"] = team_members
+    
+    # Search growth partners
+    if data_type in [None, "all", "growth_partners"]:
+        gp_query = {}
+        if search_regex:
+            gp_query["$or"] = [
+                {"name": search_regex},
+                {"phone": search_regex},
+                {"email": search_regex},
+                {"company": search_regex},
+            ]
+        if status:
+            gp_query["status"] = status
+        if city:
+            gp_query["city"] = {"$regex": city, "$options": "i"}
+        
+        growth_partners = await db.growth_partners.find(gp_query, {"_id": 0}).limit(limit).to_list(limit)
+        results["growth_partners"] = growth_partners
+    
+    results["total"] = len(results["students"]) + len(results["schools"]) + len(results["educators"]) + len(results["team"]) + len(results["growth_partners"])
     return results
 
 @api_router.get("/data-center/stats")
