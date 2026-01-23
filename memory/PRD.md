@@ -5,253 +5,127 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## What's Been Implemented
 
-### Session: January 23, 2025 (Latest - Educator Management & Bulk Import)
+### Session: January 23, 2025 (Latest - Reports & Bug Fixes)
+
+#### Admin Reports Section ✅ NEW
+1. **Comprehensive Analytics Dashboard at `/admin/reports`:**
+   - **Key Metrics Row:** Total Revenue, Paid Students, Converted Schools, Active Educators, Support Open, Team Apps
+   - **All Pipelines Section:** 6 pipeline cards showing stages for Students, Schools, Educators, Support, Team Apps, Growth Partners
+   - **Conversion Rates:** Student & School funnels with Lead→Demo, Demo→Convert, Overall conversion percentages
+   - **Analytics Breakdown:** 4 donut charts for Leads by Source, Age Group, Course Interest, Support by Type
+   - **Educator Quality Metrics:** New educators, Active, Avg demos/educator, Avg earnings, Top performers
+   - **Support Metrics:** New tickets, Open, Resolved, Avg resolution time, Priority breakdown
+   - **User Stage Distribution:** 5 donut charts showing stage breakdown for all user types
+   
+2. **Date Filters:** Today, This Week, This Month, This Year, All Time, Custom date range
+
+3. **Backend Endpoints:**
+   - `GET /api/admin/reports/overview` - Overall metrics
+   - `GET /api/admin/reports/sales-funnel` - Sales funnel with conversion rates
+   - `GET /api/admin/reports/lead-analytics` - Lead source, age group, course breakdown
+   - `GET /api/admin/reports/educator-metrics` - Teacher quality metrics
+   - `GET /api/admin/reports/support-metrics` - Support query analytics
+   - `GET /api/admin/reports/user-stages` - All user types stage distribution
+
+#### Support Assignment Fix ✅
+- Removed mandatory deadline requirement
+- Deadline is now optional (hidden behind collapsible section)
+- Users can assign tickets by simply clicking on a team member
+- Unassign functionality preserved
+
+#### Admin Educators Bugs Fixed ✅
+1. **Onboarding Step Count:** Fixed from /8 to /7 (step 7 is admin verification)
+2. **View Applicants Button:** Now properly filters applicants by requirement ID
+3. **Auto-load Onboarding Details:** Documents load automatically when viewing educator
+
+### Session: January 23, 2025 (Earlier - Educator Management & Bulk Import)
 
 #### Educator Admin Fixes ✅
-1. **Edit Requirement Modal:** Fixed - now opens properly when clicking edit icon
-2. **Applicants Tab:** Fixed - now shows all applicants correctly with sub-filters
-3. **Removed "Requirements" from sidebar:** Requirements are now managed within Educators tab
+1. **Edit Requirement Modal:** Fixed - now opens properly
+2. **Applicants Tab:** Fixed with sub-filters
+3. **Removed "Requirements" from sidebar:** Managed within Educators tab
 
 #### Add Single Active Educator ✅
-- New "Add Educator" button in Active Educators tab
-- Modal form with: name, email, phone, city, skills, experience
+- Modal form with name, email, phone, city, skills, experience
 - Backend endpoint: `POST /api/educators/add-active`
-- Educators added this way skip application process and are immediately active
+- Skips application process, immediately active
 
 #### Bulk Import Educators ✅
-- "Bulk Import" button in Active Educators tab
-- Upload CSV file with educator details
-- Sample CSV download button provided
-- Preview first 5 rows before importing
+- CSV upload with preview
+- Sample CSV download
 - Backend endpoint: `POST /api/educators/bulk-import`
-- CSV format: name, email, phone, skills, city, experience
 
 #### Footer & SEO Updates ✅
-- White OLL logo in footer
-- Updated social links:
-  - Facebook: facebook.com/ollcompany
-  - Instagram: instagram.com/oll.co_/
-  - Twitter/X: x.com/Onlinelivelearn
-  - YouTube: youtube.com/channel/UCwQyfX_lsVCLBUV5Or-rZ8g
-  - LinkedIn: linkedin.com/company/ollcompany/
-- SEO: Shortened titles to <65 chars, added canonical URLs, image attributes
+- White OLL logo, updated social links
+- Shortened titles <65 chars, canonical URLs
 
-### Session: January 23, 2025 (Earlier - Support & Admin Improvements)
+### Session: January 23, 2025 (Support & Admin Improvements)
 
 #### Support Center Ticket Assignment ✅
-1. **User-Specific Ticket Filtering:**
-   - Non-admin users (center users, team members) only see tickets assigned to them
-   - Admin users can see all tickets with option to filter by assignee
-   - Backend endpoint `/api/support/queries` now filters by user role
+- User-specific filtering (non-admins see only their tickets)
+- Admin assignment with optional deadline
+- WhatsApp + Email notifications
 
-2. **Admin Ticket Assignment with Notifications:**
-   - New `/api/support/queries/{id}/assign` endpoint
-   - Assignment modal includes deadline picker
-   - WhatsApp notification sent to assignee (template: "ticket_assigned")
-   - Email notification sent with ticket details and deadline
+#### Educator Tab Restructuring ✅
+- Tab-based interface: Requirements, Applicants, Onboarding, Active, Archived
+- Status mapping (new + demo_scheduled → applicants)
 
-#### Admin Educator Section Restructure ✅
-1. **Requirements Tab First:**
-   - Requirements tab is now the first tab (before applicants)
-   - Shows all educator requirements with add/edit functionality
-   - Displays application count for each requirement
+### Previous Sessions
 
-2. **Merged Applicants View:**
-   - "New Applications" and "Demo Scheduled" merged into single "Applicants" tab
-   - Sub-filters: All, Demo Pending, Demo Scheduled
-   - Combined count shows total applicants
+#### Site-Wide Rebranding ✅
+- "Student / Parent" → "Learner"
+- Company: "Clonefutura Live Solutions Pvt Ltd"
 
-3. **Tab Structure:**
-   - Requirements → Applicants → Onboarding → Active Educators → Archived
+#### Student Funnel UX ✅
+- Grouped time slots (Morning/Afternoon/Evening)
+- Auto-advance on selection
 
-### Session: January 23, 2025 (Earlier - UX & Branding)
-
-#### "Learner" Rebranding ✅
-Changed "Student / Parent" to "Learner" across all pages:
-- Landing page card title
-- Login page user type selector
-- FAQ page dropdown
-- Footer section header ("For Learners")
-
-#### Updated Learning Goals by Age ✅
-All age groups now have consistent, practical goal options:
-- **6-9 years:** Regular Weekly Classes, Certification Courses, Project Support, Competition Preparation, Fun & Interactive Learning
-- **10-14 years:** Regular Weekly Classes, Certification Courses, Project/Assignment Support, Competition Preparation, Resume/Portfolio Building
-- **15-18 years:** Regular Weekly Classes, Certification Courses, Project/Research Support, Olympiad & Competition Prep, Resume/College Application
-- **Young Adults:** Skill Development Classes, Professional Certification, Project/Portfolio Building, Job-Ready Skills, Freelancing
-- **Homemakers:** Regular Learning Classes, Certification Courses, Digital Literacy, Income Generation, Help Children
-- **Working Professionals:** Weekend/Evening Classes, Professional Certification, Career Switch, AI & Automation, Upskilling
-- **Senior Citizens:** Regular Learning Sessions, Digital Literacy, Stay Updated, Connect with Family, Learn Something New
-
-#### Student Funnel UX Enhancements ✅
-1. **Time Slots Divided by Time of Day:**
-   - Morning (9 AM - 12 PM): 4 slots
-   - Afternoon (1 PM - 5 PM): 5 slots
-   - Evening (6 PM - 9 PM): 4 slots
-   - Each section has clear labels and formatted times (9:00 AM format)
-
-2. **Auto-Advance on Selection:**
-   - Age group selection auto-advances to next step
-   - Learning goal selection auto-advances (no Continue button needed)
-   - Offline type selection auto-advances
-   - Online selection auto-advances
+#### School Case Studies ✅
+- 16 schools seeded with video links
+- Displayed on About Us and School Offerings pages
 
 #### Landing Page Redesign ✅
-- Taller cards on desktop (400px min-height)
-- White background instead of slate-50
-- Footer always visible (no scroll-to-reveal)
-- Cards centered vertically on desktop
+- New design with user type selector
+- Permanent footer
 
-#### School Case Studies Feature ✅
-1. **New Component:** `/app/frontend/src/components/SchoolCaseStudies.jsx`
-   - Carousel/pagination for navigating schools
-   - YouTube video thumbnail + play button
-   - Video modal for viewing
-   - Responsive grid (1/2/3 columns)
+## Pending Tasks
 
-2. **16 Partner Schools Added:**
-   - Parle Tilak Vidyalay ICSE
-   - Goregaon English Medium School
-   - Maneckji Cooper Education Trust
-   - Tayiah Biyah High School
-   - Greenlawns High School Warden Road
-   - Priyadarshani Group of Schools, Pune
-   - Shree Chandulal Nanavati High School
-   - St Agnes School, St Annes School, Scholar High School
-   - Sanjeevani World School, NL Dalmia School
-   - MSB School Mumbai, Greenlawns School Worli
-   - Dosti Foundation School, GD Somani School
+### P0 - Critical
+- None (all critical bugs fixed)
 
-3. **Integrated Into:**
-   - About Page (`/about`) - "Our School Partners"
-   - School Offerings Page (`/school-offerings`) - "Success Stories from Our Partner Schools"
+### P1 - High Priority
+- Make Blogs Dynamic (Admin CRUD)
+- CSV Export for all CRM pages
 
-### Session: January 23, 2025 (Earlier - SEO Implementation)
-
-#### Site-wide SEO Meta Tags ✅
-Added Helmet SEO meta tags to all remaining public-facing pages:
-- BlogDetailPage, FAQPage, JoinTeamPage, GrowthPartnerPage
-- StudentFunnel, EducatorFunnel, SchoolFunnel
-
-### Session: January 22, 2025 (SEO & Footer Update)
-
-#### Comprehensive SEO-Friendly Footer ✅
-Created a new standard Footer component used across all pages:
-
-**View All Offerings Section (Expandable):**
-- For Students & Individuals: All 5 courses with descriptions + Book Demo link
-- For Schools - Robotics & Coding: 12 robotics offerings, 3 coding offerings
-- For Schools - AI & Business: 5 AI offerings, 5 entrepreneurship offerings
-
-**Main Footer Navigation:**
-- For Students: All Courses, Robotics, Coding, AI & ML, Book Demo
-- For Schools: All Programs, Lab Setup, AI Center, Skill Titans, Book Meeting
-- Company: About Us, Careers, Become Educator, Partner With Us, Blog
-- Support: Learning Centers, FAQs
-- Contact: info@oll.co, +91 9920188188, Mumbai, India
-
-**Bottom Bar:**
-- Copyright notice
-- Terms & Conditions link
-- Privacy Policy link
-- Refund Policy link
-- FAQs link
-
-**Schema.org Markup:**
-- Organization itemScope
-- Contact Point with email and telephone
-- Social media sameAs links
-
-#### Landing Page Footer Behavior ✅
-- Footer appears after 2-second delay or after scrolling 100px
-- Smooth fade-in animation
-- Full footer (not compact) shown on home page
-
-#### Pages Updated with Standard Footer ✅
-- LandingPage (scroll-reveal)
-- AboutPage
-- OfferingsPage
-- SchoolOfferingsPage
-- SchoolOfferingDetailPage
-- BlogsPage
-- CentersPage
-- FAQPage
-- JoinTeamPage
-- TermsPage
-- PrivacyPage
-- RefundPolicyPage
-
-#### Contact Information Updated ✅
-- Support Email: info@oll.co
-- Support Phone: +91 9920188188
-- Location: Mumbai, India
-
-### Previous Updates (Same Session)
-
-#### SEO Optimization ✅
-- ScrollToTop component for all routes
-- Rich meta tags, Open Graph, Twitter Cards
-- JSON-LD structured data (Organization, Course schemas)
-- Canonical URLs
-
-#### Legal Pages ✅
-- Terms & Conditions (/terms)
-- Privacy Policy (/privacy)
-- Refund & Cancellation Policy (/refund-policy)
-
-#### Rich School Offering Content ✅
-- 25 school offerings with detailed descriptions
-- Learning outcomes for each program
-- Program details (grades, duration, batch size)
-
-#### School Funnel Dynamic Support ✅
-- Support selection shows offerings based on selected programs
-
-## Footer Component
-
-**File:** `/app/frontend/src/components/Footer.jsx`
-
-**Props:**
-- `variant`: 'full' (default) or 'compact'
-
-**Features:**
-- All student offerings with links
-- All school offerings organized by category
-- Collapsible "View All Offerings" section
-- Social media links
-- Legal page links
-- SEO schema markup
-
-## Routes
-- `/` - Landing page (scroll-reveal footer)
-- `/offerings` - All offerings
-- `/school-offerings` - School programs
-- `/school-offerings/:categoryId/:offeringId` - Individual programs
-- `/terms` - Terms & Conditions
-- `/privacy` - Privacy Policy
-- `/refund-policy` - Refund Policy
-- `/faqs` - FAQs
-
-## Prioritized Backlog
-
-### P0 (Resolved)
-- ~~Admin Student CRM Bug~~ - Was not a bug, URL was /admin/students not /admin/student-crm ✅
-
-### P1 (Next Priority)
-- LinkedIn Post Feature in educator onboarding (pre-written text + share button)
-- Make Blogs Dynamic (full CRUD in admin CMS)
-- Add sitemap.xml and robots.txt
-
-### P2
-- Merge Center Users and Growth Partners into RBAC Users & Roles system
-- Enforce RBAC Permissions on frontend/backend
-
-### P3+
+### P2 - Medium Priority
 - Real Calendar Integration (Calendly)
-- CSV Export for CRM pages
+- Enforce RBAC permissions frontend/backend
 - Lead scoring system
-- Automated follow-up reminders
+- Automated follow-up reminders for educators
+
+### P3 - Future/Backlog
+- Filter school case studies by board type (ICSE/CBSE/IB)
+- LinkedIn "Share Post" in educator onboarding
+- Merge "Center Users" and "Growth Partners" into RBAC
+
+## Known Issues/Limitations
+- **Jitsi Moderator Control:** Public meet.jit.si doesn't support programmatic moderator assignment
+- **Resend Domain:** User must verify oll.co domain for email sending
+
+## Tech Stack
+- Frontend: React + Tailwind CSS + Shadcn UI
+- Backend: FastAPI + MongoDB
+- Integrations: AiSensy (WhatsApp), Jitsi (Video), PostHog (Analytics), Resend (Email)
+
+## Key Admin URLs
+- Dashboard: `/admin`
+- Students: `/admin/students`
+- Schools: `/admin/schools`
+- Educators: `/admin/educators`
+- Reports: `/admin/reports` ← NEW
+- Support: `/admin/support`
+- Settings: `/admin/settings`
 
 ## Test Credentials
-- **Admin**: admin@oll.co / Dagaji03@
-- **Educator**: Any 10-digit phone with OTP 1111
+- Admin: admin@oll.co / Dagaji03@
+- User Login: Any 10-digit phone with OTP 1111
