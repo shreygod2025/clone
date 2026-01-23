@@ -21,7 +21,7 @@ const SCHOOL_CATEGORIES = [
     subtitle: 'Complete Robotics Solutions',
     icon: Cpu,
     color: '#D63031',
-    gradient: 'from-red-500 to-orange-500',
+    gradient: 'from-[#D63031] to-[#e84142]',
     offerings: [
       { id: 'robotics-curriculum-kits', title: 'Robotics Curriculum with Take-home Kits & Books' },
       { id: 'robotics-lab-setup', title: 'Robotics Curriculum with Lab Setup & Books' },
@@ -42,8 +42,8 @@ const SCHOOL_CATEGORIES = [
     title: 'Financial Literacy & Entrepreneurship',
     subtitle: 'Business & Money Skills',
     icon: TrendingUp,
-    color: '#10B981',
-    gradient: 'from-green-500 to-teal-500',
+    color: '#1E3A5F',
+    gradient: 'from-[#1E3A5F] to-[#2C5282]',
     offerings: [
       { id: 'entrepreneurship-workshop', title: 'Entrepreneurship 3 Day Workshop' },
       { id: 'skill-titans-olympiad', title: 'Skill Titans TV Show & Entrepreneurship Olympiad' },
@@ -57,8 +57,8 @@ const SCHOOL_CATEGORIES = [
     title: 'AI & Machine Learning',
     subtitle: 'Future-Ready AI Skills',
     icon: Brain,
-    color: '#8B5CF6',
-    gradient: 'from-purple-600 to-pink-500',
+    color: '#D63031',
+    gradient: 'from-[#D63031] to-[#1E3A5F]',
     offerings: [
       { id: 'ai-center-excellence', title: 'Launch an AI Center for Excellence' },
       { id: 'agentic-ai-workshop', title: 'Agentic AI Workshop for Students' },
@@ -73,7 +73,7 @@ const SCHOOL_CATEGORIES = [
     subtitle: 'Build Future Developers',
     icon: Code,
     color: '#1E3A5F',
-    gradient: 'from-blue-600 to-cyan-500',
+    gradient: 'from-[#1E3A5F] to-[#2C5282]',
     offerings: [
       { id: 'vibe-coding-seminar', title: 'Vibe Coding Seminar' },
       { id: 'coding-afterschool', title: 'Coding & Logic Building After School Classes' },
