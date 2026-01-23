@@ -26,7 +26,7 @@ const LandingPage = () => {
   }, [isLoggedIn, user, navigate]);
 
   const handleSchoolClick = () => {
-    setShowSchoolDialog(true);
+    navigate('/for-schools');
   };
 
   const userTypes = [
