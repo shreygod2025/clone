@@ -78,7 +78,31 @@ const LEARNING_GOALS = {
   ],
 };
 
-const TIME_SLOTS = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'];
+// Time slots organized by time of day
+const TIME_SLOT_GROUPS = {
+  morning: {
+    label: 'Morning',
+    sublabel: '9 AM - 12 PM',
+    slots: ['09:00', '10:00', '11:00', '12:00']
+  },
+  afternoon: {
+    label: 'Afternoon', 
+    sublabel: '1 PM - 5 PM',
+    slots: ['13:00', '14:00', '15:00', '16:00', '17:00']
+  },
+  evening: {
+    label: 'Evening',
+    sublabel: '6 PM - 9 PM', 
+    slots: ['18:00', '19:00', '20:00', '21:00']
+  }
+};
+
+const formatTimeDisplay = (time) => {
+  const hour = parseInt(time.split(':')[0]);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
+  return `${displayHour}:00 ${ampm}`;
+};
 
 const StudentFunnel = () => {
   const navigate = useNavigate();
