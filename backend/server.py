@@ -4153,12 +4153,24 @@ async def create_support_query(data: dict):
 @api_router.get("/support/queries")
 async def get_support_queries(
     status: Optional[str] = None,
+    assigned_to: Optional[str] = None,
+    my_tickets: bool = False,
     user: dict = Depends(get_current_user)
 ):
-    """Get all support queries from the SupportFlow component"""
+    """Get support queries - filters by assigned_to for non-admin users"""
     query = {}
     if status:
         query["status"] = status
+    
+    # If my_tickets is true or user is not admin, filter by assigned_to
+    user_role = user.get("role", "")
+    if my_tickets or (user_role not in ["admin", "super_admin"]):
+        # For center users, team users, etc. - only show their assigned tickets
+        user_id = user.get("id") or user.get("email")
+        query["assigned_to"] = user_id
+    elif assigned_to:
+        query["assigned_to"] = assigned_to
+        
     queries = await db.support_queries.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
     return queries
 
@@ -4166,8 +4178,83 @@ async def get_support_queries(
 async def update_support_query(query_id: str, data: dict, user: dict = Depends(get_current_user)):
     """Update a support query status"""
     update_data = {k: v for k, v in data.items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    update_data["updated_by"] = user.get("email", "admin")
     await db.support_queries.update_one({"id": query_id}, {"$set": update_data})
     return {"message": "Query updated successfully"}
+
+@api_router.post("/support/queries/{query_id}/assign")
+async def assign_support_query(query_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Assign a support query to a user with deadline and send notifications"""
+    assigned_to = data.get("assigned_to")
+    deadline = data.get("deadline")  # ISO format datetime string
+    
+    if not assigned_to:
+        raise HTTPException(status_code=400, detail="assigned_to is required")
+    
+    # Get the query
+    query = await db.support_queries.find_one({"id": query_id}, {"_id": 0})
+    if not query:
+        raise HTTPException(status_code=404, detail="Query not found")
+    
+    # Get the user being assigned
+    assignee = await db.team_users.find_one({"id": assigned_to}, {"_id": 0})
+    if not assignee:
+        assignee = await db.center_users.find_one({"id": assigned_to}, {"_id": 0})
+    if not assignee:
+        assignee = await db.admins.find_one({"id": assigned_to}, {"_id": 0})
+    
+    # Update the query with assignment
+    update_data = {
+        "assigned_to": assigned_to,
+        "assigned_at": datetime.now(timezone.utc).isoformat(),
+        "assigned_by": user.get("email", "admin"),
+        "deadline": deadline,
+        "status": "in_progress" if query.get("status") == "open" else query.get("status")
+    }
+    await db.support_queries.update_one({"id": query_id}, {"$set": update_data})
+    
+    # Send notifications to the assignee
+    if assignee:
+        assignee_name = assignee.get("name", "Team Member")
+        assignee_phone = assignee.get("phone", "")
+        assignee_email = assignee.get("email", "")
+        
+        query_type = query.get("query_type", query.get("type", "Support Request"))
+        query_details = query.get("message", query.get("query", ""))[:100]
+        deadline_str = deadline if deadline else "As soon as possible"
+        
+        # Send WhatsApp notification
+        if assignee_phone:
+            try:
+                await send_whatsapp_message(
+                    assignee_phone,
+                    "ticket_assigned",
+                    params=[assignee_name, query_type, query_details, deadline_str]
+                )
+            except Exception as e:
+                print(f"Failed to send WhatsApp: {e}")
+        
+        # Send Email notification
+        if assignee_email:
+            try:
+                await send_email(
+                    to_email=assignee_email,
+                    subject=f"New Support Ticket Assigned - {query_type}",
+                    template_name="ticket_assigned",
+                    context={
+                        "assignee_name": assignee_name,
+                        "query_type": query_type,
+                        "query_details": query_details,
+                        "deadline": deadline_str,
+                        "customer_name": query.get("name", "Customer"),
+                        "customer_phone": query.get("phone", "N/A")
+                    }
+                )
+            except Exception as e:
+                print(f"Failed to send email: {e}")
+    
+    return {"message": "Query assigned successfully", "assigned_to": assigned_to}
 
 @api_router.get("/support/school-queries")
 async def get_school_support_queries(user: dict = Depends(get_current_user)):
