@@ -64,7 +64,7 @@ const AdminSchoolCRM = () => {
   const [onboardData, setOnboardData] = useState({
     offering: '', // Select from offerings
     model: '',
-    book_type: '',
+    book_type: '', // individual_books, no_books
     kit_type: '', // lab_setup, individual, no_kit
     training_type: '', // student_training, teacher_training
     grade_pricing: [{ grade: '', students: '', price_per_student: '' }],
@@ -77,9 +77,11 @@ const AdminSchoolCRM = () => {
     payment_tranches: [{ amount: '', percentage: '', date: '', notes: '' }],
     contract_start: '',
     contract_end: '',
+    mou_url: '', // MOU document upload
     is_draft: false,
   });
   const [offerings, setOfferings] = useState([]);
+  const [uploadingMOU, setUploadingMOU] = useState(false);
   const [newLead, setNewLead] = useState({
     school_name: '',
     contact_name: '',
