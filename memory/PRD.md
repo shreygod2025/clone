@@ -5,7 +5,35 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## What's Been Implemented
 
-### Session: January 23, 2025 (Latest - UX Improvements & School Case Studies)
+### Session: January 23, 2025 (Latest - Support & Admin Improvements)
+
+#### Support Center Ticket Assignment ✅
+1. **User-Specific Ticket Filtering:**
+   - Non-admin users (center users, team members) only see tickets assigned to them
+   - Admin users can see all tickets with option to filter by assignee
+   - Backend endpoint `/api/support/queries` now filters by user role
+
+2. **Admin Ticket Assignment with Notifications:**
+   - New `/api/support/queries/{id}/assign` endpoint
+   - Assignment modal includes deadline picker
+   - WhatsApp notification sent to assignee (template: "ticket_assigned")
+   - Email notification sent with ticket details and deadline
+
+#### Admin Educator Section Restructure ✅
+1. **Requirements Tab First:**
+   - Requirements tab is now the first tab (before applicants)
+   - Shows all educator requirements with add/edit functionality
+   - Displays application count for each requirement
+
+2. **Merged Applicants View:**
+   - "New Applications" and "Demo Scheduled" merged into single "Applicants" tab
+   - Sub-filters: All, Demo Pending, Demo Scheduled
+   - Combined count shows total applicants
+
+3. **Tab Structure:**
+   - Requirements → Applicants → Onboarding → Active Educators → Archived
+
+### Session: January 23, 2025 (Earlier - UX & Branding)
 
 #### "Learner" Rebranding ✅
 Changed "Student / Parent" to "Learner" across all pages:
@@ -36,13 +64,6 @@ All age groups now have consistent, practical goal options:
    - Learning goal selection auto-advances (no Continue button needed)
    - Offline type selection auto-advances
    - Online selection auto-advances
-
-3. **Age-Based Learning Goals:**
-   - Already implemented with different goals for each age group
-   - 5-9: Play-based, Parent involvement focused
-   - 10-14: Programming, Robotics, Career prep
-   - 15-18: College prep, Competitions, Professional skills
-   - 18+: Career advancement, New hobby
 
 #### Landing Page Redesign ✅
 - Taller cards on desktop (400px min-height)
