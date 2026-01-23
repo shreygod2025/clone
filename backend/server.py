@@ -5438,7 +5438,7 @@ async def get_user_stages_report(
     
     # Growth Partners
     all_gps = await db.growth_partners.find({}, {"_id": 0}).to_list(10000)
-    gps = [g for g in all_gps if start <= (parse_date_field(g.get('created_at')) or start) <= end]
+    gps = [g for g in all_gps if is_in_range(g)]
     
     gp_stages = {}
     for g in gps:
