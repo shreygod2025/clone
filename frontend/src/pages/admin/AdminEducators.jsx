@@ -55,6 +55,7 @@ const AdminEducators = () => {
   const [activeTab, setActiveTab] = useState('requirements'); // Main tab
   const [applicantSubFilter, setApplicantSubFilter] = useState('all'); // 'all', 'new', 'demo_scheduled'
   const [assigneeFilter, setAssigneeFilter] = useState('all');
+  const [requirementFilter, setRequirementFilter] = useState(null); // Filter applicants by requirement
   
   // Requirements state
   const [requirements, setRequirements] = useState([]);
