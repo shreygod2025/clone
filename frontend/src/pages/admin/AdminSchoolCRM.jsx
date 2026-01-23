@@ -1675,7 +1675,7 @@ const AdminSchoolCRM = () => {
 
       {/* School Onboarding Modal */}
       <Dialog open={!!showOnboardModal} onOpenChange={() => setShowOnboardModal(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CalendarClock className="w-5 h-5 text-green-600" />
@@ -1684,21 +1684,74 @@ const AdminSchoolCRM = () => {
           </DialogHeader>
           
           <div className="space-y-4">
-            {/* Model Selection */}
-            <div>
-              <label className="text-sm font-medium text-slate-700">Select Model *</label>
-              <select
-                value={onboardData.model}
-                onChange={(e) => setOnboardData(prev => ({ ...prev, model: e.target.value }))}
-                className="w-full h-10 px-3 border border-slate-200 rounded-lg"
-              >
-                <option value="">Select school offering model</option>
-                <option value="robotics_lab">Robotics Lab Setup</option>
-                <option value="stem_curriculum">STEM Curriculum Integration</option>
-                <option value="after_school">After School Program</option>
-                <option value="teacher_training">Teacher Training</option>
-                <option value="full_partnership">Full School Partnership</option>
-              </select>
+            {/* Offering Selection */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium text-slate-700">Select Offering *</label>
+                <select
+                  value={onboardData.offering}
+                  onChange={(e) => setOnboardData(prev => ({ ...prev, offering: e.target.value }))}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                >
+                  <option value="">Select from offerings</option>
+                  {offerings.map(o => (
+                    <option key={o.id} value={o.id}>{o.title || o.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Model/Type *</label>
+                <select
+                  value={onboardData.model}
+                  onChange={(e) => setOnboardData(prev => ({ ...prev, model: e.target.value }))}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                >
+                  <option value="">Select model</option>
+                  <option value="robotics_lab">Robotics Lab Setup</option>
+                  <option value="stem_curriculum">STEM Curriculum Integration</option>
+                  <option value="after_school">After School Program</option>
+                  <option value="teacher_training">Teacher Training</option>
+                  <option value="full_partnership">Full School Partnership</option>
+                </select>
+              </div>
+            </div>
+            
+            {/* New Fields: Book Type, Kit Type, Training Type */}
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="text-sm font-medium text-slate-700">Book Type</label>
+                <Input
+                  placeholder="e.g., Level 1, Beginner"
+                  value={onboardData.book_type}
+                  onChange={(e) => setOnboardData(prev => ({ ...prev, book_type: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Kit Type *</label>
+                <select
+                  value={onboardData.kit_type}
+                  onChange={(e) => setOnboardData(prev => ({ ...prev, kit_type: e.target.value }))}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                >
+                  <option value="">Select kit type</option>
+                  <option value="lab_setup">Lab Setup</option>
+                  <option value="individual">Individual Kit</option>
+                  <option value="no_kit">No Kit</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Training Type *</label>
+                <select
+                  value={onboardData.training_type}
+                  onChange={(e) => setOnboardData(prev => ({ ...prev, training_type: e.target.value }))}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                >
+                  <option value="">Select training type</option>
+                  <option value="student_training">Student Training</option>
+                  <option value="teacher_training">Teacher Training</option>
+                  <option value="both">Both (Student & Teacher)</option>
+                </select>
+              </div>
             </div>
 
             {/* Grade-wise Pricing */}
