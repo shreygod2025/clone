@@ -755,21 +755,31 @@ const StudentFunnel = () => {
             
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-3">Select Time</label>
-              <div className="grid grid-cols-4 gap-2">
-                {TIME_SLOTS.map((time) => (
-                  <button
-                    key={time}
-                    type="button"
-                    className={`p-3 rounded-xl border-2 transition-all ${
-                      formData.demo_time === time
-                        ? 'border-[#D63031] bg-red-50 text-[#D63031]'
-                        : 'border-slate-200 hover:border-slate-300'
-                    }`}
-                    onClick={() => updateForm('demo_time', time)}
-                    data-testid={`time-${time}`}
-                  >
-                    {time}
-                  </button>
+              <div className="space-y-4">
+                {Object.entries(TIME_SLOT_GROUPS).map(([key, group]) => (
+                  <div key={key} className="bg-slate-50 rounded-xl p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-slate-700">{group.label}</span>
+                      <span className="text-xs text-slate-500">{group.sublabel}</span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {group.slots.map((time) => (
+                        <button
+                          key={time}
+                          type="button"
+                          className={`p-2 rounded-lg border-2 transition-all text-sm ${
+                            formData.demo_time === time
+                              ? 'border-[#D63031] bg-red-50 text-[#D63031] font-medium'
+                              : 'border-slate-200 hover:border-slate-300 bg-white'
+                          }`}
+                          onClick={() => updateForm('demo_time', time)}
+                          data-testid={`time-${time}`}
+                        >
+                          {formatTimeDisplay(time)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
