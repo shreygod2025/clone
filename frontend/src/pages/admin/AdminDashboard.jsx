@@ -522,10 +522,6 @@ const AdminDashboard = () => {
                     <span className="text-slate-600">Manage FAQs</span>
                     <ChevronRight className="w-5 h-5 text-slate-400" />
                   </Link>
-                  <Link to="/admin/requirements" className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                    <span className="text-slate-600">Manage Open Requirements</span>
-                    <ChevronRight className="w-5 h-5 text-slate-400" />
-                  </Link>
                 </div>
               </div>
             ) : (
