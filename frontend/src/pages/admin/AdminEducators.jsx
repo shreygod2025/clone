@@ -835,11 +835,19 @@ const AdminEducators = () => {
 
       {/* Sub-filter for Applicants tab */}
       {activeTab === 'applicants' && (
-        <div className="flex gap-2 mb-6">
+        <div className="flex flex-wrap gap-2 mb-6 items-center">
+          {requirementFilter && (
+            <div className="flex items-center gap-2 bg-[#D63031]/10 text-[#D63031] px-3 py-1.5 rounded-lg text-xs font-medium">
+              <span>Filtered by: {requirements.find(r => r.id === requirementFilter)?.title || 'Requirement'}</span>
+              <button onClick={() => setRequirementFilter(null)} className="hover:bg-[#D63031]/20 rounded p-0.5">
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          )}
           <button
-            onClick={() => setApplicantSubFilter('all')}
+            onClick={() => { setApplicantSubFilter('all'); setRequirementFilter(null); }}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-              applicantSubFilter === 'all' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
+              applicantSubFilter === 'all' && !requirementFilter ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
             }`}
           >
             All ({educators.filter(e => e.status === 'new' || e.status === 'demo_scheduled').length})
