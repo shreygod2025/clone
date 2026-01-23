@@ -5,9 +5,47 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## What's Been Implemented
 
-### Session: January 23, 2025 (Latest - School Onboarding Overhaul + Autocomplete Fix)
+### Session: January 23, 2025 (Latest - Session Visibility + Dynamic Blogs)
 
 #### Latest Updates ✅
+
+**1. P0: Session Visibility - IMPLEMENTED**
+- **Student Dashboard (MyBookingsPage):**
+  - New "My Sessions" tab shows sessions when student is converted
+  - Sessions display: date, time, mode (online/in-person), status
+  - Progress bar showing completed/total sessions
+  - "Join Now" button for online sessions with Jitsi link
+  - Join window: 15 mins before to 1 hour after session time
+- **Educator Dashboard:**
+  - New "Sessions" tab shows assigned student sessions
+  - Sessions include student name, phone, skill, batch info
+  - "Join Session" button for online classes
+- **Backend Endpoints:**
+  - `GET /api/user/my-sessions/{phone}` - Public endpoint for students
+  - `GET /api/educator/my-sessions` - Auth required for educators
+
+**2. P1: Dynamic Blogs Admin - IMPLEMENTED**
+- Full CRUD admin panel at `/admin/blogs`
+- Create/Edit/Delete blog posts
+- Fields: title, slug (auto-generated), category, author, cover image, excerpt, content
+- Publish/Draft toggle
+- Published blogs appear on public `/blogs` page
+- Added "Blogs" nav item to admin sidebar
+
+**3. UI: For Schools Page - Enhanced Desktop Layout**
+- `/for-schools` page now has proper spacing and requires scrolling
+- Added sections: Stats, Programs We Offer, Why Partner With OLL, CTA
+- 4 program cards: Robotics Lab Setup, STEM Curriculum, AI & Coding, Entrepreneurship
+- Benefits checklist with partnership CTA
+
+**4. Deployment Fix - Hardcoded URL Removed**
+- Removed hardcoded `https://eduskill-crm.preview.emergentagent.com` from server.py
+- Now uses `FRONTEND_URL` environment variable
+- Added `FRONTEND_URL` to backend .env
+
+---
+
+### Previous Session: January 20, 2025 (School Onboarding Overhaul + Autocomplete)
 
 **1. School Onboarding Modal - Major Enhancements**
 - **Select Offering** dropdown - populated from `/api/school-offerings` endpoint
