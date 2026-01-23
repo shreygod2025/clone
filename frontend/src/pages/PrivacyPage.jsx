@@ -11,7 +11,7 @@ const PrivacyPage = () => {
   return (
     <>
       <Helmet>
-        <title>Privacy Policy | OLL - Open Learning Labs</title>
+        <title>Privacy Policy | OLL - Clonefutura Live Solutions</title>
         <meta name="description" content="Learn how OLL collects, uses, and protects your personal information. Our commitment to your privacy." />
         <link rel="canonical" href="https://oll.co/privacy" />
       </Helmet>
@@ -30,7 +30,7 @@ const PrivacyPage = () => {
               
               <section>
                 <h2 className="text-xl font-semibold text-[#1E3A5F] mb-3">1. Introduction</h2>
-                <p>OLL (Open Learning Labs) is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our website and services.</p>
+                <p>OLL (Clonefutura Live Solutions) is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our website and services.</p>
               </section>
 
               <section>
@@ -140,7 +140,7 @@ const PrivacyPage = () => {
                 <p>For privacy-related inquiries:</p>
                 <p className="mt-2">
                   <strong>Email:</strong> privacy@oll.co<br />
-                  <strong>Address:</strong> OLL - Open Learning Labs Pvt. Ltd., Mumbai, Maharashtra, India
+                  <strong>Address:</strong> Clonefutura Live Solutions Pvt. Ltd., Mumbai, Maharashtra, India
                 </p>
               </section>
             </div>

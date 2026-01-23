@@ -11,7 +11,7 @@ const TermsPage = () => {
   return (
     <>
       <Helmet>
-        <title>Terms & Conditions | OLL - Open Learning Labs</title>
+        <title>Terms & Conditions | OLL - Clonefutura Live Solutions</title>
         <meta name="description" content="Read OLL's terms and conditions for using our skill education platform, courses, and services." />
         <link rel="canonical" href="https://oll.co/terms" />
       </Helmet>
@@ -30,7 +30,7 @@ const TermsPage = () => {
               
               <section>
                 <h2 className="text-xl font-semibold text-[#1E3A5F] mb-3">1. Introduction</h2>
-                <p>Welcome to OLL (Open Learning Labs). These Terms and Conditions govern your use of our website, mobile applications, and all related services (collectively, the "Services"). By accessing or using our Services, you agree to be bound by these Terms.</p>
+                <p>Welcome to OLL (Clonefutura Live Solutions). These Terms and Conditions govern your use of our website, mobile applications, and all related services (collectively, the "Services"). By accessing or using our Services, you agree to be bound by these Terms.</p>
               </section>
 
               <section>
@@ -115,7 +115,7 @@ const TermsPage = () => {
                 <p>For questions about these Terms, please contact us at:</p>
                 <p className="mt-2">
                   <strong>Email:</strong> legal@oll.co<br />
-                  <strong>Address:</strong> OLL - Open Learning Labs Pvt. Ltd., Mumbai, Maharashtra, India
+                  <strong>Address:</strong> Clonefutura Live Solutions Pvt. Ltd., Mumbai, Maharashtra, India
                 </p>
               </section>
             </div>
