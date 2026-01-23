@@ -1832,21 +1832,93 @@ const AdminSchoolCRM = () => {
             </div>
 
             {/* Payment Details */}
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="text-sm font-medium text-slate-700">Payment Mode</label>
-                <select
-                  value={onboardData.payment_mode}
-                  onChange={(e) => setOnboardData(prev => ({ ...prev, payment_mode: e.target.value }))}
-                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
-                >
-                  <option value="monthly">Monthly</option>
-                  <option value="quarterly">Quarterly</option>
-                  <option value="half_yearly">Half Yearly</option>
-                  <option value="annual">Annual</option>
-                  <option value="one_time">One Time</option>
-                </select>
+            <div className="bg-slate-50 p-4 rounded-lg space-y-4">
+              <p className="text-sm font-semibold text-slate-700">Payment Details</p>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium text-slate-700">Payment Mode (Who pays?)</label>
+                  <select
+                    value={onboardData.payment_mode}
+                    onChange={(e) => setOnboardData(prev => ({ ...prev, payment_mode: e.target.value }))}
+                    className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white"
+                  >
+                    <option value="from_school">From School</option>
+                    <option value="from_student">From Student</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-slate-700">Payment Method</label>
+                  <select
+                    value={onboardData.payment_method}
+                    onChange={(e) => setOnboardData(prev => ({ ...prev, payment_method: e.target.value }))}
+                    className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white"
+                  >
+                    <option value="">Select method</option>
+                    <option value="cheque">Cheque</option>
+                    <option value="neft">NEFT/RTGS</option>
+                    <option value="online">Online</option>
+                    <option value="cash">Cash</option>
+                  </select>
+                </div>
               </div>
+              
+              {/* Payment Tranches */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-slate-700">Payment Tranches</label>
+                  <Button variant="ghost" size="sm" onClick={addPaymentTranche} className="text-blue-600">
+                    <Plus className="w-4 h-4 mr-1" /> Add Tranche
+                  </Button>
+                </div>
+                <p className="text-xs text-slate-500 mb-2">Enter % or amount - the other will auto-calculate</p>
+                <div className="space-y-2">
+                  {onboardData.payment_tranches.map((tranche, idx) => (
+                    <div key={idx} className="grid grid-cols-5 gap-2 items-center">
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          placeholder="%"
+                          value={tranche.percentage}
+                          onChange={(e) => updatePaymentTranche(idx, 'percentage', e.target.value)}
+                          className="pr-6"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 text-sm">%</span>
+                      </div>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          placeholder="Amount"
+                          value={tranche.amount}
+                          onChange={(e) => updatePaymentTranche(idx, 'amount', e.target.value)}
+                          className="pl-6"
+                        />
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₹</span>
+                      </div>
+                      <Input
+                        type="date"
+                        value={tranche.date}
+                        onChange={(e) => updatePaymentTranche(idx, 'date', e.target.value)}
+                        className="text-sm"
+                      />
+                      <Input
+                        placeholder="Notes"
+                        value={tranche.notes}
+                        onChange={(e) => updatePaymentTranche(idx, 'notes', e.target.value)}
+                      />
+                      {onboardData.payment_tranches.length > 1 && (
+                        <Button variant="ghost" size="sm" onClick={() => removePaymentTranche(idx)} className="text-red-500">
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            
+            {/* Contract Dates */}
+            <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-sm font-medium text-slate-700">Contract Start</label>
                 <Input
@@ -1869,7 +1941,10 @@ const AdminSchoolCRM = () => {
               <Button variant="outline" onClick={() => setShowOnboardModal(null)} className="flex-1">
                 Cancel
               </Button>
-              <Button onClick={handleOnboardSchool} className="flex-1 bg-green-600 hover:bg-green-700">
+              <Button variant="outline" onClick={() => handleOnboardSchool(true)} className="flex-1 border-blue-500 text-blue-600 hover:bg-blue-50">
+                Save as Draft
+              </Button>
+              <Button onClick={() => handleOnboardSchool(false)} className="flex-1 bg-green-600 hover:bg-green-700">
                 Onboard School
               </Button>
             </div>
