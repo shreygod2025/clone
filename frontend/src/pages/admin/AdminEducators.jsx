@@ -989,6 +989,7 @@ const AdminEducators = () => {
                           setRequirementFilter(req.id);
                         }}
                         className="text-xs text-[#D63031] hover:underline flex items-center gap-1"
+                        data-testid={`view-applicants-${req.id}`}
                       >
                         <Eye className="w-3 h-3" />
                         View {matchingApps} applicant(s)
