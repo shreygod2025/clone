@@ -114,54 +114,6 @@ const SchoolLandingPage = () => {
           </div>
         </section>
 
-        {/* Partner Schools - Dynamic */}
-        <section className="py-8 bg-gradient-to-br from-slate-900 to-slate-800">
-          <div className="max-w-6xl mx-auto px-4 text-center">
-            <h2 className="text-xl md:text-2xl font-bold text-white mb-4" style={{ fontFamily: 'Manrope, sans-serif' }}>
-              Trusted by Leading Schools
-            </h2>
-            <div className="flex flex-wrap justify-center gap-2">
-              {partnerSchools.map((school, idx) => (
-                <span 
-                  key={idx} 
-                  className="px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-full text-white text-xs md:text-sm"
-                >
-                  {typeof school === 'string' ? school : school.name}
-                </span>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* CTA */}
-        <section className="py-12 px-4">
-          <div className="max-w-3xl mx-auto text-center">
-            <Award className="w-12 h-12 text-[#D63031] mx-auto mb-4" />
-            <h2 className="text-2xl md:text-3xl font-bold text-[#1E3A5F] mb-3" style={{ fontFamily: 'Manrope, sans-serif' }}>
-              Ready to Transform Your School?
-            </h2>
-            <p className="text-slate-600 mb-6 max-w-xl mx-auto">
-              Join the future of education with OLL
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <button
-                onClick={() => navigate('/school-offerings')}
-                className="px-6 py-2.5 border-2 border-[#1E3A5F] text-[#1E3A5F] rounded-full font-medium hover:bg-[#1E3A5F] hover:text-white transition-colors flex items-center justify-center gap-2"
-              >
-                <Eye className="w-4 h-4" />
-                View Details
-              </button>
-              <button
-                onClick={() => navigate('/school')}
-                className="px-6 py-2.5 bg-[#D63031] text-white rounded-full font-medium hover:bg-[#b52828] transition-colors flex items-center justify-center gap-2"
-              >
-                <Calendar className="w-4 h-4" />
-                Book a Meeting
-              </button>
-            </div>
-          </div>
-        </section>
-
         <Footer />
       </div>
     </>
