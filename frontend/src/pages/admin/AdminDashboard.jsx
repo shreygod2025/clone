@@ -231,7 +231,7 @@ const AdminDashboard = () => {
               </div>
               <div className="hidden md:flex items-center gap-3">
                 <div className="text-right">
-                  <p className="text-white/60 text-xs">Today's Date</p>
+                  <p className="text-white/60 text-xs">Today&apos;s Date</p>
                   <p className="font-medium">{new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</p>
                 </div>
               </div>
