@@ -976,7 +976,7 @@ const EducatorDashboard = () => {
                   </div>
                 ))}
               </div>
-            )}
+            ))}
           </>
         )}
       </main>
