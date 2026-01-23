@@ -5535,13 +5535,22 @@ async def get_reports_overview(
     total_demos = len(demos)
     completed_demos = len([d for d in demos if d.get('status') == 'completed'])
     
-    # Revenue calculation (simplified - sum of paid amounts)
-    total_revenue = sum(float(s.get('amount_paid', 0) or 0) for s in student_inquiries if s.get('payment_status') == 'paid')
-    total_revenue += sum(float(s.get('amount_paid', 0) or 0) for s in school_inquiries if s.get('status') == 'converted')
+    # Revenue calculation - includes amount_paid AND conversion_amount from onboarding
+    student_revenue = 0
+    for s in student_inquiries:
+        if s.get('payment_status') == 'paid' or s.get('status') == 'converted':
+            # Check for conversion_amount first (from onboarding), then amount_paid
+            amount = float(s.get('conversion_amount') or s.get('amount_paid') or 0)
+            student_revenue += amount
+    
+    school_revenue = sum(float(s.get('amount_paid', 0) or 0) for s in school_inquiries if s.get('status') == 'converted')
+    total_revenue = student_revenue + school_revenue
     
     return {
         "overview": {
             "total_revenue": total_revenue,
+            "student_revenue": student_revenue,
+            "school_revenue": school_revenue,
             "paid_students": paid_students,
             "converted_schools": converted_schools,
             "active_educators": active_educators,
