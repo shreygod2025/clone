@@ -43,6 +43,7 @@ import AdminRequirements from "./pages/admin/AdminRequirements";
 import AdminSupportUnified from "./pages/admin/AdminSupportUnified";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminReports from "./pages/admin/AdminReports";
+import AdminDataCenter from "./pages/admin/AdminDataCenter";
 import CenterDashboard from "./pages/admin/CenterDashboard";
 
 // Auth Context
