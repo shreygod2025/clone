@@ -4837,7 +4837,7 @@ async def autocomplete_search(
     data_type: Optional[str] = None,
     user: dict = Depends(get_current_user)
 ):
-    """Autocomplete search for forms"""
+    """Autocomplete search for forms - search by name, phone, or email"""
     if len(q) < 2:
         return []
     
@@ -4847,8 +4847,8 @@ async def autocomplete_search(
     # Search students
     if data_type in [None, "students"]:
         students = await db.student_inquiries.find(
-            {"$or": [{"name": search_regex}, {"phone": search_regex}]},
-            {"_id": 0, "id": 1, "name": 1, "phone": 1, "email": 1, "city": 1, "age_group": 1, "skill": 1}
+            {"$or": [{"name": search_regex}, {"phone": search_regex}, {"email": search_regex}]},
+            {"_id": 0, "id": 1, "name": 1, "phone": 1, "email": 1, "city": 1, "age_group": 1, "skill": 1, "learning_mode": 1, "learning_goal": 1, "address": 1}
         ).limit(5).to_list(5)
         for s in students:
             s["type"] = "student"
@@ -4857,8 +4857,8 @@ async def autocomplete_search(
     # Search schools
     if data_type in [None, "schools"]:
         schools = await db.school_inquiries.find(
-            {"$or": [{"school_name": search_regex}, {"contact_name": search_regex}, {"phone": search_regex}]},
-            {"_id": 0, "id": 1, "school_name": 1, "contact_name": 1, "phone": 1, "email": 1, "location": 1, "board": 1}
+            {"$or": [{"school_name": search_regex}, {"contact_name": search_regex}, {"phone": search_regex}, {"email": search_regex}]},
+            {"_id": 0, "id": 1, "school_name": 1, "contact_name": 1, "phone": 1, "email": 1, "location": 1, "board": 1, "student_count": 1, "meeting_type": 1}
         ).limit(5).to_list(5)
         for s in schools:
             s["type"] = "school"
@@ -4868,7 +4868,7 @@ async def autocomplete_search(
     # Search educators
     if data_type in [None, "educators"]:
         educators = await db.educator_applications.find(
-            {"$or": [{"name": search_regex}, {"phone": search_regex}]},
+            {"$or": [{"name": search_regex}, {"phone": search_regex}, {"email": search_regex}]},
             {"_id": 0, "id": 1, "name": 1, "phone": 1, "email": 1, "city": 1, "skills": 1}
         ).limit(5).to_list(5)
         for e in educators:
