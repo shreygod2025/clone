@@ -62,31 +62,38 @@ const LandingPage = () => {
   return (
     <>
       <Helmet>
-        <title>OLL - Robotics, Coding & AI Classes for Kids | Book Demo</title>
-        <meta name="description" content="OLL - India's #1 skill education platform. Learn Robotics, Coding, AI & Entrepreneurship. Expert tutors, flexible timings. Book a free demo today!" />
-        <meta name="keywords" content="robotics classes India, coding classes for kids, AI courses, entrepreneurship education, skill development, STEM education, school programs, learn robotics, kids coding" />
+        <title>OLL - Learn Future Skills | Robotics, AI, Coding & Entrepreneurship Classes</title>
+        <meta name="description" content="OLL offers Robotics, AI, Coding, Entrepreneurship & Financial Literacy skill classes for students of all ages. Lab setups & programs for ICSE, CBSE, State Board schools. Book a free demo today!" />
+        <meta name="keywords" content="OLL, robotics classes, AI classes, coding for kids, entrepreneurship classes, financial literacy, STEM education, robotics lab setup, ICSE robotics, CBSE robotics, skill education India, future skills, coding classes near me, robotics courses, E-cell for schools, online learning platform" />
         <link rel="canonical" href="https://oll.co" />
         
-        {/* Open Graph */}
-        <meta property="og:title" content="OLL - Robotics, Coding & AI Classes" />
-        <meta property="og:description" content="Learn Robotics, Coding, AI & Entrepreneurship with India's #1 skill education platform." />
+        {/* Open Graph / Facebook */}
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://oll.co" />
+        <meta property="og:url" content="https://oll.co/" />
+        <meta property="og:title" content="OLL - Learn Future Skills | Robotics, AI, Coding & Entrepreneurship" />
+        <meta property="og:description" content="Transform your future with OLL. Learn Robotics, AI, Coding, Entrepreneurship & Financial Literacy. Expert educators, flexible timings. Book a free demo!" />
+        <meta property="og:image" content="https://oll.co/og-image.png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:site_name" content="OLL - Online Live Learning" />
         
         {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="OLL - Skill Education Platform" />
-        <meta name="twitter:description" content="Learn future-ready skills - Robotics, Coding, AI & more" />
+        <meta name="twitter:url" content="https://oll.co/" />
+        <meta name="twitter:title" content="OLL - Learn Future Skills | Robotics, AI, Coding & Entrepreneurship" />
+        <meta name="twitter:description" content="Transform your future with OLL. Learn Robotics, AI, Coding, Entrepreneurship & Financial Literacy. Book a free demo!" />
+        <meta name="twitter:image" content="https://oll.co/og-image.png" />
         
         {/* Structured Data - Organization */}
         <script type="application/ld+json">
           {JSON.stringify({
             "@context": "https://schema.org",
             "@type": "EducationalOrganization",
-            "name": "OLL - Clonefutura Live Solutions",
+            "name": "OLL - Online Live Learning",
             "alternateName": "OLL",
             "url": "https://oll.co",
-            "description": "India's leading platform for Robotics, Coding, AI & Entrepreneurship education",
+            "logo": "https://framerusercontent.com/images/ywGyUzRzQVuUgpLwj6QkBXzo.png",
+            "description": "India's leading platform for Robotics, Coding, AI, Entrepreneurship & Financial Literacy education for students. Lab setups and programs for ICSE, CBSE & State Board schools.",
             "sameAs": [
               "https://www.facebook.com/ollcompany",
               "https://www.instagram.com/oll.co_/",
@@ -99,7 +106,25 @@ const LandingPage = () => {
               "addressLocality": "Mumbai",
               "addressRegion": "Maharashtra",
               "addressCountry": "IN"
-            }
+            },
+            "areaServed": "IN",
+            "knowsAbout": ["Robotics", "Artificial Intelligence", "Coding", "Entrepreneurship", "Financial Literacy", "STEM Education"]
+          })}
+        </script>
+        
+        {/* Structured Data - Course List */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "ItemList",
+            "name": "OLL Skill Courses",
+            "itemListElement": [
+              {"@type": "Course", "position": 1, "name": "Robotics for Kids", "description": "Build robots and learn electronics, mechanics & programming", "provider": {"@type": "Organization", "name": "OLL"}},
+              {"@type": "Course", "position": 2, "name": "AI & Machine Learning", "description": "Learn artificial intelligence concepts and build AI projects", "provider": {"@type": "Organization", "name": "OLL"}},
+              {"@type": "Course", "position": 3, "name": "Coding & Programming", "description": "Learn coding from scratch - Python, Scratch, JavaScript", "provider": {"@type": "Organization", "name": "OLL"}},
+              {"@type": "Course", "position": 4, "name": "Entrepreneurship", "description": "Business thinking, innovation and startup fundamentals", "provider": {"@type": "Organization", "name": "OLL"}},
+              {"@type": "Course", "position": 5, "name": "Financial Literacy", "description": "Money management, investing basics and financial planning", "provider": {"@type": "Organization", "name": "OLL"}}
+            ]
           })}
         </script>
       </Helmet>
@@ -112,10 +137,10 @@ const LandingPage = () => {
         {/* Tagline */}
         <div className="text-center mb-6 md:mb-10">
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-[#1E3A5F] leading-tight" style={{ fontFamily: 'Manrope, sans-serif' }}>
-            Leading a Skill Learning Revolution
+            Learn Future Skills for a Brighter Future
           </h1>
           <p className="text-base md:text-lg text-slate-500 mt-2">
-            Choose your path
+            Robotics • AI • Coding • Entrepreneurship • Financial Literacy
           </p>
         </div>
 
