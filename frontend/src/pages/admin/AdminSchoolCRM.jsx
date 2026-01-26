@@ -128,6 +128,94 @@ const AdminSchoolCRM = () => {
     fetchOfferings();
   }, []);
 
+  // Extract all contacts from all schools for contact management
+  useEffect(() => {
+    const contacts = [];
+    inquiries.forEach(school => {
+      // Add primary contact
+      if (school.contact_name && school.phone) {
+        contacts.push({
+          id: `${school.id}-primary`,
+          name: school.contact_name,
+          phone: school.phone,
+          email: school.email || '',
+          role: 'Primary Contact',
+          school_id: school.id,
+          school_name: school.school_name,
+          school_status: school.status,
+          birthday: school.contact_birthday || '',
+          anniversary: school.contact_anniversary || '',
+          notes: school.contact_notes || ''
+        });
+      }
+      // Add additional contacts from onboarding data
+      if (school.onboarding_data?.school_contacts) {
+        school.onboarding_data.school_contacts.forEach((c, idx) => {
+          if (c.name && c.phone) {
+            contacts.push({
+              id: `${school.id}-contact-${idx}`,
+              name: c.name,
+              phone: c.phone,
+              email: c.email || '',
+              role: c.role || 'Additional Contact',
+              school_id: school.id,
+              school_name: school.school_name,
+              school_status: school.status,
+              birthday: c.birthday || '',
+              anniversary: c.anniversary || '',
+              notes: c.notes || ''
+            });
+          }
+        });
+      }
+    });
+    setAllContacts(contacts);
+  }, [inquiries]);
+
+  // Get this week's data for dashboard
+  const getThisWeekData = () => {
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
+
+    const meetings = inquiries.filter(i => {
+      if (!i.meeting_date) return false;
+      const meetingDate = new Date(i.meeting_date);
+      return meetingDate >= startOfWeek && meetingDate <= endOfWeek;
+    }).sort((a, b) => new Date(a.meeting_date) - new Date(b.meeting_date));
+
+    const followups = inquiries.filter(i => {
+      if (!i.followup_date) return false;
+      const followupDate = new Date(i.followup_date);
+      return followupDate >= startOfWeek && followupDate <= endOfWeek;
+    }).sort((a, b) => new Date(a.followup_date) - new Date(b.followup_date));
+
+    // Additional meetings (stored in meetings array)
+    const additionalMeetings = [];
+    inquiries.forEach(i => {
+      if (i.meetings && Array.isArray(i.meetings)) {
+        i.meetings.forEach(m => {
+          const mDate = new Date(m.date);
+          if (mDate >= startOfWeek && mDate <= endOfWeek) {
+            additionalMeetings.push({
+              ...m,
+              school_id: i.id,
+              school_name: i.school_name,
+              contact_name: i.contact_name,
+              phone: i.phone
+            });
+          }
+        });
+      }
+    });
+
+    return { meetings, followups, additionalMeetings };
+  };
+
   const fetchTeamUsers = async () => {
     try {
       const response = await axios.get(`${API}/team-users`, {
