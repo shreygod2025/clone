@@ -837,6 +837,52 @@ const StudentFunnel = () => {
                 ))}
               </div>
             </div>
+
+            {/* Booking Summary & Book Button */}
+            {formData.demo_date && formData.demo_time && (
+              <div className="bg-slate-50 rounded-xl p-4 space-y-3">
+                <h4 className="font-medium text-[#1E3A5F] text-sm">Booking Summary</h4>
+                <div className="text-sm text-slate-600 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-slate-400" />
+                    <span>{SKILL_OPTIONS.find(s => s.value === formData.skill)?.label}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-slate-400" />
+                    <span>{format(formData.demo_date, 'EEEE, MMMM d, yyyy')}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-slate-400" />
+                    <span>{formatTimeDisplay(formData.demo_time)}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-slate-400" />
+                    <span>
+                      {formData.learning_mode === 'online' 
+                        ? 'Online' 
+                        : formData.offline_type === 'center' 
+                          ? `${formData.selected_center_name || 'Center'}, ${formData.city}` 
+                          : `Home visit, ${formData.city}`}
+                    </span>
+                  </div>
+                </div>
+                
+                {isLoggedIn ? (
+                  <Button
+                    onClick={handleBookForLoggedInUser}
+                    disabled={submitting}
+                    className="w-full bg-[#D63031] hover:bg-[#b52828] mt-2"
+                    data-testid="book-demo-btn"
+                  >
+                    {submitting ? 'Booking...' : 'Book Demo'}
+                  </Button>
+                ) : (
+                  <p className="text-xs text-slate-500 text-center pt-2">
+                    Click below to continue and verify your phone
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         );
 
