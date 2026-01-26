@@ -359,7 +359,7 @@ const EducatorFunnel = () => {
             Verify Your Phone
           </h1>
           <p className="text-slate-500 mb-6 text-center">
-            OTP sent via <span className="text-green-600 font-medium">WhatsApp</span> to {formData.phone}
+            OTP sent via <span className="text-green-600 font-medium">WhatsApp</span> to {formData.countryCode} {formData.phone}
           </p>
 
           <div className="space-y-4">
@@ -386,7 +386,8 @@ const EducatorFunnel = () => {
             <button
               onClick={async () => {
                 setOtp('');
-                const result = await sendOTP(formData.phone, 'educator');
+                const fullPhone = formData.countryCode === '+91' ? formData.phone : `${formData.countryCode}${formData.phone}`;
+                const result = await sendOTP(fullPhone, 'educator');
                 if (result.success && result.sent) {
                   toast.success('OTP resent!');
                 }
