@@ -873,11 +873,6 @@ const InquiryPage = () => {
                       )}
                     </div>
                   )}
-                      ) : (
-                        <p className="text-sm text-slate-500 py-2">No centers available in {formData.city}</p>
-                      )}
-                    </div>
-                  )}
                 </div>
               )}
 
