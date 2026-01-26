@@ -966,7 +966,7 @@ const InquiryPage = () => {
                                 className="mt-1 h-4 w-4 rounded border-slate-300 text-[#1E3A5F] focus:ring-[#1E3A5F]"
                               />
                               <div>
-                                <p className="text-sm font-medium text-slate-700">{offering.name}</p>
+                                <p className="text-sm font-medium text-slate-700">{offering.title}</p>
                                 {offering.price && (
                                   <p className="text-xs text-slate-500">₹{offering.price?.toLocaleString()}</p>
                                 )}
