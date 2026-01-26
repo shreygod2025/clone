@@ -1168,72 +1168,187 @@ const AdminSchoolCRM = () => {
 
   return (
     <AdminLayout title="School CRM">
-      {/* Header Actions */}
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-          <Input
-            placeholder="Search by school name, contact or phone..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-            data-testid="school-search"
-          />
-        </div>
-        <select
-          value={assigneeFilter}
-          onChange={(e) => setAssigneeFilter(e.target.value)}
-          className="h-10 px-4 border border-slate-200 rounded-lg bg-white text-sm"
-          data-testid="school-assignee-filter"
-        >
-          <option value="all">All Assignees</option>
-          <option value="unassigned">Unassigned</option>
-          {teamUsers.filter(u => u.is_active).map(u => (
-            <option key={u.id} value={u.id}>{u.name}</option>
-          ))}
-        </select>
-        {activeSection === 'active' && (
-          <Button
-            onClick={() => setShowBulkImportModal(true)}
-            variant="outline"
-            className="flex items-center gap-2"
-            data-testid="bulk-import-btn"
-          >
-            <FileSpreadsheet className="w-4 h-4" /> Bulk Import
-          </Button>
-        )}
-        <Button
-          onClick={() => setShowAddForm(true)}
-          className="btn-primary flex items-center gap-2"
-          data-testid="add-school-lead-btn"
-        >
-          <Plus className="w-4 h-4" /> Add Lead
-        </Button>
-      </div>
-
-      {/* Section Tabs */}
-      <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-        {STATUS_SECTIONS.map(section => (
+      {/* Main Tab Navigation */}
+      <div className="flex gap-4 mb-6 border-b border-slate-200">
+        {[
+          { id: 'dashboard', label: 'Dashboard', icon: CalendarClock },
+          { id: 'leads', label: 'Leads & Schools', icon: Building2 },
+          { id: 'contacts', label: 'Contact Management', icon: Users },
+        ].map(tab => (
           <button
-            key={section.value}
-            onClick={() => setActiveSection(section.value)}
-            className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all flex items-center gap-2 ${
-              activeSection === section.value
-                ? 'bg-[#1E3A5F] text-white'
-                : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all ${
+              activeTab === tab.id
+                ? 'border-[#1E3A5F] text-[#1E3A5F]'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
             }`}
-            data-testid={`section-${section.value}`}
+            data-testid={`tab-${tab.id}`}
           >
-            <span className={`w-2 h-2 rounded-full ${section.color}`} />
-            {section.label}
-            <span className={`px-2 py-0.5 rounded-full text-xs ${
-              activeSection === section.value ? 'bg-white/20' : 'bg-slate-100'
-            }`}>
-              {getCount(section.value)}
-            </span>
+            <tab.icon className="w-4 h-4" />
+            {tab.label}
           </button>
         ))}
       </div>
+
+      {/* Dashboard Tab */}
+      {activeTab === 'dashboard' && (
+        <div className="space-y-6">
+          {/* Quick Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-blue-50 rounded-xl p-4">
+              <div className="text-2xl font-bold text-blue-700">{getThisWeekData().meetings.length}</div>
+              <div className="text-sm text-blue-600">Meetings This Week</div>
+            </div>
+            <div className="bg-cyan-50 rounded-xl p-4">
+              <div className="text-2xl font-bold text-cyan-700">{getThisWeekData().followups.length}</div>
+              <div className="text-sm text-cyan-600">Followups Due</div>
+            </div>
+            <div className="bg-green-50 rounded-xl p-4">
+              <div className="text-2xl font-bold text-green-700">{inquiries.filter(i => i.status === 'active').length}</div>
+              <div className="text-sm text-green-600">Active Schools</div>
+            </div>
+            <div className="bg-purple-50 rounded-xl p-4">
+              <div className="text-2xl font-bold text-purple-700">{inquiries.filter(i => i.status === 'new').length}</div>
+              <div className="text-sm text-purple-600">New Leads</div>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* This Week's Meetings */}
+            <div className="bg-white rounded-xl border border-slate-200 p-4">
+              <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
+                <Calendar className="w-5 h-5" />
+                This Week's Meetings
+              </h3>
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {getThisWeekData().meetings.length === 0 ? (
+                  <p className="text-sm text-slate-500 text-center py-4">No meetings scheduled this week</p>
+                ) : (
+                  getThisWeekData().meetings.map((meeting, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
+                      <div>
+                        <p className="font-medium text-sm text-[#1E3A5F]">{meeting.school_name}</p>
+                        <p className="text-xs text-slate-500">{meeting.contact_name} • {meeting.phone}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`text-xs px-2 py-0.5 rounded ${meeting.meeting_type === 'online' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
+                            {meeting.meeting_type === 'online' ? 'Online' : 'Offline'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-[#D63031]">{format(new Date(meeting.meeting_date), 'EEE, MMM d')}</p>
+                        <p className="text-xs text-slate-500">{meeting.meeting_time}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Followup Schedule */}
+            <div className="bg-white rounded-xl border border-slate-200 p-4">
+              <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
+                <Clock className="w-5 h-5" />
+                Followup Schedule
+              </h3>
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {getThisWeekData().followups.length === 0 ? (
+                  <p className="text-sm text-slate-500 text-center py-4">No followups scheduled this week</p>
+                ) : (
+                  getThisWeekData().followups.map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
+                      <div>
+                        <p className="font-medium text-sm text-[#1E3A5F]">{item.school_name}</p>
+                        <p className="text-xs text-slate-500">{item.contact_name}</p>
+                        {item.followup_comment && (
+                          <p className="text-xs text-slate-400 mt-1 truncate max-w-xs">{item.followup_comment}</p>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-cyan-600">{format(new Date(item.followup_date), 'EEE, MMM d')}</p>
+                        <span className={`text-xs px-2 py-0.5 rounded ${STATUS_SECTIONS.find(s => s.value === item.status)?.color || 'bg-slate-100'} text-white`}>
+                          {STATUS_SECTIONS.find(s => s.value === item.status)?.label || item.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Leads Tab */}
+      {activeTab === 'leads' && (
+        <>
+          {/* Header Actions */}
+          <div className="flex flex-col md:flex-row gap-4 mb-6">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <Input
+                placeholder="Search by school name, contact or phone..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+                data-testid="school-search"
+              />
+            </div>
+            <select
+              value={assigneeFilter}
+              onChange={(e) => setAssigneeFilter(e.target.value)}
+              className="h-10 px-4 border border-slate-200 rounded-lg bg-white text-sm"
+              data-testid="school-assignee-filter"
+            >
+              <option value="all">All Assignees</option>
+              <option value="unassigned">Unassigned</option>
+              {teamUsers.filter(u => u.is_active).map(u => (
+                <option key={u.id} value={u.id}>{u.name}</option>
+              ))}
+            </select>
+            {activeSection === 'active' && (
+              <Button
+                onClick={() => setShowBulkImportModal(true)}
+                variant="outline"
+                className="flex items-center gap-2"
+                data-testid="bulk-import-btn"
+              >
+                <FileSpreadsheet className="w-4 h-4" /> Bulk Import
+              </Button>
+            )}
+            <Button
+              onClick={() => setShowAddForm(true)}
+              className="btn-primary flex items-center gap-2"
+              data-testid="add-school-lead-btn"
+            >
+              <Plus className="w-4 h-4" /> Add Lead
+            </Button>
+          </div>
+
+          {/* Section Tabs */}
+          <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+            {STATUS_SECTIONS.map(section => (
+              <button
+                key={section.value}
+                onClick={() => setActiveSection(section.value)}
+                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all flex items-center gap-2 ${
+                  activeSection === section.value
+                    ? 'bg-[#1E3A5F] text-white'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
+                }`}
+                data-testid={`section-${section.value}`}
+              >
+                <span className={`w-2 h-2 rounded-full ${section.color}`} />
+                {section.label}
+                <span className={`px-2 py-0.5 rounded-full text-xs ${
+                  activeSection === section.value ? 'bg-white/20' : 'bg-slate-100'
+                }`}>
+                  {getCount(section.value)}
+                </span>
+              </button>
+            ))}
+          </div>
 
       {/* Lead Cards */}
       {loading ? (
