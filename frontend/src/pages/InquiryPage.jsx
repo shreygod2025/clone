@@ -950,10 +950,24 @@ const InquiryPage = () => {
                       <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Select Offerings (for Proposal)</label>
                       <div className="space-y-2 max-h-48 overflow-y-auto border border-slate-200 rounded-lg p-3">
                         {offerings
-                          .filter(o => formData.programs_interested.some(p => 
-                            o.category?.toLowerCase().includes(p.toLowerCase()) || 
-                            o.title?.toLowerCase().includes(p.toLowerCase())
-                          ))
+                          .filter(o => {
+                            // Match offerings based on program selection
+                            const programMatches = {
+                              'Robotics': ['robotics', 'lab', 'stem'],
+                              'Coding': ['coding', 'lab', 'curriculum'],
+                              'AI & ML': ['ai', 'stem', 'program'],
+                              'Entrepreneurship': ['entrepreneurship', 'program'],
+                              'Financial Literacy': ['financial', 'program', 'curriculum']
+                            };
+                            return formData.programs_interested.some(p => {
+                              const keywords = programMatches[p] || [p.toLowerCase()];
+                              return keywords.some(k => 
+                                o.title?.toLowerCase().includes(k) ||
+                                o.category?.toLowerCase().includes(k) ||
+                                o.id?.toLowerCase().includes(k)
+                              );
+                            });
+                          })
                           .map(offering => (
                             <label 
                               key={offering.id} 
@@ -973,10 +987,23 @@ const InquiryPage = () => {
                               </div>
                             </label>
                           ))}
-                        {offerings.filter(o => formData.programs_interested.some(p => 
-                          o.category?.toLowerCase().includes(p.toLowerCase()) || 
-                          o.title?.toLowerCase().includes(p.toLowerCase())
-                        )).length === 0 && (
+                        {offerings.filter(o => {
+                          const programMatches = {
+                            'Robotics': ['robotics', 'lab', 'stem'],
+                            'Coding': ['coding', 'lab', 'curriculum'],
+                            'AI & ML': ['ai', 'stem', 'program'],
+                            'Entrepreneurship': ['entrepreneurship', 'program'],
+                            'Financial Literacy': ['financial', 'program', 'curriculum']
+                          };
+                          return formData.programs_interested.some(p => {
+                            const keywords = programMatches[p] || [p.toLowerCase()];
+                            return keywords.some(k => 
+                              o.title?.toLowerCase().includes(k) ||
+                              o.category?.toLowerCase().includes(k) ||
+                              o.id?.toLowerCase().includes(k)
+                            );
+                          });
+                        }).length === 0 && (
                           <p className="text-sm text-slate-500 text-center py-2">No matching offerings found</p>
                         )}
                       </div>
