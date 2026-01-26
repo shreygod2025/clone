@@ -1392,14 +1392,15 @@ const AdminStudentCRM = () => {
               </div>
               <div className="relative">
                 <label className="block text-sm font-medium text-slate-700 mb-2">Phone *</label>
-                <Input
-                  placeholder="Phone number"
+                <PhoneInput
                   value={newLead.phone}
-                  onChange={(e) => {
-                    setNewLead({...newLead, phone: e.target.value});
-                    searchAutocomplete(e.target.value, 'phone');
+                  onChange={(val) => {
+                    setNewLead({...newLead, phone: val});
+                    searchAutocomplete(val, 'phone');
                   }}
-                  onFocus={() => newLead.phone.length >= 3 && searchAutocomplete(newLead.phone, 'phone')}
+                  countryCode={newLead.countryCode}
+                  onCountryCodeChange={(code) => setNewLead({...newLead, countryCode: code})}
+                  placeholder="Phone number"
                   data-testid="new-lead-phone"
                 />
                 {/* Autocomplete dropdown */}
