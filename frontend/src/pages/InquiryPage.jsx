@@ -935,6 +935,61 @@ const InquiryPage = () => {
                       ))}
                     </div>
                   </div>
+
+                  {/* Offerings Selection */}
+                  {formData.programs_interested.length > 0 && offerings.length > 0 && (
+                    <div>
+                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Select Offerings (for Proposal)</label>
+                      <div className="space-y-2 max-h-48 overflow-y-auto border border-slate-200 rounded-lg p-3">
+                        {offerings
+                          .filter(o => formData.programs_interested.some(p => 
+                            o.category?.toLowerCase().includes(p.toLowerCase()) || 
+                            o.name?.toLowerCase().includes(p.toLowerCase())
+                          ))
+                          .map(offering => (
+                            <label 
+                              key={offering.id} 
+                              className="flex items-start gap-3 p-2 rounded-lg hover:bg-slate-50 cursor-pointer"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={formData.selected_offerings.includes(offering.id)}
+                                onChange={() => toggleArrayField('selected_offerings', offering.id)}
+                                className="mt-1 h-4 w-4 rounded border-slate-300 text-[#1E3A5F] focus:ring-[#1E3A5F]"
+                              />
+                              <div>
+                                <p className="text-sm font-medium text-slate-700">{offering.name}</p>
+                                {offering.price && (
+                                  <p className="text-xs text-slate-500">₹{offering.price?.toLocaleString()}</p>
+                                )}
+                              </div>
+                            </label>
+                          ))}
+                        {offerings.filter(o => formData.programs_interested.some(p => 
+                          o.category?.toLowerCase().includes(p.toLowerCase()) || 
+                          o.name?.toLowerCase().includes(p.toLowerCase())
+                        )).length === 0 && (
+                          <p className="text-sm text-slate-500 text-center py-2">No matching offerings found</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Send Personalized Email Checkbox */}
+                  <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+                    <input
+                      type="checkbox"
+                      id="send_email"
+                      checked={formData.send_personalized_email}
+                      onChange={(e) => updateForm('send_personalized_email', e.target.checked)}
+                      className="h-5 w-5 rounded border-slate-300 text-[#1E3A5F] focus:ring-[#1E3A5F]"
+                      data-testid="send-email-checkbox"
+                    />
+                    <label htmlFor="send_email" className="text-sm text-slate-700 cursor-pointer">
+                      Send personalized email with offerings details
+                      <span className="block text-xs text-slate-500">(Requires valid email address)</span>
+                    </label>
+                  </div>
                 </div>
               )}
 
