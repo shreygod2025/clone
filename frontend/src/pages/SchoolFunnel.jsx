@@ -689,11 +689,12 @@ const SchoolFunnel = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Phone Number</label>
-              <Input
-                placeholder="Enter phone number"
+              <PhoneInput
                 value={formData.phone}
-                onChange={(e) => updateForm('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
-                className="input-glass"
+                onChange={(val) => updateForm('phone', val)}
+                countryCode={formData.countryCode}
+                onCountryCodeChange={(code) => updateForm('countryCode', code)}
+                placeholder="Enter phone number"
                 data-testid="contact-phone"
               />
             </div>
