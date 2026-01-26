@@ -4821,20 +4821,26 @@ async def bulk_import_schools(data: dict, user: dict = Depends(get_current_user)
                 skipped += 1
                 continue
             
-            # Create school inquiry record
+            # Create school inquiry record with all required fields
             school_id = str(uuid.uuid4())
             school_doc = {
                 "id": school_id,
                 "school_name": school_name,
                 "contact_name": school_data.get("contact_name", ""),
                 "phone": phone,
-                "email": email,
+                "email": email or f"school_{school_id[:8]}@placeholder.com",  # Ensure email is not empty
                 "location": school_data.get("location", ""),
                 "board": school_data.get("board", ""),
                 "student_count": school_data.get("student_count", ""),
+                "school_size": school_data.get("school_size", ""),
+                "fee_range": school_data.get("fee_range", ""),
+                "programs_interested": school_data.get("programs_interested", "").split(",") if school_data.get("programs_interested") else [],
+                "support_needed": school_data.get("support_needed", "").split(",") if school_data.get("support_needed") else [],
                 "source": "bulk_import",
                 "status": "active",  # Directly add as active
                 "notes": school_data.get("notes", ""),
+                "comments": [],
+                "meeting_type": "offline",
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "created_by": user.get("email", "admin"),
                 "assigned_to": user.get("email"),
