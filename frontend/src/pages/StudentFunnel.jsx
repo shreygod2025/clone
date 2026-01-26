@@ -282,8 +282,6 @@ const StudentFunnel = () => {
       // Show appropriate message based on whether OTP was actually sent
       if (response.data.sent) {
         toast.success('OTP sent to your WhatsApp! Valid for 10 minutes.');
-        // Auto-advance to OTP step
-        setCurrentStep(prev => prev + 1);
       } else {
         toast.error('Failed to send OTP. Please try again.');
       }
