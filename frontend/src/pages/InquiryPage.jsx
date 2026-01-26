@@ -317,7 +317,8 @@ const InquiryPage = () => {
       await axios.post(`${API}/students/inquiry`, {
         learner_type: 'self',
         age_group: formData.age_group,
-        skill: formData.skill,
+        skill: formData.skills.length > 0 ? formData.skills.join(', ') : formData.skill,
+        skills: formData.skills,
         city: formData.city,
         learning_mode: formData.learning_mode || 'online',
         learning_goal: 'general',
@@ -336,7 +337,7 @@ const InquiryPage = () => {
       toast.success(demoDate ? 'Student lead added with demo booking!' : 'Student lead added to CRM!');
     } 
     else if (inquiry_type === 'school') {
-      await axios.post(`${API}/schools/inquiry`, {
+      const schoolResponse = await axios.post(`${API}/schools/inquiry`, {
         school_name: formData.school_name || formData.name,
         contact_name: formData.name,
         email: formData.email || `${formData.phone}@school.oll`,
@@ -346,6 +347,7 @@ const InquiryPage = () => {
         fee_range: '',
         board: formData.board,
         programs_interested: formData.programs_interested,
+        selected_offerings: formData.selected_offerings,
         support_needed: [],
         meeting_date: demoDate,
         meeting_time: demoTime,
@@ -355,7 +357,28 @@ const InquiryPage = () => {
         assigned_to: assignedTo,
         notes: formData.details
       });
-      toast.success(demoDate ? 'School lead added with meeting scheduled!' : 'School lead added to CRM!');
+
+      // Send personalized email if checkbox is checked
+      if (formData.send_personalized_email && formData.email) {
+        try {
+          await axios.post(`${API}/schools/send-personalized-email`, {
+            school_id: schoolResponse.data?.id,
+            school_name: formData.school_name || formData.name,
+            contact_name: formData.name,
+            email: formData.email,
+            programs_interested: formData.programs_interested,
+            selected_offerings: formData.selected_offerings,
+            meeting_date: demoDate,
+            meeting_time: demoTime
+          });
+          toast.success('School lead added and personalized email sent!');
+        } catch (emailError) {
+          console.error('Failed to send email:', emailError);
+          toast.success('School lead added! (Email sending failed)');
+        }
+      } else {
+        toast.success(demoDate ? 'School lead added with meeting scheduled!' : 'School lead added to CRM!');
+      }
     }
     else if (inquiry_type === 'teacher') {
       await axios.post(`${API}/educators/apply`, {
