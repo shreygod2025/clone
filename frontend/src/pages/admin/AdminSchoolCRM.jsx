@@ -2399,6 +2399,33 @@ const AdminSchoolCRM = () => {
                 data-testid="followup-comment"
               />
             </div>
+            
+            {/* Auto Email Checkbox */}
+            <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+              <input
+                type="checkbox"
+                id="auto_email_followup"
+                checked={followupData.auto_email}
+                onChange={(e) => setFollowupData(prev => ({...prev, auto_email: e.target.checked}))}
+                className="mt-0.5 h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                data-testid="auto-email-checkbox"
+              />
+              <label htmlFor="auto_email_followup" className="cursor-pointer">
+                <span className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-blue-600" />
+                  Send AI-generated followup email
+                </span>
+                <span className="text-xs text-slate-500 block mt-0.5">
+                  Personalized email will be sent at 9 AM on {followupData.date ? format(followupData.date, 'MMM d, yyyy') : 'the followup date'}
+                </span>
+                {!showFollowupModal?.email && (
+                  <span className="text-xs text-orange-600 block mt-1">
+                    ⚠️ No email address on file for this school
+                  </span>
+                )}
+              </label>
+            </div>
+            
             <div className="flex gap-3 pt-2">
               <Button variant="outline" onClick={() => setShowFollowupModal(null)} className="flex-1">
                 Cancel
