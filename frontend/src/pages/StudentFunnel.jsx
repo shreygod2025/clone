@@ -292,48 +292,6 @@ const StudentFunnel = () => {
     }
   };
 
-  // Handle OTP verification - check if new user
-  const handleVerifyOTP = async () => {
-    if (!otp || otp.length < 4) {
-      toast.error('Please enter the OTP');
-      return;
-    }
-    
-    setOtpLoading(true);
-    try {
-      // Verify OTP using context (this sets the user session)
-      const otpResult = await verifyOTP(formData.phone, otp, 'student');
-      
-      if (!otpResult.success) {
-        toast.error(otpResult.message || 'Invalid OTP');
-        setOtpLoading(false);
-        return;
-      }
-      
-      // Check if user exists and has profile data
-      const isNewUser = !otpResult.user?.name && !otpResult.user?.age_group;
-      
-      if (isNewUser) {
-        // New user - need to collect profile info
-        updateForm('needsProfile', true);
-        toast.success('Phone verified! Please complete your profile.');
-      } else {
-        // Existing user - pre-fill data
-        if (otpResult.user?.name) updateForm('name', otpResult.user.name);
-        if (otpResult.user?.age_group) updateForm('age_group', otpResult.user.age_group);
-        toast.success('Welcome back!');
-      }
-      
-      // Advance to next step
-      setCurrentStep(prev => prev + 1);
-      
-    } catch (error) {
-      toast.error('Verification failed. Please try again.');
-    } finally {
-      setOtpLoading(false);
-    }
-  };
-
   const handleVerifyAndSubmit = async () => {
     if (!otp || otp.length < 4) {
       toast.error('Please enter the OTP');
@@ -351,6 +309,9 @@ const StudentFunnel = () => {
         return;
       }
       
+      // Use name from form if provided, otherwise from user record, or generate placeholder
+      const userName = formData.name || otpResult.user?.name || `Student ${formData.phone.slice(-4)}`;
+      
       // OTP verified and user is now logged in, submit the inquiry
       const payload = {
         learner_type: 'self', // Default since we removed the selection
@@ -363,7 +324,7 @@ const StudentFunnel = () => {
             ? 'offline_center' 
             : 'offline_home',
         learning_goal: formData.learning_goal || 'general',
-        name: formData.name,
+        name: userName,
         email: `${formData.phone}@student.oll`, // Auto-generate email from phone
         phone: formData.phone,
         demo_date: formData.demo_date ? format(formData.demo_date, 'yyyy-MM-dd') : null,
