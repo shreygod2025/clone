@@ -16,7 +16,7 @@ const NotFoundPage = () => {
         {/* Logo */}
         <Link to="/" className="mb-8">
           <img 
-            src="https://framerusercontent.com/images/ywGyUzRzQVuUgpLwj6QkBXzo.png" 
+            src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png" 
             alt="OLL Logo" 
             className="h-10"
           />
