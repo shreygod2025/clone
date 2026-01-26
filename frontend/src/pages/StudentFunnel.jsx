@@ -1253,8 +1253,23 @@ const StudentFunnel = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col">
       <Helmet>
-        <title>Book a Free Demo | OLL - Robotics, Coding & AI Classes for Kids</title>
-        <meta name="description" content="Book a free demo class for Robotics, Coding, AI, Entrepreneurship or Financial Literacy. Expert tutors, flexible timings, online or at our centers across India." />
+        <title>Book Free Demo Class | Learn Robotics, AI, Coding | OLL</title>
+        <meta name="description" content="Book a FREE demo class for Robotics, AI, Coding, Entrepreneurship or Financial Literacy at OLL. Expert educators, flexible timings, online or at centers across India. Ages 6-25." />
+        <meta name="keywords" content="book robotics demo, free coding class, AI classes for kids, robotics classes near me, coding classes for children, STEM demo class, entrepreneurship course, skill classes India" />
+        <link rel="canonical" href="https://oll.co/student" />
+        
+        {/* Open Graph */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://oll.co/student" />
+        <meta property="og:title" content="Book Free Demo Class | Learn Robotics, AI, Coding | OLL" />
+        <meta property="og:description" content="Book a FREE demo for Robotics, AI, Coding, Entrepreneurship or Financial Literacy. Expert educators, flexible timings. Online or in-person classes." />
+        <meta property="og:image" content="https://oll.co/og-image.png" />
+        
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Book Free Demo Class | OLL - Future Skills Education" />
+        <meta name="twitter:description" content="Book a FREE demo for Robotics, AI, Coding & more. Expert educators, flexible timings." />
+        <meta name="twitter:image" content="https://oll.co/og-image.png" />
       </Helmet>
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-slate-200/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
