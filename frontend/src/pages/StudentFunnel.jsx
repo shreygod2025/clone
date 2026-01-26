@@ -332,7 +332,7 @@ const StudentFunnel = () => {
         learning_goal: formData.learning_goal || 'general',
         name: userName,
         email: `${formData.phone}@student.oll`, // Auto-generate email from phone
-        phone: formData.phone,
+        phone: fullPhone,
         demo_date: formData.demo_date ? format(formData.demo_date, 'yyyy-MM-dd') : null,
         demo_time: formData.demo_time,
         source: 'website'
