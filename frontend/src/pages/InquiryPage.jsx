@@ -948,64 +948,49 @@ const InquiryPage = () => {
                   {formData.programs_interested.length > 0 && offerings.length > 0 && (
                     <div>
                       <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Select Offerings (for Proposal)</label>
-                      <div className="space-y-2 max-h-48 overflow-y-auto border border-slate-200 rounded-lg p-3">
-                        {offerings
-                          .filter(o => {
-                            // Match offerings based on program selection
-                            const programMatches = {
-                              'Robotics': ['robotics', 'lab', 'stem'],
-                              'Coding': ['coding', 'lab', 'curriculum'],
-                              'AI & ML': ['ai', 'stem', 'program'],
-                              'Entrepreneurship': ['entrepreneurship', 'program'],
-                              'Financial Literacy': ['financial', 'program', 'curriculum']
-                            };
-                            return formData.programs_interested.some(p => {
-                              const keywords = programMatches[p] || [p.toLowerCase()];
-                              return keywords.some(k => 
-                                o.title?.toLowerCase().includes(k) ||
-                                o.category?.toLowerCase().includes(k) ||
-                                o.id?.toLowerCase().includes(k)
-                              );
-                            });
-                          })
-                          .map(offering => (
-                            <label 
-                              key={offering.id} 
-                              className="flex items-start gap-3 p-2 rounded-lg hover:bg-slate-50 cursor-pointer"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={formData.selected_offerings.includes(offering.id)}
-                                onChange={() => toggleArrayField('selected_offerings', offering.id)}
-                                className="mt-1 h-4 w-4 rounded border-slate-300 text-[#1E3A5F] focus:ring-[#1E3A5F]"
-                              />
-                              <div>
-                                <p className="text-sm font-medium text-slate-700">{offering.title}</p>
-                                {offering.price && (
-                                  <p className="text-xs text-slate-500">₹{offering.price?.toLocaleString()}</p>
-                                )}
-                              </div>
-                            </label>
-                          ))}
-                        {offerings.filter(o => {
-                          const programMatches = {
-                            'Robotics': ['robotics', 'lab', 'stem'],
-                            'Coding': ['coding', 'lab', 'curriculum'],
-                            'AI & ML': ['ai', 'stem', 'program'],
-                            'Entrepreneurship': ['entrepreneurship', 'program'],
-                            'Financial Literacy': ['financial', 'program', 'curriculum']
+                      <div className="space-y-4 max-h-64 overflow-y-auto border border-slate-200 rounded-lg p-3">
+                        {/* Group offerings by category */}
+                        {formData.programs_interested.map(program => {
+                          // Map program names to offering categories
+                          const categoryMap = {
+                            'Robotics': 'Robotics',
+                            'Coding': 'Coding',
+                            'AI & ML': 'AI & ML',
+                            'Entrepreneurship': 'Financial Literacy',
+                            'Financial Literacy': 'Financial Literacy'
                           };
-                          return formData.programs_interested.some(p => {
-                            const keywords = programMatches[p] || [p.toLowerCase()];
-                            return keywords.some(k => 
-                              o.title?.toLowerCase().includes(k) ||
-                              o.category?.toLowerCase().includes(k) ||
-                              o.id?.toLowerCase().includes(k)
-                            );
-                          });
-                        }).length === 0 && (
-                          <p className="text-sm text-slate-500 text-center py-2">No matching offerings found</p>
-                        )}
+                          const category = categoryMap[program] || program;
+                          const programOfferings = offerings.filter(o => o.category === category);
+                          
+                          if (programOfferings.length === 0) return null;
+                          
+                          return (
+                            <div key={program} className="mb-3">
+                              <p className="text-xs font-semibold text-[#1E3A5F] mb-2 uppercase tracking-wide">{program}</p>
+                              <div className="space-y-1">
+                                {programOfferings.map(offering => (
+                                  <label 
+                                    key={offering.id} 
+                                    className="flex items-start gap-3 p-2 rounded-lg hover:bg-slate-50 cursor-pointer"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={formData.selected_offerings.includes(offering.id)}
+                                      onChange={() => toggleArrayField('selected_offerings', offering.id)}
+                                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#1E3A5F] focus:ring-[#1E3A5F]"
+                                    />
+                                    <div>
+                                      <p className="text-sm text-slate-700">{offering.title}</p>
+                                      {offering.type && (
+                                        <span className="text-xs text-slate-400 capitalize">{offering.type}</span>
+                                      )}
+                                    </div>
+                                  </label>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
