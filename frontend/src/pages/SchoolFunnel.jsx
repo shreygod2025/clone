@@ -223,12 +223,13 @@ const SchoolFunnel = () => {
 
   const handleSubmit = async () => {
     setSubmitting(true);
+    const fullPhone = formData.countryCode === '+91' ? formData.phone : `${formData.countryCode}${formData.phone}`;
     try {
       await axios.post(`${API}/schools/inquiry`, {
         school_name: formData.school_name,
         contact_name: formData.contact_name,
         email: `${formData.phone}@school.oll`,
-        phone: formData.phone,
+        phone: fullPhone,
         location: formData.location,
         school_size: formData.school_size,
         fee_range: formData.fee_range,
