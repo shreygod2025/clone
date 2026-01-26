@@ -952,7 +952,7 @@ const InquiryPage = () => {
                         {offerings
                           .filter(o => formData.programs_interested.some(p => 
                             o.category?.toLowerCase().includes(p.toLowerCase()) || 
-                            o.name?.toLowerCase().includes(p.toLowerCase())
+                            o.title?.toLowerCase().includes(p.toLowerCase())
                           ))
                           .map(offering => (
                             <label 
