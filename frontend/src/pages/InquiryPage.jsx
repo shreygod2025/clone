@@ -1031,9 +1031,9 @@ const InquiryPage = () => {
                         <button
                           key={s}
                           type="button"
-                          onClick={() => toggleArrayField('skills', s)}
+                          onClick={() => toggleArrayField('educator_skills', s)}
                           className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm border transition-all ${
-                            formData.skills.includes(s)
+                            formData.educator_skills.includes(s)
                               ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]'
                               : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
                           }`}
