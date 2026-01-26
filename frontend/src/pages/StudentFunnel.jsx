@@ -606,14 +606,6 @@ const StudentFunnel = () => {
                 </div>
               ))}
             </div>
-            {formData.learning_goal && (
-              <Button 
-                onClick={() => setCurrentStep(prev => prev + 1)}
-                className="w-full bg-[#D63031] hover:bg-[#b52828] mt-4"
-              >
-                Continue
-              </Button>
-            )}
           </div>
         );
 
