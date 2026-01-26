@@ -1000,6 +1000,16 @@ const AdminSchoolCRM = () => {
             <option key={u.id} value={u.id}>{u.name}</option>
           ))}
         </select>
+        {activeSection === 'active' && (
+          <Button
+            onClick={() => setShowBulkImportModal(true)}
+            variant="outline"
+            className="flex items-center gap-2"
+            data-testid="bulk-import-btn"
+          >
+            <FileSpreadsheet className="w-4 h-4" /> Bulk Import
+          </Button>
+        )}
         <Button
           onClick={() => setShowAddForm(true)}
           className="btn-primary flex items-center gap-2"
