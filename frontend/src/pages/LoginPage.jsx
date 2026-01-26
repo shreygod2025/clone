@@ -53,9 +53,9 @@ const LoginPage = () => {
     
     let result;
     if (loginType === 'educator') {
-      result = await educatorLogin(phone, otp);
+      result = await educatorLogin(getFullPhone(), otp);
     } else {
-      result = await verifyOTP(phone, otp, loginType);
+      result = await verifyOTP(getFullPhone(), otp, loginType);
     }
     setLoading(false);
     
