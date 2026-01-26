@@ -169,6 +169,7 @@ const SchoolFunnel = () => {
     meeting_time: '',
     contact_name: '',
     phone: '',
+    countryCode: '+91',
   });
 
   const updateForm = (key, value) => {

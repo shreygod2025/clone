@@ -92,6 +92,7 @@ const InquiryPage = () => {
     // Common fields
     name: '',
     phone: '',
+    countryCode: '+91',
     email: '',
     city: '',
     source: '',
