@@ -2303,6 +2303,381 @@ const AdminSchoolCRM = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Bulk Import Modal */}
+      <Dialog open={showBulkImportModal} onOpenChange={setShowBulkImportModal}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileSpreadsheet className="w-5 h-5" />
+              Bulk Import Schools
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Download Template */}
+            <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+              <h4 className="font-medium text-blue-800 mb-2">Step 1: Download Template</h4>
+              <p className="text-sm text-blue-600 mb-3">
+                Download the CSV template with all required columns and sample data.
+              </p>
+              <Button 
+                variant="outline" 
+                onClick={handleDownloadTemplate}
+                className="flex items-center gap-2"
+                data-testid="download-template-btn"
+              >
+                <Download className="w-4 h-4" />
+                Download CSV Template
+              </Button>
+            </div>
+
+            {/* Upload File */}
+            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+              <h4 className="font-medium text-slate-800 mb-2">Step 2: Upload Your File</h4>
+              <p className="text-sm text-slate-600 mb-3">
+                Upload CSV or Excel file with your school data. Schools will be added directly to Active Schools.
+              </p>
+              <input
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                onChange={handleFileUpload}
+                className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                data-testid="bulk-import-file"
+              />
+              {bulkImportFile && (
+                <p className="text-sm text-green-600 mt-2">
+                  ✓ File loaded: {bulkImportFile.name}
+                </p>
+              )}
+            </div>
+
+            {/* Preview */}
+            {bulkImportData.length > 0 && (
+              <div className="bg-green-50 rounded-lg p-4 border border-green-100">
+                <h4 className="font-medium text-green-800 mb-2">Step 3: Review & Import</h4>
+                <p className="text-sm text-green-600 mb-3">
+                  Found <strong>{bulkImportData.length} schools</strong> ready to import.
+                </p>
+                <div className="max-h-40 overflow-y-auto bg-white rounded border p-2 mb-3">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left p-1">School Name</th>
+                        <th className="text-left p-1">Contact</th>
+                        <th className="text-left p-1">Phone</th>
+                        <th className="text-left p-1">Location</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bulkImportData.slice(0, 10).map((school, idx) => (
+                        <tr key={idx} className="border-b last:border-0">
+                          <td className="p-1">{school.school_name}</td>
+                          <td className="p-1">{school.contact_name}</td>
+                          <td className="p-1">{school.phone}</td>
+                          <td className="p-1">{school.location}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {bulkImportData.length > 10 && (
+                    <p className="text-xs text-slate-500 mt-2 text-center">
+                      ... and {bulkImportData.length - 10} more
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Errors */}
+            {bulkImportErrors.length > 0 && (
+              <div className="bg-red-50 rounded-lg p-4 border border-red-100">
+                <h4 className="font-medium text-red-800 mb-2 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4" />
+                  Import Errors
+                </h4>
+                <div className="max-h-32 overflow-y-auto text-sm text-red-600">
+                  {bulkImportErrors.map((err, idx) => (
+                    <p key={idx}>Row {err.row}: {err.error}</p>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-2">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowBulkImportModal(false);
+                  setBulkImportData([]);
+                  setBulkImportFile(null);
+                  setBulkImportErrors([]);
+                }} 
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleBulkImport}
+                disabled={bulkImportData.length === 0 || bulkImporting}
+                className="flex-1 bg-green-600 hover:bg-green-700"
+                data-testid="import-schools-btn"
+              >
+                {bulkImporting ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Importing...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Import {bulkImportData.length} Schools
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Onboarding Modal */}
+      <Dialog open={!!showEditOnboardingModal} onOpenChange={() => { setShowEditOnboardingModal(null); setEditOnboardData(null); }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="w-5 h-5" />
+              Edit School: {showEditOnboardingModal?.school_name}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {editOnboardData && (
+            <div className="space-y-4">
+              {/* Basic Info */}
+              <div className="bg-slate-50 rounded-lg p-4">
+                <h4 className="font-medium text-slate-800 mb-3">School Information</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">School Name *</label>
+                    <Input
+                      value={editOnboardData.school_name || ''}
+                      onChange={(e) => setEditOnboardData(prev => ({ ...prev, school_name: e.target.value }))}
+                      data-testid="edit-school-name"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Contact Name</label>
+                    <Input
+                      value={editOnboardData.contact_name || ''}
+                      onChange={(e) => setEditOnboardData(prev => ({ ...prev, contact_name: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Phone</label>
+                    <Input
+                      value={editOnboardData.phone || ''}
+                      onChange={(e) => setEditOnboardData(prev => ({ ...prev, phone: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Email</label>
+                    <Input
+                      value={editOnboardData.email || ''}
+                      onChange={(e) => setEditOnboardData(prev => ({ ...prev, email: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Location</label>
+                    <select
+                      value={editOnboardData.location || ''}
+                      onChange={(e) => setEditOnboardData(prev => ({ ...prev, location: e.target.value }))}
+                      className="w-full h-10 px-4 border border-slate-200 rounded-lg"
+                    >
+                      <option value="">Select City</option>
+                      {CITIES.map(city => (
+                        <option key={city} value={city}>{city}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Board</label>
+                    <select
+                      value={editOnboardData.board || ''}
+                      onChange={(e) => setEditOnboardData(prev => ({ ...prev, board: e.target.value }))}
+                      className="w-full h-10 px-4 border border-slate-200 rounded-lg"
+                    >
+                      <option value="">Select Board</option>
+                      {BOARDS.map(board => (
+                        <option key={board} value={board}>{board}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Offering Details */}
+              <div className="bg-blue-50 rounded-lg p-4">
+                <h4 className="font-medium text-blue-800 mb-3">Program Details</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Offering</label>
+                    <select
+                      value={editOnboardData.offering || ''}
+                      onChange={(e) => {
+                        const selected = offerings.find(o => o.id === e.target.value);
+                        setEditOnboardData(prev => ({ 
+                          ...prev, 
+                          offering: e.target.value,
+                          model: selected?.name || prev.model
+                        }));
+                      }}
+                      className="w-full h-10 px-4 border border-slate-200 rounded-lg bg-white"
+                    >
+                      <option value="">Select Offering</option>
+                      {offerings.map(off => (
+                        <option key={off.id} value={off.id}>{off.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Model</label>
+                    <Input
+                      value={editOnboardData.model || ''}
+                      onChange={(e) => setEditOnboardData(prev => ({ ...prev, model: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Book Type</label>
+                    <select
+                      value={editOnboardData.book_type || ''}
+                      onChange={(e) => setEditOnboardData(prev => ({ ...prev, book_type: e.target.value }))}
+                      className="w-full h-10 px-4 border border-slate-200 rounded-lg bg-white"
+                    >
+                      <option value="">Select Book Type</option>
+                      <option value="individual_books">Individual Books</option>
+                      <option value="no_books">No Books</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Kit Type</label>
+                    <select
+                      value={editOnboardData.kit_type || ''}
+                      onChange={(e) => setEditOnboardData(prev => ({ ...prev, kit_type: e.target.value }))}
+                      className="w-full h-10 px-4 border border-slate-200 rounded-lg bg-white"
+                    >
+                      <option value="">Select Kit Type</option>
+                      <option value="lab_setup">Lab Setup</option>
+                      <option value="individual">Individual Kit</option>
+                      <option value="no_kit">No Kit</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Training Type</label>
+                    <select
+                      value={editOnboardData.training_type || ''}
+                      onChange={(e) => setEditOnboardData(prev => ({ ...prev, training_type: e.target.value }))}
+                      className="w-full h-10 px-4 border border-slate-200 rounded-lg bg-white"
+                    >
+                      <option value="">Select Training Type</option>
+                      <option value="student_training">Student Training</option>
+                      <option value="teacher_training">Teacher Training</option>
+                      <option value="both">Both</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Total Students</label>
+                    <Input
+                      type="number"
+                      value={editOnboardData.total_students || ''}
+                      onChange={(e) => setEditOnboardData(prev => ({ ...prev, total_students: parseInt(e.target.value) || 0 }))}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Details */}
+              <div className="bg-green-50 rounded-lg p-4">
+                <h4 className="font-medium text-green-800 mb-3">Payment Details</h4>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Total Amount (₹)</label>
+                    <Input
+                      type="number"
+                      value={editOnboardData.total_amount || ''}
+                      onChange={(e) => setEditOnboardData(prev => ({ ...prev, total_amount: parseFloat(e.target.value) || 0 }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Payment Mode</label>
+                    <select
+                      value={editOnboardData.payment_mode || ''}
+                      onChange={(e) => setEditOnboardData(prev => ({ ...prev, payment_mode: e.target.value }))}
+                      className="w-full h-10 px-4 border border-slate-200 rounded-lg bg-white"
+                    >
+                      <option value="from_school">From School</option>
+                      <option value="from_student">From Student</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Payment Method</label>
+                    <select
+                      value={editOnboardData.payment_method || ''}
+                      onChange={(e) => setEditOnboardData(prev => ({ ...prev, payment_method: e.target.value }))}
+                      className="w-full h-10 px-4 border border-slate-200 rounded-lg bg-white"
+                    >
+                      <option value="">Select Method</option>
+                      <option value="cheque">Cheque</option>
+                      <option value="neft">NEFT/RTGS</option>
+                      <option value="online">Online</option>
+                      <option value="cash">Cash</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contract Dates */}
+              <div className="bg-amber-50 rounded-lg p-4">
+                <h4 className="font-medium text-amber-800 mb-3">Contract Period</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Contract Start</label>
+                    <Input
+                      type="date"
+                      value={editOnboardData.contract_start || ''}
+                      onChange={(e) => setEditOnboardData(prev => ({ ...prev, contract_start: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Contract End</label>
+                    <Input
+                      type="date"
+                      value={editOnboardData.contract_end || ''}
+                      onChange={(e) => setEditOnboardData(prev => ({ ...prev, contract_end: e.target.value }))}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => { setShowEditOnboardingModal(null); setEditOnboardData(null); }} 
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleSaveEditOnboarding}
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                  data-testid="save-edit-school-btn"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Changes
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
