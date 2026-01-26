@@ -413,12 +413,13 @@ const AdminSchoolCRM = () => {
       toast.error('School name, contact name and phone are required');
       return;
     }
+    const fullPhone = newLead.countryCode === '+91' ? newLead.phone : `${newLead.countryCode}${newLead.phone}`;
     try {
       await axios.post(`${API}/schools/inquiry`, {
         school_name: newLead.school_name,
         contact_name: newLead.contact_name,
         email: newLead.email || `${newLead.phone}@school.oll`,
-        phone: newLead.phone,
+        phone: fullPhone,
         location: newLead.location,
         school_size: newLead.student_count || '',
         fee_range: '',
@@ -439,6 +440,7 @@ const AdminSchoolCRM = () => {
         school_name: '', 
         contact_name: '', 
         phone: '', 
+        countryCode: '+91',
         email: '',
         location: '', 
         board: '', 
