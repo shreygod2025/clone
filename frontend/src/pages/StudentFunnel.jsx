@@ -840,33 +840,111 @@ const StudentFunnel = () => {
           </div>
         );
 
-      case 'contact':
+      case 'phone':
         return (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Full Name</label>
-              <Input
-                placeholder="Enter your name"
-                value={formData.name}
-                onChange={(e) => updateForm('name', e.target.value)}
-                className="input-glass"
-                data-testid="contact-name"
-              />
+          <div className="space-y-4 text-center">
+            <div className="w-14 h-14 rounded-xl bg-blue-100 flex items-center justify-center mx-auto">
+              <Phone className="w-7 h-7 text-blue-600" />
             </div>
+            
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                <Phone className="w-4 h-4 inline mr-1" />
-                WhatsApp Number
-              </label>
+              <h3 className="text-lg font-semibold text-[#1E3A5F] mb-1">Enter Your Phone Number</h3>
+              <p className="text-slate-500 text-sm">We&apos;ll send you an OTP to verify</p>
+            </div>
+
+            <div className="max-w-xs mx-auto">
               <Input
                 type="tel"
                 placeholder="Enter 10-digit number"
                 value={formData.phone}
                 onChange={(e) => updateForm('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
-                className="input-glass"
-                data-testid="contact-phone"
+                className="text-center text-lg py-3"
+                data-testid="phone-input"
               />
-              <p className="text-xs text-slate-500 mt-1">OTP will be sent to this number for verification</p>
+            </div>
+
+            <Button
+              onClick={handleSendOTP}
+              disabled={otpLoading || formData.phone.length < 10}
+              className="w-full max-w-xs mx-auto bg-[#D63031] hover:bg-[#b52828]"
+              data-testid="send-otp-btn"
+            >
+              {otpLoading ? 'Sending OTP...' : 'Get OTP'}
+            </Button>
+
+            <p className="text-xs text-slate-400">
+              OTP will be sent via WhatsApp • Valid for 10 minutes
+            </p>
+          </div>
+        );
+
+      case 'otp':
+        return (
+          <div className="space-y-4 text-center">
+            <div className="w-14 h-14 rounded-xl bg-green-100 flex items-center justify-center mx-auto">
+              <Shield className="w-7 h-7 text-green-600" />
+            </div>
+            
+            <div>
+              <h3 className="text-lg font-semibold text-[#1E3A5F] mb-1">Verify Your Number</h3>
+              <p className="text-slate-500 text-sm">
+                OTP sent via <span className="text-green-600 font-medium">WhatsApp</span> to <strong>{formData.phone}</strong>
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <Input
+                type="text"
+                placeholder="••••"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                className="text-2xl text-center tracking-widest py-4 max-w-[180px] mx-auto"
+                maxLength={4}
+                data-testid="otp-input"
+              />
+
+              <Button
+                onClick={handleVerifyOTP}
+                disabled={otpLoading || otp.length < 4}
+                className="w-full max-w-[200px] mx-auto bg-[#D63031] hover:bg-[#b52828]"
+                data-testid="verify-otp-btn"
+              >
+                {otpLoading ? 'Verifying...' : 'Verify & Continue'}
+              </Button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setOtp('');
+                  setOtpSent(false);
+                  handleSendOTP();
+                }}
+                disabled={otpLoading}
+                className="text-sm text-[#1E3A5F] hover:text-[#D63031] hover:underline transition-colors"
+              >
+                {otpLoading ? 'Sending...' : "Didn't receive OTP? Resend"}
+              </button>
+            </div>
+          </div>
+        );
+
+      case 'profile':
+        return (
+          <div className="space-y-4">
+            <div className="text-center mb-4">
+              <h3 className="text-lg font-semibold text-[#1E3A5F]">Complete Your Profile</h3>
+              <p className="text-slate-500 text-sm">Just a few details to personalize your experience</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Your Name</label>
+              <Input
+                placeholder="Enter your full name"
+                value={formData.name}
+                onChange={(e) => updateForm('name', e.target.value)}
+                className="input-glass"
+                data-testid="profile-name"
+              />
             </div>
             
             {formData.offline_type === 'home' && (
@@ -876,78 +954,25 @@ const StudentFunnel = () => {
                   Home Address <span className="text-slate-400 font-normal">(for home visit)</span>
                 </label>
                 <Textarea
-                  placeholder="Enter your complete address including landmark, city, and pincode"
+                  placeholder="Enter your complete address"
                   value={formData.address}
                   onChange={(e) => updateForm('address', e.target.value)}
                   className="input-glass min-h-[80px]"
-                  data-testid="contact-address"
+                  data-testid="profile-address"
                 />
               </div>
             )}
+
+            <Button
+              onClick={() => setCurrentStep(prev => prev + 1)}
+              disabled={!formData.name.trim()}
+              className="w-full bg-[#D63031] hover:bg-[#b52828]"
+              data-testid="profile-continue-btn"
+            >
+              Continue
+            </Button>
           </div>
         );
-
-      case 'otp':
-        return (
-          <div className="space-y-4 text-center">
-            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-green-100 flex items-center justify-center mx-auto">
-              <Shield className="w-6 h-6 sm:w-7 sm:h-7 text-green-600" />
-            </div>
-            
-            <div>
-              <h3 className="text-base sm:text-lg font-semibold text-[#1E3A5F] mb-1">Verify Your Number</h3>
-              <p className="text-slate-500 text-xs sm:text-sm">
-                {otpSentViaWhatsApp 
-                  ? <>OTP sent via <span className="text-green-600 font-medium">WhatsApp</span> to <strong>{formData.phone}</strong></>
-                  : <>OTP sent to <strong>{formData.phone}</strong></>
-                }
-              </p>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <Input
-                  type="text"
-                  placeholder="••••"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                  className="text-xl sm:text-2xl text-center tracking-widest py-4 max-w-[160px] sm:max-w-[180px] mx-auto"
-                  maxLength={4}
-                  data-testid="otp-input"
-                />
-                {!otpSentViaWhatsApp && (
-                  <p className="text-xs text-slate-400 mt-2">
-                    Check your WhatsApp for OTP
-                  </p>
-                )}
-              </div>
-
-              {/* Confirm Button */}
-              <Button
-                onClick={handleVerifyAndSubmit}
-                disabled={submitting || otp.length < 4}
-                className="w-full max-w-[200px] mx-auto bg-[#D63031] hover:bg-[#b52828]"
-                data-testid="confirm-booking-btn"
-              >
-                {submitting ? 'Confirming...' : 'Confirm Booking'}
-              </Button>
-
-              {/* Resend OTP - Below Confirm Button */}
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={handleSendOTP}
-                  disabled={otpLoading}
-                  className="text-xs sm:text-sm text-[#1E3A5F] hover:text-[#D63031] hover:underline transition-colors"
-                >
-                  {otpLoading ? 'Sending...' : "Didn't receive OTP? Resend"}
-                </button>
-              </div>
-            </div>
-
-            {/* Demo Summary Preview - Compact */}
-            <div className="bg-slate-50 rounded-xl p-3 text-left mt-4">
-              <h4 className="font-medium text-[#1E3A5F] mb-2 text-xs">Booking Summary</h4>
               <div className="text-xs text-slate-600 space-y-1">
                 <div className="flex items-center gap-2">
                   <Calendar className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
