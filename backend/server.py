@@ -2250,7 +2250,7 @@ async def create_school_inquiry(data: SchoolInquiryCreate):
     await db.school_inquiries.insert_one(doc)
     return inquiry
 
-@api_router.get("/schools/inquiries", response_model=List[SchoolInquiry])
+@api_router.get("/schools/inquiries")
 async def get_school_inquiries(
     status: Optional[str] = None,
     user: dict = Depends(get_current_user)
