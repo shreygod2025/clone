@@ -798,7 +798,7 @@ const InquiryPage = () => {
               {/* Student-specific fields */}
               {formData.inquiry_type === 'student' && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
                       <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Age Group</label>
                       <Select value={formData.age_group} onValueChange={(v) => updateForm('age_group', v)}>
@@ -808,19 +808,6 @@ const InquiryPage = () => {
                         <SelectContent>
                           {AGE_OPTIONS.map(a => (
                             <SelectItem key={a.value} value={a.value}>{a.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Skill Interest</label>
-                      <Select value={formData.skill} onValueChange={(v) => updateForm('skill', v)}>
-                        <SelectTrigger className="h-10 sm:h-11">
-                          <SelectValue placeholder="Select skill" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {SKILL_OPTIONS.map(s => (
-                            <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -837,6 +824,27 @@ const InquiryPage = () => {
                           ))}
                         </SelectContent>
                       </Select>
+                    </div>
+                  </div>
+                  
+                  {/* Multi-select Skills */}
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Skills Interested (Select multiple)</label>
+                    <div className="flex flex-wrap gap-2">
+                      {SKILL_OPTIONS.map(s => (
+                        <button
+                          key={s.value}
+                          type="button"
+                          onClick={() => toggleArrayField('skills', s.value)}
+                          className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm border transition-all ${
+                            formData.skills.includes(s.value)
+                              ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]'
+                              : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                          }`}
+                        >
+                          {s.label}
+                        </button>
+                      ))}
                     </div>
                   </div>
                   
@@ -860,6 +868,11 @@ const InquiryPage = () => {
                             ))}
                           </SelectContent>
                         </Select>
+                      ) : (
+                        <p className="text-sm text-slate-500 p-2 bg-slate-50 rounded-lg">No centers available in {formData.city}</p>
+                      )}
+                    </div>
+                  )}
                       ) : (
                         <p className="text-sm text-slate-500 py-2">No centers available in {formData.city}</p>
                       )}
