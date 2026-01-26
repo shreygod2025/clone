@@ -4744,7 +4744,7 @@ async def get_bulk_import_template():
     """Return CSV template for bulk school import"""
     template_columns = [
         "school_name", "contact_name", "phone", "email", "location", "board",
-        "student_count", "offering", "model", "book_type", "kit_type", "training_type",
+        "school_size", "fee_range", "student_count", "offering", "model", "book_type", "kit_type", "training_type",
         "total_students", "total_amount", "payment_mode", "payment_method",
         "contract_start", "contract_end", "notes"
     ]
@@ -4757,6 +4757,8 @@ async def get_bulk_import_template():
         "email": "school@example.com",
         "location": "Mumbai",
         "board": "CBSE",
+        "school_size": "500-1000",
+        "fee_range": "50000-100000",
         "student_count": "500",
         "offering": "Robotics Lab Setup",
         "model": "Lab Model",
@@ -4777,6 +4779,8 @@ async def get_bulk_import_template():
         "sample": sample_row,
         "instructions": {
             "board": "Options: CBSE, ICSE, IGCSE, State Board, IB",
+            "school_size": "Examples: 0-500, 500-1000, 1000-2000, 2000+",
+            "fee_range": "Examples: 0-50000, 50000-100000, 100000+",
             "book_type": "Options: individual_books, no_books",
             "kit_type": "Options: lab_setup, individual, no_kit",
             "training_type": "Options: student_training, teacher_training, both",
