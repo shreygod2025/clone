@@ -83,7 +83,7 @@ const AdminSchoolCRM = () => {
   // Form states
   const [rescheduleData, setRescheduleData] = useState({ date: null, time: '', meeting_type: 'offline', reason: '' });
   const [convertData, setConvertData] = useState({ amount: '' });
-  const [followupData, setFollowupData] = useState({ date: null, comment: '' });
+  const [followupData, setFollowupData] = useState({ date: null, comment: '', auto_email: false });
   const [onboardData, setOnboardData] = useState({
     offering: '', // Select from offerings
     model: '',
