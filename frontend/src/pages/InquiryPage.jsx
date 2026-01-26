@@ -290,6 +290,9 @@ const InquiryPage = () => {
       ? `${formData.source || 'team_added'} (Added by: ${teamUser.name})`
       : (formData.source || 'team_added');
     
+    // Get full phone number with country code
+    const fullPhone = formData.countryCode === '+91' ? formData.phone : `${formData.countryCode}${formData.phone}`;
+    
     if (inquiry_type === 'student') {
       // Auto-determine meeting type from learning mode
       const meetingType = formData.learning_mode === 'online' ? 'online' : 'offline';
@@ -303,7 +306,7 @@ const InquiryPage = () => {
         learning_goal: 'general',
         name: formData.name,
         email: formData.email || `${formData.phone}@student.oll`,
-        phone: formData.phone,
+        phone: fullPhone,
         demo_date: demoDate,
         demo_time: demoTime,
         source: sourceValue,
@@ -320,7 +323,7 @@ const InquiryPage = () => {
         school_name: formData.school_name || formData.name,
         contact_name: formData.name,
         email: formData.email || `${formData.phone}@school.oll`,
-        phone: formData.phone,
+        phone: fullPhone,
         location: formData.city,
         school_size: formData.school_size,
         fee_range: '',
@@ -341,7 +344,7 @@ const InquiryPage = () => {
       await axios.post(`${API}/educators/apply`, {
         name: formData.name,
         email: formData.email || `${formData.phone}@educator.oll`,
-        phone: formData.phone,
+        phone: fullPhone,
         skills: formData.skills,
         experience: formData.experience,
         grades_comfortable: formData.grades_comfortable,
@@ -361,7 +364,7 @@ const InquiryPage = () => {
       await axios.post(`${API}/growth-partners`, {
         name: formData.name,
         email: formData.email || '',
-        phone: formData.phone,
+        phone: fullPhone,
         city: formData.city,
         interest_type: formData.interest_type || 'franchise',
         details: formData.details || `Investment: ${formData.investment_capacity}`,
@@ -375,7 +378,7 @@ const InquiryPage = () => {
       await axios.post(`${API}/team-applications`, {
         name: formData.name,
         email: formData.email || '',
-        phone: formData.phone,
+        phone: fullPhone,
         role: formData.role,
         experience: formData.experience,
         city: formData.city,
