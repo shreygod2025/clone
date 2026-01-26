@@ -930,9 +930,14 @@ const StudentFunnel = () => {
                     {submitting ? 'Booking...' : 'Book Demo'}
                   </Button>
                 ) : (
-                  <p className="text-xs text-slate-500 text-center pt-2">
-                    Click below to continue and verify your phone
-                  </p>
+                  <Button
+                    onClick={() => setCurrentStep(prev => prev + 1)}
+                    className="w-full bg-[#D63031] hover:bg-[#b52828] mt-2"
+                    data-testid="continue-to-phone-btn"
+                  >
+                    Continue to Book
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
                 )}
               </div>
             )}
