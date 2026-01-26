@@ -45,12 +45,20 @@ const AdminSchoolCRM = () => {
   const [showCommentModal, setShowCommentModal] = useState(null);
   const [showFollowupModal, setShowFollowupModal] = useState(null);
   const [showOnboardModal, setShowOnboardModal] = useState(null);
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false);
+  const [showEditOnboardingModal, setShowEditOnboardingModal] = useState(null);
   const [newComment, setNewComment] = useState('');
   
   // View/Edit states
   const [editMode, setEditMode] = useState(false);
   const [editData, setEditData] = useState({ school_name: '', contact_name: '', phone: '', email: '', meeting_date: '', meeting_time: '', notes: '' });
   const [viewComment, setViewComment] = useState('');
+  
+  // Bulk Import states
+  const [bulkImportData, setBulkImportData] = useState([]);
+  const [bulkImportFile, setBulkImportFile] = useState(null);
+  const [bulkImporting, setBulkImporting] = useState(false);
+  const [bulkImportErrors, setBulkImportErrors] = useState([]);
   
   // Autocomplete states
   const [autocompleteSuggestions, setAutocompleteSuggestions] = useState([]);
@@ -80,6 +88,7 @@ const AdminSchoolCRM = () => {
     mou_url: '', // MOU document upload
     is_draft: false,
   });
+  const [editOnboardData, setEditOnboardData] = useState(null);
   const [offerings, setOfferings] = useState([]);
   const [uploadingMOU, setUploadingMOU] = useState(false);
   const [newLead, setNewLead] = useState({
