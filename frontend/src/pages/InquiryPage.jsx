@@ -385,7 +385,7 @@ const InquiryPage = () => {
         name: formData.name,
         email: formData.email || `${formData.phone}@educator.oll`,
         phone: fullPhone,
-        skills: formData.skills,
+        skills: formData.educator_skills,
         experience: formData.experience,
         grades_comfortable: formData.grades_comfortable,
         city: formData.city,
