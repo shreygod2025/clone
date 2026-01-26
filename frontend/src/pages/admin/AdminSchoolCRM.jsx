@@ -1492,12 +1492,118 @@ const AdminSchoolCRM = () => {
                 >
                   <Eye className="w-4 h-4 mr-1" /> View
                 </Button>
+                {/* Add Meeting button for relevant statuses */}
+                {['meeting_done', 'converted', 'active', 'renewed'].includes(inquiry.status) && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAddMeetingModal(inquiry)}
+                    data-testid={`add-meeting-${inquiry.id}`}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                )}
               </div>
 
               {/* Action Buttons based on status */}
               {renderActionButtons(inquiry)}
             </div>
           ))}
+        </div>
+      )}
+        </>
+      )}
+
+      {/* Contacts Tab */}
+      {activeTab === 'contacts' && (
+        <div className="space-y-4">
+          {/* Search */}
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <Input
+                placeholder="Search contacts by name, phone, school..."
+                value={contactSearchQuery}
+                onChange={(e) => setContactSearchQuery(e.target.value)}
+                className="pl-10"
+                data-testid="contact-search"
+              />
+            </div>
+          </div>
+
+          {/* Contacts Table */}
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">Contact</th>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">School</th>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">Role</th>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">Birthday</th>
+                  <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {allContacts
+                  .filter(c => 
+                    c.name.toLowerCase().includes(contactSearchQuery.toLowerCase()) ||
+                    c.phone.includes(contactSearchQuery) ||
+                    c.school_name?.toLowerCase().includes(contactSearchQuery.toLowerCase())
+                  )
+                  .map((contact) => (
+                    <tr key={contact.id} className="hover:bg-slate-50">
+                      <td className="px-4 py-3">
+                        <div>
+                          <p className="font-medium text-[#1E3A5F]">{contact.name}</p>
+                          <p className="text-xs text-slate-500">{contact.phone}</p>
+                          {contact.email && <p className="text-xs text-slate-400">{contact.email}</p>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="text-sm">{contact.school_name}</p>
+                        <span className={`text-xs px-2 py-0.5 rounded ${STATUS_SECTIONS.find(s => s.value === contact.school_status)?.color || 'bg-slate-100'} text-white`}>
+                          {STATUS_SECTIONS.find(s => s.value === contact.school_status)?.label || contact.school_status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-slate-600">{contact.role}</td>
+                      <td className="px-4 py-3 text-sm text-slate-600">
+                        {contact.birthday || '-'}
+                        {contact.anniversary && <p className="text-xs text-slate-400">Anniversary: {contact.anniversary}</p>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setShowEditContactModal(contact);
+                            setEditContactData({
+                              name: contact.name,
+                              phone: contact.phone,
+                              email: contact.email || '',
+                              role: contact.role,
+                              school_id: contact.school_id,
+                              school_name: contact.school_name,
+                              birthday: contact.birthday || '',
+                              anniversary: contact.anniversary || '',
+                              notes: contact.notes || ''
+                            });
+                          }}
+                          data-testid={`edit-contact-${contact.id}`}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+            {allContacts.length === 0 && (
+              <div className="text-center py-12">
+                <Users className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                <p className="text-slate-500">No contacts found</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
