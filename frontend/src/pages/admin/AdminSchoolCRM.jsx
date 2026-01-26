@@ -37,6 +37,18 @@ const AdminSchoolCRM = () => {
   const [activeSection, setActiveSection] = useState('new');
   const [assigneeFilter, setAssigneeFilter] = useState('all');
   
+  // Main Tab State - dashboard, leads, contacts
+  const [activeTab, setActiveTab] = useState('dashboard');
+  
+  // Contacts Management State
+  const [allContacts, setAllContacts] = useState([]);
+  const [contactSearchQuery, setContactSearchQuery] = useState('');
+  const [showEditContactModal, setShowEditContactModal] = useState(null);
+  const [editContactData, setEditContactData] = useState({
+    name: '', phone: '', email: '', role: '', school_id: '', school_name: '',
+    birthday: '', anniversary: '', notes: ''
+  });
+  
   // Modal states
   const [viewInquiry, setViewInquiry] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -48,6 +60,8 @@ const AdminSchoolCRM = () => {
   const [showOnboardModal, setShowOnboardModal] = useState(null);
   const [showBulkImportModal, setShowBulkImportModal] = useState(false);
   const [showEditOnboardingModal, setShowEditOnboardingModal] = useState(null);
+  const [showAddMeetingModal, setShowAddMeetingModal] = useState(null);
+  const [newMeetingData, setNewMeetingData] = useState({ date: null, time: '', type: 'offline', notes: '' });
   const [newComment, setNewComment] = useState('');
   
   // View/Edit states
