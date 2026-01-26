@@ -28,6 +28,7 @@ from reportlab.platypus import Paragraph
 from reportlab.lib.enums import TA_CENTER
 import qrcode
 from PIL import Image
+from emergentintegrations.llm.chat import LlmChat, UserMessage
 
 ROOT_DIR = Path(__file__).parent
 UPLOAD_DIR = ROOT_DIR / "uploads"
