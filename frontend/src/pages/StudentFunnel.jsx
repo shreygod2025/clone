@@ -1029,52 +1029,6 @@ const StudentFunnel = () => {
           </div>
         );
 
-      case 'profile':
-        return (
-          <div className="space-y-4">
-            <div className="text-center mb-4">
-              <h3 className="text-lg font-semibold text-[#1E3A5F]">Complete Your Profile</h3>
-              <p className="text-slate-500 text-sm">Just a few details to personalize your experience</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Your Name</label>
-              <Input
-                placeholder="Enter your full name"
-                value={formData.name}
-                onChange={(e) => updateForm('name', e.target.value)}
-                className="input-glass"
-                data-testid="profile-name"
-              />
-            </div>
-            
-            {formData.offline_type === 'home' && (
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
-                  <MapPin className="w-4 h-4 inline mr-1" />
-                  Home Address <span className="text-slate-400 font-normal">(for home visit)</span>
-                </label>
-                <Textarea
-                  placeholder="Enter your complete address"
-                  value={formData.address}
-                  onChange={(e) => updateForm('address', e.target.value)}
-                  className="input-glass min-h-[80px]"
-                  data-testid="profile-address"
-                />
-              </div>
-            )}
-
-            <Button
-              onClick={() => setCurrentStep(prev => prev + 1)}
-              disabled={!formData.name.trim()}
-              className="w-full bg-[#D63031] hover:bg-[#b52828]"
-              data-testid="profile-continue-btn"
-            >
-              Continue
-            </Button>
-          </div>
-        );
-
       default:
         return null;
     }
