@@ -5,9 +5,37 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## What's Been Implemented
 
-### Session: January 23, 2025 (Latest - Session Visibility + Dynamic Blogs)
+### Session: January 26, 2025 (Latest - School Bulk Import + Student Funnel UX Fixes)
 
 #### Latest Updates ✅
+
+**1. School CRM - Bulk Import & Edit Active Schools**
+- **Bulk Import Feature:**
+  - "Bulk Import" button in Active Schools tab
+  - Supports CSV and Excel file uploads
+  - Downloadable template with all required columns
+  - Duplicate detection by school name or email
+  - Schools imported directly as "Active"
+  - Creates both `school_inquiries` and `school_onboarding` records
+- **Edit Active Schools:**
+  - "Edit" button on Active and Renewed school cards
+  - Modal shows all onboarding fields: School Info, Program Details, Payment Details, Contract Period
+  - Updates both school inquiry and onboarding record
+
+**2. Student Demo Booking - UX Improvements**
+- **Simplified Flow:** Phone number first → OTP → Profile (if new user) → Age → Goal → Mode → Schedule
+- **Continue Button Removed:** Clicking on options auto-advances, no more "Continue" button flash
+- **OTP Duration:** Clarified as 10 minutes (message shows "Valid for 10 minutes")
+- **Schedule Step:** Clean booking summary with "Book Demo" or "Continue to Book" button
+
+**3. For Schools Page - Desktop Spacing**
+- More content sections: Stats, Programs, Why Partner, CTA
+- Requires scrolling to see footer on desktop
+- Proper spacing and visual hierarchy
+
+---
+
+### Session: January 23, 2025 (Session Visibility + Dynamic Blogs)
 
 **1. P0: Session Visibility - IMPLEMENTED**
 - **Student Dashboard (MyBookingsPage):**
