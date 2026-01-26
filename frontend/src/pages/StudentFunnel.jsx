@@ -146,6 +146,7 @@ const StudentFunnel = () => {
     demo_time: '',
     name: '',
     phone: '',
+    countryCode: '+91',
     address: '',
   });
 
