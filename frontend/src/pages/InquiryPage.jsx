@@ -647,15 +647,15 @@ const InquiryPage = () => {
                 </div>
                 <div className="relative">
                   <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Phone *</label>
-                  <Input
-                    placeholder="10-digit number"
+                  <PhoneInput
                     value={formData.phone}
-                    onChange={(e) => {
-                      const phone = e.target.value.replace(/\D/g, '').slice(0, 10);
-                      updateForm('phone', phone);
-                      searchAutocomplete(phone, 'phone');
+                    onChange={(val) => {
+                      updateForm('phone', val);
+                      searchAutocomplete(val, 'phone');
                     }}
-                    className="h-10 sm:h-11"
+                    countryCode={formData.countryCode}
+                    onCountryCodeChange={(code) => updateForm('countryCode', code)}
+                    placeholder="Enter phone number"
                     data-testid="input-phone"
                   />
                   {showAutocomplete && autocompleteField === 'phone' && (
