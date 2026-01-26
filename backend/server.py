@@ -5404,16 +5404,40 @@ async def get_school_offerings():
     """Get all school offerings for selection"""
     offerings = await db.school_offerings.find({}, {"_id": 0}).to_list(100)
     if not offerings:
-        # Return default offerings if none exist
+        # Return comprehensive offerings matching the website
         return [
-            {"id": "robotics_lab", "title": "Robotics Lab Setup", "category": "lab"},
-            {"id": "stem_curriculum", "title": "STEM Curriculum Integration", "category": "curriculum"},
-            {"id": "after_school", "title": "After School Program", "category": "program"},
-            {"id": "teacher_training", "title": "Teacher Training Program", "category": "training"},
-            {"id": "coding_lab", "title": "Coding Lab Setup", "category": "lab"},
-            {"id": "ai_program", "title": "AI & Robotics Program", "category": "program"},
-            {"id": "entrepreneurship", "title": "Entrepreneurship Program", "category": "program"},
-            {"id": "full_partnership", "title": "Full School Partnership", "category": "partnership"},
+            # Robotics Programs (12)
+            {"id": "robotics-curriculum-kits", "title": "Robotics Curriculum with Take-home Kits & Books", "category": "Robotics", "type": "curriculum"},
+            {"id": "robotics-lab-setup", "title": "Robotics Curriculum with Lab Setup & Books", "category": "Robotics", "type": "lab"},
+            {"id": "robotics-exhibition-prep", "title": "Robotics Exhibition Preparation", "category": "Robotics", "type": "event"},
+            {"id": "host-robotics-exhibition", "title": "Host a Robotics Exhibition in Your School", "category": "Robotics", "type": "event"},
+            {"id": "iit-bombay-competitions", "title": "Participate in Robotics Competitions at IIT Bombay", "category": "Robotics", "type": "competition"},
+            {"id": "robotics-competition-prep", "title": "Preparation for Robotics Competitions", "category": "Robotics", "type": "competition"},
+            {"id": "icse-group3-kits", "title": "Grade 9 & 10 ICSE Group 3 Subject Kits", "category": "Robotics", "type": "curriculum"},
+            {"id": "afterschool-robotics", "title": "Afterschool Robotics Classes", "category": "Robotics", "type": "afterschool"},
+            {"id": "robotics-summer-camp", "title": "Robotics Summer Camp", "category": "Robotics", "type": "camp"},
+            {"id": "robotics-ai-seminar", "title": "Robotics & AI Seminar for Students", "category": "Robotics", "type": "seminar"},
+            {"id": "robotics-books", "title": "Robotics Books", "category": "Robotics", "type": "materials"},
+            {"id": "robotics-kits", "title": "Robotics Kits", "category": "Robotics", "type": "materials"},
+            
+            # Financial Literacy & Entrepreneurship Programs (5)
+            {"id": "entrepreneurship-workshop", "title": "Entrepreneurship 3 Day Workshop", "category": "Financial Literacy", "type": "workshop"},
+            {"id": "skill-titans-olympiad", "title": "Skill Titans TV Show & Entrepreneurship Olympiad", "category": "Financial Literacy", "type": "competition"},
+            {"id": "fl-curriculum", "title": "Financial Literacy & Entrepreneurship Program as Part of Curriculum", "category": "Financial Literacy", "type": "curriculum"},
+            {"id": "ecell-opening", "title": "E-Cell Opening in School", "category": "Financial Literacy", "type": "program"},
+            {"id": "fl-summer-camp", "title": "Financial Literacy & Entrepreneurship Summer Camp", "category": "Financial Literacy", "type": "camp"},
+            
+            # AI & Machine Learning Programs (5)
+            {"id": "ai-center-excellence", "title": "Launch an AI Center for Excellence", "category": "AI & ML", "type": "lab"},
+            {"id": "agentic-ai-workshop", "title": "Agentic AI Workshop for Students", "category": "AI & ML", "type": "workshop"},
+            {"id": "ai-seminar", "title": "AI Seminar", "category": "AI & ML", "type": "seminar"},
+            {"id": "agentic-ai-summer-camp", "title": "Agentic AI Summer Camp", "category": "AI & ML", "type": "camp"},
+            {"id": "ai-services-agency-course", "title": "Start AI Services Agency Course for College Students", "category": "AI & ML", "type": "course"},
+            
+            # Coding & Programming Programs (3)
+            {"id": "vibe-coding-seminar", "title": "Vibe Coding Seminar", "category": "Coding", "type": "seminar"},
+            {"id": "coding-afterschool", "title": "Coding & Logic Building After School Classes", "category": "Coding", "type": "afterschool"},
+            {"id": "coding-summer-camp", "title": "Coding Summer Camp", "category": "Coding", "type": "camp"},
         ]
     return offerings
 
