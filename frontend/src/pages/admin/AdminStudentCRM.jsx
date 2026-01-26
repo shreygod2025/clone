@@ -396,9 +396,11 @@ const AdminStudentCRM = () => {
       toast.error('Name and phone are required');
       return;
     }
+    const fullPhone = newLead.countryCode === '+91' ? newLead.phone : `${newLead.countryCode}${newLead.phone}`;
     try {
       await axios.post(`${API}/students/inquiry`, {
         ...newLead,
+        phone: fullPhone,
         email: newLead.email || `${newLead.phone}@manual.oll`,
         learner_type: 'self',
         demo_date: newLead.demo_date ? format(newLead.demo_date, 'yyyy-MM-dd') : null,
@@ -410,6 +412,7 @@ const AdminStudentCRM = () => {
       setNewLead({
         name: '',
         phone: '',
+        countryCode: '+91',
         email: '',
         skill: '',
         city: '',
