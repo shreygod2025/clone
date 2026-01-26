@@ -1219,7 +1219,7 @@ const AdminSchoolCRM = () => {
             <div className="bg-white rounded-xl border border-slate-200 p-4">
               <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
                 <Calendar className="w-5 h-5" />
-                This Week's Meetings
+                This Week&apos;s Meetings
               </h3>
               <div className="space-y-3 max-h-96 overflow-y-auto">
                 {getThisWeekData().meetings.length === 0 ? (
