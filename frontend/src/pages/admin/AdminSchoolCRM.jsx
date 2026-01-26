@@ -96,6 +96,7 @@ const AdminSchoolCRM = () => {
     school_name: '',
     contact_name: '',
     phone: '',
+    countryCode: '+91',
     email: '',
     location: '',
     board: '',

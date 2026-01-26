@@ -94,6 +94,7 @@ const AdminStudentCRM = () => {
   const [newLead, setNewLead] = useState({
     name: '',
     phone: '',
+    countryCode: '+91',
     email: '',
     skill: '',
     city: '',
