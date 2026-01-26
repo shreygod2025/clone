@@ -146,6 +146,7 @@ const StudentFunnel = () => {
     name: '',
     phone: '',
     address: '',
+    needsProfile: false, // Flag to show profile step for new users
   });
 
   // Pre-fill form data for logged-in users
