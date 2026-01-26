@@ -226,8 +226,9 @@ const EducatorFunnel = () => {
       return;
     }
 
+    const fullPhone = formData.countryCode === '+91' ? formData.phone : `${formData.countryCode}${formData.phone}`;
     setOtpSending(true);
-    const result = await sendOTP(formData.phone, 'educator');
+    const result = await sendOTP(fullPhone, 'educator');
     setOtpSending(false);
 
     if (result.success && result.sent) {
@@ -245,13 +246,15 @@ const EducatorFunnel = () => {
       return;
     }
 
+    const fullPhone = formData.countryCode === '+91' ? formData.phone : `${formData.countryCode}${formData.phone}`;
     setSubmitting(true);
     try {
       const response = await axios.post(`${API}/educators/apply-verified`, {
-        phone: formData.phone,
+        phone: fullPhone,
         otp: otp,
         application_data: {
           ...formData,
+          phone: fullPhone,
           city: showOtherCity ? formData.other_city : formData.city,
           teaching_mode: formData.teaching_mode.join(', '),
           availability: formData.availability.join(', ') || 'Flexible',
@@ -298,12 +301,13 @@ const EducatorFunnel = () => {
       return;
     }
 
+    const fullPhone = reqFormData.countryCode === '+91' ? reqFormData.phone : `${reqFormData.countryCode}${reqFormData.phone}`;
     setSubmitting(true);
     try {
       await axios.post(`${API}/educators/apply`, {
         name: reqFormData.name,
         email: reqFormData.email,
-        phone: reqFormData.phone,
+        phone: fullPhone,
         skills: [selectedRequirement.skill],
         experience: reqFormData.experience,
         grades_comfortable: [],
