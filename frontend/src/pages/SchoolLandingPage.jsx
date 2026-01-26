@@ -49,9 +49,46 @@ const SchoolLandingPage = () => {
   return (
     <>
       <Helmet>
-        <title>For Schools | OLL - Transform Education with Future Skills</title>
-        <meta name="description" content="Partner with OLL to bring Robotics, AI, Coding and Entrepreneurship programs to your school." />
+        <title>For Schools | Robotics Lab Setup, AI & STEM Programs | OLL</title>
+        <meta name="description" content="Partner with OLL for Robotics Lab Setup, AI, Coding & STEM programs for ICSE, CBSE & State Board schools. NEP 2020 aligned curriculum, teacher training, E-cell setup. 500+ partner schools across India." />
+        <meta name="keywords" content="school robotics lab, STEM programs for schools, ICSE robotics, CBSE robotics program, robotics lab setup India, school AI program, coding curriculum schools, E-cell for schools, NEP 2020 skill education, teacher training robotics, state board STEM" />
         <link rel="canonical" href="https://oll.co/for-schools" />
+        
+        {/* Open Graph */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://oll.co/for-schools" />
+        <meta property="og:title" content="For Schools | Robotics Lab Setup, AI & STEM Programs | OLL" />
+        <meta property="og:description" content="Transform your school with Robotics, AI & STEM programs. NEP 2020 aligned, 500+ partner schools. Lab setup, teacher training & student programs." />
+        <meta property="og:image" content="https://oll.co/og-image.png" />
+        <meta property="og:site_name" content="OLL - Online Live Learning" />
+        
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="For Schools | Robotics Lab & STEM Programs | OLL" />
+        <meta name="twitter:description" content="Robotics Lab Setup, AI & STEM programs for ICSE, CBSE & State Board schools. 500+ partners." />
+        <meta name="twitter:image" content="https://oll.co/og-image.png" />
+        
+        {/* Structured Data - Local Business */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "EducationalOrganization",
+            "name": "OLL School Programs",
+            "description": "Robotics Lab Setup, AI, Coding & STEM programs for ICSE, CBSE and State Board schools across India",
+            "url": "https://oll.co/for-schools",
+            "areaServed": "IN",
+            "hasOfferCatalog": {
+              "@type": "OfferCatalog",
+              "name": "School Programs",
+              "itemListElement": [
+                {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Robotics Lab Setup"}},
+                {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "STEM Curriculum"}},
+                {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "AI & Coding Programs"}},
+                {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Teacher Training"}}
+              ]
+            }
+          })}
+        </script>
       </Helmet>
 
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
