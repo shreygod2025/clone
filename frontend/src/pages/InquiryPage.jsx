@@ -390,11 +390,12 @@ const InquiryPage = () => {
   };
 
   const submitQuery = async () => {
+    const fullPhone = formData.countryCode === '+91' ? formData.phone : `${formData.countryCode}${formData.phone}`;
     await axios.post(`${API}/inquiry/query`, {
       inquiry_type: formData.inquiry_type,
       action_type: 'query',
       name: formData.name,
-      phone: formData.phone,
+      phone: fullPhone,
       email: formData.email || '',
       query_type: formData.query_type,
       query_details: formData.query_details,
@@ -411,6 +412,7 @@ const InquiryPage = () => {
       action_type: '',
       name: '',
       phone: '',
+      countryCode: '+91',
       email: '',
       city: '',
       source: '',
