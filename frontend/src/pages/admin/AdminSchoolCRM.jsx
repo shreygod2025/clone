@@ -620,6 +620,92 @@ const AdminSchoolCRM = () => {
     }
   };
 
+  // Add additional meeting (followup meeting)
+  const handleAddMeeting = async () => {
+    if (!newMeetingData.date || !newMeetingData.time) {
+      toast.error('Please select date and time');
+      return;
+    }
+    try {
+      const meetingEntry = {
+        id: `meeting-${Date.now()}`,
+        date: format(newMeetingData.date, 'yyyy-MM-dd'),
+        time: newMeetingData.time,
+        type: newMeetingData.type,
+        notes: newMeetingData.notes,
+        created_at: new Date().toISOString(),
+        status: 'scheduled'
+      };
+      
+      const existingMeetings = showAddMeetingModal.meetings || [];
+      await axios.patch(`${API}/schools/inquiry/${showAddMeetingModal.id}`, {
+        meetings: [...existingMeetings, meetingEntry]
+      }, { headers: getAuthHeaders() });
+      
+      toast.success('Followup meeting added');
+      setShowAddMeetingModal(null);
+      setNewMeetingData({ date: null, time: '', type: 'offline', notes: '' });
+      fetchInquiries();
+    } catch (error) {
+      toast.error('Failed to add meeting');
+    }
+  };
+
+  // Update contact details
+  const handleUpdateContact = async () => {
+    if (!editContactData.name || !editContactData.phone) {
+      toast.error('Name and phone are required');
+      return;
+    }
+    try {
+      // Update the contact in the school's data
+      const school = inquiries.find(i => i.id === editContactData.school_id);
+      if (!school) {
+        toast.error('School not found');
+        return;
+      }
+
+      const isPrimary = showEditContactModal.id.endsWith('-primary');
+      
+      if (isPrimary) {
+        // Update primary contact
+        await axios.patch(`${API}/schools/inquiry/${editContactData.school_id}`, {
+          contact_name: editContactData.name,
+          phone: editContactData.phone,
+          email: editContactData.email,
+          contact_birthday: editContactData.birthday,
+          contact_anniversary: editContactData.anniversary,
+          contact_notes: editContactData.notes
+        }, { headers: getAuthHeaders() });
+      } else {
+        // Update additional contact in onboarding_data
+        const contacts = school.onboarding_data?.school_contacts || [];
+        const contactIdx = parseInt(showEditContactModal.id.split('-contact-')[1]);
+        if (contacts[contactIdx]) {
+          contacts[contactIdx] = {
+            ...contacts[contactIdx],
+            name: editContactData.name,
+            phone: editContactData.phone,
+            email: editContactData.email,
+            role: editContactData.role,
+            birthday: editContactData.birthday,
+            anniversary: editContactData.anniversary,
+            notes: editContactData.notes
+          };
+          await axios.patch(`${API}/schools/inquiry/${editContactData.school_id}`, {
+            onboarding_data: { ...school.onboarding_data, school_contacts: contacts }
+          }, { headers: getAuthHeaders() });
+        }
+      }
+      
+      toast.success('Contact updated');
+      setShowEditContactModal(null);
+      fetchInquiries();
+    } catch (error) {
+      toast.error('Failed to update contact');
+    }
+  };
+
   const handleAddFollowup = async () => {
     if (!followupData.date) {
       toast.error('Please select a followup date');
