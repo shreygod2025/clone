@@ -901,6 +901,14 @@ const AdminSchoolCRM = () => {
         return (
           <div className="flex gap-1 flex-wrap">
             <button
+              onClick={() => handleEditOnboarding(inquiry)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 flex items-center gap-1 font-medium"
+              data-testid={`edit-${inquiry.id}`}
+            >
+              <Edit className="w-3 h-3" />
+              Edit
+            </button>
+            <button
               onClick={() => handleStatusChange(inquiry, 'renewed')}
               className="text-xs px-3 py-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-700 flex items-center gap-1 font-medium"
               data-testid={`renew-${inquiry.id}`}
@@ -923,6 +931,14 @@ const AdminSchoolCRM = () => {
       case 'renewed':
         return (
           <div className="flex gap-1 flex-wrap">
+            <button
+              onClick={() => handleEditOnboarding(inquiry)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 flex items-center gap-1 font-medium"
+              data-testid={`edit-${inquiry.id}`}
+            >
+              <Edit className="w-3 h-3" />
+              Edit
+            </button>
             <button
               onClick={() => handleStatusChange(inquiry, 'lost')}
               className="text-xs px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 font-medium"
