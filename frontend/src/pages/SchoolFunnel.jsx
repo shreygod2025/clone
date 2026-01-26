@@ -706,8 +706,23 @@ const SchoolFunnel = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <Helmet>
-        <title>School Partnership | OLL - Skill Education Programs for Schools</title>
-        <meta name="description" content="Partner with OLL to bring Robotics, Coding, AI, and STEM labs to your school. Curriculum support, teacher training, and competitions. Schedule a free meeting today." />
+        <title>School Partnership | Schedule Meeting for Robotics Lab | OLL</title>
+        <meta name="description" content="Schedule a free meeting with OLL for Robotics Lab setup, STEM programs, AI curriculum for your ICSE, CBSE or State Board school. Get teacher training & student competitions support." />
+        <meta name="keywords" content="school robotics partnership, STEM lab meeting, school AI program consultation, ICSE robotics program, CBSE STEM curriculum, school partnership inquiry" />
+        <link rel="canonical" href="https://oll.co/school" />
+        
+        {/* Open Graph */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://oll.co/school" />
+        <meta property="og:title" content="School Partnership | Schedule Meeting | OLL" />
+        <meta property="og:description" content="Schedule a free meeting for Robotics Lab, STEM programs for your school. Teacher training & competitions support." />
+        <meta property="og:image" content="https://oll.co/og-image.png" />
+        
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="School Partnership | OLL" />
+        <meta name="twitter:description" content="Schedule a meeting for Robotics Lab & STEM programs for your school." />
+        <meta name="twitter:image" content="https://oll.co/og-image.png" />
       </Helmet>
       <Navbar />
 
