@@ -973,29 +973,6 @@ const StudentFunnel = () => {
             </Button>
           </div>
         );
-              <div className="text-xs text-slate-600 space-y-1">
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                  <span className="truncate">{formData.demo_date ? format(formData.demo_date, 'EEE, MMM d') : ''} at {formData.demo_time}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                  <span className="truncate">
-                    {formData.learning_mode === 'online' 
-                      ? 'Online' 
-                      : formData.offline_type === 'center' 
-                        ? `${formData.selected_center_name || 'Center'}, ${formData.city}` 
-                        : `Home, ${formData.city}`}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <BookOpen className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                  <span>{SKILL_OPTIONS.find(s => s.value === formData.skill)?.label}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        );
 
       default:
         return null;
