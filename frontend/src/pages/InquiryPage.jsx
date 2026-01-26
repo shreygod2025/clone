@@ -975,7 +975,7 @@ const InquiryPage = () => {
                           ))}
                         {offerings.filter(o => formData.programs_interested.some(p => 
                           o.category?.toLowerCase().includes(p.toLowerCase()) || 
-                          o.name?.toLowerCase().includes(p.toLowerCase())
+                          o.title?.toLowerCase().includes(p.toLowerCase())
                         )).length === 0 && (
                           <p className="text-sm text-slate-500 text-center py-2">No matching offerings found</p>
                         )}
