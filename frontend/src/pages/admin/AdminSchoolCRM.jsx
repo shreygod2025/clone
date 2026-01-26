@@ -3092,6 +3092,169 @@ const AdminSchoolCRM = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Add Meeting Modal */}
+      <Dialog open={!!showAddMeetingModal} onOpenChange={() => setShowAddMeetingModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Followup Meeting - {showAddMeetingModal?.school_name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Meeting Type</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setNewMeetingData({ ...newMeetingData, type: 'offline' })}
+                  className={`flex-1 py-2 px-4 rounded-lg border text-sm font-medium transition-all ${
+                    newMeetingData.type === 'offline'
+                      ? 'bg-orange-100 border-orange-300 text-orange-700'
+                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  Offline
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNewMeetingData({ ...newMeetingData, type: 'online' })}
+                  className={`flex-1 py-2 px-4 rounded-lg border text-sm font-medium transition-all ${
+                    newMeetingData.type === 'online'
+                      ? 'bg-blue-100 border-blue-300 text-blue-700'
+                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  Online
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Select Date</label>
+              <CalendarComponent
+                mode="single"
+                selected={newMeetingData.date}
+                onSelect={(date) => setNewMeetingData({ ...newMeetingData, date })}
+                disabled={(date) => date < new Date()}
+                className="rounded-lg border"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Select Time</label>
+              <div className="grid grid-cols-4 gap-2">
+                {TIME_SLOTS.map(time => (
+                  <button
+                    key={time}
+                    type="button"
+                    onClick={() => setNewMeetingData({ ...newMeetingData, time })}
+                    className={`py-2 px-3 rounded-lg border text-sm ${
+                      newMeetingData.time === time
+                        ? 'bg-[#1E3A5F] text-white border-[#1E3A5F]'
+                        : 'bg-white border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    {time}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Notes</label>
+              <Textarea
+                value={newMeetingData.notes}
+                onChange={(e) => setNewMeetingData({ ...newMeetingData, notes: e.target.value })}
+                placeholder="Meeting agenda or notes..."
+                className="min-h-[80px]"
+              />
+            </div>
+            <Button onClick={handleAddMeeting} className="w-full btn-primary">
+              <Plus className="w-4 h-4 mr-2" /> Add Meeting
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Contact Modal */}
+      <Dialog open={!!showEditContactModal} onOpenChange={() => setShowEditContactModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Contact - {showEditContactModal?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Name *</label>
+                <Input
+                  value={editContactData.name}
+                  onChange={(e) => setEditContactData({ ...editContactData, name: e.target.value })}
+                  placeholder="Contact name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Phone *</label>
+                <Input
+                  value={editContactData.phone}
+                  onChange={(e) => setEditContactData({ ...editContactData, phone: e.target.value })}
+                  placeholder="Phone number"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+              <Input
+                type="email"
+                value={editContactData.email}
+                onChange={(e) => setEditContactData({ ...editContactData, email: e.target.value })}
+                placeholder="Email address"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
+              <Input
+                value={editContactData.role}
+                onChange={(e) => setEditContactData({ ...editContactData, role: e.target.value })}
+                placeholder="e.g., Principal, Coordinator"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">School</label>
+              <Input
+                value={editContactData.school_name}
+                disabled
+                className="bg-slate-50"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Birthday</label>
+                <Input
+                  type="date"
+                  value={editContactData.birthday}
+                  onChange={(e) => setEditContactData({ ...editContactData, birthday: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Anniversary</label>
+                <Input
+                  type="date"
+                  value={editContactData.anniversary}
+                  onChange={(e) => setEditContactData({ ...editContactData, anniversary: e.target.value })}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+              <Textarea
+                value={editContactData.notes}
+                onChange={(e) => setEditContactData({ ...editContactData, notes: e.target.value })}
+                placeholder="Additional notes about this contact..."
+                className="min-h-[80px]"
+              />
+            </div>
+            <Button onClick={handleUpdateContact} className="w-full btn-primary">
+              <Save className="w-4 h-4 mr-2" /> Save Contact
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
