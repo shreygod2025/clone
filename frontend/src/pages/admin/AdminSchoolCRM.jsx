@@ -714,13 +714,35 @@ const AdminSchoolCRM = () => {
     try {
       await axios.patch(`${API}/schools/inquiry/${showFollowupModal.id}`, {
         followup_date: format(followupData.date, 'yyyy-MM-dd'),
-        followup_comment: followupData.comment
+        followup_comment: followupData.comment,
+        followup_auto_email: followupData.auto_email
       }, {
         headers: getAuthHeaders()
       });
-      toast.success('Followup scheduled');
+      
+      // If auto_email is enabled, schedule the email
+      if (followupData.auto_email && showFollowupModal.email) {
+        try {
+          await axios.post(`${API}/schools/schedule-followup-email`, {
+            school_id: showFollowupModal.id,
+            school_name: showFollowupModal.school_name,
+            contact_name: showFollowupModal.contact_name,
+            email: showFollowupModal.email,
+            followup_date: format(followupData.date, 'yyyy-MM-dd'),
+            followup_comment: followupData.comment,
+            programs_interested: showFollowupModal.programs_interested || []
+          }, { headers: getAuthHeaders() });
+          toast.success('Followup scheduled with auto-email!');
+        } catch (emailError) {
+          console.error('Failed to schedule email:', emailError);
+          toast.success('Followup scheduled (email scheduling failed)');
+        }
+      } else {
+        toast.success('Followup scheduled');
+      }
+      
       setShowFollowupModal(null);
-      setFollowupData({ date: null, comment: '' });
+      setFollowupData({ date: null, comment: '', auto_email: false });
       fetchInquiries();
     } catch (error) {
       toast.error('Failed to add followup');
