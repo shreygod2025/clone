@@ -955,14 +955,25 @@ const StudentFunnel = () => {
               />
             </div>
 
-            <Button
-              onClick={handleSendOTP}
-              disabled={otpLoading || formData.phone.length < 10}
-              className="w-full max-w-xs mx-auto bg-[#D63031] hover:bg-[#b52828]"
-              data-testid="send-otp-btn"
-            >
-              {otpLoading ? 'Sending OTP...' : 'Get OTP'}
-            </Button>
+            {!otpSent ? (
+              <Button
+                onClick={handleSendOTP}
+                disabled={otpLoading || formData.phone.length < 10}
+                className="w-full max-w-xs mx-auto bg-[#D63031] hover:bg-[#b52828]"
+                data-testid="send-otp-btn"
+              >
+                {otpLoading ? 'Sending OTP...' : 'Get OTP'}
+              </Button>
+            ) : (
+              <Button
+                onClick={() => setCurrentStep(prev => prev + 1)}
+                className="w-full max-w-xs mx-auto bg-[#D63031] hover:bg-[#b52828]"
+                data-testid="continue-to-otp-btn"
+              >
+                Continue to Verify
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            )}
 
             <p className="text-xs text-slate-400">
               OTP will be sent via WhatsApp • Valid for 10 minutes
