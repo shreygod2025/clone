@@ -4739,6 +4739,163 @@ async def update_school_onboarding(onboarding_id: str, data: dict, user: dict = 
     await db.school_onboarding.update_one({"id": onboarding_id}, {"$set": update_data})
     return {"message": "Onboarding updated successfully"}
 
+@api_router.get("/schools/bulk-import/template")
+async def get_bulk_import_template():
+    """Return CSV template for bulk school import"""
+    template_columns = [
+        "school_name", "contact_name", "phone", "email", "location", "board",
+        "student_count", "offering", "model", "book_type", "kit_type", "training_type",
+        "total_students", "total_amount", "payment_mode", "payment_method",
+        "contract_start", "contract_end", "notes"
+    ]
+    
+    # Sample row for guidance
+    sample_row = {
+        "school_name": "Example School",
+        "contact_name": "John Doe",
+        "phone": "9876543210",
+        "email": "school@example.com",
+        "location": "Mumbai",
+        "board": "CBSE",
+        "student_count": "500",
+        "offering": "Robotics Lab Setup",
+        "model": "Lab Model",
+        "book_type": "individual_books",
+        "kit_type": "lab_setup",
+        "training_type": "both",
+        "total_students": "100",
+        "total_amount": "50000",
+        "payment_mode": "from_school",
+        "payment_method": "neft",
+        "contract_start": "2025-01-01",
+        "contract_end": "2025-12-31",
+        "notes": "Optional notes"
+    }
+    
+    return {
+        "columns": template_columns,
+        "sample": sample_row,
+        "instructions": {
+            "board": "Options: CBSE, ICSE, IGCSE, State Board, IB",
+            "book_type": "Options: individual_books, no_books",
+            "kit_type": "Options: lab_setup, individual, no_kit",
+            "training_type": "Options: student_training, teacher_training, both",
+            "payment_mode": "Options: from_school, from_student",
+            "payment_method": "Options: cheque, neft, online, cash",
+            "date_format": "Use YYYY-MM-DD format for dates"
+        }
+    }
+
+@api_router.post("/schools/bulk-import")
+async def bulk_import_schools(data: dict, user: dict = Depends(get_current_user)):
+    """Bulk import schools from CSV/Excel data"""
+    schools = data.get("schools", [])
+    if not schools:
+        raise HTTPException(status_code=400, detail="No schools data provided")
+    
+    imported = 0
+    skipped = 0
+    errors = []
+    
+    for idx, school_data in enumerate(schools):
+        try:
+            school_name = school_data.get("school_name", "").strip()
+            phone = school_data.get("phone", "").strip()
+            email = school_data.get("email", "").strip().lower()
+            
+            if not school_name:
+                errors.append({"row": idx + 1, "error": "School name is required"})
+                skipped += 1
+                continue
+            
+            # Check for duplicates by school name or email
+            existing = await db.school_inquiries.find_one({
+                "$or": [
+                    {"school_name": {"$regex": f"^{school_name}$", "$options": "i"}},
+                    {"email": email} if email else {"_id": None}
+                ]
+            })
+            
+            if existing:
+                errors.append({"row": idx + 1, "error": f"Duplicate: School '{school_name}' or email '{email}' already exists"})
+                skipped += 1
+                continue
+            
+            # Create school inquiry record
+            school_id = str(uuid.uuid4())
+            school_doc = {
+                "id": school_id,
+                "school_name": school_name,
+                "contact_name": school_data.get("contact_name", ""),
+                "phone": phone,
+                "email": email,
+                "location": school_data.get("location", ""),
+                "board": school_data.get("board", ""),
+                "student_count": school_data.get("student_count", ""),
+                "source": "bulk_import",
+                "status": "active",  # Directly add as active
+                "notes": school_data.get("notes", ""),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "created_by": user.get("email", "admin"),
+                "assigned_to": user.get("email"),
+            }
+            await db.school_inquiries.insert_one(school_doc)
+            
+            # Create onboarding record
+            onboarding_id = str(uuid.uuid4())
+            onboarding_doc = {
+                "id": onboarding_id,
+                "school_id": school_id,
+                "offering": school_data.get("offering", ""),
+                "model": school_data.get("model", ""),
+                "book_type": school_data.get("book_type", ""),
+                "kit_type": school_data.get("kit_type", ""),
+                "training_type": school_data.get("training_type", ""),
+                "grade_pricing": [],
+                "total_students": int(school_data.get("total_students", 0) or 0),
+                "total_amount": float(school_data.get("total_amount", 0) or 0),
+                "school_contacts": [{
+                    "name": school_data.get("contact_name", ""),
+                    "phone": phone,
+                    "email": email,
+                    "role": "Primary Contact"
+                }] if school_data.get("contact_name") else [],
+                "payment_mode": school_data.get("payment_mode", "from_school"),
+                "payment_method": school_data.get("payment_method", ""),
+                "payment_tranches": [],
+                "contract_start": school_data.get("contract_start", ""),
+                "contract_end": school_data.get("contract_end", ""),
+                "status": "active",
+                "is_draft": False,
+                "created_by": user.get("email", "admin"),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            }
+            await db.school_onboarding.insert_one(onboarding_doc)
+            
+            # Update school inquiry with onboarding reference
+            await db.school_inquiries.update_one(
+                {"id": school_id},
+                {"$set": {
+                    "onboarding_id": onboarding_id,
+                    "onboarding_status": "active",
+                    "model": school_data.get("model", ""),
+                    "total_students": int(school_data.get("total_students", 0) or 0),
+                }}
+            )
+            
+            imported += 1
+            
+        except Exception as e:
+            errors.append({"row": idx + 1, "error": str(e)})
+            skipped += 1
+    
+    return {
+        "message": f"Import completed. {imported} schools imported, {skipped} skipped.",
+        "imported": imported,
+        "skipped": skipped,
+        "errors": errors[:20]  # Return first 20 errors
+    }
+
 # ========================
 # DATA CENTER - UNIFIED DATABASE
 # ========================
