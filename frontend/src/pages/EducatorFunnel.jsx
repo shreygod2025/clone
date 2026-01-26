@@ -564,11 +564,12 @@ const EducatorFunnel = () => {
                     </div>
                     <div>
                       <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">Phone *</label>
-                      <Input
-                        placeholder="Enter your phone"
+                      <PhoneInput
                         value={formData.phone}
-                        onChange={(e) => setFormData({...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 10)})}
-                        className="input-glass h-10 sm:h-12"
+                        onChange={(val) => setFormData({...formData, phone: val})}
+                        countryCode={formData.countryCode}
+                        onCountryCodeChange={(code) => setFormData({...formData, countryCode: code})}
+                        placeholder="Enter your phone"
                         data-testid="educator-phone"
                       />
                     </div>
@@ -976,10 +977,12 @@ const EducatorFunnel = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Phone *</label>
-                  <Input
-                    placeholder="Your phone"
+                  <PhoneInput
                     value={reqFormData.phone}
-                    onChange={(e) => setReqFormData({...reqFormData, phone: e.target.value.replace(/\D/g, '').slice(0, 10)})}
+                    onChange={(val) => setReqFormData({...reqFormData, phone: val})}
+                    countryCode={reqFormData.countryCode}
+                    onCountryCodeChange={(code) => setReqFormData({...reqFormData, countryCode: code})}
+                    placeholder="Your phone"
                     data-testid="req-phone"
                   />
                 </div>
