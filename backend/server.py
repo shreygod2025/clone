@@ -5036,6 +5036,102 @@ async def send_personalized_school_email(data: dict):
         print(f"Error sending personalized email: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
 
+# Schedule AI-generated followup email
+@api_router.post("/schools/schedule-followup-email")
+async def schedule_followup_email(data: dict, user: dict = Depends(get_current_user)):
+    """Schedule an AI-generated followup email for a school"""
+    try:
+        school_id = data.get("school_id")
+        school_name = data.get("school_name", "")
+        contact_name = data.get("contact_name", "")
+        email = data.get("email", "")
+        followup_date = data.get("followup_date")
+        followup_comment = data.get("followup_comment", "")
+        programs = data.get("programs_interested", [])
+        
+        if not email:
+            raise HTTPException(status_code=400, detail="Email address is required")
+        
+        if not followup_date:
+            raise HTTPException(status_code=400, detail="Followup date is required")
+        
+        # Generate AI email content
+        llm_key = os.environ.get("EMERGENT_LLM_KEY", "")
+        if not llm_key:
+            raise HTTPException(status_code=500, detail="LLM service not configured")
+        
+        programs_str = ", ".join(programs) if programs else "skill education programs"
+        
+        # Create AI prompt for email generation
+        chat = LlmChat(
+            api_key=llm_key,
+            session_id=f"followup-{school_id}-{followup_date}",
+            system_message="""You are a professional business development representative for OLL (Omni Learning Labs), 
+            a company that provides skill education programs (Robotics, Coding, AI, Entrepreneurship, Financial Literacy) to schools.
+            Write warm, professional, and personalized followup emails that encourage schools to continue the conversation.
+            Keep emails concise (under 200 words), friendly but professional.
+            Do not use generic templates - make each email feel personalized based on the context provided."""
+        ).with_model("gemini", "gemini-3-flash-preview")
+        
+        prompt = f"""Write a followup email for:
+        - School: {school_name}
+        - Contact Person: {contact_name}
+        - Programs Discussed: {programs_str}
+        - Previous Meeting Notes: {followup_comment if followup_comment else 'Initial discussion about partnership'}
+        
+        The email should:
+        1. Reference our previous conversation naturally
+        2. Mention the specific programs they showed interest in
+        3. Offer to schedule a call or meeting to discuss next steps
+        4. Include a soft call-to-action
+        5. Be warm and personalized, not generic
+        
+        Write ONLY the email body (no subject line, no signature - just the greeting and body text).
+        Start with "Dear {contact_name}," and end before the signature."""
+        
+        user_message = UserMessage(text=prompt)
+        ai_email_content = await chat.send_message(user_message)
+        
+        # Store scheduled email in database
+        scheduled_email = {
+            "id": f"email-{uuid.uuid4().hex[:8]}",
+            "school_id": school_id,
+            "school_name": school_name,
+            "contact_name": contact_name,
+            "email": email,
+            "scheduled_date": followup_date,
+            "scheduled_time": "09:00",
+            "email_content": ai_email_content,
+            "programs_interested": programs,
+            "followup_comment": followup_comment,
+            "status": "scheduled",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_by": user.get("user_id", user.get("id", "")),
+        }
+        
+        await db.scheduled_emails.insert_one(scheduled_email)
+        
+        return {
+            "success": True,
+            "message": f"Followup email scheduled for {followup_date} at 9:00 AM",
+            "email_preview": ai_email_content[:300] + "..." if len(ai_email_content) > 300 else ai_email_content,
+            "scheduled_id": scheduled_email["id"]
+        }
+        
+    except Exception as e:
+        print(f"Error scheduling followup email: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to schedule email: {str(e)}")
+
+# Get scheduled emails for a school
+@api_router.get("/schools/{school_id}/scheduled-emails")
+async def get_school_scheduled_emails(school_id: str, user: dict = Depends(get_current_user)):
+    """Get all scheduled emails for a school"""
+    emails = await db.scheduled_emails.find(
+        {"school_id": school_id}, 
+        {"_id": 0}
+    ).sort("scheduled_date", 1).to_list(50)
+    return emails
+
 # ========================
 # DATA CENTER - UNIFIED DATABASE
 # ========================
