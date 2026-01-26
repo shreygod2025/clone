@@ -129,6 +129,9 @@ function App() {
             <Route path="/admin/blogs" element={<ProtectedRoute><AdminBlogs /></ProtectedRoute>} />
             <Route path="/admin/settings" element={<ProtectedRoute><AdminSettings /></ProtectedRoute>} />
             <Route path="/center" element={<ProtectedRoute><CenterDashboard /></ProtectedRoute>} />
+            
+            {/* 404 Not Found - Must be last */}
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
           <Toaster position="top-right" richColors />
         </BrowserRouter>
