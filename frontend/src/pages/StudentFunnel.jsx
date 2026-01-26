@@ -1384,21 +1384,19 @@ const StudentFunnel = () => {
                 <ArrowLeft className="w-4 h-4" />
                 Back
               </Button>
-              {/* Hide Continue button on OTP and action steps since they have their own navigation */}
-              {currentStepData?.id !== 'otp' && currentStepData?.id !== 'action' && (
-                <Button
-                  onClick={handleNext}
-                  disabled={submitting || otpLoading}
-                  className="btn-primary flex items-center gap-2"
-                  data-testid="next-btn"
-                >
-                  {isLoggedIn && currentStepData?.id === 'schedule'
-                    ? (submitting ? 'Booking...' : 'Book Demo')
-                    : currentStepData?.id === 'contact'
-                    ? 'Verify Phone'
-                    : 'Continue'}
-                  <ArrowRight className="w-4 h-4" />
-                </Button>
+              {/* Hide Continue button on steps that have their own navigation */}
+              {!['otp', 'action', 'phone', 'skill', 'age', 'learning_goal', 'mode', 'city', 'center'].includes(currentStepData?.id) && (
+                isLoggedIn && currentStepData?.id === 'schedule' ? null : (
+                  <Button
+                    onClick={handleNext}
+                    disabled={submitting || otpLoading}
+                    className="btn-primary flex items-center gap-2"
+                    data-testid="next-btn"
+                  >
+                    {currentStepData?.id === 'profile' ? 'Continue' : 'Next'}
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                )
               )}
             </div>
           </div>
