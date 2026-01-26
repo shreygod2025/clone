@@ -551,6 +551,209 @@ const AdminSchoolCRM = () => {
     }
   };
 
+  // Download CSV template for bulk import
+  const handleDownloadTemplate = async () => {
+    try {
+      const response = await axios.get(`${API}/schools/bulk-import/template`, {
+        headers: getAuthHeaders()
+      });
+      const { columns, sample, instructions } = response.data;
+      
+      // Create CSV content
+      let csv = columns.join(',') + '\n';
+      csv += columns.map(col => sample[col] || '').join(',') + '\n';
+      csv += '\n# Instructions:\n';
+      Object.entries(instructions).forEach(([key, value]) => {
+        csv += `# ${key}: ${value}\n`;
+      });
+      
+      // Download
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'school_import_template.csv';
+      a.click();
+      window.URL.revokeObjectURL(url);
+      toast.success('Template downloaded');
+    } catch (error) {
+      toast.error('Failed to download template');
+    }
+  };
+
+  // Parse CSV/Excel file
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    setBulkImportFile(file);
+    setBulkImportErrors([]);
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target.result;
+      const lines = text.split('\n').filter(line => line.trim() && !line.startsWith('#'));
+      
+      if (lines.length < 2) {
+        toast.error('File must have header row and at least one data row');
+        return;
+      }
+      
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
+      const data = [];
+      
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim());
+        if (values.length === headers.length) {
+          const row = {};
+          headers.forEach((header, idx) => {
+            row[header] = values[idx];
+          });
+          data.push(row);
+        }
+      }
+      
+      setBulkImportData(data);
+      toast.success(`Parsed ${data.length} schools from file`);
+    };
+    
+    reader.readAsText(file);
+  };
+
+  // Submit bulk import
+  const handleBulkImport = async () => {
+    if (bulkImportData.length === 0) {
+      toast.error('No data to import');
+      return;
+    }
+    
+    setBulkImporting(true);
+    try {
+      const response = await axios.post(`${API}/schools/bulk-import`, {
+        schools: bulkImportData
+      }, {
+        headers: getAuthHeaders()
+      });
+      
+      const { imported, skipped, errors } = response.data;
+      setBulkImportErrors(errors || []);
+      
+      if (imported > 0) {
+        toast.success(`Successfully imported ${imported} schools`);
+        fetchInquiries();
+      }
+      if (skipped > 0) {
+        toast.warning(`${skipped} schools skipped (duplicates or errors)`);
+      }
+      
+      if (errors.length === 0) {
+        setShowBulkImportModal(false);
+        setBulkImportData([]);
+        setBulkImportFile(null);
+      }
+    } catch (error) {
+      toast.error('Failed to import schools');
+    } finally {
+      setBulkImporting(false);
+    }
+  };
+
+  // Fetch onboarding data for editing
+  const handleEditOnboarding = async (school) => {
+    try {
+      const response = await axios.get(`${API}/schools/onboarding/${school.id}`, {
+        headers: getAuthHeaders()
+      });
+      setEditOnboardData({
+        ...response.data,
+        school_id: school.id,
+        school_name: school.school_name,
+        contact_name: school.contact_name,
+        phone: school.phone,
+        email: school.email,
+        location: school.location,
+        board: school.board,
+      });
+      setShowEditOnboardingModal(school);
+    } catch (error) {
+      // If no onboarding record, create one from school data
+      setEditOnboardData({
+        school_id: school.id,
+        school_name: school.school_name,
+        contact_name: school.contact_name,
+        phone: school.phone,
+        email: school.email,
+        location: school.location,
+        board: school.board,
+        offering: '',
+        model: school.model || '',
+        book_type: '',
+        kit_type: '',
+        training_type: '',
+        grade_pricing: [],
+        total_students: school.total_students || 0,
+        total_amount: 0,
+        school_contacts: [{ name: school.contact_name || '', phone: school.phone || '', email: school.email || '', role: 'Primary Contact' }],
+        payment_mode: 'from_school',
+        payment_method: '',
+        payment_tranches: [],
+        contract_start: '',
+        contract_end: '',
+      });
+      setShowEditOnboardingModal(school);
+    }
+  };
+
+  // Save edited onboarding data
+  const handleSaveEditOnboarding = async () => {
+    if (!editOnboardData) return;
+    
+    try {
+      // Update school inquiry basic info
+      await axios.patch(`${API}/schools/inquiry/${editOnboardData.school_id}`, {
+        school_name: editOnboardData.school_name,
+        contact_name: editOnboardData.contact_name,
+        phone: editOnboardData.phone,
+        email: editOnboardData.email,
+        location: editOnboardData.location,
+        board: editOnboardData.board,
+        model: editOnboardData.model,
+        total_students: editOnboardData.total_students,
+      }, {
+        headers: getAuthHeaders()
+      });
+      
+      // Update onboarding record if exists
+      if (editOnboardData.id) {
+        await axios.put(`${API}/schools/onboarding/${editOnboardData.id}`, {
+          offering: editOnboardData.offering,
+          model: editOnboardData.model,
+          book_type: editOnboardData.book_type,
+          kit_type: editOnboardData.kit_type,
+          training_type: editOnboardData.training_type,
+          grade_pricing: editOnboardData.grade_pricing,
+          total_students: editOnboardData.total_students,
+          total_amount: editOnboardData.total_amount,
+          school_contacts: editOnboardData.school_contacts,
+          payment_mode: editOnboardData.payment_mode,
+          payment_method: editOnboardData.payment_method,
+          payment_tranches: editOnboardData.payment_tranches,
+          contract_start: editOnboardData.contract_start,
+          contract_end: editOnboardData.contract_end,
+        }, {
+          headers: getAuthHeaders()
+        });
+      }
+      
+      toast.success('School details updated successfully');
+      setShowEditOnboardingModal(null);
+      setEditOnboardData(null);
+      fetchInquiries();
+    } catch (error) {
+      toast.error('Failed to update school details');
+    }
+  };
+
   const getAssignedUserName = (userId) => {
     if (!userId) return null;
     const teamUser = teamUsers.find(u => u.id === userId);
