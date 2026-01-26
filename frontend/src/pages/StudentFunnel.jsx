@@ -213,15 +213,33 @@ const StudentFunnel = () => {
     fetchCenters();
   }, [formData.city, formData.offline_type]);
 
-  // Dynamic steps - SKILL FIRST, then AGE, then LEARNING GOAL, then ACTION CHOICE (removed learner type)
+  // Dynamic steps - SKILL FIRST, then ACTION, then PHONE/OTP, then PROFILE (for new users), then rest
   const getActiveSteps = () => {
     const steps = [
       { id: 'skill', title: 'Choose a Skill' },
       { id: 'action', title: 'What would you like to do?' },
-      { id: 'age', title: 'Select Age Group' },
-      { id: 'learning_goal', title: 'Your Learning Goal' },
-      { id: 'mode', title: 'Learning Mode' },
     ];
+    
+    // Add phone and OTP steps if not logged in
+    if (!isLoggedIn) {
+      steps.push(
+        { id: 'phone', title: 'Your Phone Number' },
+        { id: 'otp', title: 'Verify Phone' }
+      );
+    }
+    
+    // Add profile step only for new users (determined after OTP verification)
+    // This will be handled dynamically after OTP
+    if (formData.needsProfile) {
+      steps.push({ id: 'profile', title: 'Complete Your Profile' });
+    }
+    
+    // Add age and goal selection
+    if (!formData.age_group || formData.needsProfile) {
+      steps.push({ id: 'age', title: 'Select Age Group' });
+    }
+    steps.push({ id: 'learning_goal', title: 'Your Learning Goal' });
+    steps.push({ id: 'mode', title: 'Learning Mode' });
     
     // Add city selection only if offline is selected
     if (formData.learning_mode === 'offline') {
@@ -234,14 +252,6 @@ const StudentFunnel = () => {
     }
     
     steps.push({ id: 'schedule', title: 'Schedule Demo' });
-    
-    // Only add contact and OTP steps if user is NOT logged in
-    if (!isLoggedIn) {
-      steps.push(
-        { id: 'contact', title: 'Contact Details' },
-        { id: 'otp', title: 'Verify Phone' }
-      );
-    }
     
     return steps;
   };
