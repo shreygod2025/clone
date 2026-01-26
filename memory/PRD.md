@@ -67,7 +67,7 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - Benefits checklist with partnership CTA
 
 **4. Deployment Fix - Hardcoded URL Removed**
-- Removed hardcoded `https://eduskill-crm.preview.emergentagent.com` from server.py
+- Removed hardcoded `https://oll-learning-hub.preview.emergentagent.com` from server.py
 - Now uses `FRONTEND_URL` environment variable
 - Added `FRONTEND_URL` to backend .env
 
