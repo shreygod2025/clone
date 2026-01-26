@@ -277,7 +277,7 @@ const StudentFunnel = () => {
 
   const handleSendOTP = async () => {
     if (!formData.phone || formData.phone.length < 10) {
-      toast.error('Please enter a valid phone number');
+      toast.error('Please enter a valid 10-digit phone number');
       return;
     }
     
@@ -291,12 +291,56 @@ const StudentFunnel = () => {
       setOtpSentViaWhatsApp(response.data.sent === true);
       // Show appropriate message based on whether OTP was actually sent
       if (response.data.sent) {
-        toast.success('OTP sent to your WhatsApp!');
+        toast.success('OTP sent to your WhatsApp! Valid for 10 minutes.');
+        // Auto-advance to OTP step
+        setCurrentStep(prev => prev + 1);
       } else {
         toast.error('Failed to send OTP. Please try again.');
       }
     } catch (error) {
       toast.error('Failed to send OTP');
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  // Handle OTP verification - check if new user
+  const handleVerifyOTP = async () => {
+    if (!otp || otp.length < 4) {
+      toast.error('Please enter the OTP');
+      return;
+    }
+    
+    setOtpLoading(true);
+    try {
+      // Verify OTP using context (this sets the user session)
+      const otpResult = await verifyOTP(formData.phone, otp, 'student');
+      
+      if (!otpResult.success) {
+        toast.error(otpResult.message || 'Invalid OTP');
+        setOtpLoading(false);
+        return;
+      }
+      
+      // Check if user exists and has profile data
+      const isNewUser = !otpResult.user?.name && !otpResult.user?.age_group;
+      
+      if (isNewUser) {
+        // New user - need to collect profile info
+        updateForm('needsProfile', true);
+        toast.success('Phone verified! Please complete your profile.');
+      } else {
+        // Existing user - pre-fill data
+        if (otpResult.user?.name) updateForm('name', otpResult.user.name);
+        if (otpResult.user?.age_group) updateForm('age_group', otpResult.user.age_group);
+        toast.success('Welcome back!');
+      }
+      
+      // Advance to next step
+      setCurrentStep(prev => prev + 1);
+      
+    } catch (error) {
+      toast.error('Verification failed. Please try again.');
     } finally {
       setOtpLoading(false);
     }
@@ -330,7 +374,7 @@ const StudentFunnel = () => {
           : formData.offline_type === 'center' 
             ? 'offline_center' 
             : 'offline_home',
-        learning_goal: 'general',
+        learning_goal: formData.learning_goal || 'general',
         name: formData.name,
         email: `${formData.phone}@student.oll`, // Auto-generate email from phone
         phone: formData.phone,
