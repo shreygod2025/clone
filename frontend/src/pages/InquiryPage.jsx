@@ -171,6 +171,19 @@ const InquiryPage = () => {
     fetchCities();
   }, []);
 
+  // Fetch offerings for schools
+  useEffect(() => {
+    const fetchOfferings = async () => {
+      try {
+        const response = await axios.get(`${API}/offerings`);
+        setOfferings(response.data || []);
+      } catch (error) {
+        console.error('Failed to fetch offerings');
+      }
+    };
+    fetchOfferings();
+  }, []);
+
   // Fetch centers when city changes and mode is offline_center
   useEffect(() => {
     const fetchCenters = async () => {
