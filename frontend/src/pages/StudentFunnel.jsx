@@ -303,8 +303,11 @@ const StudentFunnel = () => {
     
     setSubmitting(true);
     try {
+      // Use full phone with country code
+      const fullPhone = formData.countryCode === '+91' ? formData.phone : `${formData.countryCode}${formData.phone}`;
+      
       // First verify OTP using context (this sets the user session)
-      const otpResult = await verifyOTP(formData.phone, otp, 'student');
+      const otpResult = await verifyOTP(fullPhone, otp, 'student');
       
       if (!otpResult.success) {
         toast.error(otpResult.message || 'Invalid OTP');
