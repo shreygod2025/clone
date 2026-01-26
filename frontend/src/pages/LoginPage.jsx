@@ -6,6 +6,7 @@ import { Input } from '../components/ui/input';
 import { toast } from 'sonner';
 import { useUserAuth } from '../context/UserAuthContext';
 import Navbar from '../components/Navbar';
+import PhoneInput from '../components/PhoneInput';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -13,10 +14,13 @@ const LoginPage = () => {
   const [step, setStep] = useState('type'); // type, phone, otp
   const [loginType, setLoginType] = useState('student'); // student, educator
   const [phone, setPhone] = useState('');
+  const [countryCode, setCountryCode] = useState('+91');
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [otpSentViaWhatsApp, setOtpSentViaWhatsApp] = useState(false);
   const toastShownRef = useRef(false);
+
+  const getFullPhone = () => countryCode === '+91' ? phone : `${countryCode}${phone}`;
 
   const handleSendOTP = async () => {
     if (!phone || phone.length < 10) {
@@ -24,7 +28,7 @@ const LoginPage = () => {
       return;
     }
     setLoading(true);
-    const result = await sendOTP(phone, loginType);
+    const result = await sendOTP(getFullPhone(), loginType);
     setLoading(false);
     
     if (result.success) {
