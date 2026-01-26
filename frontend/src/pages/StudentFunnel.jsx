@@ -274,8 +274,10 @@ const StudentFunnel = () => {
     
     setOtpLoading(true);
     try {
+      // Send phone with country code
+      const fullPhone = formData.countryCode === '+91' ? formData.phone : `${formData.countryCode}${formData.phone}`;
       const response = await axios.post(`${API}/auth/send-otp`, {
-        phone: formData.phone,
+        phone: fullPhone,
         user_type: 'student'
       });
       setOtpSent(true);
