@@ -4906,6 +4906,135 @@ async def bulk_import_schools(data: dict, user: dict = Depends(get_current_user)
         "errors": errors[:20]  # Return first 20 errors
     }
 
+# Send personalized email to school
+@api_router.post("/schools/send-personalized-email")
+async def send_personalized_school_email(data: dict):
+    """Send personalized email to school with offerings details"""
+    try:
+        school_name = data.get("school_name", "")
+        contact_name = data.get("contact_name", "")
+        email = data.get("email", "")
+        programs = data.get("programs_interested", [])
+        offerings_ids = data.get("selected_offerings", [])
+        meeting_date = data.get("meeting_date")
+        meeting_time = data.get("meeting_time")
+        
+        if not email:
+            raise HTTPException(status_code=400, detail="Email address is required")
+        
+        if not resend.api_key:
+            raise HTTPException(status_code=500, detail="Email service not configured")
+        
+        # Fetch offerings details
+        offerings_details = []
+        if offerings_ids:
+            offerings = await db.offerings.find({"id": {"$in": offerings_ids}}, {"_id": 0}).to_list(50)
+            offerings_details = offerings
+        
+        # Build email content
+        programs_str = ", ".join(programs) if programs else "Various Programs"
+        
+        offerings_html = ""
+        if offerings_details:
+            offerings_html = "<h3 style='color: #1E3A5F; margin-top: 24px;'>Recommended Offerings for Your School</h3><ul style='margin: 12px 0;'>"
+            for o in offerings_details:
+                price_str = f"₹{o.get('price', 0):,.0f}" if o.get('price') else "Contact for pricing"
+                offerings_html += f"<li style='margin: 8px 0;'><strong>{o.get('name', '')}</strong> - {price_str}"
+                if o.get('description'):
+                    offerings_html += f"<br><span style='color: #666; font-size: 14px;'>{o.get('description', '')[:200]}</span>"
+                offerings_html += "</li>"
+            offerings_html += "</ul>"
+        
+        meeting_html = ""
+        if meeting_date and meeting_time:
+            meeting_html = f"""
+            <div style='background: #f0f9ff; padding: 16px; border-radius: 8px; margin-top: 24px;'>
+                <h3 style='color: #1E3A5F; margin: 0 0 12px 0;'>Meeting Scheduled</h3>
+                <p style='margin: 4px 0;'><strong>Date:</strong> {meeting_date}</p>
+                <p style='margin: 4px 0;'><strong>Time:</strong> {meeting_time}</p>
+            </div>
+            """
+        
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f5f5f5; margin: 0; padding: 20px;">
+            <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <div style="background: linear-gradient(135deg, #1E3A5F 0%, #2d4a6f 100%); padding: 32px; text-align: center;">
+                    <h1 style="color: white; margin: 0; font-size: 28px;">OLL</h1>
+                    <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0;">Empowering Future Skills</p>
+                </div>
+                
+                <div style="padding: 32px;">
+                    <h2 style="color: #1E3A5F; margin-top: 0;">Dear {contact_name},</h2>
+                    
+                    <p style="color: #333; line-height: 1.6;">
+                        Thank you for your interest in OLL's skill education programs for <strong>{school_name}</strong>!
+                    </p>
+                    
+                    <p style="color: #333; line-height: 1.6;">
+                        We're excited about the opportunity to partner with your institution to bring cutting-edge 
+                        <strong>{programs_str}</strong> education to your students.
+                    </p>
+                    
+                    {offerings_html}
+                    
+                    <h3 style="color: #1E3A5F; margin-top: 24px;">Why Partner with OLL?</h3>
+                    <ul style="color: #333; line-height: 1.8;">
+                        <li>Industry-aligned curriculum designed by experts</li>
+                        <li>Hands-on learning with modern equipment and kits</li>
+                        <li>Trained educators and comprehensive teacher support</li>
+                        <li>Flexible implementation models (Lab setup, Individual kits, After-school programs)</li>
+                        <li>50,000+ students impacted across India</li>
+                    </ul>
+                    
+                    {meeting_html}
+                    
+                    <p style="color: #333; line-height: 1.6; margin-top: 24px;">
+                        We look forward to discussing how OLL can help transform education at your school.
+                    </p>
+                    
+                    <p style="color: #333; margin-top: 24px;">
+                        Warm regards,<br>
+                        <strong>OLL Team</strong><br>
+                        <span style="color: #666;">www.oll.co</span>
+                    </p>
+                </div>
+                
+                <div style="background: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #eee;">
+                    <p style="color: #666; margin: 0; font-size: 14px;">
+                        OLL - Omni Learning Labs<br>
+                        Transforming Education Through Innovation
+                    </p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        email_params = {
+            "from": SENDER_EMAIL,
+            "to": [email],
+            "subject": f"Welcome to OLL - {programs_str} Programs for {school_name}",
+            "html": html_content
+        }
+        
+        email_response = await asyncio.to_thread(resend.Emails.send, email_params)
+        
+        return {
+            "success": True,
+            "message": "Personalized email sent successfully",
+            "email_id": email_response.get("id") if isinstance(email_response, dict) else str(email_response)
+        }
+        
+    except Exception as e:
+        print(f"Error sending personalized email: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
+
 # ========================
 # DATA CENTER - UNIFIED DATABASE
 # ========================
