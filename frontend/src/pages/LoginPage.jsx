@@ -160,12 +160,12 @@ const LoginPage = () => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Phone Number</label>
-                  <Input
-                    type="tel"
-                    placeholder="Enter 10-digit number"
+                  <PhoneInput
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                    className="text-lg"
+                    onChange={setPhone}
+                    countryCode={countryCode}
+                    onCountryCodeChange={setCountryCode}
+                    placeholder="Enter phone number"
                     data-testid="login-phone"
                   />
                 </div>
