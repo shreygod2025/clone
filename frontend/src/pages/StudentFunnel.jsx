@@ -907,12 +907,12 @@ const StudentFunnel = () => {
             </div>
 
             <div className="max-w-xs mx-auto">
-              <Input
-                type="tel"
-                placeholder="Enter 10-digit number"
+              <PhoneInput
                 value={formData.phone}
-                onChange={(e) => updateForm('phone', e.target.value.replace(/\D/g, '').slice(0, 10))}
-                className="text-center text-lg py-3"
+                onChange={(value) => updateForm('phone', value)}
+                countryCode={formData.countryCode}
+                onCountryCodeChange={(code) => updateForm('countryCode', code)}
+                placeholder="Enter phone number"
                 data-testid="phone-input"
               />
             </div>
