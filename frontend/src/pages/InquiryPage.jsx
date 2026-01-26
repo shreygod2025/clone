@@ -79,6 +79,7 @@ const InquiryPage = () => {
   const [centers, setCenters] = useState([]);
   const [teamUser, setTeamUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(!!username);
+  const [offerings, setOfferings] = useState([]);
   
   // Autocomplete states for existing record lookup
   const [autocompleteSuggestions, setAutocompleteSuggestions] = useState([]);
@@ -108,6 +109,7 @@ const InquiryPage = () => {
     // Student fields
     age_group: '',
     skill: '',
+    skills: [], // Multi-select for students
     learning_mode: '',
     selected_center: '',
     
@@ -115,10 +117,12 @@ const InquiryPage = () => {
     school_name: '',
     school_size: '',
     programs_interested: [],
+    selected_offerings: [], // Selected offerings for proposal
     board: '',
+    send_personalized_email: false, // Email checkbox
     
     // Educator fields
-    skills: [],
+    educator_skills: [],
     experience: '',
     grades_comfortable: [],
     availability: [],
