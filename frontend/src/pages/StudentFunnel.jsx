@@ -953,7 +953,7 @@ const StudentFunnel = () => {
             <div>
               <h3 className="text-lg font-semibold text-[#1E3A5F] mb-1">Verify Your Number</h3>
               <p className="text-slate-500 text-sm">
-                OTP sent via <span className="text-green-600 font-medium">WhatsApp</span> to <strong>{formData.phone}</strong>
+                OTP sent via <span className="text-green-600 font-medium">WhatsApp</span> to <strong>{formData.countryCode} {formData.phone}</strong>
               </p>
             </div>
 
