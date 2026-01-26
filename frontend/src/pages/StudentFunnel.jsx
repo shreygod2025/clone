@@ -476,7 +476,60 @@ const StudentFunnel = () => {
     setCurrentStep(currentStep + 1);
   };
 
-  // Submit booking for logged-in users (no OTP needed)
+  // Submit booking for logged-in users (no OTP needed) - called from schedule step
+  const handleBookForLoggedInUser = async () => {
+    setSubmitting(true);
+    try {
+      const payload = {
+        learner_type: 'self',
+        age_group: formData.age_group,
+        skill: formData.skill,
+        city: formData.city,
+        learning_mode: formData.learning_mode === 'online' 
+          ? 'online' 
+          : formData.offline_type === 'center' 
+            ? 'offline_center' 
+            : 'offline_home',
+        learning_goal: formData.learning_goal || 'general',
+        name: user?.name || formData.name,
+        email: `${user?.phone || formData.phone}@student.oll`,
+        phone: user?.phone || formData.phone,
+        demo_date: formData.demo_date ? format(formData.demo_date, 'yyyy-MM-dd') : null,
+        demo_time: formData.demo_time,
+        source: 'website'
+      };
+      
+      const response = await axios.post(`${API}/students/inquiry`, payload);
+      
+      // Store booking data for success screen
+      setBookingData({
+        ...response.data,
+        skill_label: SKILL_OPTIONS.find(s => s.value === formData.skill)?.label,
+        formatted_date: formData.demo_date ? format(formData.demo_date, 'EEEE, MMMM d, yyyy') : '',
+        demo_time: formData.demo_time,
+        learning_mode: formData.learning_mode,
+        offline_type: formData.offline_type,
+        city: formData.city,
+        center_name: formData.selected_center_name
+      });
+      
+      // Update user booking in context
+      updateUserBooking({ ...response.data, name: user?.name || formData.name });
+      
+      setSubmitted(true);
+      toast.success('Demo booked successfully!');
+    } catch (error) {
+      if (error.response?.data?.detail) {
+        toast.error(error.response.data.detail);
+      } else {
+        toast.error('Failed to complete booking');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Legacy function - keep for backward compatibility
   const handleSubmitForLoggedInUser = async () => {
     setSubmitting(true);
     try {
