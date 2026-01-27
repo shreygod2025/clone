@@ -101,6 +101,9 @@ function App() {
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/refund-policy" element={<RefundPolicyPage />} />
             
+            {/* Public School Tracking */}
+            <Route path="/track/:token" element={<SchoolTrackingPage />} />
+            
             {/* User Auth Routes */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/my-bookings" element={<MyBookingsPage />} />
