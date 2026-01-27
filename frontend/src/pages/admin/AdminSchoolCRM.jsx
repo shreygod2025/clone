@@ -2223,7 +2223,7 @@ const AdminSchoolCRM = () => {
             <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700">
               <p className="font-medium mb-1">What happens next?</p>
               <ul className="text-xs space-y-1 text-green-600">
-                <li>• School moves to "Converted" status</li>
+                <li>• School moves to Converted status</li>
                 <li>• Onboarding workflow is auto-initialized</li>
                 <li>• Public tracking link is created & copied</li>
               </ul>
