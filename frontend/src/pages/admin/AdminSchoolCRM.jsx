@@ -453,7 +453,11 @@ const AdminSchoolCRM = () => {
       fetchInquiries();
     } catch (error) {
       console.error('Onboard error:', error);
-      toast.error(error.response?.data?.detail || 'Failed to save conversion details');
+      const errorDetail = error.response?.data?.detail;
+      const errorMsg = typeof errorDetail === 'string' 
+        ? errorDetail 
+        : (Array.isArray(errorDetail) ? errorDetail[0]?.msg || 'Validation error' : 'Failed to save conversion details');
+      toast.error(errorMsg);
     }
   };
 
