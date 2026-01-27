@@ -5133,6 +5133,375 @@ async def get_school_scheduled_emails(school_id: str, user: dict = Depends(get_c
     return emails
 
 # ========================
+# SCHOOL ONBOARDING WORKFLOW
+# ========================
+
+# Default onboarding steps template
+DEFAULT_ONBOARDING_STEPS = {
+    "payment_collection": {
+        "title": "Payment Collection",
+        "description": "Initial payment received from school",
+        "completed": False,
+        "completed_date": None,
+        "data": {
+            "amount": None,
+            "payment_date": None,
+            "payment_mode": None,
+            "transaction_id": None,
+            "notes": ""
+        }
+    },
+    "kit_delivery": {
+        "title": "Kit Delivery & Tracking",
+        "description": "Kits dispatched and delivered to school",
+        "completed": False,
+        "completed_date": None,
+        "data": {
+            "dispatch_date": None,
+            "tracking_link": "",
+            "delivery_date": None,
+            "items_list": [],
+            "notes": ""
+        }
+    },
+    "distribution_checking": {
+        "title": "Distribution & Checking",
+        "description": "Kits distributed to students and verified",
+        "completed": False,
+        "completed_date": None,
+        "data": {
+            "distribution_date": None,
+            "students_count": None,
+            "queries": [],
+            "notes": ""
+        }
+    },
+    "technical_check": {
+        "title": "Technical Check",
+        "description": "All technical requirements verified",
+        "completed": False,
+        "completed_date": None,
+        "data": {
+            "checklist": [
+                {"item": "Lab/Classroom setup verified", "checked": False},
+                {"item": "Power supply & electrical points", "checked": False},
+                {"item": "Internet connectivity", "checked": False},
+                {"item": "Projector/Display working", "checked": False},
+                {"item": "All kits functional", "checked": False},
+                {"item": "Software installed", "checked": False}
+            ],
+            "notes": ""
+        }
+    },
+    "teacher_training": {
+        "title": "Teacher Training",
+        "description": "Teachers trained and certified",
+        "completed": False,
+        "completed_date": None,
+        "data": {
+            "training_date": None,
+            "training_mode": "offline",
+            "teachers_count": None,
+            "checklist": [
+                {"item": "Training session conducted", "checked": False},
+                {"item": "Assessment completed", "checked": False},
+                {"item": "Certificates issued", "checked": False},
+                {"item": "Doubt clearing session done", "checked": False}
+            ],
+            "teachers": [],
+            "notes": ""
+        }
+    },
+    "calendar_making": {
+        "title": "Calendar Making",
+        "description": "Academic calendar finalized with all events",
+        "completed": False,
+        "completed_date": None,
+        "data": {
+            "holidays": [],
+            "competitions": [],
+            "exhibitions": [],
+            "special_events": [],
+            "notes": ""
+        }
+    },
+    "timetable_finalization": {
+        "title": "Timetable Finalization",
+        "description": "Class timetable created and synced",
+        "completed": False,
+        "completed_date": None,
+        "data": {
+            "grades": [],
+            "sessions_per_week": None,
+            "synced_to_checkin": False,
+            "timetable_data": [],
+            "notes": ""
+        }
+    },
+    "mou_signing": {
+        "title": "MOU Signing",
+        "description": "Memorandum of Understanding signed",
+        "completed": False,
+        "completed_date": None,
+        "data": {
+            "mou_date": None,
+            "signed_by_school": False,
+            "signed_by_oll": False,
+            "document_link": "",
+            "notes": ""
+        }
+    },
+    "school_confirmation": {
+        "title": "School Confirmation",
+        "description": "Final confirmation received from school",
+        "completed": False,
+        "completed_date": None,
+        "data": {
+            "confirmation_date": None,
+            "confirmed_by": "",
+            "feedback": "",
+            "notes": ""
+        }
+    }
+}
+
+@api_router.post("/schools/{school_id}/init-onboarding")
+async def init_school_onboarding(school_id: str, user: dict = Depends(get_current_user)):
+    """Initialize onboarding workflow for a converted school"""
+    import copy
+    
+    school = await db.school_inquiries.find_one({"id": school_id})
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+    
+    # Generate unique tracking token
+    tracking_token = f"oll-{uuid.uuid4().hex[:12]}"
+    
+    # Initialize onboarding steps
+    onboarding_workflow = {
+        "tracking_token": tracking_token,
+        "started_at": datetime.now(timezone.utc).isoformat(),
+        "completed_at": None,
+        "current_step": "payment_collection",
+        "steps": copy.deepcopy(DEFAULT_ONBOARDING_STEPS),
+        "timeline": [{
+            "action": "Onboarding Started",
+            "date": datetime.now(timezone.utc).isoformat(),
+            "by": user.get("name", user.get("email", "Admin"))
+        }]
+    }
+    
+    await db.school_inquiries.update_one(
+        {"id": school_id},
+        {"$set": {
+            "onboarding_workflow": onboarding_workflow,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
+    return {
+        "success": True,
+        "tracking_token": tracking_token,
+        "tracking_url": f"/track/{tracking_token}",
+        "school": school
+    }
+
+@api_router.patch("/schools/{school_id}/onboarding-step/{step_key}")
+async def update_onboarding_step(
+    school_id: str, 
+    step_key: str, 
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Update a specific onboarding step"""
+    school = await db.school_inquiries.find_one({"id": school_id})
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+    
+    workflow = school.get("onboarding_workflow", {})
+    steps = workflow.get("steps", {})
+    
+    if step_key not in steps:
+        raise HTTPException(status_code=400, detail=f"Invalid step: {step_key}")
+    
+    # Update step data
+    step = steps[step_key]
+    if "completed" in data:
+        step["completed"] = data["completed"]
+        if data["completed"]:
+            step["completed_date"] = datetime.now(timezone.utc).isoformat()
+        else:
+            step["completed_date"] = None
+    
+    if "data" in data:
+        step["data"] = {**step.get("data", {}), **data["data"]}
+    
+    steps[step_key] = step
+    
+    # Add to timeline
+    timeline = workflow.get("timeline", [])
+    timeline.append({
+        "action": f"{step['title']} - {'Completed' if step['completed'] else 'Updated'}",
+        "date": datetime.now(timezone.utc).isoformat(),
+        "by": user.get("name", user.get("email", "Admin")),
+        "step": step_key
+    })
+    
+    # Check if all steps completed
+    all_completed = all(s.get("completed", False) for s in steps.values())
+    
+    # Update workflow
+    workflow["steps"] = steps
+    workflow["timeline"] = timeline
+    if all_completed:
+        workflow["completed_at"] = datetime.now(timezone.utc).isoformat()
+    
+    # Find next incomplete step
+    step_order = ["payment_collection", "kit_delivery", "distribution_checking", 
+                  "technical_check", "teacher_training", "calendar_making", 
+                  "timetable_finalization", "mou_signing", "school_confirmation"]
+    current_step = None
+    for sk in step_order:
+        if not steps.get(sk, {}).get("completed", False):
+            current_step = sk
+            break
+    workflow["current_step"] = current_step
+    
+    await db.school_inquiries.update_one(
+        {"id": school_id},
+        {"$set": {
+            "onboarding_workflow": workflow,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {"success": True, "step": step, "all_completed": all_completed}
+
+@api_router.post("/schools/{school_id}/onboarding-query")
+async def add_onboarding_query(
+    school_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Add a query/issue during onboarding"""
+    school = await db.school_inquiries.find_one({"id": school_id})
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+    
+    query = {
+        "id": f"query-{uuid.uuid4().hex[:8]}",
+        "type": data.get("type", "general"),
+        "description": data.get("description", ""),
+        "step": data.get("step", "distribution_checking"),
+        "status": "open",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_by": user.get("name", user.get("email", "Admin")),
+        "resolved_at": None,
+        "resolution": ""
+    }
+    
+    workflow = school.get("onboarding_workflow", {})
+    steps = workflow.get("steps", {})
+    step_data = steps.get(data.get("step", "distribution_checking"), {}).get("data", {})
+    queries = step_data.get("queries", [])
+    queries.append(query)
+    step_data["queries"] = queries
+    steps[data.get("step", "distribution_checking")]["data"] = step_data
+    workflow["steps"] = steps
+    
+    # Add to timeline
+    timeline = workflow.get("timeline", [])
+    timeline.append({
+        "action": f"Query Added: {data.get('type', 'general')}",
+        "date": datetime.now(timezone.utc).isoformat(),
+        "by": user.get("name", user.get("email", "Admin")),
+        "step": data.get("step", "distribution_checking")
+    })
+    workflow["timeline"] = timeline
+    
+    await db.school_inquiries.update_one(
+        {"id": school_id},
+        {"$set": {"onboarding_workflow": workflow}}
+    )
+    
+    return {"success": True, "query": query}
+
+@api_router.get("/schools/{school_id}/onboarding")
+async def get_school_onboarding(school_id: str, user: dict = Depends(get_current_user)):
+    """Get onboarding workflow for a school"""
+    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+    
+    return {
+        "school_id": school_id,
+        "school_name": school.get("school_name"),
+        "contact_name": school.get("contact_name"),
+        "workflow": school.get("onboarding_workflow", {})
+    }
+
+# Public tracking endpoint (no auth required)
+@api_router.get("/track/{tracking_token}")
+async def get_public_tracking(tracking_token: str):
+    """Public endpoint for schools to track their onboarding progress"""
+    school = await db.school_inquiries.find_one(
+        {"onboarding_workflow.tracking_token": tracking_token},
+        {"_id": 0, "password": 0}
+    )
+    
+    if not school:
+        raise HTTPException(status_code=404, detail="Tracking not found")
+    
+    workflow = school.get("onboarding_workflow", {})
+    steps = workflow.get("steps", {})
+    
+    # Calculate progress
+    total_steps = len(steps)
+    completed_steps = sum(1 for s in steps.values() if s.get("completed", False))
+    progress_percent = int((completed_steps / total_steps) * 100) if total_steps > 0 else 0
+    
+    # Build public-safe response
+    public_steps = []
+    step_order = ["payment_collection", "kit_delivery", "distribution_checking", 
+                  "technical_check", "teacher_training", "calendar_making", 
+                  "timetable_finalization", "mou_signing", "school_confirmation"]
+    
+    for key in step_order:
+        step = steps.get(key, {})
+        public_steps.append({
+            "key": key,
+            "title": step.get("title", key.replace("_", " ").title()),
+            "description": step.get("description", ""),
+            "completed": step.get("completed", False),
+            "completed_date": step.get("completed_date"),
+            # Include some safe data
+            "tracking_link": step.get("data", {}).get("tracking_link", "") if key == "kit_delivery" else None,
+            "training_date": step.get("data", {}).get("training_date") if key == "teacher_training" else None
+        })
+    
+    # Public timeline (last 10 entries)
+    timeline = workflow.get("timeline", [])[-10:]
+    public_timeline = [
+        {"action": t.get("action"), "date": t.get("date")}
+        for t in timeline
+    ]
+    
+    return {
+        "school_name": school.get("school_name"),
+        "contact_name": school.get("contact_name"),
+        "programs": school.get("programs_interested", []),
+        "started_at": workflow.get("started_at"),
+        "completed_at": workflow.get("completed_at"),
+        "current_step": workflow.get("current_step"),
+        "progress_percent": progress_percent,
+        "completed_steps": completed_steps,
+        "total_steps": total_steps,
+        "steps": public_steps,
+        "timeline": public_timeline
+    }
+
+# ========================
 # DATA CENTER - UNIFIED DATABASE
 # ========================
 
