@@ -2080,13 +2080,17 @@ const AdminSchoolCRM = () => {
 
       {/* Convert Modal */}
       <Dialog open={!!showConvertModal} onOpenChange={() => setShowConvertModal(null)}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Convert School - {showConvertModal?.school_name}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-green-600" />
+              Convert School - {showConvertModal?.school_name}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Deal Amount */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Deal Amount (₹)</label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Deal Amount (₹) *</label>
               <Input
                 type="number"
                 placeholder="Enter deal amount"
@@ -2095,12 +2099,95 @@ const AdminSchoolCRM = () => {
                 data-testid="convert-amount"
               />
             </div>
-            <div className="flex gap-3 pt-4">
+
+            {/* Model Selection */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Partnership Model *</label>
+              <select
+                value={convertData.model}
+                onChange={(e) => setConvertData({...convertData, model: e.target.value})}
+                className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                data-testid="convert-model"
+              >
+                <option value="">Select model</option>
+                <option value="robotics_lab">Robotics Lab Setup</option>
+                <option value="stem_curriculum">STEM Curriculum Integration</option>
+                <option value="after_school">After School Program</option>
+                <option value="teacher_training">Teacher Training Only</option>
+                <option value="full_partnership">Full School Partnership</option>
+              </select>
+            </div>
+
+            {/* Quick Setup Options */}
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Kit Type</label>
+                <select
+                  value={convertData.kit_type}
+                  onChange={(e) => setConvertData({...convertData, kit_type: e.target.value})}
+                  className="w-full h-9 px-2 text-sm border border-slate-200 rounded-lg"
+                >
+                  <option value="">Select</option>
+                  <option value="lab_setup">Lab Setup</option>
+                  <option value="individual">Individual Kit</option>
+                  <option value="no_kit">No Kit</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Book Type</label>
+                <select
+                  value={convertData.book_type}
+                  onChange={(e) => setConvertData({...convertData, book_type: e.target.value})}
+                  className="w-full h-9 px-2 text-sm border border-slate-200 rounded-lg"
+                >
+                  <option value="">Select</option>
+                  <option value="individual_books">Individual Books</option>
+                  <option value="no_books">No Books</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Training</label>
+                <select
+                  value={convertData.training_type}
+                  onChange={(e) => setConvertData({...convertData, training_type: e.target.value})}
+                  className="w-full h-9 px-2 text-sm border border-slate-200 rounded-lg"
+                >
+                  <option value="">Select</option>
+                  <option value="student_training">Student</option>
+                  <option value="teacher_training">Teacher</option>
+                  <option value="both">Both</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Programs from Inquiry */}
+            {convertData.programs?.length > 0 && (
+              <div className="bg-slate-50 p-3 rounded-lg">
+                <p className="text-xs text-slate-500 mb-2">Programs Interested:</p>
+                <div className="flex flex-wrap gap-1">
+                  {convertData.programs.map((p, i) => (
+                    <span key={i} className="px-2 py-0.5 bg-[#1E3A5F]/10 rounded text-xs text-[#1E3A5F] capitalize">{p}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700">
+              <p className="font-medium mb-1">What happens next?</p>
+              <ul className="text-xs space-y-1 text-green-600">
+                <li>• School moves to "Converted" status</li>
+                <li>• Onboarding workflow is auto-initialized</li>
+                <li>• Public tracking link is created & copied</li>
+              </ul>
+            </div>
+
+            <div className="flex gap-3 pt-2">
               <Button variant="outline" onClick={() => setShowConvertModal(null)} className="flex-1">
                 Cancel
               </Button>
-              <Button onClick={handleConvert} className="btn-primary flex-1">
-                Convert School
+              <Button onClick={handleConvert} className="btn-primary flex-1" data-testid="convert-submit">
+                <CheckCircle2 className="w-4 h-4 mr-1" />
+                Convert & Start Onboarding
               </Button>
             </div>
           </div>
