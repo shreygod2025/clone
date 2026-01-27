@@ -1598,54 +1598,6 @@ const AdminSchoolCRM = () => {
                 </div>
               )}
 
-              {/* Onboarding Progress - Show for converted/active/renewed with onboarding_workflow */}
-              {inquiry.onboarding_workflow && ['converted', 'active', 'renewed'].includes(inquiry.status) && (
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs text-purple-700 font-medium flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" />
-                      Onboarding Progress
-                    </p>
-                    <button
-                      onClick={() => setShowOnboardingWorkflowModal(inquiry)}
-                      className="text-xs text-purple-600 hover:text-purple-800 font-medium"
-                    >
-                      View Details →
-                    </button>
-                  </div>
-                  {/* Progress Bar */}
-                  <div className="w-full bg-purple-200 rounded-full h-2 mb-2">
-                    <div 
-                      className="bg-purple-500 h-2 rounded-full transition-all" 
-                      style={{ 
-                        width: `${(Object.values(inquiry.onboarding_workflow.steps || {}).filter(s => s.completed).length / 9 * 100).toFixed(0)}%` 
-                      }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-purple-600">
-                      {Object.values(inquiry.onboarding_workflow.steps || {}).filter(s => s.completed).length}/9 steps
-                    </span>
-                    <span className="text-purple-700 font-medium capitalize">
-                      {(inquiry.onboarding_workflow.current_step || 'payment_collection').replace(/_/g, ' ')}
-                    </span>
-                  </div>
-                  {/* Tracking Link */}
-                  {inquiry.onboarding_workflow.tracking_token && (
-                    <button
-                      onClick={() => {
-                        const url = `${window.location.origin}/track/${inquiry.onboarding_workflow.tracking_token}`;
-                        navigator.clipboard.writeText(url);
-                        toast.success('Tracking link copied!');
-                      }}
-                      className="mt-2 text-xs text-purple-500 hover:text-purple-700 flex items-center gap-1"
-                    >
-                      <Gift className="w-3 h-3" /> Copy tracking link
-                    </button>
-                  )}
-                </div>
-              )}
-
               {/* View Button */}
               <div className="flex gap-2 mb-3">
                 <Button
