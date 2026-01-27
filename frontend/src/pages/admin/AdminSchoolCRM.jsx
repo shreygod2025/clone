@@ -411,23 +411,31 @@ const AdminSchoolCRM = () => {
       const totalStudents = onboardData.grade_pricing.reduce((sum, g) => sum + (parseInt(g.students) || 0), 0);
       const totalAmount = onboardData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
       
+      // Convert dates to strings
+      const contractStart = onboardData.contract_start 
+        ? (typeof onboardData.contract_start === 'string' ? onboardData.contract_start : format(onboardData.contract_start, 'yyyy-MM-dd'))
+        : '';
+      const contractEnd = onboardData.contract_end 
+        ? (typeof onboardData.contract_end === 'string' ? onboardData.contract_end : format(onboardData.contract_end, 'yyyy-MM-dd'))
+        : '';
+      
       await axios.post(`${API}/schools/onboard`, {
         school_id: showOnboardModal.id,
-        offering: onboardData.offering,
-        model: onboardData.model,
-        book_type: onboardData.book_type,
-        kit_type: onboardData.kit_type,
-        training_type: onboardData.training_type,
+        offering: onboardData.offering || '',
+        model: onboardData.model || '',
+        book_type: onboardData.book_type || '',
+        kit_type: onboardData.kit_type || '',
+        training_type: onboardData.training_type || '',
         grade_pricing: onboardData.grade_pricing.filter(g => g.grade && g.students),
         total_students: totalStudents,
         total_amount: totalAmount,
         school_contacts: onboardData.school_contacts.filter(c => c.name && c.phone),
-        payment_mode: onboardData.payment_mode,
-        payment_method: onboardData.payment_method,
+        payment_mode: onboardData.payment_mode || '',
+        payment_method: onboardData.payment_method || '',
         payment_tranches: onboardData.payment_tranches.filter(t => t.amount || t.percentage),
-        contract_start: onboardData.contract_start,
-        contract_end: onboardData.contract_end,
-        mou_url: onboardData.mou_url,
+        contract_start: contractStart,
+        contract_end: contractEnd,
+        mou_url: onboardData.mou_url || '',
         is_draft: saveAsDraft,
       }, { headers: getAuthHeaders() });
       
