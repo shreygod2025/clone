@@ -2113,15 +2113,25 @@ const AdminSchoolCRM = () => {
                       {viewInquiry.onboarding_data.mou_url && (
                         <div className="border-t border-purple-200 pt-3">
                           <p className="text-xs text-purple-600 mb-2">MOU Document</p>
-                          <a 
-                            href={viewInquiry.onboarding_data.mou_url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-2 text-sm text-blue-600 hover:underline bg-white/50 px-3 py-2 rounded"
-                          >
-                            <FileText className="w-4 h-4" />
-                            View MOU Document →
-                          </a>
+                          <div className="flex items-center gap-2">
+                            <a 
+                              href={viewInquiry.onboarding_data.mou_url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 bg-white/50 px-3 py-2 rounded border border-blue-200"
+                            >
+                              <Eye className="w-4 h-4" />
+                              View MOU
+                            </a>
+                            <a 
+                              href={viewInquiry.onboarding_data.mou_url} 
+                              download
+                              className="inline-flex items-center gap-2 text-sm text-green-600 hover:text-green-800 bg-white/50 px-3 py-2 rounded border border-green-200"
+                            >
+                              <Download className="w-4 h-4" />
+                              Download MOU
+                            </a>
+                          </div>
                         </div>
                       )}
 
