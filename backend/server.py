@@ -4700,6 +4700,7 @@ async def onboard_school(data: dict, user: dict = Depends(get_current_user)):
         "payment_tranches": data.get("payment_tranches", []),  # [{percentage, amount, date, notes}]
         "contract_start": data.get("contract_start"),
         "contract_end": data.get("contract_end"),
+        "mou_url": data.get("mou_url", ""),  # MOU document URL
         "status": "draft" if is_draft else "active",
         "is_draft": is_draft,
         "created_by": user.get("email", "admin"),
@@ -4707,10 +4708,29 @@ async def onboard_school(data: dict, user: dict = Depends(get_current_user)):
     }
     await db.school_onboarding.insert_one(doc)
     
-    # Update school inquiry status only if not a draft
+    # Build onboarding_data to store in school_inquiries for easy viewing
+    onboarding_data = {
+        "model": data.get("model"),
+        "book_type": data.get("book_type"),
+        "kit_type": data.get("kit_type"),
+        "training_type": data.get("training_type"),
+        "grade_pricing": data.get("grade_pricing", []),
+        "total_students": data.get("total_students", 0),
+        "total_amount": data.get("total_amount", 0),
+        "school_contacts": data.get("school_contacts", []),
+        "payment_mode": data.get("payment_mode"),
+        "payment_method": data.get("payment_method"),
+        "payment_tranches": data.get("payment_tranches", []),
+        "contract_start": data.get("contract_start"),
+        "contract_end": data.get("contract_end"),
+        "mou_url": data.get("mou_url", ""),
+    }
+    
+    # Update school inquiry with onboarding data
     update_fields = {
         "onboarding_id": onboarding_id,
         "onboarding_status": "draft" if is_draft else "active",
+        "onboarding_data": onboarding_data,  # Store all onboarding details
         "model": data.get("model"),
         "total_students": data.get("total_students"),
     }
