@@ -542,7 +542,11 @@ const AdminSchoolCRM = () => {
       toast.success('MOU uploaded successfully');
     } catch (error) {
       console.error('MOU upload error:', error);
-      toast.error(error.response?.data?.detail || 'Failed to upload MOU');
+      const errorDetail = error.response?.data?.detail;
+      const errorMsg = typeof errorDetail === 'string' 
+        ? errorDetail 
+        : (Array.isArray(errorDetail) ? errorDetail[0]?.msg || 'Upload failed' : 'Failed to upload MOU');
+      toast.error(errorMsg);
     } finally {
       setUploadingMOU(false);
     }
