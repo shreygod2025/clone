@@ -10,6 +10,29 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## What's Been Implemented
 
+### Jan 27, 2026 - School Conversion Form Fixes (P0)
+**Conversion Form Fixes:**
+- ✅ Fixed "input should be a valid string" error (conversion_amount now sent as string)
+- ✅ School contacts now use PhoneInput with country code selector (+91 default)
+- ✅ School contacts role field changed to dropdown (Principal, Trustee/Owner, Director, Coordinator, Accounts)
+- ✅ Phone numbers saved with country code prefix (e.g., +919876543210)
+- ✅ Remove Contact button added for multiple contacts
+
+**View Modal Enhancements:**
+- ✅ All conversion form details now visible in View modal
+- ✅ School Team Contacts display: Name (role) phone email
+- ✅ Grade-wise Pricing display with student counts
+- ✅ MOU Document section with "View MOU" and "Download MOU" buttons
+
+**Public Tracking Page UI:**
+- ✅ Navbar updated with OLL logo (brand image, not text)
+- ✅ Navigation links: Home, Offerings, For Schools, About
+- ✅ Share button for copying tracking link
+- ✅ Footer updated to match main site style (slate-900 bg)
+- ✅ Footer has OLL white logo, contact info, links
+- ✅ No extra space at bottom of page
+- ✅ Proper copyright: "Clonefutura Live Solutions Pvt. Ltd."
+
 ### Jan 27, 2026 - School Onboarding UX Overhaul (P0)
 **Conversion Flow:**
 - ✅ "Mark Converted" button opens full onboarding popup (not simplified modal)
