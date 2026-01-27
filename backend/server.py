@@ -5556,29 +5556,26 @@ async def create_public_support_ticket(tracking_token: str, ticket_data: dict):
         "message": "Support ticket created successfully. Our team will contact you soon."
     }
 
-# Get support tickets (for admin)
-@api_router.get("/support/tickets")
-async def get_support_tickets(
+# Get tracking page tickets (for admin) - separate from general support tickets
+@api_router.get("/support/tracking-tickets")
+async def get_tracking_page_tickets(
     status: Optional[str] = None,
-    source: Optional[str] = None,
     limit: int = 100,
     user: dict = Depends(get_current_user)
 ):
-    """Get support tickets for admin panel"""
-    query = {}
+    """Get support tickets created from tracking pages"""
+    query = {"source": "tracking_page"}
     if status:
         query["status"] = status
-    if source:
-        query["source"] = source
     
     tickets = await db.support_tickets.find(query, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
     return {"tickets": tickets, "total": len(tickets)}
 
-# Update support ticket (for admin)
-@api_router.patch("/support/tickets/{ticket_id}")
-async def update_support_ticket(ticket_id: str, data: dict, user: dict = Depends(get_current_user)):
-    """Update a support ticket status or add response"""
-    ticket = await db.support_tickets.find_one({"id": ticket_id})
+# Update tracking page ticket (for admin)
+@api_router.patch("/support/tracking-tickets/{ticket_id}")
+async def update_tracking_ticket(ticket_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Update a tracking page support ticket"""
+    ticket = await db.support_tickets.find_one({"id": ticket_id, "source": "tracking_page"})
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
     
