@@ -5518,7 +5518,16 @@ async def get_public_tracking(tracking_token: str):
         "completed_steps": completed_steps,
         "total_steps": total_steps,
         "steps": public_steps,
-        "timeline": public_timeline
+        "timeline": public_timeline,
+        # Include onboarding details for display
+        "onboarding_details": {
+            "total_amount": school.get("onboarding_data", {}).get("total_amount"),
+            "total_students": school.get("onboarding_data", {}).get("total_students"),
+            "contract_start": school.get("onboarding_data", {}).get("contract_start"),
+            "contract_end": school.get("onboarding_data", {}).get("contract_end"),
+            "model": school.get("onboarding_data", {}).get("model"),
+            "kit_type": school.get("onboarding_data", {}).get("kit_type"),
+        }
     }
 
 # Support ticket from tracking page (no auth required)
