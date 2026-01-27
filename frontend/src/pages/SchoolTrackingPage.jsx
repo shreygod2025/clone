@@ -539,45 +539,41 @@ const SchoolTrackingPage = () => {
           </div>
         )}
 
-        {/* Proper OLL Footer */}
-        <footer className="bg-[#1E3A5F] text-white mt-auto">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
+        {/* Proper OLL Footer - matching main site */}
+        <footer className="bg-slate-900 text-white">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
               {/* Logo & Description */}
               <div className="col-span-2 md:col-span-1">
-                <div className="flex items-center gap-3 mb-4">
-                  <img src="/oll-logo.png" alt="OLL" className="h-10 w-auto brightness-0 invert" onError={(e) => {
-                    e.target.style.display = 'none';
-                    e.target.nextSibling.style.display = 'flex';
-                  }} />
-                  <div className="w-10 h-10 bg-white rounded-lg items-center justify-center hidden">
-                    <span className="text-[#1E3A5F] font-bold text-xl">O</span>
-                  </div>
-                  <span className="text-2xl font-bold">OLL</span>
-                </div>
-                <p className="text-white/70 text-sm leading-relaxed">
-                  Empowering schools and students with innovative STEM education solutions since 2020.
+                <Link to="/" className="flex items-center gap-2 mb-4">
+                  <img 
+                    src="https://customer-assets.emergentagent.com/job_oll-skill-edu/artifacts/wzn0gh6k_OLL-horizontal-logo-white.png"
+                    alt="OLL Logo"
+                    className="h-10 w-auto"
+                  />
+                </Link>
+                <p className="text-slate-400 text-sm leading-relaxed">
+                  India's leading skill education platform. Empowering students with Robotics, Coding, AI, and Entrepreneurship skills.
                 </p>
               </div>
 
               {/* Programs */}
               <div>
                 <h4 className="font-semibold mb-4 text-white">Programs</h4>
-                <ul className="space-y-3 text-sm text-white/70">
-                  <li><Link to="/robotics" className="hover:text-white transition-colors">Robotics</Link></li>
-                  <li><Link to="/coding" className="hover:text-white transition-colors">AI & Coding</Link></li>
-                  <li><Link to="/aeromodelling" className="hover:text-white transition-colors">Aeromodelling</Link></li>
-                  <li><Link to="/drone" className="hover:text-white transition-colors">Drone Technology</Link></li>
+                <ul className="space-y-2 text-sm text-slate-400">
+                  <li><Link to="/courses/robotics" className="hover:text-white transition-colors">Robotics</Link></li>
+                  <li><Link to="/courses/coding" className="hover:text-white transition-colors">Coding</Link></li>
+                  <li><Link to="/courses/ai" className="hover:text-white transition-colors">AI & ML</Link></li>
+                  <li><Link to="/courses/entrepreneurship" className="hover:text-white transition-colors">Entrepreneurship</Link></li>
                 </ul>
               </div>
 
               {/* For Schools */}
               <div>
                 <h4 className="font-semibold mb-4 text-white">For Schools</h4>
-                <ul className="space-y-3 text-sm text-white/70">
+                <ul className="space-y-2 text-sm text-slate-400">
+                  <li><Link to="/school-offerings" className="hover:text-white transition-colors">All Programs</Link></li>
                   <li><Link to="/for-schools" className="hover:text-white transition-colors">Partner With Us</Link></li>
-                  <li><Link to="/school-offerings" className="hover:text-white transition-colors">Our Offerings</Link></li>
-                  <li><Link to="/case-studies" className="hover:text-white transition-colors">Case Studies</Link></li>
                   <li><Link to="/about" className="hover:text-white transition-colors">About Us</Link></li>
                 </ul>
               </div>
@@ -585,31 +581,32 @@ const SchoolTrackingPage = () => {
               {/* Contact */}
               <div>
                 <h4 className="font-semibold mb-4 text-white">Contact Us</h4>
-                <ul className="space-y-3 text-sm text-white/70">
+                <ul className="space-y-2 text-sm text-slate-400">
                   <li className="flex items-center gap-2">
                     <Mail className="w-4 h-4" />
                     <a href="mailto:info@oll.co" className="hover:text-white transition-colors">info@oll.co</a>
                   </li>
                   <li className="flex items-center gap-2">
                     <Phone className="w-4 h-4" />
-                    <a href="tel:+919876543210" className="hover:text-white transition-colors">+91 98765 43210</a>
+                    <a href="tel:+919920188188" className="hover:text-white transition-colors">+91 9920188188</a>
                   </li>
                   <li className="flex items-start gap-2">
                     <MapPin className="w-4 h-4 mt-0.5" />
-                    <span>Mumbai, Maharashtra, India</span>
+                    <span>Mumbai, India</span>
                   </li>
                 </ul>
               </div>
             </div>
 
             {/* Bottom Bar */}
-            <div className="border-t border-white/20 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-              <p className="text-sm text-white/60">
-                © {new Date().getFullYear()} OLL - Omni Learning Labs. All rights reserved.
+            <div className="border-t border-slate-800 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
+              <p className="text-sm text-slate-500">
+                © {new Date().getFullYear()} Clonefutura Live Solutions Pvt. Ltd. All rights reserved.
               </p>
               <div className="flex gap-6">
-                <Link to="/privacy" className="text-sm text-white/60 hover:text-white transition-colors">Privacy Policy</Link>
-                <Link to="/terms" className="text-sm text-white/60 hover:text-white transition-colors">Terms of Service</Link>
+                <Link to="/privacy" className="text-sm text-slate-400 hover:text-white transition-colors">Privacy Policy</Link>
+                <Link to="/terms" className="text-sm text-slate-400 hover:text-white transition-colors">Terms of Service</Link>
+                <Link to="/refund-policy" className="text-sm text-slate-400 hover:text-white transition-colors">Refund Policy</Link>
               </div>
             </div>
           </div>
