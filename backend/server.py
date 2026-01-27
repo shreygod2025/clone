@@ -5501,6 +5501,109 @@ async def get_public_tracking(tracking_token: str):
         "timeline": public_timeline
     }
 
+# Support ticket from tracking page (no auth required)
+@api_router.post("/track/{tracking_token}/support-ticket")
+async def create_public_support_ticket(tracking_token: str, ticket_data: dict):
+    """Public endpoint for schools to raise support tickets from tracking page"""
+    school = await db.school_inquiries.find_one(
+        {"onboarding_workflow.tracking_token": tracking_token},
+        {"_id": 0}
+    )
+    
+    if not school:
+        raise HTTPException(status_code=404, detail="Tracking not found")
+    
+    ticket_id = f"TKT-{uuid.uuid4().hex[:8].upper()}"
+    
+    ticket = {
+        "id": ticket_id,
+        "school_id": school.get("id"),
+        "school_name": school.get("school_name"),
+        "contact_name": school.get("contact_name"),
+        "contact_phone": school.get("phone"),
+        "contact_email": school.get("email"),
+        "tracking_token": tracking_token,
+        "step": ticket_data.get("step", "general"),
+        "query_type": ticket_data.get("query_type", "general"),
+        "description": ticket_data.get("description", ""),
+        "priority": ticket_data.get("priority", "medium"),
+        "status": "open",
+        "source": "tracking_page",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "responses": []
+    }
+    
+    await db.support_tickets.insert_one(ticket)
+    
+    # Add to onboarding timeline
+    workflow = school.get("onboarding_workflow", {})
+    timeline = workflow.get("timeline", [])
+    timeline.append({
+        "action": f"Support Ticket Created: {ticket_data.get('query_type', 'General Query')}",
+        "date": datetime.now(timezone.utc).isoformat(),
+        "by": school.get("contact_name", "School")
+    })
+    
+    await db.school_inquiries.update_one(
+        {"id": school.get("id")},
+        {"$set": {"onboarding_workflow.timeline": timeline}}
+    )
+    
+    return {
+        "success": True,
+        "ticket_id": ticket_id,
+        "message": "Support ticket created successfully. Our team will contact you soon."
+    }
+
+# Get support tickets (for admin)
+@api_router.get("/support/tickets")
+async def get_support_tickets(
+    status: Optional[str] = None,
+    source: Optional[str] = None,
+    limit: int = 100,
+    user: dict = Depends(get_current_user)
+):
+    """Get support tickets for admin panel"""
+    query = {}
+    if status:
+        query["status"] = status
+    if source:
+        query["source"] = source
+    
+    tickets = await db.support_tickets.find(query, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
+    return {"tickets": tickets, "total": len(tickets)}
+
+# Update support ticket (for admin)
+@api_router.patch("/support/tickets/{ticket_id}")
+async def update_support_ticket(ticket_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Update a support ticket status or add response"""
+    ticket = await db.support_tickets.find_one({"id": ticket_id})
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    
+    update_data = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    
+    if "status" in data:
+        update_data["status"] = data["status"]
+    
+    if "response" in data:
+        responses = ticket.get("responses", [])
+        responses.append({
+            "text": data["response"],
+            "by": user.get("name", user.get("email")),
+            "date": datetime.now(timezone.utc).isoformat()
+        })
+        update_data["responses"] = responses
+    
+    if "assigned_to" in data:
+        update_data["assigned_to"] = data["assigned_to"]
+    
+    await db.support_tickets.update_one({"id": ticket_id}, {"$set": update_data})
+    
+    updated_ticket = await db.support_tickets.find_one({"id": ticket_id}, {"_id": 0})
+    return {"success": True, "ticket": updated_ticket}
+
 # ========================
 # DATA CENTER - UNIFIED DATABASE
 # ========================
