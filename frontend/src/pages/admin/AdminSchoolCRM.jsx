@@ -472,7 +472,7 @@ const AdminSchoolCRM = () => {
         // Set status to converted
         await axios.patch(`${API}/schools/inquiry/${showOnboardModal.id}`, {
           status: 'converted',
-          conversion_amount: totalAmount
+          conversion_amount: String(totalAmount)
         }, { headers: getAuthHeaders() });
         
         // Auto-initialize the onboarding workflow
