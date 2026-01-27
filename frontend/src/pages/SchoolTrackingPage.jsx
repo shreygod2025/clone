@@ -20,11 +20,64 @@ const STEP_ICONS = {
   school_confirmation: <ThumbsUp className="w-5 h-5" />
 };
 
+// Step-specific help queries
+const STEP_QUERIES = {
+  payment_collection: [
+    { label: "When is payment due?", type: "payment_due_date" },
+    { label: "What payment methods are accepted?", type: "payment_methods" },
+    { label: "Request payment receipt", type: "payment_receipt" },
+    { label: "Payment plan inquiry", type: "payment_plan" }
+  ],
+  kit_delivery: [
+    { label: "Track my shipment", type: "track_shipment" },
+    { label: "Delivery not received", type: "delivery_missing" },
+    { label: "Items missing/damaged", type: "items_damaged" },
+    { label: "Change delivery address", type: "change_address" }
+  ],
+  distribution_checking: [
+    { label: "How to distribute kits?", type: "distribution_guide" },
+    { label: "Inventory mismatch", type: "inventory_issue" },
+    { label: "Storage requirements", type: "storage_help" }
+  ],
+  technical_check: [
+    { label: "Setup assistance needed", type: "setup_help" },
+    { label: "Equipment not working", type: "equipment_issue" },
+    { label: "Software installation help", type: "software_help" }
+  ],
+  teacher_training: [
+    { label: "Training schedule inquiry", type: "training_schedule" },
+    { label: "Reschedule training", type: "reschedule_training" },
+    { label: "Training materials needed", type: "training_materials" },
+    { label: "Additional training session", type: "extra_training" }
+  ],
+  calendar_making: [
+    { label: "Calendar template needed", type: "calendar_template" },
+    { label: "Help with scheduling", type: "scheduling_help" }
+  ],
+  timetable_finalization: [
+    { label: "Timetable conflict", type: "timetable_conflict" },
+    { label: "Change class timings", type: "timing_change" }
+  ],
+  mou_signing: [
+    { label: "MOU draft review", type: "mou_review" },
+    { label: "Clarification on terms", type: "terms_clarification" },
+    { label: "Request document copy", type: "document_copy" }
+  ],
+  school_confirmation: [
+    { label: "Final review meeting", type: "final_meeting" },
+    { label: "Update school details", type: "update_details" }
+  ]
+};
+
 const SchoolTrackingPage = () => {
   const { token } = useParams();
   const [trackingData, setTrackingData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [ticketForm, setTicketForm] = useState({ query_type: '', description: '' });
+  const [submitting, setSubmitting] = useState(false);
+  const [ticketSuccess, setTicketSuccess] = useState(null);
 
   useEffect(() => {
     const fetchTracking = async () => {
@@ -41,6 +94,29 @@ const SchoolTrackingPage = () => {
       fetchTracking();
     }
   }, [token]);
+
+  const handleSubmitTicket = async () => {
+    if (!ticketForm.query_type) {
+      toast.error('Please select a query type');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const response = await axios.post(`${API}/track/${token}/support-ticket`, {
+        step: trackingData?.current_step || 'general',
+        query_type: ticketForm.query_type,
+        description: ticketForm.description,
+        priority: 'medium'
+      });
+      setTicketSuccess(response.data.ticket_id);
+      setTicketForm({ query_type: '', description: '' });
+      toast.success('Support ticket submitted successfully!');
+    } catch (err) {
+      toast.error('Failed to submit ticket. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (loading) {
     return (
