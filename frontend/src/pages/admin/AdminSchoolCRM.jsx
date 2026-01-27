@@ -2763,7 +2763,7 @@ const AdminSchoolCRM = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CalendarClock className="w-5 h-5 text-green-600" />
-              Onboard School: {showOnboardModal?.school_name}
+              Conversion Details: {showOnboardModal?.school_name}
             </DialogTitle>
           </DialogHeader>
           
