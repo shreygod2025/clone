@@ -707,6 +707,62 @@ const AdminSchoolCRM = () => {
     }
   };
 
+  // Initialize onboarding workflow for a converted school
+  const handleInitOnboarding = async (school) => {
+    try {
+      const response = await axios.post(`${API}/schools/${school.id}/init-onboarding`, {}, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Onboarding workflow started!');
+      // Copy tracking link
+      const trackingUrl = `${window.location.origin}/track/${response.data.tracking_token}`;
+      navigator.clipboard.writeText(trackingUrl);
+      toast.success('Tracking link copied to clipboard!');
+      fetchInquiries();
+      // Open the workflow modal
+      const updatedSchool = { ...school, onboarding_workflow: response.data.school.onboarding_workflow };
+      setShowOnboardingWorkflowModal(updatedSchool);
+    } catch (error) {
+      toast.error('Failed to initialize onboarding');
+    }
+  };
+
+  // Update an onboarding step
+  const handleUpdateOnboardingStep = async (schoolId, stepKey, data) => {
+    try {
+      await axios.patch(`${API}/schools/${schoolId}/onboarding-step/${stepKey}`, data, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Step updated');
+      fetchInquiries();
+      // Refresh modal data
+      const response = await axios.get(`${API}/schools/${schoolId}/onboarding`, {
+        headers: getAuthHeaders()
+      });
+      if (showOnboardingWorkflowModal) {
+        setShowOnboardingWorkflowModal({
+          ...showOnboardingWorkflowModal,
+          onboarding_workflow: response.data.workflow
+        });
+      }
+    } catch (error) {
+      toast.error('Failed to update step');
+    }
+  };
+
+  // Add a query during onboarding
+  const handleAddOnboardingQuery = async (schoolId, queryData) => {
+    try {
+      await axios.post(`${API}/schools/${schoolId}/onboarding-query`, queryData, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Query added');
+      fetchInquiries();
+    } catch (error) {
+      toast.error('Failed to add query');
+    }
+  };
+
   const handleAddFollowup = async () => {
     if (!followupData.date) {
       toast.error('Please select a followup date');
