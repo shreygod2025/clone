@@ -191,6 +191,10 @@ const AdminSupportUnified = () => {
         await axios.patch(`${API}/support/queries/${query.id}`, { status: newStatus }, {
           headers: getAuthHeaders()
         });
+      } else if (query._source === 'tracking_page') {
+        await axios.patch(`${API}/support/tracking-tickets/${query.id}`, { status: newStatus }, {
+          headers: getAuthHeaders()
+        });
       } else {
         await axios.patch(`${API}/support/tickets/${query.id}`, { status: newStatus }, {
           headers: getAuthHeaders()
