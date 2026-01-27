@@ -3009,21 +3009,28 @@ const AdminSchoolCRM = () => {
                       value={contact.name}
                       onChange={(e) => updateSchoolContact(idx, 'name', e.target.value)}
                     />
-                    <Input
-                      placeholder="Phone"
+                    <PhoneInput
                       value={contact.phone}
-                      onChange={(e) => updateSchoolContact(idx, 'phone', e.target.value)}
+                      onChange={(val) => updateSchoolContact(idx, 'phone', val)}
+                      placeholder="Phone"
                     />
                     <Input
                       placeholder="Email"
                       value={contact.email}
                       onChange={(e) => updateSchoolContact(idx, 'email', e.target.value)}
                     />
-                    <Input
-                      placeholder="Role (Principal, etc)"
+                    <select
                       value={contact.role}
                       onChange={(e) => updateSchoolContact(idx, 'role', e.target.value)}
-                    />
+                      className="h-10 px-3 border border-slate-200 rounded-lg text-sm"
+                    >
+                      <option value="">Select Role</option>
+                      <option value="principal">Principal</option>
+                      <option value="trustee_owner">Trustee/Owner</option>
+                      <option value="director">Director</option>
+                      <option value="coordinator">Coordinator</option>
+                      <option value="accounts">Accounts</option>
+                    </select>
                   </div>
                 ))}
               </div>
