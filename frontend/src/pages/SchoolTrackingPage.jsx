@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { CheckCircle2, Circle, Clock, Calendar, Package, Users, Settings, BookOpen, FileText, ThumbsUp, ArrowLeft, Truck, AlertCircle, HelpCircle, MessageSquare, Send, X, ChevronDown } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, Calendar, Package, Users, Settings, BookOpen, FileText, ThumbsUp, Truck, AlertCircle, HelpCircle, MessageSquare, Send, X, Share2, DollarSign, GraduationCap, Mail, Phone, MapPin } from 'lucide-react';
 import axios from 'axios';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
