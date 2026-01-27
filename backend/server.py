@@ -4388,7 +4388,7 @@ async def get_school_support_queries(user: dict = Depends(get_current_user)):
 
 @api_router.get("/support/tickets", response_model=List[SupportTicket])
 async def get_support_tickets(status: Optional[str] = None, user: dict = Depends(get_current_user)):
-    query = {}
+    query = {"source": {"$ne": "tracking_page"}}  # Exclude tracking page tickets
     if status:
         query["status"] = status
     tickets = await db.support_tickets.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
