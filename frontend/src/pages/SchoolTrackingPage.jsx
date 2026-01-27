@@ -36,7 +36,9 @@ const SchoolTrackingPage = () => {
         setLoading(false);
       }
     };
-    fetchTracking();
+    if (token) {
+      fetchTracking();
+    }
   }, [token]);
 
   if (loading) {
