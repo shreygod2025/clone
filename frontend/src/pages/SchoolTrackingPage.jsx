@@ -150,17 +150,40 @@ const SchoolTrackingPage = () => {
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-        {/* Header */}
-        <div className="bg-[#1E3A5F] text-white py-6">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col">
+        {/* Proper OLL Header/Navbar */}
+        <header className="bg-white shadow-sm sticky top-0 z-50">
+          <div className="max-w-6xl mx-auto px-4">
+            <div className="flex items-center justify-between h-16">
+              <Link to="/" className="flex items-center gap-2">
+                <div className="w-10 h-10 bg-[#1E3A5F] rounded-lg flex items-center justify-center">
+                  <span className="text-white font-bold text-xl">O</span>
+                </div>
+                <span className="text-xl font-bold text-[#1E3A5F]">OLL</span>
+              </Link>
+              <nav className="hidden md:flex items-center gap-6">
+                <Link to="/" className="text-slate-600 hover:text-[#1E3A5F] text-sm font-medium">Home</Link>
+                <Link to="/for-students" className="text-slate-600 hover:text-[#1E3A5F] text-sm font-medium">For Students</Link>
+                <Link to="/for-schools" className="text-slate-600 hover:text-[#1E3A5F] text-sm font-medium">For Schools</Link>
+                <Link to="/about" className="text-slate-600 hover:text-[#1E3A5F] text-sm font-medium">About</Link>
+              </nav>
+              <Link 
+                to="/" 
+                className="px-4 py-2 bg-[#D63031] text-white rounded-lg text-sm font-medium hover:bg-[#c02929] transition-colors"
+              >
+                Book a Demo
+              </Link>
+            </div>
+          </div>
+        </header>
+
+        {/* School Tracking Hero */}
+        <div className="bg-[#1E3A5F] text-white py-8">
           <div className="max-w-4xl mx-auto px-4">
-            <Link to="/" className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-4 text-sm">
-              <ArrowLeft className="w-4 h-4" /> Back to OLL
-            </Link>
             <div className="flex items-center justify-between">
               <div>
+                <p className="text-white/60 text-sm mb-1">Onboarding Progress Tracker</p>
                 <h1 className="text-2xl md:text-3xl font-bold">{school_name}</h1>
-                <p className="text-white/80 mt-1">Onboarding Progress Tracker</p>
               </div>
               <div className="text-right">
                 <div className="text-4xl font-bold">{progress_percent}%</div>
