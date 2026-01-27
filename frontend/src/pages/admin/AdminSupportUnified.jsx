@@ -124,11 +124,12 @@ const AdminSupportUnified = () => {
   const fetchAllQueries = async () => {
     setLoading(true);
     try {
-      // Fetch all three sources: inquiry queries, user support queries, and legacy tickets
-      const [inquiryResponse, supportQueriesResponse, legacyResponse] = await Promise.all([
+      // Fetch all sources: inquiry queries, user support queries, legacy tickets, and tracking page tickets
+      const [inquiryResponse, supportQueriesResponse, legacyResponse, trackingTicketsResponse] = await Promise.all([
         axios.get(`${API}/inquiry/queries`, { headers: getAuthHeaders() }).catch(() => ({ data: [] })),
         axios.get(`${API}/support/queries`, { headers: getAuthHeaders() }).catch(() => ({ data: [] })),
-        axios.get(`${API}/support/tickets`, { headers: getAuthHeaders() }).catch(() => ({ data: [] }))
+        axios.get(`${API}/support/tickets`, { headers: getAuthHeaders() }).catch(() => ({ data: [] })),
+        axios.get(`${API}/support/tracking-tickets`, { headers: getAuthHeaders() }).catch(() => ({ data: { tickets: [] } }))
       ]);
       
       // Add source identifier
@@ -156,8 +157,21 @@ const AdminSupportUnified = () => {
         query_details: t.message || '',
         inquiry_type: t.user_type || 'student'
       }));
+
+      // Tracking page tickets from schools during onboarding
+      const trackingTickets = (trackingTicketsResponse.data?.tickets || []).map(t => ({
+        ...t,
+        _source: 'tracking_page',
+        query_type: t.query_type || 'other',
+        query_details: t.description || `${t.query_type} - Step: ${t.step}`,
+        inquiry_type: 'school',
+        name: t.school_name || t.contact_name || 'School',
+        phone: t.contact_phone || '',
+        email: t.contact_email || '',
+        priority: t.priority || 'medium'
+      }));
       
-      setQueries([...inquiryQueries, ...supportQueries]);
+      setQueries([...inquiryQueries, ...supportQueries, ...trackingTickets]);
       setLegacyTickets(legacy);
     } catch (error) {
       console.error('Fetch error:', error);
