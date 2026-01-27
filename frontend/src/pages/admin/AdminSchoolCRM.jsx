@@ -523,7 +523,7 @@ const AdminSchoolCRM = () => {
   const addSchoolContact = () => {
     setOnboardData(prev => ({
       ...prev,
-      school_contacts: [...prev.school_contacts, { name: '', phone: '', email: '', role: '' }]
+      school_contacts: [...prev.school_contacts, { name: '', phone_number: '', country_code: '+91', email: '', role: '' }]
     }));
   };
 
