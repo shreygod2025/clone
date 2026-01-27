@@ -4111,7 +4111,7 @@ const AdminSchoolCRM = () => {
                     <div key={idx} className="flex items-start gap-2 text-sm">
                       <div className="w-2 h-2 rounded-full bg-[#1E3A5F] mt-1.5" />
                       <div>
-                        <p className="text-slate-700">{item.action}</p>
+                        <p className="text-slate-700">{typeof item.action === 'string' ? item.action : 'Activity'}</p>
                         <p className="text-xs text-slate-400">
                           {format(new Date(item.date), 'MMM d, h:mm a')} • {item.by}
                         </p>
