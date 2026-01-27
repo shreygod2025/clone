@@ -1637,7 +1637,9 @@ const AdminSchoolCRM = () => {
                       {Object.values(inquiry.onboarding_workflow.steps || {}).filter(s => s.completed).length}/9 steps
                     </span>
                     <span className="text-purple-700 font-medium capitalize">
-                      {(inquiry.onboarding_workflow.current_step || 'payment_collection').replace(/_/g, ' ')}
+                      {typeof (inquiry.onboarding_workflow.current_step || 'payment_collection') === 'string' 
+                        ? (inquiry.onboarding_workflow.current_step || 'payment_collection').replace(/_/g, ' ')
+                        : 'In Progress'}
                     </span>
                   </div>
                   {/* Tracking Link */}
