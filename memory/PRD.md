@@ -10,25 +10,51 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## What's Been Implemented
 
+### Jan 27, 2026 - School Onboarding UX Overhaul (P0)
+**Conversion Flow:**
+- ✅ "Mark Converted" button opens full onboarding popup (not simplified modal)
+- ✅ Popup captures: Offering, Model, Kit Type, Book Type, Training Type, Grade Pricing, Contacts, Payment Details, MOU
+- ✅ "Mark as Converted" button in popup sets status to 'converted' (not 'active')
+- ✅ Auto-initializes 9-step onboarding workflow with tracking token
+- ✅ Tracking link auto-copied to clipboard on conversion
+
+**Converted Tab:**
+- ✅ All onboarding details visible in "View" modal (including MOU link)
+- ✅ Removed "Onboard School" button (no longer needed)
+
+**Active Schools:**
+- ✅ Removed onboarding progress display from school cards
+- ✅ Removed "View Onboarding" button
+
+**Public Tracking Page (/track/{token}):**
+- ✅ Proper OLL navbar with logo, navigation links, Book a Demo button
+- ✅ Proper OLL footer with programs, contact info, privacy/terms links
+- ✅ Step-specific "Get Support" modal with quick queries
+- ✅ Ticket submission from tracking page
+
+**Support Center Integration:**
+- ✅ Tracking page tickets now appear in Support Center
+- ✅ "Tracking Page" source filter added
+- ✅ Orange badge distinguishes tracking page tickets
+- ✅ Status updates work for tracking tickets
+
 ### Jan 26, 2026 Session
 **School CRM Enhancements:**
 - ✅ Sub-dashboard with tabs: Dashboard, Leads & Schools, Contact Management
 - ✅ Dashboard shows: This week's meetings, followup schedule, quick stats
 - ✅ Contact Management tab with all school contacts, edit capability
-- ✅ Add Followup Meeting button (+) on school cards for meeting_done, converted, active, renewed statuses
+- ✅ Add Followup Meeting button (+) on school cards
 - ✅ AI-generated followup email with checkbox in followup modal
 - ✅ Scheduled emails stored in database with 9AM send time
 
 **Inquiry Page (/add) Enhancements:**
 - ✅ Multi-select skills for students
 - ✅ Offerings selection for schools (appears when programs selected)
-- ✅ Better program-to-offering matching (Robotics → Lab Setup, STEM Curriculum)
+- ✅ Better program-to-offering matching
 - ✅ Send personalized email checkbox with offerings details
 
 **Phone Input Integration:**
-- ✅ Country code selector on Login, Student Funnel, Educator Funnel, School Funnel
-- ✅ Country code on Admin Student CRM, Admin School CRM add lead modals
-- ✅ Country code on Inquiry Page (/add)
+- ✅ Country code selector on all forms
 
 ### Previous Sessions
 - Multi-funnel structure (Student, Educator, School)
@@ -36,47 +62,68 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - SEO implementation with react-helmet-async
 - OTP-based authentication
 - Bulk school import (CSV/Excel)
-- Student/Educator dashboards with session visibility
-- Dynamic blog management
+- Student/Educator dashboards
 
 ## Key API Endpoints
-- `POST /api/schools/send-personalized-email` - Send welcome email with offerings
-- `POST /api/schools/schedule-followup-email` - Schedule AI-generated followup
-- `GET /api/schools/{id}/scheduled-emails` - Get scheduled emails for school
-- `GET /api/school-offerings` - Get all school offerings
-- `PATCH /api/schools/inquiry/{id}` - Update school with followup_auto_email field
 
-## Database Collections
-- `school_inquiries` - School leads and active schools
-- `student_inquiries` - Student leads
-- `educators` - Educator applications
-- `scheduled_emails` - AI-generated followup emails queue
-- `offerings` / `school-offerings` - Products and services
+### School Onboarding
+- `POST /api/schools/onboard` - Save onboarding data
+- `POST /api/schools/{id}/init-onboarding` - Initialize 9-step workflow
+- `PATCH /api/schools/{id}/onboarding-step/{key}` - Update step status
+- `GET /api/schools/{id}/onboarding` - Get onboarding status
+- `GET /api/track/{token}` - Public tracking page data
 
-## Credentials
-- Admin: admin@oll.co / Dagaji03@
-- Test OTP: 1111
+### Support Tickets
+- `POST /api/track/{token}/support-ticket` - Create ticket from tracking page
+- `GET /api/support/tracking-tickets` - Get tracking page tickets (admin)
+- `PATCH /api/support/tracking-tickets/{id}` - Update tracking ticket
 
-## P0/P1/P2 Priorities
+## Database Schema
 
-### Completed This Session
-- ✅ P0: School Funnel phone country code (was already in place)
-- ✅ P1: Multi-meeting support (Add Followup Meeting)
-- ✅ P1: Contact Management tab
-- ✅ P1: Sub-dashboard for School CRM
-- ✅ P1: Multi-select skills/offerings on /add
-- ✅ P1: Auto email with AI followup
+### school_inquiries
+```
+{
+  id, school_name, contact_name, phone, email, status,
+  onboarding_data: { model, kit_type, book_type, training_type, grade_pricing, school_contacts, payment_*, contract_*, mou_url },
+  onboarding_workflow: { tracking_token, started_at, completed_at, current_step, steps: {...}, timeline: [...] }
+}
+```
 
-### Remaining Backlog
-- P1: PDF generation for Proposal and MOU documents
-- P2: Draft notifications for incomplete school onboarding
-- P2: Process scheduled emails at 9AM (cron job or background task)
-- P2: CSV Export for CRM pages
-- P3: Real calendar integration (Calendly)
-- P3: Lead scoring system
-- P3: Automated SMS/Email reminders
+### support_tickets (tracking page tickets)
+```
+{
+  id, school_id, school_name, contact_name, contact_phone, contact_email,
+  tracking_token, step, query_type, description, priority, status, source: "tracking_page",
+  created_at, updated_at, responses: [...]
+}
+```
 
-## Tech Notes
-- Emergent LLM Key used for AI email generation (gemini-3-flash)
-- Resend requires domain verification for production emails
-- School offerings use `title` field (not `name`)
+## Prioritized Backlog
+
+### P0 (Critical)
+- ✅ Fix School Onboarding UX (COMPLETED Jan 27, 2026)
+- Generate Proposal & MOU PDFs from /add page
+
+### P1 (High)
+- Implement background scheduler (APScheduler) for AI follow-up emails at 9 AM
+- CSV Export for all CRM, Data Center, Reports pages
+
+### P2 (Medium)
+- PO generation system with vendor panel
+- Real calendar integration (Calendly)
+- RBAC enforcement on frontend/backend
+- Lead scoring system
+
+### Future
+- SMS/Email reminders for students
+- LinkedIn "Share Post" feature
+- Advanced analytics dashboard
+
+## Known Limitations
+- **Jitsi Moderator Control**: Public meet.jit.si doesn't support programmatic moderator assignment
+- **Resend Email**: Requires user domain verification on Resend dashboard
+- **AI Email Scheduler**: Not yet implemented (emails scheduled but not sent automatically)
+
+## Test Credentials
+- **Admin**: admin@oll.co / Dagaji03@
+- **User OTP**: Any phone number with OTP 1111
