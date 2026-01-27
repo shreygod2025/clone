@@ -114,7 +114,7 @@ const AdminSchoolCRM = () => {
     grade_pricing: [{ grade: '', students: '', price_per_student: '' }],
     total_students: 0,
     total_amount: 0,
-    school_contacts: [{ name: '', phone: '', email: '', role: '' }],
+    school_contacts: [{ name: '', phone_number: '', country_code: '+91', email: '', role: '' }],
     // Payment details
     payment_mode: 'from_school', // from_school, from_student
     payment_method: '', // cheque, neft, online, cash
@@ -3009,36 +3009,54 @@ const AdminSchoolCRM = () => {
                   <Plus className="w-4 h-4 mr-1" /> Add Contact
                 </Button>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {onboardData.school_contacts.map((contact, idx) => (
-                  <div key={idx} className="grid grid-cols-4 gap-2">
-                    <Input
-                      placeholder="Name"
-                      value={contact.name}
-                      onChange={(e) => updateSchoolContact(idx, 'name', e.target.value)}
-                    />
-                    <PhoneInput
-                      value={contact.phone}
-                      onChange={(val) => updateSchoolContact(idx, 'phone', val)}
-                      placeholder="Phone"
-                    />
-                    <Input
-                      placeholder="Email"
-                      value={contact.email}
-                      onChange={(e) => updateSchoolContact(idx, 'email', e.target.value)}
-                    />
-                    <select
-                      value={contact.role}
-                      onChange={(e) => updateSchoolContact(idx, 'role', e.target.value)}
-                      className="h-10 px-3 border border-slate-200 rounded-lg text-sm"
-                    >
-                      <option value="">Select Role</option>
-                      <option value="principal">Principal</option>
-                      <option value="trustee_owner">Trustee/Owner</option>
-                      <option value="director">Director</option>
-                      <option value="coordinator">Coordinator</option>
-                      <option value="accounts">Accounts</option>
-                    </select>
+                  <div key={idx} className="bg-slate-50 p-3 rounded-lg space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        placeholder="Name *"
+                        value={contact.name}
+                        onChange={(e) => updateSchoolContact(idx, 'name', e.target.value)}
+                      />
+                      <select
+                        value={contact.role}
+                        onChange={(e) => updateSchoolContact(idx, 'role', e.target.value)}
+                        className="h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white"
+                      >
+                        <option value="">Select Role *</option>
+                        <option value="principal">Principal</option>
+                        <option value="trustee_owner">Trustee/Owner</option>
+                        <option value="director">Director</option>
+                        <option value="coordinator">Coordinator</option>
+                        <option value="accounts">Accounts</option>
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <PhoneInput
+                        value={contact.phone_number || ''}
+                        onChange={(val) => updateSchoolContact(idx, 'phone_number', val)}
+                        countryCode={contact.country_code || '+91'}
+                        onCountryCodeChange={(code) => updateSchoolContact(idx, 'country_code', code)}
+                        placeholder="Phone *"
+                      />
+                      <Input
+                        placeholder="Email"
+                        value={contact.email}
+                        onChange={(e) => updateSchoolContact(idx, 'email', e.target.value)}
+                      />
+                    </div>
+                    {onboardData.school_contacts.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setOnboardData(prev => ({
+                          ...prev,
+                          school_contacts: prev.school_contacts.filter((_, i) => i !== idx)
+                        }))}
+                        className="text-xs text-red-500 hover:text-red-700"
+                      >
+                        Remove Contact
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
