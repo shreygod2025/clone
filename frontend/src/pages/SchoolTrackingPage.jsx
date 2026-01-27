@@ -486,12 +486,58 @@ const SchoolTrackingPage = () => {
           </div>
         )}
 
-        {/* Footer */}
-        <div className="bg-white border-t border-slate-200 py-6 mt-12">
-          <div className="max-w-4xl mx-auto px-4 text-center text-sm text-slate-500">
-            <p>© {new Date().getFullYear()} OLL - Omni Learning Labs. All rights reserved.</p>
+        {/* Proper OLL Footer */}
+        <footer className="bg-[#1E3A5F] text-white py-12 mt-auto">
+          <div className="max-w-6xl mx-auto px-4">
+            <div className="grid md:grid-cols-4 gap-8 mb-8">
+              <div>
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
+                    <span className="text-[#1E3A5F] font-bold text-xl">O</span>
+                  </div>
+                  <span className="text-xl font-bold">OLL</span>
+                </div>
+                <p className="text-white/70 text-sm">
+                  Empowering schools and students with innovative STEM education solutions.
+                </p>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-4">Programs</h4>
+                <ul className="space-y-2 text-sm text-white/70">
+                  <li><Link to="/robotics" className="hover:text-white">Robotics</Link></li>
+                  <li><Link to="/coding" className="hover:text-white">AI & Coding</Link></li>
+                  <li><Link to="/aeromodelling" className="hover:text-white">Aeromodelling</Link></li>
+                  <li><Link to="/drone" className="hover:text-white">Drone Technology</Link></li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-4">For Schools</h4>
+                <ul className="space-y-2 text-sm text-white/70">
+                  <li><Link to="/for-schools" className="hover:text-white">Partner With Us</Link></li>
+                  <li><Link to="/school-offerings" className="hover:text-white">Our Offerings</Link></li>
+                  <li><Link to="/case-studies" className="hover:text-white">Case Studies</Link></li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold mb-4">Contact</h4>
+                <ul className="space-y-2 text-sm text-white/70">
+                  <li>📧 info@oll.co</li>
+                  <li>📞 +91 9876543210</li>
+                  <li>📍 Mumbai, India</li>
+                </ul>
+              </div>
+            </div>
+            <div className="border-t border-white/20 pt-8 flex flex-col md:flex-row items-center justify-between">
+              <p className="text-sm text-white/60">
+                © {new Date().getFullYear()} OLL - Omni Learning Labs. All rights reserved.
+              </p>
+              <div className="flex gap-6 mt-4 md:mt-0">
+                <Link to="/privacy" className="text-sm text-white/60 hover:text-white">Privacy Policy</Link>
+                <Link to="/terms" className="text-sm text-white/60 hover:text-white">Terms of Service</Link>
+              </div>
+            </div>
           </div>
-        </div>
+        </footer>
       </div>
     </>
   );
