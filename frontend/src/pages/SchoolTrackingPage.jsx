@@ -153,10 +153,14 @@ const SchoolTrackingPage = () => {
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col">
         {/* Proper OLL Header/Navbar */}
         <header className="bg-white shadow-sm sticky top-0 z-50">
-          <div className="max-w-6xl mx-auto px-4">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6">
             <div className="flex items-center justify-between h-16">
               <Link to="/" className="flex items-center gap-2">
-                <div className="w-10 h-10 bg-[#1E3A5F] rounded-lg flex items-center justify-center">
+                <img src="/oll-logo.png" alt="OLL" className="h-10 w-auto" onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'flex';
+                }} />
+                <div className="w-10 h-10 bg-[#1E3A5F] rounded-lg items-center justify-center hidden">
                   <span className="text-white font-bold text-xl">O</span>
                 </div>
                 <span className="text-xl font-bold text-[#1E3A5F]">OLL</span>
@@ -167,12 +171,16 @@ const SchoolTrackingPage = () => {
                 <Link to="/for-schools" className="text-slate-600 hover:text-[#1E3A5F] text-sm font-medium">For Schools</Link>
                 <Link to="/about" className="text-slate-600 hover:text-[#1E3A5F] text-sm font-medium">About</Link>
               </nav>
-              <Link 
-                to="/" 
-                className="px-4 py-2 bg-[#D63031] text-white rounded-lg text-sm font-medium hover:bg-[#c02929] transition-colors"
+              <button 
+                onClick={() => {
+                  navigator.clipboard.writeText(window.location.href);
+                  toast.success('Link copied! Share it with your team.');
+                }}
+                className="px-4 py-2 bg-[#1E3A5F] text-white rounded-lg text-sm font-medium hover:bg-[#2d4a6f] transition-colors flex items-center gap-2"
               >
-                Book a Demo
-              </Link>
+                <Share2 className="w-4 h-4" />
+                Share
+              </button>
             </div>
           </div>
         </header>
