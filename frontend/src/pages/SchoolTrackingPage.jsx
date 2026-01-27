@@ -328,7 +328,7 @@ const SchoolTrackingPage = () => {
                   Need Help?
                 </h3>
                 <p className="text-sm text-white/80 mb-3">
-                  Have questions about your onboarding? We're here to help!
+                  Have questions about your onboarding? We are here to help!
                 </p>
                 <button 
                   onClick={() => setShowHelpModal(true)}
