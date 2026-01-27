@@ -418,6 +418,7 @@ const AdminSupportUnified = () => {
           <option value="all">All Sources</option>
           <option value="inquiry">Team Inquiries</option>
           <option value="user_support">User Support</option>
+          <option value="tracking_page">Tracking Page</option>
           <option value="legacy">Legacy Tickets</option>
         </select>
         <select
