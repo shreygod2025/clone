@@ -495,7 +495,7 @@ const AdminSchoolCRM = () => {
       setOnboardData({
         offering: '', model: '', book_type: '', kit_type: '', training_type: '',
         grade_pricing: [{ grade: '', students: '', price_per_student: '' }],
-        total_students: 0, total_amount: 0, school_contacts: [{ name: '', phone: '', email: '', role: '' }],
+        total_students: 0, total_amount: 0, school_contacts: [{ name: '', phone_number: '', country_code: '+91', email: '', role: '' }],
         payment_mode: 'from_school', payment_method: '', payment_tranches: [{ amount: '', percentage: '', date: '', notes: '' }],
         contract_start: '', contract_end: '', mou_url: '', is_draft: false
       });
