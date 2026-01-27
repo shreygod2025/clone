@@ -2990,7 +2990,8 @@ const AdminSchoolCRM = () => {
                 Save as Draft
               </Button>
               <Button onClick={() => handleOnboardSchool(false)} className="flex-1 bg-green-600 hover:bg-green-700">
-                Onboard School
+                <CheckCircle2 className="w-4 h-4 mr-1" />
+                Mark as Converted
               </Button>
             </div>
           </div>
