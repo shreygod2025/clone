@@ -1171,6 +1171,22 @@ const AdminSchoolCRM = () => {
       case 'active':
         return (
           <div className="flex gap-1 flex-wrap">
+            {/* Onboarding Workflow Button */}
+            <button
+              onClick={() => inquiry.onboarding_workflow 
+                ? setShowOnboardingWorkflowModal(inquiry) 
+                : handleInitOnboarding(inquiry)
+              }
+              className={`text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 font-medium ${
+                inquiry.onboarding_workflow
+                  ? 'bg-purple-100 hover:bg-purple-200 text-purple-700'
+                  : 'bg-indigo-100 hover:bg-indigo-200 text-indigo-700'
+              }`}
+              data-testid={`onboarding-${inquiry.id}`}
+            >
+              <CheckCircle2 className="w-3 h-3" />
+              {inquiry.onboarding_workflow ? 'View Onboarding' : 'Start Onboarding'}
+            </button>
             <button
               onClick={() => handleEditOnboarding(inquiry)}
               className="text-xs px-3 py-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 flex items-center gap-1 font-medium"
