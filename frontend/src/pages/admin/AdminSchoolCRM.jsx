@@ -411,31 +411,59 @@ const AdminSchoolCRM = () => {
       const totalStudents = onboardData.grade_pricing.reduce((sum, g) => sum + (parseInt(g.students) || 0), 0);
       const totalAmount = onboardData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
       
-      // Convert dates to strings
+      // Convert dates to strings - ensure they are proper string format
       const contractStart = onboardData.contract_start 
-        ? (typeof onboardData.contract_start === 'string' ? onboardData.contract_start : format(onboardData.contract_start, 'yyyy-MM-dd'))
+        ? (typeof onboardData.contract_start === 'string' 
+            ? onboardData.contract_start 
+            : (onboardData.contract_start instanceof Date 
+                ? format(onboardData.contract_start, 'yyyy-MM-dd')
+                : String(onboardData.contract_start)))
         : '';
       const contractEnd = onboardData.contract_end 
-        ? (typeof onboardData.contract_end === 'string' ? onboardData.contract_end : format(onboardData.contract_end, 'yyyy-MM-dd'))
+        ? (typeof onboardData.contract_end === 'string' 
+            ? onboardData.contract_end 
+            : (onboardData.contract_end instanceof Date 
+                ? format(onboardData.contract_end, 'yyyy-MM-dd')
+                : String(onboardData.contract_end)))
         : '';
+      
+      // Format school contacts - combine country code with phone number
+      const formattedContacts = onboardData.school_contacts
+        .filter(c => c.name && c.phone_number)
+        .map(c => ({
+          name: String(c.name || ''),
+          phone: String((c.country_code || '+91') + (c.phone_number || '')),
+          email: String(c.email || ''),
+          role: String(c.role || '')
+        }));
+      
+      // Format payment tranches - ensure all values are strings/numbers
+      const formattedTranches = onboardData.payment_tranches
+        .filter(t => t.amount || t.percentage)
+        .map(t => ({
+          percentage: String(t.percentage || ''),
+          amount: String(t.amount || ''),
+          date: String(t.date || ''),
+          notes: String(t.notes || '')
+        }));
       
       await axios.post(`${API}/schools/onboard`, {
         school_id: showOnboardModal.id,
-        offering: onboardData.offering || '',
-        model: onboardData.model || '',
-        book_type: onboardData.book_type || '',
-        kit_type: onboardData.kit_type || '',
-        training_type: onboardData.training_type || '',
+        offering: String(onboardData.offering || ''),
+        model: String(onboardData.model || ''),
+        book_type: String(onboardData.book_type || ''),
+        kit_type: String(onboardData.kit_type || ''),
+        training_type: String(onboardData.training_type || ''),
         grade_pricing: onboardData.grade_pricing.filter(g => g.grade && g.students),
         total_students: totalStudents,
         total_amount: totalAmount,
-        school_contacts: onboardData.school_contacts.filter(c => c.name && c.phone),
-        payment_mode: onboardData.payment_mode || '',
-        payment_method: onboardData.payment_method || '',
-        payment_tranches: onboardData.payment_tranches.filter(t => t.amount || t.percentage),
+        school_contacts: formattedContacts,
+        payment_mode: String(onboardData.payment_mode || ''),
+        payment_method: String(onboardData.payment_method || ''),
+        payment_tranches: formattedTranches,
         contract_start: contractStart,
         contract_end: contractEnd,
-        mou_url: onboardData.mou_url || '',
+        mou_url: String(onboardData.mou_url || ''),
         is_draft: saveAsDraft,
       }, { headers: getAuthHeaders() });
       
