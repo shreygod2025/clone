@@ -5,7 +5,7 @@ import { CheckCircle2, Circle, Clock, Calendar, Package, Users, Settings, BookOp
 import axios from 'axios';
 import { format } from 'date-fns';
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const STEP_ICONS = {
   payment_collection: <CheckCircle2 className="w-5 h-5" />,
