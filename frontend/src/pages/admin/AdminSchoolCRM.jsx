@@ -452,8 +452,8 @@ const AdminSchoolCRM = () => {
       });
       fetchInquiries();
     } catch (error) {
-      toast.error('Failed to onboard school');
-      console.error(error);
+      console.error('Onboard error:', error);
+      toast.error(error.response?.data?.detail || 'Failed to save conversion details');
     }
   };
 
