@@ -420,10 +420,24 @@ const AdminSchoolCRM = () => {
       
       // Update school status based on save mode
       if (!saveAsDraft) {
+        // Set status to converted
         await axios.patch(`${API}/schools/inquiry/${showOnboardModal.id}`, {
-          status: 'active'
+          status: 'converted',
+          conversion_amount: totalAmount
         }, { headers: getAuthHeaders() });
-        toast.success('School onboarded and moved to Active!');
+        
+        // Auto-initialize the onboarding workflow
+        try {
+          const response = await axios.post(`${API}/schools/${showOnboardModal.id}/init-onboarding`, {}, {
+            headers: getAuthHeaders()
+          });
+          const trackingUrl = `${window.location.origin}/track/${response.data.tracking_token}`;
+          navigator.clipboard.writeText(trackingUrl);
+          toast.success('School converted! Tracking link copied to clipboard.');
+        } catch (initError) {
+          console.log('Onboarding init skipped:', initError);
+          toast.success('School marked as Converted!');
+        }
       } else {
         toast.success('Draft saved! You can continue later.');
       }
