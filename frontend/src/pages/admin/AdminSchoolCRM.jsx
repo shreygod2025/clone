@@ -14,6 +14,19 @@ import PhoneInput from '../../components/PhoneInput';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+// Helper to safely extract error message from API errors
+const getErrorMessage = (error, fallback = 'An error occurred') => {
+  const detail = error?.response?.data?.detail;
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail) && detail.length > 0) {
+    return detail[0]?.msg || fallback;
+  }
+  if (typeof detail === 'object' && detail !== null) {
+    return detail.msg || detail.message || fallback;
+  }
+  return error?.message || fallback;
+};
+
 const STATUS_SECTIONS = [
   { value: 'new', label: 'New Leads', color: 'bg-blue-500' },
   { value: 'meeting_done', label: 'Meeting Done', color: 'bg-purple-500' },
