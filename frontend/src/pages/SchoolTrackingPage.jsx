@@ -187,22 +187,23 @@ const SchoolTrackingPage = () => {
 
         {/* School Tracking Hero */}
         <div className="bg-[#1E3A5F] text-white py-8">
-          <div className="max-w-4xl mx-auto px-4">
-            <div className="flex items-center justify-between">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <p className="text-white/60 text-sm mb-1">Onboarding Progress Tracker</p>
                 <h1 className="text-2xl md:text-3xl font-bold">{school_name}</h1>
+                <p className="text-white/70 text-sm mt-1">Contact: {contact_name}</p>
               </div>
-              <div className="text-right">
+              <div className="text-left md:text-right">
                 <div className="text-4xl font-bold">{progress_percent}%</div>
-                <div className="text-sm text-white/80">{completed_steps} of {total_steps} steps</div>
+                <div className="text-sm text-white/80">{completed_steps} of {total_steps} steps complete</div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Progress Bar */}
-        <div className="max-w-4xl mx-auto px-4 -mt-2">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 -mt-2">
           <div className="bg-white rounded-full h-3 shadow-lg overflow-hidden">
             <div 
               className="h-full bg-gradient-to-r from-green-500 to-emerald-500 transition-all duration-500"
@@ -211,7 +212,51 @@ const SchoolTrackingPage = () => {
           </div>
         </div>
 
-        <div className="max-w-4xl mx-auto px-4 py-8">
+        {/* Onboarding Details Cards */}
+        {onboarding_details && (onboarding_details.total_amount || onboarding_details.contract_start) && (
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 mt-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {onboarding_details.total_amount && (
+                <div className="bg-white rounded-xl shadow-md p-4">
+                  <div className="flex items-center gap-2 text-green-600 mb-1">
+                    <DollarSign className="w-4 h-4" />
+                    <span className="text-xs font-medium">Total Amount</span>
+                  </div>
+                  <p className="text-lg font-bold text-slate-800">₹{onboarding_details.total_amount?.toLocaleString()}</p>
+                </div>
+              )}
+              {onboarding_details.total_students && (
+                <div className="bg-white rounded-xl shadow-md p-4">
+                  <div className="flex items-center gap-2 text-blue-600 mb-1">
+                    <GraduationCap className="w-4 h-4" />
+                    <span className="text-xs font-medium">Students</span>
+                  </div>
+                  <p className="text-lg font-bold text-slate-800">{onboarding_details.total_students}</p>
+                </div>
+              )}
+              {onboarding_details.contract_start && (
+                <div className="bg-white rounded-xl shadow-md p-4">
+                  <div className="flex items-center gap-2 text-purple-600 mb-1">
+                    <Calendar className="w-4 h-4" />
+                    <span className="text-xs font-medium">Contract Start</span>
+                  </div>
+                  <p className="text-lg font-bold text-slate-800">{onboarding_details.contract_start}</p>
+                </div>
+              )}
+              {onboarding_details.contract_end && (
+                <div className="bg-white rounded-xl shadow-md p-4">
+                  <div className="flex items-center gap-2 text-orange-600 mb-1">
+                    <Calendar className="w-4 h-4" />
+                    <span className="text-xs font-medium">Contract End</span>
+                  </div>
+                  <p className="text-lg font-bold text-slate-800">{onboarding_details.contract_end}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
           {/* Status Banner */}
           {completed_at ? (
             <div className="bg-green-100 border border-green-300 rounded-xl p-4 mb-8 flex items-center gap-3">
