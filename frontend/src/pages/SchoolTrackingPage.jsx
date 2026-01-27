@@ -156,18 +156,15 @@ const SchoolTrackingPage = () => {
           <div className="max-w-6xl mx-auto px-4 sm:px-6">
             <div className="flex items-center justify-between h-16">
               <Link to="/" className="flex items-center gap-2">
-                <img src="/oll-logo.png" alt="OLL" className="h-10 w-auto" onError={(e) => {
-                  e.target.style.display = 'none';
-                  e.target.nextSibling.style.display = 'flex';
-                }} />
-                <div className="w-10 h-10 bg-[#1E3A5F] rounded-lg items-center justify-center hidden">
-                  <span className="text-white font-bold text-xl">O</span>
-                </div>
-                <span className="text-xl font-bold text-[#1E3A5F]">OLL</span>
+                <img 
+                  src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png" 
+                  alt="OLL Logo"
+                  className="h-10 w-auto"
+                />
               </Link>
               <nav className="hidden md:flex items-center gap-6">
                 <Link to="/" className="text-slate-600 hover:text-[#1E3A5F] text-sm font-medium">Home</Link>
-                <Link to="/for-students" className="text-slate-600 hover:text-[#1E3A5F] text-sm font-medium">For Students</Link>
+                <Link to="/offerings" className="text-slate-600 hover:text-[#1E3A5F] text-sm font-medium">Offerings</Link>
                 <Link to="/for-schools" className="text-slate-600 hover:text-[#1E3A5F] text-sm font-medium">For Schools</Link>
                 <Link to="/about" className="text-slate-600 hover:text-[#1E3A5F] text-sm font-medium">About</Link>
               </nav>
