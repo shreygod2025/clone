@@ -323,20 +323,145 @@ const SchoolTrackingPage = () => {
 
               {/* Help */}
               <div className="bg-gradient-to-br from-[#1E3A5F] to-[#2d4a6f] rounded-xl shadow-lg p-4 text-white">
-                <h3 className="font-semibold mb-2">Need Help?</h3>
+                <h3 className="font-semibold mb-2 flex items-center gap-2">
+                  <HelpCircle className="w-5 h-5" />
+                  Need Help?
+                </h3>
                 <p className="text-sm text-white/80 mb-3">
-                  Contact your OLL representative for any questions about your onboarding.
+                  Have questions about your onboarding? We're here to help!
                 </p>
-                <a 
-                  href="mailto:support@oll.co" 
-                  className="inline-block bg-white text-[#1E3A5F] px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/90 transition-colors"
+                <button 
+                  onClick={() => setShowHelpModal(true)}
+                  className="w-full bg-white text-[#1E3A5F] px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/90 transition-colors flex items-center justify-center gap-2"
                 >
-                  Contact Support
-                </a>
+                  <MessageSquare className="w-4 h-4" />
+                  Get Support
+                </button>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Help Modal */}
+        {showHelpModal && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-[#1E3A5F] flex items-center gap-2">
+                    <HelpCircle className="w-5 h-5" />
+                    How can we help?
+                  </h3>
+                  <button 
+                    onClick={() => {
+                      setShowHelpModal(false);
+                      setTicketSuccess(null);
+                      setTicketForm({ query_type: '', description: '' });
+                    }}
+                    className="p-1 hover:bg-slate-100 rounded-full"
+                  >
+                    <X className="w-5 h-5 text-slate-500" />
+                  </button>
+                </div>
+
+                {ticketSuccess ? (
+                  <div className="text-center py-8">
+                    <CheckCircle2 className="w-16 h-16 text-green-500 mx-auto mb-4" />
+                    <h4 className="text-lg font-semibold text-slate-800 mb-2">Ticket Submitted!</h4>
+                    <p className="text-sm text-slate-600 mb-2">Your ticket ID: <span className="font-mono font-bold">{ticketSuccess}</span></p>
+                    <p className="text-sm text-slate-500">Our team will contact you within 24 hours.</p>
+                    <button
+                      onClick={() => {
+                        setShowHelpModal(false);
+                        setTicketSuccess(null);
+                      }}
+                      className="mt-6 px-6 py-2 bg-[#1E3A5F] text-white rounded-lg text-sm font-medium hover:bg-[#2d4a6f] transition-colors"
+                    >
+                      Close
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    {/* Current Step Info */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                      <p className="text-xs text-blue-600 mb-1">Current Step</p>
+                      <p className="text-sm font-medium text-blue-800 capitalize">
+                        {(current_step || 'payment_collection').replace(/_/g, ' ')}
+                      </p>
+                    </div>
+
+                    {/* Step-specific Quick Queries */}
+                    <div className="mb-4">
+                      <p className="text-sm font-medium text-slate-700 mb-2">Quick Questions</p>
+                      <div className="space-y-2">
+                        {(STEP_QUERIES[current_step] || STEP_QUERIES.payment_collection).map((query, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setTicketForm({ ...ticketForm, query_type: query.type })}
+                            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                              ticketForm.query_type === query.type
+                                ? 'bg-[#1E3A5F] text-white'
+                                : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                            }`}
+                          >
+                            {query.label}
+                          </button>
+                        ))}
+                        <button
+                          onClick={() => setTicketForm({ ...ticketForm, query_type: 'other' })}
+                          className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                            ticketForm.query_type === 'other'
+                              ? 'bg-[#1E3A5F] text-white'
+                              : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                          }`}
+                        >
+                          Other / General Query
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Description */}
+                    <div className="mb-4">
+                      <label className="text-sm font-medium text-slate-700 mb-2 block">
+                        Additional Details (Optional)
+                      </label>
+                      <textarea
+                        value={ticketForm.description}
+                        onChange={(e) => setTicketForm({ ...ticketForm, description: e.target.value })}
+                        placeholder="Describe your issue or question in more detail..."
+                        rows={3}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F] focus:border-transparent"
+                      />
+                    </div>
+
+                    {/* Submit */}
+                    <button
+                      onClick={handleSubmitTicket}
+                      disabled={submitting || !ticketForm.query_type}
+                      className="w-full py-3 bg-[#1E3A5F] text-white rounded-lg font-medium hover:bg-[#2d4a6f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {submitting ? (
+                        <>
+                          <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                          Submitting...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4" />
+                          Submit Support Request
+                        </>
+                      )}
+                    </button>
+
+                    <p className="text-xs text-slate-500 text-center mt-3">
+                      Or email us directly at <a href="mailto:support@oll.co" className="text-[#1E3A5F] underline">support@oll.co</a>
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="bg-white border-t border-slate-200 py-6 mt-12">
