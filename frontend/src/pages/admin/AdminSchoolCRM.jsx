@@ -530,13 +530,15 @@ const AdminSchoolCRM = () => {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const response = await axios.post(`${API}/upload`, formData, {
+      formData.append('type', 'mou');
+      const response = await axios.post(`${API}/upload?type=mou`, formData, {
         headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
       });
       setOnboardData(prev => ({ ...prev, mou_url: response.data.url }));
       toast.success('MOU uploaded successfully');
     } catch (error) {
-      toast.error('Failed to upload MOU');
+      console.error('MOU upload error:', error);
+      toast.error(error.response?.data?.detail || 'Failed to upload MOU');
     } finally {
       setUploadingMOU(false);
     }
