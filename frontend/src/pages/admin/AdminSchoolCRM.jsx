@@ -1908,6 +1908,142 @@ const AdminSchoolCRM = () => {
                     </div>
                   )}
 
+                  {/* Onboarding Details - Show for converted/active/renewed */}
+                  {viewInquiry.onboarding_data && ['converted', 'active', 'renewed'].includes(viewInquiry.status) && (
+                    <div className="bg-purple-50 rounded-lg p-4 space-y-3">
+                      <p className="text-sm font-semibold text-purple-800 border-b border-purple-200 pb-2">Onboarding Details</p>
+                      
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        {viewInquiry.onboarding_data.model && (
+                          <div>
+                            <p className="text-xs text-purple-600">Partnership Model</p>
+                            <p className="font-medium text-purple-800 capitalize">{viewInquiry.onboarding_data.model.replace(/_/g, ' ')}</p>
+                          </div>
+                        )}
+                        {viewInquiry.onboarding_data.kit_type && (
+                          <div>
+                            <p className="text-xs text-purple-600">Kit Type</p>
+                            <p className="font-medium text-purple-800 capitalize">{viewInquiry.onboarding_data.kit_type.replace(/_/g, ' ')}</p>
+                          </div>
+                        )}
+                        {viewInquiry.onboarding_data.book_type && (
+                          <div>
+                            <p className="text-xs text-purple-600">Book Type</p>
+                            <p className="font-medium text-purple-800 capitalize">{viewInquiry.onboarding_data.book_type.replace(/_/g, ' ')}</p>
+                          </div>
+                        )}
+                        {viewInquiry.onboarding_data.training_type && (
+                          <div>
+                            <p className="text-xs text-purple-600">Training Type</p>
+                            <p className="font-medium text-purple-800 capitalize">{viewInquiry.onboarding_data.training_type.replace(/_/g, ' ')}</p>
+                          </div>
+                        )}
+                        {viewInquiry.onboarding_data.total_students > 0 && (
+                          <div>
+                            <p className="text-xs text-purple-600">Total Students</p>
+                            <p className="font-medium text-purple-800">{viewInquiry.onboarding_data.total_students}</p>
+                          </div>
+                        )}
+                        {viewInquiry.onboarding_data.total_amount > 0 && (
+                          <div>
+                            <p className="text-xs text-purple-600">Total Amount</p>
+                            <p className="font-medium text-purple-800">₹{viewInquiry.onboarding_data.total_amount?.toLocaleString()}</p>
+                          </div>
+                        )}
+                        {viewInquiry.onboarding_data.payment_mode && (
+                          <div>
+                            <p className="text-xs text-purple-600">Payment Mode</p>
+                            <p className="font-medium text-purple-800 capitalize">{viewInquiry.onboarding_data.payment_mode.replace(/_/g, ' ')}</p>
+                          </div>
+                        )}
+                        {viewInquiry.onboarding_data.payment_method && (
+                          <div>
+                            <p className="text-xs text-purple-600">Payment Method</p>
+                            <p className="font-medium text-purple-800 capitalize">{viewInquiry.onboarding_data.payment_method}</p>
+                          </div>
+                        )}
+                        {viewInquiry.onboarding_data.contract_start && (
+                          <div>
+                            <p className="text-xs text-purple-600">Contract Start</p>
+                            <p className="font-medium text-purple-800">{viewInquiry.onboarding_data.contract_start}</p>
+                          </div>
+                        )}
+                        {viewInquiry.onboarding_data.contract_end && (
+                          <div>
+                            <p className="text-xs text-purple-600">Contract End</p>
+                            <p className="font-medium text-purple-800">{viewInquiry.onboarding_data.contract_end}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Grade-wise Pricing */}
+                      {viewInquiry.onboarding_data.grade_pricing?.length > 0 && (
+                        <div className="border-t border-purple-200 pt-3">
+                          <p className="text-xs text-purple-600 mb-2">Grade-wise Pricing</p>
+                          <div className="space-y-1">
+                            {viewInquiry.onboarding_data.grade_pricing.map((gp, idx) => (
+                              <div key={idx} className="flex justify-between text-sm text-purple-800 bg-white/50 px-2 py-1 rounded">
+                                <span>Grade {gp.grade}: {gp.students} students</span>
+                                <span className="font-medium">₹{gp.price_per_student}/student</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* School Contacts */}
+                      {viewInquiry.onboarding_data.school_contacts?.length > 0 && (
+                        <div className="border-t border-purple-200 pt-3">
+                          <p className="text-xs text-purple-600 mb-2">School Team Contacts</p>
+                          <div className="space-y-1">
+                            {viewInquiry.onboarding_data.school_contacts.map((c, idx) => (
+                              <div key={idx} className="text-sm text-purple-800 bg-white/50 px-2 py-1 rounded flex items-center gap-2">
+                                <span className="font-medium">{c.name}</span>
+                                <span className="text-purple-600">({c.role})</span>
+                                <span>{c.phone}</span>
+                                {c.email && <span className="text-purple-500">{c.email}</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* MOU Document */}
+                      {viewInquiry.onboarding_data.mou_url && (
+                        <div className="border-t border-purple-200 pt-3">
+                          <p className="text-xs text-purple-600 mb-2">MOU Document</p>
+                          <a 
+                            href={viewInquiry.onboarding_data.mou_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 text-sm text-blue-600 hover:underline bg-white/50 px-3 py-2 rounded"
+                          >
+                            <FileText className="w-4 h-4" />
+                            View MOU Document →
+                          </a>
+                        </div>
+                      )}
+
+                      {/* Tracking Link */}
+                      {viewInquiry.onboarding_workflow?.tracking_token && (
+                        <div className="border-t border-purple-200 pt-3">
+                          <p className="text-xs text-purple-600 mb-2">Public Tracking Link</p>
+                          <button
+                            onClick={() => {
+                              const url = `${window.location.origin}/track/${viewInquiry.onboarding_workflow.tracking_token}`;
+                              navigator.clipboard.writeText(url);
+                              toast.success('Tracking link copied!');
+                            }}
+                            className="text-sm text-purple-600 hover:text-purple-800 flex items-center gap-2 bg-white/50 px-3 py-2 rounded"
+                          >
+                            <Gift className="w-4 h-4" />
+                            Copy Tracking Link
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {viewInquiry.notes && (
                     <div className="bg-amber-50 rounded-lg p-3">
                       <p className="text-xs text-amber-500 mb-1">Notes</p>
