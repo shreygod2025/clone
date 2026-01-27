@@ -3377,6 +3377,449 @@ const AdminSchoolCRM = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Onboarding Workflow Modal */}
+      <Dialog open={!!showOnboardingWorkflowModal} onOpenChange={() => setShowOnboardingWorkflowModal(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>Onboarding Workflow - {showOnboardingWorkflowModal?.school_name}</span>
+              {showOnboardingWorkflowModal?.onboarding_workflow?.tracking_token && (
+                <button
+                  onClick={() => {
+                    const url = `${window.location.origin}/track/${showOnboardingWorkflowModal.onboarding_workflow.tracking_token}`;
+                    navigator.clipboard.writeText(url);
+                    toast.success('Tracking link copied!');
+                  }}
+                  className="text-xs px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
+                >
+                  Copy Tracking Link
+                </button>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {showOnboardingWorkflowModal?.onboarding_workflow && (
+            <div className="space-y-6">
+              {/* Progress Bar */}
+              <div className="bg-slate-100 rounded-full h-3 overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-green-500 to-emerald-500 transition-all"
+                  style={{ 
+                    width: `${Object.values(showOnboardingWorkflowModal.onboarding_workflow.steps || {}).filter(s => s.completed).length / 9 * 100}%` 
+                  }}
+                />
+              </div>
+              
+              {/* Steps Grid */}
+              <div className="space-y-4">
+                {Object.entries(showOnboardingWorkflowModal.onboarding_workflow.steps || {}).map(([key, step]) => (
+                  <div 
+                    key={key}
+                    className={`border rounded-xl p-4 ${step.completed ? 'bg-green-50 border-green-200' : 'bg-white border-slate-200'}`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3">
+                        <button
+                          onClick={() => handleUpdateOnboardingStep(
+                            showOnboardingWorkflowModal.id,
+                            key,
+                            { completed: !step.completed }
+                          )}
+                          className={`mt-0.5 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                            step.completed 
+                              ? 'bg-green-500 border-green-500 text-white' 
+                              : 'border-slate-300 hover:border-green-400'
+                          }`}
+                        >
+                          {step.completed && <CheckCircle2 className="w-4 h-4" />}
+                        </button>
+                        <div>
+                          <h4 className={`font-medium ${step.completed ? 'text-green-800' : 'text-slate-800'}`}>
+                            {step.title}
+                          </h4>
+                          <p className="text-sm text-slate-500">{step.description}</p>
+                          {step.completed_date && (
+                            <p className="text-xs text-green-600 mt-1">
+                              Completed: {format(new Date(step.completed_date), 'MMM d, yyyy h:mm a')}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Step-specific fields */}
+                    <div className="mt-4 pl-9 space-y-3">
+                      {/* Payment Collection */}
+                      {key === 'payment_collection' && (
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="text-xs text-slate-500">Amount (₹)</label>
+                            <Input
+                              type="number"
+                              value={step.data?.amount || ''}
+                              onChange={(e) => handleUpdateOnboardingStep(
+                                showOnboardingWorkflowModal.id, key,
+                                { data: { amount: e.target.value } }
+                              )}
+                              placeholder="Enter amount"
+                              className="h-9"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs text-slate-500">Payment Date</label>
+                            <Input
+                              type="date"
+                              value={step.data?.payment_date || ''}
+                              onChange={(e) => handleUpdateOnboardingStep(
+                                showOnboardingWorkflowModal.id, key,
+                                { data: { payment_date: e.target.value } }
+                              )}
+                              className="h-9"
+                            />
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Kit Delivery */}
+                      {key === 'kit_delivery' && (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-xs text-slate-500">Dispatch Date</label>
+                              <Input
+                                type="date"
+                                value={step.data?.dispatch_date || ''}
+                                onChange={(e) => handleUpdateOnboardingStep(
+                                  showOnboardingWorkflowModal.id, key,
+                                  { data: { dispatch_date: e.target.value } }
+                                )}
+                                className="h-9"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-slate-500">Delivery Date</label>
+                              <Input
+                                type="date"
+                                value={step.data?.delivery_date || ''}
+                                onChange={(e) => handleUpdateOnboardingStep(
+                                  showOnboardingWorkflowModal.id, key,
+                                  { data: { delivery_date: e.target.value } }
+                                )}
+                                className="h-9"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-xs text-slate-500">Tracking Link</label>
+                            <Input
+                              value={step.data?.tracking_link || ''}
+                              onChange={(e) => handleUpdateOnboardingStep(
+                                showOnboardingWorkflowModal.id, key,
+                                { data: { tracking_link: e.target.value } }
+                              )}
+                              placeholder="Enter tracking URL"
+                              className="h-9"
+                            />
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Technical Check - Checklist */}
+                      {key === 'technical_check' && step.data?.checklist && (
+                        <div className="space-y-2">
+                          {step.data.checklist.map((item, idx) => (
+                            <label key={idx} className="flex items-center gap-2 text-sm cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={item.checked}
+                                onChange={() => {
+                                  const newChecklist = [...step.data.checklist];
+                                  newChecklist[idx].checked = !newChecklist[idx].checked;
+                                  handleUpdateOnboardingStep(
+                                    showOnboardingWorkflowModal.id, key,
+                                    { data: { checklist: newChecklist } }
+                                  );
+                                }}
+                                className="h-4 w-4 rounded border-slate-300"
+                              />
+                              <span className={item.checked ? 'text-green-700' : 'text-slate-600'}>
+                                {item.item}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* Teacher Training */}
+                      {key === 'teacher_training' && (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-xs text-slate-500">Training Date</label>
+                              <Input
+                                type="date"
+                                value={step.data?.training_date || ''}
+                                onChange={(e) => handleUpdateOnboardingStep(
+                                  showOnboardingWorkflowModal.id, key,
+                                  { data: { training_date: e.target.value } }
+                                )}
+                                className="h-9"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-slate-500">Teachers Count</label>
+                              <Input
+                                type="number"
+                                value={step.data?.teachers_count || ''}
+                                onChange={(e) => handleUpdateOnboardingStep(
+                                  showOnboardingWorkflowModal.id, key,
+                                  { data: { teachers_count: e.target.value } }
+                                )}
+                                className="h-9"
+                              />
+                            </div>
+                          </div>
+                          {step.data?.checklist && (
+                            <div className="space-y-2">
+                              {step.data.checklist.map((item, idx) => (
+                                <label key={idx} className="flex items-center gap-2 text-sm cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={item.checked}
+                                    onChange={() => {
+                                      const newChecklist = [...step.data.checklist];
+                                      newChecklist[idx].checked = !newChecklist[idx].checked;
+                                      handleUpdateOnboardingStep(
+                                        showOnboardingWorkflowModal.id, key,
+                                        { data: { checklist: newChecklist } }
+                                      );
+                                    }}
+                                    className="h-4 w-4 rounded border-slate-300"
+                                  />
+                                  <span className={item.checked ? 'text-green-700' : 'text-slate-600'}>
+                                    {item.item}
+                                  </span>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Calendar Making */}
+                      {key === 'calendar_making' && (
+                        <div className="text-sm text-slate-500">
+                          <p>Add holidays, competitions, and exhibition dates for the school year.</p>
+                          <Textarea
+                            value={step.data?.notes || ''}
+                            onChange={(e) => handleUpdateOnboardingStep(
+                              showOnboardingWorkflowModal.id, key,
+                              { data: { notes: e.target.value } }
+                            )}
+                            placeholder="Enter calendar notes, dates, events..."
+                            className="mt-2 min-h-[60px]"
+                          />
+                        </div>
+                      )}
+                      
+                      {/* Timetable */}
+                      {key === 'timetable_finalization' && (
+                        <div className="space-y-3">
+                          <div>
+                            <label className="text-xs text-slate-500">Sessions per Week</label>
+                            <Input
+                              type="number"
+                              value={step.data?.sessions_per_week || ''}
+                              onChange={(e) => handleUpdateOnboardingStep(
+                                showOnboardingWorkflowModal.id, key,
+                                { data: { sessions_per_week: e.target.value } }
+                              )}
+                              placeholder="e.g., 2"
+                              className="h-9"
+                            />
+                          </div>
+                          <Textarea
+                            value={step.data?.notes || ''}
+                            onChange={(e) => handleUpdateOnboardingStep(
+                              showOnboardingWorkflowModal.id, key,
+                              { data: { notes: e.target.value } }
+                            )}
+                            placeholder="Timetable details, grades covered, etc."
+                            className="min-h-[60px]"
+                          />
+                        </div>
+                      )}
+                      
+                      {/* MOU Signing */}
+                      {key === 'mou_signing' && (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-xs text-slate-500">MOU Date</label>
+                              <Input
+                                type="date"
+                                value={step.data?.mou_date || ''}
+                                onChange={(e) => handleUpdateOnboardingStep(
+                                  showOnboardingWorkflowModal.id, key,
+                                  { data: { mou_date: e.target.value } }
+                                )}
+                                className="h-9"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-slate-500">Document Link</label>
+                              <Input
+                                value={step.data?.document_link || ''}
+                                onChange={(e) => handleUpdateOnboardingStep(
+                                  showOnboardingWorkflowModal.id, key,
+                                  { data: { document_link: e.target.value } }
+                                )}
+                                placeholder="MOU document URL"
+                                className="h-9"
+                              />
+                            </div>
+                          </div>
+                          <div className="flex gap-4">
+                            <label className="flex items-center gap-2 text-sm cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={step.data?.signed_by_school}
+                                onChange={(e) => handleUpdateOnboardingStep(
+                                  showOnboardingWorkflowModal.id, key,
+                                  { data: { signed_by_school: e.target.checked } }
+                                )}
+                                className="h-4 w-4 rounded"
+                              />
+                              Signed by School
+                            </label>
+                            <label className="flex items-center gap-2 text-sm cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={step.data?.signed_by_oll}
+                                onChange={(e) => handleUpdateOnboardingStep(
+                                  showOnboardingWorkflowModal.id, key,
+                                  { data: { signed_by_oll: e.target.checked } }
+                                )}
+                                className="h-4 w-4 rounded"
+                              />
+                              Signed by OLL
+                            </label>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* School Confirmation */}
+                      {key === 'school_confirmation' && (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-xs text-slate-500">Confirmation Date</label>
+                              <Input
+                                type="date"
+                                value={step.data?.confirmation_date || ''}
+                                onChange={(e) => handleUpdateOnboardingStep(
+                                  showOnboardingWorkflowModal.id, key,
+                                  { data: { confirmation_date: e.target.value } }
+                                )}
+                                className="h-9"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-slate-500">Confirmed By</label>
+                              <Input
+                                value={step.data?.confirmed_by || ''}
+                                onChange={(e) => handleUpdateOnboardingStep(
+                                  showOnboardingWorkflowModal.id, key,
+                                  { data: { confirmed_by: e.target.value } }
+                                )}
+                                placeholder="Name of confirming person"
+                                className="h-9"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-xs text-slate-500">Feedback</label>
+                            <Textarea
+                              value={step.data?.feedback || ''}
+                              onChange={(e) => handleUpdateOnboardingStep(
+                                showOnboardingWorkflowModal.id, key,
+                                { data: { feedback: e.target.value } }
+                              )}
+                              placeholder="School feedback or notes..."
+                              className="min-h-[60px]"
+                            />
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Distribution - Query Section */}
+                      {key === 'distribution_checking' && (
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-xs text-slate-500">Distribution Date</label>
+                              <Input
+                                type="date"
+                                value={step.data?.distribution_date || ''}
+                                onChange={(e) => handleUpdateOnboardingStep(
+                                  showOnboardingWorkflowModal.id, key,
+                                  { data: { distribution_date: e.target.value } }
+                                )}
+                                className="h-9"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-slate-500">Students Count</label>
+                              <Input
+                                type="number"
+                                value={step.data?.students_count || ''}
+                                onChange={(e) => handleUpdateOnboardingStep(
+                                  showOnboardingWorkflowModal.id, key,
+                                  { data: { students_count: e.target.value } }
+                                )}
+                                className="h-9"
+                              />
+                            </div>
+                          </div>
+                          {step.data?.queries?.length > 0 && (
+                            <div className="mt-2">
+                              <p className="text-xs text-slate-500 mb-2">Queries:</p>
+                              {step.data.queries.map((q, idx) => (
+                                <div key={idx} className="text-xs bg-slate-100 p-2 rounded mb-1">
+                                  <span className="font-medium">{q.type}:</span> {q.description}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Timeline */}
+              <div className="border-t pt-4">
+                <h4 className="font-medium text-slate-700 mb-3">Activity Timeline</h4>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {(showOnboardingWorkflowModal.onboarding_workflow.timeline || []).slice().reverse().map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-2 text-sm">
+                      <div className="w-2 h-2 rounded-full bg-[#1E3A5F] mt-1.5" />
+                      <div>
+                        <p className="text-slate-700">{item.action}</p>
+                        <p className="text-xs text-slate-400">
+                          {format(new Date(item.date), 'MMM d, h:mm a')} • {item.by}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
