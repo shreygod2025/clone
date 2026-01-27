@@ -58,7 +58,7 @@ const AdminSupportUnified = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [queryTypeFilter, setQueryTypeFilter] = useState('');
   const [activeTab, setActiveTab] = useState('new'); // 'new', 'overdue', 'closed'
-  const [sourceFilter, setSourceFilter] = useState('all'); // 'all', 'inquiry', 'user_support', 'legacy'
+  const [sourceFilter, setSourceFilter] = useState('all'); // 'all', 'inquiry', 'user_support', 'tracking_page', 'legacy'
   const [assigneeFilter, setAssigneeFilter] = useState('all');
   const [showReplyModal, setShowReplyModal] = useState(null);
   const [showAssignModal, setShowAssignModal] = useState(null);
