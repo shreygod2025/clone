@@ -342,19 +342,44 @@ const AdminSchoolCRM = () => {
       toast.error('Please enter the deal amount');
       return;
     }
+    if (!convertData.model) {
+      toast.error('Please select a model/type');
+      return;
+    }
     try {
+      // First update the school status and basic onboarding info
       await axios.patch(`${API}/schools/inquiry/${showConvertModal.id}`, {
         status: 'converted',
         conversion_amount: convertData.amount,
+        initial_onboard_data: {
+          model: convertData.model,
+          book_type: convertData.book_type,
+          kit_type: convertData.kit_type,
+          training_type: convertData.training_type,
+          programs: convertData.programs
+        },
         notes: showConvertModal.notes 
-          ? `${showConvertModal.notes}\n\nConverted: ₹${convertData.amount}` 
-          : `Converted: ₹${convertData.amount}`
+          ? `${showConvertModal.notes}\n\nConverted: ₹${convertData.amount} | Model: ${convertData.model}` 
+          : `Converted: ₹${convertData.amount} | Model: ${convertData.model}`
       }, {
         headers: getAuthHeaders()
       });
-      toast.success('School converted successfully!');
+      
+      // Auto-initialize the onboarding workflow
+      try {
+        const response = await axios.post(`${API}/schools/${showConvertModal.id}/init-onboarding`, {}, {
+          headers: getAuthHeaders()
+        });
+        const trackingUrl = `${window.location.origin}/track/${response.data.tracking_token}`;
+        navigator.clipboard.writeText(trackingUrl);
+        toast.success('School converted! Tracking link copied to clipboard.');
+      } catch (initError) {
+        console.log('Onboarding init skipped:', initError);
+        toast.success('School converted successfully!');
+      }
+      
       setShowConvertModal(null);
-      setConvertData({ amount: '' });
+      setConvertData({ amount: '', model: '', book_type: '', kit_type: '', training_type: '', programs: [] });
       fetchInquiries();
     } catch (error) {
       toast.error('Failed to convert');
