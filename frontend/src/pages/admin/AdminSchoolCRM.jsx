@@ -4091,7 +4091,7 @@ const AdminSchoolCRM = () => {
                               <p className="text-xs text-slate-500 mb-2">Queries:</p>
                               {step.data.queries.map((q, idx) => (
                                 <div key={idx} className="text-xs bg-slate-100 p-2 rounded mb-1">
-                                  <span className="font-medium">{q.type}:</span> {q.description}
+                                  <span className="font-medium">{q.type || 'Query'}:</span> {typeof q.description === 'string' ? q.description : JSON.stringify(q.description)}
                                 </div>
                               ))}
                             </div>
