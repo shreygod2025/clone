@@ -134,7 +134,7 @@ const ResourcesPage = () => {
                   <ResourceNavItem
                     key={resource.id}
                     resource={resource}
-                    children={getChildren(resource.id)}
+                    childResources={getChildren(resource.id)}
                     selectedId={selectedResource?.id}
                     onSelect={handleResourceClick}
                     getChildren={getChildren}
