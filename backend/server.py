@@ -5698,8 +5698,8 @@ async def get_student_payments(
             "status": existing_payment.get("status", "pending") if existing_payment else "pending",
             "payment_date": existing_payment.get("payment_date") if existing_payment else None,
             "transaction_id": existing_payment.get("transaction_id") if existing_payment else None,
-            "invoice_url": existing_payment.get("invoice_url") or onboarding_data.get("invoice_url"),
-            "receipt_url": existing_payment.get("receipt_url") or onboarding_data.get("receipt_url"),
+            "invoice_url": (existing_payment.get("invoice_url") if existing_payment else None) or onboarding_data.get("invoice_url"),
+            "receipt_url": (existing_payment.get("receipt_url") if existing_payment else None) or onboarding_data.get("receipt_url"),
             "notes": existing_payment.get("notes") if existing_payment else "",
             "created_at": student.get("created_at"),
             # Additional conversion details
