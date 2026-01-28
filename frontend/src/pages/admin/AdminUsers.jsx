@@ -359,8 +359,8 @@ const AdminUsers = () => {
           </button>
         </div>
 
-        {/* Search & Add */}
-        <div className="flex gap-4 items-center">
+        {/* Search & Filters */}
+        <div className="flex flex-wrap gap-4 items-center">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input
@@ -370,6 +370,42 @@ const AdminUsers = () => {
               className="pl-10"
             />
           </div>
+          
+          {/* Filters for Users tab */}
+          {activeTab === 'users' && (
+            <>
+              <select
+                value={cityFilter}
+                onChange={(e) => setCityFilter(e.target.value)}
+                className="h-10 px-4 border border-slate-200 rounded-lg bg-white text-sm"
+              >
+                <option value="">All Cities</option>
+                {uniqueCities.map(city => (
+                  <option key={city} value={city}>{city}</option>
+                ))}
+              </select>
+              <select
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
+                className="h-10 px-4 border border-slate-200 rounded-lg bg-white text-sm"
+              >
+                <option value="">All Roles</option>
+                {roles.map(role => (
+                  <option key={role.id} value={role.id}>{role.name}</option>
+                ))}
+              </select>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="h-10 px-4 border border-slate-200 rounded-lg bg-white text-sm"
+              >
+                <option value="">All Status</option>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
+            </>
+          )}
+          
           <Button
             onClick={() => {
               if (activeTab === 'users') {
