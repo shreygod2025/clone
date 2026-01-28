@@ -168,7 +168,9 @@ const AdminOrders = () => {
     const matchesSearch = 
       p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.school_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.contact_name?.toLowerCase().includes(searchQuery.toLowerCase());
+      p.contact_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.student_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.parent_name?.toLowerCase().includes(searchQuery.toLowerCase());
     
     let status = p.status || 'pending';
     if (status === 'pending' && p.due_date && isPast(parseISO(p.due_date))) {
