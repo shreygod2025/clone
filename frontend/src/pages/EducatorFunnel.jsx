@@ -68,6 +68,7 @@ const EducatorFunnel = () => {
     phone: '',
     countryCode: '+91',
     skills: [],
+    otherSkill: '', // Custom skill when "Other" is selected
     experience: '',
     grades_comfortable: [],
     city: '',
