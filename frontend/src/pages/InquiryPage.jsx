@@ -1265,6 +1265,18 @@ const InquiryPage = () => {
                         </button>
                       ))}
                     </div>
+                    {/* Other skill text input for educators */}
+                    {formData.educator_skills.includes('Other') && (
+                      <div className="mt-3">
+                        <Input
+                          placeholder="Please specify the skill"
+                          value={formData.otherEducatorSkill}
+                          onChange={(e) => updateForm('otherEducatorSkill', e.target.value)}
+                          className="h-10 sm:h-11"
+                          data-testid="other-educator-skill-input"
+                        />
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Grades Comfortable</label>
