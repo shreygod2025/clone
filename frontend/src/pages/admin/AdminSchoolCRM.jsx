@@ -117,8 +117,15 @@ const AdminSchoolCRM = () => {
     date: null, 
     time: '',
     comment: '', 
-    auto_email: false 
+    auto_email: false,
+    mode: '', // 'online' or 'offline' (for meeting only)
+    meeting_link: '', // if online
+    address: '' // if offline
   });
+  // Contact Management Filters
+  const [contactCityFilter, setContactCityFilter] = useState('all');
+  const [contactRoleFilter, setContactRoleFilter] = useState('all');
+  const [contactStageFilter, setContactStageFilter] = useState('all');
   const [onboardData, setOnboardData] = useState({
     offering: '', // Select from offerings
     model: '',
