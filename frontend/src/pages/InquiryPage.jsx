@@ -1427,6 +1427,146 @@ const InquiryPage = () => {
                     className="min-h-[100px] sm:min-h-[120px]"
                   />
                 </div>
+
+                {/* Attachments Section */}
+                <div className="border-t pt-4">
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">
+                    Attachments (Optional)
+                  </label>
+                  
+                  {/* Uploaded Attachments */}
+                  {attachments.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {attachments.map((att, idx) => (
+                        <div 
+                          key={idx} 
+                          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
+                            att.type === 'image' ? 'bg-blue-50 text-blue-700' :
+                            att.type === 'video' ? 'bg-purple-50 text-purple-700' :
+                            att.type === 'audio' ? 'bg-green-50 text-green-700' :
+                            'bg-slate-50 text-slate-700'
+                          }`}
+                        >
+                          {att.type === 'image' && <Image className="w-4 h-4" />}
+                          {att.type === 'video' && <Video className="w-4 h-4" />}
+                          {att.type === 'audio' && <Music className="w-4 h-4" />}
+                          {att.type === 'application' && <FileText className="w-4 h-4" />}
+                          <span className="truncate max-w-[120px]">{att.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => removeAttachment(idx)}
+                            className="text-red-500 hover:text-red-700"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Upload & Record Buttons */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* File Attachment */}
+                    <label className="cursor-pointer">
+                      <input
+                        type="file"
+                        multiple
+                        accept="image/*,video/*,audio/*,.pdf"
+                        onChange={handleAttachmentUpload}
+                        className="hidden"
+                        disabled={uploadingAttachment}
+                      />
+                      <div className={`flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 text-sm font-medium transition-colors ${
+                        uploadingAttachment ? 'bg-slate-100 text-slate-400' : 'hover:bg-slate-50 text-slate-700'
+                      }`}>
+                        {uploadingAttachment ? (
+                          <>
+                            <div className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Paperclip className="w-4 h-4" />
+                            Attach File
+                          </>
+                        )}
+                      </div>
+                    </label>
+
+                    {/* Voice Recording */}
+                    {!isRecording && !audioUrl && (
+                      <button
+                        type="button"
+                        onClick={startRecording}
+                        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-green-200 bg-green-50 text-green-700 text-sm font-medium hover:bg-green-100 transition-colors"
+                      >
+                        <Mic className="w-4 h-4" />
+                        Voice Note
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Recording in Progress */}
+                  {isRecording && (
+                    <div className="mt-3 flex items-center gap-3 p-3 bg-red-50 rounded-lg border border-red-200">
+                      <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+                      <span className="text-red-700 font-medium">Recording... {formatTime(recordingTime)}</span>
+                      <div className="flex-1" />
+                      <button
+                        type="button"
+                        onClick={stopRecording}
+                        className="flex items-center gap-1 px-3 py-1 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700"
+                      >
+                        <StopCircle className="w-4 h-4" />
+                        Stop
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelRecording}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Recorded Audio Preview */}
+                  {audioUrl && !isRecording && (
+                    <div className="mt-3 flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                      <audio ref={audioRef} src={audioUrl} onEnded={() => setIsPlaying(false)} className="hidden" />
+                      <button
+                        type="button"
+                        onClick={togglePlayback}
+                        className="w-10 h-10 flex items-center justify-center bg-green-600 text-white rounded-full hover:bg-green-700"
+                      >
+                        {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
+                      </button>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-green-800">Voice Note</p>
+                        <p className="text-xs text-green-600">{formatTime(recordingTime)} recorded</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={uploadVoiceNote}
+                        disabled={uploadingAttachment}
+                        className="px-3 py-1 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-50"
+                      >
+                        {uploadingAttachment ? 'Adding...' : 'Add'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelRecording}
+                        className="text-green-600 hover:text-green-800"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                  )}
+
+                  <p className="text-xs text-slate-400 mt-2">
+                    Supported: Images, Videos, Audio (MP3), PDFs (max 10MB each)
+                  </p>
+                </div>
               </div>
             </div>
           )}
