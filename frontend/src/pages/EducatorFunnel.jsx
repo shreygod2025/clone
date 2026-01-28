@@ -631,6 +631,18 @@ const EducatorFunnel = () => {
                           </button>
                         ))}
                       </div>
+                      {/* Other skill text input */}
+                      {formData.skills.includes('Other') && (
+                        <div className="mt-3">
+                          <Input
+                            placeholder="Please specify the skill"
+                            value={formData.otherSkill}
+                            onChange={(e) => setFormData({...formData, otherSkill: e.target.value})}
+                            className="input-glass h-10 sm:h-11 text-sm sm:text-base"
+                            data-testid="other-skill-input"
+                          />
+                        </div>
+                      )}
                     </div>
                     <div>
                       <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">Experience</label>
