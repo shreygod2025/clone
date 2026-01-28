@@ -3960,8 +3960,11 @@ async def create_team_application(data: dict):
         availability=data.get("availability", ""),
         linkedin=data.get("linkedin", ""),
         portfolio=data.get("portfolio", ""),
+        resume_url=data.get("resume_url", ""),
+        applied_position_id=data.get("applied_position_id", ""),
         message=data.get("message", ""),
-        source=data.get("source", "website")
+        source=data.get("source", "website"),
+        added_by=data.get("added_by", "")
     )
     
     doc = application.model_dump()
