@@ -955,24 +955,43 @@ const AdminSchoolCRM = () => {
       toast.error('Please select a followup date');
       return;
     }
-    if (!followupData.time) {
+    // Only require time for meetings
+    if (followupData.followup_type === 'meeting' && !followupData.time) {
       toast.error('Please select a followup time');
+      return;
+    }
+    // Validate mode for meetings
+    if (followupData.followup_type === 'meeting' && !followupData.mode) {
+      toast.error('Please select meeting mode (online/offline)');
+      return;
+    }
+    // Validate meeting link for online meetings
+    if (followupData.followup_type === 'meeting' && followupData.mode === 'online' && !followupData.meeting_link) {
+      toast.error('Please enter meeting link');
+      return;
+    }
+    // Validate address for offline meetings
+    if (followupData.followup_type === 'meeting' && followupData.mode === 'offline' && !followupData.address) {
+      toast.error('Please enter meeting address');
       return;
     }
     try {
       const updateData = {
         followup_type: followupData.followup_type,
         followup_date: format(followupData.date, 'yyyy-MM-dd'),
-        followup_time: followupData.time,
+        followup_time: followupData.followup_type === 'meeting' ? followupData.time : '',
         followup_comment: followupData.comment,
         followup_auto_email: followupData.auto_email,
         status: 'followup'
       };
       
-      // If it's a meeting, also set meeting date/time
+      // If it's a meeting, also set meeting details
       if (followupData.followup_type === 'meeting') {
         updateData.meeting_date = format(followupData.date, 'yyyy-MM-dd');
         updateData.meeting_time = followupData.time;
+        updateData.meeting_mode = followupData.mode;
+        updateData.meeting_link = followupData.mode === 'online' ? followupData.meeting_link : '';
+        updateData.meeting_address = followupData.mode === 'offline' ? followupData.address : '';
       }
       
       await axios.patch(`${API}/schools/inquiry/${showFollowupModal.id}`, updateData, {
@@ -1001,7 +1020,7 @@ const AdminSchoolCRM = () => {
       }
       
       setShowFollowupModal(null);
-      setFollowupData({ followup_type: '', date: null, time: '', comment: '', auto_email: false });
+      setFollowupData({ followup_type: '', date: null, time: '', comment: '', auto_email: false, mode: '', meeting_link: '', address: '' });
       fetchInquiries();
     } catch (error) {
       toast.error('Failed to add followup');
