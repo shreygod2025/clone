@@ -175,7 +175,13 @@ const AdminTeamApplications = () => {
       return;
     }
     try {
-      await axios.post(`${API}/team-applications`, newApplication, {
+      const submitData = {
+        ...newApplication,
+        phone: newApplication.countryCode + newApplication.phone
+      };
+      delete submitData.countryCode;
+      
+      await axios.post(`${API}/team-applications`, submitData, {
         headers: getAuthHeaders()
       });
       toast.success('Application added successfully');
@@ -184,6 +190,7 @@ const AdminTeamApplications = () => {
         name: '',
         email: '',
         phone: '',
+        countryCode: '+91',
         role: '',
         experience: '',
         city: '',
