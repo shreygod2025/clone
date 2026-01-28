@@ -10,6 +10,21 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## What's Been Implemented
 
+### Jan 28, 2026 - Student Payments & "Other" Skill Option
+**Student Payments in Orders Module:**
+- ✅ Fixed `/api/orders/student-payments` endpoint (was returning Internal Server Error)
+- ✅ Student Payments tab now displays converted students
+- ✅ Details modal shows Student Information, Enrollment Details, Payment Details
+- ✅ Search filter now works for student_name and parent_name fields
+
+**"Other" Skill Option Across Platform:**
+- ✅ InquiryPage (/add) - Student skills multi-select has "Other" option with text input
+- ✅ InquiryPage (/add) - Teacher/Educator skills multi-select has "Other" option with text input
+- ✅ Admin Student CRM - Add Lead form "Skill Interest" dropdown has "Other" option with text input
+- ✅ Educator Funnel (/educator) - "Skills You Can Teach" has "Other" option with text input
+- ✅ Backend /educator-config endpoint updated to always include "Other" in skills list
+- ✅ Custom skill value saved correctly when "Other" is selected
+
 ### Jan 28, 2026 - Team Applications & Inquiry Enhancements
 **Team Applications View Modal Enhancement:**
 - ✅ Expanded view modal to show all application details
