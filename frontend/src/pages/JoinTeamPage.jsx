@@ -118,13 +118,17 @@ const JoinTeamPage = () => {
 
     setSubmitting(true);
     try {
+      const fullPhone = form.countryCode + form.phone;
       const submitData = {
         ...form,
+        phone: fullPhone,
         city: form.city === 'Other' ? form.otherCity : form.city,
         role: selectedPosition ? selectedPosition.title : form.role,
         applied_position_id: selectedPosition?.id || null,
         source: selectedPosition ? 'open_position' : 'general'
       };
+      delete submitData.countryCode;
+      delete submitData.otherCity;
       
       await axios.post(`${API}/team-applications`, submitData);
       setSubmitted(true);
