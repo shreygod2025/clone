@@ -141,7 +141,7 @@ const SchoolTrackingPage = () => {
     );
   }
 
-  const { school_name, contact_name, programs, progress_percent, completed_steps, total_steps, steps, timeline, current_step, started_at, completed_at, onboarding_details } = trackingData;
+  const { school_name, contact_name, programs, progress_percent, completed_steps, total_steps, steps, timeline, current_step, started_at, completed_at, onboarding_details, payment_tranches, payments } = trackingData;
 
   return (
     <>
