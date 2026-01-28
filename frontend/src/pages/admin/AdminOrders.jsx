@@ -848,6 +848,138 @@ const AdminOrders = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Student Details Modal */}
+      <Dialog open={!!showStudentDetails} onOpenChange={() => setShowStudentDetails(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <GraduationCap className="w-5 h-5 text-blue-600" />
+              Student Payment Details - {showStudentDetails?.student_name}
+            </DialogTitle>
+          </DialogHeader>
+
+          {showStudentDetails && (
+            <div className="space-y-4">
+              {/* Student Info */}
+              <div className="bg-slate-50 rounded-lg p-4">
+                <h4 className="text-sm font-semibold text-slate-700 mb-3">Student Information</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-slate-500">Student Name</p>
+                    <p className="font-medium">{showStudentDetails.student_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Parent/Guardian</p>
+                    <p className="font-medium">{showStudentDetails.parent_name || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Phone</p>
+                    <p className="font-medium">{showStudentDetails.phone}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Email</p>
+                    <p className="font-medium">{showStudentDetails.email || '-'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Conversion Details */}
+              {showStudentDetails.conversion_details && (
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-blue-700 mb-3">Enrollment Details</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-slate-500">Program/Skill</p>
+                      <p className="font-medium">{showStudentDetails.conversion_details.skill || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500">Age Group</p>
+                      <p className="font-medium">{showStudentDetails.conversion_details.age_group || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500">Learning Mode</p>
+                      <p className="font-medium capitalize">{showStudentDetails.conversion_details.learning_mode?.replace(/_/g, ' ') || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500">Center</p>
+                      <p className="font-medium">{showStudentDetails.conversion_details.center || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-500">City</p>
+                      <p className="font-medium">{showStudentDetails.conversion_details.city || '-'}</p>
+                    </div>
+                    {showStudentDetails.conversion_details.demo_date && (
+                      <div>
+                        <p className="text-xs text-slate-500">Demo Date</p>
+                        <p className="font-medium">{showStudentDetails.conversion_details.demo_date}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Payment Info */}
+              <div className="bg-green-50 rounded-lg p-4">
+                <h4 className="text-sm font-semibold text-green-700 mb-3">Payment Details</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-slate-500">Amount</p>
+                    <p className="font-bold text-lg text-green-600">₹{(showStudentDetails.amount || 0).toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Status</p>
+                    {getStatusBadge(showStudentDetails)}
+                  </div>
+                  {showStudentDetails.due_date && (
+                    <div>
+                      <p className="text-xs text-slate-500">Due Date</p>
+                      <p className="font-medium">{format(parseISO(showStudentDetails.due_date), 'MMM d, yyyy')}</p>
+                    </div>
+                  )}
+                  {showStudentDetails.payment_date && (
+                    <div>
+                      <p className="text-xs text-slate-500">Payment Date</p>
+                      <p className="font-medium">{format(parseISO(showStudentDetails.payment_date), 'MMM d, yyyy')}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Documents */}
+              {(showStudentDetails.invoice_url || showStudentDetails.receipt_url) && (
+                <div className="border-t pt-4">
+                  <p className="text-sm font-medium text-slate-700 mb-2">Documents</p>
+                  <div className="flex items-center gap-4">
+                    {showStudentDetails.invoice_url && (
+                      <a 
+                        href={showStudentDetails.invoice_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline flex items-center gap-1 text-sm"
+                      >
+                        <FileText className="w-4 h-4" />
+                        View Invoice
+                      </a>
+                    )}
+                    {showStudentDetails.receipt_url && (
+                      <a 
+                        href={showStudentDetails.receipt_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-green-600 hover:underline flex items-center gap-1 text-sm"
+                      >
+                        <Receipt className="w-4 h-4" />
+                        View Receipt
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
