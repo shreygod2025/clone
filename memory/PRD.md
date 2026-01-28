@@ -10,6 +10,43 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## What's Been Implemented
 
+### Jan 28, 2026 - Orders & Payments Module (P0)
+**New Admin Orders Page (`/admin/orders`):**
+- ✅ Created new "Orders" tab in admin navigation
+- ✅ Two subtabs: School Payments, Student Payments
+- ✅ Payment tracking table with columns: School/Student, Amount, Due Date, Status, Invoice, Receipt, Actions
+- ✅ Auto-marks payments as "Overdue" when due date has passed
+- ✅ Status badges: Pending (yellow), Overdue (red with days count), Paid (green), Partial (blue)
+- ✅ Stats cards: Total Orders, Pending, Overdue, Paid, Collected Amount
+- ✅ Search and status filter functionality
+- ✅ Sort by status priority (overdue first) then by due date
+
+**Payment Update Modal:**
+- ✅ Upload Invoice (PDF, PNG, JPG)
+- ✅ Upload Payment Receipt (PDF, PNG, JPG)
+- ✅ Change status (Pending, Partial, Paid, Cancelled)
+- ✅ Payment Date field (appears when paid/partial)
+- ✅ Transaction ID / Reference field
+- ✅ Notes textarea
+
+**Onboarding Workflow Integration:**
+- ✅ Enhanced Payment Collection step with:
+  - Amount, Payment Date, Transaction ID
+  - Payment Mode dropdown (Bank Transfer, UPI, Cheque, Cash, NEFT/RTGS)
+  - Invoice file upload
+  - Payment Receipt file upload
+  - Link to Orders page for full tranche management
+- ✅ When payment marked as Paid in Orders, automatically:
+  - Updates onboarding workflow data
+  - Marks Payment Collection step as complete (if all tranches paid)
+  - Advances to next onboarding step
+  - Adds timeline entry
+
+**Backend Endpoints:**
+- `GET /api/orders/school-payments` - Fetches all school payment tranches
+- `GET /api/orders/student-payments` - Fetches student payments (placeholder)
+- `PATCH /api/orders/{payment_id}` - Updates payment status, invoice, receipt
+
 ### Jan 27, 2026 - School Conversion Form Fixes (P0)
 **Conversion Form Fixes:**
 - ✅ Fixed "input should be a valid string" error (conversion_amount now sent as string)
