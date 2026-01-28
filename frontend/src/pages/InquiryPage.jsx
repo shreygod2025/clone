@@ -1029,6 +1029,18 @@ const InquiryPage = () => {
                         </button>
                       ))}
                     </div>
+                    {/* Other skill text input */}
+                    {formData.skills.includes('other') && (
+                      <div className="mt-3">
+                        <Input
+                          placeholder="Please specify the skill"
+                          value={formData.otherSkill}
+                          onChange={(e) => updateForm('otherSkill', e.target.value)}
+                          className="h-10 sm:h-11"
+                          data-testid="other-skill-input"
+                        />
+                      </div>
+                    )}
                   </div>
                   
                   {/* Center Selection - only for offline_center mode */}
