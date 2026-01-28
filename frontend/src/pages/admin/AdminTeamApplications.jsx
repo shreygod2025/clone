@@ -47,6 +47,7 @@ const AdminTeamApplications = () => {
     name: '',
     email: '',
     phone: '',
+    countryCode: '+91',
     role: '',
     experience: '',
     city: '',
