@@ -682,6 +682,8 @@ const AdminSchoolCRM = () => {
         support_needed: [],
         source: newLead.source,
         notes: newLead.notes,
+        quoted_price: newLead.quoted_price,
+        selected_offerings: newLead.selected_offerings,
       }, {
         headers: getAuthHeaders()
       });
@@ -700,7 +702,9 @@ const AdminSchoolCRM = () => {
         meeting_date: null,
         meeting_time: '',
         source: 'manual', 
-        notes: '' 
+        notes: '',
+        quoted_price: '',
+        selected_offerings: []
       });
       fetchInquiries();
     } catch (error) {
