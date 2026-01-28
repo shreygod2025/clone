@@ -301,16 +301,15 @@ const GrowthPartnerPage = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number *</label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                  <Input
-                    placeholder="10-digit number"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 10)})}
-                    className="pl-10 h-12"
-                    data-testid="input-phone"
-                  />
-                </div>
+                <PhoneInput
+                  value={formData.phone}
+                  onChange={(val) => setFormData({...formData, phone: val})}
+                  countryCode={formData.countryCode}
+                  onCountryCodeChange={(code) => setFormData({...formData, countryCode: code})}
+                  placeholder="Phone number"
+                  className="h-12"
+                  data-testid="input-phone"
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
