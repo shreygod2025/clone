@@ -293,11 +293,23 @@ const AdminUsers = () => {
     }
   };
 
-  const filteredUsers = users.filter(u => 
-    u.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.username?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredUsers = users.filter(u => {
+    const matchesSearch = 
+      u.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.username?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesCity = !cityFilter || u.city?.toLowerCase() === cityFilter.toLowerCase();
+    const matchesRole = !roleFilter || u.role_id === roleFilter;
+    const matchesStatus = !statusFilter || 
+      (statusFilter === 'active' && u.is_active) ||
+      (statusFilter === 'inactive' && !u.is_active);
+    
+    return matchesSearch && matchesCity && matchesRole && matchesStatus;
+  });
+
+  // Get unique cities from users
+  const uniqueCities = [...new Set(users.map(u => u.city).filter(Boolean))];
 
   const filteredRoles = roles.filter(r =>
     r.name?.toLowerCase().includes(searchQuery.toLowerCase())
