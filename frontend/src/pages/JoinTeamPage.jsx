@@ -299,18 +299,14 @@ const JoinTeamPage = () => {
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Phone *</label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                    <Input
-                      type="tel"
-                      value={form.phone}
-                      onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                      placeholder="10-digit mobile number"
-                      className="pl-10"
-                      required
-                      data-testid="input-phone"
-                    />
-                  </div>
+                  <PhoneInput
+                    value={form.phone}
+                    onChange={(val) => setForm({ ...form, phone: val })}
+                    countryCode={form.countryCode}
+                    onCountryCodeChange={(code) => setForm({ ...form, countryCode: code })}
+                    placeholder="Phone number"
+                    data-testid="input-phone"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Role Interested In</label>
