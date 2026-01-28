@@ -248,6 +248,13 @@ const EducatorFunnel = () => {
     }
 
     const fullPhone = formData.countryCode === '+91' ? formData.phone : `${formData.countryCode}${formData.phone}`;
+    
+    // Build skills list with otherSkill if "Other" is selected
+    let skillsList = formData.skills.filter(s => s !== 'Other');
+    if (formData.skills.includes('Other') && formData.otherSkill) {
+      skillsList.push(formData.otherSkill);
+    }
+    
     setSubmitting(true);
     try {
       const response = await axios.post(`${API}/educators/apply-verified`, {
@@ -255,6 +262,7 @@ const EducatorFunnel = () => {
         otp: otp,
         application_data: {
           ...formData,
+          skills: skillsList,
           phone: fullPhone,
           city: showOtherCity ? formData.other_city : formData.city,
           teaching_mode: formData.teaching_mode.join(', '),
