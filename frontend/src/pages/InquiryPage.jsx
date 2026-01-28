@@ -140,6 +140,7 @@ const InquiryPage = () => {
     
     // Educator fields
     educator_skills: [],
+    otherEducatorSkill: '', // Custom skill when "Other" is selected
     experience: '',
     grades_comfortable: [],
     availability: [],
