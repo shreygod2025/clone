@@ -1232,6 +1232,29 @@ const AdminSchoolCRM = () => {
           payment_tranches: editOnboardData.payment_tranches,
           contract_start: editOnboardData.contract_start,
           contract_end: editOnboardData.contract_end,
+          mou_url: editOnboardData.mou_url,
+        }, {
+          headers: getAuthHeaders()
+        });
+      } else {
+        // Create onboarding record if it doesn't exist
+        await axios.post(`${API}/schools/onboarding`, {
+          school_id: editOnboardData.school_id,
+          offering: editOnboardData.offering,
+          model: editOnboardData.model,
+          book_type: editOnboardData.book_type,
+          kit_type: editOnboardData.kit_type,
+          training_type: editOnboardData.training_type,
+          grade_pricing: editOnboardData.grade_pricing,
+          total_students: editOnboardData.total_students,
+          total_amount: editOnboardData.total_amount,
+          school_contacts: editOnboardData.school_contacts,
+          payment_mode: editOnboardData.payment_mode,
+          payment_method: editOnboardData.payment_method,
+          payment_tranches: editOnboardData.payment_tranches,
+          contract_start: editOnboardData.contract_start,
+          contract_end: editOnboardData.contract_end,
+          mou_url: editOnboardData.mou_url,
         }, {
           headers: getAuthHeaders()
         });
