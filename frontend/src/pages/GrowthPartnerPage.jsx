@@ -7,6 +7,7 @@ import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { toast } from 'sonner';
 import axios from 'axios';
+import PhoneInput from '../components/PhoneInput';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -85,6 +86,7 @@ const GrowthPartnerPage = () => {
     name: '',
     email: '',
     phone: '',
+    countryCode: '+91',
     city: '',
     role: '',
     experience: '',
