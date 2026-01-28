@@ -13,6 +13,7 @@ import SchoolOfferingDetailPage from "./pages/SchoolOfferingDetailPage";
 import AboutPage from "./pages/AboutPage";
 import BlogsPage from "./pages/BlogsPage";
 import BlogDetailPage from "./pages/BlogDetailPage";
+import ResourcesPage from "./pages/ResourcesPage";
 import FAQPage from "./pages/FAQPage";
 import CentersPage from "./pages/CentersPage";
 import LoginPage from "./pages/LoginPage";
