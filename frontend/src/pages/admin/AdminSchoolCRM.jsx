@@ -3151,7 +3151,7 @@ const AdminSchoolCRM = () => {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={() => setFollowupData(prev => ({...prev, followup_type: 'message'}))}
+                  onClick={() => setFollowupData(prev => ({...prev, followup_type: 'message', time: '', mode: '', meeting_link: '', address: ''}))}
                   className={`p-3 rounded-lg border text-center transition-all ${
                     followupData.followup_type === 'message' 
                       ? 'border-cyan-500 bg-cyan-50 text-cyan-700' 
@@ -3178,6 +3178,8 @@ const AdminSchoolCRM = () => {
               </div>
             </div>
 
+            {/* Date Selector - shown for both */}
+            {followupData.followup_type && (
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Select Date</label>
               <div className="flex justify-center">
@@ -3190,7 +3192,70 @@ const AdminSchoolCRM = () => {
                 />
               </div>
             </div>
+            )}
 
+            {/* Meeting Mode - only for meetings */}
+            {followupData.followup_type === 'meeting' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Meeting Mode</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setFollowupData(prev => ({...prev, mode: 'online', address: ''}))}
+                    className={`p-3 rounded-lg border text-center transition-all ${
+                      followupData.mode === 'online' 
+                        ? 'border-green-500 bg-green-50 text-green-700' 
+                        : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                    }`}
+                  >
+                    <Video className="w-5 h-5 mx-auto mb-1" />
+                    <span className="block text-sm font-medium">Online</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFollowupData(prev => ({...prev, mode: 'offline', meeting_link: ''}))}
+                    className={`p-3 rounded-lg border text-center transition-all ${
+                      followupData.mode === 'offline' 
+                        ? 'border-green-500 bg-green-50 text-green-700' 
+                        : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                    }`}
+                  >
+                    <MapPin className="w-5 h-5 mx-auto mb-1" />
+                    <span className="block text-sm font-medium">In-Person</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Meeting Link - for online meetings */}
+            {followupData.followup_type === 'meeting' && followupData.mode === 'online' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Meeting Link *</label>
+                <Input
+                  value={followupData.meeting_link}
+                  onChange={(e) => setFollowupData(prev => ({...prev, meeting_link: e.target.value}))}
+                  placeholder="Enter meeting link (Zoom, Google Meet, etc.)"
+                  data-testid="meeting-link-input"
+                />
+              </div>
+            )}
+
+            {/* Address - for offline meetings */}
+            {followupData.followup_type === 'meeting' && followupData.mode === 'offline' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Meeting Address *</label>
+                <Textarea
+                  value={followupData.address}
+                  onChange={(e) => setFollowupData(prev => ({...prev, address: e.target.value}))}
+                  placeholder="Enter meeting location/address"
+                  className="min-h-[60px]"
+                  data-testid="meeting-address-input"
+                />
+              </div>
+            )}
+
+            {/* Time Selector - only for meetings */}
+            {followupData.followup_type === 'meeting' && (
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Select Time</label>
               <div className="grid grid-cols-4 gap-2">
@@ -3210,7 +3275,10 @@ const AdminSchoolCRM = () => {
                 ))}
               </div>
             </div>
+            )}
 
+            {/* Note - shown for both */}
+            {followupData.followup_type && (
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Followup Note</label>
               <Textarea
@@ -3221,9 +3289,10 @@ const AdminSchoolCRM = () => {
                 data-testid="followup-comment"
               />
             </div>
+            )}
             
-            {/* Auto Email Checkbox */}
-            <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+            {/* Auto Email Checkbox - shown for both */}
+            {followupData.followup_type && (
               <input
                 type="checkbox"
                 id="auto_email_followup"
