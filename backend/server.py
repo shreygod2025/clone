@@ -5841,20 +5841,52 @@ async def update_payment(
         return {"success": True, "payment_id": payment_id, "status": data.get("status")}
     
     else:
-        # Student payment
-        await db.student_payments.update_one(
-            {"id": payment_id},
+        # Student payment - ID format: stu-{student_id}
+        student_id = payment_id.replace("stu-", "")
+        
+        # Find the student
+        student = await db.student_inquiries.find_one({"id": student_id})
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+        
+        # Get or initialize payments array
+        payments = student.get("payments", [])
+        
+        # Find existing payment or create new one
+        existing_idx = next(
+            (i for i, p in enumerate(payments) if p.get("id") == payment_id),
+            None
+        )
+        
+        payment_record = {
+            "id": payment_id,
+            "status": data.get("status", "pending"),
+            "payment_date": data.get("payment_date"),
+            "transaction_id": data.get("transaction_id"),
+            "invoice_url": data.get("invoice_url"),
+            "receipt_url": data.get("receipt_url"),
+            "notes": data.get("notes", ""),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_by": user.get("name", user.get("email", "Admin")),
+        }
+        
+        if existing_idx is not None:
+            payment_record["created_at"] = payments[existing_idx].get("created_at", datetime.now(timezone.utc).isoformat())
+            payments[existing_idx] = payment_record
+        else:
+            payment_record["created_at"] = datetime.now(timezone.utc).isoformat()
+            payments.append(payment_record)
+        
+        # Update student record
+        await db.student_inquiries.update_one(
+            {"id": student_id},
             {"$set": {
-                "status": data.get("status", "pending"),
-                "payment_date": data.get("payment_date"),
-                "transaction_id": data.get("transaction_id"),
-                "invoice_url": data.get("invoice_url"),
-                "receipt_url": data.get("receipt_url"),
-                "notes": data.get("notes", ""),
-                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "payments": payments,
+                "updated_at": datetime.now(timezone.utc).isoformat()
             }}
         )
-        return {"success": True, "payment_id": payment_id}
+        
+        return {"success": True, "payment_id": payment_id, "status": data.get("status")}
 
 # ========================
 # DATA CENTER - UNIFIED DATABASE
