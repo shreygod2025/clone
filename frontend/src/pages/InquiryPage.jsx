@@ -652,6 +652,7 @@ const InquiryPage = () => {
       age_group: '',
       skill: '',
       skills: [],
+      otherSkill: '',
       learning_mode: '',
       selected_center: '',
       school_name: '',
