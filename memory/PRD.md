@@ -10,6 +10,31 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## What's Been Implemented
 
+### Jan 28, 2026 - Rich Text Blog Editor & Open Learning Resources
+**Rich Text Editor for Blogs:**
+- ✅ Installed TipTap editor with all extensions (image, link, youtube, code-block, etc.)
+- ✅ Created RichTextEditor component with full toolbar
+- ✅ Features: Bold, Italic, Underline, Strikethrough, Inline Code
+- ✅ Headings: H1, H2, H3
+- ✅ Lists: Bullet, Numbered, Blockquote, Code Block with syntax highlighting
+- ✅ Media: Image upload, YouTube video embed, Link insertion
+- ✅ Alignment: Left, Center, Right, Justify
+- ✅ Undo/Redo functionality
+
+**Open Learning Resources:**
+- ✅ Created new "resource" blog type for documentation-style content
+- ✅ Added Content Type selector in blog form (Blog Post vs Open Learning Resource)
+- ✅ Created /resources page with sidebar navigation
+- ✅ Support for nested resources (parent-child hierarchy)
+- ✅ Tags support for categorization
+- ✅ SEO meta tags for resources
+
+**Updated Blog Model:**
+- ✅ Added blog_type field ('blog' or 'resource')
+- ✅ Added parent_id for nested resources
+- ✅ Added order field for sorting
+- ✅ Added tags array field
+
 ### Jan 28, 2026 - Student Payments & "Other" Skill Option
 **Student Payments in Orders Module:**
 - ✅ Fixed `/api/orders/student-payments` endpoint (was returning Internal Server Error)
