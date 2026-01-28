@@ -79,7 +79,7 @@ const AdminSchoolCRM = () => {
   const [meetingDoneData, setMeetingDoneData] = useState({ 
     notes: '', 
     quoted_price: '',
-    add_followup: false, 
+    followup_type: '', // 'message' or 'meeting'
     followup_date: null, 
     followup_time: '' 
   });
