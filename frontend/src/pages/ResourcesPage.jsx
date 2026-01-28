@@ -4,7 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { BookOpen, ChevronRight, Search, ArrowLeft, Clock, User, Tag, Menu, X } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import axios from 'axios';
-import Header from '../components/Header';
+import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
