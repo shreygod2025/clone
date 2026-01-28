@@ -745,9 +745,15 @@ class TeamApplication(BaseModel):
     role: str
     experience: str = ""
     city: str = ""
+    availability: str = ""
+    linkedin: str = ""
+    portfolio: str = ""
+    resume_url: str = ""
+    applied_position_id: str = ""
     message: str = ""
     status: str = "new"  # new, contacted, interview_scheduled, interviewed, hired, rejected, archived
     comments: List[dict] = []
+    notes: List[dict] = []
     source: str = "about_page"
     added_by: str = ""
     assigned_to: str = ""
