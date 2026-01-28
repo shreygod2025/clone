@@ -165,7 +165,7 @@ const AdminOrders = () => {
   };
 
   const filteredPayments = payments.filter(p => {
-    const matchesSearch = 
+    const matchesSearch = searchQuery === '' || 
       p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.school_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.contact_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
