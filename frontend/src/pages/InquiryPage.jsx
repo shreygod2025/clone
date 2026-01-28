@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Check, User, School, GraduationCap, Users, Briefcase, Phone, Mail, FileText, MessageCircle, UserPlus, MapPin, Calendar, Clock, BookOpen, Building } from 'lucide-react';
+import { ArrowLeft, Check, User, School, GraduationCap, Users, Briefcase, Phone, Mail, FileText, MessageCircle, UserPlus, MapPin, Calendar, Clock, BookOpen, Building, Paperclip, Mic, X, StopCircle, Play, Pause, Image, Video, Music } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
