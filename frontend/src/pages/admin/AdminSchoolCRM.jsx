@@ -3834,32 +3834,169 @@ const AdminSchoolCRM = () => {
                     <div className="mt-4 pl-9 space-y-3">
                       {/* Payment Collection */}
                       {key === 'payment_collection' && (
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="text-xs text-slate-500">Amount (₹)</label>
-                            <Input
-                              type="number"
-                              value={step.data?.amount || ''}
-                              onChange={(e) => handleUpdateOnboardingStep(
-                                showOnboardingWorkflowModal.id, key,
-                                { data: { amount: e.target.value } }
-                              )}
-                              placeholder="Enter amount"
-                              className="h-9"
-                            />
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-xs text-slate-500">Amount (₹)</label>
+                              <Input
+                                type="number"
+                                value={step.data?.amount || ''}
+                                onChange={(e) => handleUpdateOnboardingStep(
+                                  showOnboardingWorkflowModal.id, key,
+                                  { data: { amount: e.target.value } }
+                                )}
+                                placeholder="Enter amount"
+                                className="h-9"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-slate-500">Payment Date</label>
+                              <Input
+                                type="date"
+                                value={step.data?.payment_date || ''}
+                                onChange={(e) => handleUpdateOnboardingStep(
+                                  showOnboardingWorkflowModal.id, key,
+                                  { data: { payment_date: e.target.value } }
+                                )}
+                                className="h-9"
+                              />
+                            </div>
                           </div>
-                          <div>
-                            <label className="text-xs text-slate-500">Payment Date</label>
-                            <Input
-                              type="date"
-                              value={step.data?.payment_date || ''}
-                              onChange={(e) => handleUpdateOnboardingStep(
-                                showOnboardingWorkflowModal.id, key,
-                                { data: { payment_date: e.target.value } }
-                              )}
-                              className="h-9"
-                            />
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-xs text-slate-500">Transaction ID</label>
+                              <Input
+                                value={step.data?.transaction_id || ''}
+                                onChange={(e) => handleUpdateOnboardingStep(
+                                  showOnboardingWorkflowModal.id, key,
+                                  { data: { transaction_id: e.target.value } }
+                                )}
+                                placeholder="Transaction reference"
+                                className="h-9"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-slate-500">Payment Mode</label>
+                              <select
+                                value={step.data?.payment_mode || ''}
+                                onChange={(e) => handleUpdateOnboardingStep(
+                                  showOnboardingWorkflowModal.id, key,
+                                  { data: { payment_mode: e.target.value } }
+                                )}
+                                className="h-9 w-full px-3 border border-slate-200 rounded-md text-sm"
+                              >
+                                <option value="">Select mode</option>
+                                <option value="bank_transfer">Bank Transfer</option>
+                                <option value="upi">UPI</option>
+                                <option value="cheque">Cheque</option>
+                                <option value="cash">Cash</option>
+                                <option value="neft_rtgs">NEFT/RTGS</option>
+                              </select>
+                            </div>
                           </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="text-xs text-slate-500">Invoice</label>
+                              {step.data?.invoice_url ? (
+                                <div className="flex items-center gap-2 h-9">
+                                  <a 
+                                    href={step.data.invoice_url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 text-sm flex items-center gap-1"
+                                  >
+                                    <FileText className="w-4 h-4" /> View Invoice
+                                  </a>
+                                  <button
+                                    onClick={() => handleUpdateOnboardingStep(
+                                      showOnboardingWorkflowModal.id, key,
+                                      { data: { invoice_url: '' } }
+                                    )}
+                                    className="text-red-500 text-xs"
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              ) : (
+                                <Input
+                                  type="file"
+                                  accept=".pdf,.png,.jpg,.jpeg"
+                                  onChange={async (e) => {
+                                    const file = e.target.files[0];
+                                    if (file) {
+                                      const formData = new FormData();
+                                      formData.append('file', file);
+                                      try {
+                                        const res = await axios.post(`${API}/upload`, formData, {
+                                          headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
+                                        });
+                                        handleUpdateOnboardingStep(
+                                          showOnboardingWorkflowModal.id, key,
+                                          { data: { invoice_url: res.data.url } }
+                                        );
+                                        toast.success('Invoice uploaded');
+                                      } catch (err) {
+                                        toast.error('Failed to upload invoice');
+                                      }
+                                    }
+                                  }}
+                                  className="h-9 text-xs"
+                                />
+                              )}
+                            </div>
+                            <div>
+                              <label className="text-xs text-slate-500">Payment Receipt *</label>
+                              {step.data?.receipt_url ? (
+                                <div className="flex items-center gap-2 h-9">
+                                  <a 
+                                    href={step.data.receipt_url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-green-600 text-sm flex items-center gap-1"
+                                  >
+                                    <Receipt className="w-4 h-4" /> View Receipt
+                                  </a>
+                                  <button
+                                    onClick={() => handleUpdateOnboardingStep(
+                                      showOnboardingWorkflowModal.id, key,
+                                      { data: { receipt_url: '' } }
+                                    )}
+                                    className="text-red-500 text-xs"
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              ) : (
+                                <Input
+                                  type="file"
+                                  accept=".pdf,.png,.jpg,.jpeg"
+                                  onChange={async (e) => {
+                                    const file = e.target.files[0];
+                                    if (file) {
+                                      const formData = new FormData();
+                                      formData.append('file', file);
+                                      try {
+                                        const res = await axios.post(`${API}/upload`, formData, {
+                                          headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
+                                        });
+                                        handleUpdateOnboardingStep(
+                                          showOnboardingWorkflowModal.id, key,
+                                          { data: { receipt_url: res.data.url } }
+                                        );
+                                        toast.success('Receipt uploaded');
+                                      } catch (err) {
+                                        toast.error('Failed to upload receipt');
+                                      }
+                                    }
+                                  }}
+                                  className="h-9 text-xs"
+                                />
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-xs text-slate-400 mt-1">
+                            Manage all payment tranches in Orders → School Payments
+                          </p>
                         </div>
                       )}
                       
