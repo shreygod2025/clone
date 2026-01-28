@@ -13,9 +13,11 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 ### Jan 28, 2026 - Student Payments & "Other" Skill Option
 **Student Payments in Orders Module:**
 - ✅ Fixed `/api/orders/student-payments` endpoint (was returning Internal Server Error)
+- ✅ Fixed `/api/orders/{payment_id}` PATCH endpoint to handle student payments by ID prefix
 - ✅ Student Payments tab now displays converted students
 - ✅ Details modal shows Student Information, Enrollment Details, Payment Details
 - ✅ Search filter now works for student_name and parent_name fields
+- ✅ Can update student payment status (Pending/Paid) with proper persistence
 
 **"Other" Skill Option Across Platform:**
 - ✅ InquiryPage (/add) - Student skills multi-select has "Other" option with text input
@@ -32,6 +34,19 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ Added new "Accounts Team" role with orders and reports access
 - ✅ AdminDashboard nav filtering now uses consistent permission keys
 - ✅ All admin tabs are now assignable via role permissions
+
+**Meeting Done Popup in School CRM:**
+- ✅ New "Meeting Completed" modal with required meeting notes/minutes textarea
+- ✅ Added Quoted Price field to enter price discussed in meeting
+- ✅ "Schedule a follow-up meeting" checkbox with calendar and time slots
+- ✅ Meeting notes appended with date stamp to existing notes
+
+**Quoted Price & Offerings for School Leads:**
+- ✅ Added Quoted Price (₹) field to Admin School CRM Add Lead form
+- ✅ Added Offerings selection checkboxes to Admin School CRM Add Lead form
+- ✅ Added Quoted Price (₹) field to public Inquiry page (/add) for schools
+- ✅ School card in CRM now displays selected offerings (purple badges)
+- ✅ School card shows Quoted Price in blue when not yet converted
 
 ### Jan 28, 2026 - Team Applications & Inquiry Enhancements
 **Team Applications View Modal Enhancement:**
