@@ -60,6 +60,11 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ AdminDashboard nav filtering now uses consistent permission keys
 - ✅ All admin tabs are now assignable via role permissions
 
+**Admin UI/UX Improvements (Jan 28, 2026):**
+- ✅ Support Center: Added "All User Types" filter (Student, School, Educator, Growth Partner, Teacher, Team)
+- ✅ Users & Roles: Added filters for City, Role, and Status
+- ✅ Orders Page: Removed duplicate title, now shows single "Orders & Payments" header
+
 **Meeting Done Popup in School CRM:**
 - ✅ New "Meeting Completed" modal with required meeting notes/minutes textarea
 - ✅ Added Quoted Price field to enter price discussed in meeting
