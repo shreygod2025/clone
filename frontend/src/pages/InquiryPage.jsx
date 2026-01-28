@@ -669,6 +669,7 @@ const InquiryPage = () => {
       board: '',
       send_personalized_email: false,
       educator_skills: [],
+      otherEducatorSkill: '',
       experience: '',
       grades_comfortable: [],
       availability: [],
