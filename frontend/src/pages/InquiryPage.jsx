@@ -529,6 +529,7 @@ const InquiryPage = () => {
         board: formData.board,
         programs_interested: formData.programs_interested,
         selected_offerings: formData.selected_offerings,
+        quoted_price: formData.quoted_price,
         support_needed: [],
         meeting_date: demoDate,
         meeting_time: demoTime,
