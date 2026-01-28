@@ -329,7 +329,47 @@ const AdminSchoolCRM = () => {
   };
 
   const handleMeetingDone = async (inquiry) => {
-    await handleStatusChange(inquiry, 'meeting_done');
+    // Open the meeting done modal instead of directly changing status
+    setShowMeetingDoneModal(inquiry);
+    setMeetingDoneData({ notes: '', add_followup: false, followup_date: null, followup_time: '' });
+  };
+
+  const submitMeetingDone = async () => {
+    if (!meetingDoneData.notes.trim()) {
+      toast.error('Please enter meeting notes/minutes');
+      return;
+    }
+    if (meetingDoneData.add_followup && (!meetingDoneData.followup_date || !meetingDoneData.followup_time)) {
+      toast.error('Please select followup date and time');
+      return;
+    }
+    try {
+      // Update status to meeting_done with notes
+      const updateData = {
+        status: 'meeting_done',
+        notes: showMeetingDoneModal.notes 
+          ? `${showMeetingDoneModal.notes}\n\n--- Meeting Notes (${format(new Date(), 'dd MMM yyyy')}) ---\n${meetingDoneData.notes}`
+          : `--- Meeting Notes (${format(new Date(), 'dd MMM yyyy')}) ---\n${meetingDoneData.notes}`
+      };
+      
+      // If followup is requested, add meeting date/time for next meeting
+      if (meetingDoneData.add_followup) {
+        updateData.meeting_date = format(meetingDoneData.followup_date, 'yyyy-MM-dd');
+        updateData.meeting_time = meetingDoneData.followup_time;
+        updateData.status = 'followup'; // Change status to followup instead of meeting_done
+      }
+      
+      await axios.patch(`${API}/schools/inquiry/${showMeetingDoneModal.id}`, updateData, {
+        headers: getAuthHeaders()
+      });
+      
+      toast.success(meetingDoneData.add_followup ? 'Meeting completed & followup scheduled!' : 'Meeting marked as done!');
+      setShowMeetingDoneModal(null);
+      setMeetingDoneData({ notes: '', add_followup: false, followup_date: null, followup_time: '' });
+      fetchInquiries();
+    } catch (error) {
+      toast.error('Failed to update meeting status');
+    }
   };
 
   const handleReschedule = async () => {
