@@ -940,16 +940,35 @@ const AdminSchoolCRM = () => {
   };
 
   const handleAddFollowup = async () => {
+    if (!followupData.followup_type) {
+      toast.error('Please select a followup type');
+      return;
+    }
     if (!followupData.date) {
       toast.error('Please select a followup date');
       return;
     }
+    if (!followupData.time) {
+      toast.error('Please select a followup time');
+      return;
+    }
     try {
-      await axios.patch(`${API}/schools/inquiry/${showFollowupModal.id}`, {
+      const updateData = {
+        followup_type: followupData.followup_type,
         followup_date: format(followupData.date, 'yyyy-MM-dd'),
+        followup_time: followupData.time,
         followup_comment: followupData.comment,
-        followup_auto_email: followupData.auto_email
-      }, {
+        followup_auto_email: followupData.auto_email,
+        status: 'followup'
+      };
+      
+      // If it's a meeting, also set meeting date/time
+      if (followupData.followup_type === 'meeting') {
+        updateData.meeting_date = format(followupData.date, 'yyyy-MM-dd');
+        updateData.meeting_time = followupData.time;
+      }
+      
+      await axios.patch(`${API}/schools/inquiry/${showFollowupModal.id}`, updateData, {
         headers: getAuthHeaders()
       });
       
@@ -965,17 +984,17 @@ const AdminSchoolCRM = () => {
             followup_comment: followupData.comment,
             programs_interested: showFollowupModal.programs_interested || []
           }, { headers: getAuthHeaders() });
-          toast.success('Followup scheduled with auto-email!');
+          toast.success(`${followupData.followup_type === 'meeting' ? 'Meeting' : 'Message'} followup scheduled with auto-email!`);
         } catch (emailError) {
           console.error('Failed to schedule email:', emailError);
-          toast.success('Followup scheduled (email scheduling failed)');
+          toast.success(`${followupData.followup_type === 'meeting' ? 'Meeting' : 'Message'} followup scheduled (email scheduling failed)`);
         }
       } else {
-        toast.success('Followup scheduled');
+        toast.success(`${followupData.followup_type === 'meeting' ? 'Meeting' : 'Message'} followup scheduled`);
       }
       
       setShowFollowupModal(null);
-      setFollowupData({ date: null, comment: '', auto_email: false });
+      setFollowupData({ followup_type: '', date: null, time: '', comment: '', auto_email: false });
       fetchInquiries();
     } catch (error) {
       toast.error('Failed to add followup');
