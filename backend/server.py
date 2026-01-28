@@ -1164,10 +1164,14 @@ class Blog(BaseModel):
     slug: str
     excerpt: str
     content: str
-    cover_image: str
+    cover_image: str = ""
     category: str  # students, parents, educators, schools
     author: str
+    blog_type: str = "blog"  # 'blog' or 'resource'
     is_published: bool = False
+    parent_id: Optional[str] = None  # For nested resources
+    order: int = 0
+    tags: List[str] = []
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -1176,10 +1180,14 @@ class BlogCreate(BaseModel):
     slug: str
     excerpt: str
     content: str
-    cover_image: str
+    cover_image: str = ""
     category: str
     author: str
+    blog_type: str = "blog"
     is_published: bool = False
+    parent_id: Optional[str] = None
+    order: int = 0
+    tags: List[str] = []
 
 class BlogUpdate(BaseModel):
     title: Optional[str] = None
@@ -1188,7 +1196,11 @@ class BlogUpdate(BaseModel):
     content: Optional[str] = None
     cover_image: Optional[str] = None
     category: Optional[str] = None
+    blog_type: Optional[str] = None
     is_published: Optional[bool] = None
+    parent_id: Optional[str] = None
+    order: Optional[int] = None
+    tags: Optional[List[str]] = None
 
 # Support Ticket Models
 class SupportTicket(BaseModel):
