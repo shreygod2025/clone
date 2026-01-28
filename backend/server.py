@@ -3923,10 +3923,15 @@ class TeamApplication(BaseModel):
     availability: str = ""
     linkedin: str = ""
     portfolio: str = ""
+    resume_url: str = ""
+    applied_position_id: str = ""
     message: str = ""
     source: str = "website"
     status: str = "new"  # new, contacted, interviewing, hired, rejected
     notes: List[dict] = []
+    comments: List[dict] = []
+    assigned_to: str = ""
+    added_by: str = ""
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
