@@ -277,6 +277,162 @@ const InquiryPage = () => {
     }));
   };
 
+  // Attachment upload handler
+  const handleAttachmentUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+    
+    setUploadingAttachment(true);
+    
+    for (const file of files) {
+      // Validate file type
+      const allowedTypes = [
+        'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+        'video/mp4', 'video/webm', 'video/quicktime',
+        'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg',
+        'application/pdf'
+      ];
+      
+      if (!allowedTypes.includes(file.type)) {
+        toast.error(`File type not supported: ${file.name}`);
+        continue;
+      }
+      
+      // Max 10MB per file
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`File too large (max 10MB): ${file.name}`);
+        continue;
+      }
+      
+      try {
+        const formDataUpload = new FormData();
+        formDataUpload.append('file', file);
+        
+        const response = await axios.post(`${API}/upload`, formDataUpload, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        
+        setAttachments(prev => [...prev, {
+          name: file.name,
+          url: response.data.url,
+          type: file.type.split('/')[0], // image, video, audio
+          size: file.size
+        }]);
+        
+        toast.success(`Uploaded: ${file.name}`);
+      } catch (error) {
+        toast.error(`Failed to upload: ${file.name}`);
+      }
+    }
+    
+    setUploadingAttachment(false);
+    e.target.value = ''; // Reset input
+  };
+
+  // Remove attachment
+  const removeAttachment = (index) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Voice recording functions
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorderRef.current = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+      
+      mediaRecorderRef.current.ondataavailable = (e) => {
+        audioChunksRef.current.push(e.data);
+      };
+      
+      mediaRecorderRef.current.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        setAudioBlob(blob);
+        setAudioUrl(URL.createObjectURL(blob));
+        stream.getTracks().forEach(track => track.stop());
+      };
+      
+      mediaRecorderRef.current.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      
+      // Start timer
+      timerRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+      
+    } catch (error) {
+      toast.error('Microphone access denied');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      clearInterval(timerRef.current);
+    }
+  };
+
+  const cancelRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+    }
+    setIsRecording(false);
+    setAudioBlob(null);
+    setAudioUrl(null);
+    setRecordingTime(0);
+    clearInterval(timerRef.current);
+  };
+
+  const uploadVoiceNote = async () => {
+    if (!audioBlob) return;
+    
+    setUploadingAttachment(true);
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', audioBlob, 'voice-note.webm');
+      
+      const response = await axios.post(`${API}/upload`, formDataUpload, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      
+      setAttachments(prev => [...prev, {
+        name: 'Voice Note',
+        url: response.data.url,
+        type: 'audio',
+        size: audioBlob.size,
+        isVoiceNote: true
+      }]);
+      
+      toast.success('Voice note added');
+      setAudioBlob(null);
+      setAudioUrl(null);
+      setRecordingTime(0);
+    } catch (error) {
+      toast.error('Failed to upload voice note');
+    } finally {
+      setUploadingAttachment(false);
+    }
+  };
+
+  const togglePlayback = () => {
+    if (!audioRef.current) return;
+    
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const handleSubmit = async () => {
     // Validation
     if (!formData.inquiry_type) {
