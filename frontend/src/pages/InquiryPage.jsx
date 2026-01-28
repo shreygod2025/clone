@@ -487,11 +487,17 @@ const InquiryPage = () => {
       // Auto-determine meeting type from learning mode
       const meetingType = formData.learning_mode === 'online' ? 'online' : 'offline';
       
+      // Build skills list with otherSkill if "other" is selected
+      let skillsList = formData.skills.filter(s => s !== 'other');
+      if (formData.skills.includes('other') && formData.otherSkill) {
+        skillsList.push(formData.otherSkill);
+      }
+      
       await axios.post(`${API}/students/inquiry`, {
         learner_type: 'self',
         age_group: formData.age_group,
-        skill: formData.skills.length > 0 ? formData.skills.join(', ') : formData.skill,
-        skills: formData.skills,
+        skill: skillsList.length > 0 ? skillsList.join(', ') : formData.skill,
+        skills: skillsList,
         city: formData.city,
         learning_mode: formData.learning_mode || 'online',
         learning_goal: 'general',
