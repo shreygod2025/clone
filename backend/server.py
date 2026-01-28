@@ -6497,6 +6497,8 @@ class InquiryQuery(BaseModel):
     query_details: str = ""
     source: str = "team_inquiry_form"
     status: str = "open"  # open, in_progress, resolved, closed
+    attachments: List[dict] = []  # [{name, url, type, is_voice_note}]
+    added_by: str = ""
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 @api_router.post("/inquiry/lead")
