@@ -147,7 +147,9 @@ const AdminSchoolCRM = () => {
     meeting_date: null,
     meeting_time: '',
     source: 'manual',
-    notes: ''
+    notes: '',
+    quoted_price: '',
+    selected_offerings: []
   });
 
   useEffect(() => {
