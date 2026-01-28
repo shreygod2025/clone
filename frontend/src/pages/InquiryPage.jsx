@@ -66,7 +66,7 @@ const SOURCE_OPTIONS = [
 
 const TIME_SLOTS = ['09:00', '10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
 const GRADES = ['Pre-primary', 'Primary (1-5)', 'Middle (6-8)', 'High School (9-10)', 'Senior (11-12)'];
-const PROGRAMS = ['Robotics', 'Coding', 'AI & ML', 'Entrepreneurship', 'Financial Literacy'];
+const PROGRAMS = ['Robotics', 'Coding', 'AI & ML', 'Entrepreneurship', 'Financial Literacy', 'Other'];
 const SCHOOL_SIZES = ['< 500 students', '500-1000 students', '1000-2000 students', '2000+ students'];
 const BOARD_OPTIONS = ['CBSE', 'ICSE', 'State Board', 'IB', 'IGCSE', 'Cambridge', 'Other'];
 const AVAILABILITY_OPTIONS = ['Weekday Mornings', 'Weekday Afternoons', 'Weekday Evenings', 'Weekends', 'Full-time', 'Part-time'];
