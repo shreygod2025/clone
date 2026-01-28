@@ -1207,6 +1207,19 @@ const InquiryPage = () => {
                     </div>
                   )}
 
+                  {/* Quoted Price */}
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Quoted Price (₹)</label>
+                    <Input
+                      type="number"
+                      placeholder="Enter quoted price"
+                      value={formData.quoted_price}
+                      onChange={(e) => updateForm('quoted_price', e.target.value)}
+                      className="h-10 sm:h-11"
+                      data-testid="quoted-price"
+                    />
+                  </div>
+
                   {/* Send Personalized Email Checkbox */}
                   <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
                     <input
