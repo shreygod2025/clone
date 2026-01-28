@@ -2439,24 +2439,54 @@ const AdminSchoolCRM = () => {
               )}
             </div>
 
-            {/* Add Followup Option */}
-            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-              <input
-                type="checkbox"
-                id="add-followup"
-                checked={meetingDoneData.add_followup}
-                onChange={(e) => setMeetingDoneData({...meetingDoneData, add_followup: e.target.checked})}
-                className="w-4 h-4 rounded border-slate-300"
-              />
-              <label htmlFor="add-followup" className="text-sm font-medium text-slate-700 cursor-pointer">
-                Schedule a follow-up meeting
-              </label>
+            {/* Follow-up Type Selection */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-3">Schedule Follow-up</label>
+              <div className="grid grid-cols-3 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setMeetingDoneData({...meetingDoneData, followup_type: '', followup_date: null, followup_time: ''})}
+                  className={`p-3 rounded-lg border text-center transition-all ${
+                    !meetingDoneData.followup_type 
+                      ? 'border-[#1E3A5F] bg-blue-50 text-[#1E3A5F]' 
+                      : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                  }`}
+                >
+                  <span className="block text-sm font-medium">No Follow-up</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMeetingDoneData({...meetingDoneData, followup_type: 'message'})}
+                  className={`p-3 rounded-lg border text-center transition-all ${
+                    meetingDoneData.followup_type === 'message' 
+                      ? 'border-[#1E3A5F] bg-blue-50 text-[#1E3A5F]' 
+                      : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                  }`}
+                >
+                  <MessageSquare className="w-5 h-5 mx-auto mb-1" />
+                  <span className="block text-sm font-medium">Message</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMeetingDoneData({...meetingDoneData, followup_type: 'meeting'})}
+                  className={`p-3 rounded-lg border text-center transition-all ${
+                    meetingDoneData.followup_type === 'meeting' 
+                      ? 'border-[#1E3A5F] bg-blue-50 text-[#1E3A5F]' 
+                      : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                  }`}
+                >
+                  <Calendar className="w-5 h-5 mx-auto mb-1" />
+                  <span className="block text-sm font-medium">Meeting</span>
+                </button>
+              </div>
             </div>
 
-            {/* Followup Date & Time (shown only if add_followup is checked) */}
-            {meetingDoneData.add_followup && (
+            {/* Followup Date & Time (shown when followup type is selected) */}
+            {meetingDoneData.followup_type && (
               <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
-                <p className="text-sm font-medium text-blue-800">Follow-up Meeting Details</p>
+                <p className="text-sm font-medium text-blue-800">
+                  {meetingDoneData.followup_type === 'meeting' ? 'Follow-up Meeting Details' : 'Follow-up Message Schedule'}
+                </p>
                 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Select Date</label>
@@ -2498,7 +2528,11 @@ const AdminSchoolCRM = () => {
                 Cancel
               </Button>
               <Button onClick={submitMeetingDone} className="btn-primary flex-1" data-testid="submit-meeting-done">
-                {meetingDoneData.add_followup ? 'Complete & Schedule Followup' : 'Mark as Done'}
+                {meetingDoneData.followup_type === 'meeting' 
+                  ? 'Complete & Schedule Meeting' 
+                  : meetingDoneData.followup_type === 'message'
+                    ? 'Complete & Schedule Message'
+                    : 'Mark as Done'}
               </Button>
             </div>
           </div>
