@@ -118,7 +118,6 @@ class TestStudentInquiryWithOtherSkill:
     def test_create_student_inquiry_with_other_skill(self):
         """Test creating a student inquiry with 'Other' skill option"""
         inquiry_data = {
-            "type": "student",
             "name": "TEST_Other_Skill_Student",
             "phone": "9999888877",
             "email": "test_other_skill@test.com",
@@ -130,7 +129,7 @@ class TestStudentInquiryWithOtherSkill:
         }
         
         response = requests.post(
-            f"{BASE_URL}/api/inquiries",
+            f"{BASE_URL}/api/students/inquiry",
             json=inquiry_data
         )
         
@@ -153,7 +152,7 @@ class TestStudentInquiryWithOtherSkill:
             if login_response.status_code == 200:
                 token = login_response.json().get("access_token")
                 delete_response = requests.delete(
-                    f"{BASE_URL}/api/inquiries/{inquiry_id}",
+                    f"{BASE_URL}/api/students/inquiries/{inquiry_id}",
                     headers={"Authorization": f"Bearer {token}"}
                 )
                 print(f"Cleanup: Deleted test inquiry {inquiry_id}")
