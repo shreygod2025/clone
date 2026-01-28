@@ -331,6 +331,9 @@ const AdminSupportUnified = () => {
     // Query type filter
     if (queryTypeFilter && query.query_type !== queryTypeFilter) return false;
     
+    // User type (inquiry_type) filter
+    if (userTypeFilter !== 'all' && query.inquiry_type !== userTypeFilter) return false;
+    
     // Search filter
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
