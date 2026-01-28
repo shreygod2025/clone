@@ -339,6 +339,57 @@ const SchoolTrackingPage = () => {
                           Scheduled: {format(new Date(step.training_date), 'MMMM d, yyyy')}
                         </p>
                       )}
+
+                      {/* Payment Collection - Show Tranches */}
+                      {step.key === 'payment_collection' && payment_tranches && payment_tranches.length > 0 && (
+                        <div className="mt-3 space-y-2">
+                          <p className="text-xs font-medium text-slate-600">Payment Schedule:</p>
+                          {payment_tranches.map((tranche, tidx) => {
+                            const tranchePayment = payments?.find(p => p.tranche_index === tidx);
+                            return (
+                              <div 
+                                key={tidx} 
+                                className={`bg-white border rounded-lg p-3 ${
+                                  tranchePayment?.status === 'paid' ? 'border-green-200' : 'border-slate-200'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-sm font-medium">Tranche {tidx + 1}</span>
+                                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                    tranchePayment?.status === 'paid' 
+                                      ? 'bg-green-100 text-green-700'
+                                      : 'bg-yellow-100 text-yellow-700'
+                                  }`}>
+                                    {tranchePayment?.status || 'pending'}
+                                  </span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2 text-xs text-slate-600">
+                                  {tranche.percentage && (
+                                    <span>{tranche.percentage}%</span>
+                                  )}
+                                  <span className="font-medium text-green-600">
+                                    ₹{(tranche.amount || 0).toLocaleString()}
+                                  </span>
+                                  <span>
+                                    Due: {tranche.date ? format(new Date(tranche.date), 'MMM d') : '-'}
+                                  </span>
+                                </div>
+                                {/* Invoice Download */}
+                                {tranchePayment?.invoice_url && (
+                                  <a 
+                                    href={tranchePayment.invoice_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 mt-2 text-xs text-blue-600 hover:underline"
+                                  >
+                                    <Download className="w-3 h-3" /> Download Invoice
+                                  </a>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
 
                     {/* Connection Line */}
