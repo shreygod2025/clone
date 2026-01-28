@@ -1642,7 +1642,28 @@ const AdminSchoolCRM = () => {
                     ₹{inquiry.conversion_amount}
                   </p>
                 )}
+                {inquiry.quoted_price && !inquiry.conversion_amount && (
+                  <p className="text-blue-600 font-medium flex items-center gap-1">
+                    <DollarSign className="w-3 h-3" />
+                    Quoted: ₹{Number(inquiry.quoted_price).toLocaleString()}
+                  </p>
+                )}
               </div>
+
+              {/* Selected Offerings */}
+              {inquiry.selected_offerings?.length > 0 && (
+                <div className="flex flex-wrap gap-1 mb-3">
+                  <span className="text-xs text-slate-500 mr-1">Offerings:</span>
+                  {inquiry.selected_offerings.map((offeringId, idx) => {
+                    const offering = offerings.find(o => o.id === offeringId);
+                    return offering ? (
+                      <span key={idx} className="px-2 py-0.5 bg-purple-100 rounded text-xs text-purple-700">
+                        {offering.title}
+                      </span>
+                    ) : null;
+                  })}
+                </div>
+              )}
 
               {inquiry.programs_interested?.length > 0 && (
                 <div className="flex flex-wrap gap-1 mb-3">
