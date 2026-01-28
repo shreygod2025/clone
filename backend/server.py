@@ -4110,12 +4110,14 @@ async def delete_faq(faq_id: str, user: dict = Depends(get_current_user)):
 # ========================
 
 @api_router.get("/blogs", response_model=List[Blog])
-async def get_blogs(category: Optional[str] = None, published_only: bool = True):
+async def get_blogs(category: Optional[str] = None, published_only: bool = True, blog_type: Optional[str] = None):
     query = {}
     if published_only:
         query["is_published"] = True
     if category:
         query["category"] = category
+    if blog_type:
+        query["blog_type"] = blog_type
     blogs = await db.blogs.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
     for blog in blogs:
         if isinstance(blog.get('created_at'), str):
