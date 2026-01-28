@@ -123,6 +123,25 @@ const AdminOrders = () => {
     });
   };
 
+  const fetchSchoolDetails = async (schoolId) => {
+    setLoadingSchoolDetails(true);
+    try {
+      const response = await axios.get(`${API}/schools/inquiries`, {
+        headers: getAuthHeaders()
+      });
+      const school = response.data.find(s => s.id === schoolId);
+      if (school) {
+        setShowSchoolDetails(school);
+      } else {
+        toast.error('School details not found');
+      }
+    } catch (error) {
+      toast.error('Failed to fetch school details');
+    } finally {
+      setLoadingSchoolDetails(false);
+    }
+  };
+
   const getStatusBadge = (payment) => {
     let status = payment.status || 'pending';
     
