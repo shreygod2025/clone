@@ -624,6 +624,10 @@ const InquiryPage = () => {
 
   const resetForm = () => {
     setSubmitted(false);
+    setAttachments([]);
+    setAudioBlob(null);
+    setAudioUrl(null);
+    setRecordingTime(0);
     setFormData({
       inquiry_type: '',
       action_type: '',
