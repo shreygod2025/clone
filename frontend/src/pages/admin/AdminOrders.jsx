@@ -648,6 +648,193 @@ const AdminOrders = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* School Details Modal */}
+      <Dialog open={!!showSchoolDetails} onOpenChange={() => setShowSchoolDetails(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-blue-600" />
+              School Conversion Details - {showSchoolDetails?.school_name}
+            </DialogTitle>
+          </DialogHeader>
+
+          {loadingSchoolDetails ? (
+            <div className="p-8 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="text-slate-500 mt-4">Loading school details...</p>
+            </div>
+          ) : showSchoolDetails && (
+            <div className="space-y-6">
+              {/* Basic School Info */}
+              <div className="bg-slate-50 rounded-lg p-4">
+                <h4 className="text-sm font-semibold text-slate-700 mb-3">School Information</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-slate-500">School Name</p>
+                    <p className="font-medium">{showSchoolDetails.school_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Contact Person</p>
+                    <p className="font-medium">{showSchoolDetails.contact_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Phone</p>
+                    <p className="font-medium">{showSchoolDetails.phone}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Email</p>
+                    <p className="font-medium">{showSchoolDetails.email || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Location</p>
+                    <p className="font-medium">{showSchoolDetails.city || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Board</p>
+                    <p className="font-medium">{showSchoolDetails.board || '-'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Onboarding Data */}
+              {showSchoolDetails.onboarding_data && (
+                <>
+                  {/* Contract Details */}
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    <h4 className="text-sm font-semibold text-blue-700 mb-3">Contract Details</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-slate-500">Total Students</p>
+                        <p className="font-bold text-lg">{showSchoolDetails.onboarding_data.total_students || 0}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Total Amount</p>
+                        <p className="font-bold text-lg text-green-600">
+                          ₹{(showSchoolDetails.onboarding_data.total_amount || 0).toLocaleString()}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Contract Start</p>
+                        <p className="font-medium">
+                          {showSchoolDetails.onboarding_data.contract_start 
+                            ? format(parseISO(showSchoolDetails.onboarding_data.contract_start), 'MMM d, yyyy')
+                            : '-'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Contract End</p>
+                        <p className="font-medium">
+                          {showSchoolDetails.onboarding_data.contract_end 
+                            ? format(parseISO(showSchoolDetails.onboarding_data.contract_end), 'MMM d, yyyy')
+                            : '-'}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Model</p>
+                        <p className="font-medium capitalize">{showSchoolDetails.onboarding_data.model || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Payment Mode</p>
+                        <p className="font-medium capitalize">
+                          {showSchoolDetails.onboarding_data.payment_mode?.replace(/_/g, ' ') || '-'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Grade-wise Pricing */}
+                  {showSchoolDetails.onboarding_data.grade_pricing?.length > 0 && (
+                    <div className="bg-purple-50 rounded-lg p-4">
+                      <h4 className="text-sm font-semibold text-purple-700 mb-3">Grade-wise Pricing</h4>
+                      <div className="space-y-2">
+                        {showSchoolDetails.onboarding_data.grade_pricing.map((g, idx) => (
+                          <div key={idx} className="flex items-center justify-between bg-white rounded-lg p-3">
+                            <span className="font-medium">Grade {g.grade}</span>
+                            <span className="text-slate-600">{g.students} students</span>
+                            <span className="text-green-600">₹{g.price_per_student}/student</span>
+                            <span className="font-bold">₹{((g.students || 0) * (g.price_per_student || 0)).toLocaleString()}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* School Contacts */}
+                  {showSchoolDetails.onboarding_data.school_contacts?.length > 0 && (
+                    <div className="bg-green-50 rounded-lg p-4">
+                      <h4 className="text-sm font-semibold text-green-700 mb-3">School Team Contacts</h4>
+                      <div className="space-y-2">
+                        {showSchoolDetails.onboarding_data.school_contacts.map((c, idx) => (
+                          <div key={idx} className="flex items-center gap-4 bg-white rounded-lg p-3">
+                            <div className="flex-1">
+                              <p className="font-medium">{c.name}</p>
+                              <p className="text-sm text-slate-500 capitalize">{c.role?.replace(/_/g, ' ')}</p>
+                            </div>
+                            <p className="text-sm">{c.phone}</p>
+                            {c.email && <p className="text-sm text-slate-500">{c.email}</p>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Payment Tranches */}
+                  {showSchoolDetails.onboarding_data.payment_tranches?.length > 0 && (
+                    <div className="bg-yellow-50 rounded-lg p-4">
+                      <h4 className="text-sm font-semibold text-yellow-700 mb-3">Payment Tranches</h4>
+                      <div className="space-y-2">
+                        {showSchoolDetails.onboarding_data.payment_tranches.map((t, idx) => (
+                          <div key={idx} className="flex items-center justify-between bg-white rounded-lg p-3">
+                            <span className="font-medium">Tranche {idx + 1}</span>
+                            {t.percentage && <span className="text-slate-600">{t.percentage}%</span>}
+                            <span className="font-bold">₹{(t.amount || 0).toLocaleString()}</span>
+                            <span className="text-sm text-slate-500">
+                              {t.date ? format(parseISO(t.date), 'MMM d, yyyy') : '-'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* MOU Document */}
+                  {showSchoolDetails.onboarding_data.mou_url && (
+                    <div className="border-t pt-4">
+                      <p className="text-sm font-medium text-slate-700 mb-2">MOU Document</p>
+                      <div className="flex items-center gap-3">
+                        <a 
+                          href={showSchoolDetails.onboarding_data.mou_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline flex items-center gap-1"
+                        >
+                          <FileText className="w-4 h-4" />
+                          View MOU
+                        </a>
+                        <a 
+                          href={showSchoolDetails.onboarding_data.mou_url} 
+                          download
+                          className="text-green-600 hover:underline flex items-center gap-1"
+                        >
+                          <Download className="w-4 h-4" />
+                          Download
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {!showSchoolDetails.onboarding_data && (
+                <div className="text-center py-8 text-slate-500">
+                  <p>No conversion details available for this school.</p>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
