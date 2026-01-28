@@ -1880,7 +1880,7 @@ const AdminSchoolCRM = () => {
       {/* Contacts Tab */}
       {activeTab === 'contacts' && (
         <div className="space-y-4">
-          {/* Search */}
+          {/* Search and Filters */}
           <div className="flex flex-col md:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -1892,6 +1892,42 @@ const AdminSchoolCRM = () => {
                 data-testid="contact-search"
               />
             </div>
+            <select
+              value={contactCityFilter}
+              onChange={(e) => setContactCityFilter(e.target.value)}
+              className="h-10 px-4 border border-slate-200 rounded-lg bg-white"
+              data-testid="contact-city-filter"
+            >
+              <option value="all">All Cities</option>
+              {CITIES.map(city => (
+                <option key={city} value={city}>{city}</option>
+              ))}
+            </select>
+            <select
+              value={contactRoleFilter}
+              onChange={(e) => setContactRoleFilter(e.target.value)}
+              className="h-10 px-4 border border-slate-200 rounded-lg bg-white"
+              data-testid="contact-role-filter"
+            >
+              <option value="all">All Roles</option>
+              <option value="principal">Principal</option>
+              <option value="trustee_owner">Trustee/Owner</option>
+              <option value="director">Director</option>
+              <option value="coordinator">Coordinator</option>
+              <option value="accounts">Accounts</option>
+              <option value="Primary Contact">Primary Contact</option>
+            </select>
+            <select
+              value={contactStageFilter}
+              onChange={(e) => setContactStageFilter(e.target.value)}
+              className="h-10 px-4 border border-slate-200 rounded-lg bg-white"
+              data-testid="contact-stage-filter"
+            >
+              <option value="all">All Stages</option>
+              {STATUS_SECTIONS.map(s => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
           </div>
 
           {/* Contacts Table */}
@@ -1908,11 +1944,27 @@ const AdminSchoolCRM = () => {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {allContacts
-                  .filter(c => 
-                    c.name.toLowerCase().includes(contactSearchQuery.toLowerCase()) ||
-                    c.phone.includes(contactSearchQuery) ||
-                    c.school_name?.toLowerCase().includes(contactSearchQuery.toLowerCase())
-                  )
+                  .filter(c => {
+                    // Text search filter
+                    const searchMatch = c.name.toLowerCase().includes(contactSearchQuery.toLowerCase()) ||
+                      c.phone.includes(contactSearchQuery) ||
+                      c.school_name?.toLowerCase().includes(contactSearchQuery.toLowerCase());
+                    if (!searchMatch) return false;
+                    
+                    // City filter
+                    if (contactCityFilter !== 'all') {
+                      const school = inquiries.find(i => i.id === c.school_id);
+                      if (school?.location !== contactCityFilter) return false;
+                    }
+                    
+                    // Role filter
+                    if (contactRoleFilter !== 'all' && c.role !== contactRoleFilter) return false;
+                    
+                    // Stage filter
+                    if (contactStageFilter !== 'all' && c.school_status !== contactStageFilter) return false;
+                    
+                    return true;
+                  })
                   .map((contact) => (
                     <tr key={contact.id} className="hover:bg-slate-50">
                       <td className="px-4 py-3">
