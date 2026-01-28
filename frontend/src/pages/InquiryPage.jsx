@@ -136,6 +136,7 @@ const InquiryPage = () => {
     programs_interested: [],
     selected_offerings: [], // Selected offerings for proposal
     board: '',
+    quoted_price: '', // Quoted price for school
     send_personalized_email: false, // Email checkbox
     
     // Educator fields
