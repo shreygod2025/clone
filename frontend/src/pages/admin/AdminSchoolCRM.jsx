@@ -2785,6 +2785,57 @@ const AdminSchoolCRM = () => {
               </div>
             </div>
 
+            {/* Offerings Selection */}
+            {offerings.length > 0 && (
+              <div className="border-t pt-4 mt-4">
+                <h4 className="font-medium text-slate-900 mb-3">Offerings Interested In</h4>
+                <div className="space-y-3 max-h-[200px] overflow-y-auto">
+                  {offerings.map(offering => (
+                    <label
+                      key={offering.id}
+                      className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                        newLead.selected_offerings.includes(offering.id)
+                          ? 'border-[#1E3A5F] bg-blue-50'
+                          : 'border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={newLead.selected_offerings.includes(offering.id)}
+                        onChange={() => {
+                          const current = newLead.selected_offerings;
+                          if (current.includes(offering.id)) {
+                            setNewLead({...newLead, selected_offerings: current.filter(id => id !== offering.id)});
+                          } else {
+                            setNewLead({...newLead, selected_offerings: [...current, offering.id]});
+                          }
+                        }}
+                        className="mt-1 w-4 h-4 rounded border-slate-300"
+                      />
+                      <div>
+                        <p className="text-sm font-medium text-slate-700">{offering.title}</p>
+                        {offering.category && (
+                          <span className="text-xs text-slate-500 capitalize">{offering.category}</span>
+                        )}
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Quoted Price */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Quoted Price (₹)</label>
+              <Input
+                type="number"
+                placeholder="Enter quoted price"
+                value={newLead.quoted_price}
+                onChange={(e) => setNewLead({...newLead, quoted_price: e.target.value})}
+                data-testid="new-school-quoted-price"
+              />
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Source</label>
               <select
