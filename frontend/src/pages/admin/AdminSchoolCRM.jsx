@@ -3293,6 +3293,7 @@ const AdminSchoolCRM = () => {
             
             {/* Auto Email Checkbox - shown for both */}
             {followupData.followup_type && (
+            <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
               <input
                 type="checkbox"
                 id="auto_email_followup"
@@ -3316,6 +3317,7 @@ const AdminSchoolCRM = () => {
                 )}
               </label>
             </div>
+            )}
             
             <div className="flex gap-3 pt-2">
               <Button variant="outline" onClick={() => setShowFollowupModal(null)} className="flex-1">
