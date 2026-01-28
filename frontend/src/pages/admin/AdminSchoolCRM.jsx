@@ -78,6 +78,7 @@ const AdminSchoolCRM = () => {
   const [showMeetingDoneModal, setShowMeetingDoneModal] = useState(null);
   const [meetingDoneData, setMeetingDoneData] = useState({ 
     notes: '', 
+    quoted_price: '',
     add_followup: false, 
     followup_date: null, 
     followup_time: '' 
