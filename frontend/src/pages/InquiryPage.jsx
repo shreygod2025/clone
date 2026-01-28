@@ -669,6 +669,7 @@ const InquiryPage = () => {
       programs_interested: [],
       selected_offerings: [],
       board: '',
+      quoted_price: '',
       send_personalized_email: false,
       educator_skills: [],
       otherEducatorSkill: '',
