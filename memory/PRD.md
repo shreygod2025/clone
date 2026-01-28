@@ -25,6 +25,14 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ Backend /educator-config endpoint updated to always include "Other" in skills list
 - ✅ Custom skill value saved correctly when "Other" is selected
 
+**Role-Based Access Control (RBAC) Enhancement:**
+- ✅ Updated ALL_SECTIONS in AdminUsers.jsx to include all 14 admin panel tabs
+- ✅ Added new permission sections: orders, blogs, reports, data_center
+- ✅ Updated DEFAULT_ROLES with relevant permissions (Sales Team now has 'orders')
+- ✅ Added new "Accounts Team" role with orders and reports access
+- ✅ AdminDashboard nav filtering now uses consistent permission keys
+- ✅ All admin tabs are now assignable via role permissions
+
 ### Jan 28, 2026 - Team Applications & Inquiry Enhancements
 **Team Applications View Modal Enhancement:**
 - ✅ Expanded view modal to show all application details
