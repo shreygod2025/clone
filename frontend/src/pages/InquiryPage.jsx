@@ -611,7 +611,13 @@ const InquiryPage = () => {
       query_type: formData.query_type,
       query_details: formData.query_details,
       source: formData.source || 'team_added',
-      added_by: teamUser?.id || ''
+      added_by: teamUser?.id || '',
+      attachments: attachments.map(a => ({
+        name: a.name,
+        url: a.url,
+        type: a.type,
+        is_voice_note: a.isVoiceNote || false
+      }))
     });
     toast.success('Query logged to ticketing system!');
   };
