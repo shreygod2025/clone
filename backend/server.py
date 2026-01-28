@@ -5734,7 +5734,10 @@ async def update_payment(
     user: dict = Depends(get_current_user)
 ):
     """Update a payment status, add invoice/receipt"""
+    # Determine payment type from ID prefix or request data
     payment_type = data.get("type", "school")
+    if payment_id.startswith("stu-"):
+        payment_type = "student"
     
     if payment_type == "school":
         # Payment ID format: pay-{school_id}-{tranche_index}
