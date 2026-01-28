@@ -279,10 +279,10 @@ const ResourcesPage = () => {
 };
 
 // Recursive Navigation Item Component
-const ResourceNavItem = ({ resource, children, selectedId, onSelect, getChildren, depth = 0 }) => {
+const ResourceNavItem = ({ resource, childResources, selectedId, onSelect, getChildren, depth = 0 }) => {
   const [expanded, setExpanded] = useState(true);
   const isSelected = resource.id === selectedId;
-  const hasChildren = children.length > 0;
+  const hasChildren = childResources.length > 0;
 
   return (
     <div>
@@ -306,11 +306,11 @@ const ResourceNavItem = ({ resource, children, selectedId, onSelect, getChildren
       
       {hasChildren && expanded && (
         <div className="mt-1">
-          {children.map(child => (
+          {childResources.map(child => (
             <ResourceNavItem
               key={child.id}
               resource={child}
-              children={getChildren(child.id)}
+              childResources={getChildren(child.id)}
               selectedId={selectedId}
               onSelect={onSelect}
               getChildren={getChildren}
