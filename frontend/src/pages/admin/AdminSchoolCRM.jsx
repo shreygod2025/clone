@@ -3835,167 +3835,83 @@ const AdminSchoolCRM = () => {
                       {/* Payment Collection */}
                       {key === 'payment_collection' && (
                         <div className="space-y-3">
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="text-xs text-slate-500">Amount (₹)</label>
-                              <Input
-                                type="number"
-                                value={step.data?.amount || ''}
-                                onChange={(e) => handleUpdateOnboardingStep(
-                                  showOnboardingWorkflowModal.id, key,
-                                  { data: { amount: e.target.value } }
-                                )}
-                                placeholder="Enter amount"
-                                className="h-9"
-                              />
+                          {/* Show Payment Tranches from onboarding_data */}
+                          {showOnboardingWorkflowModal?.onboarding_data?.payment_tranches?.length > 0 ? (
+                            <div className="space-y-2">
+                              <label className="text-xs text-slate-500 font-medium">Payment Tranches</label>
+                              {showOnboardingWorkflowModal.onboarding_data.payment_tranches.map((tranche, idx) => {
+                                const tranchePayment = showOnboardingWorkflowModal.payments?.find(p => p.tranche_index === idx);
+                                return (
+                                  <div key={idx} className="bg-white border rounded-lg p-3">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <span className="font-medium text-slate-700">Tranche {idx + 1}</span>
+                                      <span className={`px-2 py-0.5 rounded-full text-xs ${
+                                        tranchePayment?.status === 'paid' 
+                                          ? 'bg-green-100 text-green-700' 
+                                          : 'bg-yellow-100 text-yellow-700'
+                                      }`}>
+                                        {tranchePayment?.status || 'pending'}
+                                      </span>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2 text-sm">
+                                      {tranche.percentage && (
+                                        <div>
+                                          <span className="text-slate-500">%:</span>
+                                          <span className="ml-1 font-medium">{tranche.percentage}%</span>
+                                        </div>
+                                      )}
+                                      <div>
+                                        <span className="text-slate-500">Amount:</span>
+                                        <span className="ml-1 font-medium text-green-600">₹{(tranche.amount || 0).toLocaleString()}</span>
+                                      </div>
+                                      <div>
+                                        <span className="text-slate-500">Due:</span>
+                                        <span className="ml-1 font-medium">
+                                          {tranche.date ? format(new Date(tranche.date), 'MMM d, yyyy') : '-'}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    {/* Download buttons */}
+                                    <div className="flex items-center gap-3 mt-2 pt-2 border-t">
+                                      {tranchePayment?.invoice_url ? (
+                                        <a 
+                                          href={tranchePayment.invoice_url} 
+                                          target="_blank" 
+                                          rel="noopener noreferrer"
+                                          className="text-blue-600 text-xs flex items-center gap-1 hover:underline"
+                                        >
+                                          <Download className="w-3 h-3" /> Invoice
+                                        </a>
+                                      ) : (
+                                        <span className="text-slate-400 text-xs">No invoice</span>
+                                      )}
+                                      {tranchePayment?.receipt_url ? (
+                                        <a 
+                                          href={tranchePayment.receipt_url} 
+                                          target="_blank" 
+                                          rel="noopener noreferrer"
+                                          className="text-green-600 text-xs flex items-center gap-1 hover:underline"
+                                        >
+                                          <Download className="w-3 h-3" /> Receipt
+                                        </a>
+                                      ) : (
+                                        <span className="text-slate-400 text-xs">No receipt</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
-                            <div>
-                              <label className="text-xs text-slate-500">Payment Date</label>
-                              <Input
-                                type="date"
-                                value={step.data?.payment_date || ''}
-                                onChange={(e) => handleUpdateOnboardingStep(
-                                  showOnboardingWorkflowModal.id, key,
-                                  { data: { payment_date: e.target.value } }
-                                )}
-                                className="h-9"
-                              />
+                          ) : (
+                            <div className="text-sm text-slate-500 bg-slate-50 p-3 rounded-lg">
+                              No payment tranches defined. Set up tranches when converting the school.
                             </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="text-xs text-slate-500">Transaction ID</label>
-                              <Input
-                                value={step.data?.transaction_id || ''}
-                                onChange={(e) => handleUpdateOnboardingStep(
-                                  showOnboardingWorkflowModal.id, key,
-                                  { data: { transaction_id: e.target.value } }
-                                )}
-                                placeholder="Transaction reference"
-                                className="h-9"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-xs text-slate-500">Payment Mode</label>
-                              <select
-                                value={step.data?.payment_mode || ''}
-                                onChange={(e) => handleUpdateOnboardingStep(
-                                  showOnboardingWorkflowModal.id, key,
-                                  { data: { payment_mode: e.target.value } }
-                                )}
-                                className="h-9 w-full px-3 border border-slate-200 rounded-md text-sm"
-                              >
-                                <option value="">Select mode</option>
-                                <option value="bank_transfer">Bank Transfer</option>
-                                <option value="upi">UPI</option>
-                                <option value="cheque">Cheque</option>
-                                <option value="cash">Cash</option>
-                                <option value="neft_rtgs">NEFT/RTGS</option>
-                              </select>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="text-xs text-slate-500">Invoice</label>
-                              {step.data?.invoice_url ? (
-                                <div className="flex items-center gap-2 h-9">
-                                  <a 
-                                    href={step.data.invoice_url} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="text-blue-600 text-sm flex items-center gap-1"
-                                  >
-                                    <FileText className="w-4 h-4" /> View Invoice
-                                  </a>
-                                  <button
-                                    onClick={() => handleUpdateOnboardingStep(
-                                      showOnboardingWorkflowModal.id, key,
-                                      { data: { invoice_url: '' } }
-                                    )}
-                                    className="text-red-500 text-xs"
-                                  >
-                                    Remove
-                                  </button>
-                                </div>
-                              ) : (
-                                <Input
-                                  type="file"
-                                  accept=".pdf,.png,.jpg,.jpeg"
-                                  onChange={async (e) => {
-                                    const file = e.target.files[0];
-                                    if (file) {
-                                      const formData = new FormData();
-                                      formData.append('file', file);
-                                      try {
-                                        const res = await axios.post(`${API}/upload`, formData, {
-                                          headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
-                                        });
-                                        handleUpdateOnboardingStep(
-                                          showOnboardingWorkflowModal.id, key,
-                                          { data: { invoice_url: res.data.url } }
-                                        );
-                                        toast.success('Invoice uploaded');
-                                      } catch (err) {
-                                        toast.error('Failed to upload invoice');
-                                      }
-                                    }
-                                  }}
-                                  className="h-9 text-xs"
-                                />
-                              )}
-                            </div>
-                            <div>
-                              <label className="text-xs text-slate-500">Payment Receipt *</label>
-                              {step.data?.receipt_url ? (
-                                <div className="flex items-center gap-2 h-9">
-                                  <a 
-                                    href={step.data.receipt_url} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="text-green-600 text-sm flex items-center gap-1"
-                                  >
-                                    <Receipt className="w-4 h-4" /> View Receipt
-                                  </a>
-                                  <button
-                                    onClick={() => handleUpdateOnboardingStep(
-                                      showOnboardingWorkflowModal.id, key,
-                                      { data: { receipt_url: '' } }
-                                    )}
-                                    className="text-red-500 text-xs"
-                                  >
-                                    Remove
-                                  </button>
-                                </div>
-                              ) : (
-                                <Input
-                                  type="file"
-                                  accept=".pdf,.png,.jpg,.jpeg"
-                                  onChange={async (e) => {
-                                    const file = e.target.files[0];
-                                    if (file) {
-                                      const formData = new FormData();
-                                      formData.append('file', file);
-                                      try {
-                                        const res = await axios.post(`${API}/upload`, formData, {
-                                          headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
-                                        });
-                                        handleUpdateOnboardingStep(
-                                          showOnboardingWorkflowModal.id, key,
-                                          { data: { receipt_url: res.data.url } }
-                                        );
-                                        toast.success('Receipt uploaded');
-                                      } catch (err) {
-                                        toast.error('Failed to upload receipt');
-                                      }
-                                    }
-                                  }}
-                                  className="h-9 text-xs"
-                                />
-                              )}
-                            </div>
-                          </div>
-                          <p className="text-xs text-slate-400 mt-1">
-                            Manage all payment tranches in Orders → School Payments
+                          )}
+                          
+                          <p className="text-xs text-blue-600 mt-2">
+                            <a href="/admin/orders" className="hover:underline">
+                              → Manage payments in Orders → School Payments
+                            </a>
                           </p>
                         </div>
                       )}
