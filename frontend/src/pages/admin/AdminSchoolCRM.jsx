@@ -334,7 +334,13 @@ const AdminSchoolCRM = () => {
   const handleMeetingDone = async (inquiry) => {
     // Open the meeting done modal instead of directly changing status
     setShowMeetingDoneModal(inquiry);
-    setMeetingDoneData({ notes: '', quoted_price: inquiry.quoted_price || '', add_followup: false, followup_date: null, followup_time: '' });
+    setMeetingDoneData({ 
+      notes: '', 
+      quoted_price: inquiry.quoted_price || '', 
+      followup_type: '', 
+      followup_date: null, 
+      followup_time: '' 
+    });
   };
 
   const submitMeetingDone = async () => {
