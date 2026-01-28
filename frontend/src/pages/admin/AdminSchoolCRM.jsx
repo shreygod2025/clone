@@ -2385,6 +2385,21 @@ const AdminSchoolCRM = () => {
               />
             </div>
 
+            {/* Quoted Price */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Quoted Price (₹)</label>
+              <Input
+                type="number"
+                placeholder="Enter quoted price discussed in meeting"
+                value={meetingDoneData.quoted_price}
+                onChange={(e) => setMeetingDoneData({...meetingDoneData, quoted_price: e.target.value})}
+                data-testid="meeting-quoted-price"
+              />
+              {showMeetingDoneModal?.quoted_price && (
+                <p className="text-xs text-slate-500 mt-1">Previous: ₹{Number(showMeetingDoneModal.quoted_price).toLocaleString()}</p>
+              )}
+            </div>
+
             {/* Add Followup Option */}
             <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
               <input
