@@ -38,6 +38,7 @@ import AdminLogin from "./pages/admin/AdminLogin";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminStudentCRM from "./pages/admin/AdminStudentCRM";
 import AdminSchoolCRM from "./pages/admin/AdminSchoolCRM";
+import AdminOrders from "./pages/admin/AdminOrders";
 import AdminEducators from "./pages/admin/AdminEducators";
 import AdminGrowthPartners from "./pages/admin/AdminGrowthPartners";
 import AdminTeamApplications from "./pages/admin/AdminTeamApplications";
