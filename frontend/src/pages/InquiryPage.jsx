@@ -561,11 +561,17 @@ const InquiryPage = () => {
       }
     }
     else if (inquiry_type === 'teacher') {
+      // Build skills list with otherEducatorSkill if "Other" is selected
+      let educatorSkillsList = formData.educator_skills.filter(s => s !== 'Other');
+      if (formData.educator_skills.includes('Other') && formData.otherEducatorSkill) {
+        educatorSkillsList.push(formData.otherEducatorSkill);
+      }
+      
       await axios.post(`${API}/educators/apply`, {
         name: formData.name,
         email: formData.email || `${formData.phone}@educator.oll`,
         phone: fullPhone,
-        skills: formData.educator_skills,
+        skills: educatorSkillsList,
         experience: formData.experience,
         grades_comfortable: formData.grades_comfortable,
         city: formData.city,
