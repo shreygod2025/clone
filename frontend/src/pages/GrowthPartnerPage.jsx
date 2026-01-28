@@ -108,10 +108,11 @@ const GrowthPartnerPage = () => {
 
     setSubmitting(true);
     try {
+      const fullPhone = formData.countryCode + formData.phone;
       await axios.post(`${API}/growth-partners`, {
         name: formData.name,
         email: formData.email || '',
-        phone: formData.phone,
+        phone: fullPhone,
         city: formData.city,
         interest_type: formData.role,
         details: `Experience: ${formData.experience || 'Not specified'}\n${formData.details}`,
