@@ -10,6 +10,30 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## What's Been Implemented
 
+### Jan 28, 2026 - Team Applications & Inquiry Enhancements
+**Team Applications View Modal Enhancement:**
+- ✅ Expanded view modal to show all application details
+- ✅ Personal Information section: Name, Phone, Email, City
+- ✅ Professional Details section: Role, Experience, Availability, Source
+- ✅ Links & Documents section: Resume, LinkedIn, Portfolio links with clickable URLs
+- ✅ Cover Letter / Message section
+- ✅ Status badge and assignment info
+- ✅ Comments history with author and timestamp
+
+**Team Applications Add Form:**
+- ✅ Phone field now uses PhoneInput with country code selector (default: +91)
+- ✅ Phone saved with full country code prefix
+
+**Inquiry Page (/add) Attachments & Voice Recording:**
+- ✅ Added "Attach File" button for uploading images, videos, audio, PDFs (max 10MB each)
+- ✅ Added "Voice Note" button - WhatsApp-style voice recording
+- ✅ Recording UI shows red pulsing indicator with timer
+- ✅ Recorded audio preview with play/pause controls
+- ✅ Attachments display with type-specific icons (Image, Video, Music, Document)
+- ✅ Remove attachment functionality
+- ✅ Attachments saved to backend with query submission
+- ✅ Backend InquiryQuery model updated to store attachments array
+
 ### Jan 28, 2026 - Orders & Payments Module (P0)
 **New Admin Orders Page (`/admin/orders`):**
 - ✅ Created new "Orders" tab in admin navigation
