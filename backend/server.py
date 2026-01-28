@@ -761,6 +761,11 @@ class TeamApplicationCreate(BaseModel):
     role: str = ""
     experience: str = ""
     city: str = ""
+    availability: str = ""
+    linkedin: str = ""
+    portfolio: str = ""
+    resume_url: str = ""
+    applied_position_id: str = ""
     message: str = ""
     source: str = "about_page"
 
@@ -771,6 +776,10 @@ class TeamApplicationUpdate(BaseModel):
     email: Optional[str] = None
     notes: Optional[str] = None
     assigned_to: Optional[str] = None
+    linkedin: Optional[str] = None
+    portfolio: Optional[str] = None
+    resume_url: Optional[str] = None
+    availability: Optional[str] = None
 
 # School Inquiry Models
 class SchoolInquiry(BaseModel):
