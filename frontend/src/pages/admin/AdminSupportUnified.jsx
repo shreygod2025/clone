@@ -60,6 +60,7 @@ const AdminSupportUnified = () => {
   const [activeTab, setActiveTab] = useState('new'); // 'new', 'overdue', 'closed'
   const [sourceFilter, setSourceFilter] = useState('all'); // 'all', 'inquiry', 'user_support', 'tracking_page', 'legacy'
   const [assigneeFilter, setAssigneeFilter] = useState('all');
+  const [userTypeFilter, setUserTypeFilter] = useState('all'); // Filter by inquiry_type
   const [showReplyModal, setShowReplyModal] = useState(null);
   const [showAssignModal, setShowAssignModal] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
