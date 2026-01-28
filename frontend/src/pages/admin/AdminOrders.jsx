@@ -432,15 +432,29 @@ const AdminOrders = () => {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openPaymentModal(payment)}
-                          data-testid={`update-payment-${payment.id}`}
-                        >
-                          <Eye className="w-4 h-4 mr-1" />
-                          Update
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          {activeTab === 'school' && payment.school_id && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => fetchSchoolDetails(payment.school_id)}
+                              className="text-blue-600 hover:text-blue-800"
+                              data-testid={`view-details-${payment.id}`}
+                            >
+                              <ExternalLink className="w-4 h-4 mr-1" />
+                              Details
+                            </Button>
+                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openPaymentModal(payment)}
+                            data-testid={`update-payment-${payment.id}`}
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            Update
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
