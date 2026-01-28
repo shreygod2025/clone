@@ -8,6 +8,7 @@ import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
 import axios from 'axios';
 import Footer from '../components/Footer';
+import PhoneInput from '../components/PhoneInput';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
