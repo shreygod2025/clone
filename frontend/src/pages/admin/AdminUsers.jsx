@@ -50,13 +50,19 @@ const DEFAULT_ROLES = [
   {
     name: 'Sales Team',
     description: 'Sales team members can manage student and school CRM',
-    permissions: ['dashboard', 'students', 'schools', 'support'],
+    permissions: ['dashboard', 'students', 'schools', 'orders', 'support'],
     is_system: false
   },
   {
     name: 'Content Manager',
     description: 'Content managers can manage blogs and settings',
-    permissions: ['dashboard', 'settings'],
+    permissions: ['dashboard', 'blogs', 'settings'],
+    is_system: false
+  },
+  {
+    name: 'Accounts Team',
+    description: 'Accounts team can manage orders and payments',
+    permissions: ['dashboard', 'orders', 'reports'],
     is_system: false
   }
 ];
