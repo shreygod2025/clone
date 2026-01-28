@@ -4050,13 +4050,16 @@ async def get_educator_config():
     if not config:
         # Return default config
         return {
-            "skills": ["Robotics", "Coding", "AI & ML", "Entrepreneurship", "Financial Literacy"],
+            "skills": ["Robotics", "Coding", "AI & ML", "Entrepreneurship", "Financial Literacy", "Other"],
             "grades": ["Pre-primary", "Primary (1-5)", "Middle (6-8)", "High School (9-10)", "Senior (11-12)"],
             "availability_options": ["Weekday Mornings", "Weekday Afternoons", "Weekday Evenings", "Weekends"],
             "experience_options": ["0-1 years", "1-3 years", "3-5 years", "5+ years"],
             "required_fields": ["name", "email", "phone", "skills"],
             "optional_fields": ["experience", "grades_comfortable", "city", "availability"]
         }
+    # Ensure "Other" is always in the skills list
+    if "skills" in config and "Other" not in config["skills"]:
+        config["skills"].append("Other")
     return config
 
 @api_router.put("/educator-config")
