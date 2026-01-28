@@ -16,21 +16,32 @@ const STATUS_OPTIONS = [
   { value: 'closed', label: 'Closed', color: 'bg-slate-100 text-slate-600' },
 ];
 
+const USER_TYPE_OPTIONS = [
+  { value: 'student', label: 'Student' },
+  { value: 'educator', label: 'Educator' },
+  { value: 'school', label: 'School' },
+  { value: 'parent', label: 'Parent' },
+];
+
 const AdminSupport = () => {
   const { getAuthHeaders } = useAuth();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
+  const [userTypeFilter, setUserTypeFilter] = useState('');
 
   useEffect(() => {
     fetchTickets();
-  }, [statusFilter]);
+  }, [statusFilter, userTypeFilter]);
 
   const fetchTickets = async () => {
     setLoading(true);
     try {
-      const params = statusFilter ? `?status=${statusFilter}` : '';
-      const response = await axios.get(`${API}/support/tickets${params}`, {
+      const params = new URLSearchParams();
+      if (statusFilter) params.append('status', statusFilter);
+      if (userTypeFilter) params.append('user_type', userTypeFilter);
+      const queryString = params.toString() ? `?${params.toString()}` : '';
+      const response = await axios.get(`${API}/support/tickets${queryString}`, {
         headers: getAuthHeaders()
       });
       setTickets(response.data);
