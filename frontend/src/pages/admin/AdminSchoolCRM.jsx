@@ -4017,6 +4017,197 @@ const AdminSchoolCRM = () => {
                       <option value="both">Both</option>
                     </select>
                   </div>
+                </div>
+              </div>
+
+              {/* MOU Upload */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <label className="text-sm font-medium text-blue-800 flex items-center gap-2">
+                  <Upload className="w-4 h-4" />
+                  MOU Document
+                </label>
+                <div className="mt-2">
+                  {editOnboardData.mou_url ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-green-700 flex items-center gap-1">
+                        <CheckCircle2 className="w-4 h-4" />
+                        MOU uploaded
+                      </span>
+                      <a 
+                        href={editOnboardData.mou_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-600 underline"
+                      >
+                        View
+                      </a>
+                      <button 
+                        onClick={() => setEditOnboardData(prev => ({ ...prev, mou_url: '' }))}
+                        className="text-xs text-red-600 underline"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="file"
+                        accept=".pdf,.doc,.docx,image/*"
+                        onChange={async (e) => {
+                          const file = e.target.files[0];
+                          if (!file) return;
+                          const formData = new FormData();
+                          formData.append('file', file);
+                          try {
+                            const response = await axios.post(`${API}/upload`, formData, {
+                              headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
+                            });
+                            setEditOnboardData(prev => ({ ...prev, mou_url: response.data.url }));
+                            toast.success('MOU uploaded');
+                          } catch (error) {
+                            toast.error('Failed to upload MOU');
+                          }
+                        }}
+                        className="text-sm"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Grade-wise Pricing */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-slate-700">Grade-wise Student Count & Pricing</label>
+                  <Button variant="ghost" size="sm" onClick={() => setEditOnboardData(prev => ({
+                    ...prev,
+                    grade_pricing: [...(prev.grade_pricing || []), { grade: '', students: '', price_per_student: '' }]
+                  }))} className="text-blue-600">
+                    <Plus className="w-4 h-4 mr-1" /> Add Grade
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {(editOnboardData.grade_pricing || []).map((gp, idx) => (
+                    <div key={idx} className="grid grid-cols-4 gap-2">
+                      <Input
+                        placeholder="Grade (e.g., 1-5)"
+                        value={gp.grade || ''}
+                        onChange={(e) => {
+                          const newGrades = [...(editOnboardData.grade_pricing || [])];
+                          newGrades[idx] = { ...newGrades[idx], grade: e.target.value };
+                          setEditOnboardData(prev => ({ ...prev, grade_pricing: newGrades }));
+                        }}
+                      />
+                      <Input
+                        type="number"
+                        placeholder="No. of students"
+                        value={gp.students || ''}
+                        onChange={(e) => {
+                          const newGrades = [...(editOnboardData.grade_pricing || [])];
+                          newGrades[idx] = { ...newGrades[idx], students: e.target.value };
+                          setEditOnboardData(prev => ({ ...prev, grade_pricing: newGrades }));
+                        }}
+                      />
+                      <Input
+                        type="number"
+                        placeholder="Price/student"
+                        value={gp.price_per_student || ''}
+                        onChange={(e) => {
+                          const newGrades = [...(editOnboardData.grade_pricing || [])];
+                          newGrades[idx] = { ...newGrades[idx], price_per_student: e.target.value };
+                          setEditOnboardData(prev => ({ ...prev, grade_pricing: newGrades }));
+                        }}
+                      />
+                      <div className="flex items-center justify-center text-sm text-slate-600">
+                        ₹{((parseInt(gp.students) || 0) * (parseFloat(gp.price_per_student) || 0)).toLocaleString()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {(editOnboardData.grade_pricing || []).length > 0 && (
+                  <div className="mt-2 p-2 bg-green-50 rounded-lg text-sm">
+                    <span className="font-medium">Total: </span>
+                    {(editOnboardData.grade_pricing || []).reduce((sum, g) => sum + (parseInt(g.students) || 0), 0)} students • 
+                    ₹{(editOnboardData.grade_pricing || []).reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0).toLocaleString()}
+                  </div>
+                )}
+              </div>
+
+              {/* School Contacts */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-slate-700">School Team Contacts</label>
+                  <Button variant="ghost" size="sm" onClick={() => setEditOnboardData(prev => ({
+                    ...prev,
+                    school_contacts: [...(prev.school_contacts || []), { name: '', phone_number: '', country_code: '+91', email: '', role: '' }]
+                  }))} className="text-blue-600">
+                    <Plus className="w-4 h-4 mr-1" /> Add Contact
+                  </Button>
+                </div>
+                <div className="space-y-3">
+                  {(editOnboardData.school_contacts || []).map((contact, idx) => (
+                    <div key={idx} className="bg-slate-50 p-3 rounded-lg space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input
+                          placeholder="Name *"
+                          value={contact.name || ''}
+                          onChange={(e) => {
+                            const newContacts = [...(editOnboardData.school_contacts || [])];
+                            newContacts[idx] = { ...newContacts[idx], name: e.target.value };
+                            setEditOnboardData(prev => ({ ...prev, school_contacts: newContacts }));
+                          }}
+                        />
+                        <select
+                          value={contact.role || ''}
+                          onChange={(e) => {
+                            const newContacts = [...(editOnboardData.school_contacts || [])];
+                            newContacts[idx] = { ...newContacts[idx], role: e.target.value };
+                            setEditOnboardData(prev => ({ ...prev, school_contacts: newContacts }));
+                          }}
+                          className="h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white"
+                        >
+                          <option value="">Select Role *</option>
+                          <option value="principal">Principal</option>
+                          <option value="trustee_owner">Trustee/Owner</option>
+                          <option value="director">Director</option>
+                          <option value="coordinator">Coordinator</option>
+                          <option value="accounts">Accounts</option>
+                        </select>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <PhoneInput
+                          value={contact.phone_number || contact.phone || ''}
+                          onChange={(val) => {
+                            const newContacts = [...(editOnboardData.school_contacts || [])];
+                            newContacts[idx] = { ...newContacts[idx], phone_number: val };
+                            setEditOnboardData(prev => ({ ...prev, school_contacts: newContacts }));
+                          }}
+                          countryCode={contact.country_code || '+91'}
+                          onCountryCodeChange={(code) => {
+                            const newContacts = [...(editOnboardData.school_contacts || [])];
+                            newContacts[idx] = { ...newContacts[idx], country_code: code };
+                            setEditOnboardData(prev => ({ ...prev, school_contacts: newContacts }));
+                          }}
+                          placeholder="Phone *"
+                        />
+                        <Input
+                          placeholder="Email"
+                          value={contact.email || ''}
+                          onChange={(e) => {
+                            const newContacts = [...(editOnboardData.school_contacts || [])];
+                            newContacts[idx] = { ...newContacts[idx], email: e.target.value };
+                            setEditOnboardData(prev => ({ ...prev, school_contacts: newContacts }));
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Total Students - Summary */}
+              <div className="bg-slate-100 rounded-lg p-4">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-sm font-medium text-slate-700">Total Students</label>
                     <Input
