@@ -77,6 +77,25 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ Two-step flow: Select follow-up type first (Message or Meeting)
 - ✅ Date/time selectors, notes, and AI email option appear after type selection
 - ✅ Fixed modal overflow - now properly contained with max-h-[90vh] and scrollable
+- ✅ **Message Followup:** Shows only Date + Note (no time selector)
+- ✅ **Meeting Followup:** Shows Date + Time + Mode selection (Online/In-Person)
+- ✅ **Online Mode:** Shows Meeting Link input field
+- ✅ **In-Person Mode:** Shows Meeting Address textarea
+- ✅ Backend stores meeting_mode, meeting_link, meeting_address fields
+
+**Contact Management Filters (Jan 28, 2026):**
+- ✅ Added City filter dropdown (All Cities + CITIES list)
+- ✅ Added Role filter dropdown (Principal, Trustee/Owner, Director, Coordinator, Accounts)
+- ✅ Added Stage filter dropdown (New Leads, Meeting Done, Converted, Active, Renewed, Lost, Archived)
+- ✅ Filters correctly narrow down contact list
+
+**Edit School Modal Enhancement (Active Schools):**
+- ✅ Added MOU Document upload section with view/remove functionality
+- ✅ Added Grade-wise Student Count & Pricing with Add Grade button
+- ✅ Added School Team Contacts section with Add Contact button
+- ✅ Payment Details: Total Amount, Payment Mode, Payment Method
+- ✅ Contract Period: Contract Start and End dates
+- ✅ Now matches all features from the Conversion popup
 
 **Quoted Price & Offerings for School Leads:**
 - ✅ Added Quoted Price (₹) field to Admin School CRM Add Lead form
