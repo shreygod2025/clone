@@ -29,7 +29,6 @@ const ResourcesPage = () => {
         setSelectedResource(resource);
       }
     } else if (!slug && resources.length > 0) {
-      // If no slug, show the first resource
       setSelectedResource(resources[0]);
     }
   }, [slug, resources]);
@@ -38,7 +37,6 @@ const ResourcesPage = () => {
     setLoading(true);
     try {
       const response = await axios.get(`${API}/blogs?blog_type=resource&published_only=true`);
-      // Sort by order and then by created_at
       const sorted = response.data.sort((a, b) => {
         if (a.order !== b.order) return a.order - b.order;
         return new Date(a.created_at) - new Date(b.created_at);
@@ -57,7 +55,6 @@ const ResourcesPage = () => {
     r.tags?.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  // Build navigation tree (parent -> children)
   const topLevelResources = filteredResources.filter(r => !r.parent_id);
   const getChildren = (parentId) => filteredResources.filter(r => r.parent_id === parentId);
 
@@ -80,9 +77,6 @@ const ResourcesPage = () => {
       <Helmet>
         <title>{selectedResource ? `${selectedResource.title} | OLL Resources` : 'Open Learning Resources | OLL'}</title>
         <meta name="description" content={selectedResource?.excerpt || 'Free learning resources, documentation, and guides for robotics, coding, and STEM education.'} />
-        <meta property="og:title" content={selectedResource?.title || 'Open Learning Resources'} />
-        <meta property="og:description" content={selectedResource?.excerpt || 'Free learning resources from OLL'} />
-        {selectedResource?.cover_image && <meta property="og:image" content={selectedResource.cover_image} />}
         <link rel="canonical" href={`https://oll.co/resources${slug ? `/${slug}` : ''}`} />
       </Helmet>
 
@@ -106,7 +100,6 @@ const ResourcesPage = () => {
             overflow-y-auto pt-20 lg:pt-4
           `}>
             <div className="p-4">
-              {/* Header */}
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-10 h-10 bg-gradient-to-br from-[#1E3A5F] to-[#D63031] rounded-xl flex items-center justify-center">
                   <BookOpen className="w-5 h-5 text-white" />
@@ -117,7 +110,6 @@ const ResourcesPage = () => {
                 </div>
               </div>
 
-              {/* Search */}
               <div className="relative mb-6">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <Input
@@ -128,18 +120,39 @@ const ResourcesPage = () => {
                 />
               </div>
 
-              {/* Navigation Tree */}
               <nav className="space-y-1">
-                {topLevelResources.map(resource => (
-                  <ResourceNavItem
-                    key={resource.id}
-                    resource={resource}
-                    childResources={getChildren(resource.id)}
-                    selectedId={selectedResource?.id}
-                    onSelect={handleResourceClick}
-                    getChildren={getChildren}
-                  />
-                ))}
+                {topLevelResources.map(resource => {
+                  const childItems = getChildren(resource.id);
+                  const isSelected = resource.id === selectedResource?.id;
+                  return (
+                    <div key={resource.id}>
+                      <button
+                        onClick={() => handleResourceClick(resource)}
+                        className={`w-full text-left px-3 py-2 rounded-lg transition-all flex items-center gap-2 ${
+                          isSelected ? 'bg-[#1E3A5F] text-white' : 'text-slate-700 hover:bg-slate-100'
+                        }`}
+                      >
+                        {childItems.length > 0 && <ChevronRight className="w-4 h-4" />}
+                        <span className="flex-1 truncate text-sm">{resource.title}</span>
+                      </button>
+                      {childItems.length > 0 && (
+                        <div className="ml-4 mt-1 space-y-1">
+                          {childItems.map(child => (
+                            <button
+                              key={child.id}
+                              onClick={() => handleResourceClick(child)}
+                              className={`w-full text-left px-3 py-2 rounded-lg transition-all text-sm ${
+                                child.id === selectedResource?.id ? 'bg-[#1E3A5F] text-white' : 'text-slate-600 hover:bg-slate-100'
+                              }`}
+                            >
+                              {child.title}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </nav>
 
               {filteredResources.length === 0 && (
@@ -155,14 +168,12 @@ const ResourcesPage = () => {
           <main className="flex-1 min-h-screen lg:ml-0">
             {selectedResource ? (
               <article className="max-w-4xl mx-auto px-4 sm:px-6 py-8 lg:py-12">
-                {/* Breadcrumb */}
                 <nav className="flex items-center gap-2 text-sm text-slate-500 mb-6">
                   <Link to="/resources" className="hover:text-[#D63031]">Resources</Link>
                   <ChevronRight className="w-4 h-4" />
                   <span className="text-slate-700">{selectedResource.title}</span>
                 </nav>
 
-                {/* Cover Image */}
                 {selectedResource.cover_image && (
                   <div className="mb-8 rounded-2xl overflow-hidden">
                     <img 
@@ -173,7 +184,6 @@ const ResourcesPage = () => {
                   </div>
                 )}
 
-                {/* Title & Meta */}
                 <header className="mb-8">
                   <h1 className="text-3xl sm:text-4xl font-bold text-[#1E3A5F] mb-4">
                     {selectedResource.title}
@@ -200,7 +210,6 @@ const ResourcesPage = () => {
                   )}
                 </header>
 
-                {/* Content */}
                 <div 
                   className="prose prose-slate max-w-none
                     prose-headings:text-[#1E3A5F] prose-headings:font-bold
@@ -214,26 +223,6 @@ const ResourcesPage = () => {
                   dangerouslySetInnerHTML={{ __html: selectedResource.content }}
                 />
 
-                {/* Child Resources */}
-                {getChildren(selectedResource.id).length > 0 && (
-                  <div className="mt-12 pt-8 border-t border-slate-200">
-                    <h2 className="text-xl font-bold text-[#1E3A5F] mb-4">Related Resources</h2>
-                    <div className="grid gap-4">
-                      {getChildren(selectedResource.id).map(child => (
-                        <Link
-                          key={child.id}
-                          to={`/resources/${child.slug}`}
-                          className="p-4 bg-white rounded-xl border border-slate-200 hover:border-[#D63031] transition-colors"
-                        >
-                          <h3 className="font-semibold text-[#1E3A5F]">{child.title}</h3>
-                          <p className="text-sm text-slate-500 mt-1">{child.excerpt}</p>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Navigation */}
                 <div className="mt-12 pt-8 border-t border-slate-200 flex items-center justify-between">
                   <Link to="/resources" className="flex items-center gap-2 text-[#D63031] hover:underline">
                     <ArrowLeft className="w-4 h-4" /> All Resources
@@ -248,7 +237,6 @@ const ResourcesPage = () => {
                   <p className="text-slate-500">Choose a resource from the sidebar to start learning</p>
                 </div>
 
-                {/* All Resources Grid */}
                 <div className="mt-12 grid md:grid-cols-2 gap-6">
                   {topLevelResources.map(resource => (
                     <Link
@@ -275,51 +263,6 @@ const ResourcesPage = () => {
         <Footer />
       </div>
     </>
-  );
-};
-
-// Recursive Navigation Item Component
-const ResourceNavItem = ({ resource, childResources, selectedId, onSelect, getChildren, depth = 0 }) => {
-  const [expanded, setExpanded] = useState(true);
-  const isSelected = resource.id === selectedId;
-  const hasChildren = childResources.length > 0;
-
-  return (
-    <div>
-      <button
-        onClick={() => {
-          onSelect(resource);
-          if (hasChildren) setExpanded(!expanded);
-        }}
-        className={`w-full text-left px-3 py-2 rounded-lg transition-all flex items-center gap-2 ${
-          isSelected 
-            ? 'bg-[#1E3A5F] text-white' 
-            : 'text-slate-700 hover:bg-slate-100'
-        }`}
-        style={{ paddingLeft: `${12 + depth * 16}px` }}
-      >
-        {hasChildren && (
-          <ChevronRight className={`w-4 h-4 transition-transform ${expanded ? 'rotate-90' : ''}`} />
-        )}
-        <span className="flex-1 truncate text-sm">{resource.title}</span>
-      </button>
-      
-      {hasChildren && expanded && (
-        <div className="mt-1">
-          {childResources.map(child => (
-            <ResourceNavItem
-              key={child.id}
-              resource={child}
-              childResources={getChildren(child.id)}
-              selectedId={selectedId}
-              onSelect={onSelect}
-              getChildren={getChildren}
-              depth={depth + 1}
-            />
-          ))}
-        </div>
-      )}
-    </div>
   );
 };
 
