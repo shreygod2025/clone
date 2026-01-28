@@ -84,6 +84,17 @@ const AdminSupport = () => {
             <option key={s.value} value={s.value}>{s.label}</option>
           ))}
         </select>
+        <select
+          value={userTypeFilter}
+          onChange={(e) => setUserTypeFilter(e.target.value)}
+          className="h-10 px-4 border border-slate-200 rounded-lg bg-white"
+          data-testid="user-type-filter"
+        >
+          <option value="">All User Types</option>
+          {USER_TYPE_OPTIONS.map(s => (
+            <option key={s.value} value={s.value}>{s.label}</option>
+          ))}
+        </select>
       </div>
 
       {loading ? (
