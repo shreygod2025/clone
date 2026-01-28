@@ -86,6 +86,21 @@ const InquiryPage = () => {
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [autocompleteField, setAutocompleteField] = useState('');
   
+  // Attachment states
+  const [attachments, setAttachments] = useState([]);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  
+  // Voice recording states
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioBlob, setAudioBlob] = useState(null);
+  const [audioUrl, setAudioUrl] = useState(null);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const timerRef = useRef(null);
+  const audioRef = useRef(null);
+  
   const [formData, setFormData] = useState({
     inquiry_type: '',
     action_type: '', // lead or query
