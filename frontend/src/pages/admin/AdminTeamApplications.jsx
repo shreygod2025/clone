@@ -458,44 +458,152 @@ const AdminTeamApplications = () => {
 
       {/* View Application Modal */}
       <Dialog open={!!viewApplication} onOpenChange={() => setViewApplication(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Application Details</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <User className="w-5 h-5 text-blue-600" />
+              Application Details
+            </DialogTitle>
           </DialogHeader>
           {viewApplication && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs text-slate-500">Name</label>
-                  <p className="font-medium">{viewApplication.name}</p>
-                </div>
-                <div>
-                  <label className="text-xs text-slate-500">Role</label>
-                  <p className="font-medium">{viewApplication.role}</p>
-                </div>
-                <div>
-                  <label className="text-xs text-slate-500">Phone</label>
-                  <p className="font-medium">{viewApplication.phone}</p>
-                </div>
-                <div>
-                  <label className="text-xs text-slate-500">Email</label>
-                  <p className="font-medium">{viewApplication.email || '-'}</p>
-                </div>
-                <div>
-                  <label className="text-xs text-slate-500">City</label>
-                  <p className="font-medium">{viewApplication.city || '-'}</p>
-                </div>
-                <div>
-                  <label className="text-xs text-slate-500">Experience</label>
-                  <p className="font-medium">{viewApplication.experience || '-'}</p>
+            <div className="space-y-6">
+              {/* Basic Info */}
+              <div className="bg-slate-50 rounded-lg p-4">
+                <h4 className="text-sm font-semibold text-slate-700 mb-3">Personal Information</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs text-slate-500">Name</label>
+                    <p className="font-medium">{viewApplication.name}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500">Phone</label>
+                    <p className="font-medium flex items-center gap-1">
+                      <Phone className="w-3 h-3 text-slate-400" />
+                      {viewApplication.phone}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500">Email</label>
+                    <p className="font-medium flex items-center gap-1">
+                      <Mail className="w-3 h-3 text-slate-400" />
+                      {viewApplication.email || '-'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500">City</label>
+                    <p className="font-medium flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-slate-400" />
+                      {viewApplication.city || '-'}
+                    </p>
+                  </div>
                 </div>
               </div>
-              {viewApplication.message && (
-                <div>
-                  <label className="text-xs text-slate-500">Message</label>
-                  <p className="text-sm bg-slate-50 rounded-lg p-3 mt-1">{viewApplication.message}</p>
+
+              {/* Professional Info */}
+              <div className="bg-blue-50 rounded-lg p-4">
+                <h4 className="text-sm font-semibold text-blue-700 mb-3">Professional Details</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs text-slate-500">Role / Position</label>
+                    <p className="font-medium">{viewApplication.role || '-'}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500">Experience</label>
+                    <p className="font-medium">{viewApplication.experience || '-'}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500">Availability</label>
+                    <p className="font-medium">{viewApplication.availability || '-'}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500">Source</label>
+                    <p className="font-medium capitalize">{viewApplication.source?.replace(/_/g, ' ') || '-'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Links & Resume */}
+              {(viewApplication.resume_url || viewApplication.linkedin || viewApplication.portfolio) && (
+                <div className="bg-green-50 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-green-700 mb-3">Links & Documents</h4>
+                  <div className="space-y-3">
+                    {viewApplication.resume_url && (
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-slate-500 w-24">Resume:</span>
+                        <a 
+                          href={viewApplication.resume_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline text-sm flex items-center gap-1"
+                        >
+                          <FileText className="w-4 h-4" />
+                          View Resume
+                        </a>
+                      </div>
+                    )}
+                    {viewApplication.linkedin && (
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-slate-500 w-24">LinkedIn:</span>
+                        <a 
+                          href={viewApplication.linkedin.startsWith('http') ? viewApplication.linkedin : `https://${viewApplication.linkedin}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline text-sm"
+                        >
+                          {viewApplication.linkedin}
+                        </a>
+                      </div>
+                    )}
+                    {viewApplication.portfolio && (
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-slate-500 w-24">Portfolio:</span>
+                        <a 
+                          href={viewApplication.portfolio.startsWith('http') ? viewApplication.portfolio : `https://${viewApplication.portfolio}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline text-sm"
+                        >
+                          {viewApplication.portfolio}
+                        </a>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
+
+              {/* Message / Cover Letter */}
+              {viewApplication.message && (
+                <div>
+                  <label className="text-xs text-slate-500">Cover Letter / Message</label>
+                  <p className="text-sm bg-slate-50 rounded-lg p-3 mt-1 whitespace-pre-wrap">{viewApplication.message}</p>
+                </div>
+              )}
+
+              {/* Applied Position Info */}
+              {viewApplication.applied_position_id && (
+                <div className="bg-purple-50 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-purple-700 mb-2">Applied Position</h4>
+                  <p className="text-sm">{viewApplication.role}</p>
+                </div>
+              )}
+
+              {/* Status & Assignment */}
+              <div className="flex items-center gap-4 py-2 border-t border-b">
+                <div>
+                  <label className="text-xs text-slate-500">Status</label>
+                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${STATUS_CONFIG[viewApplication.status]?.color || 'bg-slate-100 text-slate-700'}`}>
+                    {STATUS_CONFIG[viewApplication.status]?.label || viewApplication.status}
+                  </span>
+                </div>
+                {viewApplication.assigned_to && (
+                  <div>
+                    <label className="text-xs text-slate-500">Assigned To</label>
+                    <p className="font-medium text-sm">{teamUsers.find(u => u.id === viewApplication.assigned_to)?.name || 'Unknown'}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Comments */}
               {viewApplication.comments?.length > 0 && (
                 <div>
                   <label className="text-xs text-slate-500 mb-2 block">Comments ({viewApplication.comments.length})</label>
@@ -513,8 +621,13 @@ const AdminTeamApplications = () => {
                   </div>
                 </div>
               )}
-              <div className="text-xs text-slate-400">
-                Created: {viewApplication.created_at ? format(new Date(viewApplication.created_at), 'PPpp') : '-'}
+
+              {/* Metadata */}
+              <div className="text-xs text-slate-400 flex items-center justify-between">
+                <span>Created: {viewApplication.created_at ? format(new Date(viewApplication.created_at), 'PPpp') : '-'}</span>
+                {viewApplication.updated_at && (
+                  <span>Updated: {format(new Date(viewApplication.updated_at), 'PPpp')}</span>
+                )}
               </div>
             </div>
           )}
