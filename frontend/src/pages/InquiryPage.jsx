@@ -126,6 +126,7 @@ const InquiryPage = () => {
     age_group: '',
     skill: '',
     skills: [], // Multi-select for students
+    otherSkill: '', // Custom skill when "Other" is selected
     learning_mode: '',
     selected_center: '',
     
