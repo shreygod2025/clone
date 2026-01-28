@@ -94,8 +94,8 @@ function App() {
             <Route path="/join-team" element={<JoinTeamPage />} />
             <Route path="/blogs" element={<BlogsPage />} />
             <Route path="/blogs/:slug" element={<BlogDetailPage />} />
-            {/* <Route path="/resources" element={<ResourcesPage />} />
-            <Route path="/resources/:slug" element={<ResourcesPage />} /> */}
+            <Route path="/resources" element={<ResourcesPage />} />
+            <Route path="/resources/:slug" element={<ResourcesPage />} />
             <Route path="/faq" element={<FAQPage />} />
             <Route path="/faqs" element={<FAQPage />} />
             <Route path="/centers" element={<CentersPage />} />
