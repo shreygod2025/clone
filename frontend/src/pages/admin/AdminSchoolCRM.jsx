@@ -3088,14 +3088,53 @@ const AdminSchoolCRM = () => {
               <div className="bg-cyan-50 rounded-lg p-3">
                 <p className="text-sm text-cyan-700">
                   Current followup: <strong>{showFollowupModal.followup_date}</strong>
+                  {showFollowupModal.followup_type && (
+                    <span className="ml-2 px-2 py-0.5 bg-cyan-100 rounded text-xs">
+                      {showFollowupModal.followup_type === 'meeting' ? 'Meeting' : 'Message'}
+                    </span>
+                  )}
                 </p>
                 {showFollowupModal.followup_comment && (
                   <p className="text-xs text-cyan-600 mt-1">{showFollowupModal.followup_comment}</p>
                 )}
               </div>
             )}
+
+            {/* Followup Type Selection */}
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Followup Date</label>
+              <label className="block text-sm font-medium text-slate-700 mb-3">Followup Type</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setFollowupData(prev => ({...prev, followup_type: 'message'}))}
+                  className={`p-3 rounded-lg border text-center transition-all ${
+                    followupData.followup_type === 'message' 
+                      ? 'border-cyan-500 bg-cyan-50 text-cyan-700' 
+                      : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                  }`}
+                >
+                  <MessageSquare className="w-5 h-5 mx-auto mb-1" />
+                  <span className="block text-sm font-medium">Message</span>
+                  <span className="block text-xs text-slate-500">Call/WhatsApp/Email</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFollowupData(prev => ({...prev, followup_type: 'meeting'}))}
+                  className={`p-3 rounded-lg border text-center transition-all ${
+                    followupData.followup_type === 'meeting' 
+                      ? 'border-cyan-500 bg-cyan-50 text-cyan-700' 
+                      : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                  }`}
+                >
+                  <Calendar className="w-5 h-5 mx-auto mb-1" />
+                  <span className="block text-sm font-medium">Meeting</span>
+                  <span className="block text-xs text-slate-500">Online/In-person</span>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Select Date</label>
               <div className="flex justify-center">
                 <CalendarComponent
                   mode="single"
@@ -3106,6 +3145,27 @@ const AdminSchoolCRM = () => {
                 />
               </div>
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Select Time</label>
+              <div className="grid grid-cols-4 gap-2">
+                {TIME_SLOTS.map(time => (
+                  <button
+                    key={time}
+                    type="button"
+                    className={`p-2 rounded-lg border text-sm font-medium transition-all ${
+                      followupData.time === time 
+                        ? 'border-cyan-500 bg-cyan-100 text-cyan-700' 
+                        : 'border-slate-200 bg-white hover:border-slate-300'
+                    }`}
+                    onClick={() => setFollowupData(prev => ({...prev, time}))}
+                  >
+                    {time}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Followup Note</label>
               <Textarea
