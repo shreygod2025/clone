@@ -2355,6 +2355,94 @@ const AdminSchoolCRM = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Meeting Done Modal */}
+      <Dialog open={!!showMeetingDoneModal} onOpenChange={() => setShowMeetingDoneModal(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-green-600" />
+              Meeting Completed - {showMeetingDoneModal?.school_name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Meeting Notes/Minutes */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Meeting Notes / Minutes *</label>
+              <Textarea
+                placeholder="Enter key discussion points, outcomes, and action items..."
+                value={meetingDoneData.notes}
+                onChange={(e) => setMeetingDoneData({...meetingDoneData, notes: e.target.value})}
+                className="min-h-[120px]"
+                data-testid="meeting-notes"
+              />
+            </div>
+
+            {/* Add Followup Option */}
+            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+              <input
+                type="checkbox"
+                id="add-followup"
+                checked={meetingDoneData.add_followup}
+                onChange={(e) => setMeetingDoneData({...meetingDoneData, add_followup: e.target.checked})}
+                className="w-4 h-4 rounded border-slate-300"
+              />
+              <label htmlFor="add-followup" className="text-sm font-medium text-slate-700 cursor-pointer">
+                Schedule a follow-up meeting
+              </label>
+            </div>
+
+            {/* Followup Date & Time (shown only if add_followup is checked) */}
+            {meetingDoneData.add_followup && (
+              <div className="space-y-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                <p className="text-sm font-medium text-blue-800">Follow-up Meeting Details</p>
+                
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Select Date</label>
+                  <div className="flex justify-center">
+                    <CalendarComponent
+                      mode="single"
+                      selected={meetingDoneData.followup_date}
+                      onSelect={(date) => setMeetingDoneData({...meetingDoneData, followup_date: date})}
+                      disabled={(date) => date < new Date() || date > addDays(new Date(), 60) || date.getDay() === 0}
+                      className="rounded-xl border border-slate-200 bg-white"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Select Time</label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {TIME_SLOTS.map(time => (
+                      <button
+                        key={time}
+                        type="button"
+                        className={`p-2 rounded-lg border text-sm font-medium transition-all ${
+                          meetingDoneData.followup_time === time 
+                            ? 'border-blue-500 bg-blue-100 text-blue-700' 
+                            : 'border-slate-200 bg-white hover:border-slate-300'
+                        }`}
+                        onClick={() => setMeetingDoneData({...meetingDoneData, followup_time: time})}
+                      >
+                        {time}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" onClick={() => setShowMeetingDoneModal(null)} className="flex-1">
+                Cancel
+              </Button>
+              <Button onClick={submitMeetingDone} className="btn-primary flex-1" data-testid="submit-meeting-done">
+                {meetingDoneData.add_followup ? 'Complete & Schedule Followup' : 'Mark as Done'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Convert Modal */}
       <Dialog open={!!showConvertModal} onOpenChange={() => setShowConvertModal(null)}>
         <DialogContent className="max-w-lg">
