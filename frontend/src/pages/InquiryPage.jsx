@@ -37,6 +37,7 @@ const SKILL_OPTIONS = [
   { value: 'ai', label: 'Artificial Intelligence' },
   { value: 'entrepreneurship', label: 'Entrepreneurship' },
   { value: 'financial', label: 'Financial Literacy' },
+  { value: 'other', label: 'Other' },
 ];
 
 const AGE_OPTIONS = [
