@@ -1475,13 +1475,25 @@ const AdminStudentCRM = () => {
                 <label className="block text-sm font-medium text-slate-700 mb-2">Skill Interest</label>
                 <select
                   value={newLead.skill}
-                  onChange={(e) => setNewLead({...newLead, skill: e.target.value})}
+                  onChange={(e) => setNewLead({...newLead, skill: e.target.value, otherSkill: ''})}
                   className="w-full h-10 px-4 border border-slate-200 rounded-lg"
                   data-testid="new-lead-skill"
                 >
                   <option value="">Select skill</option>
                   {SKILLS.map(s => <option key={s} value={s.toLowerCase()}>{s}</option>)}
                 </select>
+                {/* Other skill text input */}
+                {newLead.skill === 'other' && (
+                  <div className="mt-2">
+                    <Input
+                      placeholder="Please specify the skill"
+                      value={newLead.otherSkill}
+                      onChange={(e) => setNewLead({...newLead, otherSkill: e.target.value})}
+                      className="h-10"
+                      data-testid="other-skill-input"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
