@@ -5631,6 +5631,204 @@ async def update_tracking_ticket(ticket_id: str, data: dict, user: dict = Depend
     return {"success": True, "ticket": updated_ticket}
 
 # ========================
+# ORDERS & PAYMENTS
+# ========================
+
+@api_router.get("/orders/school-payments")
+async def get_school_payments(
+    user: dict = Depends(get_current_user)
+):
+    """Get all school payments from converted/active schools with payment tranches"""
+    payments = []
+    
+    # Get all schools with onboarding_data containing payment tranches
+    schools = await db.school_inquiries.find({
+        "status": {"$in": ["converted", "active", "renewed"]},
+    }).to_list(length=None)
+    
+    for school in schools:
+        onboarding_data = school.get("onboarding_data", {})
+        payment_tranches = onboarding_data.get("payment_tranches", [])
+        school_payments = school.get("payments", [])
+        
+        # Create payment records from tranches
+        for idx, tranche in enumerate(payment_tranches):
+            # Check if there's already a payment record for this tranche
+            existing_payment = next(
+                (p for p in school_payments if p.get("tranche_index") == idx),
+                None
+            )
+            
+            amount = float(tranche.get("amount") or 0) if tranche.get("amount") else None
+            if not amount and tranche.get("percentage"):
+                total_amount = float(onboarding_data.get("total_amount") or 0)
+                amount = total_amount * float(tranche.get("percentage") or 0) / 100
+            
+            payment = {
+                "id": existing_payment.get("id") if existing_payment else f"pay-{school.get('id')}-{idx}",
+                "school_id": school.get("id"),
+                "school_name": school.get("school_name", ""),
+                "contact_name": school.get("contact_name", ""),
+                "tranche_index": idx,
+                "tranche_info": f"Tranche {idx + 1}" + (f" ({tranche.get('percentage')}%)" if tranche.get("percentage") else ""),
+                "amount": amount or 0,
+                "due_date": tranche.get("date") or None,
+                "status": existing_payment.get("status", "pending") if existing_payment else "pending",
+                "payment_date": existing_payment.get("payment_date") if existing_payment else None,
+                "transaction_id": existing_payment.get("transaction_id") if existing_payment else None,
+                "invoice_url": existing_payment.get("invoice_url") if existing_payment else None,
+                "receipt_url": existing_payment.get("receipt_url") if existing_payment else None,
+                "notes": existing_payment.get("notes") if existing_payment else tranche.get("notes", ""),
+                "created_at": existing_payment.get("created_at") if existing_payment else school.get("created_at"),
+            }
+            payments.append(payment)
+    
+    return payments
+
+@api_router.get("/orders/student-payments")
+async def get_student_payments(
+    user: dict = Depends(get_current_user)
+):
+    """Get all student payments (from session bookings, etc.)"""
+    payments = []
+    
+    # Get student payments from a dedicated collection or from student records
+    student_payments = await db.student_payments.find({}).to_list(length=None)
+    
+    for payment in student_payments:
+        payment["id"] = payment.get("id", str(payment.get("_id", "")))
+        payment.pop("_id", None)
+        payments.append(payment)
+    
+    return payments
+
+@api_router.patch("/orders/{payment_id}")
+async def update_payment(
+    payment_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Update a payment status, add invoice/receipt"""
+    payment_type = data.get("type", "school")
+    
+    if payment_type == "school":
+        # Payment ID format: pay-{school_id}-{tranche_index}
+        parts = payment_id.split("-")
+        if len(parts) >= 3:
+            school_id = "-".join(parts[1:-1])
+            tranche_index = int(parts[-1])
+        else:
+            raise HTTPException(status_code=400, detail="Invalid payment ID format")
+        
+        school = await db.school_inquiries.find_one({"id": school_id})
+        if not school:
+            raise HTTPException(status_code=404, detail="School not found")
+        
+        # Update the payment record
+        payments = school.get("payments", [])
+        existing_idx = next(
+            (i for i, p in enumerate(payments) if p.get("tranche_index") == tranche_index),
+            None
+        )
+        
+        payment_record = {
+            "id": payment_id,
+            "tranche_index": tranche_index,
+            "status": data.get("status", "pending"),
+            "payment_date": data.get("payment_date"),
+            "transaction_id": data.get("transaction_id"),
+            "invoice_url": data.get("invoice_url"),
+            "receipt_url": data.get("receipt_url"),
+            "notes": data.get("notes", ""),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_by": user.get("name", user.get("email", "Admin")),
+        }
+        
+        if existing_idx is not None:
+            payment_record["created_at"] = payments[existing_idx].get("created_at", datetime.now(timezone.utc).isoformat())
+            payments[existing_idx] = payment_record
+        else:
+            payment_record["created_at"] = datetime.now(timezone.utc).isoformat()
+            payments.append(payment_record)
+        
+        # Update onboarding workflow if payment is marked as paid
+        update_fields = {"payments": payments, "updated_at": datetime.now(timezone.utc).isoformat()}
+        
+        if data.get("status") == "paid":
+            # Check if all tranches are paid
+            onboarding_data = school.get("onboarding_data", {})
+            payment_tranches = onboarding_data.get("payment_tranches", [])
+            all_paid = all(
+                any(p.get("tranche_index") == i and p.get("status") == "paid" for p in payments)
+                for i in range(len(payment_tranches))
+            ) if payment_tranches else True
+            
+            # Update onboarding workflow step
+            workflow = school.get("onboarding_workflow", {})
+            steps = workflow.get("steps", {})
+            payment_step = steps.get("payment_collection", {})
+            
+            # Update payment step data
+            payment_step["data"] = payment_step.get("data", {})
+            payment_step["data"]["amount"] = data.get("amount") or payment_step["data"].get("amount")
+            payment_step["data"]["payment_date"] = data.get("payment_date")
+            payment_step["data"]["transaction_id"] = data.get("transaction_id")
+            payment_step["data"]["receipt_url"] = data.get("receipt_url")
+            payment_step["data"]["invoice_url"] = data.get("invoice_url")
+            payment_step["data"]["payment_mode"] = "bank_transfer"  # Default
+            
+            # If all tranches paid, mark step as complete
+            if all_paid and not payment_step.get("completed"):
+                payment_step["completed"] = True
+                payment_step["completed_date"] = datetime.now(timezone.utc).isoformat()
+                
+                # Update current step
+                step_order = ["payment_collection", "kit_delivery", "distribution_checking", 
+                              "technical_check", "teacher_training", "calendar_making", 
+                              "timetable_finalization", "mou_signing", "school_confirmation"]
+                for sk in step_order:
+                    if not steps.get(sk, {}).get("completed", False):
+                        workflow["current_step"] = sk
+                        break
+                
+                # Add to timeline
+                timeline = workflow.get("timeline", [])
+                timeline.append({
+                    "action": "Payment Collection - Completed",
+                    "date": datetime.now(timezone.utc).isoformat(),
+                    "by": user.get("name", user.get("email", "Admin")),
+                    "step": "payment_collection"
+                })
+                workflow["timeline"] = timeline
+            
+            steps["payment_collection"] = payment_step
+            workflow["steps"] = steps
+            update_fields["onboarding_workflow"] = workflow
+        
+        await db.school_inquiries.update_one(
+            {"id": school_id},
+            {"$set": update_fields}
+        )
+        
+        return {"success": True, "payment_id": payment_id, "status": data.get("status")}
+    
+    else:
+        # Student payment
+        await db.student_payments.update_one(
+            {"id": payment_id},
+            {"$set": {
+                "status": data.get("status", "pending"),
+                "payment_date": data.get("payment_date"),
+                "transaction_id": data.get("transaction_id"),
+                "invoice_url": data.get("invoice_url"),
+                "receipt_url": data.get("receipt_url"),
+                "notes": data.get("notes", ""),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }}
+        )
+        return {"success": True, "payment_id": payment_id}
+
+# ========================
 # DATA CENTER - UNIFIED DATABASE
 # ========================
 
