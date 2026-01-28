@@ -87,7 +87,7 @@ const ResourcesPage = () => {
       </Helmet>
 
       <div className="min-h-screen bg-slate-50">
-        <Header />
+        <Navbar />
         
         <div className="flex">
           {/* Mobile Sidebar Toggle */}
