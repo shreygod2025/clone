@@ -352,7 +352,8 @@ const AdminSchoolCRM = () => {
         status: 'meeting_done',
         notes: showMeetingDoneModal.notes 
           ? `${showMeetingDoneModal.notes}\n\n--- Meeting Notes (${format(new Date(), 'dd MMM yyyy')}) ---\n${meetingDoneData.notes}`
-          : `--- Meeting Notes (${format(new Date(), 'dd MMM yyyy')}) ---\n${meetingDoneData.notes}`
+          : `--- Meeting Notes (${format(new Date(), 'dd MMM yyyy')}) ---\n${meetingDoneData.notes}`,
+        quoted_price: meetingDoneData.quoted_price || showMeetingDoneModal.quoted_price
       };
       
       // If followup is requested, add meeting date/time for next meeting
@@ -368,7 +369,7 @@ const AdminSchoolCRM = () => {
       
       toast.success(meetingDoneData.add_followup ? 'Meeting completed & followup scheduled!' : 'Meeting marked as done!');
       setShowMeetingDoneModal(null);
-      setMeetingDoneData({ notes: '', add_followup: false, followup_date: null, followup_time: '' });
+      setMeetingDoneData({ notes: '', quoted_price: '', add_followup: false, followup_date: null, followup_time: '' });
       fetchInquiries();
     } catch (error) {
       toast.error('Failed to update meeting status');
