@@ -63,8 +63,15 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 **Meeting Done Popup in School CRM:**
 - ✅ New "Meeting Completed" modal with required meeting notes/minutes textarea
 - ✅ Added Quoted Price field to enter price discussed in meeting
-- ✅ "Schedule a follow-up meeting" checkbox with calendar and time slots
+- ✅ Two-step follow-up selection: No Follow-up, Message, or Meeting type
+- ✅ Date/time selectors appear only after selecting Message or Meeting type
 - ✅ Meeting notes appended with date stamp to existing notes
+- ✅ Fixed modal overflow - now properly contained with max-h-[90vh] and scrollable
+
+**Schedule Followup Popup in School CRM:**
+- ✅ Two-step flow: Select follow-up type first (Message or Meeting)
+- ✅ Date/time selectors, notes, and AI email option appear after type selection
+- ✅ Fixed modal overflow - now properly contained with max-h-[90vh] and scrollable
 
 **Quoted Price & Offerings for School Leads:**
 - ✅ Added Quoted Price (₹) field to Admin School CRM Add Lead form
