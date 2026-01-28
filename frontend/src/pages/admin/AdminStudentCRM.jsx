@@ -97,6 +97,7 @@ const AdminStudentCRM = () => {
     countryCode: '+91',
     email: '',
     skill: '',
+    otherSkill: '', // Custom skill when "Other" is selected
     city: '',
     age_group: '',
     learning_mode: 'online',
