@@ -42,9 +42,6 @@ const AdminLayout = ({ children, title }) => {
     // Dashboard is always visible
     if (item.permission === null) return true;
     
-    // Admin-only items hidden for team members
-    if (item.permission === 'admin_only') return false;
-    
     // Check if team member has permission
     const userPermissions = user?.permissions || [];
     return userPermissions.includes(item.permission);
