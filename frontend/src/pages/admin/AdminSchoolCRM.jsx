@@ -75,6 +75,13 @@ const AdminSchoolCRM = () => {
   const [showEditOnboardingModal, setShowEditOnboardingModal] = useState(null);
   const [showAddMeetingModal, setShowAddMeetingModal] = useState(null);
   const [showOnboardingWorkflowModal, setShowOnboardingWorkflowModal] = useState(null);
+  const [showMeetingDoneModal, setShowMeetingDoneModal] = useState(null);
+  const [meetingDoneData, setMeetingDoneData] = useState({ 
+    notes: '', 
+    add_followup: false, 
+    followup_date: null, 
+    followup_time: '' 
+  });
   const [newMeetingData, setNewMeetingData] = useState({ date: null, time: '', type: 'offline', notes: '' });
   const [newComment, setNewComment] = useState('');
   
