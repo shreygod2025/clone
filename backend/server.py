@@ -5490,7 +5490,18 @@ async def get_public_tracking(tracking_token: str):
             "contract_end": school.get("onboarding_data", {}).get("contract_end"),
             "model": school.get("onboarding_data", {}).get("model"),
             "kit_type": school.get("onboarding_data", {}).get("kit_type"),
-        }
+        },
+        # Include payment tranches and payment status
+        "payment_tranches": school.get("onboarding_data", {}).get("payment_tranches", []),
+        "payments": [
+            {
+                "tranche_index": p.get("tranche_index"),
+                "status": p.get("status"),
+                "invoice_url": p.get("invoice_url"),
+                "payment_date": p.get("payment_date")
+            }
+            for p in school.get("payments", [])
+        ]
     }
 
 # Support ticket from tracking page (no auth required)
