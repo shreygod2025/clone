@@ -112,7 +112,13 @@ const AdminSchoolCRM = () => {
     training_type: '',
     programs: []
   });
-  const [followupData, setFollowupData] = useState({ date: null, comment: '', auto_email: false });
+  const [followupData, setFollowupData] = useState({ 
+    followup_type: '', // 'message' or 'meeting'
+    date: null, 
+    time: '',
+    comment: '', 
+    auto_email: false 
+  });
   const [onboardData, setOnboardData] = useState({
     offering: '', // Select from offerings
     model: '',
