@@ -5652,13 +5652,61 @@ async def get_school_payments(
 async def get_student_payments(
     user: dict = Depends(get_current_user)
 ):
-    """Get all student payments (from session bookings, etc.)"""
+    """Get all student payments (from converted students with payment details)"""
     payments = []
     
-    # Get student payments from a dedicated collection or from student records
-    student_payments = await db.student_payments.find({}).to_list(length=None)
+    # Get converted students from student_inquiries collection
+    students = await db.student_inquiries.find({
+        "status": {"$in": ["converted", "active", "enrolled"]}
+    }).to_list(length=None)
     
-    for payment in student_payments:
+    for student in students:
+        onboarding_data = student.get("onboarding_data", {})
+        student_payments = student.get("payments", [])
+        
+        # Create payment record from student conversion data
+        amount = onboarding_data.get("amount") or onboarding_data.get("total_amount") or student.get("conversion_amount") or 0
+        if amount:
+            try:
+                amount = float(amount)
+            except:
+                amount = 0
+        
+        existing_payment = student_payments[0] if student_payments else None
+        
+        payment = {
+            "id": existing_payment.get("id") if existing_payment else f"stu-{student.get('id')}",
+            "student_id": student.get("id"),
+            "student_name": student.get("name", ""),
+            "parent_name": student.get("parent_name", student.get("contact_name", "")),
+            "phone": student.get("phone", ""),
+            "email": student.get("email", ""),
+            "description": f"{student.get('skill', '')} - {student.get('age_group', '')}".strip(' -'),
+            "amount": amount,
+            "due_date": onboarding_data.get("due_date") or student.get("due_date"),
+            "status": existing_payment.get("status", "pending") if existing_payment else "pending",
+            "payment_date": existing_payment.get("payment_date") if existing_payment else None,
+            "transaction_id": existing_payment.get("transaction_id") if existing_payment else None,
+            "invoice_url": existing_payment.get("invoice_url") or onboarding_data.get("invoice_url"),
+            "receipt_url": existing_payment.get("receipt_url") or onboarding_data.get("receipt_url"),
+            "notes": existing_payment.get("notes") if existing_payment else "",
+            "created_at": student.get("created_at"),
+            # Additional conversion details
+            "conversion_details": {
+                "skill": student.get("skill", ""),
+                "age_group": student.get("age_group", ""),
+                "learning_mode": student.get("learning_mode", ""),
+                "center": student.get("selected_center", ""),
+                "city": student.get("city", ""),
+                "demo_date": student.get("demo_date"),
+                "converted_at": student.get("converted_at", student.get("updated_at")),
+            }
+        }
+        payments.append(payment)
+    
+    # Also get payments from dedicated student_payments collection
+    direct_payments = await db.student_payments.find({}).to_list(length=None)
+    for payment in direct_payments:
         payment["id"] = payment.get("id", str(payment.get("_id", "")))
         payment.pop("_id", None)
         payments.append(payment)
