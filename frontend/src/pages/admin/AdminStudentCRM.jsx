@@ -398,9 +398,14 @@ const AdminStudentCRM = () => {
       return;
     }
     const fullPhone = newLead.countryCode === '+91' ? newLead.phone : `${newLead.countryCode}${newLead.phone}`;
+    
+    // Use otherSkill if skill is "other"
+    const finalSkill = newLead.skill === 'other' && newLead.otherSkill ? newLead.otherSkill : newLead.skill;
+    
     try {
       await axios.post(`${API}/students/inquiry`, {
         ...newLead,
+        skill: finalSkill,
         phone: fullPhone,
         email: newLead.email || `${newLead.phone}@manual.oll`,
         learner_type: 'self',
@@ -416,6 +421,7 @@ const AdminStudentCRM = () => {
         countryCode: '+91',
         email: '',
         skill: '',
+        otherSkill: '',
         city: '',
         age_group: '',
         learning_mode: 'online',
