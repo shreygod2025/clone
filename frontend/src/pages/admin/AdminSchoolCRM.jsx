@@ -348,7 +348,7 @@ const AdminSchoolCRM = () => {
       toast.error('Please enter meeting notes/minutes');
       return;
     }
-    if (meetingDoneData.add_followup && (!meetingDoneData.followup_date || !meetingDoneData.followup_time)) {
+    if (meetingDoneData.followup_type && (!meetingDoneData.followup_date || !meetingDoneData.followup_time)) {
       toast.error('Please select followup date and time');
       return;
     }
@@ -362,20 +362,32 @@ const AdminSchoolCRM = () => {
         quoted_price: meetingDoneData.quoted_price || showMeetingDoneModal.quoted_price
       };
       
-      // If followup is requested, add meeting date/time for next meeting
-      if (meetingDoneData.add_followup) {
-        updateData.meeting_date = format(meetingDoneData.followup_date, 'yyyy-MM-dd');
-        updateData.meeting_time = meetingDoneData.followup_time;
-        updateData.status = 'followup'; // Change status to followup instead of meeting_done
+      // If followup is requested
+      if (meetingDoneData.followup_type) {
+        updateData.followup_type = meetingDoneData.followup_type;
+        updateData.followup_date = format(meetingDoneData.followup_date, 'yyyy-MM-dd');
+        updateData.followup_time = meetingDoneData.followup_time;
+        
+        if (meetingDoneData.followup_type === 'meeting') {
+          updateData.meeting_date = format(meetingDoneData.followup_date, 'yyyy-MM-dd');
+          updateData.meeting_time = meetingDoneData.followup_time;
+        }
+        
+        updateData.status = 'followup';
       }
       
       await axios.patch(`${API}/schools/inquiry/${showMeetingDoneModal.id}`, updateData, {
         headers: getAuthHeaders()
       });
       
-      toast.success(meetingDoneData.add_followup ? 'Meeting completed & followup scheduled!' : 'Meeting marked as done!');
+      const successMsg = meetingDoneData.followup_type === 'meeting' 
+        ? 'Meeting completed & follow-up meeting scheduled!' 
+        : meetingDoneData.followup_type === 'message'
+          ? 'Meeting completed & follow-up message scheduled!'
+          : 'Meeting marked as done!';
+      toast.success(successMsg);
       setShowMeetingDoneModal(null);
-      setMeetingDoneData({ notes: '', quoted_price: '', add_followup: false, followup_date: null, followup_time: '' });
+      setMeetingDoneData({ notes: '', quoted_price: '', followup_type: '', followup_date: null, followup_time: '' });
       fetchInquiries();
     } catch (error) {
       toast.error('Failed to update meeting status');
