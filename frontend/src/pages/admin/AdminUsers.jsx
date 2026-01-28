@@ -75,6 +75,11 @@ const AdminUsers = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   
+  // Filters for users
+  const [cityFilter, setCityFilter] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  
   // User modals
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [editUser, setEditUser] = useState(null);
