@@ -34,6 +34,8 @@ const AdminOrders = () => {
   
   // Modal states
   const [showPaymentModal, setShowPaymentModal] = useState(null);
+  const [showSchoolDetails, setShowSchoolDetails] = useState(null);
+  const [loadingSchoolDetails, setLoadingSchoolDetails] = useState(false);
   const [uploadingInvoice, setUploadingInvoice] = useState(false);
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
   const [paymentUpdate, setPaymentUpdate] = useState({
