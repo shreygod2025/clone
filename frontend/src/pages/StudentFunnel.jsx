@@ -488,8 +488,18 @@ const StudentFunnel = () => {
 
   // Submit booking for logged-in users (no OTP needed) - called from schedule step
   const handleBookForLoggedInUser = async () => {
+    setShowBookingAnimation(true);
     setSubmitting(true);
     try {
+      // Build full address for home visits
+      let fullAddress = formData.address;
+      if (formData.address_line2) {
+        fullAddress += `, ${formData.address_line2}`;
+      }
+      if (formData.address_landmark) {
+        fullAddress += ` (${formData.address_landmark})`;
+      }
+      
       const payload = {
         learner_type: 'self',
         age_group: formData.age_group,
@@ -506,6 +516,7 @@ const StudentFunnel = () => {
         phone: user?.phone || formData.phone,
         demo_date: formData.demo_date ? format(formData.demo_date, 'yyyy-MM-dd') : null,
         demo_time: formData.demo_time,
+        address: fullAddress,
         source: 'website'
       };
       
@@ -520,15 +531,21 @@ const StudentFunnel = () => {
         learning_mode: formData.learning_mode,
         offline_type: formData.offline_type,
         city: formData.city,
-        center_name: formData.selected_center_name
+        center_name: formData.selected_center_name,
+        address: fullAddress
       });
       
       // Update user booking in context
       updateUserBooking({ ...response.data, name: user?.name || formData.name });
       
-      setSubmitted(true);
-      toast.success('Demo booked successfully!');
+      // Small delay to show the checkmark animation
+      setTimeout(() => {
+        setShowBookingAnimation(false);
+        setSubmitted(true);
+        toast.success('Demo booked successfully!');
+      }, 1500);
     } catch (error) {
+      setShowBookingAnimation(false);
       if (error.response?.data?.detail) {
         toast.error(error.response.data.detail);
       } else {
