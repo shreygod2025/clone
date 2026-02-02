@@ -169,6 +169,8 @@ const AdminSchoolCRM = () => {
     contract_start: '',
     contract_end: '',
     mou_url: '', // MOU document upload
+    parent_circular_url: '', // Parent circular URL (for from_student payment mode)
+    payment_link: '', // Payment link (for online payment method)
     is_draft: false,
   });
   const [editOnboardData, setEditOnboardData] = useState(null);
