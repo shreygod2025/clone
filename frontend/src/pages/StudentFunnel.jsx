@@ -436,6 +436,19 @@ const StudentFunnel = () => {
       return;
     }
     
+    // If on phone step, auto-send OTP and move to name step
+    if (stepId === 'phone') {
+      handleSendOTP(); // Send OTP in background
+      setCurrentStep(currentStep + 1);
+      return;
+    }
+    
+    // If on name step, move to OTP step
+    if (stepId === 'name') {
+      setCurrentStep(currentStep + 1);
+      return;
+    }
+    
     // If on contact step, move to OTP step and send OTP
     if (stepId === 'contact') {
       setCurrentStep(currentStep + 1);
