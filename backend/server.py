@@ -4846,12 +4846,15 @@ async def get_bulk_import_template():
 
 @api_router.post("/schools/bulk-import")
 async def bulk_import_schools(data: dict, user: dict = Depends(get_current_user)):
-    """Bulk import schools from CSV/Excel data"""
+    """Bulk import schools from CSV/Excel data - creates new or updates existing"""
     schools = data.get("schools", [])
+    update_existing = data.get("update_existing", True)  # Default to updating existing
+    
     if not schools:
         raise HTTPException(status_code=400, detail="No schools data provided")
     
     imported = 0
+    updated = 0
     skipped = 0
     errors = []
     
@@ -4866,27 +4869,102 @@ async def bulk_import_schools(data: dict, user: dict = Depends(get_current_user)
                 skipped += 1
                 continue
             
-            # Check for duplicates by school name or email
+            # Check for existing school by name, email, or phone
             existing = await db.school_inquiries.find_one({
                 "$or": [
                     {"school_name": {"$regex": f"^{school_name}$", "$options": "i"}},
-                    {"email": email} if email else {"_id": None}
+                    {"email": email} if email else {"_id": None},
+                    {"phone": phone} if phone else {"_id": None}
                 ]
             })
             
             if existing:
-                errors.append({"row": idx + 1, "error": f"Duplicate: School '{school_name}' or email '{email}' already exists"})
-                skipped += 1
+                if update_existing:
+                    # Update existing school
+                    school_id = existing.get("id")
+                    update_fields = {
+                        "contact_name": school_data.get("contact_name") or existing.get("contact_name", ""),
+                        "phone": phone or existing.get("phone", ""),
+                        "email": email or existing.get("email", ""),
+                        "location": school_data.get("location") or existing.get("location", ""),
+                        "board": school_data.get("board") or existing.get("board", ""),
+                        "student_count": school_data.get("student_count") or existing.get("student_count", ""),
+                        "school_size": school_data.get("school_size") or existing.get("school_size", ""),
+                        "fee_range": school_data.get("fee_range") or existing.get("fee_range", ""),
+                        "model": school_data.get("model") or existing.get("model", ""),
+                        "total_students": int(school_data.get("total_students") or existing.get("total_students", 0) or 0),
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                    
+                    # If notes provided, append to existing
+                    if school_data.get("notes"):
+                        existing_notes = existing.get("notes", "")
+                        update_fields["notes"] = f"{existing_notes}\n[Bulk Update] {school_data.get('notes')}" if existing_notes else school_data.get("notes")
+                    
+                    await db.school_inquiries.update_one({"id": school_id}, {"$set": update_fields})
+                    
+                    # Update or create onboarding record
+                    onboarding_data = {
+                        "offering": school_data.get("offering", ""),
+                        "model": school_data.get("model", ""),
+                        "book_type": school_data.get("book_type", ""),
+                        "kit_type": school_data.get("kit_type", ""),
+                        "training_type": school_data.get("training_type", ""),
+                        "total_students": int(school_data.get("total_students", 0) or 0),
+                        "total_amount": float(school_data.get("total_amount", 0) or 0),
+                        "payment_mode": school_data.get("payment_mode", "from_school"),
+                        "payment_method": school_data.get("payment_method", ""),
+                        "contract_start": school_data.get("contract_start", ""),
+                        "contract_end": school_data.get("contract_end", ""),
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                    }
+                    
+                    existing_onboarding = await db.school_onboarding.find_one({"school_id": school_id})
+                    if existing_onboarding:
+                        # Only update non-empty fields
+                        onboarding_update = {k: v for k, v in onboarding_data.items() if v}
+                        if onboarding_update:
+                            await db.school_onboarding.update_one({"school_id": school_id}, {"$set": onboarding_update})
+                    else:
+                        # Create new onboarding record
+                        onboarding_id = str(uuid.uuid4())
+                        onboarding_doc = {
+                            "id": onboarding_id,
+                            "school_id": school_id,
+                            **onboarding_data,
+                            "grade_pricing": [],
+                            "school_contacts": [{
+                                "name": school_data.get("contact_name", ""),
+                                "phone": phone,
+                                "email": email,
+                                "role": "Primary Contact"
+                            }] if school_data.get("contact_name") else [],
+                            "payment_tranches": [],
+                            "status": "active",
+                            "is_draft": False,
+                            "created_by": user.get("email", "admin"),
+                            "created_at": datetime.now(timezone.utc).isoformat(),
+                        }
+                        await db.school_onboarding.insert_one(onboarding_doc)
+                        await db.school_inquiries.update_one(
+                            {"id": school_id},
+                            {"$set": {"onboarding_id": onboarding_id, "onboarding_status": "active"}}
+                        )
+                    
+                    updated += 1
+                else:
+                    errors.append({"row": idx + 1, "error": f"Duplicate: School '{school_name}' already exists"})
+                    skipped += 1
                 continue
             
-            # Create school inquiry record with all required fields
+            # Create new school inquiry record
             school_id = str(uuid.uuid4())
             school_doc = {
                 "id": school_id,
                 "school_name": school_name,
                 "contact_name": school_data.get("contact_name", ""),
                 "phone": phone,
-                "email": email or f"school_{school_id[:8]}@placeholder.com",  # Ensure email is not empty
+                "email": email or f"school_{school_id[:8]}@placeholder.com",
                 "location": school_data.get("location", ""),
                 "board": school_data.get("board", ""),
                 "student_count": school_data.get("student_count", ""),
@@ -4895,7 +4973,7 @@ async def bulk_import_schools(data: dict, user: dict = Depends(get_current_user)
                 "programs_interested": school_data.get("programs_interested", "").split(",") if school_data.get("programs_interested") else [],
                 "support_needed": school_data.get("support_needed", "").split(",") if school_data.get("support_needed") else [],
                 "source": "bulk_import",
-                "status": "active",  # Directly add as active
+                "status": "active",
                 "notes": school_data.get("notes", ""),
                 "comments": [],
                 "meeting_type": "offline",
@@ -4954,10 +5032,11 @@ async def bulk_import_schools(data: dict, user: dict = Depends(get_current_user)
             skipped += 1
     
     return {
-        "message": f"Import completed. {imported} schools imported, {skipped} skipped.",
+        "message": f"Import completed. {imported} new schools, {updated} updated, {skipped} skipped.",
         "imported": imported,
+        "updated": updated,
         "skipped": skipped,
-        "errors": errors[:20]  # Return first 20 errors
+        "errors": errors[:20]
     }
 
 # Send personalized email to school
