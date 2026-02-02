@@ -1436,15 +1436,46 @@ const AdminSchoolCRM = () => {
               Edit
             </button>
             <button
-              onClick={() => handleStatusChange(inquiry, 'renewed')}
-              className="text-xs px-3 py-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-700 flex items-center gap-1 font-medium"
-              data-testid={`renew-${inquiry.id}`}
+              onClick={() => openRenewalMeetingModal(inquiry)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-teal-100 hover:bg-teal-200 text-teal-700 flex items-center gap-1 font-medium"
+              data-testid={`renewal-meeting-${inquiry.id}`}
             >
-              <RefreshCw className="w-3 h-3" />
+              <Calendar className="w-3 h-3" />
+              Renewal Meeting
+            </button>
+            <button
+              onClick={() => openLostReasonModal(inquiry)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 font-medium"
+              data-testid={`lost-${inquiry.id}`}
+            >
+              <X className="w-3 h-3" />
+              Lost
+            </button>
+            {baseButtons}
+          </div>
+        );
+      
+      case 'renewal_meeting':
+        return (
+          <div className="flex gap-1 flex-wrap">
+            <button
+              onClick={() => openRenewalConvertModal(inquiry)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-700 flex items-center gap-1 font-medium"
+              data-testid={`renew-convert-${inquiry.id}`}
+            >
+              <CheckCircle className="w-3 h-3" />
               Renewed
             </button>
             <button
-              onClick={() => handleStatusChange(inquiry, 'lost')}
+              onClick={() => setShowFollowupModal(inquiry)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-700 flex items-center gap-1 font-medium"
+              data-testid={`followup-${inquiry.id}`}
+            >
+              <Clock className="w-3 h-3" />
+              Follow-up
+            </button>
+            <button
+              onClick={() => openLostReasonModal(inquiry)}
               className="text-xs px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 font-medium"
               data-testid={`lost-${inquiry.id}`}
             >
