@@ -5608,11 +5608,12 @@ async def init_school_onboarding(school_id: str, user: dict = Depends(get_curren
                 try:
                     await send_email(
                         api_key=os.environ.get("RESEND_API_KEY", ""),
-                        from_email="OLL <onboarding@oll.co>",
+                        from_email="OLL Team <welcome@oll.co>",
                         to_email=email,
                         subject=email_subject,
                         html_content=email_html
                     )
+                    print(f"Welcome email sent to {email}")
                 except Exception as email_err:
                     print(f"Failed to send welcome email to {email}: {email_err}")
                     
