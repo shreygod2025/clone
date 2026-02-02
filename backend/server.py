@@ -5488,48 +5488,115 @@ async def init_school_onboarding(school_id: str, user: dict = Depends(get_curren
             total_students = onboarding_data.get("total_students", "TBD")
             
             email_html = f"""
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <div style="background: #1E3A5F; color: white; padding: 20px; text-align: center;">
-                    <h1 style="margin: 0;">Welcome to OLL!</h1>
+            <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 650px; margin: 0 auto; background: #ffffff;">
+                <!-- Header with Logo and Celebration -->
+                <div style="background: linear-gradient(135deg, #1E3A5F 0%, #2d5a8f 100%); padding: 40px 30px; text-align: center;">
+                    <img src="https://customer-assets.emergentagent.com/job_oll-skill-edu/artifacts/wzn0gh6k_OLL-horizontal-logo-white.png" alt="OLL Logo" style="height: 50px; margin-bottom: 20px;">
+                    <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 600;">🎉 Welcome to OLL!</h1>
+                    <p style="color: rgba(255,255,255,0.9); margin: 15px 0 0 0; font-size: 16px;">Your journey to transforming education begins now</p>
                 </div>
                 
-                <div style="padding: 20px; background: #f8f9fa;">
-                    <p>Dear {school.get('contact_name', 'Team')},</p>
+                <!-- Main Content -->
+                <div style="padding: 35px 30px; background: #f8fafc;">
+                    <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+                        Dear {school.get('contact_name', 'Team')},
+                    </p>
                     
-                    <p>Congratulations! <strong>{school.get('school_name')}</strong> is now officially part of the OLL family. 
-                    We are excited to begin this journey of transforming education together.</p>
+                    <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+                        Congratulations! We are thrilled to welcome <strong style="color: #1E3A5F;">{school.get('school_name')}</strong> to the OLL family. 
+                        Together, we'll embark on an exciting journey of innovation and skill-based education.
+                    </p>
                     
-                    <h3 style="color: #1E3A5F;">Program Details</h3>
-                    <ul>
-                        <li><strong>Programs:</strong> {offerings_list or 'To be confirmed'}</li>
-                        <li><strong>Total Students:</strong> {total_students}</li>
-                        <li><strong>Contract Period:</strong> {contract_start} to {contract_end}</li>
-                    </ul>
+                    <!-- Program Details Card -->
+                    <div style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 25px; margin-bottom: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                        <h3 style="color: #1E3A5F; font-size: 18px; margin: 0 0 20px 0; border-bottom: 2px solid #FFD93D; padding-bottom: 10px; display: inline-block;">📋 Partnership Details</h3>
+                        <table style="width: 100%; font-size: 14px;">
+                            <tr>
+                                <td style="padding: 10px 0; color: #6b7280; width: 40%;">Programs</td>
+                                <td style="padding: 10px 0; color: #111827; font-weight: 600;">{offerings_list or 'To be confirmed'}</td>
+                            </tr>
+                            <tr style="background: #f8fafc;">
+                                <td style="padding: 10px; color: #6b7280; border-radius: 4px 0 0 4px;">Total Students</td>
+                                <td style="padding: 10px; color: #111827; font-weight: 600; border-radius: 0 4px 4px 0;">{total_students}</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: 10px 0; color: #6b7280;">Contract Period</td>
+                                <td style="padding: 10px 0; color: #111827; font-weight: 600;">{contract_start} to {contract_end}</td>
+                            </tr>
+                        </table>
+                    </div>
                     
-                    <h3 style="color: #1E3A5F;">Next Steps</h3>
-                    <ol>
-                        <li><strong>Payment Collection</strong> - Complete payment as per the agreed schedule</li>
-                        <li><strong>Kit Delivery</strong> - Receive your robotics/STEM kits</li>
-                        <li><strong>Teacher Training</strong> - Schedule training sessions for your faculty</li>
-                        <li><strong>Program Launch</strong> - Start classes with students</li>
-                    </ol>
+                    <!-- Onboarding Steps Timeline -->
+                    <div style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 25px; margin-bottom: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                        <h3 style="color: #1E3A5F; font-size: 18px; margin: 0 0 20px 0;">🚀 Your Onboarding Journey</h3>
+                        
+                        <div style="display: flex; flex-direction: column; gap: 15px;">
+                            <div style="display: flex; align-items: flex-start; gap: 15px;">
+                                <div style="width: 30px; height: 30px; background: #10b981; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px; flex-shrink: 0;">✓</div>
+                                <div>
+                                    <strong style="color: #111827;">MOU Signing</strong>
+                                    <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 13px;">Partnership agreement completed</p>
+                                </div>
+                            </div>
+                            
+                            <div style="display: flex; align-items: flex-start; gap: 15px;">
+                                <div style="width: 30px; height: 30px; background: #1E3A5F; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px; flex-shrink: 0;">1</div>
+                                <div>
+                                    <strong style="color: #111827;">Payment Collection</strong>
+                                    <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 13px;">Complete payment as per agreed schedule</p>
+                                </div>
+                            </div>
+                            
+                            <div style="display: flex; align-items: flex-start; gap: 15px;">
+                                <div style="width: 30px; height: 30px; background: #d1d5db; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #6b7280; font-weight: bold; font-size: 14px; flex-shrink: 0;">2</div>
+                                <div>
+                                    <strong style="color: #111827;">Kit Delivery</strong>
+                                    <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 13px;">Receive your robotics/STEM kits at school</p>
+                                </div>
+                            </div>
+                            
+                            <div style="display: flex; align-items: flex-start; gap: 15px;">
+                                <div style="width: 30px; height: 30px; background: #d1d5db; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #6b7280; font-weight: bold; font-size: 14px; flex-shrink: 0;">3</div>
+                                <div>
+                                    <strong style="color: #111827;">Teacher Training</strong>
+                                    <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 13px;">Training sessions for your faculty</p>
+                                </div>
+                            </div>
+                            
+                            <div style="display: flex; align-items: flex-start; gap: 15px;">
+                                <div style="width: 30px; height: 30px; background: #d1d5db; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #6b7280; font-weight: bold; font-size: 14px; flex-shrink: 0;">4</div>
+                                <div>
+                                    <strong style="color: #111827;">Program Launch</strong>
+                                    <p style="margin: 5px 0 0 0; color: #6b7280; font-size: 13px;">Start classes with students</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     
-                    <div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                        <p style="margin: 0 0 10px 0;"><strong>Track Your Onboarding Progress:</strong></p>
-                        <a href="{tracking_url}" style="display: inline-block; background: #1E3A5F; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">
-                            View Onboarding Tracker
+                    <!-- CTA Button -->
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="{tracking_url}" style="display: inline-block; background: linear-gradient(135deg, #FFD93D 0%, #f59e0b 100%); color: #1E3A5F; padding: 16px 40px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 16px; box-shadow: 0 4px 12px rgba(255,217,61,0.4);">
+                            📊 Track Your Onboarding Progress
                         </a>
                     </div>
                     
-                    {"<p><strong>📎 MOU Document:</strong> <a href='" + mou_url + "'>Download MOU</a></p>" if mou_url else ""}
+                    {"<div style='background: #e0f2fe; border: 1px solid #0284c7; border-radius: 8px; padding: 15px; margin: 20px 0; text-align: center;'><strong style='color: #0369a1;'>📎 MOU Document:</strong> <a href='" + mou_url + "' style='color: #0284c7; font-weight: 600;'>Download MOU</a></div>" if mou_url else ""}
                     
-                    <p>If you have any questions, please don't hesitate to reach out to your account manager or email us at support@oll.co.</p>
+                    <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin-top: 25px;">
+                        Your dedicated relationship manager will be in touch soon to guide you through each step. 
+                        If you have any questions, feel free to reach out at <a href="mailto:support@oll.co" style="color: #1E3A5F; font-weight: 600;">support@oll.co</a> or call us at <strong>+91 9920188188</strong>.
+                    </p>
                     
-                    <p>Best regards,<br>The OLL Team</p>
+                    <p style="color: #374151; font-size: 14px; margin-top: 25px;">
+                        Warm regards,<br>
+                        <strong style="color: #1E3A5F;">The OLL Team</strong>
+                    </p>
                 </div>
                 
-                <div style="background: #1E3A5F; color: white; padding: 15px; text-align: center; font-size: 12px;">
-                    <p style="margin: 0;">OLL - Omni Learning Labs | support@oll.co | +91 98765 43210</p>
+                <!-- Footer -->
+                <div style="background: #1E3A5F; color: white; padding: 25px; text-align: center;">
+                    <p style="margin: 0 0 10px 0; font-size: 14px; font-weight: 600;">OLL - Omni Learning Labs</p>
+                    <p style="margin: 0; font-size: 12px; opacity: 0.8;">Clonefutura Live Solutions Pvt. Ltd | support@oll.co | +91 9920188188</p>
                 </div>
             </div>
             """
