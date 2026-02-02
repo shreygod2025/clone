@@ -1,0 +1,76 @@
+{
+  "summary": "Completed testing of Orders GST Type and Revenue Calculation features. All backend API tests pass (11/11). Frontend UI verified with GST Type dropdown in modal and GST Type column in table.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_orders_gst_revenue.py",
+    "/app/test_reports/pytest/pytest_results_iter18.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_orders_gst_revenue.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "admin": "admin@oll.co / Dagaji03@"
+  },
+  "seed_data_creation": "None - used existing school payments data",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "GST Type feature fully implemented and tested. Orders page shows GST Type column with colored badges (Book GST=blue, Inclusive=green, Exclusive=orange). Update Payment modal has GST Type dropdown with 4 options. Revenue calculation in /api/admin/reports/overview correctly sums conversion_amount and onboarding_data.total_amount for converted/active/renewed schools.",
+  "features_tested": {
+    "orders_gst_type_dropdown": {
+      "status": "PASS",
+      "details": "GST Type dropdown in Update Payment modal with options: Select GST Type (empty), Book GST (book_gst), Inclusive GST (inclusive), Exclusive GST (exclusive)"
+    },
+    "orders_gst_type_column": {
+      "status": "PASS",
+      "details": "GST Type column displayed in Orders table with colored badges - blue for Book GST, green for Inclusive, orange for Exclusive"
+    },
+    "patch_orders_gst_type": {
+      "status": "PASS",
+      "details": "PATCH /api/orders/{payment_id} accepts and saves gst_type field. Tested all 3 values: book_gst, inclusive, exclusive"
+    },
+    "get_school_payments_gst_type": {
+      "status": "PASS",
+      "details": "GET /api/orders/school-payments returns gst_type field in response"
+    },
+    "revenue_calculation": {
+      "status": "PASS",
+      "details": "Revenue calculation in /api/admin/reports/overview correctly includes conversion_amount and onboarding_data.total_amount for converted/active/renewed schools. Total Revenue shown: ₹297,100"
+    }
+  },
+  "test_execution_details": {
+    "test_type": "Backend API Testing + Frontend UI Testing",
+    "tools_used": ["pytest", "Playwright Browser Automation"],
+    "test_url": "https://edufunnel.preview.emergentagent.com",
+    "pages_tested": [
+      "/admin/login",
+      "/admin/orders (Orders & Payments page)",
+      "/admin/reports (Reports & Analytics page)"
+    ],
+    "api_endpoints_tested": [
+      "POST /api/auth/login",
+      "GET /api/orders/school-payments",
+      "GET /api/orders/student-payments",
+      "PATCH /api/orders/{payment_id}",
+      "GET /api/admin/reports/overview",
+      "GET /api/schools/inquiries"
+    ]
+  },
+  "notes": {
+    "email_templates": "Beautiful welcome and invoice email templates are code-complete but require Resend domain verification to work in production (MOCKED - emails won't actually send without domain verification)",
+    "gst_type_values": "Valid values are: book_gst, inclusive, exclusive"
+  }
+}
