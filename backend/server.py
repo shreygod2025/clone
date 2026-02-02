@@ -4732,6 +4732,59 @@ async def get_school_onboarding(school_id: str, user: dict = Depends(get_current
         raise HTTPException(status_code=404, detail="Onboarding not found")
     return onboarding
 
+@api_router.post("/schools/onboarding")
+async def create_school_onboarding(data: dict, user: dict = Depends(get_current_user)):
+    """Create school onboarding record"""
+    school_id = data.get("school_id")
+    if not school_id:
+        raise HTTPException(status_code=400, detail="school_id is required")
+    
+    # Check if onboarding already exists
+    existing = await db.school_onboarding.find_one({"school_id": school_id})
+    if existing:
+        # Update existing record instead
+        update_data = {k: v for k, v in data.items() if v is not None and k != "school_id"}
+        update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+        await db.school_onboarding.update_one({"school_id": school_id}, {"$set": update_data})
+        return {"message": "Onboarding updated successfully", "id": existing.get("id")}
+    
+    onboarding_id = str(uuid.uuid4())
+    onboarding_doc = {
+        "id": onboarding_id,
+        "school_id": school_id,
+        "offering": data.get("offering", ""),
+        "model": data.get("model", ""),
+        "book_type": data.get("book_type", ""),
+        "kit_type": data.get("kit_type", ""),
+        "training_type": data.get("training_type", ""),
+        "grade_pricing": data.get("grade_pricing", []),
+        "total_students": data.get("total_students", 0),
+        "total_amount": data.get("total_amount", 0),
+        "school_contacts": data.get("school_contacts", []),
+        "payment_mode": data.get("payment_mode", "from_school"),
+        "payment_method": data.get("payment_method", ""),
+        "payment_tranches": data.get("payment_tranches", []),
+        "contract_start": data.get("contract_start", ""),
+        "contract_end": data.get("contract_end", ""),
+        "mou_url": data.get("mou_url", ""),
+        "status": "active",
+        "is_draft": False,
+        "created_by": user.get("email", "admin"),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.school_onboarding.insert_one(onboarding_doc)
+    
+    # Update school inquiry with onboarding reference
+    await db.school_inquiries.update_one(
+        {"id": school_id},
+        {"$set": {
+            "onboarding_id": onboarding_id,
+            "onboarding_status": "active",
+        }}
+    )
+    
+    return {"message": "Onboarding created successfully", "id": onboarding_id}
+
 @api_router.put("/schools/onboarding/{onboarding_id}")
 async def update_school_onboarding(onboarding_id: str, data: dict, user: dict = Depends(get_current_user)):
     """Update school onboarding details"""
