@@ -123,6 +123,24 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ Payment Details: Total Amount, Payment Mode, Payment Method
 - ✅ Contract Period: Contract Start and End dates
 - ✅ Now matches all features from the Conversion popup
+- ✅ **Payment Tranches Section (Feb 2, 2026):** Added multi-tranche support with:
+  - Percentage, Amount, Due Date, Status (pending/paid/overdue)
+  - Auto-calculate amount from percentage when total amount is set
+  - Maps to Orders module for payment tracking
+
+### Feb 2, 2026 - Backend Bug Fixes & UI Enhancements
+**P0 Backend Fixes:**
+- ✅ **Fixed Edit Active Schools:** Updated SchoolInquiryUpdate model to include location, board, model, total_students fields
+- ✅ **Fixed Bulk Upload:** Excludes archived schools when finding duplicates - now correctly updates active schools
+- ✅ **MOU Auto-Complete:** init-onboarding endpoint now automatically marks MOU step as completed on school conversion
+
+**UI/UX Fixes:**
+- ✅ **Edit School Dropdowns:** Fixed offerings dropdown to show `title` property instead of `name`
+- ✅ **Removed $ Icon:** Converted schools tab now shows ₹ amount without DollarSign icon
+- ✅ **Programs & Offerings on Tracker:** Shows exact details from conversion (offering, kit_type, book_type, training_type, model)
+- ✅ **Footer Updated:** Company name is "Clonefutura Live Solutions Pvt. Ltd", phone is +91 99201 88188
+- ✅ **Relationship Manager:** Changed "Account Management" to "Relationship Manager" on tracking page
+- ✅ **Scheduled Dates:** Tracker shows scheduled dates for kit_delivery, teacher_training even if step not yet reached
 
 **Quoted Price & Offerings for School Leads:**
 - ✅ Added Quoted Price (₹) field to Admin School CRM Add Lead form
