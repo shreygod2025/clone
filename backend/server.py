@@ -5420,9 +5420,14 @@ DEFAULT_ONBOARDING_STEPS = {
 }
 
 @api_router.post("/schools/{school_id}/init-onboarding")
-async def init_school_onboarding(school_id: str, user: dict = Depends(get_current_user)):
-    """Initialize onboarding workflow for a converted school - MOU is already done"""
+async def init_school_onboarding(school_id: str, data: dict = None, user: dict = Depends(get_current_user)):
+    """Initialize onboarding workflow for a converted or renewed school - MOU is already done"""
     import copy
+    
+    if data is None:
+        data = {}
+    
+    is_renewal = data.get("is_renewal", False)
     
     school = await db.school_inquiries.find_one({"id": school_id})
     if not school:
@@ -5436,20 +5441,24 @@ async def init_school_onboarding(school_id: str, user: dict = Depends(get_curren
     steps["mou_signing"]["completed"] = True
     steps["mou_signing"]["completed_date"] = datetime.now(timezone.utc).isoformat()
     
+    action_label = "Renewal Started" if is_renewal else "Onboarding Started"
+    mou_label = "MOU Signed - School Renewed" if is_renewal else "MOU Signed - School Converted"
+    
     onboarding_workflow = {
         "tracking_token": tracking_token,
         "started_at": datetime.now(timezone.utc).isoformat(),
         "completed_at": None,
         "current_step": "payment_collection",  # Start from payment since MOU is done
+        "is_renewal": is_renewal,
         "steps": steps,
         "timeline": [
             {
-                "action": "MOU Signed - School Converted",
+                "action": mou_label,
                 "date": datetime.now(timezone.utc).isoformat(),
                 "by": user.get("name", user.get("email", "Admin"))
             },
             {
-                "action": "Onboarding Started",
+                "action": action_label,
                 "date": datetime.now(timezone.utc).isoformat(),
                 "by": user.get("name", user.get("email", "Admin"))
             }
