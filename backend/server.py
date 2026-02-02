@@ -5399,7 +5399,7 @@ DEFAULT_ONBOARDING_STEPS = {
 
 @api_router.post("/schools/{school_id}/init-onboarding")
 async def init_school_onboarding(school_id: str, user: dict = Depends(get_current_user)):
-    """Initialize onboarding workflow for a converted school"""
+    """Initialize onboarding workflow for a converted school - MOU is already done"""
     import copy
     
     school = await db.school_inquiries.find_one({"id": school_id})
@@ -5409,18 +5409,29 @@ async def init_school_onboarding(school_id: str, user: dict = Depends(get_curren
     # Generate unique tracking token
     tracking_token = f"oll-{uuid.uuid4().hex[:12]}"
     
-    # Initialize onboarding steps
+    # Initialize onboarding steps with MOU already completed
+    steps = copy.deepcopy(DEFAULT_ONBOARDING_STEPS)
+    steps["mou_signing"]["completed"] = True
+    steps["mou_signing"]["completed_date"] = datetime.now(timezone.utc).isoformat()
+    
     onboarding_workflow = {
         "tracking_token": tracking_token,
         "started_at": datetime.now(timezone.utc).isoformat(),
         "completed_at": None,
-        "current_step": "payment_collection",
-        "steps": copy.deepcopy(DEFAULT_ONBOARDING_STEPS),
-        "timeline": [{
-            "action": "Onboarding Started",
-            "date": datetime.now(timezone.utc).isoformat(),
-            "by": user.get("name", user.get("email", "Admin"))
-        }]
+        "current_step": "payment_collection",  # Start from payment since MOU is done
+        "steps": steps,
+        "timeline": [
+            {
+                "action": "MOU Signed - School Converted",
+                "date": datetime.now(timezone.utc).isoformat(),
+                "by": user.get("name", user.get("email", "Admin"))
+            },
+            {
+                "action": "Onboarding Started",
+                "date": datetime.now(timezone.utc).isoformat(),
+                "by": user.get("name", user.get("email", "Admin"))
+            }
+        ]
     }
     
     await db.school_inquiries.update_one(
@@ -5431,12 +5442,108 @@ async def init_school_onboarding(school_id: str, user: dict = Depends(get_curren
         }}
     )
     
+    # Get updated school and onboarding data
     school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
+    onboarding_data = school.get("onboarding_data", {})
+    
+    # Send welcome email to school
+    school_emails = []
+    if school.get("email"):
+        school_emails.append(school.get("email"))
+    
+    # Get contacts from onboarding data
+    school_contacts = onboarding_data.get("school_contacts", [])
+    for contact in school_contacts:
+        if contact.get("email") and contact.get("email") not in school_emails:
+            school_emails.append(contact.get("email"))
+    
+    if school_emails:
+        try:
+            # Get MOU URL
+            mou_url = onboarding_data.get("mou_url", "")
+            
+            # Build tracking URL
+            tracking_url = f"https://oll.co/track/{tracking_token}"
+            
+            # Build email content
+            email_subject = f"Welcome to OLL - {school.get('school_name')} Onboarding Started!"
+            
+            offerings_list = ", ".join(school.get("selected_offerings", school.get("programs_interested", [])))
+            contract_start = onboarding_data.get("contract_start", "TBD")
+            contract_end = onboarding_data.get("contract_end", "TBD")
+            total_students = onboarding_data.get("total_students", "TBD")
+            
+            email_html = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: #1E3A5F; color: white; padding: 20px; text-align: center;">
+                    <h1 style="margin: 0;">Welcome to OLL!</h1>
+                </div>
+                
+                <div style="padding: 20px; background: #f8f9fa;">
+                    <p>Dear {school.get('contact_name', 'Team')},</p>
+                    
+                    <p>Congratulations! <strong>{school.get('school_name')}</strong> is now officially part of the OLL family. 
+                    We are excited to begin this journey of transforming education together.</p>
+                    
+                    <h3 style="color: #1E3A5F;">Program Details</h3>
+                    <ul>
+                        <li><strong>Programs:</strong> {offerings_list or 'To be confirmed'}</li>
+                        <li><strong>Total Students:</strong> {total_students}</li>
+                        <li><strong>Contract Period:</strong> {contract_start} to {contract_end}</li>
+                    </ul>
+                    
+                    <h3 style="color: #1E3A5F;">Next Steps</h3>
+                    <ol>
+                        <li><strong>Payment Collection</strong> - Complete payment as per the agreed schedule</li>
+                        <li><strong>Kit Delivery</strong> - Receive your robotics/STEM kits</li>
+                        <li><strong>Teacher Training</strong> - Schedule training sessions for your faculty</li>
+                        <li><strong>Program Launch</strong> - Start classes with students</li>
+                    </ol>
+                    
+                    <div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                        <p style="margin: 0 0 10px 0;"><strong>Track Your Onboarding Progress:</strong></p>
+                        <a href="{tracking_url}" style="display: inline-block; background: #1E3A5F; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">
+                            View Onboarding Tracker
+                        </a>
+                    </div>
+                    
+                    {"<p><strong>📎 MOU Document:</strong> <a href='" + mou_url + "'>Download MOU</a></p>" if mou_url else ""}
+                    
+                    <p>If you have any questions, please don't hesitate to reach out to your account manager or email us at support@oll.co.</p>
+                    
+                    <p>Best regards,<br>The OLL Team</p>
+                </div>
+                
+                <div style="background: #1E3A5F; color: white; padding: 15px; text-align: center; font-size: 12px;">
+                    <p style="margin: 0;">OLL - Omni Learning Labs | support@oll.co | +91 98765 43210</p>
+                </div>
+            </div>
+            """
+            
+            # Send email using Resend
+            from emergentintegrations.llm.resend import send_email
+            
+            for email in school_emails:
+                try:
+                    await send_email(
+                        api_key=os.environ.get("RESEND_API_KEY", ""),
+                        from_email="OLL <onboarding@oll.co>",
+                        to_email=email,
+                        subject=email_subject,
+                        html_content=email_html
+                    )
+                except Exception as email_err:
+                    print(f"Failed to send welcome email to {email}: {email_err}")
+                    
+        except Exception as e:
+            print(f"Welcome email error: {e}")
+    
     return {
         "success": True,
         "tracking_token": tracking_token,
         "tracking_url": f"/track/{tracking_token}",
-        "school": school
+        "school": school,
+        "emails_sent": school_emails
     }
 
 @api_router.patch("/schools/{school_id}/onboarding-step/{step_key}")
