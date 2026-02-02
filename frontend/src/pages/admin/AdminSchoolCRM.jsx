@@ -1568,6 +1568,18 @@ const AdminSchoolCRM = () => {
       </>
     );
 
+    // Documents button for stages that need it
+    const documentsButton = (
+      <button
+        onClick={() => setShowDocumentsModal(inquiry)}
+        className="text-xs px-3 py-1.5 rounded-lg bg-cyan-100 hover:bg-cyan-200 text-cyan-700 flex items-center gap-1 font-medium"
+        data-testid={`documents-${inquiry.id}`}
+      >
+        <Paperclip className="w-3 h-3" />
+        Docs {inquiry.documents?.length > 0 && `(${inquiry.documents.length})`}
+      </button>
+    );
+
     // Followup button - shown in all sections except converted
     const followupButton = inquiry.status !== 'converted' && (
       <button
