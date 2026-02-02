@@ -160,7 +160,8 @@ const SchoolTrackingPage = () => {
     assigned_team_member,
     offerings,
     mou_url,
-    is_renewal
+    is_renewal,
+    documents
   } = trackingData;
 
   // Reorder steps to put MOU first
