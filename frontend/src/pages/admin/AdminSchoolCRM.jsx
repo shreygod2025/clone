@@ -1453,7 +1453,9 @@ const AdminSchoolCRM = () => {
     const matchesSearch = inq.school_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       inq.contact_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       inq.phone?.includes(searchQuery);
-    const matchesSection = inq.status === activeSection;
+    
+    // If searching all statuses and there's a search query, ignore section filter
+    const matchesSection = (searchAllStatuses && searchQuery.trim()) ? true : inq.status === activeSection;
     
     // Assignee filter
     let matchesAssignee = true;
