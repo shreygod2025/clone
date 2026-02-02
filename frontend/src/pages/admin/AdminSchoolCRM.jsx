@@ -2867,6 +2867,395 @@ const AdminSchoolCRM = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Lost Reason Modal */}
+      <Dialog open={!!showLostReasonModal} onOpenChange={() => setShowLostReasonModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <X className="w-5 h-5 text-red-600" />
+              Mark as Lost - {showLostReasonModal?.school_name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Reason for Lost *</label>
+              <select
+                value={lostReason.startsWith('custom:') ? 'other' : lostReason}
+                onChange={(e) => {
+                  if (e.target.value === 'other') {
+                    setLostReason('custom:');
+                  } else {
+                    setLostReason(e.target.value);
+                  }
+                }}
+                className="w-full h-10 px-4 border border-slate-200 rounded-lg bg-white mb-2"
+                data-testid="lost-reason-select"
+              >
+                <option value="">Select a reason...</option>
+                <option value="Budget constraints">Budget constraints</option>
+                <option value="Chose competitor">Chose competitor</option>
+                <option value="Program not suitable">Program not suitable</option>
+                <option value="Decision postponed">Decision postponed</option>
+                <option value="No response">No response / Not reachable</option>
+                <option value="Management change">Management change</option>
+                <option value="other">Other (specify)</option>
+              </select>
+              {lostReason.startsWith('custom:') && (
+                <Textarea
+                  placeholder="Please specify the reason..."
+                  value={lostReason.replace('custom:', '')}
+                  onChange={(e) => setLostReason('custom:' + e.target.value)}
+                  className="min-h-[80px]"
+                  data-testid="lost-reason-custom"
+                />
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowLostReasonModal(null)} className="flex-1">
+                Cancel
+              </Button>
+              <Button 
+                onClick={submitLostReason} 
+                className="flex-1 bg-red-600 hover:bg-red-700"
+                data-testid="lost-submit"
+              >
+                Mark as Lost
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Renewal Meeting Modal */}
+      <Dialog open={!!showRenewalMeetingModal} onOpenChange={() => setShowRenewalMeetingModal(null)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-teal-600" />
+              Schedule Renewal Meeting - {showRenewalMeetingModal?.school_name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Meeting Type */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-3">Meeting Type</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setRenewalMeetingData({...renewalMeetingData, type: 'offline'})}
+                  className={`p-3 rounded-lg border text-center transition-all ${
+                    renewalMeetingData.type === 'offline' 
+                      ? 'border-teal-500 bg-teal-50 text-teal-700' 
+                      : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                  }`}
+                >
+                  <MapPin className="w-5 h-5 mx-auto mb-1" />
+                  <span className="block text-sm font-medium">In-Person</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRenewalMeetingData({...renewalMeetingData, type: 'online'})}
+                  className={`p-3 rounded-lg border text-center transition-all ${
+                    renewalMeetingData.type === 'online' 
+                      ? 'border-teal-500 bg-teal-50 text-teal-700' 
+                      : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                  }`}
+                >
+                  <Video className="w-5 h-5 mx-auto mb-1" />
+                  <span className="block text-sm font-medium">Online</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Date Selection */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Select Date *</label>
+              <div className="flex justify-center">
+                <CalendarComponent
+                  mode="single"
+                  selected={renewalMeetingData.date}
+                  onSelect={(date) => setRenewalMeetingData({...renewalMeetingData, date})}
+                  disabled={(date) => date < new Date() || date > addDays(new Date(), 60) || date.getDay() === 0}
+                  className="rounded-xl border border-slate-200 bg-white"
+                />
+              </div>
+            </div>
+
+            {/* Time Selection */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Select Time *</label>
+              <div className="grid grid-cols-4 gap-2">
+                {TIME_SLOTS.map(time => (
+                  <button
+                    key={time}
+                    type="button"
+                    onClick={() => setRenewalMeetingData({...renewalMeetingData, time})}
+                    className={`p-2 rounded-lg border text-sm font-medium transition-all ${
+                      renewalMeetingData.time === time 
+                        ? 'border-teal-500 bg-teal-50 text-teal-700' 
+                        : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                    }`}
+                  >
+                    {time}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Meeting Link (Online) */}
+            {renewalMeetingData.type === 'online' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Meeting Link *</label>
+                <Input
+                  type="url"
+                  placeholder="Enter meeting link (Zoom, Google Meet, etc.)"
+                  value={renewalMeetingData.link}
+                  onChange={(e) => setRenewalMeetingData({...renewalMeetingData, link: e.target.value})}
+                  data-testid="renewal-meeting-link"
+                />
+              </div>
+            )}
+
+            {/* Meeting Address (Offline) */}
+            {renewalMeetingData.type === 'offline' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Meeting Address *</label>
+                <Textarea
+                  placeholder="Enter meeting location / address"
+                  value={renewalMeetingData.address}
+                  onChange={(e) => setRenewalMeetingData({...renewalMeetingData, address: e.target.value})}
+                  className="min-h-[60px]"
+                  data-testid="renewal-meeting-address"
+                />
+              </div>
+            )}
+
+            {/* Notes */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Notes (Optional)</label>
+              <Textarea
+                placeholder="Any additional notes for this meeting..."
+                value={renewalMeetingData.notes}
+                onChange={(e) => setRenewalMeetingData({...renewalMeetingData, notes: e.target.value})}
+                className="min-h-[60px]"
+                data-testid="renewal-meeting-notes"
+              />
+            </div>
+
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowRenewalMeetingModal(null)} className="flex-1">
+                Cancel
+              </Button>
+              <Button 
+                onClick={submitRenewalMeeting} 
+                className="flex-1 bg-teal-600 hover:bg-teal-700"
+                data-testid="renewal-meeting-submit"
+              >
+                <Calendar className="w-4 h-4 mr-2" />
+                Schedule Meeting
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Renewal Convert Modal */}
+      <Dialog open={!!showRenewalConvertModal} onOpenChange={() => setShowRenewalConvertModal(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RefreshCw className="w-5 h-5 text-emerald-600" />
+              Renew School - {showRenewalConvertModal?.school_name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Previous Contract Info */}
+            {showRenewalConvertModal?.onboarding_data && (
+              <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+                <h4 className="font-medium text-blue-800 mb-2">Previous Contract Details</h4>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <span className="text-blue-600">Last Amount:</span>
+                  <span className="font-medium">₹{Number(showRenewalConvertModal.onboarding_data.total_amount || showRenewalConvertModal.conversion_amount || 0).toLocaleString()}</span>
+                  <span className="text-blue-600">Model:</span>
+                  <span className="font-medium">{showRenewalConvertModal.onboarding_data.model || '-'}</span>
+                  <span className="text-blue-600">Students:</span>
+                  <span className="font-medium">{showRenewalConvertModal.onboarding_data.total_students || '-'}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Renewal Amount */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Renewal Amount (₹) *</label>
+              <Input
+                type="number"
+                placeholder="Enter renewal contract value"
+                value={renewalConvertData.amount}
+                onChange={(e) => setRenewalConvertData(prev => ({ ...prev, amount: e.target.value }))}
+                data-testid="renewal-amount"
+              />
+            </div>
+
+            {/* Model & Kit Selection */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Model</label>
+                <select
+                  value={renewalConvertData.model}
+                  onChange={(e) => setRenewalConvertData(prev => ({ ...prev, model: e.target.value }))}
+                  className="w-full h-10 px-4 border border-slate-200 rounded-lg bg-white"
+                  data-testid="renewal-model"
+                >
+                  <option value="">Select Model</option>
+                  <option value="lab_setup">Lab Setup</option>
+                  <option value="classroom_integration">Classroom Integration</option>
+                  <option value="after_school">After School Program</option>
+                  <option value="hybrid">Hybrid Model</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Kit Type</label>
+                <select
+                  value={renewalConvertData.kit_type}
+                  onChange={(e) => setRenewalConvertData(prev => ({ ...prev, kit_type: e.target.value }))}
+                  className="w-full h-10 px-4 border border-slate-200 rounded-lg bg-white"
+                  data-testid="renewal-kit-type"
+                >
+                  <option value="">Select Kit Type</option>
+                  <option value="basic">Basic Kit</option>
+                  <option value="advanced">Advanced Kit</option>
+                  <option value="premium">Premium Kit</option>
+                  <option value="custom">Custom Kit</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Book Type</label>
+                <select
+                  value={renewalConvertData.book_type}
+                  onChange={(e) => setRenewalConvertData(prev => ({ ...prev, book_type: e.target.value }))}
+                  className="w-full h-10 px-4 border border-slate-200 rounded-lg bg-white"
+                  data-testid="renewal-book-type"
+                >
+                  <option value="">Select Book Type</option>
+                  <option value="workbook">Workbook</option>
+                  <option value="textbook">Textbook</option>
+                  <option value="digital">Digital Only</option>
+                  <option value="combo">Combo (Physical + Digital)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Training Type</label>
+                <select
+                  value={renewalConvertData.training_type}
+                  onChange={(e) => setRenewalConvertData(prev => ({ ...prev, training_type: e.target.value }))}
+                  className="w-full h-10 px-4 border border-slate-200 rounded-lg bg-white"
+                  data-testid="renewal-training-type"
+                >
+                  <option value="">Select Training Type</option>
+                  <option value="online">Online Training</option>
+                  <option value="onsite">On-site Training</option>
+                  <option value="hybrid">Hybrid Training</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Contract Period */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Contract Start</label>
+                <Input
+                  type="date"
+                  value={renewalConvertData.contract_start}
+                  onChange={(e) => setRenewalConvertData(prev => ({ ...prev, contract_start: e.target.value }))}
+                  data-testid="renewal-contract-start"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Contract End</label>
+                <Input
+                  type="date"
+                  value={renewalConvertData.contract_end}
+                  onChange={(e) => setRenewalConvertData(prev => ({ ...prev, contract_end: e.target.value }))}
+                  data-testid="renewal-contract-end"
+                />
+              </div>
+            </div>
+
+            {/* Students */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Total Students</label>
+              <Input
+                type="number"
+                placeholder="Number of students"
+                value={renewalConvertData.total_students}
+                onChange={(e) => setRenewalConvertData(prev => ({ ...prev, total_students: e.target.value }))}
+                data-testid="renewal-students"
+              />
+            </div>
+
+            {/* MOU Upload */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">MOU Document</label>
+              {renewalConvertData.mou_url ? (
+                <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg border border-green-200">
+                  <FileText className="w-5 h-5 text-green-600" />
+                  <a href={renewalConvertData.mou_url} target="_blank" rel="noopener noreferrer" className="text-green-700 hover:underline flex-1 truncate">
+                    View MOU
+                  </a>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => setRenewalConvertData(prev => ({ ...prev, mou_url: '' }))}
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              ) : (
+                <Input
+                  type="file"
+                  accept=".pdf,.doc,.docx"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const formData = new FormData();
+                      formData.append('file', file);
+                      try {
+                        const res = await axios.post(`${API}/upload`, formData, {
+                          headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
+                        });
+                        setRenewalConvertData(prev => ({ ...prev, mou_url: res.data.url }));
+                        toast.success('MOU uploaded');
+                      } catch {
+                        toast.error('Failed to upload MOU');
+                      }
+                    }
+                  }}
+                  data-testid="renewal-mou-upload"
+                />
+              )}
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" onClick={() => setShowRenewalConvertModal(null)} className="flex-1">
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleRenewalConvert} 
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                data-testid="renewal-convert-submit"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Complete Renewal
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Convert Modal */}
       <Dialog open={!!showConvertModal} onOpenChange={() => setShowConvertModal(null)}>
         <DialogContent className="max-w-lg">
