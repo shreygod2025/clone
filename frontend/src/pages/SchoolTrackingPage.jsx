@@ -462,14 +462,47 @@ const SchoolTrackingPage = () => {
                   Programs & Offerings
                 </h3>
                 <div className="space-y-2">
-                  {(offerings || programs || []).length > 0 ? (
+                  {/* Show detailed offering info from onboarding_details */}
+                  {onboarding_details?.offering && (
+                    <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg">
+                      <CheckCircle2 className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                      <span className="text-sm text-slate-700 font-medium">{onboarding_details.offering}</span>
+                    </div>
+                  )}
+                  {onboarding_details?.model && (
+                    <div className="flex items-center justify-between p-2 bg-slate-50 rounded-lg text-sm">
+                      <span className="text-slate-500">Model</span>
+                      <span className="text-slate-700 font-medium capitalize">{onboarding_details.model.replace(/_/g, ' ')}</span>
+                    </div>
+                  )}
+                  {onboarding_details?.kit_type && (
+                    <div className="flex items-center justify-between p-2 bg-slate-50 rounded-lg text-sm">
+                      <span className="text-slate-500">Kit Type</span>
+                      <span className="text-slate-700 font-medium capitalize">{onboarding_details.kit_type.replace(/_/g, ' ')}</span>
+                    </div>
+                  )}
+                  {onboarding_details?.book_type && (
+                    <div className="flex items-center justify-between p-2 bg-slate-50 rounded-lg text-sm">
+                      <span className="text-slate-500">Book Type</span>
+                      <span className="text-slate-700 font-medium capitalize">{onboarding_details.book_type.replace(/_/g, ' ')}</span>
+                    </div>
+                  )}
+                  {onboarding_details?.training_type && (
+                    <div className="flex items-center justify-between p-2 bg-slate-50 rounded-lg text-sm">
+                      <span className="text-slate-500">Training</span>
+                      <span className="text-slate-700 font-medium capitalize">{onboarding_details.training_type.replace(/_/g, ' ')}</span>
+                    </div>
+                  )}
+                  {/* Fallback: show offerings/programs list if no detailed info */}
+                  {!onboarding_details?.offering && (offerings || programs || []).length > 0 && (
                     (offerings || programs).map((item, idx) => (
                       <div key={idx} className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg">
                         <CheckCircle2 className="w-4 h-4 text-blue-600 flex-shrink-0" />
                         <span className="text-sm text-slate-700">{typeof item === 'string' ? item : item.name}</span>
                       </div>
                     ))
-                  ) : (
+                  )}
+                  {!onboarding_details?.offering && (offerings || programs || []).length === 0 && (
                     <p className="text-sm text-slate-500">No programs selected</p>
                   )}
                 </div>
