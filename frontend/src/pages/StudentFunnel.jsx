@@ -1706,15 +1706,21 @@ const StudentFunnel = () => {
                 Back
               </Button>
               {/* Hide Continue button on steps that have their own navigation */}
-              {!['otp', 'action', 'phone', 'skill', 'age', 'learning_goal', 'mode', 'city', 'center'].includes(currentStepData?.id) && (
+              {!['action', 'phone', 'skill', 'age', 'learning_goal', 'mode', 'city', 'center'].includes(currentStepData?.id) && (
                 isLoggedIn && currentStepData?.id === 'schedule' ? null : (
                   <Button
                     onClick={handleNext}
-                    disabled={submitting || otpLoading}
+                    disabled={submitting || otpLoading || (currentStepData?.id === 'otp' && otp.length < 4)}
                     className="btn-primary flex items-center gap-2"
                     data-testid="next-btn"
                   >
-                    {currentStepData?.id === 'profile' ? 'Continue' : 'Next'}
+                    {currentStepData?.id === 'name' && !(formData.learning_mode === 'offline' && formData.offline_type === 'home') 
+                      ? 'Confirm Booking' 
+                      : currentStepData?.id === 'address' 
+                        ? 'Confirm Booking'
+                        : currentStepData?.id === 'otp'
+                          ? 'Verify OTP'
+                          : 'Continue'}
                     <ArrowRight className="w-4 h-4" />
                   </Button>
                 )
