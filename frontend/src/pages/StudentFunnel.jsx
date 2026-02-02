@@ -1241,7 +1241,7 @@ const StudentFunnel = () => {
             </div>
             
             <div>
-              <h3 className="text-lg font-semibold text-[#1E3A5F] mb-1">Verify & Confirm</h3>
+              <h3 className="text-lg font-semibold text-[#1E3A5F] mb-1">Verify OTP</h3>
               <p className="text-slate-500 text-sm">
                 Enter OTP sent to <strong>{formData.countryCode} {formData.phone}</strong>
               </p>
@@ -1259,15 +1259,6 @@ const StudentFunnel = () => {
                 autoFocus
               />
 
-              <Button
-                onClick={handleVerifyAndSubmit}
-                disabled={submitting || otp.length < 4}
-                className="w-full max-w-[200px] mx-auto bg-[#D63031] hover:bg-[#b52828]"
-                data-testid="confirm-booking-btn"
-              >
-                {submitting ? 'Confirming...' : 'Confirm Booking'}
-              </Button>
-
               <button
                 type="button"
                 onClick={() => {
@@ -1280,31 +1271,6 @@ const StudentFunnel = () => {
               >
                 {otpLoading ? 'Sending...' : "Didn't receive OTP? Resend"}
               </button>
-            </div>
-
-            {/* Booking Summary */}
-            <div className="bg-slate-50 rounded-xl p-3 text-left mt-4">
-              <h4 className="font-medium text-[#1E3A5F] mb-2 text-xs">Booking for: {formData.name}</h4>
-              <div className="text-xs text-slate-600 space-y-1">
-                <div className="flex items-center gap-2">
-                  <BookOpen className="w-3.5 h-3.5 text-slate-400" />
-                  <span>{SKILL_OPTIONS.find(s => s.value === formData.skill)?.label}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                  <span>{formData.demo_date ? format(formData.demo_date, 'EEE, MMM d') : ''} at {formatTimeDisplay(formData.demo_time)}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                  <span>
-                    {formData.learning_mode === 'online' 
-                      ? 'Online' 
-                      : formData.offline_type === 'center' 
-                        ? `${formData.selected_center_name || 'Center'}, ${formData.city}` 
-                        : `Home, ${formData.city}`}
-                  </span>
-                </div>
-              </div>
             </div>
           </div>
         );
