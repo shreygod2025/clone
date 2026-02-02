@@ -5455,29 +5455,33 @@ async def get_public_tracking(tracking_token: str):
     
     workflow = school.get("onboarding_workflow", {})
     steps = workflow.get("steps", {})
+    onboarding_data = school.get("onboarding_data", {})
     
     # Calculate progress
     total_steps = len(steps)
     completed_steps = sum(1 for s in steps.values() if s.get("completed", False))
     progress_percent = int((completed_steps / total_steps) * 100) if total_steps > 0 else 0
     
-    # Build public-safe response
+    # Build public-safe response - MOU first!
     public_steps = []
-    step_order = ["payment_collection", "kit_delivery", "distribution_checking", 
+    step_order = ["mou_signing", "payment_collection", "kit_delivery", "distribution_checking", 
                   "technical_check", "teacher_training", "calendar_making", 
-                  "timetable_finalization", "mou_signing", "school_confirmation"]
+                  "timetable_finalization", "school_confirmation"]
     
     for key in step_order:
         step = steps.get(key, {})
+        step_data = step.get("data", {})
         public_steps.append({
             "key": key,
             "title": step.get("title", key.replace("_", " ").title()),
             "description": step.get("description", ""),
             "completed": step.get("completed", False),
             "completed_date": step.get("completed_date"),
-            # Include some safe data
-            "tracking_link": step.get("data", {}).get("tracking_link", "") if key == "kit_delivery" else None,
-            "training_date": step.get("data", {}).get("training_date") if key == "teacher_training" else None
+            # Include scheduled dates for upcoming steps
+            "scheduled_date": step_data.get("scheduled_date") or step_data.get("delivery_date"),
+            "tracking_link": step_data.get("tracking_link") if key == "kit_delivery" else None,
+            "training_date": step_data.get("training_date") if key == "teacher_training" else None,
+            "training_time": step_data.get("training_time") if key == "teacher_training" else None,
         })
     
     # Public timeline (last 10 entries)
@@ -5487,10 +5491,24 @@ async def get_public_tracking(tracking_token: str):
         for t in timeline
     ]
     
+    # Get assigned team member details
+    assigned_team_member = None
+    assigned_to = school.get("assigned_to")
+    if assigned_to:
+        team_member = await db.users.find_one({"id": assigned_to}, {"_id": 0, "password": 0})
+        if team_member:
+            assigned_team_member = {
+                "name": team_member.get("name"),
+                "email": team_member.get("email"),
+                "phone": team_member.get("phone"),
+                "role": team_member.get("role", "Account Manager")
+            }
+    
     return {
         "school_name": school.get("school_name"),
         "contact_name": school.get("contact_name"),
         "programs": school.get("programs_interested", []),
+        "offerings": school.get("selected_offerings", school.get("programs_interested", [])),
         "started_at": workflow.get("started_at"),
         "completed_at": workflow.get("completed_at"),
         "current_step": workflow.get("current_step"),
@@ -5499,17 +5517,24 @@ async def get_public_tracking(tracking_token: str):
         "total_steps": total_steps,
         "steps": public_steps,
         "timeline": public_timeline,
+        # School contacts
+        "school_contacts": onboarding_data.get("school_contacts", []),
+        # Assigned OLL team member
+        "assigned_team_member": assigned_team_member,
+        # MOU URL
+        "mou_url": onboarding_data.get("mou_url"),
         # Include onboarding details for display
         "onboarding_details": {
-            "total_amount": school.get("onboarding_data", {}).get("total_amount"),
-            "total_students": school.get("onboarding_data", {}).get("total_students"),
-            "contract_start": school.get("onboarding_data", {}).get("contract_start"),
-            "contract_end": school.get("onboarding_data", {}).get("contract_end"),
-            "model": school.get("onboarding_data", {}).get("model"),
-            "kit_type": school.get("onboarding_data", {}).get("kit_type"),
+            "total_amount": onboarding_data.get("total_amount"),
+            "total_students": onboarding_data.get("total_students"),
+            "contract_start": onboarding_data.get("contract_start"),
+            "contract_end": onboarding_data.get("contract_end"),
+            "model": onboarding_data.get("model"),
+            "kit_type": onboarding_data.get("kit_type"),
+            "mou_url": onboarding_data.get("mou_url"),
         },
         # Include payment tranches and payment status
-        "payment_tranches": school.get("onboarding_data", {}).get("payment_tranches", []),
+        "payment_tranches": onboarding_data.get("payment_tranches", []),
         "payments": [
             {
                 "tranche_index": p.get("tranche_index"),
