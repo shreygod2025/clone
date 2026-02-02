@@ -1131,29 +1131,70 @@ const StudentFunnel = () => {
               />
             </div>
 
-            {!otpSent ? (
-              <Button
-                onClick={handleSendOTP}
-                disabled={otpLoading || formData.phone.length < 10}
-                className="w-full max-w-xs mx-auto bg-[#D63031] hover:bg-[#b52828]"
-                data-testid="send-otp-btn"
-              >
-                {otpLoading ? 'Sending OTP...' : 'Get OTP'}
-              </Button>
-            ) : (
-              <Button
-                onClick={() => setCurrentStep(prev => prev + 1)}
-                className="w-full max-w-xs mx-auto bg-[#D63031] hover:bg-[#b52828]"
-                data-testid="continue-to-otp-btn"
-              >
-                Continue to Verify
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            )}
+            <Button
+              onClick={() => {
+                if (formData.phone.length >= 10) {
+                  handleSendOTP();
+                  setCurrentStep(prev => prev + 1);
+                } else {
+                  toast.error('Please enter a valid 10-digit phone number');
+                }
+              }}
+              disabled={otpLoading || formData.phone.length < 10}
+              className="w-full max-w-xs mx-auto bg-[#D63031] hover:bg-[#b52828]"
+              data-testid="verify-phone-btn"
+            >
+              {otpLoading ? 'Sending OTP...' : 'Verify Phone Number'}
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
 
             <p className="text-xs text-slate-400">
               OTP will be sent via WhatsApp • Valid for 10 minutes
             </p>
+          </div>
+        );
+
+      case 'name':
+        return (
+          <div className="space-y-5 text-center">
+            <div className="w-14 h-14 rounded-xl bg-purple-100 flex items-center justify-center mx-auto">
+              <svg className="w-7 h-7 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            
+            <div>
+              <h3 className="text-lg font-semibold text-[#1E3A5F] mb-1">What&apos;s your name?</h3>
+              <p className="text-slate-500 text-sm">So we know how to address you</p>
+            </div>
+
+            <div className="max-w-xs mx-auto">
+              <Input
+                placeholder="Enter your full name"
+                value={formData.name}
+                onChange={(e) => updateForm('name', e.target.value)}
+                className="text-center text-lg py-3"
+                data-testid="name-input"
+                autoFocus
+              />
+            </div>
+
+            <Button
+              onClick={() => setCurrentStep(prev => prev + 1)}
+              disabled={!formData.name || formData.name.trim().length < 2}
+              className="w-full max-w-xs mx-auto bg-[#D63031] hover:bg-[#b52828]"
+              data-testid="continue-name-btn"
+            >
+              Continue
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+            
+            {otpSent && (
+              <p className="text-xs text-green-600">
+                <Check className="w-3 h-3 inline mr-1" />
+                OTP sent to your WhatsApp
+              </p>
+            )}
           </div>
         );
 
