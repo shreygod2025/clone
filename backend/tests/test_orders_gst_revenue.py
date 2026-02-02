@@ -175,8 +175,8 @@ class TestOrdersGSTAndRevenue:
             print(f"Verified: gst_type is now 'exclusive' for payment {payment_id}")
     
     def test_07_dashboard_metrics_endpoint(self):
-        """Test GET /api/admin/reports/dashboard-metrics returns revenue data"""
-        response = self.session.get(f"{BASE_URL}/api/admin/reports/dashboard-metrics")
+        """Test GET /api/admin/reports/overview returns revenue data"""
+        response = self.session.get(f"{BASE_URL}/api/admin/reports/overview")
         assert response.status_code == 200
         
         data = response.json()
@@ -196,7 +196,7 @@ class TestOrdersGSTAndRevenue:
     def test_08_revenue_includes_converted_schools(self):
         """Test that revenue calculation includes converted school amounts"""
         # Get dashboard metrics
-        metrics_response = self.session.get(f"{BASE_URL}/api/admin/reports/dashboard-metrics")
+        metrics_response = self.session.get(f"{BASE_URL}/api/admin/reports/overview")
         assert metrics_response.status_code == 200
         metrics = metrics_response.json()
         
