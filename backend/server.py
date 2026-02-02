@@ -5714,12 +5714,22 @@ async def update_onboarding_step(
             break
     workflow["current_step"] = current_step
     
+    update_data = {
+        "onboarding_workflow": workflow,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # If all steps completed and this is a renewal, move back to 'active'
+    # If all steps completed and this is a new conversion, move to 'active'
+    if all_completed:
+        school = await db.school_inquiries.find_one({"id": school_id})
+        current_status = school.get("status") if school else None
+        if current_status in ["converted", "renewed"]:
+            update_data["status"] = "active"
+    
     await db.school_inquiries.update_one(
         {"id": school_id},
-        {"$set": {
-            "onboarding_workflow": workflow,
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }}
+        {"$set": update_data}
     )
     
     return {"success": True, "step": step, "all_completed": all_completed}
