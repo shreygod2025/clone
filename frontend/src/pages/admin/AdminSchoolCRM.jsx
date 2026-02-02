@@ -2019,35 +2019,35 @@ const AdminSchoolCRM = () => {
                 </div>
               )}
 
-              {/* Onboarding Progress - Show for converted schools with onboarding_workflow */}
-              {inquiry.onboarding_workflow && inquiry.status === 'converted' && (
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-3">
+              {/* Onboarding Progress - Show for converted and renewed schools with onboarding_workflow */}
+              {inquiry.onboarding_workflow && ['converted', 'renewed'].includes(inquiry.status) && (
+                <div className={`${inquiry.status === 'renewed' ? 'bg-emerald-50 border-emerald-200' : 'bg-purple-50 border-purple-200'} border rounded-lg p-3 mb-3`}>
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs text-purple-700 font-medium flex items-center gap-1">
+                    <p className={`text-xs font-medium flex items-center gap-1 ${inquiry.status === 'renewed' ? 'text-emerald-700' : 'text-purple-700'}`}>
                       <CheckCircle2 className="w-3 h-3" />
-                      Onboarding Progress
+                      {inquiry.status === 'renewed' ? 'Re-Onboarding Progress' : 'Onboarding Progress'}
                     </p>
                     <button
                       onClick={() => setShowOnboardingWorkflowModal(inquiry)}
-                      className="text-xs text-purple-600 hover:text-purple-800 font-medium"
+                      className={`text-xs font-medium ${inquiry.status === 'renewed' ? 'text-emerald-600 hover:text-emerald-800' : 'text-purple-600 hover:text-purple-800'}`}
                     >
                       View Details →
                     </button>
                   </div>
                   {/* Progress Bar */}
-                  <div className="w-full bg-purple-200 rounded-full h-2 mb-2">
+                  <div className={`w-full ${inquiry.status === 'renewed' ? 'bg-emerald-200' : 'bg-purple-200'} rounded-full h-2 mb-2`}>
                     <div 
-                      className="bg-purple-500 h-2 rounded-full transition-all" 
+                      className={`${inquiry.status === 'renewed' ? 'bg-emerald-500' : 'bg-purple-500'} h-2 rounded-full transition-all`}
                       style={{ 
                         width: `${(Object.values(inquiry.onboarding_workflow.steps || {}).filter(s => s.completed).length / 9 * 100).toFixed(0)}%` 
                       }}
                     />
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-purple-600">
+                    <span className={inquiry.status === 'renewed' ? 'text-emerald-600' : 'text-purple-600'}>
                       {Object.values(inquiry.onboarding_workflow.steps || {}).filter(s => s.completed).length}/9 steps
                     </span>
-                    <span className="text-purple-700 font-medium capitalize">
+                    <span className={`font-medium capitalize ${inquiry.status === 'renewed' ? 'text-emerald-700' : 'text-purple-700'}`}>
                       {typeof (inquiry.onboarding_workflow.current_step || 'payment_collection') === 'string' 
                         ? (inquiry.onboarding_workflow.current_step || 'payment_collection').replace(/_/g, ' ')
                         : 'In Progress'}
@@ -2061,7 +2061,7 @@ const AdminSchoolCRM = () => {
                         navigator.clipboard.writeText(url);
                         toast.success('Tracking link copied!');
                       }}
-                      className="mt-2 text-xs text-purple-500 hover:text-purple-700 flex items-center gap-1"
+                      className={`mt-2 text-xs flex items-center gap-1 ${inquiry.status === 'renewed' ? 'text-emerald-500 hover:text-emerald-700' : 'text-purple-500 hover:text-purple-700'}`}
                     >
                       <Gift className="w-3 h-3" /> Copy tracking link
                     </button>
