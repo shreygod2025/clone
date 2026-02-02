@@ -142,6 +142,25 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ **Relationship Manager:** Changed "Account Management" to "Relationship Manager" on tracking page
 - ✅ **Scheduled Dates:** Tracker shows scheduled dates for kit_delivery, teacher_training even if step not yet reached
 
+**Orders & Payments Enhancements (Feb 2, 2026):**
+- ✅ **GST Type Dropdown:** Added GST type selector in order update popup with options:
+  - Book GST
+  - Inclusive GST  
+  - Exclusive GST
+- ✅ **GST Type Column:** Orders table now shows GST type with colored badges (blue/green/orange)
+- ✅ **Revenue Calculation Fixed:** Reports revenue now correctly sums conversion_amount and onboarding_data.total_amount for converted/active/renewed schools
+
+**Email Templates & Automation (Feb 2, 2026):**
+- ✅ **Beautiful Welcome Email:** Redesigned welcome email with OLL branding, logo, onboarding timeline, and CTA buttons
+- ✅ **Welcome Email to All Members:** Welcome email now sent to all team members listed in school_contacts on conversion
+- ✅ **Invoice Email with Bank Details:** When invoice is uploaded, automatic email sent to accounts team with:
+  - Invoice download link
+  - MOU download link  
+  - Company details (Clonefutura Live Solutions Pvt Ltd)
+  - Bank account details (HDFC 50200063789133, IFSC: HDFC0000240)
+  - GST No: 27AAKCC1113B1ZC, PAN: AAKCC1113B
+  - Note: Emails require Resend domain verification to work in production
+
 **Quoted Price & Offerings for School Leads:**
 - ✅ Added Quoted Price (₹) field to Admin School CRM Add Lead form
 - ✅ Added Offerings selection checkboxes to Admin School CRM Add Lead form
