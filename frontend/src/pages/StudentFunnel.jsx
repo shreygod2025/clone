@@ -409,6 +409,79 @@ const StudentFunnel = () => {
     }
   };
 
+  // Final submit after OTP verified and name/address collected
+  const handleFinalSubmit = async () => {
+    setShowBookingAnimation(true);
+    setSubmitting(true);
+    
+    try {
+      const fullPhone = formData.countryCode === '+91' ? formData.phone : `${formData.countryCode}${formData.phone}`;
+      const userName = formData.name || `Student ${formData.phone.slice(-4)}`;
+      
+      // Build full address for home visits
+      let fullAddress = '';
+      if (formData.learning_mode === 'offline' && formData.offline_type === 'home') {
+        const addressParts = [];
+        if (formData.address_line2) addressParts.push(formData.address_line2);
+        if (formData.address) addressParts.push(formData.address);
+        if (formData.address_landmark) addressParts.push(`Landmark: ${formData.address_landmark}`);
+        if (formData.pincode) addressParts.push(`PIN: ${formData.pincode}`);
+        fullAddress = addressParts.join(', ');
+      }
+      
+      const payload = {
+        learner_type: 'self',
+        age_group: formData.age_group,
+        skill: formData.skill,
+        city: formData.city,
+        learning_mode: formData.learning_mode === 'online' 
+          ? 'online' 
+          : formData.offline_type === 'center' 
+            ? 'offline_center' 
+            : 'offline_home',
+        learning_goal: formData.learning_goal || 'general',
+        name: userName,
+        email: `${formData.phone}@student.oll`,
+        phone: fullPhone,
+        demo_date: formData.demo_date ? format(formData.demo_date, 'yyyy-MM-dd') : null,
+        demo_time: formData.demo_time,
+        address: fullAddress,
+        source: 'website'
+      };
+      
+      const response = await axios.post(`${API}/students/inquiry`, payload);
+      
+      setBookingData({
+        ...response.data,
+        skill_label: SKILL_OPTIONS.find(s => s.value === formData.skill)?.label,
+        formatted_date: formData.demo_date ? format(formData.demo_date, 'EEEE, MMMM d, yyyy') : '',
+        demo_time: formData.demo_time,
+        learning_mode: formData.learning_mode,
+        offline_type: formData.offline_type,
+        city: formData.city,
+        center_name: formData.selected_center_name,
+        address: fullAddress
+      });
+      
+      updateUserBooking({ ...response.data, name: userName });
+      
+      setTimeout(() => {
+        setShowBookingAnimation(false);
+        setSubmitted(true);
+        toast.success('Demo booked successfully!');
+      }, 1500);
+    } catch (error) {
+      setShowBookingAnimation(false);
+      if (error.response?.data?.detail) {
+        toast.error(error.response.data.detail);
+      } else {
+        toast.error('Failed to complete booking');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const validateStep = () => {
     const stepId = currentStepData?.id;
     if (!stepId) return true;
