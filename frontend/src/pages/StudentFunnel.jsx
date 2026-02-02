@@ -403,16 +403,6 @@ const StudentFunnel = () => {
       setSubmitting(false);
     }
   };
-    } catch (error) {
-      if (error.response?.data?.detail) {
-        toast.error(error.response.data.detail);
-      } else {
-        toast.error('Failed to complete booking');
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const validateStep = () => {
     const stepId = currentStepData?.id;
