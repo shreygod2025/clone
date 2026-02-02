@@ -841,6 +841,13 @@ class SchoolInquiryUpdate(BaseModel):
     contact_name: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
+    location: Optional[str] = None
+    board: Optional[str] = None
+    model: Optional[str] = None
+    total_students: Optional[int] = None
+    school_size: Optional[str] = None
+    fee_range: Optional[str] = None
+    student_count: Optional[str] = None
     notes: Optional[str] = None
     meeting_date: Optional[str] = None
     meeting_time: Optional[str] = None
@@ -849,6 +856,9 @@ class SchoolInquiryUpdate(BaseModel):
     followup_comment: Optional[str] = None
     conversion_amount: Optional[str] = None
     assigned_to: Optional[str] = None
+    onboarding_data: Optional[dict] = None
+    selected_offerings: Optional[list] = None
+    programs_interested: Optional[list] = None
 
 # Educator Models
 class EducatorApplication(BaseModel):
