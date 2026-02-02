@@ -356,6 +356,7 @@ const AdminOrders = () => {
                       {activeTab === 'school' ? 'School' : 'Student'}
                     </th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Amount</th>
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">GST Type</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Due Date</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Status</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Invoice</th>
