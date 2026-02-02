@@ -533,6 +533,63 @@ const SchoolTrackingPage = () => {
                 )}
               </div>
 
+              {/* Documents Section */}
+              {((documents && documents.length > 0) || onboarding_details?.parent_circular_url || onboarding_details?.payment_link) && (
+                <div className="bg-white rounded-xl shadow-lg p-4">
+                  <h3 className="font-semibold text-[#1E3A5F] mb-3 flex items-center gap-2">
+                    <FileText className="w-5 h-5" />
+                    Important Documents
+                  </h3>
+                  <div className="space-y-2">
+                    {/* Parent Circular */}
+                    {onboarding_details?.parent_circular_url && (
+                      <a 
+                        href={onboarding_details.parent_circular_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 p-3 bg-yellow-50 rounded-lg border border-yellow-200 hover:bg-yellow-100 transition-colors"
+                      >
+                        <FileText className="w-5 h-5 text-yellow-600" />
+                        <span className="text-sm font-medium text-yellow-800">Parent Circular</span>
+                        <ExternalLink className="w-4 h-4 text-yellow-600 ml-auto" />
+                      </a>
+                    )}
+                    
+                    {/* Payment Link */}
+                    {onboarding_details?.payment_mode === 'from_student' && onboarding_details?.payment_link && (
+                      <a 
+                        href={onboarding_details.payment_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 p-3 bg-green-50 rounded-lg border border-green-200 hover:bg-green-100 transition-colors"
+                      >
+                        <DollarSign className="w-5 h-5 text-green-600" />
+                        <span className="text-sm font-medium text-green-800">Online Payment Link</span>
+                        <ExternalLink className="w-4 h-4 text-green-600 ml-auto" />
+                      </a>
+                    )}
+                    
+                    {/* Other Documents */}
+                    {documents?.map((doc, idx) => (
+                      <a 
+                        key={idx}
+                        href={doc.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-slate-100 transition-colors"
+                      >
+                        <FileText className="w-5 h-5 text-slate-600" />
+                        <div className="flex-1">
+                          <span className="text-sm font-medium text-slate-800">{doc.type}</span>
+                          <span className="text-xs text-slate-500 block truncate">{doc.name}</span>
+                        </div>
+                        <ExternalLink className="w-4 h-4 text-slate-500" />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* OLL Team Member */}
               <div className="bg-white rounded-xl shadow-lg p-4">
                 <h3 className="font-semibold text-[#1E3A5F] mb-3 flex items-center gap-2">
