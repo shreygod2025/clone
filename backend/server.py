@@ -5778,12 +5778,15 @@ async def get_public_tracking(tracking_token: str):
         "mou_url": onboarding_data.get("mou_url"),
         # Include onboarding details for display
         "onboarding_details": {
+            "offering": onboarding_data.get("offering"),
             "total_amount": onboarding_data.get("total_amount"),
             "total_students": onboarding_data.get("total_students"),
             "contract_start": onboarding_data.get("contract_start"),
             "contract_end": onboarding_data.get("contract_end"),
             "model": onboarding_data.get("model"),
             "kit_type": onboarding_data.get("kit_type"),
+            "book_type": onboarding_data.get("book_type"),
+            "training_type": onboarding_data.get("training_type"),
             "mou_url": onboarding_data.get("mou_url"),
         },
         # Include payment tranches and payment status
