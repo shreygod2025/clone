@@ -1,0 +1,95 @@
+{
+  "summary": "Completed testing of School Renewal Onboarding features. All 7 backend tests pass. Frontend UI verified with emerald-styled Re-Onboarding Progress cards for renewed schools and purple-styled Onboarding Progress cards for converted schools. Tracking page shows Partnership Renewal banner, Renewal In Progress status, and Renewal Steps heading for renewal schools.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "Legacy data",
+        "issue": "Test Demo School (renewed) has onboarding_workflow without is_renewal flag - this is legacy data created before the feature was added. New renewals correctly have is_renewal=True.",
+        "priority": "LOW"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_renewal_onboarding.py",
+    "/app/test_reports/pytest/pytest_results_iter20.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_renewal_onboarding.py"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "100%"
+  },
+  "test_credentials": {
+    "admin": "admin@oll.co / Dagaji03@",
+    "test_tracking_token": "oll-4d7cbb56abee"
+  },
+  "seed_data_creation": "None - used existing school data",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Renewal onboarding features fully tested. Key findings: 1) Renewed schools section shows emerald/green styled 'Re-Onboarding Progress' cards with progress bar, step count, current step, and 'Copy tracking link' button. 2) Converted schools section shows purple styled 'Onboarding Progress' cards. 3) Tracking page for renewals shows green 'Partnership Renewal' banner at top, 'Renewal In Progress' status, and 'Renewal Steps' heading. 4) Backend /api/track/{token} returns is_renewal: true for renewal schools. 5) Auto status change from 'renewed' to 'active' when all 9 steps complete is implemented in backend code (lines 5722-5728).",
+  "features_tested": {
+    "renewed_section_emerald_styling": {
+      "status": "PASS",
+      "details": "Renewed schools section shows Re-Onboarding Progress card with emerald/green styling (bg-emerald-50, border-emerald-200, text-emerald-700, bg-emerald-500 progress bar)"
+    },
+    "re_onboarding_progress_card": {
+      "status": "PASS",
+      "details": "Card shows: progress bar, step count (e.g., '0/9 steps'), current step (e.g., 'Payment Collection'), 'View Details →' link, 'Copy tracking link' button"
+    },
+    "tracking_page_renewal_banner": {
+      "status": "PASS",
+      "details": "Green banner at top: '🔄 Partnership Renewal - Thank you for continuing with OLL!' with bg-emerald-500 styling"
+    },
+    "tracking_page_renewal_status": {
+      "status": "PASS",
+      "details": "Status banner shows 'Renewal In Progress' instead of 'Onboarding In Progress'"
+    },
+    "tracking_page_renewal_steps_heading": {
+      "status": "PASS",
+      "details": "Steps section heading shows 'Renewal Steps' instead of 'Onboarding Steps'"
+    },
+    "backend_is_renewal_flag": {
+      "status": "PASS",
+      "details": "GET /api/track/{token} returns is_renewal: true for renewal onboarding (verified with token oll-4d7cbb56abee)"
+    },
+    "auto_status_change_logic": {
+      "status": "PASS",
+      "details": "Backend code (server.py lines 5722-5728) implements auto status change from 'renewed' to 'active' when all 9 onboarding steps are completed"
+    },
+    "converted_vs_renewed_distinction": {
+      "status": "PASS",
+      "details": "Converted schools show purple 'Onboarding Progress' cards, Renewed schools show emerald 'Re-Onboarding Progress' cards"
+    }
+  },
+  "test_execution_details": {
+    "test_type": "Backend API Testing + Frontend UI Testing",
+    "tools_used": ["pytest", "Playwright Browser Automation"],
+    "test_url": "https://edufunnel.preview.emergentagent.com",
+    "pages_tested": [
+      "/admin/login",
+      "/admin/school-crm (Leads & Schools tab - Converted section)",
+      "/admin/school-crm (Leads & Schools tab - Renewed section)",
+      "/track/oll-4d7cbb56abee (Renewal tracking page)"
+    ],
+    "api_endpoints_tested": [
+      "POST /api/auth/login",
+      "GET /api/schools/inquiries",
+      "GET /api/track/{token}",
+      "POST /api/schools/{id}/init-onboarding",
+      "PATCH /api/schools/{id}/onboarding-step/{step}"
+    ]
+  },
+  "notes": {
+    "legacy_data": "Test Demo School has onboarding_workflow without is_renewal flag - this is legacy data. New renewals correctly have is_renewal=True.",
+    "email_templates": "Email sending requires Resend domain verification (MOCKED)"
+  }
+}
