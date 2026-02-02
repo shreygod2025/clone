@@ -66,22 +66,21 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ Orders Page: Removed duplicate title, now shows single "Orders & Payments" header
 
 **Learner Demo Booking UX Improvements (Feb 2, 2026):**
-- ✅ **"At My Home" Address Step:** Added new address step when selecting offline home visit
-  - Address search with autocomplete suggestions
-  - Flat/Apartment/Building number field
-  - Landmark/Additional comments field (optional)
-  - Address stored with booking for instructor visit
-- ✅ **Simplified OTP Flow:** Single "Verify Phone Number" button
-  - Removes two-click friction (was: Get OTP → Continue to Verify)
-  - OTP sends automatically when clicking the button
-  - Proceeds to name step immediately
+- ✅ **Flow Reordered:** Phone → OTP → Name → Address (address comes after name for home visits)
+- ✅ **Simplified OTP Flow:** Single "Verify Phone Number" button sends OTP and proceeds
+- ✅ **OTP Step:** Shows "Verify OTP" with separate continue button
 - ✅ **Name on Separate Page:** Dedicated step for entering student name
-  - Clean UI with single purpose
-  - Gives time for OTP to arrive on WhatsApp
+- ✅ **Simple Address Fields:** Removed Google Maps autocomplete, added:
+  - Flat/Apartment/Building number
+  - Street/Area/Locality (required)
+  - City (pre-filled, disabled)
+  - PIN Code (required, 6 digits)
+  - Landmark (optional)
+- ✅ **Address in Demo Summary:** Full address displayed in booking summary
 - ✅ **Booking Confirmation Animation:** Animated checkmark loading screen
   - Eliminates flash back to date page
-  - Shows "Confirming your booking..." with animated green checkmark
-  - Smooth transition to success page after 1.5 seconds
+  - Shows "Confirming your booking..." 
+  - Smooth transition to success page
 
 **Meeting Done Popup in School CRM:**
 - ✅ New "Meeting Completed" modal with required meeting notes/minutes textarea
