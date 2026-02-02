@@ -261,7 +261,7 @@ const SchoolFunnel = () => {
                   className="h-8"
                 />
               </Link>
-              <a href="tel:+919876543210" className="flex items-center gap-2 text-[#D63031] font-medium text-sm">
+              <a href="tel:+919920188188" className="flex items-center gap-2 text-[#D63031] font-medium text-sm">
                 <Phone className="w-4 h-4" />
                 <span className="hidden sm:inline">Call Us</span>
               </a>

@@ -422,7 +422,7 @@ const CoursePage = () => {
                 variant="outline"
                 size="lg"
                 className="border-white/50 text-white hover:bg-white/10 font-semibold px-8"
-                onClick={() => window.location.href = 'tel:+919876543210'}
+                onClick={() => window.location.href = 'tel:+919920188188'}
                 data-testid="cta-call-btn"
               >
                 <Phone className="w-5 h-5 mr-2" />
