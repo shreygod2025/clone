@@ -148,7 +148,17 @@ const StudentFunnel = () => {
     phone: '',
     countryCode: '+91',
     address: '',
+    address_line2: '', // apartment/building number
+    address_landmark: '', // additional comments/landmark
   });
+  
+  // Address search state
+  const [addressSearch, setAddressSearch] = useState('');
+  const [addressSuggestions, setAddressSuggestions] = useState([]);
+  const [searchingAddress, setSearchingAddress] = useState(false);
+  
+  // Booking confirmation animation state
+  const [showBookingAnimation, setShowBookingAnimation] = useState(false);
 
   // Pre-fill form data for logged-in users
   useEffect(() => {
