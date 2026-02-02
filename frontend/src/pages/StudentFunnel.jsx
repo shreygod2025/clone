@@ -147,15 +147,11 @@ const StudentFunnel = () => {
     name: '',
     phone: '',
     countryCode: '+91',
-    address: '',
-    address_line2: '', // apartment/building number
-    address_landmark: '', // additional comments/landmark
+    address: '', // Street/Area/Locality
+    address_line2: '', // Flat/Apartment/Building number
+    address_landmark: '', // Landmark/additional comments
+    pincode: '', // PIN code
   });
-  
-  // Address search state
-  const [addressSearch, setAddressSearch] = useState('');
-  const [addressSuggestions, setAddressSuggestions] = useState([]);
-  const [searchingAddress, setSearchingAddress] = useState(false);
   
   // Booking confirmation animation state
   const [showBookingAnimation, setShowBookingAnimation] = useState(false);
