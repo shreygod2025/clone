@@ -1498,7 +1498,7 @@ const AdminSchoolCRM = () => {
               Edit
             </button>
             <button
-              onClick={() => handleStatusChange(inquiry, 'lost')}
+              onClick={() => openLostReasonModal(inquiry)}
               className="text-xs px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 font-medium"
               data-testid={`lost-${inquiry.id}`}
             >
