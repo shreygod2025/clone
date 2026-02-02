@@ -962,6 +962,14 @@ const StudentFunnel = () => {
         );
 
       case 'address':
+        // Build address preview
+        const addressPreview = [
+          formData.address_line2,
+          formData.address,
+          formData.city,
+          formData.pincode ? `PIN: ${formData.pincode}` : ''
+        ].filter(Boolean).join(', ');
+        
         return (
           <div className="space-y-5">
             <div className="text-center mb-4">
@@ -1036,6 +1044,27 @@ const StudentFunnel = () => {
                 data-testid="address-landmark"
               />
             </div>
+            
+            {/* Booking Summary with Address */}
+            {formData.address && formData.pincode && formData.pincode.length === 6 && (
+              <div className="bg-slate-50 rounded-xl p-3 text-left mt-4">
+                <h4 className="font-medium text-[#1E3A5F] mb-2 text-xs">Demo Summary for {formData.name}</h4>
+                <div className="text-xs text-slate-600 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="w-3.5 h-3.5 text-slate-400" />
+                    <span>{SKILL_OPTIONS.find(s => s.value === formData.skill)?.label}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                    <span>{formData.demo_date ? format(formData.demo_date, 'EEE, MMM d') : ''} at {formatTimeDisplay(formData.demo_time)}</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <MapPin className="w-3.5 h-3.5 text-slate-400 mt-0.5 flex-shrink-0" />
+                    <span className="text-green-700">{addressPreview}</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         );
 
