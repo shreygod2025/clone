@@ -161,6 +161,23 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
   - GST No: 27AAKCC1113B1ZC, PAN: AAKCC1113B
   - Note: Emails require Resend domain verification to work in production
 
+**School Renewal Workflow (Feb 2, 2026):**
+- ✅ **Lost Reason Modal:** When marking school as lost, shows dropdown with reasons:
+  - Budget constraints, Chose competitor, Program not suitable, Decision postponed, No response, Management change, Other (custom)
+- ✅ **Renewal Meeting Stage:** New stage in workflow (teal color) between Active and Renewed
+- ✅ **Renewal Meeting Button:** Replaced "Renewed" button in Active Schools with "Renewal Meeting"
+- ✅ **Renewal Meeting Modal:** Schedule renewal meeting with:
+  - Date picker and time slots
+  - Meeting type (In-Person / Online)
+  - Meeting link or address based on type
+  - Notes field
+- ✅ **Renewal Conversion Modal:** Pre-fills with existing onboarding data, allows editing:
+  - Renewal amount, Model, Kit Type, Book Type, Training Type
+  - Contract period, Total Students, MOU upload
+  - Generates new tracking link on submission
+- ✅ **Re-onboarding Flow:** Renewed schools get new onboarding workflow with tracking link
+- ✅ **Auto-status Update:** Schools automatically move back to "Active" when re-onboarding completes
+
 **Quoted Price & Offerings for School Leads:**
 - ✅ Added Quoted Price (₹) field to Admin School CRM Add Lead form
 - ✅ Added Offerings selection checkboxes to Admin School CRM Add Lead form
