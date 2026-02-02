@@ -384,6 +384,20 @@ const AdminOrders = () => {
                         )}
                       </td>
                       <td className="px-4 py-3">
+                        {payment.gst_type ? (
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            payment.gst_type === 'book_gst' ? 'bg-blue-100 text-blue-700' :
+                            payment.gst_type === 'inclusive' ? 'bg-green-100 text-green-700' :
+                            'bg-orange-100 text-orange-700'
+                          }`}>
+                            {payment.gst_type === 'book_gst' ? 'Book GST' :
+                             payment.gst_type === 'inclusive' ? 'Inclusive' : 'Exclusive'}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 text-sm">-</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
                         {payment.due_date ? (
                           <p className={`text-sm ${
                             isPast(parseISO(payment.due_date)) && payment.status !== 'paid'
