@@ -106,7 +106,7 @@ const AdminOrders = () => {
       
       toast.success('Payment updated successfully');
       setShowPaymentModal(null);
-      setPaymentUpdate({ status: '', payment_date: '', transaction_id: '', notes: '', invoice_url: '', receipt_url: '' });
+      setPaymentUpdate({ status: '', payment_date: '', transaction_id: '', notes: '', invoice_url: '', receipt_url: '', gst_type: '' });
       fetchPayments();
     } catch (error) {
       toast.error('Failed to update payment');
