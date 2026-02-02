@@ -404,8 +404,14 @@ const StudentFunnel = () => {
         return formData.learning_mode;
       case 'center':
         return formData.selected_center;
+      case 'address':
+        return formData.address; // Main address is required
       case 'schedule':
         return formData.demo_date && formData.demo_time;
+      case 'phone':
+        return formData.phone && formData.phone.length >= 10;
+      case 'name':
+        return formData.name && formData.name.trim().length >= 2;
       case 'contact':
         return formData.name && formData.phone && formData.phone.length >= 10;
       case 'otp':
