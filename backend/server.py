@@ -5496,8 +5496,17 @@ async def init_school_onboarding(school_id: str, data: dict = None, user: dict =
             # Build tracking URL
             tracking_url = f"https://oll.co/track/{tracking_token}"
             
-            # Build email content
-            email_subject = f"Welcome to OLL - {school.get('school_name')} Onboarding Started!"
+            # Build email content - different for renewals
+            if is_renewal:
+                email_subject = f"Welcome Back! - {school.get('school_name')} Renewal Started"
+                header_text = "🎉 Welcome Back to OLL!"
+                header_subtext = "We're excited to continue our partnership"
+                greeting_text = f"Thank you for renewing your partnership with us! We're thrilled to continue working with <strong style='color: #1E3A5F;'>{school.get('school_name')}</strong> for another successful year."
+            else:
+                email_subject = f"Welcome to OLL - {school.get('school_name')} Onboarding Started!"
+                header_text = "🎉 Welcome to OLL!"
+                header_subtext = "Your journey to transforming education begins now"
+                greeting_text = f"Congratulations! We are thrilled to welcome <strong style='color: #1E3A5F;'>{school.get('school_name')}</strong> to the OLL family. Together, we'll embark on an exciting journey of innovation and skill-based education."
             
             offerings_list = ", ".join(school.get("selected_offerings", school.get("programs_interested", [])))
             contract_start = onboarding_data.get("contract_start", "TBD")
@@ -5509,8 +5518,8 @@ async def init_school_onboarding(school_id: str, data: dict = None, user: dict =
                 <!-- Header with Logo and Celebration -->
                 <div style="background: linear-gradient(135deg, #1E3A5F 0%, #2d5a8f 100%); padding: 40px 30px; text-align: center;">
                     <img src="https://customer-assets.emergentagent.com/job_oll-skill-edu/artifacts/wzn0gh6k_OLL-horizontal-logo-white.png" alt="OLL Logo" style="height: 50px; margin-bottom: 20px;">
-                    <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 600;">🎉 Welcome to OLL!</h1>
-                    <p style="color: rgba(255,255,255,0.9); margin: 15px 0 0 0; font-size: 16px;">Your journey to transforming education begins now</p>
+                    <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 600;">{header_text}</h1>
+                    <p style="color: rgba(255,255,255,0.9); margin: 15px 0 0 0; font-size: 16px;">{header_subtext}</p>
                 </div>
                 
                 <!-- Main Content -->
@@ -5520,8 +5529,7 @@ async def init_school_onboarding(school_id: str, data: dict = None, user: dict =
                     </p>
                     
                     <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
-                        Congratulations! We are thrilled to welcome <strong style="color: #1E3A5F;">{school.get('school_name')}</strong> to the OLL family. 
-                        Together, we'll embark on an exciting journey of innovation and skill-based education.
+                        {greeting_text}
                     </p>
                     
                     <!-- Program Details Card -->
