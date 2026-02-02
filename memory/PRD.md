@@ -177,6 +177,17 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
   - Generates new tracking link on submission
 - ✅ **Re-onboarding Flow:** Renewed schools get new onboarding workflow with tracking link
 - ✅ **Auto-status Update:** Schools automatically move back to "Active" when re-onboarding completes
+- ✅ **Renewed Section Progress Tracker:** Renewed schools show emerald/green styled "Re-Onboarding Progress" card with:
+  - Progress bar showing step completion
+  - Step count (e.g., "1/9 steps")
+  - Current step name
+  - "Copy tracking link" button
+  - "View Details" link
+- ✅ **Renewal Tracking Page:** Shows renewal-specific UI:
+  - Green "Partnership Renewal - Thank you for continuing with OLL!" banner
+  - "Renewal In Progress" status
+  - "Renewal Steps" heading
+  - is_renewal flag in API response
 
 **Quoted Price & Offerings for School Leads:**
 - ✅ Added Quoted Price (₹) field to Admin School CRM Add Lead form
