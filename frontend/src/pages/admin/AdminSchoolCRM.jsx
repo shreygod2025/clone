@@ -1912,6 +1912,14 @@ const AdminSchoolCRM = () => {
                   )}
                 </div>
                 <div className="flex flex-col items-end gap-1">
+                  {/* Show status badge when searching all statuses */}
+                  {searchAllStatuses && searchQuery.trim() && (
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                      STATUS_SECTIONS.find(s => s.value === inquiry.status)?.color || 'bg-slate-100'
+                    } text-white`}>
+                      {STATUS_SECTIONS.find(s => s.value === inquiry.status)?.label || inquiry.status}
+                    </span>
+                  )}
                   <span className={`px-2 py-1 rounded text-xs font-medium ${
                     inquiry.source === 'website' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
                   }`}>
