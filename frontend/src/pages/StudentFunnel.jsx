@@ -243,14 +243,20 @@ const StudentFunnel = () => {
       if (formData.offline_type === 'center' && centers.length > 0) {
         steps.push({ id: 'center', title: 'Select Center' });
       }
+      
+      // Add address step if offline at home
+      if (formData.offline_type === 'home') {
+        steps.push({ id: 'address', title: 'Your Address' });
+      }
     }
     
     steps.push({ id: 'schedule', title: 'Schedule Demo' });
     
-    // Only add phone and OTP steps if user is NOT logged in
+    // Only add phone, name, and OTP steps if user is NOT logged in
     if (!isLoggedIn) {
       steps.push(
         { id: 'phone', title: 'Your Phone Number' },
+        { id: 'name', title: 'Your Name' },
         { id: 'otp', title: 'Verify & Confirm' }
       );
     }
