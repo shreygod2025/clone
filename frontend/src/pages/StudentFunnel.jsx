@@ -1431,16 +1431,18 @@ const StudentFunnel = () => {
                 </div>
                 <div className="flex items-center gap-3">
                   <Clock className="w-5 h-5 opacity-80" />
-                  <span>{bookingData.demo_time}</span>
+                  <span>{formatTimeDisplay(bookingData.demo_time)}</span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <MapPin className="w-5 h-5 opacity-80" />
+                <div className="flex items-start gap-3">
+                  <MapPin className="w-5 h-5 opacity-80 mt-0.5 flex-shrink-0" />
                   <span>
                     {bookingData.learning_mode === 'online' 
                       ? 'Online Class' 
                       : bookingData.offline_type === 'center' 
                         ? `${bookingData.center_name || 'OLL Center'}, ${bookingData.city}` 
-                        : `At Home, ${bookingData.city}`}
+                        : bookingData.address 
+                          ? bookingData.address 
+                          : `At Home, ${bookingData.city}`}
                   </span>
                 </div>
               </div>
