@@ -355,6 +355,14 @@ const SchoolTrackingPage = () => {
                         </p>
                       )}
 
+                      {/* Payment Collection - Show scheduled payment date if available */}
+                      {step.key === 'payment_collection' && step.payment_date && !payment_tranches?.length && (
+                        <p className="text-sm text-blue-600 mt-3 flex items-center gap-2">
+                          <Calendar className="w-4 h-4" />
+                          Payment Date: {format(new Date(step.payment_date), 'MMMM d, yyyy')}
+                        </p>
+                      )}
+
                       {/* Payment Collection - Show Tranches */}
                       {step.key === 'payment_collection' && payment_tranches && payment_tranches.length > 0 && (
                         <div className="mt-3 space-y-2">
