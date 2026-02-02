@@ -121,7 +121,8 @@ const AdminOrders = () => {
       transaction_id: payment.transaction_id || '',
       notes: payment.notes || '',
       invoice_url: payment.invoice_url || '',
-      receipt_url: payment.receipt_url || ''
+      receipt_url: payment.receipt_url || '',
+      gst_type: payment.gst_type || ''
     });
   };
 
