@@ -859,6 +859,14 @@ class SchoolInquiryUpdate(BaseModel):
     onboarding_data: Optional[dict] = None
     selected_offerings: Optional[list] = None
     programs_interested: Optional[list] = None
+    # Lost reason
+    lost_reason: Optional[str] = None
+    # Renewal meeting fields
+    renewal_meeting_date: Optional[str] = None
+    renewal_meeting_time: Optional[str] = None
+    renewal_meeting_type: Optional[str] = None
+    renewal_meeting_link: Optional[str] = None
+    renewal_meeting_address: Optional[str] = None
 
 # Educator Models
 class EducatorApplication(BaseModel):
