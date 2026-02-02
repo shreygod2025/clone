@@ -46,7 +46,8 @@ const AdminOrders = () => {
     notes: '',
     invoice_url: '',
     receipt_url: '',
-    gst_type: ''
+    gst_type: '',
+    payment_link: ''
   });
 
   useEffect(() => {
