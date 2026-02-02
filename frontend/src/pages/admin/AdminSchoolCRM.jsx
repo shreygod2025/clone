@@ -77,6 +77,25 @@ const AdminSchoolCRM = () => {
   const [showAddMeetingModal, setShowAddMeetingModal] = useState(null);
   const [showOnboardingWorkflowModal, setShowOnboardingWorkflowModal] = useState(null);
   const [showMeetingDoneModal, setShowMeetingDoneModal] = useState(null);
+  const [showLostReasonModal, setShowLostReasonModal] = useState(null);
+  const [lostReason, setLostReason] = useState('');
+  const [showRenewalMeetingModal, setShowRenewalMeetingModal] = useState(null);
+  const [renewalMeetingData, setRenewalMeetingData] = useState({ date: null, time: '', type: 'offline', notes: '', link: '', address: '' });
+  const [showRenewalConvertModal, setShowRenewalConvertModal] = useState(null);
+  const [renewalConvertData, setRenewalConvertData] = useState({
+    amount: '',
+    model: '',
+    kit_type: '',
+    book_type: '',
+    training_type: '',
+    total_students: '',
+    contract_start: '',
+    contract_end: '',
+    mou_url: '',
+    school_contacts: [],
+    grade_pricing: [],
+    payment_tranches: []
+  });
   const [meetingDoneData, setMeetingDoneData] = useState({ 
     notes: '', 
     quoted_price: '',
