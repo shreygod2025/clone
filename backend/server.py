@@ -867,6 +867,8 @@ class SchoolInquiryUpdate(BaseModel):
     renewal_meeting_type: Optional[str] = None
     renewal_meeting_link: Optional[str] = None
     renewal_meeting_address: Optional[str] = None
+    # Documents (proposal, MOU, parent circular, etc.)
+    documents: Optional[list] = None
 
 # Educator Models
 class EducatorApplication(BaseModel):
