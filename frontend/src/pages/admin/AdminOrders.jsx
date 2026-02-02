@@ -526,6 +526,22 @@ const AdminOrders = () => {
                 </select>
               </div>
 
+              {/* GST Type */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">GST Type</label>
+                <select
+                  value={paymentUpdate.gst_type}
+                  onChange={(e) => setPaymentUpdate(prev => ({ ...prev, gst_type: e.target.value }))}
+                  className="w-full h-10 px-4 border border-slate-200 rounded-lg"
+                  data-testid="gst-type-select"
+                >
+                  <option value="">Select GST Type</option>
+                  <option value="book_gst">Book GST</option>
+                  <option value="inclusive">Inclusive GST</option>
+                  <option value="exclusive">Exclusive GST</option>
+                </select>
+              </div>
+
               {/* Payment Date */}
               {(paymentUpdate.status === 'paid' || paymentUpdate.status === 'partial') && (
                 <div>
