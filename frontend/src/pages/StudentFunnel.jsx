@@ -317,7 +317,10 @@ const StudentFunnel = () => {
       return;
     }
     
+    // Show booking animation immediately
+    setShowBookingAnimation(true);
     setSubmitting(true);
+    
     try {
       // Use full phone with country code
       const fullPhone = formData.countryCode === '+91' ? formData.phone : `${formData.countryCode}${formData.phone}`;
@@ -328,11 +331,21 @@ const StudentFunnel = () => {
       if (!otpResult.success) {
         toast.error(otpResult.message || 'Invalid OTP');
         setSubmitting(false);
+        setShowBookingAnimation(false);
         return;
       }
       
       // Use name from form if provided, otherwise from user record, or generate placeholder
       const userName = formData.name || otpResult.user?.name || `Student ${formData.phone.slice(-4)}`;
+      
+      // Build full address for home visits
+      let fullAddress = formData.address;
+      if (formData.address_line2) {
+        fullAddress += `, ${formData.address_line2}`;
+      }
+      if (formData.address_landmark) {
+        fullAddress += ` (${formData.address_landmark})`;
+      }
       
       // OTP verified and user is now logged in, submit the inquiry
       const payload = {
@@ -351,6 +364,7 @@ const StudentFunnel = () => {
         phone: fullPhone,
         demo_date: formData.demo_date ? format(formData.demo_date, 'yyyy-MM-dd') : null,
         demo_time: formData.demo_time,
+        address: fullAddress,
         source: 'website'
       };
       
@@ -365,14 +379,30 @@ const StudentFunnel = () => {
         learning_mode: formData.learning_mode,
         offline_type: formData.offline_type,
         city: formData.city,
-        center_name: formData.selected_center_name
+        center_name: formData.selected_center_name,
+        address: fullAddress
       });
       
       // Update user booking in context (user is already logged in from verifyOTP)
       updateUserBooking({ ...response.data, name: formData.name });
       
-      setSubmitted(true);
-      toast.success('Demo booked successfully!');
+      // Small delay to show the checkmark animation completing
+      setTimeout(() => {
+        setShowBookingAnimation(false);
+        setSubmitted(true);
+        toast.success('Demo booked successfully!');
+      }, 1500);
+    } catch (error) {
+      setShowBookingAnimation(false);
+      if (error.response?.data?.detail) {
+        toast.error(error.response.data.detail);
+      } else {
+        toast.error('Failed to complete booking');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
     } catch (error) {
       if (error.response?.data?.detail) {
         toast.error(error.response.data.detail);
