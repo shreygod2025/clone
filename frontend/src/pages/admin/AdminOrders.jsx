@@ -672,6 +672,18 @@ const AdminOrders = () => {
                 />
               </div>
 
+              {/* Payment Link (for student payments with online mode) */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Payment Link</label>
+                <Input
+                  type="url"
+                  placeholder="https://payment-gateway.com/pay/..."
+                  value={paymentUpdate.payment_link}
+                  onChange={(e) => setPaymentUpdate(prev => ({ ...prev, payment_link: e.target.value }))}
+                />
+                <p className="text-xs text-slate-500 mt-1">Optional: Add online payment link for parents</p>
+              </div>
+
               {/* Actions */}
               <div className="flex gap-3 pt-4 border-t">
                 <Button variant="outline" onClick={() => setShowPaymentModal(null)} className="flex-1">
