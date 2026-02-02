@@ -969,96 +969,10 @@ const StudentFunnel = () => {
                 <Home className="w-7 h-7 text-amber-600" />
               </div>
               <h3 className="text-lg font-semibold text-[#1E3A5F]">Where should we visit?</h3>
-              <p className="text-slate-500 text-sm mt-1">Enter your home address for the demo class</p>
+              <p className="text-slate-500 text-sm mt-1">Enter your address for the home demo class</p>
             </div>
             
-            {/* Address Search with Google-like autocomplete */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
-                <MapPin className="w-4 h-4 inline mr-1" />
-                Search Address *
-              </label>
-              <div className="relative">
-                <Input
-                  placeholder="Search for your locality, area, or landmark..."
-                  value={addressSearch}
-                  onChange={async (e) => {
-                    const query = e.target.value;
-                    setAddressSearch(query);
-                    
-                    // Simple autocomplete simulation - in production, use Google Places API
-                    if (query.length >= 3) {
-                      setSearchingAddress(true);
-                      // Simulate address suggestions based on city
-                      setTimeout(() => {
-                        const suggestions = [
-                          `${query}, ${formData.city}`,
-                          `${query} Main Road, ${formData.city}`,
-                          `${query} Colony, ${formData.city}`,
-                          `Near ${query}, ${formData.city}`,
-                        ];
-                        setAddressSuggestions(suggestions);
-                        setSearchingAddress(false);
-                      }, 300);
-                    } else {
-                      setAddressSuggestions([]);
-                    }
-                  }}
-                  className="pr-10"
-                  data-testid="address-search"
-                />
-                {searchingAddress && (
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>
-                  </div>
-                )}
-              </div>
-              
-              {/* Address Suggestions Dropdown */}
-              {addressSuggestions.length > 0 && !formData.address && (
-                <div className="mt-2 bg-white border border-slate-200 rounded-lg shadow-lg overflow-hidden">
-                  {addressSuggestions.map((suggestion, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-100 last:border-0 flex items-center gap-3"
-                      onClick={() => {
-                        updateForm('address', suggestion);
-                        setAddressSearch(suggestion);
-                        setAddressSuggestions([]);
-                      }}
-                    >
-                      <MapPin className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                      <span className="text-sm">{suggestion}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-              
-              {/* Selected Address Display */}
-              {formData.address && (
-                <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <div className="flex items-start gap-2">
-                    <MapPin className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-                    <div className="flex-1">
-                      <p className="text-sm text-green-800 font-medium">{formData.address}</p>
-                      <button
-                        type="button"
-                        className="text-xs text-green-600 hover:underline mt-1"
-                        onClick={() => {
-                          updateForm('address', '');
-                          setAddressSearch('');
-                        }}
-                      >
-                        Change address
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-            
-            {/* Apartment / Building Number */}
+            {/* Flat / Apartment / Building */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
                 Flat / Apartment / Building No.
@@ -1071,30 +985,57 @@ const StudentFunnel = () => {
               />
             </div>
             
-            {/* Landmark / Additional Info */}
+            {/* Street / Area / Locality */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">
-                Landmark / Additional Comments (Optional)
+                Street / Area / Locality *
               </label>
-              <Textarea
-                placeholder="e.g., Near City Mall, Behind the petrol pump, Ring the doorbell twice..."
-                value={formData.address_landmark}
-                onChange={(e) => updateForm('address_landmark', e.target.value)}
-                className="min-h-[80px]"
-                data-testid="address-landmark"
+              <Input
+                placeholder="e.g., MG Road, Koramangala, Indiranagar"
+                value={formData.address}
+                onChange={(e) => updateForm('address', e.target.value)}
+                data-testid="address-input"
               />
             </div>
             
-            {formData.address && (
-              <Button
-                onClick={() => setCurrentStep(prev => prev + 1)}
-                className="w-full bg-[#D63031] hover:bg-[#b52828]"
-                data-testid="continue-address-btn"
-              >
-                Continue
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            )}
+            {/* City (pre-filled and disabled) */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                City
+              </label>
+              <Input
+                value={formData.city}
+                disabled
+                className="bg-slate-50"
+              />
+            </div>
+            
+            {/* PIN Code */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                PIN Code *
+              </label>
+              <Input
+                placeholder="e.g., 560001"
+                value={formData.pincode}
+                onChange={(e) => updateForm('pincode', e.target.value.replace(/\D/g, '').slice(0, 6))}
+                maxLength={6}
+                data-testid="pincode-input"
+              />
+            </div>
+            
+            {/* Landmark / Additional Info */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Landmark (Optional)
+              </label>
+              <Input
+                placeholder="e.g., Near City Mall, Behind petrol pump"
+                value={formData.address_landmark}
+                onChange={(e) => updateForm('address_landmark', e.target.value)}
+                data-testid="address-landmark"
+              />
+            </div>
           </div>
         );
 
