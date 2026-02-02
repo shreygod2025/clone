@@ -123,7 +123,8 @@ const AdminOrders = () => {
       notes: payment.notes || '',
       invoice_url: payment.invoice_url || '',
       receipt_url: payment.receipt_url || '',
-      gst_type: payment.gst_type || ''
+      gst_type: payment.gst_type || '',
+      payment_link: payment.payment_link || ''
     });
   };
 
