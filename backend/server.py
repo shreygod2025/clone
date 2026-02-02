@@ -6174,6 +6174,7 @@ async def update_payment(
             "invoice_url": data.get("invoice_url"),
             "receipt_url": data.get("receipt_url"),
             "gst_type": data.get("gst_type"),
+            "payment_link": data.get("payment_link"),
             "notes": data.get("notes", ""),
             "updated_at": datetime.now(timezone.utc).isoformat(),
             "updated_by": user.get("name", user.get("email", "Admin")),
