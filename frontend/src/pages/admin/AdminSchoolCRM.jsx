@@ -3984,14 +3984,14 @@ const AdminSchoolCRM = () => {
                         setEditOnboardData(prev => ({ 
                           ...prev, 
                           offering: e.target.value,
-                          model: selected?.name || prev.model
+                          model: selected?.title || prev.model
                         }));
                       }}
                       className="w-full h-10 px-4 border border-slate-200 rounded-lg bg-white"
                     >
                       <option value="">Select Offering</option>
                       {offerings.map(off => (
-                        <option key={off.id} value={off.id}>{off.name}</option>
+                        <option key={off.id} value={off.id}>{off.title}</option>
                       ))}
                     </select>
                   </div>
