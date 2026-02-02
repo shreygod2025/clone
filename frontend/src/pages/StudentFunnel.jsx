@@ -455,36 +455,56 @@ const StudentFunnel = () => {
     const stepId = currentStepData?.id;
     if (!stepId) return;
     
-    // If logged in and on schedule step, submit directly (no contact/OTP needed)
-    if (isLoggedIn && stepId === 'schedule') {
+    // If logged in and on schedule step (no home visit), submit directly
+    if (isLoggedIn && stepId === 'schedule' && !(formData.learning_mode === 'offline' && formData.offline_type === 'home')) {
       await handleSubmitForLoggedInUser();
       return;
     }
     
-    // If on phone step, auto-send OTP and move to name step
+    // If logged in and on address step (home visit), submit
+    if (isLoggedIn && stepId === 'address') {
+      await handleSubmitForLoggedInUser();
+      return;
+    }
+    
+    // If on phone step, send OTP and move to OTP step
     if (stepId === 'phone') {
-      handleSendOTP(); // Send OTP in background
+      handleSendOTP();
       setCurrentStep(currentStep + 1);
       return;
     }
     
-    // If on name step, move to OTP step
+    // If on OTP step, verify OTP and move to name step
+    if (stepId === 'otp') {
+      // Verify OTP first
+      const fullPhone = formData.countryCode === '+91' ? formData.phone : `${formData.countryCode}${formData.phone}`;
+      const otpResult = await verifyOTP(fullPhone, otp, 'student');
+      
+      if (!otpResult.success) {
+        toast.error(otpResult.message || 'Invalid OTP');
+        return;
+      }
+      
+      toast.success('Phone verified!');
+      setCurrentStep(currentStep + 1);
+      return;
+    }
+    
+    // If on name step and NOT home visit, submit booking
+    if (stepId === 'name' && !(formData.learning_mode === 'offline' && formData.offline_type === 'home')) {
+      await handleFinalSubmit();
+      return;
+    }
+    
+    // If on name step and home visit, move to address step
     if (stepId === 'name') {
       setCurrentStep(currentStep + 1);
       return;
     }
     
-    // If on contact step, move to OTP step and send OTP
-    if (stepId === 'contact') {
-      setCurrentStep(currentStep + 1);
-      // Auto-send OTP
-      handleSendOTP();
-      return;
-    }
-    
-    // If on OTP step, verify and submit
-    if (stepId === 'otp') {
-      await handleVerifyAndSubmit();
+    // If on address step (after name), submit booking
+    if (stepId === 'address') {
+      await handleFinalSubmit();
       return;
     }
 
