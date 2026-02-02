@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { CheckCircle2, Circle, Clock, Calendar, Package, Users, Settings, BookOpen, FileText, ThumbsUp, Truck, AlertCircle, HelpCircle, MessageSquare, Send, X, Share2, DollarSign, GraduationCap, Mail, Phone, MapPin, Download } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, Calendar, Package, Users, Settings, BookOpen, FileText, ThumbsUp, Truck, AlertCircle, HelpCircle, MessageSquare, Send, X, Share2, DollarSign, GraduationCap, Mail, Phone, MapPin, Download, User, Building2 } from 'lucide-react';
 import axios from 'axios';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -9,19 +9,24 @@ import { toast } from 'sonner';
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const STEP_ICONS = {
-  payment_collection: <CheckCircle2 className="w-5 h-5" />,
+  mou_signing: <FileText className="w-5 h-5" />,
+  payment_collection: <DollarSign className="w-5 h-5" />,
   kit_delivery: <Package className="w-5 h-5" />,
   distribution_checking: <Users className="w-5 h-5" />,
   technical_check: <Settings className="w-5 h-5" />,
   teacher_training: <BookOpen className="w-5 h-5" />,
   calendar_making: <Calendar className="w-5 h-5" />,
   timetable_finalization: <Clock className="w-5 h-5" />,
-  mou_signing: <FileText className="w-5 h-5" />,
   school_confirmation: <ThumbsUp className="w-5 h-5" />
 };
 
 // Step-specific help queries
 const STEP_QUERIES = {
+  mou_signing: [
+    { label: "MOU draft review", type: "mou_review" },
+    { label: "Clarification on terms", type: "terms_clarification" },
+    { label: "Request document copy", type: "document_copy" }
+  ],
   payment_collection: [
     { label: "When is payment due?", type: "payment_due_date" },
     { label: "What payment methods are accepted?", type: "payment_methods" },
@@ -57,11 +62,6 @@ const STEP_QUERIES = {
   timetable_finalization: [
     { label: "Timetable conflict", type: "timetable_conflict" },
     { label: "Change class timings", type: "timing_change" }
-  ],
-  mou_signing: [
-    { label: "MOU draft review", type: "mou_review" },
-    { label: "Clarification on terms", type: "terms_clarification" },
-    { label: "Request document copy", type: "document_copy" }
   ],
   school_confirmation: [
     { label: "Final review meeting", type: "final_meeting" },
@@ -141,17 +141,43 @@ const SchoolTrackingPage = () => {
     );
   }
 
-  const { school_name, contact_name, programs, progress_percent, completed_steps, total_steps, steps, timeline, current_step, started_at, completed_at, onboarding_details, payment_tranches, payments } = trackingData;
+  const { 
+    school_name, 
+    contact_name, 
+    programs, 
+    progress_percent, 
+    completed_steps, 
+    total_steps, 
+    steps, 
+    timeline, 
+    current_step, 
+    started_at, 
+    completed_at, 
+    onboarding_details, 
+    payment_tranches, 
+    payments,
+    school_contacts,
+    assigned_team_member,
+    offerings,
+    mou_url
+  } = trackingData;
+
+  // Reorder steps to put MOU first
+  const reorderedSteps = [...steps].sort((a, b) => {
+    if (a.key === 'mou_signing') return -1;
+    if (b.key === 'mou_signing') return 1;
+    return 0;
+  });
 
   return (
     <>
       <Helmet>
-        <title>Onboarding Progress - {school_name} | OLL</title>
+        <title>{school_name} Onboarding Tracker | OLL</title>
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col">
-        {/* Proper OLL Header/Navbar */}
+        {/* Header */}
         <header className="bg-white shadow-sm sticky top-0 z-50">
           <div className="max-w-6xl mx-auto px-4 sm:px-6">
             <div className="flex items-center justify-between h-16">
@@ -162,12 +188,6 @@ const SchoolTrackingPage = () => {
                   className="h-10 w-auto"
                 />
               </Link>
-              <nav className="hidden md:flex items-center gap-6">
-                <Link to="/" className="text-slate-600 hover:text-[#1E3A5F] text-sm font-medium">Home</Link>
-                <Link to="/offerings" className="text-slate-600 hover:text-[#1E3A5F] text-sm font-medium">Offerings</Link>
-                <Link to="/for-schools" className="text-slate-600 hover:text-[#1E3A5F] text-sm font-medium">For Schools</Link>
-                <Link to="/about" className="text-slate-600 hover:text-[#1E3A5F] text-sm font-medium">About</Link>
-              </nav>
               <button 
                 onClick={() => {
                   navigator.clipboard.writeText(window.location.href);
@@ -182,14 +202,18 @@ const SchoolTrackingPage = () => {
           </div>
         </header>
 
-        {/* School Tracking Hero */}
+        {/* Hero Section - New Title & Description */}
         <div className="bg-[#1E3A5F] text-white py-8">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <p className="text-white/60 text-sm mb-1">Onboarding Progress Tracker</p>
-                <h1 className="text-2xl md:text-3xl font-bold">{school_name}</h1>
-                <p className="text-white/70 text-sm mt-1">Contact: {contact_name}</p>
+                <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3">
+                  <Building2 className="w-8 h-8" />
+                  {school_name} Onboarding Tracker
+                </h1>
+                <p className="text-white/70 text-sm mt-2 max-w-xl">
+                  Track your school&apos;s onboarding journey with OLL. View progress, download documents, and see upcoming scheduled activities.
+                </p>
               </div>
               <div className="text-left md:text-right">
                 <div className="text-4xl font-bold">{progress_percent}%</div>
@@ -200,7 +224,7 @@ const SchoolTrackingPage = () => {
         </div>
 
         {/* Progress Bar */}
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 -mt-2">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 -mt-2 w-full">
           <div className="bg-white rounded-full h-3 shadow-lg overflow-hidden">
             <div 
               className="h-full bg-gradient-to-r from-green-500 to-emerald-500 transition-all duration-500"
@@ -209,54 +233,10 @@ const SchoolTrackingPage = () => {
           </div>
         </div>
 
-        {/* Onboarding Details Cards */}
-        {onboarding_details && (onboarding_details.total_amount || onboarding_details.contract_start) && (
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 mt-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {onboarding_details.total_amount && (
-                <div className="bg-white rounded-xl shadow-md p-4">
-                  <div className="flex items-center gap-2 text-green-600 mb-1">
-                    <DollarSign className="w-4 h-4" />
-                    <span className="text-xs font-medium">Total Amount</span>
-                  </div>
-                  <p className="text-lg font-bold text-slate-800">₹{onboarding_details.total_amount?.toLocaleString()}</p>
-                </div>
-              )}
-              {onboarding_details.total_students && (
-                <div className="bg-white rounded-xl shadow-md p-4">
-                  <div className="flex items-center gap-2 text-blue-600 mb-1">
-                    <GraduationCap className="w-4 h-4" />
-                    <span className="text-xs font-medium">Students</span>
-                  </div>
-                  <p className="text-lg font-bold text-slate-800">{onboarding_details.total_students}</p>
-                </div>
-              )}
-              {onboarding_details.contract_start && (
-                <div className="bg-white rounded-xl shadow-md p-4">
-                  <div className="flex items-center gap-2 text-purple-600 mb-1">
-                    <Calendar className="w-4 h-4" />
-                    <span className="text-xs font-medium">Contract Start</span>
-                  </div>
-                  <p className="text-lg font-bold text-slate-800">{onboarding_details.contract_start}</p>
-                </div>
-              )}
-              {onboarding_details.contract_end && (
-                <div className="bg-white rounded-xl shadow-md p-4">
-                  <div className="flex items-center gap-2 text-orange-600 mb-1">
-                    <Calendar className="w-4 h-4" />
-                    <span className="text-xs font-medium">Contract End</span>
-                  </div>
-                  <p className="text-lg font-bold text-slate-800">{onboarding_details.contract_end}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
-          {/* Status Banner */}
+        {/* Status Banner */}
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 mt-6 w-full">
           {completed_at ? (
-            <div className="bg-green-100 border border-green-300 rounded-xl p-4 mb-8 flex items-center gap-3">
+            <div className="bg-green-100 border border-green-300 rounded-xl p-4 flex items-center gap-3">
               <CheckCircle2 className="w-6 h-6 text-green-600" />
               <div>
                 <p className="font-semibold text-green-800">Onboarding Complete!</p>
@@ -264,7 +244,7 @@ const SchoolTrackingPage = () => {
               </div>
             </div>
           ) : (
-            <div className="bg-blue-100 border border-blue-300 rounded-xl p-4 mb-8 flex items-center gap-3">
+            <div className="bg-blue-100 border border-blue-300 rounded-xl p-4 flex items-center gap-3">
               <Clock className="w-6 h-6 text-blue-600" />
               <div>
                 <p className="font-semibold text-blue-800">Onboarding In Progress</p>
@@ -272,13 +252,17 @@ const SchoolTrackingPage = () => {
               </div>
             </div>
           )}
+        </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            {/* Steps Timeline */}
-            <div className="md:col-span-2">
-              <h2 className="text-lg font-semibold text-[#1E3A5F] mb-4">Onboarding Steps</h2>
+        {/* Main Content */}
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 flex-1 w-full">
+          <div className="grid lg:grid-cols-3 gap-8">
+            {/* Left Column - Steps Timeline */}
+            <div className="lg:col-span-2 space-y-6">
+              <h2 className="text-lg font-semibold text-[#1E3A5F]">Onboarding Steps</h2>
+              
               <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-                {steps.map((step, idx) => (
+                {reorderedSteps.map((step, idx) => (
                   <div 
                     key={step.key}
                     className={`flex items-start gap-4 p-4 border-b last:border-b-0 ${
@@ -303,13 +287,13 @@ const SchoolTrackingPage = () => {
 
                     {/* Step Content */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
                         <h3 className={`font-medium ${step.completed ? 'text-green-800' : 'text-slate-800'}`}>
-                          {step.title}
+                          {idx + 1}. {step.title}
                         </h3>
                         {step.completed && step.completed_date && (
                           <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">
-                            {format(new Date(step.completed_date), 'MMM d')}
+                            Completed {format(new Date(step.completed_date), 'MMM d')}
                           </span>
                         )}
                         {current_step === step.key && !step.completed && (
@@ -320,23 +304,54 @@ const SchoolTrackingPage = () => {
                       </div>
                       <p className="text-sm text-slate-500 mt-1">{step.description}</p>
                       
-                      {/* Kit Tracking Link */}
-                      {step.key === 'kit_delivery' && step.tracking_link && (
+                      {/* MOU Download - Step 1 */}
+                      {step.key === 'mou_signing' && (mou_url || onboarding_details?.mou_url) && (
                         <a 
-                          href={step.tracking_link} 
+                          href={mou_url || onboarding_details?.mou_url} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 mt-2 text-sm text-blue-600 hover:underline"
+                          className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-[#1E3A5F] text-white text-sm rounded-lg hover:bg-[#2d4a6f] transition-colors"
                         >
-                          <Truck className="w-4 h-4" /> Track Shipment
+                          <Download className="w-4 h-4" /> Download MOU Document
                         </a>
                       )}
                       
-                      {/* Training Date */}
-                      {step.key === 'teacher_training' && step.training_date && (
-                        <p className="text-sm text-blue-600 mt-2">
-                          <Calendar className="w-4 h-4 inline mr-1" />
-                          Scheduled: {format(new Date(step.training_date), 'MMMM d, yyyy')}
+                      {/* Kit Delivery - Show scheduled date */}
+                      {step.key === 'kit_delivery' && (
+                        <div className="mt-3 space-y-2">
+                          {step.scheduled_date && (
+                            <p className="text-sm text-blue-600 flex items-center gap-2">
+                              <Calendar className="w-4 h-4" />
+                              Scheduled: {format(new Date(step.scheduled_date), 'MMMM d, yyyy')}
+                            </p>
+                          )}
+                          {step.tracking_link && (
+                            <a 
+                              href={step.tracking_link} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline"
+                            >
+                              <Truck className="w-4 h-4" /> Track Shipment
+                            </a>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Distribution Checking - Show scheduled date */}
+                      {step.key === 'distribution_checking' && step.scheduled_date && (
+                        <p className="text-sm text-blue-600 mt-3 flex items-center gap-2">
+                          <Calendar className="w-4 h-4" />
+                          Scheduled: {format(new Date(step.scheduled_date), 'MMMM d, yyyy')}
+                        </p>
+                      )}
+                      
+                      {/* Teacher Training - Show scheduled date */}
+                      {step.key === 'teacher_training' && (step.training_date || step.scheduled_date) && (
+                        <p className="text-sm text-blue-600 mt-3 flex items-center gap-2">
+                          <Calendar className="w-4 h-4" />
+                          Scheduled: {format(new Date(step.training_date || step.scheduled_date), 'MMMM d, yyyy')}
+                          {step.training_time && ` at ${step.training_time}`}
                         </p>
                       )}
 
@@ -374,7 +389,6 @@ const SchoolTrackingPage = () => {
                                     Due: {tranche.date ? format(new Date(tranche.date), 'MMM d') : '-'}
                                   </span>
                                 </div>
-                                {/* Invoice Download */}
                                 {tranchePayment?.invoice_url && (
                                   <a 
                                     href={tranchePayment.invoice_url}
@@ -391,42 +405,150 @@ const SchoolTrackingPage = () => {
                         </div>
                       )}
                     </div>
-
-                    {/* Connection Line */}
-                    {idx < steps.length - 1 && (
-                      <div className="absolute left-[2.25rem] mt-10 w-0.5 h-full bg-slate-200" />
-                    )}
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Sidebar */}
+            {/* Right Sidebar */}
             <div className="space-y-6">
-              {/* School Info */}
+              {/* School Contacts */}
               <div className="bg-white rounded-xl shadow-lg p-4">
-                <h3 className="font-semibold text-[#1E3A5F] mb-3">School Information</h3>
-                <div className="space-y-2 text-sm">
-                  <p><span className="text-slate-500">Contact:</span> {contact_name}</p>
-                  {programs && programs.length > 0 && (
-                    <div>
-                      <span className="text-slate-500">Programs:</span>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {programs.map(p => (
-                          <span key={p} className="text-xs bg-[#1E3A5F]/10 text-[#1E3A5F] px-2 py-0.5 rounded">
-                            {p}
-                          </span>
-                        ))}
+                <h3 className="font-semibold text-[#1E3A5F] mb-3 flex items-center gap-2">
+                  <Users className="w-5 h-5" />
+                  School Team
+                </h3>
+                <div className="space-y-3">
+                  {school_contacts && school_contacts.length > 0 ? (
+                    school_contacts.map((contact, idx) => (
+                      <div key={idx} className="flex items-start gap-3 p-2 bg-slate-50 rounded-lg">
+                        <div className="w-10 h-10 rounded-full bg-[#1E3A5F]/10 flex items-center justify-center flex-shrink-0">
+                          <User className="w-5 h-5 text-[#1E3A5F]" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-slate-800 text-sm">{contact.name}</p>
+                          <p className="text-xs text-[#1E3A5F] font-medium capitalize">{(contact.role || 'Contact').replace(/_/g, ' ')}</p>
+                          {contact.phone && (
+                            <p className="text-xs text-slate-500 flex items-center gap-1 mt-1">
+                              <Phone className="w-3 h-3" /> {contact.phone_number || contact.phone}
+                            </p>
+                          )}
+                          {contact.email && (
+                            <p className="text-xs text-slate-500 flex items-center gap-1">
+                              <Mail className="w-3 h-3" /> {contact.email}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flex items-start gap-3 p-2 bg-slate-50 rounded-lg">
+                      <div className="w-10 h-10 rounded-full bg-[#1E3A5F]/10 flex items-center justify-center flex-shrink-0">
+                        <User className="w-5 h-5 text-[#1E3A5F]" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-slate-800 text-sm">{contact_name}</p>
+                        <p className="text-xs text-[#1E3A5F] font-medium">Primary Contact</p>
                       </div>
                     </div>
                   )}
                 </div>
               </div>
 
+              {/* Offerings */}
+              <div className="bg-white rounded-xl shadow-lg p-4">
+                <h3 className="font-semibold text-[#1E3A5F] mb-3 flex items-center gap-2">
+                  <BookOpen className="w-5 h-5" />
+                  Programs & Offerings
+                </h3>
+                <div className="space-y-2">
+                  {(offerings || programs || []).length > 0 ? (
+                    (offerings || programs).map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg">
+                        <CheckCircle2 className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                        <span className="text-sm text-slate-700">{typeof item === 'string' ? item : item.name}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-slate-500">No programs selected</p>
+                  )}
+                </div>
+                {onboarding_details?.total_students && (
+                  <div className="mt-3 pt-3 border-t border-slate-100">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-slate-600">Total Students</span>
+                      <span className="font-semibold text-[#1E3A5F]">{onboarding_details.total_students}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* OLL Team Member */}
+              <div className="bg-white rounded-xl shadow-lg p-4">
+                <h3 className="font-semibold text-[#1E3A5F] mb-3 flex items-center gap-2">
+                  <GraduationCap className="w-5 h-5" />
+                  Your OLL Representative
+                </h3>
+                {assigned_team_member ? (
+                  <div className="flex items-start gap-3">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#1E3A5F] to-[#2d5a8f] flex items-center justify-center flex-shrink-0">
+                      <span className="text-white font-bold text-lg">
+                        {assigned_team_member.name?.charAt(0) || 'O'}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-slate-800">{assigned_team_member.name}</p>
+                      <p className="text-xs text-[#1E3A5F] font-medium">{assigned_team_member.role || 'Account Manager'}</p>
+                      {assigned_team_member.phone && (
+                        <p className="text-xs text-slate-500 flex items-center gap-1 mt-1">
+                          <Phone className="w-3 h-3" /> {assigned_team_member.phone}
+                        </p>
+                      )}
+                      {assigned_team_member.email && (
+                        <p className="text-xs text-slate-500 flex items-center gap-1">
+                          <Mail className="w-3 h-3" /> {assigned_team_member.email}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-3">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#1E3A5F] to-[#2d5a8f] flex items-center justify-center flex-shrink-0">
+                      <span className="text-white font-bold text-lg">O</span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-slate-800">OLL Support Team</p>
+                      <p className="text-xs text-[#1E3A5F] font-medium">Account Management</p>
+                      <p className="text-xs text-slate-500 flex items-center gap-1 mt-1">
+                        <Mail className="w-3 h-3" /> support@oll.co
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Need Help - Above Recent Activity */}
+              <div className="bg-gradient-to-br from-[#1E3A5F] to-[#2d4a6f] rounded-xl shadow-lg p-4 text-white">
+                <h3 className="font-semibold mb-2 flex items-center gap-2">
+                  <HelpCircle className="w-5 h-5" />
+                  Need Help?
+                </h3>
+                <p className="text-sm text-white/80 mb-3">
+                  Have questions about your onboarding? We are here to help!
+                </p>
+                <button 
+                  onClick={() => setShowHelpModal(true)}
+                  className="w-full bg-white text-[#1E3A5F] px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/90 transition-colors flex items-center justify-center gap-2"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  Get Support
+                </button>
+              </div>
+
               {/* Recent Activity */}
               <div className="bg-white rounded-xl shadow-lg p-4">
                 <h3 className="font-semibold text-[#1E3A5F] mb-3">Recent Activity</h3>
-                <div className="space-y-3">
+                <div className="space-y-3 max-h-64 overflow-y-auto">
                   {timeline.length === 0 ? (
                     <p className="text-sm text-slate-500">No activity yet</p>
                   ) : (
@@ -443,24 +565,6 @@ const SchoolTrackingPage = () => {
                     ))
                   )}
                 </div>
-              </div>
-
-              {/* Help */}
-              <div className="bg-gradient-to-br from-[#1E3A5F] to-[#2d4a6f] rounded-xl shadow-lg p-4 text-white">
-                <h3 className="font-semibold mb-2 flex items-center gap-2">
-                  <HelpCircle className="w-5 h-5" />
-                  Need Help?
-                </h3>
-                <p className="text-sm text-white/80 mb-3">
-                  Have questions about your onboarding? We are here to help!
-                </p>
-                <button 
-                  onClick={() => setShowHelpModal(true)}
-                  className="w-full bg-white text-[#1E3A5F] px-4 py-2 rounded-lg text-sm font-medium hover:bg-white/90 transition-colors flex items-center justify-center gap-2"
-                >
-                  <MessageSquare className="w-4 h-4" />
-                  Get Support
-                </button>
               </div>
             </div>
           </div>
@@ -506,19 +610,17 @@ const SchoolTrackingPage = () => {
                   </div>
                 ) : (
                   <>
-                    {/* Current Step Info */}
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                       <p className="text-xs text-blue-600 mb-1">Current Step</p>
                       <p className="text-sm font-medium text-blue-800 capitalize">
-                        {(current_step || 'payment_collection').replace(/_/g, ' ')}
+                        {(current_step || 'mou_signing').replace(/_/g, ' ')}
                       </p>
                     </div>
 
-                    {/* Step-specific Quick Queries */}
                     <div className="mb-4">
                       <p className="text-sm font-medium text-slate-700 mb-2">Quick Questions</p>
                       <div className="space-y-2">
-                        {(STEP_QUERIES[current_step] || STEP_QUERIES.payment_collection).map((query, idx) => (
+                        {(STEP_QUERIES[current_step] || STEP_QUERIES.mou_signing).map((query, idx) => (
                           <button
                             key={idx}
                             onClick={() => setTicketForm({ ...ticketForm, query_type: query.type })}
@@ -544,7 +646,6 @@ const SchoolTrackingPage = () => {
                       </div>
                     </div>
 
-                    {/* Description */}
                     <div className="mb-4">
                       <label className="text-sm font-medium text-slate-700 mb-2 block">
                         Additional Details (Optional)
@@ -558,7 +659,6 @@ const SchoolTrackingPage = () => {
                       />
                     </div>
 
-                    {/* Submit */}
                     <button
                       onClick={handleSubmitTicket}
                       disabled={submitting || !ticketForm.query_type}
@@ -587,74 +687,27 @@ const SchoolTrackingPage = () => {
           </div>
         )}
 
-        {/* Proper OLL Footer - matching main site */}
-        <footer className="bg-slate-900 text-white">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
-              {/* Logo & Description */}
-              <div className="col-span-2 md:col-span-1">
-                <Link to="/" className="flex items-center gap-2 mb-4">
-                  <img 
-                    src="https://customer-assets.emergentagent.com/job_oll-skill-edu/artifacts/wzn0gh6k_OLL-horizontal-logo-white.png"
-                    alt="OLL Logo"
-                    className="h-10 w-auto"
-                  />
-                </Link>
-                <p className="text-slate-400 text-sm leading-relaxed">
-                  India's leading skill education platform. Empowering students with Robotics, Coding, AI, and Entrepreneurship skills.
-                </p>
+        {/* Simple Footer Bar - Sticky at bottom */}
+        <footer className="bg-[#1E3A5F] text-white mt-auto">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <img 
+                  src="https://customer-assets.emergentagent.com/job_oll-skill-edu/artifacts/wzn0gh6k_OLL-horizontal-logo-white.png"
+                  alt="OLL Logo"
+                  className="h-8 w-auto"
+                />
+                <span className="text-sm text-white/70">© {new Date().getFullYear()} OLL - Omni Learning Labs</span>
               </div>
-
-              {/* Programs */}
-              <div>
-                <h4 className="font-semibold mb-4 text-white">Programs</h4>
-                <ul className="space-y-2 text-sm text-slate-400">
-                  <li><Link to="/courses/robotics" className="hover:text-white transition-colors">Robotics</Link></li>
-                  <li><Link to="/courses/coding" className="hover:text-white transition-colors">Coding</Link></li>
-                  <li><Link to="/courses/ai" className="hover:text-white transition-colors">AI & ML</Link></li>
-                  <li><Link to="/courses/entrepreneurship" className="hover:text-white transition-colors">Entrepreneurship</Link></li>
-                </ul>
-              </div>
-
-              {/* For Schools */}
-              <div>
-                <h4 className="font-semibold mb-4 text-white">For Schools</h4>
-                <ul className="space-y-2 text-sm text-slate-400">
-                  <li><Link to="/school-offerings" className="hover:text-white transition-colors">All Programs</Link></li>
-                  <li><Link to="/for-schools" className="hover:text-white transition-colors">Partner With Us</Link></li>
-                  <li><Link to="/about" className="hover:text-white transition-colors">About Us</Link></li>
-                </ul>
-              </div>
-
-              {/* Contact */}
-              <div>
-                <h4 className="font-semibold mb-4 text-white">Contact Us</h4>
-                <ul className="space-y-2 text-sm text-slate-400">
-                  <li className="flex items-center gap-2">
-                    <Mail className="w-4 h-4" />
-                    <a href="mailto:info@oll.co" className="hover:text-white transition-colors">info@oll.co</a>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Phone className="w-4 h-4" />
-                    <a href="tel:+919920188188" className="hover:text-white transition-colors">+91 9920188188</a>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <MapPin className="w-4 h-4 mt-0.5" />
-                    <span>Mumbai, India</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-
-            {/* Bottom Bar */}
-            <div className="border-t border-slate-800 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
-              <p className="text-sm text-slate-500">
-                © {new Date().getFullYear()} Clonefutura Live Solutions Pvt. Ltd. All rights reserved.
-              </p>
-              <div className="flex gap-6">
-                <Link to="/privacy" className="text-sm text-slate-400 hover:text-white transition-colors">Privacy Policy</Link>
-                <Link to="/terms" className="text-sm text-slate-400 hover:text-white transition-colors">Terms of Service</Link>
-                <Link to="/refund-policy" className="text-sm text-slate-400 hover:text-white transition-colors">Refund Policy</Link>
+              <div className="flex items-center gap-4 text-sm">
+                <a href="tel:+919876543210" className="flex items-center gap-1 text-white/80 hover:text-white transition-colors">
+                  <Phone className="w-4 h-4" />
+                  <span className="hidden sm:inline">+91 98765 43210</span>
+                </a>
+                <a href="mailto:support@oll.co" className="flex items-center gap-1 text-white/80 hover:text-white transition-colors">
+                  <Mail className="w-4 h-4" />
+                  <span className="hidden sm:inline">support@oll.co</span>
+                </a>
               </div>
             </div>
           </div>
