@@ -5882,6 +5882,8 @@ async def get_public_tracking(tracking_token: str):
         "assigned_team_member": assigned_team_member,
         # MOU URL
         "mou_url": onboarding_data.get("mou_url"),
+        # Is this a renewal onboarding?
+        "is_renewal": workflow.get("is_renewal", False),
         # Include onboarding details for display
         "onboarding_details": {
             "offering": onboarding_data.get("offering"),
