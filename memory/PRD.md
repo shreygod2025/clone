@@ -65,7 +65,17 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ Users & Roles: Added filters for City, Role, and Status
 - ✅ Orders Page: Removed duplicate title, now shows single "Orders & Payments" header
 
-**Learner Demo Booking UX Improvements (Feb 2, 2026):**
+**Onboarding Tracker Page Improvements (Feb 2, 2026):**
+- ✅ New title: "{School Name} Onboarding Tracker" with description
+- ✅ MOU is now Step 1 with Download button
+- ✅ Shows scheduled dates for: Kit Delivery, Distribution, Teacher Training
+- ✅ Removed duplicate MOU at bottom
+- ✅ School Team section showing all contacts with names and roles
+- ✅ Programs & Offerings section displaying selected programs
+- ✅ Your OLL Representative section showing assigned team member
+- ✅ Need Help moved above Recent Activity
+- ✅ Simple sticky footer with OLL logo and contact details (phone, email)
+- ✅ Removed old footer, replaced with blue bar
 - ✅ **Flow Reordered:** Phone → OTP → Name → Address (address comes after name for home visits)
 - ✅ **Simplified OTP Flow:** Single "Verify Phone Number" button sends OTP and proceeds
 - ✅ **OTP Step:** Shows "Verify OTP" with separate continue button
