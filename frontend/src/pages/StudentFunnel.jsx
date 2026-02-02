@@ -499,7 +499,7 @@ const StudentFunnel = () => {
       case 'center':
         return formData.selected_center;
       case 'address':
-        return formData.address; // Main address is required
+        return formData.address && formData.pincode && formData.pincode.length === 6; // Address and 6-digit pincode required
       case 'schedule':
         return formData.demo_date && formData.demo_time;
       case 'phone':
