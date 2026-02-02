@@ -6065,6 +6065,7 @@ async def update_payment(
             "transaction_id": data.get("transaction_id"),
             "invoice_url": data.get("invoice_url"),
             "receipt_url": data.get("receipt_url"),
+            "gst_type": data.get("gst_type"),
             "notes": data.get("notes", ""),
             "updated_at": datetime.now(timezone.utc).isoformat(),
             "updated_by": user.get("name", user.get("email", "Admin")),
@@ -6076,6 +6077,153 @@ async def update_payment(
         else:
             payment_record["created_at"] = datetime.now(timezone.utc).isoformat()
             payments.append(payment_record)
+        
+        # Send invoice email if new invoice is uploaded
+        if data.get("invoice_url") and (existing_idx is None or not payments[existing_idx].get("invoice_url") if existing_idx is not None else True):
+            # Get school contacts - specifically accounts team
+            onboarding_data = school.get("onboarding_data", {})
+            school_contacts = onboarding_data.get("school_contacts", [])
+            accounts_contacts = [c for c in school_contacts if c.get("role") == "accounts"]
+            
+            # If no accounts contact, use all contacts
+            recipient_contacts = accounts_contacts if accounts_contacts else school_contacts
+            
+            # Also add main school email
+            recipient_emails = []
+            if school.get("email"):
+                recipient_emails.append(school.get("email"))
+            for c in recipient_contacts:
+                if c.get("email") and c.get("email") not in recipient_emails:
+                    recipient_emails.append(c.get("email"))
+            
+            if recipient_emails:
+                try:
+                    mou_url = onboarding_data.get("mou_url", "")
+                    school_name = school.get("school_name", "")
+                    total_amount = onboarding_data.get("total_amount", 0)
+                    
+                    # Get tranche info
+                    payment_tranches = onboarding_data.get("payment_tranches", [])
+                    tranche_info = payment_tranches[tranche_index] if tranche_index < len(payment_tranches) else {}
+                    tranche_amount = tranche_info.get("amount", 0)
+                    
+                    invoice_email_html = f"""
+                    <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 650px; margin: 0 auto; background: #ffffff;">
+                        <!-- Header with Logo -->
+                        <div style="background: linear-gradient(135deg, #1E3A5F 0%, #2d5a8f 100%); padding: 30px; text-align: center;">
+                            <img src="https://customer-assets.emergentagent.com/job_oll-skill-edu/artifacts/wzn0gh6k_OLL-horizontal-logo-white.png" alt="OLL Logo" style="height: 50px; margin-bottom: 15px;">
+                            <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 600;">Invoice for Payment</h1>
+                        </div>
+                        
+                        <!-- Main Content -->
+                        <div style="padding: 30px; background: #f8fafc;">
+                            <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+                                Dear {school.get('contact_name', 'Team')},
+                            </p>
+                            
+                            <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+                                Please find attached the invoice for <strong>{school_name}</strong>. We kindly request you to process the payment at your earliest convenience.
+                            </p>
+                            
+                            <!-- Payment Details Box -->
+                            <div style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 25px; margin-bottom: 25px;">
+                                <h3 style="color: #1E3A5F; font-size: 18px; margin: 0 0 15px 0; border-bottom: 2px solid #1E3A5F; padding-bottom: 10px;">Payment Details</h3>
+                                <table style="width: 100%; font-size: 14px;">
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #6b7280;">School Name:</td>
+                                        <td style="padding: 8px 0; color: #111827; font-weight: 600; text-align: right;">{school_name}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #6b7280;">Payment For:</td>
+                                        <td style="padding: 8px 0; color: #111827; font-weight: 600; text-align: right;">Tranche {tranche_index + 1}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #6b7280;">Amount Due:</td>
+                                        <td style="padding: 8px 0; color: #059669; font-weight: 700; font-size: 18px; text-align: right;">₹{float(tranche_amount):,.2f}</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 8px 0; color: #6b7280;">Total Contract Value:</td>
+                                        <td style="padding: 8px 0; color: #111827; text-align: right;">₹{float(total_amount):,.2f}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            
+                            <!-- Action Buttons -->
+                            <div style="text-align: center; margin-bottom: 25px;">
+                                <a href="{data.get('invoice_url')}" style="display: inline-block; background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; margin: 5px;">
+                                    📄 Download Invoice
+                                </a>
+                                {"<a href='" + mou_url + "' style='display: inline-block; background: linear-gradient(135deg, #1E3A5F 0%, #2d5a8f 100%); color: white; padding: 14px 30px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; margin: 5px;'>📋 Download MOU</a>" if mou_url else ""}
+                            </div>
+                            
+                            <!-- Bank Details Box -->
+                            <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 1px solid #f59e0b; border-radius: 12px; padding: 25px; margin-bottom: 25px;">
+                                <h3 style="color: #92400e; font-size: 16px; margin: 0 0 15px 0; display: flex; align-items: center;">
+                                    🏦 Bank Transfer Details
+                                </h3>
+                                <table style="width: 100%; font-size: 14px;">
+                                    <tr>
+                                        <td style="padding: 6px 0; color: #78350f; width: 40%;">Account Name:</td>
+                                        <td style="padding: 6px 0; color: #451a03; font-weight: 600;">Clonefutura Live Solutions Pvt Ltd</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 6px 0; color: #78350f;">Account No:</td>
+                                        <td style="padding: 6px 0; color: #451a03; font-weight: 600;">50200063789133</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 6px 0; color: #78350f;">IFSC Code:</td>
+                                        <td style="padding: 6px 0; color: #451a03; font-weight: 600;">HDFC0000240</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding: 6px 0; color: #78350f;">Bank:</td>
+                                        <td style="padding: 6px 0; color: #451a03; font-weight: 600;">HDFC Bank - Sandoz House Worli</td>
+                                    </tr>
+                                </table>
+                            </div>
+                            
+                            <!-- Company Details -->
+                            <div style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; margin-bottom: 25px;">
+                                <h4 style="color: #374151; font-size: 14px; margin: 0 0 12px 0;">Company Details</h4>
+                                <p style="color: #6b7280; font-size: 13px; margin: 0; line-height: 1.6;">
+                                    <strong style="color: #1E3A5F;">Clonefutura Live Solutions Pvt Ltd.</strong><br>
+                                    103 1st floor - Kshitij building, Veera Desai Rd,<br>
+                                    Dattaguru Nagar, Azad Nagar, Andheri West,<br>
+                                    Mumbai, Maharashtra 400053<br><br>
+                                    <strong>GST No:</strong> 27AAKCC1113B1ZC<br>
+                                    <strong>PAN:</strong> AAKCC1113B<br>
+                                    <strong>Phone:</strong> +91 9699188188
+                                </p>
+                            </div>
+                            
+                            <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin-bottom: 0;">
+                                If you have any questions regarding this invoice, please don't hesitate to contact us at <a href="mailto:accounts@oll.co" style="color: #1E3A5F;">accounts@oll.co</a> or call +91 9699188188.
+                            </p>
+                        </div>
+                        
+                        <!-- Footer -->
+                        <div style="background: #1E3A5F; color: white; padding: 20px; text-align: center; font-size: 12px;">
+                            <p style="margin: 0 0 5px 0;">OLL - Omni Learning Labs | Clonefutura Live Solutions Pvt. Ltd</p>
+                            <p style="margin: 0; opacity: 0.7;">accounts@oll.co | +91 9920188188</p>
+                        </div>
+                    </div>
+                    """
+                    
+                    from emergentintegrations.llm.resend import send_email
+                    
+                    for email in recipient_emails:
+                        try:
+                            await send_email(
+                                api_key=os.environ.get("RESEND_API_KEY", ""),
+                                from_email="OLL Accounts <accounts@oll.co>",
+                                to_email=email,
+                                subject=f"Invoice for {school_name} - Tranche {tranche_index + 1}",
+                                html_content=invoice_email_html
+                            )
+                            print(f"Invoice email sent to {email}")
+                        except Exception as email_err:
+                            print(f"Failed to send invoice email to {email}: {email_err}")
+                except Exception as e:
+                    print(f"Invoice email error: {e}")
         
         # Update onboarding workflow if payment is marked as paid
         update_fields = {"payments": payments, "updated_at": datetime.now(timezone.utc).isoformat()}
