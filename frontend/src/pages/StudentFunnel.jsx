@@ -153,6 +153,9 @@ const StudentFunnel = () => {
     pincode: '', // PIN code
   });
   
+  // Track if user started as logged out (so we keep auth steps even after OTP verify)
+  const [startedAsLoggedOut, setStartedAsLoggedOut] = useState(!isLoggedIn);
+  
   // Booking confirmation animation state
   const [showBookingAnimation, setShowBookingAnimation] = useState(false);
 
