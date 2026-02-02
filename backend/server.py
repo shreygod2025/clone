@@ -7182,7 +7182,13 @@ async def get_reports_overview(
             amount = float(s.get('conversion_amount') or s.get('amount_paid') or 0)
             student_revenue += amount
     
-    school_revenue = sum(float(s.get('amount_paid', 0) or 0) for s in school_inquiries if s.get('status') == 'converted')
+    school_revenue = 0
+    for s in school_inquiries:
+        if s.get('status') in ['converted', 'active', 'renewed']:
+            # Check for conversion_amount, onboarding_data.total_amount, or amount_paid
+            onboarding_data = s.get('onboarding_data', {})
+            amount = float(s.get('conversion_amount') or onboarding_data.get('total_amount') or s.get('amount_paid') or 0)
+            school_revenue += amount
     total_revenue = student_revenue + school_revenue
     
     return {
