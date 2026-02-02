@@ -664,6 +664,78 @@ const AdminSchoolCRM = () => {
     }
   };
 
+  // Document upload handler
+  const handleDocumentUpload = async (file, docType) => {
+    if (!file || !showDocumentsModal) return;
+    
+    setUploadingDoc(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const uploadRes = await axios.post(`${API}/upload`, formData, {
+        headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
+      });
+      
+      const fileUrl = uploadRes.data.url;
+      
+      // Get existing documents
+      const existingDocs = showDocumentsModal.documents || [];
+      const newDoc = {
+        type: docType,
+        url: fileUrl,
+        name: file.name,
+        uploaded_at: new Date().toISOString(),
+        uploaded_by: user?.name || user?.email || 'Admin'
+      };
+      
+      // Update school with new document
+      await axios.patch(`${API}/schools/inquiry/${showDocumentsModal.id}`, {
+        documents: [...existingDocs, newDoc]
+      }, {
+        headers: getAuthHeaders()
+      });
+      
+      toast.success(`${docType} uploaded successfully`);
+      fetchInquiries();
+      
+      // Update local state
+      setShowDocumentsModal(prev => ({
+        ...prev,
+        documents: [...existingDocs, newDoc]
+      }));
+    } catch (error) {
+      console.error('Document upload error:', error);
+      toast.error('Failed to upload document');
+    } finally {
+      setUploadingDoc(false);
+    }
+  };
+
+  const deleteDocument = async (docIndex) => {
+    if (!showDocumentsModal) return;
+    
+    try {
+      const existingDocs = showDocumentsModal.documents || [];
+      const updatedDocs = existingDocs.filter((_, idx) => idx !== docIndex);
+      
+      await axios.patch(`${API}/schools/inquiry/${showDocumentsModal.id}`, {
+        documents: updatedDocs
+      }, {
+        headers: getAuthHeaders()
+      });
+      
+      toast.success('Document removed');
+      fetchInquiries();
+      setShowDocumentsModal(prev => ({
+        ...prev,
+        documents: updatedDocs
+      }));
+    } catch (error) {
+      toast.error('Failed to remove document');
+    }
+  };
+
   const handleOnboardSchool = async (saveAsDraft = false) => {
     if (!showOnboardModal) return;
     
