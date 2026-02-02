@@ -159,7 +159,8 @@ const SchoolTrackingPage = () => {
     school_contacts,
     assigned_team_member,
     offerings,
-    mou_url
+    mou_url,
+    is_renewal
   } = trackingData;
 
   // Reorder steps to put MOU first
@@ -172,11 +173,18 @@ const SchoolTrackingPage = () => {
   return (
     <>
       <Helmet>
-        <title>{school_name} Onboarding Tracker | OLL</title>
+        <title>{school_name} {is_renewal ? 'Renewal' : 'Onboarding'} Tracker | OLL</title>
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col">
+        {/* Renewal Banner */}
+        {is_renewal && (
+          <div className="bg-emerald-500 text-white py-2 px-4 text-center text-sm font-medium">
+            🔄 Partnership Renewal - Thank you for continuing with OLL!
+          </div>
+        )}
+        
         {/* Header */}
         <header className="bg-white shadow-sm sticky top-0 z-50">
           <div className="max-w-6xl mx-auto px-4 sm:px-6">
