@@ -1206,9 +1206,9 @@ const StudentFunnel = () => {
             </div>
             
             <div>
-              <h3 className="text-lg font-semibold text-[#1E3A5F] mb-1">Verify Your Number</h3>
+              <h3 className="text-lg font-semibold text-[#1E3A5F] mb-1">Verify & Confirm</h3>
               <p className="text-slate-500 text-sm">
-                OTP sent via <span className="text-green-600 font-medium">WhatsApp</span> to <strong>{formData.countryCode} {formData.phone}</strong>
+                Enter OTP sent to <strong>{formData.countryCode} {formData.phone}</strong>
               </p>
             </div>
 
@@ -1221,20 +1221,8 @@ const StudentFunnel = () => {
                 className="text-2xl text-center tracking-widest py-4 max-w-[180px] mx-auto"
                 maxLength={4}
                 data-testid="otp-input"
+                autoFocus
               />
-
-              {/* Show name field for new users after OTP is entered */}
-              {otp.length === 4 && !formData.name && (
-                <div className="pt-2">
-                  <Input
-                    placeholder="Enter your name"
-                    value={formData.name}
-                    onChange={(e) => updateForm('name', e.target.value)}
-                    className="text-center"
-                    data-testid="name-input"
-                  />
-                </div>
-              )}
 
               <Button
                 onClick={handleVerifyAndSubmit}
@@ -1261,7 +1249,7 @@ const StudentFunnel = () => {
 
             {/* Booking Summary */}
             <div className="bg-slate-50 rounded-xl p-3 text-left mt-4">
-              <h4 className="font-medium text-[#1E3A5F] mb-2 text-xs">Booking Summary</h4>
+              <h4 className="font-medium text-[#1E3A5F] mb-2 text-xs">Booking for: {formData.name}</h4>
               <div className="text-xs text-slate-600 space-y-1">
                 <div className="flex items-center gap-2">
                   <BookOpen className="w-3.5 h-3.5 text-slate-400" />
@@ -1269,7 +1257,7 @@ const StudentFunnel = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                  <span>{formData.demo_date ? format(formData.demo_date, 'EEE, MMM d') : ''} at {formData.demo_time}</span>
+                  <span>{formData.demo_date ? format(formData.demo_date, 'EEE, MMM d') : ''} at {formatTimeDisplay(formData.demo_time)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <MapPin className="w-3.5 h-3.5 text-slate-400" />
@@ -1290,6 +1278,70 @@ const StudentFunnel = () => {
         return null;
     }
   };
+
+  // Booking Animation Screen
+  if (showBookingAnimation) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          {/* Animated Checkmark Circle */}
+          <div className="relative w-32 h-32 mx-auto mb-6">
+            {/* Outer ring animation */}
+            <div className="absolute inset-0 border-4 border-green-200 rounded-full animate-pulse"></div>
+            {/* Inner circle with checkmark */}
+            <div className="absolute inset-2 bg-green-500 rounded-full flex items-center justify-center animate-scale-in">
+              <svg 
+                className="w-16 h-16 text-white animate-draw-check" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={3} 
+                  d="M5 13l4 4L19 7"
+                  className="animate-check-draw"
+                />
+              </svg>
+            </div>
+          </div>
+          <h2 className="text-xl font-semibold text-[#1E3A5F] animate-fade-in">
+            Confirming your booking...
+          </h2>
+          <p className="text-slate-500 text-sm mt-2 animate-fade-in">
+            Please wait a moment
+          </p>
+        </div>
+        
+        <style>{`
+          @keyframes scale-in {
+            0% { transform: scale(0); opacity: 0; }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+          }
+          @keyframes check-draw {
+            0% { stroke-dasharray: 0 100; }
+            100% { stroke-dasharray: 100 0; }
+          }
+          @keyframes fade-in {
+            0% { opacity: 0; transform: translateY(10px); }
+            100% { opacity: 1; transform: translateY(0); }
+          }
+          .animate-scale-in {
+            animation: scale-in 0.5s ease-out forwards;
+          }
+          .animate-check-draw {
+            stroke-dasharray: 0 100;
+            animation: check-draw 0.8s ease-out 0.3s forwards;
+          }
+          .animate-fade-in {
+            animation: fade-in 0.4s ease-out 0.5s both;
+          }
+        `}</style>
+      </div>
+    );
+  }
 
   // Success Screen with Booking Details and Reschedule Option
   if (submitted && bookingData) {
