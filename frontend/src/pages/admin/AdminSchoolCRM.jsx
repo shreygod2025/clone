@@ -505,6 +505,159 @@ const AdminSchoolCRM = () => {
     await handleStatusChange(inquiry, 'archived');
   };
 
+  // Lost Reason Modal handlers
+  const openLostReasonModal = (inquiry) => {
+    setShowLostReasonModal(inquiry);
+    setLostReason('');
+  };
+
+  const submitLostReason = async () => {
+    if (!lostReason.trim()) {
+      toast.error('Please enter a reason for marking as lost');
+      return;
+    }
+    try {
+      await axios.patch(`${API}/schools/inquiry/${showLostReasonModal.id}`, { 
+        status: 'lost',
+        lost_reason: lostReason,
+        notes: showLostReasonModal.notes 
+          ? `${showLostReasonModal.notes}\n\n--- Lost Reason (${format(new Date(), 'dd MMM yyyy')}) ---\n${lostReason}`
+          : `--- Lost Reason (${format(new Date(), 'dd MMM yyyy')}) ---\n${lostReason}`
+      }, {
+        headers: getAuthHeaders()
+      });
+      toast.success('School marked as lost');
+      setShowLostReasonModal(null);
+      setLostReason('');
+      fetchInquiries();
+    } catch (error) {
+      toast.error('Failed to update status');
+    }
+  };
+
+  // Renewal Meeting Modal handlers
+  const openRenewalMeetingModal = (inquiry) => {
+    setShowRenewalMeetingModal(inquiry);
+    setRenewalMeetingData({ date: null, time: '', type: 'offline', notes: '', link: '', address: '' });
+  };
+
+  const submitRenewalMeeting = async () => {
+    if (!renewalMeetingData.date || !renewalMeetingData.time) {
+      toast.error('Please select date and time for the renewal meeting');
+      return;
+    }
+    if (renewalMeetingData.type === 'online' && !renewalMeetingData.link) {
+      toast.error('Please enter the meeting link');
+      return;
+    }
+    if (renewalMeetingData.type === 'offline' && !renewalMeetingData.address) {
+      toast.error('Please enter the meeting address');
+      return;
+    }
+    try {
+      await axios.patch(`${API}/schools/inquiry/${showRenewalMeetingModal.id}`, { 
+        status: 'renewal_meeting',
+        renewal_meeting_date: format(renewalMeetingData.date, 'yyyy-MM-dd'),
+        renewal_meeting_time: renewalMeetingData.time,
+        renewal_meeting_type: renewalMeetingData.type,
+        renewal_meeting_link: renewalMeetingData.type === 'online' ? renewalMeetingData.link : '',
+        renewal_meeting_address: renewalMeetingData.type === 'offline' ? renewalMeetingData.address : '',
+        notes: showRenewalMeetingModal.notes 
+          ? `${showRenewalMeetingModal.notes}\n\n--- Renewal Meeting Scheduled (${format(new Date(), 'dd MMM yyyy')}) ---\n${renewalMeetingData.notes || 'Meeting scheduled'}`
+          : `--- Renewal Meeting Scheduled (${format(new Date(), 'dd MMM yyyy')}) ---\n${renewalMeetingData.notes || 'Meeting scheduled'}`
+      }, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Renewal meeting scheduled');
+      setShowRenewalMeetingModal(null);
+      setRenewalMeetingData({ date: null, time: '', type: 'offline', notes: '', link: '', address: '' });
+      fetchInquiries();
+    } catch (error) {
+      toast.error('Failed to schedule renewal meeting');
+    }
+  };
+
+  // Renewal Conversion Modal handlers
+  const openRenewalConvertModal = (inquiry) => {
+    // Pre-fill with existing onboarding data
+    const existingData = inquiry.onboarding_data || {};
+    setShowRenewalConvertModal(inquiry);
+    setRenewalConvertData({
+      amount: existingData.total_amount || inquiry.conversion_amount || '',
+      model: existingData.model || '',
+      kit_type: existingData.kit_type || '',
+      book_type: existingData.book_type || '',
+      training_type: existingData.training_type || '',
+      total_students: existingData.total_students || '',
+      contract_start: '',
+      contract_end: '',
+      mou_url: '',
+      school_contacts: existingData.school_contacts || [],
+      grade_pricing: existingData.grade_pricing || [],
+      payment_tranches: [{ percentage: '100', amount: existingData.total_amount || '', date: '', status: 'pending' }]
+    });
+  };
+
+  const handleRenewalConvert = async () => {
+    if (!renewalConvertData.amount) {
+      toast.error('Please enter the renewal amount');
+      return;
+    }
+    try {
+      // Update school with renewal data
+      await axios.patch(`${API}/schools/inquiry/${showRenewalConvertModal.id}`, {
+        status: 'renewed',
+        conversion_amount: renewalConvertData.amount,
+        onboarding_data: {
+          ...(showRenewalConvertModal.onboarding_data || {}),
+          total_amount: renewalConvertData.amount,
+          model: renewalConvertData.model,
+          kit_type: renewalConvertData.kit_type,
+          book_type: renewalConvertData.book_type,
+          training_type: renewalConvertData.training_type,
+          total_students: renewalConvertData.total_students,
+          contract_start: renewalConvertData.contract_start,
+          contract_end: renewalConvertData.contract_end,
+          mou_url: renewalConvertData.mou_url,
+          school_contacts: renewalConvertData.school_contacts,
+          grade_pricing: renewalConvertData.grade_pricing,
+          payment_tranches: renewalConvertData.payment_tranches,
+          renewal_date: new Date().toISOString()
+        },
+        notes: showRenewalConvertModal.notes 
+          ? `${showRenewalConvertModal.notes}\n\n--- Renewed (${format(new Date(), 'dd MMM yyyy')}) ---\nAmount: ₹${renewalConvertData.amount}`
+          : `--- Renewed (${format(new Date(), 'dd MMM yyyy')}) ---\nAmount: ₹${renewalConvertData.amount}`
+      }, {
+        headers: getAuthHeaders()
+      });
+      
+      // Initialize re-onboarding workflow
+      try {
+        const response = await axios.post(`${API}/schools/${showRenewalConvertModal.id}/init-onboarding`, {
+          is_renewal: true
+        }, {
+          headers: getAuthHeaders()
+        });
+        const trackingUrl = `${window.location.origin}/track/${response.data.tracking_token}`;
+        navigator.clipboard.writeText(trackingUrl);
+        toast.success('School renewed! Tracking link copied to clipboard.');
+      } catch (initError) {
+        console.log('Renewal onboarding init skipped:', initError);
+        toast.success('School renewed successfully!');
+      }
+      
+      setShowRenewalConvertModal(null);
+      setRenewalConvertData({
+        amount: '', model: '', kit_type: '', book_type: '', training_type: '',
+        total_students: '', contract_start: '', contract_end: '', mou_url: '',
+        school_contacts: [], grade_pricing: [], payment_tranches: []
+      });
+      fetchInquiries();
+    } catch (error) {
+      toast.error('Failed to renew school');
+    }
+  };
+
   const handleOnboardSchool = async (saveAsDraft = false) => {
     if (!showOnboardModal) return;
     
