@@ -1891,7 +1891,19 @@ const AdminSchoolCRM = () => {
       ) : filteredInquiries.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">
           <Building2 className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-          <p className="text-slate-500">No leads in this section</p>
+          <p className="text-slate-500">
+            {searchQuery.trim() && !searchAllStatuses 
+              ? `No results for "${searchQuery}" in this section`
+              : 'No leads in this section'}
+          </p>
+          {searchQuery.trim() && !searchAllStatuses && (
+            <button 
+              onClick={() => setSearchAllStatuses(true)}
+              className="mt-3 text-sm text-blue-600 hover:text-blue-800 underline"
+            >
+              Search in all statuses →
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
