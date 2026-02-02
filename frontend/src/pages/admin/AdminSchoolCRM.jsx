@@ -4544,6 +4544,60 @@ const AdminSchoolCRM = () => {
               </div>
             </div>
 
+            {/* Parent Circular (shown when payment_mode is from_student) */}
+            {onboardData.payment_mode === 'from_student' && (
+              <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
+                <label className="text-sm font-medium text-yellow-800 mb-2 block">Parent Circular</label>
+                <p className="text-xs text-yellow-600 mb-2">Upload circular to be shared with parents for fee collection</p>
+                {onboardData.parent_circular_url ? (
+                  <div className="flex items-center gap-2 p-2 bg-white rounded border border-yellow-200">
+                    <FileText className="w-4 h-4 text-yellow-600" />
+                    <a href={onboardData.parent_circular_url} target="_blank" rel="noopener noreferrer" className="text-sm text-yellow-700 hover:underline flex-1 truncate">
+                      View Parent Circular
+                    </a>
+                    <Button variant="ghost" size="sm" onClick={() => setOnboardData(prev => ({ ...prev, parent_circular_url: '' }))} className="text-red-500">
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Input
+                    type="file"
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        try {
+                          const res = await axios.post(`${API}/upload`, formData, {
+                            headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
+                          });
+                          setOnboardData(prev => ({ ...prev, parent_circular_url: res.data.url }));
+                          toast.success('Parent circular uploaded');
+                        } catch {
+                          toast.error('Failed to upload');
+                        }
+                      }
+                    }}
+                  />
+                )}
+              </div>
+            )}
+
+            {/* Payment Link (shown when payment_mode is from_student AND payment_method is online) */}
+            {onboardData.payment_mode === 'from_student' && onboardData.payment_method === 'online' && (
+              <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                <label className="text-sm font-medium text-green-800 mb-2 block">Payment Link</label>
+                <p className="text-xs text-green-600 mb-2">Add payment link for parents to make online payments</p>
+                <Input
+                  type="url"
+                  placeholder="https://payment-gateway.com/pay/..."
+                  value={onboardData.payment_link}
+                  onChange={(e) => setOnboardData(prev => ({ ...prev, payment_link: e.target.value }))}
+                />
+              </div>
+            )}
+
             <div className="flex gap-3 pt-2">
               <Button variant="outline" onClick={() => setShowOnboardModal(null)} className="flex-1">
                 Cancel
