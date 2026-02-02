@@ -2433,8 +2433,10 @@ const AdminSchoolCRM = () => {
 
                   {/* Onboarding Details - Show for converted/active/renewed */}
                   {viewInquiry.onboarding_data && ['converted', 'active', 'renewed'].includes(viewInquiry.status) && (
-                    <div className="bg-purple-50 rounded-lg p-4 space-y-3">
-                      <p className="text-sm font-semibold text-purple-800 border-b border-purple-200 pb-2">Onboarding Details</p>
+                    <div className={`${viewInquiry.status === 'renewed' ? 'bg-emerald-50' : 'bg-purple-50'} rounded-lg p-4 space-y-3`}>
+                      <p className={`text-sm font-semibold ${viewInquiry.status === 'renewed' ? 'text-emerald-800 border-emerald-200' : 'text-purple-800 border-purple-200'} border-b pb-2`}>
+                        {viewInquiry.status === 'renewed' ? 'Renewal Details' : 'Onboarding Details'}
+                      </p>
                       
                       <div className="grid grid-cols-2 gap-3 text-sm">
                         {viewInquiry.onboarding_data.model && (
