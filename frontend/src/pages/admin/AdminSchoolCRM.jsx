@@ -1248,7 +1248,7 @@ const AdminSchoolCRM = () => {
     }
   };
 
-  // Parse CSV/Excel file
+  // Parse CSV/Excel file using PapaParse for proper CSV handling
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -1256,35 +1256,31 @@ const AdminSchoolCRM = () => {
     setBulkImportFile(file);
     setBulkImportErrors([]);
     
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target.result;
-      const lines = text.split('\n').filter(line => line.trim() && !line.startsWith('#'));
-      
-      if (lines.length < 2) {
-        toast.error('File must have header row and at least one data row');
-        return;
-      }
-      
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
-      const data = [];
-      
-      for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim());
-        if (values.length === headers.length) {
-          const row = {};
-          headers.forEach((header, idx) => {
-            row[header] = values[idx];
-          });
-          data.push(row);
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      transformHeader: (header) => header.trim().toLowerCase().replace(/\s+/g, '_'),
+      complete: (results) => {
+        if (results.errors.length > 0) {
+          console.warn('CSV parsing warnings:', results.errors);
         }
+        
+        // Filter out rows that don't have a school_name
+        const validData = results.data.filter(row => row.school_name && row.school_name.trim());
+        
+        if (validData.length === 0) {
+          toast.error('No valid school data found in file');
+          return;
+        }
+        
+        setBulkImportData(validData);
+        toast.success(`Parsed ${validData.length} schools from file`);
+      },
+      error: (error) => {
+        console.error('CSV parse error:', error);
+        toast.error('Failed to parse CSV file');
       }
-      
-      setBulkImportData(data);
-      toast.success(`Parsed ${data.length} schools from file`);
-    };
-    
-    reader.readAsText(file);
+    });
   };
 
   // Submit bulk import
