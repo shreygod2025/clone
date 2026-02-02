@@ -5898,7 +5898,13 @@ async def get_public_tracking(tracking_token: str):
             "book_type": onboarding_data.get("book_type"),
             "training_type": onboarding_data.get("training_type"),
             "mou_url": onboarding_data.get("mou_url"),
+            "parent_circular_url": onboarding_data.get("parent_circular_url"),
+            "payment_link": onboarding_data.get("payment_link"),
+            "payment_mode": onboarding_data.get("payment_mode"),
+            "payment_method": onboarding_data.get("payment_method"),
         },
+        # Include documents
+        "documents": school.get("documents", []),
         # Include payment tranches and payment status
         "payment_tranches": onboarding_data.get("payment_tranches", []),
         "payments": [
@@ -5906,7 +5912,8 @@ async def get_public_tracking(tracking_token: str):
                 "tranche_index": p.get("tranche_index"),
                 "status": p.get("status"),
                 "invoice_url": p.get("invoice_url"),
-                "payment_date": p.get("payment_date")
+                "payment_date": p.get("payment_date"),
+                "payment_link": p.get("payment_link")
             }
             for p in school.get("payments", [])
         ]
