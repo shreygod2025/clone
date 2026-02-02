@@ -1190,6 +1190,7 @@ const StudentFunnel = () => {
         );
 
       case 'name':
+        const isHomeVisit = formData.learning_mode === 'offline' && formData.offline_type === 'home';
         return (
           <div className="space-y-5 text-center">
             <div className="w-14 h-14 rounded-xl bg-purple-100 flex items-center justify-center mx-auto">
@@ -1213,22 +1214,30 @@ const StudentFunnel = () => {
                 autoFocus
               />
             </div>
-
-            <Button
-              onClick={() => setCurrentStep(prev => prev + 1)}
-              disabled={!formData.name || formData.name.trim().length < 2}
-              className="w-full max-w-xs mx-auto bg-[#D63031] hover:bg-[#b52828]"
-              data-testid="continue-name-btn"
-            >
-              Continue
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
             
-            {otpSent && (
-              <p className="text-xs text-green-600">
-                <Check className="w-3 h-3 inline mr-1" />
-                OTP sent to your WhatsApp
-              </p>
+            {/* Show booking summary for non-home visits (final step before booking) */}
+            {!isHomeVisit && formData.name && formData.name.trim().length >= 2 && (
+              <div className="bg-slate-50 rounded-xl p-3 text-left mt-4 max-w-xs mx-auto">
+                <h4 className="font-medium text-[#1E3A5F] mb-2 text-xs">Demo Summary</h4>
+                <div className="text-xs text-slate-600 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="w-3.5 h-3.5 text-slate-400" />
+                    <span>{SKILL_OPTIONS.find(s => s.value === formData.skill)?.label}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                    <span>{formData.demo_date ? format(formData.demo_date, 'EEE, MMM d') : ''} at {formatTimeDisplay(formData.demo_time)}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                    <span>
+                      {formData.learning_mode === 'online' 
+                        ? 'Online' 
+                        : `${formData.selected_center_name || 'Center'}, ${formData.city}`}
+                    </span>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         );
