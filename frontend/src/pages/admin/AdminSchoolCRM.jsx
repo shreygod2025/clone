@@ -4303,6 +4303,97 @@ const AdminSchoolCRM = () => {
                 </div>
               </div>
 
+              {/* Payment Tranches */}
+              <div className="bg-purple-50 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-medium text-purple-800">Payment Tranches</h4>
+                  <Button variant="ghost" size="sm" onClick={() => setEditOnboardData(prev => ({
+                    ...prev,
+                    payment_tranches: [...(prev.payment_tranches || []), { 
+                      percentage: '', 
+                      amount: '', 
+                      date: '', 
+                      status: 'pending' 
+                    }]
+                  }))} className="text-purple-600">
+                    <Plus className="w-4 h-4 mr-1" /> Add Tranche
+                  </Button>
+                </div>
+                <div className="space-y-3">
+                  {(editOnboardData.payment_tranches || []).map((tranche, idx) => (
+                    <div key={idx} className="bg-white p-3 rounded-lg border border-purple-200">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-purple-800">Tranche {idx + 1}</span>
+                        <button 
+                          onClick={() => {
+                            const newTranches = [...(editOnboardData.payment_tranches || [])];
+                            newTranches.splice(idx, 1);
+                            setEditOnboardData(prev => ({ ...prev, payment_tranches: newTranches }));
+                          }}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-4 gap-2">
+                        <Input
+                          type="number"
+                          placeholder="%"
+                          value={tranche.percentage || ''}
+                          onChange={(e) => {
+                            const newTranches = [...(editOnboardData.payment_tranches || [])];
+                            newTranches[idx] = { ...newTranches[idx], percentage: e.target.value };
+                            // Auto-calculate amount if total_amount is set
+                            if (editOnboardData.total_amount && e.target.value) {
+                              newTranches[idx].amount = Math.round((editOnboardData.total_amount * parseFloat(e.target.value)) / 100);
+                            }
+                            setEditOnboardData(prev => ({ ...prev, payment_tranches: newTranches }));
+                          }}
+                          className="text-sm"
+                        />
+                        <Input
+                          type="number"
+                          placeholder="Amount (₹)"
+                          value={tranche.amount || ''}
+                          onChange={(e) => {
+                            const newTranches = [...(editOnboardData.payment_tranches || [])];
+                            newTranches[idx] = { ...newTranches[idx], amount: e.target.value };
+                            setEditOnboardData(prev => ({ ...prev, payment_tranches: newTranches }));
+                          }}
+                          className="text-sm"
+                        />
+                        <Input
+                          type="date"
+                          value={tranche.date || ''}
+                          onChange={(e) => {
+                            const newTranches = [...(editOnboardData.payment_tranches || [])];
+                            newTranches[idx] = { ...newTranches[idx], date: e.target.value };
+                            setEditOnboardData(prev => ({ ...prev, payment_tranches: newTranches }));
+                          }}
+                          className="text-sm"
+                        />
+                        <select
+                          value={tranche.status || 'pending'}
+                          onChange={(e) => {
+                            const newTranches = [...(editOnboardData.payment_tranches || [])];
+                            newTranches[idx] = { ...newTranches[idx], status: e.target.value };
+                            setEditOnboardData(prev => ({ ...prev, payment_tranches: newTranches }));
+                          }}
+                          className="h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white"
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="paid">Paid</option>
+                          <option value="overdue">Overdue</option>
+                        </select>
+                      </div>
+                    </div>
+                  ))}
+                  {(editOnboardData.payment_tranches || []).length === 0 && (
+                    <p className="text-sm text-slate-500 text-center py-2">No payment tranches added</p>
+                  )}
+                </div>
+              </div>
+
               <div className="flex gap-3 pt-2">
                 <Button 
                   variant="outline" 
