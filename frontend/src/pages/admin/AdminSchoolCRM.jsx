@@ -48,6 +48,7 @@ const AdminSchoolCRM = () => {
   const [teamUsers, setTeamUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchAllStatuses, setSearchAllStatuses] = useState(false);
   const [activeSection, setActiveSection] = useState('new');
   const [assigneeFilter, setAssigneeFilter] = useState('all');
   
