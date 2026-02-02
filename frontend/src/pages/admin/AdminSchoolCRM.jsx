@@ -108,6 +108,10 @@ const AdminSchoolCRM = () => {
   const [newMeetingData, setNewMeetingData] = useState({ date: null, time: '', type: 'offline', notes: '' });
   const [newComment, setNewComment] = useState('');
   
+  // Document upload states
+  const [showDocumentsModal, setShowDocumentsModal] = useState(null);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  
   // View/Edit states
   const [editMode, setEditMode] = useState(false);
   const [editData, setEditData] = useState({ school_name: '', contact_name: '', phone: '', email: '', meeting_date: '', meeting_time: '', notes: '' });
