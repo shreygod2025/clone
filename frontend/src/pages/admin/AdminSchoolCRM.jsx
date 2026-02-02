@@ -1622,6 +1622,7 @@ const AdminSchoolCRM = () => {
               Reschedule
             </button>
             {followupButton}
+            {documentsButton}
             {baseButtons}
             <button
               onClick={() => handleArchive(inquiry)}
@@ -1646,6 +1647,7 @@ const AdminSchoolCRM = () => {
               Mark Converted
             </button>
             {followupButton}
+            {documentsButton}
             {baseButtons}
             <button
               onClick={() => handleArchive(inquiry)}
