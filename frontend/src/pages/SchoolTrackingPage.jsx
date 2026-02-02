@@ -247,7 +247,7 @@ const SchoolTrackingPage = () => {
             <div className="bg-green-100 border border-green-300 rounded-xl p-4 flex items-center gap-3">
               <CheckCircle2 className="w-6 h-6 text-green-600" />
               <div>
-                <p className="font-semibold text-green-800">Onboarding Complete!</p>
+                <p className="font-semibold text-green-800">{is_renewal ? 'Renewal' : 'Onboarding'} Complete!</p>
                 <p className="text-sm text-green-700">Completed on {format(new Date(completed_at), 'MMMM d, yyyy')}</p>
               </div>
             </div>
@@ -255,7 +255,7 @@ const SchoolTrackingPage = () => {
             <div className="bg-blue-100 border border-blue-300 rounded-xl p-4 flex items-center gap-3">
               <Clock className="w-6 h-6 text-blue-600" />
               <div>
-                <p className="font-semibold text-blue-800">Onboarding In Progress</p>
+                <p className="font-semibold text-blue-800">{is_renewal ? 'Renewal' : 'Onboarding'} In Progress</p>
                 <p className="text-sm text-blue-700">Started on {started_at ? format(new Date(started_at), 'MMMM d, yyyy') : 'N/A'}</p>
               </div>
             </div>
@@ -267,7 +267,7 @@ const SchoolTrackingPage = () => {
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Left Column - Steps Timeline */}
             <div className="lg:col-span-2 space-y-6">
-              <h2 className="text-lg font-semibold text-[#1E3A5F]">Onboarding Steps</h2>
+              <h2 className="text-lg font-semibold text-[#1E3A5F]">{is_renewal ? 'Renewal' : 'Onboarding'} Steps</h2>
               
               <div className="bg-white rounded-xl shadow-lg overflow-hidden">
                 {reorderedSteps.map((step, idx) => (
