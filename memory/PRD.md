@@ -65,6 +65,24 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ Users & Roles: Added filters for City, Role, and Status
 - ✅ Orders Page: Removed duplicate title, now shows single "Orders & Payments" header
 
+**Learner Demo Booking UX Improvements (Feb 2, 2026):**
+- ✅ **"At My Home" Address Step:** Added new address step when selecting offline home visit
+  - Address search with autocomplete suggestions
+  - Flat/Apartment/Building number field
+  - Landmark/Additional comments field (optional)
+  - Address stored with booking for instructor visit
+- ✅ **Simplified OTP Flow:** Single "Verify Phone Number" button
+  - Removes two-click friction (was: Get OTP → Continue to Verify)
+  - OTP sends automatically when clicking the button
+  - Proceeds to name step immediately
+- ✅ **Name on Separate Page:** Dedicated step for entering student name
+  - Clean UI with single purpose
+  - Gives time for OTP to arrive on WhatsApp
+- ✅ **Booking Confirmation Animation:** Animated checkmark loading screen
+  - Eliminates flash back to date page
+  - Shows "Confirming your booking..." with animated green checkmark
+  - Smooth transition to success page after 1.5 seconds
+
 **Meeting Done Popup in School CRM:**
 - ✅ New "Meeting Completed" modal with required meeting notes/minutes textarea
 - ✅ Added Quoted Price field to enter price discussed in meeting
