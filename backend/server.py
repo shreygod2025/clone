@@ -4879,12 +4879,16 @@ async def bulk_import_schools(data: dict, user: dict = Depends(get_current_user)
                 skipped += 1
                 continue
             
-            # Check for existing school by name, email, or phone
+            # Check for existing school by name first (case-insensitive), then by email/phone
+            # Exclude archived schools from matching
             existing = await db.school_inquiries.find_one({
-                "$or": [
-                    {"school_name": {"$regex": f"^{school_name}$", "$options": "i"}},
-                    {"email": email} if email else {"_id": None},
-                    {"phone": phone} if phone else {"_id": None}
+                "$and": [
+                    {"status": {"$ne": "archived"}},
+                    {"$or": [
+                        {"school_name": {"$regex": f"^{school_name}$", "$options": "i"}},
+                        {"email": email} if email else {"_id": None},
+                        {"phone": phone} if phone else {"_id": None}
+                    ]}
                 ]
             })
             
