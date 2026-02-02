@@ -498,7 +498,7 @@ const SchoolTrackingPage = () => {
                     </div>
                     <div>
                       <p className="font-medium text-slate-800">{assigned_team_member.name}</p>
-                      <p className="text-xs text-[#1E3A5F] font-medium">{assigned_team_member.role || 'Account Manager'}</p>
+                      <p className="text-xs text-[#1E3A5F] font-medium">{assigned_team_member.role || 'Relationship Manager'}</p>
                       {assigned_team_member.phone && (
                         <p className="text-xs text-slate-500 flex items-center gap-1 mt-1">
                           <Phone className="w-3 h-3" /> {assigned_team_member.phone}
@@ -518,7 +518,7 @@ const SchoolTrackingPage = () => {
                     </div>
                     <div>
                       <p className="font-medium text-slate-800">OLL Support Team</p>
-                      <p className="text-xs text-[#1E3A5F] font-medium">Account Management</p>
+                      <p className="text-xs text-[#1E3A5F] font-medium">Relationship Manager</p>
                       <p className="text-xs text-slate-500 flex items-center gap-1 mt-1">
                         <Mail className="w-3 h-3" /> support@oll.co
                       </p>
@@ -697,12 +697,12 @@ const SchoolTrackingPage = () => {
                   alt="OLL Logo"
                   className="h-8 w-auto"
                 />
-                <span className="text-sm text-white/70">© {new Date().getFullYear()} OLL - Omni Learning Labs</span>
+                <span className="text-sm text-white/70">© {new Date().getFullYear()} Clonefutura Live Solutions Pvt. Ltd</span>
               </div>
               <div className="flex items-center gap-4 text-sm">
-                <a href="tel:+919876543210" className="flex items-center gap-1 text-white/80 hover:text-white transition-colors">
+                <a href="tel:+919920188188" className="flex items-center gap-1 text-white/80 hover:text-white transition-colors">
                   <Phone className="w-4 h-4" />
-                  <span className="hidden sm:inline">+91 98765 43210</span>
+                  <span className="hidden sm:inline">+91 99201 88188</span>
                 </a>
                 <a href="mailto:support@oll.co" className="flex items-center gap-1 text-white/80 hover:text-white transition-colors">
                   <Mail className="w-4 h-4" />
