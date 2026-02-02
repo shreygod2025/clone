@@ -2991,6 +2991,88 @@ const AdminSchoolCRM = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Documents Modal */}
+      <Dialog open={!!showDocumentsModal} onOpenChange={() => setShowDocumentsModal(null)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Paperclip className="w-5 h-5 text-cyan-600" />
+              Documents - {showDocumentsModal?.school_name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Document Type Selection & Upload */}
+            <div className="bg-slate-50 rounded-lg p-4">
+              <p className="text-sm font-medium text-slate-700 mb-3">Upload New Document</p>
+              <div className="grid grid-cols-2 gap-2">
+                {['Proposal', 'MOU', 'Parent Circular', 'Quote', 'Contract', 'Other'].map((docType) => (
+                  <label key={docType} className="relative cursor-pointer">
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleDocumentUpload(file, docType);
+                        e.target.value = '';
+                      }}
+                      disabled={uploadingDoc}
+                    />
+                    <div className={`p-3 rounded-lg border text-center transition-all ${
+                      uploadingDoc ? 'opacity-50 cursor-not-allowed' : 'hover:border-cyan-400 hover:bg-cyan-50'
+                    } border-slate-200`}>
+                      <Upload className="w-4 h-4 mx-auto mb-1 text-slate-500" />
+                      <span className="text-xs font-medium text-slate-600">{docType}</span>
+                    </div>
+                  </label>
+                ))}
+              </div>
+              {uploadingDoc && (
+                <p className="text-sm text-cyan-600 mt-2 text-center">Uploading...</p>
+              )}
+            </div>
+
+            {/* Existing Documents */}
+            <div>
+              <p className="text-sm font-medium text-slate-700 mb-3">Uploaded Documents ({showDocumentsModal?.documents?.length || 0})</p>
+              {showDocumentsModal?.documents?.length > 0 ? (
+                <div className="space-y-2">
+                  {showDocumentsModal.documents.map((doc, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <FileText className="w-5 h-5 text-cyan-600" />
+                        <div>
+                          <p className="text-sm font-medium text-slate-800">{doc.type}</p>
+                          <p className="text-xs text-slate-500 truncate max-w-[200px]">{doc.name}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={doc.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs px-2 py-1 bg-cyan-100 text-cyan-700 rounded hover:bg-cyan-200"
+                        >
+                          View
+                        </a>
+                        <button
+                          onClick={() => deleteDocument(idx)}
+                          className="text-xs px-2 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-400 text-center py-4">No documents uploaded yet</p>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Lost Reason Modal */}
       <Dialog open={!!showLostReasonModal} onOpenChange={() => setShowLostReasonModal(null)}>
         <DialogContent className="max-w-md">
