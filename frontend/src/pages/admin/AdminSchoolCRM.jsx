@@ -1729,14 +1729,12 @@ const AdminSchoolCRM = () => {
                   </p>
                 )}
                 {inquiry.conversion_amount && (
-                  <p className="text-green-600 font-medium flex items-center gap-1">
-                    <DollarSign className="w-3 h-3" />
-                    ₹{inquiry.conversion_amount}
+                  <p className="text-green-600 font-medium">
+                    ₹{Number(inquiry.conversion_amount).toLocaleString()}
                   </p>
                 )}
                 {inquiry.quoted_price && !inquiry.conversion_amount && (
-                  <p className="text-blue-600 font-medium flex items-center gap-1">
-                    <DollarSign className="w-3 h-3" />
+                  <p className="text-blue-600 font-medium">
                     Quoted: ₹{Number(inquiry.quoted_price).toLocaleString()}
                   </p>
                 )}
