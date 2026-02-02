@@ -5730,11 +5730,14 @@ async def get_public_tracking(tracking_token: str):
             "description": step.get("description", ""),
             "completed": step.get("completed", False),
             "completed_date": step.get("completed_date"),
-            # Include scheduled dates for upcoming steps
-            "scheduled_date": step_data.get("scheduled_date") or step_data.get("delivery_date"),
+            # Include scheduled dates for upcoming steps - also check for various date field names
+            "scheduled_date": step_data.get("scheduled_date") or step_data.get("delivery_date") or step_data.get("dispatch_date") or step_data.get("distribution_date"),
             "tracking_link": step_data.get("tracking_link") if key == "kit_delivery" else None,
             "training_date": step_data.get("training_date") if key == "teacher_training" else None,
             "training_time": step_data.get("training_time") if key == "teacher_training" else None,
+            # Additional date fields for other steps
+            "payment_date": step_data.get("payment_date") if key == "payment_collection" else None,
+            "mou_date": step_data.get("mou_date") if key == "mou_signing" else None,
         })
     
     # Public timeline (last 10 entries)
