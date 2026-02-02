@@ -243,8 +243,11 @@ const StudentFunnel = () => {
     
     steps.push({ id: 'schedule', title: 'Schedule Demo' });
     
-    // Only add phone, OTP, name, and address steps if user is NOT logged in
-    if (!isLoggedIn) {
+    // For NOT logged in users (or users in the middle of signup flow)
+    // Check if we're past the schedule step to determine if we need auth steps
+    const isInAuthFlow = currentStep > steps.length - 1;
+    
+    if (!isLoggedIn || isInAuthFlow) {
       steps.push(
         { id: 'phone', title: 'Your Phone Number' },
         { id: 'otp', title: 'Verify OTP' },
