@@ -865,6 +865,55 @@ const AdminSchoolCRM = () => {
     }
   };
 
+  // Fetch Relationship Managers
+  const fetchRelationshipManagers = async () => {
+    try {
+      const res = await axios.get(`${API}/schools/relationship-managers`, { headers: getAuthHeaders() });
+      setRelationshipManagers(res.data || []);
+    } catch (error) {
+      console.error('Failed to fetch RMs:', error);
+    }
+  };
+
+  // Assign Relationship Manager
+  const handleAssignRM = async (rmId, rmName) => {
+    if (!showAssignRMModal) return;
+    try {
+      await axios.post(`${API}/schools/${showAssignRMModal.id}/assign-rm`, {
+        rm_id: rmId,
+        rm_name: rmName
+      }, { headers: getAuthHeaders() });
+      toast.success('Relationship Manager assigned');
+      setShowAssignRMModal(null);
+      fetchInquiries();
+    } catch (error) {
+      toast.error('Failed to assign RM');
+    }
+  };
+
+  // Raise Ticket on behalf of school
+  const handleRaiseTicket = async () => {
+    if (!showRaiseTicketModal || !ticketData.subject) {
+      toast.error('Please enter a subject');
+      return;
+    }
+    try {
+      await axios.post(`${API}/schools/${showRaiseTicketModal.id}/raise-ticket`, {
+        subject: ticketData.subject,
+        description: ticketData.description,
+        priority: ticketData.priority,
+        contact_name: ticketData.contact_name || showRaiseTicketModal.contact_name,
+        contact_phone: ticketData.contact_phone || showRaiseTicketModal.phone,
+        contact_email: ticketData.contact_email || showRaiseTicketModal.email
+      }, { headers: getAuthHeaders() });
+      toast.success('Ticket raised successfully');
+      setShowRaiseTicketModal(null);
+      setTicketData({ subject: '', description: '', priority: 'medium', contact_name: '', contact_phone: '', contact_email: '' });
+    } catch (error) {
+      toast.error('Failed to raise ticket');
+    }
+  };
+
   // Document upload handler
   const handleDocumentUpload = async (file, docType) => {
     if (!file || !showDocumentsModal) return;
