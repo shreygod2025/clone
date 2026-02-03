@@ -3462,111 +3462,357 @@ const AdminSchoolCRM = () => {
 
       {/* Renewal Convert Modal */}
       <Dialog open={!!showRenewalConvertModal} onOpenChange={() => setShowRenewalConvertModal(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <RefreshCw className="w-5 h-5 text-emerald-600" />
               Renew School - {showRenewalConvertModal?.school_name}
             </DialogTitle>
           </DialogHeader>
+          
           <div className="space-y-4">
             {/* Previous Contract Info */}
             {showRenewalConvertModal?.onboarding_data && (
               <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
                 <h4 className="font-medium text-blue-800 mb-2">Previous Contract Details</h4>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <span className="text-blue-600">Last Amount:</span>
-                  <span className="font-medium">₹{Number(showRenewalConvertModal.onboarding_data.total_amount || showRenewalConvertModal.conversion_amount || 0).toLocaleString()}</span>
-                  <span className="text-blue-600">Model:</span>
-                  <span className="font-medium">{showRenewalConvertModal.onboarding_data.model || '-'}</span>
-                  <span className="text-blue-600">Students:</span>
-                  <span className="font-medium">{showRenewalConvertModal.onboarding_data.total_students || '-'}</span>
+                <div className="grid grid-cols-3 gap-2 text-sm">
+                  <div>
+                    <span className="text-blue-600 block">Last Amount:</span>
+                    <span className="font-medium">₹{Number(showRenewalConvertModal.onboarding_data.total_amount || showRenewalConvertModal.conversion_amount || 0).toLocaleString()}</span>
+                  </div>
+                  <div>
+                    <span className="text-blue-600 block">Model:</span>
+                    <span className="font-medium">{showRenewalConvertModal.onboarding_data.model || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-blue-600 block">Students:</span>
+                    <span className="font-medium">{showRenewalConvertModal.onboarding_data.total_students || '-'}</span>
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* Renewal Amount */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Renewal Amount (₹) *</label>
-              <Input
-                type="number"
-                placeholder="Enter renewal contract value"
-                value={renewalConvertData.amount}
-                onChange={(e) => setRenewalConvertData(prev => ({ ...prev, amount: e.target.value }))}
-                data-testid="renewal-amount"
-              />
-            </div>
-
-            {/* Model & Kit Selection */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Offering Selection */}
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Model</label>
+                <label className="text-sm font-medium text-slate-700">Select Offering *</label>
+                <select
+                  value={renewalConvertData.offering}
+                  onChange={(e) => setRenewalConvertData(prev => ({ ...prev, offering: e.target.value }))}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                  data-testid="renewal-offering"
+                >
+                  <option value="">Select from offerings</option>
+                  {offerings.map(o => (
+                    <option key={o.id} value={o.id}>{o.title || o.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Model/Type *</label>
                 <select
                   value={renewalConvertData.model}
                   onChange={(e) => setRenewalConvertData(prev => ({ ...prev, model: e.target.value }))}
-                  className="w-full h-10 px-4 border border-slate-200 rounded-lg bg-white"
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
                   data-testid="renewal-model"
                 >
-                  <option value="">Select Model</option>
-                  <option value="lab_setup">Lab Setup</option>
-                  <option value="classroom_integration">Classroom Integration</option>
+                  <option value="">Select model</option>
+                  <option value="robotics_lab">Robotics Lab Setup</option>
+                  <option value="stem_curriculum">STEM Curriculum Integration</option>
                   <option value="after_school">After School Program</option>
-                  <option value="hybrid">Hybrid Model</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Kit Type</label>
-                <select
-                  value={renewalConvertData.kit_type}
-                  onChange={(e) => setRenewalConvertData(prev => ({ ...prev, kit_type: e.target.value }))}
-                  className="w-full h-10 px-4 border border-slate-200 rounded-lg bg-white"
-                  data-testid="renewal-kit-type"
-                >
-                  <option value="">Select Kit Type</option>
-                  <option value="basic">Basic Kit</option>
-                  <option value="advanced">Advanced Kit</option>
-                  <option value="premium">Premium Kit</option>
-                  <option value="custom">Custom Kit</option>
+                  <option value="teacher_training">Teacher Training</option>
+                  <option value="full_partnership">Full School Partnership</option>
                 </select>
               </div>
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
+            
+            {/* Book Type, Kit Type, Training Type */}
+            <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Book Type</label>
+                <label className="text-sm font-medium text-slate-700">Book Type</label>
                 <select
                   value={renewalConvertData.book_type}
                   onChange={(e) => setRenewalConvertData(prev => ({ ...prev, book_type: e.target.value }))}
-                  className="w-full h-10 px-4 border border-slate-200 rounded-lg bg-white"
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
                   data-testid="renewal-book-type"
                 >
-                  <option value="">Select Book Type</option>
-                  <option value="workbook">Workbook</option>
-                  <option value="textbook">Textbook</option>
-                  <option value="digital">Digital Only</option>
-                  <option value="combo">Combo (Physical + Digital)</option>
+                  <option value="">Select book type</option>
+                  <option value="individual_books">Individual Books</option>
+                  <option value="no_books">No Books</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Training Type</label>
+                <label className="text-sm font-medium text-slate-700">Kit Type *</label>
+                <select
+                  value={renewalConvertData.kit_type}
+                  onChange={(e) => setRenewalConvertData(prev => ({ ...prev, kit_type: e.target.value }))}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                  data-testid="renewal-kit-type"
+                >
+                  <option value="">Select kit type</option>
+                  <option value="lab_setup">Lab Setup</option>
+                  <option value="individual">Individual Kit</option>
+                  <option value="no_kit">No Kit</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Training Type *</label>
                 <select
                   value={renewalConvertData.training_type}
                   onChange={(e) => setRenewalConvertData(prev => ({ ...prev, training_type: e.target.value }))}
-                  className="w-full h-10 px-4 border border-slate-200 rounded-lg bg-white"
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
                   data-testid="renewal-training-type"
                 >
-                  <option value="">Select Training Type</option>
-                  <option value="online">Online Training</option>
-                  <option value="onsite">On-site Training</option>
-                  <option value="hybrid">Hybrid Training</option>
+                  <option value="">Select training type</option>
+                  <option value="student_training">Student Training</option>
+                  <option value="teacher_training">Teacher Training</option>
+                  <option value="both">Both (Student & Teacher)</option>
                 </select>
               </div>
             </div>
 
-            {/* Contract Period */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* MOU Upload */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <label className="text-sm font-medium text-blue-800 flex items-center gap-2">
+                <Upload className="w-4 h-4" />
+                MOU Document (Optional)
+              </label>
+              <div className="mt-2">
+                {renewalConvertData.mou_url ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-green-700 flex items-center gap-1">
+                      <CheckCircle2 className="w-4 h-4" />
+                      MOU uploaded
+                    </span>
+                    <a 
+                      href={renewalConvertData.mou_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-600 underline"
+                    >
+                      View
+                    </a>
+                    <button 
+                      onClick={() => setRenewalConvertData(prev => ({ ...prev, mou_url: '' }))}
+                      className="text-xs text-red-600 underline"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="file"
+                      accept=".pdf,.doc,.docx,image/*"
+                      onChange={(e) => handleRenewalMOUUpload(e.target.files[0])}
+                      className="text-sm"
+                      disabled={uploadingRenewalMOU}
+                      data-testid="renewal-mou-upload"
+                    />
+                    {uploadingRenewalMOU && (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Grade-wise Pricing */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium text-slate-700">Grade-wise Student Count & Pricing</label>
+                <Button variant="ghost" size="sm" onClick={addRenewalGradePricing} className="text-blue-600">
+                  <Plus className="w-4 h-4 mr-1" /> Add Grade
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {renewalConvertData.grade_pricing.map((gp, idx) => (
+                  <div key={idx} className="grid grid-cols-5 gap-2 items-center">
+                    <Input
+                      placeholder="Grade (e.g., 1-5)"
+                      value={gp.grade}
+                      onChange={(e) => updateRenewalGradePricing(idx, 'grade', e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="No. of students"
+                      value={gp.students}
+                      onChange={(e) => updateRenewalGradePricing(idx, 'students', e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      placeholder="Price/student"
+                      value={gp.price_per_student}
+                      onChange={(e) => updateRenewalGradePricing(idx, 'price_per_student', e.target.value)}
+                    />
+                    <div className="flex items-center justify-center text-sm text-slate-600">
+                      ₹{((parseInt(gp.students) || 0) * (parseFloat(gp.price_per_student) || 0)).toLocaleString()}
+                    </div>
+                    {renewalConvertData.grade_pricing.length > 1 && (
+                      <Button variant="ghost" size="sm" onClick={() => removeRenewalGradePricing(idx)} className="text-red-500">
+                        <X className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2 p-2 bg-green-50 rounded-lg text-sm">
+                <span className="font-medium">Total: </span>
+                {renewalConvertData.grade_pricing.reduce((sum, g) => sum + (parseInt(g.students) || 0), 0)} students • 
+                ₹{renewalConvertData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0).toLocaleString()}
+              </div>
+            </div>
+
+            {/* School Contacts */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium text-slate-700">School Team Contacts</label>
+                <Button variant="ghost" size="sm" onClick={addRenewalSchoolContact} className="text-blue-600">
+                  <Plus className="w-4 h-4 mr-1" /> Add Contact
+                </Button>
+              </div>
+              <div className="space-y-3">
+                {renewalConvertData.school_contacts.map((contact, idx) => (
+                  <div key={idx} className="bg-slate-50 p-3 rounded-lg space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        placeholder="Name *"
+                        value={contact.name}
+                        onChange={(e) => updateRenewalSchoolContact(idx, 'name', e.target.value)}
+                      />
+                      <select
+                        value={contact.role}
+                        onChange={(e) => updateRenewalSchoolContact(idx, 'role', e.target.value)}
+                        className="h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white"
+                      >
+                        <option value="">Select Role *</option>
+                        <option value="principal">Principal</option>
+                        <option value="trustee_owner">Trustee/Owner</option>
+                        <option value="director">Director</option>
+                        <option value="coordinator">Coordinator</option>
+                        <option value="accounts">Accounts</option>
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <PhoneInput
+                        value={contact.phone_number || ''}
+                        onChange={(val) => updateRenewalSchoolContact(idx, 'phone_number', val)}
+                        countryCode={contact.country_code || '+91'}
+                        onCountryCodeChange={(code) => updateRenewalSchoolContact(idx, 'country_code', code)}
+                        placeholder="Phone *"
+                      />
+                      <Input
+                        placeholder="Email"
+                        value={contact.email}
+                        onChange={(e) => updateRenewalSchoolContact(idx, 'email', e.target.value)}
+                      />
+                    </div>
+                    {renewalConvertData.school_contacts.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeRenewalSchoolContact(idx)}
+                        className="text-xs text-red-500 hover:text-red-700"
+                      >
+                        Remove Contact
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Payment Details */}
+            <div className="bg-slate-50 p-4 rounded-lg space-y-4">
+              <p className="text-sm font-semibold text-slate-700">Payment Details</p>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium text-slate-700">Payment Mode (Who pays?)</label>
+                  <select
+                    value={renewalConvertData.payment_mode}
+                    onChange={(e) => setRenewalConvertData(prev => ({ ...prev, payment_mode: e.target.value }))}
+                    className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white"
+                    data-testid="renewal-payment-mode"
+                  >
+                    <option value="from_school">From School</option>
+                    <option value="from_student">From Student</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-slate-700">Payment Method</label>
+                  <select
+                    value={renewalConvertData.payment_method}
+                    onChange={(e) => setRenewalConvertData(prev => ({ ...prev, payment_method: e.target.value }))}
+                    className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white"
+                    data-testid="renewal-payment-method"
+                  >
+                    <option value="">Select method</option>
+                    <option value="cheque">Cheque</option>
+                    <option value="neft">NEFT/RTGS</option>
+                    <option value="online">Online</option>
+                    <option value="cash">Cash</option>
+                  </select>
+                </div>
+              </div>
+              
+              {/* Payment Tranches */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Contract Start</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-slate-700">Payment Tranches</label>
+                  <Button variant="ghost" size="sm" onClick={addRenewalPaymentTranche} className="text-blue-600">
+                    <Plus className="w-4 h-4 mr-1" /> Add Tranche
+                  </Button>
+                </div>
+                <p className="text-xs text-slate-500 mb-2">Enter % or amount - the other will auto-calculate</p>
+                <div className="space-y-2">
+                  {renewalConvertData.payment_tranches.map((tranche, idx) => (
+                    <div key={idx} className="grid grid-cols-5 gap-2 items-center">
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          placeholder="%"
+                          value={tranche.percentage}
+                          onChange={(e) => updateRenewalPaymentTranche(idx, 'percentage', e.target.value)}
+                          className="pr-6"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 text-sm">%</span>
+                      </div>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          placeholder="Amount"
+                          value={tranche.amount}
+                          onChange={(e) => updateRenewalPaymentTranche(idx, 'amount', e.target.value)}
+                          className="pl-6"
+                        />
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 text-sm">₹</span>
+                      </div>
+                      <Input
+                        type="date"
+                        value={tranche.date}
+                        onChange={(e) => updateRenewalPaymentTranche(idx, 'date', e.target.value)}
+                        className="text-sm"
+                      />
+                      <Input
+                        placeholder="Notes"
+                        value={tranche.notes}
+                        onChange={(e) => updateRenewalPaymentTranche(idx, 'notes', e.target.value)}
+                      />
+                      {renewalConvertData.payment_tranches.length > 1 && (
+                        <Button variant="ghost" size="sm" onClick={() => removeRenewalPaymentTranche(idx)} className="text-red-500">
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            
+            {/* Contract Dates */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium text-slate-700">Contract Start</label>
                 <Input
                   type="date"
                   value={renewalConvertData.contract_start}
@@ -3575,7 +3821,7 @@ const AdminSchoolCRM = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Contract End</label>
+                <label className="text-sm font-medium text-slate-700">Contract End</label>
                 <Input
                   type="date"
                   value={renewalConvertData.contract_end}
@@ -3585,62 +3831,63 @@ const AdminSchoolCRM = () => {
               </div>
             </div>
 
-            {/* Students */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Total Students</label>
-              <Input
-                type="number"
-                placeholder="Number of students"
-                value={renewalConvertData.total_students}
-                onChange={(e) => setRenewalConvertData(prev => ({ ...prev, total_students: e.target.value }))}
-                data-testid="renewal-students"
-              />
-            </div>
-
-            {/* MOU Upload */}
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">MOU Document</label>
-              {renewalConvertData.mou_url ? (
-                <div className="flex items-center gap-2 p-3 bg-green-50 rounded-lg border border-green-200">
-                  <FileText className="w-5 h-5 text-green-600" />
-                  <a href={renewalConvertData.mou_url} target="_blank" rel="noopener noreferrer" className="text-green-700 hover:underline flex-1 truncate">
-                    View MOU
-                  </a>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => setRenewalConvertData(prev => ({ ...prev, mou_url: '' }))}
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </div>
-              ) : (
-                <Input
-                  type="file"
-                  accept=".pdf,.doc,.docx"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      const formData = new FormData();
-                      formData.append('file', file);
-                      try {
-                        const res = await axios.post(`${API}/upload`, formData, {
-                          headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
-                        });
-                        setRenewalConvertData(prev => ({ ...prev, mou_url: res.data.url }));
-                        toast.success('MOU uploaded');
-                      } catch {
-                        toast.error('Failed to upload MOU');
+            {/* Parent Circular (shown when payment_mode is from_student) */}
+            {renewalConvertData.payment_mode === 'from_student' && (
+              <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
+                <label className="text-sm font-medium text-yellow-800 mb-2 block">Parent Circular</label>
+                <p className="text-xs text-yellow-600 mb-2">Upload circular to be shared with parents for fee collection</p>
+                {renewalConvertData.parent_circular_url ? (
+                  <div className="flex items-center gap-2 p-2 bg-white rounded border border-yellow-200">
+                    <FileText className="w-4 h-4 text-yellow-600" />
+                    <a href={renewalConvertData.parent_circular_url} target="_blank" rel="noopener noreferrer" className="text-sm text-yellow-700 hover:underline flex-1 truncate">
+                      View Parent Circular
+                    </a>
+                    <Button variant="ghost" size="sm" onClick={() => setRenewalConvertData(prev => ({ ...prev, parent_circular_url: '' }))} className="text-red-500">
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Input
+                    type="file"
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const formData = new FormData();
+                        formData.append('file', file);
+                        try {
+                          const res = await axios.post(`${API}/upload`, formData, {
+                            headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
+                          });
+                          setRenewalConvertData(prev => ({ ...prev, parent_circular_url: res.data.url }));
+                          toast.success('Parent circular uploaded');
+                        } catch {
+                          toast.error('Failed to upload');
+                        }
                       }
-                    }
-                  }}
-                  data-testid="renewal-mou-upload"
-                />
-              )}
-            </div>
+                    }}
+                    data-testid="renewal-parent-circular"
+                  />
+                )}
+              </div>
+            )}
 
-            <div className="flex gap-2 pt-2">
+            {/* Payment Link (shown when payment_mode is from_student AND payment_method is online) */}
+            {renewalConvertData.payment_mode === 'from_student' && renewalConvertData.payment_method === 'online' && (
+              <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                <label className="text-sm font-medium text-green-800 mb-2 block">Payment Link</label>
+                <p className="text-xs text-green-600 mb-2">Add payment link for parents to make online payments</p>
+                <Input
+                  type="url"
+                  placeholder="https://payment-gateway.com/pay/..."
+                  value={renewalConvertData.payment_link}
+                  onChange={(e) => setRenewalConvertData(prev => ({ ...prev, payment_link: e.target.value }))}
+                  data-testid="renewal-payment-link"
+                />
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-2">
               <Button variant="outline" onClick={() => setShowRenewalConvertModal(null)} className="flex-1">
                 Cancel
               </Button>
