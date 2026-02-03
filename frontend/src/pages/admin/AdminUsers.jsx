@@ -641,28 +641,39 @@ const AdminUsers = () => {
             </div>
             
             {/* Role Selection */}
-            <div>
-              <label className="block text-sm font-medium mb-1">Role *</label>
-              <select
-                value={userForm.role_id}
-                onChange={(e) => {
-                  const roleId = e.target.value;
-                  const selectedRole = roles.find(r => r.id === roleId);
-                  setUserForm({ 
-                    ...userForm, 
-                    role_id: roleId,
-                    permissions: selectedRole?.permissions || []
-                  });
-                }}
-                className="w-full px-3 py-2 border rounded-lg"
-              >
-                <option value="">Select a role</option>
-                {roles.map(role => (
-                  <option key={role.id} value={role.id}>
-                    {role.name} {role.is_system ? '(System)' : ''}
-                  </option>
-                ))}
-              </select>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Role *</label>
+                <select
+                  value={userForm.role_id}
+                  onChange={(e) => {
+                    const roleId = e.target.value;
+                    const selectedRole = roles.find(r => r.id === roleId);
+                    setUserForm({ 
+                      ...userForm, 
+                      role_id: roleId,
+                      permissions: selectedRole?.permissions || []
+                    });
+                  }}
+                  className="w-full px-3 py-2 border rounded-lg"
+                >
+                  <option value="">Select a role</option>
+                  {roles.map(role => (
+                    <option key={role.id} value={role.id}>
+                      {role.name} {role.is_system ? '(System)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">City</label>
+                <Input
+                  value={userForm.city}
+                  onChange={(e) => setUserForm({ ...userForm, city: e.target.value })}
+                  placeholder="e.g., Mumbai, Delhi"
+                />
+                <p className="text-xs text-slate-500 mt-1">Used for location-based assignment</p>
+              </div>
             </div>
 
             {/* Show permissions for selected role */}
