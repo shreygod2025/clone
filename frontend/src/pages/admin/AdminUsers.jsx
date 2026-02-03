@@ -436,6 +436,7 @@ const AdminUsers = () => {
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">User</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">Username</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">Role</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">City</th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">Status</th>
                   <th className="px-4 py-3 text-right text-sm font-semibold text-slate-600">Actions</th>
                 </tr>
