@@ -1857,6 +1857,7 @@ const AdminSchoolCRM = () => {
       case 'converted':
         return (
           <div className="flex gap-1 flex-wrap">
+            {documentsButton}
             {baseButtons}
           </div>
         );
@@ -1888,6 +1889,7 @@ const AdminSchoolCRM = () => {
               <X className="w-3 h-3" />
               Lost
             </button>
+            {documentsButton}
             {baseButtons}
           </div>
         );
