@@ -298,7 +298,13 @@ const AdminSupportUnified = () => {
   };
 
   // Combine and filter all queries
-  const allQueries = [...queries, ...legacyTickets];
+  const allQueriesRaw = [...queries, ...legacyTickets];
+  
+  // Team members can only see queries assigned to them
+  const isTeamMember = user?.role === 'team_member';
+  const allQueries = isTeamMember 
+    ? allQueriesRaw.filter(q => q.assigned_to === user?.id || q.assigned_to === user?.email)
+    : allQueriesRaw;
   
   // Calculate tab counts
   const newCount = allQueries.filter(q => ['open', 'in_progress'].includes(q.status) && !isOverdue(q)).length;
