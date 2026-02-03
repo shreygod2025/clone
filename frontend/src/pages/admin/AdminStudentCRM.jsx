@@ -292,8 +292,34 @@ const AdminStudentCRM = () => {
     // This function is now part of onboarding - see handleOnboardStudent
   };
 
-  const handleArchive = async (inquiry) => {
-    await handleStatusChange(inquiry, 'archived');
+  const handleArchive = (inquiry) => {
+    setShowArchiveModal(inquiry);
+    setArchiveReason('');
+  };
+
+  const confirmArchive = async () => {
+    if (!showArchiveModal) return;
+    if (!archiveReason) {
+      toast.error('Please select a reason for archiving');
+      return;
+    }
+    try {
+      await axios.patch(`${API}/students/inquiry/${showArchiveModal.id}`, {
+        status: 'archived',
+        archive_reason: archiveReason,
+        notes: showArchiveModal.notes 
+          ? `${showArchiveModal.notes}\n\n--- Archived (${format(new Date(), 'dd MMM yyyy')}) ---\nReason: ${archiveReason}`
+          : `--- Archived (${format(new Date(), 'dd MMM yyyy')}) ---\nReason: ${archiveReason}`
+      }, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Lead archived');
+      setShowArchiveModal(null);
+      setArchiveReason('');
+      fetchInquiries();
+    } catch (error) {
+      toast.error('Failed to archive lead');
+    }
   };
 
   const handleReceiptUpload = async (file) => {
