@@ -514,7 +514,7 @@ const AdminUsers = () => {
                 {filteredUsers.length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
-                      No users found. Click "Add User" to create a new team member.
+                      No users found. Click &quot;Add User&quot; to create a new team member.
                     </td>
                   </tr>
                 )}
@@ -529,7 +529,7 @@ const AdminUsers = () => {
             {filteredRoles.length === 0 ? (
               <div className="bg-white rounded-xl p-8 text-center text-slate-500">
                 <Shield className="w-12 h-12 mx-auto text-slate-300 mb-4" />
-                <p>No roles found. Click "Add Role" to create your first role.</p>
+                <p>No roles found. Click &quot;Add Role&quot; to create your first role.</p>
               </div>
             ) : (
               filteredRoles.map(role => (
