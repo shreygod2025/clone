@@ -2411,6 +2411,14 @@ async def update_team_application(
 @api_router.post("/schools/inquiry", response_model=SchoolInquiry)
 async def create_school_inquiry(data: SchoolInquiryCreate):
     inquiry = SchoolInquiry(**data.model_dump())
+    
+    # Auto-assign to B2B Sales team user (round-robin, prefer same city)
+    # Skip if already assigned (e.g., from team user link)
+    if not data.assigned_to:
+        assigned = await auto_assign_lead('school', data.location or '', 'offline')
+        if assigned and assigned.get('user_id'):
+            inquiry.assigned_to = assigned['user_id']
+    
     doc = inquiry.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
     doc['updated_at'] = doc['updated_at'].isoformat()
