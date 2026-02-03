@@ -202,6 +202,11 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
   - Meetings from schools with status 'renewal_meeting' (using renewal_meeting_date field)
   - Emerald-colored "Renewal" badge with RefreshCw icon to distinguish renewal meetings from regular meetings
 
+**Bug Fixes (Feb 3, 2026):**
+- ✅ **Meeting Done Bug:** Fixed issue where leads with followup scheduled were changing to 'followup' status (no UI tab), causing them to "disappear". Leads now stay in 'meeting_done' tab with followup data attached.
+- ✅ **Team User Support Queries:** Team members now only see support queries assigned to them (filtered by user ID or email). Admins see all queries. Added info banner for team members.
+- ✅ **Autocomplete Click Fix:** Fixed issue where autocomplete dropdown suggestions couldn't be clicked due to blur event closing dropdown too fast. Added onBlur delay (200ms) and onMouseDown preventDefault to all autocomplete dropdowns in School CRM and /add page.
+
 **Quoted Price & Offerings for School Leads:**
 - ✅ Added Quoted Price (₹) field to Admin School CRM Add Lead form
 - ✅ Added Offerings selection checkboxes to Admin School CRM Add Lead form
