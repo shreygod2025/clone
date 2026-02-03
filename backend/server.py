@@ -578,6 +578,7 @@ class TeamUser(BaseModel):
     password_hash: str = ""
     role: str = "team_member"
     role_id: str = ""  # Reference to roles collection
+    city: str = ""  # City for location-based assignment
     is_active: bool = True
     permissions: List[str] = []  # ['students', 'schools', 'educators', 'growth_partners']
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -588,6 +589,7 @@ class TeamUserCreate(BaseModel):
     name: str
     username: str
     role_id: str = ""
+    city: str = ""
     permissions: List[str] = []
 
 class TeamUserUpdate(BaseModel):
@@ -595,6 +597,7 @@ class TeamUserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     is_active: Optional[bool] = None
     role_id: Optional[str] = None
+    city: Optional[str] = None
     permissions: Optional[List[str]] = None
 
 # Center User Models
