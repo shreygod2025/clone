@@ -596,48 +596,107 @@ const MyBookingsPage = () => {
           {/* Bookings View (Original) */}
           {(!hasActiveSessions || activeTab === 'bookings') && (
             <>
+              {/* Booking Filter Tabs */}
+              <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+                <button
+                  onClick={() => setBookingFilter('upcoming')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                    bookingFilter === 'upcoming'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-slate-600 border border-slate-200 hover:border-blue-300'
+                  }`}
+                  data-testid="filter-upcoming"
+                >
+                  <CalendarClock className="w-4 h-4 inline-block mr-1.5" />
+                  Upcoming ({bookingCounts.upcoming})
+                </button>
+                <button
+                  onClick={() => setBookingFilter('completed')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                    bookingFilter === 'completed'
+                      ? 'bg-green-600 text-white'
+                      : 'bg-white text-slate-600 border border-slate-200 hover:border-green-300'
+                  }`}
+                  data-testid="filter-completed"
+                >
+                  <Check className="w-4 h-4 inline-block mr-1.5" />
+                  Completed ({bookingCounts.completed})
+                </button>
+                <button
+                  onClick={() => setBookingFilter('archived')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                    bookingFilter === 'archived'
+                      ? 'bg-slate-600 text-white'
+                      : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-400'
+                  }`}
+                  data-testid="filter-archived"
+                >
+                  <XCircle className="w-4 h-4 inline-block mr-1.5" />
+                  Archived/Cancelled ({bookingCounts.archived})
+                </button>
+              </div>
+
               {/* Bookings List */}
               {loading ? (
                 <div className="text-center py-12">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D63031] mx-auto"></div>
                   <p className="text-slate-500 mt-4">Loading your bookings...</p>
                 </div>
-              ) : bookings.length === 0 ? (
+              ) : filteredBookings.length === 0 ? (
                 <div className="glass-card rounded-2xl p-6 text-center">
-              <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3">
-                <Calendar className="w-7 h-7 text-slate-400" />
-              </div>
-              <h2 className="text-lg font-semibold text-[#1E3A5F] mb-1">No Bookings Yet</h2>
-              <p className="text-slate-500 text-sm mb-4">
-                You haven&apos;t made any bookings with this phone number.
-              </p>
-              <Button 
-                onClick={() => navigate(user?.user_type === 'school' ? '/school' : '/student')}
-                className="bg-[#D63031] hover:bg-[#b52828]"
-              >
-                {user?.user_type === 'school' ? 'Schedule a Meeting' : 'Book a Demo'}
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {bookings.map((booking) => (
-                <div 
-                  key={booking.id}
-                  className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow border border-slate-100"
-                >
-                  <div className="flex flex-col gap-3">
-                    {/* Header Row */}
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="font-semibold text-[#1E3A5F]">
-                          {user?.user_type === 'school' 
-                            ? booking.school_name 
-                            : user?.user_type === 'educator'
-                            ? `Application: ${booking.skills?.join(', ') || 'Educator'}`
-                            : booking.skill?.charAt(0).toUpperCase() + booking.skill?.slice(1) || 'Demo'
-                          }
-                        </h3>
+                  <div className="w-14 h-14 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                    {bookingFilter === 'upcoming' ? (
+                      <CalendarClock className="w-7 h-7 text-blue-400" />
+                    ) : bookingFilter === 'completed' ? (
+                      <Check className="w-7 h-7 text-green-400" />
+                    ) : (
+                      <XCircle className="w-7 h-7 text-slate-400" />
+                    )}
+                  </div>
+                  <h2 className="text-lg font-semibold text-[#1E3A5F] mb-1">
+                    {bookingFilter === 'upcoming' 
+                      ? 'No Upcoming Bookings' 
+                      : bookingFilter === 'completed'
+                      ? 'No Completed Demos'
+                      : 'No Archived Bookings'}
+                  </h2>
+                  <p className="text-slate-500 text-sm mb-4">
+                    {bookingFilter === 'upcoming' 
+                      ? "You don't have any upcoming demos scheduled."
+                      : bookingFilter === 'completed'
+                      ? "You haven't completed any demos yet."
+                      : "No cancelled or archived bookings."}
+                  </p>
+                  {bookingFilter === 'upcoming' && (
+                    <Button 
+                      onClick={() => navigate(user?.user_type === 'school' ? '/school' : '/student')}
+                      className="bg-[#D63031] hover:bg-[#b52828]"
+                      data-testid="book-session-btn"
+                    >
+                      {user?.user_type === 'school' ? 'Schedule a Meeting' : 'Book a Session'}
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {filteredBookings.map((booking) => (
+                    <div 
+                      key={booking.id}
+                      className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow border border-slate-100"
+                    >
+                      <div className="flex flex-col gap-3">
+                        {/* Header Row */}
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h3 className="font-semibold text-[#1E3A5F]">
+                              {user?.user_type === 'school' 
+                                ? booking.school_name 
+                                : user?.user_type === 'educator'
+                                ? `Application: ${booking.skills?.join(', ') || 'Educator'}`
+                                : booking.skill?.charAt(0).toUpperCase() + booking.skill?.slice(1) || 'Demo'
+                              }
+                            </h3>
                         <div className="flex items-center gap-3 mt-1 text-sm text-slate-500">
                           <span className="flex items-center gap-1">
                             <Calendar className="w-3.5 h-3.5" />
