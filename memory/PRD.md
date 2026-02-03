@@ -206,6 +206,11 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ **Meeting Done Bug:** Fixed issue where leads with followup scheduled were changing to 'followup' status (no UI tab), causing them to "disappear". Leads now stay in 'meeting_done' tab with followup data attached.
 - ✅ **Team User Support Queries:** Team members now only see support queries assigned to them (filtered by user ID or email). Admins see all queries. Added info banner for team members.
 - ✅ **Autocomplete Click Fix:** Fixed issue where autocomplete dropdown suggestions couldn't be clicked due to blur event closing dropdown too fast. Added onBlur delay (200ms) and onMouseDown preventDefault to all autocomplete dropdowns in School CRM and /add page.
+- ✅ **Assign Modal Scroller:** Added `max-h-64 overflow-y-auto` to team member lists in Assign Lead modals across School CRM, Student CRM, and Educator CRM. Modals now also have `max-h-[90vh]` to prevent overflow.
+- ✅ **Docs Button Extended:** Documents button now appears in "Converted" and "Active" school status tabs (previously only in new/meeting_done/renewal_meeting).
+- ✅ **Referral Source Field:** When source is set to "Referral", a new "Referred By" text input field appears in School CRM Add Lead modal and in /add page (InquiryPage). Backend also stores this field.
+- ✅ **Latest Note Display:** Changed "Comments" display to "Latest Note" in all CRM cards (School, Student, Educator). Now shows only the last paragraph (2 lines max) instead of full notes with line-clamp-2.
+- ✅ **Archive Reason Modal (Student CRM):** When archiving a student lead, a modal now asks for reason with dropdown options: Not interested, Budget constraints, Chose competitor, No response, Wrong contact, Age not suitable, Location not serviceable, Duplicate lead, Other.
 
 **Quoted Price & Offerings for School Leads:**
 - ✅ Added Quoted Price (₹) field to Admin School CRM Add Lead form
