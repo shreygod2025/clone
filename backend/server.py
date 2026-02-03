@@ -2193,6 +2193,19 @@ async def create_student_inquiry(data: StudentInquiryCreate):
             inquiry.assigned_educator_id = educator_data.get('id', '')
             inquiry.assigned_educator_name = educator_data.get('name', '')
     
+    # Auto-assign to B2C Sales team user (round-robin)
+    # Skip if already assigned (e.g., from team user link) or if assignment_option is 'admin'
+    if not data.assigned_to and getattr(data, 'assignment_option', '') != 'admin':
+        # For offline at center, assign to center user
+        if data.learning_mode == 'offline' and getattr(data, 'selected_center', ''):
+            assigned = await auto_assign_lead('student', data.city, 'offline', data.selected_center)
+        else:
+            # For online/at_home, auto-assign to B2C Sales
+            assigned = await auto_assign_lead('student', data.city, data.learning_mode)
+        
+        if assigned and assigned.get('user_id'):
+            inquiry.assigned_to = assigned['user_id']
+    
     # Generate meeting link for the booking
     inquiry.meeting_link = generate_meeting_link(inquiry.id)
     
