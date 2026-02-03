@@ -2329,6 +2329,13 @@ async def get_comments(collection: str, item_id: str, user: dict = Depends(get_c
 @api_router.post("/growth-partners", response_model=GrowthPartner)
 async def create_growth_partner(data: GrowthPartnerCreate):
     partner = GrowthPartner(**data.model_dump())
+    
+    # Auto-assign to Growth Partner Manager (round-robin)
+    if not data.assigned_to:
+        assigned = await auto_assign_lead('growth_partner', data.city or '', 'online')
+        if assigned and assigned.get('user_id'):
+            partner.assigned_to = assigned['user_id']
+    
     doc = partner.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
     doc['updated_at'] = doc['updated_at'].isoformat()
