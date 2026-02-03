@@ -4307,7 +4307,7 @@ const AdminSchoolCRM = () => {
               <label className="block text-sm font-medium text-slate-700 mb-2">Source</label>
               <select
                 value={newLead.source}
-                onChange={(e) => setNewLead({...newLead, source: e.target.value})}
+                onChange={(e) => setNewLead({...newLead, source: e.target.value, referred_by: e.target.value === 'referral' ? newLead.referred_by : ''})}
                 className="w-full h-10 px-4 border border-slate-200 rounded-lg"
                 data-testid="new-school-source"
               >
@@ -4319,6 +4319,17 @@ const AdminSchoolCRM = () => {
                 <option value="other">Other</option>
               </select>
             </div>
+            {newLead.source === 'referral' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Referred By *</label>
+                <Input
+                  placeholder="Name of person who referred"
+                  value={newLead.referred_by || ''}
+                  onChange={(e) => setNewLead({...newLead, referred_by: e.target.value})}
+                  data-testid="new-school-referred-by"
+                />
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Notes</label>
               <Textarea
