@@ -4100,6 +4100,7 @@ const AdminSchoolCRM = () => {
                       <button
                         key={idx}
                         type="button"
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={() => handleAutocompleteFill(s)}
                         className="w-full px-3 py-2 text-left hover:bg-slate-50 border-b last:border-b-0"
                       >
@@ -4122,6 +4123,7 @@ const AdminSchoolCRM = () => {
                   searchAutocomplete(e.target.value, 'email');
                 }}
                 onFocus={() => newLead.email.length >= 3 && searchAutocomplete(newLead.email, 'email')}
+                onBlur={() => setTimeout(() => setShowAutocomplete(false), 200)}
                 data-testid="new-school-email"
               />
               {/* Autocomplete dropdown */}
@@ -4131,6 +4133,7 @@ const AdminSchoolCRM = () => {
                     <button
                       key={idx}
                       type="button"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => handleAutocompleteFill(s)}
                       className="w-full px-3 py-2 text-left hover:bg-slate-50 border-b last:border-b-0"
                     >
