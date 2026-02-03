@@ -100,6 +100,14 @@ function App() {
             <Route path="/faqs" element={<FAQPage />} />
             <Route path="/centers" element={<CentersPage />} />
             
+            {/* URL Redirects for old/external links */}
+            <Route path="/team" element={<Navigate to="/join-team" replace />} />
+            <Route path="/blog" element={<Navigate to="/blogs" replace />} />
+            <Route path="/help" element={<Navigate to="/faq" replace />} />
+            <Route path="/mycoursedetail/:id" element={<Navigate to="/login" replace />} />
+            <Route path="/all-courses" element={<Navigate to="/offerings" replace />} />
+            <Route path="/about-us" element={<Navigate to="/about" replace />} />
+            
             {/* Legal Pages */}
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
