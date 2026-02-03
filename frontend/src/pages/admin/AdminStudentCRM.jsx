@@ -1683,7 +1683,7 @@ const AdminStudentCRM = () => {
 
       {/* Assign Lead Modal - Updated with Educator Tab */}
       <Dialog open={!!showAssignModal} onOpenChange={() => setShowAssignModal(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserPlus className="w-5 h-5 text-indigo-600" />
@@ -1735,32 +1735,34 @@ const AdminStudentCRM = () => {
             {assignTab === 'team' && (
               <div className="space-y-2">
                 <p className="text-sm font-medium text-slate-700">Select Team Member</p>
-                {teamUsers.length === 0 ? (
-                  <p className="text-sm text-slate-500 py-4 text-center">No team members found.</p>
-                ) : (
-                  teamUsers.filter(u => u.is_active).map(teamUser => (
-                    <button
-                      key={teamUser.id}
-                      onClick={() => handleAssignLead(teamUser.id)}
-                      className={`w-full p-3 rounded-lg border text-left transition-all hover:border-indigo-300 hover:bg-indigo-50 ${
-                        showAssignModal?.assigned_to === teamUser.id 
-                          ? 'border-indigo-500 bg-indigo-50' 
-                          : 'border-slate-200'
-                      }`}
-                      data-testid={`assign-to-${teamUser.id}`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-slate-900">{teamUser.name}</p>
-                          <p className="text-xs text-slate-500">{teamUser.email}</p>
+                <div className="max-h-64 overflow-y-auto space-y-2">
+                  {teamUsers.length === 0 ? (
+                    <p className="text-sm text-slate-500 py-4 text-center">No team members found.</p>
+                  ) : (
+                    teamUsers.filter(u => u.is_active).map(teamUser => (
+                      <button
+                        key={teamUser.id}
+                        onClick={() => handleAssignLead(teamUser.id)}
+                        className={`w-full p-3 rounded-lg border text-left transition-all hover:border-indigo-300 hover:bg-indigo-50 ${
+                          showAssignModal?.assigned_to === teamUser.id 
+                            ? 'border-indigo-500 bg-indigo-50' 
+                            : 'border-slate-200'
+                        }`}
+                        data-testid={`assign-to-${teamUser.id}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium text-slate-900">{teamUser.name}</p>
+                            <p className="text-xs text-slate-500">{teamUser.email}</p>
+                          </div>
+                          {showAssignModal?.assigned_to === teamUser.id && (
+                            <span className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded">Current</span>
+                          )}
                         </div>
-                        {showAssignModal?.assigned_to === teamUser.id && (
-                          <span className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded">Current</span>
-                        )}
-                      </div>
-                    </button>
-                  ))
-                )}
+                      </button>
+                    ))
+                  )}
+                </div>
               </div>
             )}
 
