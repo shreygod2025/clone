@@ -837,6 +837,7 @@ class SchoolInquiryCreate(BaseModel):
     meeting_time: Optional[str] = None
     meeting_type: str = "offline"
     source: str = "website"
+    referred_by: str = ""
     added_by: str = ""
     assigned_to: str = ""
     notes: str = ""
