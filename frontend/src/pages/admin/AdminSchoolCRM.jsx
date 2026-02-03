@@ -260,11 +260,29 @@ const AdminSchoolCRM = () => {
     endOfWeek.setDate(startOfWeek.getDate() + 6);
     endOfWeek.setHours(23, 59, 59, 999);
 
-    const meetings = inquiries.filter(i => {
+    // Regular meetings (from new leads)
+    const regularMeetings = inquiries.filter(i => {
       if (!i.meeting_date) return false;
       const meetingDate = new Date(i.meeting_date);
       return meetingDate >= startOfWeek && meetingDate <= endOfWeek;
-    }).sort((a, b) => new Date(a.meeting_date) - new Date(b.meeting_date));
+    });
+
+    // Renewal meetings (from renewal_meeting status schools)
+    const renewalMeetings = inquiries.filter(i => {
+      if (!i.renewal_meeting_date || i.status !== 'renewal_meeting') return false;
+      const meetingDate = new Date(i.renewal_meeting_date);
+      return meetingDate >= startOfWeek && meetingDate <= endOfWeek;
+    }).map(i => ({
+      ...i,
+      meeting_date: i.renewal_meeting_date,
+      meeting_time: i.renewal_meeting_time,
+      meeting_type: i.renewal_meeting_type,
+      is_renewal_meeting: true
+    }));
+
+    // Combine and sort all meetings
+    const meetings = [...regularMeetings, ...renewalMeetings]
+      .sort((a, b) => new Date(a.meeting_date) - new Date(b.meeting_date));
 
     const followups = inquiries.filter(i => {
       if (!i.followup_date) return false;
