@@ -959,7 +959,10 @@ const InquiryPage = () => {
                 </div>
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Source</label>
-                  <Select value={formData.source} onValueChange={(v) => updateForm('source', v)}>
+                  <Select value={formData.source} onValueChange={(v) => {
+                    updateForm('source', v);
+                    if (v !== 'referral') updateForm('referred_by', '');
+                  }}>
                     <SelectTrigger className="h-10 sm:h-11" data-testid="select-source">
                       <SelectValue placeholder="Select source" />
                     </SelectTrigger>
@@ -970,6 +973,18 @@ const InquiryPage = () => {
                     </SelectContent>
                   </Select>
                 </div>
+                {formData.source === 'referral' && (
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Referred By *</label>
+                    <Input
+                      placeholder="Name of person who referred"
+                      value={formData.referred_by || ''}
+                      onChange={(e) => updateForm('referred_by', e.target.value)}
+                      className="h-10 sm:h-11"
+                      data-testid="input-referred-by"
+                    />
+                  </div>
+                )}
                 {formData.inquiry_type !== 'school' && (
                   <div>
                     <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">City</label>
