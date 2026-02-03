@@ -85,19 +85,25 @@ const AdminSchoolCRM = () => {
   const [renewalMeetingData, setRenewalMeetingData] = useState({ date: null, time: '', type: 'offline', notes: '', link: '', address: '' });
   const [showRenewalConvertModal, setShowRenewalConvertModal] = useState(null);
   const [renewalConvertData, setRenewalConvertData] = useState({
-    amount: '',
+    offering: '',
     model: '',
-    kit_type: '',
     book_type: '',
+    kit_type: '',
     training_type: '',
-    total_students: '',
+    grade_pricing: [{ grade: '', students: '', price_per_student: '' }],
+    total_students: 0,
+    total_amount: 0,
+    school_contacts: [{ name: '', phone_number: '', country_code: '+91', email: '', role: '' }],
+    payment_mode: 'from_school',
+    payment_method: '',
+    payment_tranches: [{ amount: '', percentage: '', date: '', notes: '' }],
     contract_start: '',
     contract_end: '',
     mou_url: '',
-    school_contacts: [],
-    grade_pricing: [],
-    payment_tranches: []
+    parent_circular_url: '',
+    payment_link: ''
   });
+  const [uploadingRenewalMOU, setUploadingRenewalMOU] = useState(false);
   const [meetingDoneData, setMeetingDoneData] = useState({ 
     notes: '', 
     quoted_price: '',
