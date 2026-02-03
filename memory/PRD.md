@@ -171,9 +171,19 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
   - Meeting type (In-Person / Online)
   - Meeting link or address based on type
   - Notes field
-- ✅ **Renewal Conversion Modal:** Pre-fills with existing onboarding data, allows editing:
-  - Renewal amount, Model, Kit Type, Book Type, Training Type
-  - Contract period, Total Students, MOU upload
+- ✅ **Renewal Conversion Modal (Feb 3, 2026 - ENHANCED):** Now identical to Mark Converted modal with:
+  - Previous Contract Details display (Last Amount, Model, Students)
+  - Select Offering dropdown
+  - Model/Type dropdown (Robotics Lab Setup, STEM Curriculum, After School, Teacher Training, Full Partnership)
+  - Book Type, Kit Type, Training Type dropdowns
+  - MOU Document upload with view/remove
+  - **Grade-wise Student Count & Pricing** with add/remove grade rows, auto-calculated totals
+  - **School Team Contacts** with phone input (country code selector), name, role, email
+  - **Payment Details section:** Payment Mode (From School/Student), Payment Method (Cheque/NEFT/Online/Cash)
+  - **Payment Tranches** with percentage/amount auto-calculation, due dates, notes
+  - Contract Start/End dates
+  - **Parent Circular upload** (conditional - appears when payment_mode='from_student')
+  - **Payment Link input** (conditional - appears when payment_mode='from_student' AND payment_method='online')
   - Generates new tracking link on submission
 - ✅ **Re-onboarding Flow:** Renewed schools get new onboarding workflow with tracking link
 - ✅ **Auto-status Update:** Schools automatically move back to "Active" when re-onboarding completes
@@ -188,6 +198,9 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
   - "Renewal In Progress" status
   - "Renewal Steps" heading
   - is_renewal flag in API response
+- ✅ **CRM Dashboard Renewal Meetings (Feb 3, 2026):** This Week's Meetings widget now includes:
+  - Meetings from schools with status 'renewal_meeting' (using renewal_meeting_date field)
+  - Emerald-colored "Renewal" badge with RefreshCw icon to distinguish renewal meetings from regular meetings
 
 **Quoted Price & Offerings for School Leads:**
 - ✅ Added Quoted Price (₹) field to Admin School CRM Add Lead form
