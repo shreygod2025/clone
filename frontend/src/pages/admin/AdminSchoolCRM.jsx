@@ -4049,6 +4049,7 @@ const AdminSchoolCRM = () => {
                   searchAutocomplete(e.target.value, 'school_name');
                 }}
                 onFocus={() => newLead.school_name.length >= 3 && searchAutocomplete(newLead.school_name, 'school_name')}
+                onBlur={() => setTimeout(() => setShowAutocomplete(false), 200)}
                 data-testid="new-school-name"
               />
               {/* Autocomplete dropdown */}
@@ -4058,6 +4059,7 @@ const AdminSchoolCRM = () => {
                     <button
                       key={idx}
                       type="button"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={() => handleAutocompleteFill(s)}
                       className="w-full px-3 py-2 text-left hover:bg-slate-50 border-b last:border-b-0"
                     >
