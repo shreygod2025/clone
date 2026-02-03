@@ -55,6 +55,8 @@ const AdminStudentCRM = () => {
   const [showAssignModal, setShowAssignModal] = useState(null);
   const [showCancelDemoModal, setShowCancelDemoModal] = useState(null);
   const [showOnboardModal, setShowOnboardModal] = useState(null);
+  const [showArchiveModal, setShowArchiveModal] = useState(null);
+  const [archiveReason, setArchiveReason] = useState('');
   const [newComment, setNewComment] = useState('');
   const [onboardedEducators, setOnboardedEducators] = useState([]);
   const [assignTab, setAssignTab] = useState('team'); // 'team' or 'educator'
