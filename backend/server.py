@@ -814,8 +814,11 @@ class SchoolInquiry(BaseModel):
     followup_comment: str = ""
     conversion_amount: Optional[str] = None
     source: str = "website"
+    referred_by: str = ""  # Name of person who referred (when source is referral)
     added_by: str = ""
     assigned_to: str = ""
+    relationship_manager_id: str = ""  # RM assigned to converted schools
+    relationship_manager_name: str = ""
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
