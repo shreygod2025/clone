@@ -1920,6 +1920,32 @@ const AdminSchoolCRM = () => {
       case 'converted':
         return (
           <div className="flex gap-1 flex-wrap">
+            <button
+              onClick={() => setShowAssignRMModal(inquiry)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 flex items-center gap-1 font-medium"
+              data-testid={`assign-rm-${inquiry.id}`}
+            >
+              <UserPlus className="w-3 h-3" />
+              {inquiry.relationship_manager_name ? 'Change RM' : 'Assign RM'}
+            </button>
+            <button
+              onClick={() => {
+                setShowRaiseTicketModal(inquiry);
+                setTicketData({
+                  subject: '',
+                  description: '',
+                  priority: 'medium',
+                  contact_name: inquiry.contact_name,
+                  contact_phone: inquiry.phone,
+                  contact_email: inquiry.email
+                });
+              }}
+              className="text-xs px-3 py-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-700 flex items-center gap-1 font-medium"
+              data-testid={`raise-ticket-${inquiry.id}`}
+            >
+              <AlertCircle className="w-3 h-3" />
+              Raise Ticket
+            </button>
             {documentsButton}
             {baseButtons}
           </div>
@@ -1937,12 +1963,38 @@ const AdminSchoolCRM = () => {
               Edit
             </button>
             <button
+              onClick={() => setShowAssignRMModal(inquiry)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 flex items-center gap-1 font-medium"
+              data-testid={`assign-rm-${inquiry.id}`}
+            >
+              <UserPlus className="w-3 h-3" />
+              {inquiry.relationship_manager_name ? 'Change RM' : 'Assign RM'}
+            </button>
+            <button
               onClick={() => openRenewalMeetingModal(inquiry)}
               className="text-xs px-3 py-1.5 rounded-lg bg-teal-100 hover:bg-teal-200 text-teal-700 flex items-center gap-1 font-medium"
               data-testid={`renewal-meeting-${inquiry.id}`}
             >
               <Calendar className="w-3 h-3" />
               Renewal Meeting
+            </button>
+            <button
+              onClick={() => {
+                setShowRaiseTicketModal(inquiry);
+                setTicketData({
+                  subject: '',
+                  description: '',
+                  priority: 'medium',
+                  contact_name: inquiry.contact_name,
+                  contact_phone: inquiry.phone,
+                  contact_email: inquiry.email
+                });
+              }}
+              className="text-xs px-3 py-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-700 flex items-center gap-1 font-medium"
+              data-testid={`raise-ticket-${inquiry.id}`}
+            >
+              <AlertCircle className="w-3 h-3" />
+              Raise Ticket
             </button>
             <button
               onClick={() => openLostReasonModal(inquiry)}
