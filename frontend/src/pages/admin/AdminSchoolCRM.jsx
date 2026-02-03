@@ -1141,6 +1141,10 @@ const AdminSchoolCRM = () => {
       toast.error('School name, contact name and phone are required');
       return;
     }
+    if (newLead.source === 'referral' && !newLead.referred_by) {
+      toast.error('Please enter who referred this lead');
+      return;
+    }
     const fullPhone = newLead.countryCode === '+91' ? newLead.phone : `${newLead.countryCode}${newLead.phone}`;
     try {
       await axios.post(`${API}/schools/inquiry`, {
@@ -1158,6 +1162,7 @@ const AdminSchoolCRM = () => {
         programs_interested: [],
         support_needed: [],
         source: newLead.source,
+        referred_by: newLead.referred_by,
         notes: newLead.notes,
         quoted_price: newLead.quoted_price,
         selected_offerings: newLead.selected_offerings,
@@ -1178,7 +1183,8 @@ const AdminSchoolCRM = () => {
         meeting_type: 'offline', 
         meeting_date: null,
         meeting_time: '',
-        source: 'manual', 
+        source: 'manual',
+        referred_by: '',
         notes: '',
         quoted_price: '',
         selected_offerings: []
