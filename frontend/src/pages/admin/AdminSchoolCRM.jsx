@@ -756,6 +756,109 @@ const AdminSchoolCRM = () => {
     }
   };
 
+  // Renewal modal helper functions
+  const addRenewalGradePricing = () => {
+    setRenewalConvertData(prev => ({
+      ...prev,
+      grade_pricing: [...prev.grade_pricing, { grade: '', students: '', price_per_student: '' }]
+    }));
+  };
+
+  const updateRenewalGradePricing = (index, field, value) => {
+    setRenewalConvertData(prev => ({
+      ...prev,
+      grade_pricing: prev.grade_pricing.map((g, i) => i === index ? { ...g, [field]: value } : g)
+    }));
+  };
+
+  const removeRenewalGradePricing = (index) => {
+    if (renewalConvertData.grade_pricing.length > 1) {
+      setRenewalConvertData(prev => ({
+        ...prev,
+        grade_pricing: prev.grade_pricing.filter((_, i) => i !== index)
+      }));
+    }
+  };
+
+  const addRenewalSchoolContact = () => {
+    setRenewalConvertData(prev => ({
+      ...prev,
+      school_contacts: [...prev.school_contacts, { name: '', phone_number: '', country_code: '+91', email: '', role: '' }]
+    }));
+  };
+
+  const updateRenewalSchoolContact = (index, field, value) => {
+    setRenewalConvertData(prev => ({
+      ...prev,
+      school_contacts: prev.school_contacts.map((c, i) => i === index ? { ...c, [field]: value } : c)
+    }));
+  };
+
+  const removeRenewalSchoolContact = (index) => {
+    if (renewalConvertData.school_contacts.length > 1) {
+      setRenewalConvertData(prev => ({
+        ...prev,
+        school_contacts: prev.school_contacts.filter((_, i) => i !== index)
+      }));
+    }
+  };
+
+  const addRenewalPaymentTranche = () => {
+    setRenewalConvertData(prev => ({
+      ...prev,
+      payment_tranches: [...prev.payment_tranches, { amount: '', percentage: '', date: '', notes: '' }]
+    }));
+  };
+
+  const updateRenewalPaymentTranche = (index, field, value) => {
+    const totalAmount = renewalConvertData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
+    
+    setRenewalConvertData(prev => {
+      const newTranches = prev.payment_tranches.map((t, i) => {
+        if (i !== index) return t;
+        const updated = { ...t, [field]: value };
+        
+        // Auto-calculate based on input
+        if (field === 'percentage' && value && totalAmount > 0) {
+          updated.amount = Math.round((parseFloat(value) / 100) * totalAmount).toString();
+        } else if (field === 'amount' && value && totalAmount > 0) {
+          updated.percentage = ((parseFloat(value) / totalAmount) * 100).toFixed(1);
+        }
+        
+        return updated;
+      });
+      return { ...prev, payment_tranches: newTranches };
+    });
+  };
+
+  const removeRenewalPaymentTranche = (index) => {
+    if (renewalConvertData.payment_tranches.length > 1) {
+      setRenewalConvertData(prev => ({
+        ...prev,
+        payment_tranches: prev.payment_tranches.filter((_, i) => i !== index)
+      }));
+    }
+  };
+
+  const handleRenewalMOUUpload = async (file) => {
+    if (!file) return;
+    setUploadingRenewalMOU(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await axios.post(`${API}/upload`, formData, {
+        headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
+      });
+      setRenewalConvertData(prev => ({ ...prev, mou_url: response.data.url }));
+      toast.success('MOU uploaded successfully');
+    } catch (error) {
+      console.error('MOU upload error:', error);
+      toast.error(getErrorMessage(error, 'Failed to upload MOU'));
+    } finally {
+      setUploadingRenewalMOU(false);
+    }
+  };
+
   // Document upload handler
   const handleDocumentUpload = async (file, docType) => {
     if (!file || !showDocumentsModal) return;
