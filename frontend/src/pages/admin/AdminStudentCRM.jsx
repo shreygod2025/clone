@@ -943,9 +943,11 @@ const AdminStudentCRM = () => {
               {inquiry.notes && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
                   <p className="text-xs text-amber-700 font-medium mb-1 flex items-center gap-1">
-                    <MessageSquare className="w-3 h-3" /> Comments
+                    <MessageSquare className="w-3 h-3" /> Latest Note
                   </p>
-                  <p className="text-sm text-amber-900 whitespace-pre-line">{inquiry.notes}</p>
+                  <p className="text-sm text-amber-900 line-clamp-2">
+                    {inquiry.notes.split('\n\n').pop()?.split('\n').slice(0, 2).join('\n') || inquiry.notes.slice(-150)}
+                  </p>
                 </div>
               )}
 
