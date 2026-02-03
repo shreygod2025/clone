@@ -648,34 +648,78 @@ const AdminSchoolCRM = () => {
   };
 
   const handleRenewalConvert = async () => {
-    if (!renewalConvertData.amount) {
-      toast.error('Please enter the renewal amount');
+    // Calculate totals from grade pricing
+    const totalStudents = renewalConvertData.grade_pricing.reduce((sum, g) => sum + (parseInt(g.students) || 0), 0);
+    const totalAmount = renewalConvertData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
+    
+    if (totalAmount === 0 && !renewalConvertData.total_amount) {
+      toast.error('Please add grade-wise pricing or enter a total amount');
       return;
     }
+    
     try {
+      // Format contract dates
+      const contractStart = renewalConvertData.contract_start 
+        ? (typeof renewalConvertData.contract_start === 'string' 
+            ? renewalConvertData.contract_start 
+            : format(renewalConvertData.contract_start, 'yyyy-MM-dd'))
+        : '';
+      const contractEnd = renewalConvertData.contract_end 
+        ? (typeof renewalConvertData.contract_end === 'string' 
+            ? renewalConvertData.contract_end 
+            : format(renewalConvertData.contract_end, 'yyyy-MM-dd'))
+        : '';
+      
+      // Format school contacts
+      const formattedContacts = renewalConvertData.school_contacts
+        .filter(c => c.name && c.phone_number)
+        .map(c => ({
+          name: String(c.name || ''),
+          phone: String((c.country_code || '+91') + (c.phone_number || '')),
+          email: String(c.email || ''),
+          role: String(c.role || '')
+        }));
+      
+      // Format payment tranches
+      const formattedTranches = renewalConvertData.payment_tranches
+        .filter(t => t.amount || t.percentage)
+        .map(t => ({
+          percentage: String(t.percentage || ''),
+          amount: String(t.amount || ''),
+          date: String(t.date || ''),
+          notes: String(t.notes || '')
+        }));
+      
+      const finalAmount = totalAmount > 0 ? totalAmount : (renewalConvertData.total_amount || 0);
+      
       // Update school with renewal data
       await axios.patch(`${API}/schools/inquiry/${showRenewalConvertModal.id}`, {
         status: 'renewed',
-        conversion_amount: renewalConvertData.amount,
+        conversion_amount: finalAmount,
         onboarding_data: {
           ...(showRenewalConvertModal.onboarding_data || {}),
-          total_amount: renewalConvertData.amount,
+          offering: renewalConvertData.offering,
           model: renewalConvertData.model,
           kit_type: renewalConvertData.kit_type,
           book_type: renewalConvertData.book_type,
           training_type: renewalConvertData.training_type,
-          total_students: renewalConvertData.total_students,
-          contract_start: renewalConvertData.contract_start,
-          contract_end: renewalConvertData.contract_end,
+          total_students: totalStudents > 0 ? totalStudents : renewalConvertData.total_students,
+          total_amount: finalAmount,
+          grade_pricing: renewalConvertData.grade_pricing.filter(g => g.grade && g.students),
+          contract_start: contractStart,
+          contract_end: contractEnd,
           mou_url: renewalConvertData.mou_url,
-          school_contacts: renewalConvertData.school_contacts,
-          grade_pricing: renewalConvertData.grade_pricing,
-          payment_tranches: renewalConvertData.payment_tranches,
+          school_contacts: formattedContacts,
+          payment_mode: renewalConvertData.payment_mode,
+          payment_method: renewalConvertData.payment_method,
+          payment_tranches: formattedTranches,
+          parent_circular_url: renewalConvertData.parent_circular_url,
+          payment_link: renewalConvertData.payment_link,
           renewal_date: new Date().toISOString()
         },
         notes: showRenewalConvertModal.notes 
-          ? `${showRenewalConvertModal.notes}\n\n--- Renewed (${format(new Date(), 'dd MMM yyyy')}) ---\nAmount: ₹${renewalConvertData.amount}`
-          : `--- Renewed (${format(new Date(), 'dd MMM yyyy')}) ---\nAmount: ₹${renewalConvertData.amount}`
+          ? `${showRenewalConvertModal.notes}\n\n--- Renewed (${format(new Date(), 'dd MMM yyyy')}) ---\nAmount: ₹${Number(finalAmount).toLocaleString()}`
+          : `--- Renewed (${format(new Date(), 'dd MMM yyyy')}) ---\nAmount: ₹${Number(finalAmount).toLocaleString()}`
       }, {
         headers: getAuthHeaders()
       });
@@ -697,9 +741,14 @@ const AdminSchoolCRM = () => {
       
       setShowRenewalConvertModal(null);
       setRenewalConvertData({
-        amount: '', model: '', kit_type: '', book_type: '', training_type: '',
-        total_students: '', contract_start: '', contract_end: '', mou_url: '',
-        school_contacts: [], grade_pricing: [], payment_tranches: []
+        offering: '', model: '', book_type: '', kit_type: '', training_type: '',
+        grade_pricing: [{ grade: '', students: '', price_per_student: '' }],
+        total_students: 0, total_amount: 0,
+        school_contacts: [{ name: '', phone_number: '', country_code: '+91', email: '', role: '' }],
+        payment_mode: 'from_school', payment_method: '',
+        payment_tranches: [{ amount: '', percentage: '', date: '', notes: '' }],
+        contract_start: '', contract_end: '', mou_url: '',
+        parent_circular_url: '', payment_link: ''
       });
       fetchInquiries();
     } catch (error) {
