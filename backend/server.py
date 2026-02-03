@@ -2478,6 +2478,12 @@ async def create_educator_application(data: EducatorApplicationCreate):
     if data.demo_date:
         application.status = "demo_scheduled"
     
+    # Auto-assign to Educator HR team user (round-robin)
+    if not data.assigned_to:
+        assigned = await auto_assign_lead('educator', data.city or '', 'online')
+        if assigned and assigned.get('user_id'):
+            application.assigned_to = assigned['user_id']
+    
     # Generate meeting link for the educator demo
     application_dict = application.model_dump()
     meeting_link = generate_meeting_link(application.id)
