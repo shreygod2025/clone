@@ -1385,6 +1385,55 @@ const AdminStudentCRM = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Archive Reason Modal */}
+      <Dialog open={!!showArchiveModal} onOpenChange={() => setShowArchiveModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-slate-600">
+              <Archive className="w-5 h-5" />
+              Archive Lead - {showArchiveModal?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Reason for Archiving <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={archiveReason}
+                onChange={(e) => setArchiveReason(e.target.value)}
+                className="w-full h-10 px-4 border border-slate-200 rounded-lg bg-white"
+                data-testid="archive-reason-select"
+              >
+                <option value="">Select reason</option>
+                <option value="Not interested">Not interested</option>
+                <option value="Budget constraints">Budget constraints</option>
+                <option value="Chose competitor">Chose competitor</option>
+                <option value="No response">No response</option>
+                <option value="Wrong contact">Wrong contact</option>
+                <option value="Age not suitable">Age not suitable</option>
+                <option value="Location not serviceable">Location not serviceable</option>
+                <option value="Duplicate lead">Duplicate lead</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" onClick={() => setShowArchiveModal(null)} className="flex-1">
+                Cancel
+              </Button>
+              <Button 
+                onClick={confirmArchive} 
+                className="flex-1 bg-slate-600 hover:bg-slate-700 text-white"
+                data-testid="confirm-archive"
+              >
+                <Archive className="w-4 h-4 mr-1" />
+                Archive Lead
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Add Lead Dialog */}
       <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
