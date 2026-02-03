@@ -366,6 +366,53 @@ const MyBookingsPage = () => {
     upcoming: sessions.filter(s => s.status === 'scheduled').length,
   };
 
+  // Filter bookings based on status
+  const filterBookings = () => {
+    const now = new Date();
+    
+    if (bookingFilter === 'upcoming') {
+      // Upcoming: new, confirmed, rescheduled, incomplete - and date is in future or today
+      return bookings.filter(b => {
+        const bookingDate = b.demo_date || b.meeting_date;
+        if (!bookingDate) return ['new', 'confirmed', 'rescheduled', 'incomplete'].includes(b.status);
+        try {
+          const date = parseISO(bookingDate);
+          const isUpcoming = isAfter(date, addDays(now, -1)); // Include today
+          return ['new', 'confirmed', 'rescheduled', 'incomplete'].includes(b.status) && isUpcoming;
+        } catch {
+          return ['new', 'confirmed', 'rescheduled', 'incomplete'].includes(b.status);
+        }
+      });
+    } else if (bookingFilter === 'completed') {
+      // Completed: demo_completed, converted
+      return bookings.filter(b => ['demo_completed', 'converted'].includes(b.status));
+    } else if (bookingFilter === 'archived') {
+      // Archived/Cancelled: cancelled, archived
+      return bookings.filter(b => ['cancelled', 'archived'].includes(b.status));
+    }
+    return bookings;
+  };
+
+  const filteredBookings = filterBookings();
+
+  // Count bookings by filter
+  const bookingCounts = {
+    upcoming: bookings.filter(b => {
+      const now = new Date();
+      const bookingDate = b.demo_date || b.meeting_date;
+      if (!bookingDate) return ['new', 'confirmed', 'rescheduled', 'incomplete'].includes(b.status);
+      try {
+        const date = parseISO(bookingDate);
+        const isUpcoming = isAfter(date, addDays(now, -1));
+        return ['new', 'confirmed', 'rescheduled', 'incomplete'].includes(b.status) && isUpcoming;
+      } catch {
+        return ['new', 'confirmed', 'rescheduled', 'incomplete'].includes(b.status);
+      }
+    }).length,
+    completed: bookings.filter(b => ['demo_completed', 'converted'].includes(b.status)).length,
+    archived: bookings.filter(b => ['cancelled', 'archived'].includes(b.status)).length,
+  };
+
   if (!isLoggedIn) return null;
 
   // Check if user has sessions (converted student)
