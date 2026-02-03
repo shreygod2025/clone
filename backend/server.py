@@ -1467,6 +1467,108 @@ async def auto_assign_educator(skill: str, city: str = "", learning_mode: str = 
         "email": selected.get('email', '')
     }
 
+async def auto_assign_lead(lead_type: str, city: str = "", learning_mode: str = "online", center_id: str = "") -> dict:
+    """
+    Auto-assign a lead to the appropriate team user based on role.
+    Uses round-robin assignment when multiple users have the same role.
+    
+    lead_type: 'student', 'school', 'educator', 'growth_partner', 'team_application'
+    Returns: dict with user_id and name, or empty dict if none found
+    """
+    # Map lead types to role names
+    role_mapping = {
+        'student': 'B2C Sales',
+        'school': 'B2B Sales',
+        'educator': 'Educator HR',
+        'growth_partner': 'Growth Partner Manager',
+        'team_application': 'Team HR'
+    }
+    
+    target_role_name = role_mapping.get(lead_type)
+    if not target_role_name:
+        return {}
+    
+    # Find the role by name
+    role = await db.roles.find_one({"name": target_role_name, "is_active": True}, {"_id": 0})
+    if not role:
+        return {}
+    
+    role_id = role.get('id')
+    
+    # Get all active users with this role
+    users = await db.team_users.find({
+        "role_id": role_id,
+        "is_active": True
+    }, {"_id": 0, "password_hash": 0}).to_list(100)
+    
+    if not users:
+        return {}
+    
+    # For offline at center - assign to center user if available
+    if lead_type == 'student' and learning_mode == 'offline' and center_id:
+        center_user = await db.center_users.find_one({
+            "center_id": center_id,
+            "is_active": True
+        }, {"_id": 0, "hashed_password": 0})
+        if center_user:
+            return {
+                "user_id": center_user['id'],
+                "name": center_user['name'],
+                "email": center_user.get('email', ''),
+                "type": "center_user"
+            }
+    
+    # For schools - prefer users in the same city
+    if lead_type == 'school' and city:
+        city_users = [u for u in users if u.get('city', '').lower() == city.lower()]
+        if city_users:
+            users = city_users
+    
+    # Get assignment counts for round-robin
+    user_ids = [u['id'] for u in users]
+    assignment_counts = {}
+    
+    # Count based on lead type
+    collection_map = {
+        'student': 'student_inquiries',
+        'school': 'school_inquiries',
+        'educator': 'educator_applications',
+        'growth_partner': 'growth_partner_applications',
+        'team_application': 'team_applications'
+    }
+    
+    collection_name = collection_map.get(lead_type, 'student_inquiries')
+    
+    for uid in user_ids:
+        count = await db[collection_name].count_documents({
+            "assigned_to": uid,
+            "status": {"$nin": ["archived", "rejected", "cancelled", "closed"]}
+        })
+        assignment_counts[uid] = count
+    
+    # Select user with least assignments (round-robin)
+    selected = min(users, key=lambda u: assignment_counts.get(u['id'], 0))
+    
+    return {
+        "user_id": selected['id'],
+        "name": selected['name'],
+        "email": selected.get('email', ''),
+        "type": "team_user"
+    }
+
+async def get_relationship_managers() -> list:
+    """Get all active users with Relationship Manager role"""
+    role = await db.roles.find_one({"name": "Relationship Manager", "is_active": True}, {"_id": 0})
+    if not role:
+        return []
+    
+    users = await db.team_users.find({
+        "role_id": role.get('id'),
+        "is_active": True
+    }, {"_id": 0, "password_hash": 0}).to_list(100)
+    
+    return users
+
 def generate_meeting_link(inquiry_id: str) -> str:
     """Generate a unique Jitsi meeting link for a booking"""
     meet_code = inquiry_id[-10:] if inquiry_id else 'demo-meet'
