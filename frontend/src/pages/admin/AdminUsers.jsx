@@ -488,6 +488,7 @@ const AdminUsers = () => {
                             username: user.username,
                             password: '',
                             role_id: user.role_id || '',
+                            city: user.city || '',
                             permissions: user.permissions || [],
                             is_active: user.is_active !== false
                           });
