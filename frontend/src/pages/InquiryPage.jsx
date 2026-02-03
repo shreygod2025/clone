@@ -536,6 +536,7 @@ const InquiryPage = () => {
         meeting_time: demoTime,
         meeting_type: 'offline', // School meetings default to offline
         source: sourceValue,
+        referred_by: formData.source === 'referral' ? formData.referred_by : '',
         added_by: teamUser?.id || '',
         assigned_to: assignedTo,
         notes: formData.details
