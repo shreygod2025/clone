@@ -97,6 +97,7 @@ const AdminUsers = () => {
     username: '',
     password: '',
     role_id: '',
+    city: '',
     permissions: [],
     is_active: true
   });
