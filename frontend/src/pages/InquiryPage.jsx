@@ -875,6 +875,7 @@ const InquiryPage = () => {
                       updateForm('name', e.target.value);
                       searchAutocomplete(e.target.value, 'name');
                     }}
+                    onBlur={() => setTimeout(() => setShowAutocomplete(false), 200)}
                     className="h-10 sm:h-11"
                     data-testid="input-name"
                   />
@@ -884,6 +885,7 @@ const InquiryPage = () => {
                         <button
                           key={idx}
                           type="button"
+                          onMouseDown={(e) => e.preventDefault()}
                           onClick={() => handleAutocompleteFill(s)}
                           className="w-full px-3 py-2 text-left hover:bg-slate-50 border-b last:border-b-0"
                         >
@@ -913,6 +915,7 @@ const InquiryPage = () => {
                         <button
                           key={idx}
                           type="button"
+                          onMouseDown={(e) => e.preventDefault()}
                           onClick={() => handleAutocompleteFill(s)}
                           className="w-full px-3 py-2 text-left hover:bg-slate-50 border-b last:border-b-0"
                         >
@@ -933,6 +936,7 @@ const InquiryPage = () => {
                       updateForm('email', e.target.value);
                       searchAutocomplete(e.target.value, 'email');
                     }}
+                    onBlur={() => setTimeout(() => setShowAutocomplete(false), 200)}
                     className="h-10 sm:h-11"
                     data-testid="input-email"
                   />
@@ -942,6 +946,7 @@ const InquiryPage = () => {
                         <button
                           key={idx}
                           type="button"
+                          onMouseDown={(e) => e.preventDefault()}
                           onClick={() => handleAutocompleteFill(s)}
                           className="w-full px-3 py-2 text-left hover:bg-slate-50 border-b last:border-b-0"
                         >
