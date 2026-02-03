@@ -353,6 +353,16 @@ const AdminSupportUnified = () => {
 
   return (
     <AdminLayout title="Support Center">
+      {/* Team Member Banner */}
+      {isTeamMember && (
+        <div className="mb-4 p-3 bg-indigo-50 border border-indigo-200 rounded-lg">
+          <p className="text-sm text-indigo-700 flex items-center gap-2">
+            <User className="w-4 h-4" />
+            Showing queries assigned to you. Contact admin to access other queries.
+          </p>
+        </div>
+      )}
+      
       {/* Tabs */}
       <div className="flex flex-wrap gap-3 mb-6">
         <button
