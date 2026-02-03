@@ -6513,6 +6513,157 @@ const AdminSchoolCRM = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Assign Relationship Manager Modal */}
+      <Dialog open={!!showAssignRMModal} onOpenChange={() => setShowAssignRMModal(null)}>
+        <DialogContent className="max-w-md max-h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5 text-indigo-600" />
+              Assign Relationship Manager
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-slate-50 p-3 rounded-lg">
+              <p className="font-medium text-slate-800">{showAssignRMModal?.school_name}</p>
+              {showAssignRMModal?.relationship_manager_name && (
+                <p className="text-sm text-indigo-600 mt-1">
+                  Current RM: {showAssignRMModal.relationship_manager_name}
+                </p>
+              )}
+            </div>
+            
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-slate-700">Select Relationship Manager</p>
+              <div className="max-h-64 overflow-y-auto space-y-2">
+                {relationshipManagers.length === 0 ? (
+                  <p className="text-sm text-slate-500 py-4 text-center">
+                    No Relationship Managers found. Create users with "Relationship Manager" role.
+                  </p>
+                ) : (
+                  relationshipManagers.map(rm => (
+                    <button
+                      key={rm.id}
+                      onClick={() => handleAssignRM(rm.id, rm.name)}
+                      className={`w-full p-3 rounded-lg border text-left transition-all hover:border-indigo-300 hover:bg-indigo-50 ${
+                        showAssignRMModal?.relationship_manager_id === rm.id
+                          ? 'border-indigo-500 bg-indigo-50'
+                          : 'border-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-slate-900">{rm.name}</p>
+                          <p className="text-xs text-slate-500">{rm.email}</p>
+                          {rm.city && <p className="text-xs text-slate-400">{rm.city}</p>}
+                        </div>
+                        {showAssignRMModal?.relationship_manager_id === rm.id && (
+                          <span className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded">Current</span>
+                        )}
+                      </div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+            
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => setShowAssignRMModal(null)} className="flex-1">
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Raise Ticket Modal */}
+      <Dialog open={!!showRaiseTicketModal} onOpenChange={() => setShowRaiseTicketModal(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-orange-600" />
+              Raise Ticket - {showRaiseTicketModal?.school_name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Subject *</label>
+              <Input
+                placeholder="Brief description of the issue"
+                value={ticketData.subject}
+                onChange={(e) => setTicketData({ ...ticketData, subject: e.target.value })}
+                data-testid="ticket-subject"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Description</label>
+              <Textarea
+                placeholder="Detailed description of the issue..."
+                value={ticketData.description}
+                onChange={(e) => setTicketData({ ...ticketData, description: e.target.value })}
+                className="min-h-[100px]"
+                data-testid="ticket-description"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Priority</label>
+              <select
+                value={ticketData.priority}
+                onChange={(e) => setTicketData({ ...ticketData, priority: e.target.value })}
+                className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                data-testid="ticket-priority"
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+            
+            <div className="bg-slate-50 p-4 rounded-lg">
+              <p className="text-sm font-medium text-slate-700 mb-3">Contact who raised this issue</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">Contact Name</label>
+                  <Input
+                    value={ticketData.contact_name}
+                    onChange={(e) => setTicketData({ ...ticketData, contact_name: e.target.value })}
+                    placeholder="Contact name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">Phone</label>
+                  <Input
+                    value={ticketData.contact_phone}
+                    onChange={(e) => setTicketData({ ...ticketData, contact_phone: e.target.value })}
+                    placeholder="Phone number"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs text-slate-500 mb-1">Email</label>
+                  <Input
+                    value={ticketData.contact_email}
+                    onChange={(e) => setTicketData({ ...ticketData, contact_email: e.target.value })}
+                    placeholder="Email address"
+                  />
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => setShowRaiseTicketModal(null)} className="flex-1">
+                Cancel
+              </Button>
+              <Button onClick={handleRaiseTicket} className="flex-1 bg-orange-600 hover:bg-orange-700">
+                <AlertCircle className="w-4 h-4 mr-2" />
+                Raise Ticket
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
