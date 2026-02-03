@@ -195,6 +195,7 @@ const AdminSchoolCRM = () => {
     meeting_date: null,
     meeting_time: '',
     source: 'manual',
+    referred_by: '',
     notes: '',
     quoted_price: '',
     selected_offerings: []
