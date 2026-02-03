@@ -113,6 +113,7 @@ const InquiryPage = () => {
     email: '',
     city: '',
     source: '',
+    referred_by: '',
     details: '',
     
     // Assignment option (only for team user links)
