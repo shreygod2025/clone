@@ -427,7 +427,7 @@ const AdminSchoolCRM = () => {
         quoted_price: meetingDoneData.quoted_price || showMeetingDoneModal.quoted_price
       };
       
-      // If followup is requested
+      // If followup is requested, add followup data but keep status as meeting_done
       if (meetingDoneData.followup_type) {
         updateData.followup_type = meetingDoneData.followup_type;
         updateData.followup_date = format(meetingDoneData.followup_date, 'yyyy-MM-dd');
@@ -437,8 +437,7 @@ const AdminSchoolCRM = () => {
           updateData.meeting_date = format(meetingDoneData.followup_date, 'yyyy-MM-dd');
           updateData.meeting_time = meetingDoneData.followup_time;
         }
-        
-        updateData.status = 'followup';
+        // Status remains 'meeting_done' - no status change to 'followup'
       }
       
       await axios.patch(`${API}/schools/inquiry/${showMeetingDoneModal.id}`, updateData, {
