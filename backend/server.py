@@ -2381,6 +2381,13 @@ async def update_growth_partner(
 @api_router.post("/team-applications", response_model=TeamApplication)
 async def create_team_application(data: TeamApplicationCreate):
     application = TeamApplication(**data.model_dump())
+    
+    # Auto-assign to Team HR (round-robin)
+    if not data.assigned_to:
+        assigned = await auto_assign_lead('team_application', '', 'online')
+        if assigned and assigned.get('user_id'):
+            application.assigned_to = assigned['user_id']
+    
     doc = application.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
     doc['updated_at'] = doc['updated_at'].isoformat()
