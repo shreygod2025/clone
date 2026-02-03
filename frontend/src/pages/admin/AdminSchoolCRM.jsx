@@ -6558,7 +6558,7 @@ const AdminSchoolCRM = () => {
               <div className="max-h-64 overflow-y-auto space-y-2">
                 {relationshipManagers.length === 0 ? (
                   <p className="text-sm text-slate-500 py-4 text-center">
-                    No Relationship Managers found. Create users with "Relationship Manager" role.
+                    No Relationship Managers found. Create users with &quot;Relationship Manager&quot; role.
                   </p>
                 ) : (
                   relationshipManagers.map(rm => (
