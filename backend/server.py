@@ -2480,6 +2480,71 @@ async def update_school_inquiry(
         inquiry['updated_at'] = datetime.fromisoformat(inquiry['updated_at'])
     return inquiry
 
+@api_router.get("/schools/relationship-managers")
+async def get_relationship_managers_endpoint(user: dict = Depends(get_current_user)):
+    """Get all users with Relationship Manager role"""
+    managers = await get_relationship_managers()
+    return managers
+
+@api_router.post("/schools/{school_id}/assign-rm")
+async def assign_relationship_manager(
+    school_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Assign a relationship manager to a converted school"""
+    rm_id = data.get('rm_id')
+    rm_name = data.get('rm_name', '')
+    
+    if not rm_id:
+        raise HTTPException(status_code=400, detail="Relationship manager ID required")
+    
+    await db.school_inquiries.update_one(
+        {"id": school_id},
+        {
+            "$set": {
+                "relationship_manager_id": rm_id,
+                "relationship_manager_name": rm_name,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+    )
+    
+    return {"message": "Relationship manager assigned successfully"}
+
+@api_router.post("/schools/{school_id}/raise-ticket")
+async def raise_school_ticket(
+    school_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Raise a support ticket on behalf of a school"""
+    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+    
+    ticket_data = {
+        "id": str(uuid.uuid4()),
+        "school_id": school_id,
+        "school_name": school.get('school_name', ''),
+        "contact_name": data.get('contact_name', school.get('contact_name', '')),
+        "contact_phone": data.get('contact_phone', school.get('phone', '')),
+        "contact_email": data.get('contact_email', school.get('email', '')),
+        "subject": data.get('subject', ''),
+        "description": data.get('description', ''),
+        "priority": data.get('priority', 'medium'),
+        "status": "open",
+        "raised_by": user.get('email', ''),
+        "raised_by_name": user.get('name', ''),
+        "source": "school_crm",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.support_tickets.insert_one(ticket_data)
+    
+    return {"message": "Ticket raised successfully", "ticket_id": ticket_data['id']}
+
 # ========================
 # EDUCATOR ENDPOINTS
 # ========================
