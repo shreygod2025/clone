@@ -615,18 +615,35 @@ const AdminSchoolCRM = () => {
     const existingData = inquiry.onboarding_data || {};
     setShowRenewalConvertModal(inquiry);
     setRenewalConvertData({
-      amount: existingData.total_amount || inquiry.conversion_amount || '',
+      offering: existingData.offering || '',
       model: existingData.model || '',
-      kit_type: existingData.kit_type || '',
       book_type: existingData.book_type || '',
+      kit_type: existingData.kit_type || '',
       training_type: existingData.training_type || '',
-      total_students: existingData.total_students || '',
+      grade_pricing: existingData.grade_pricing?.length > 0 
+        ? existingData.grade_pricing 
+        : [{ grade: '', students: '', price_per_student: '' }],
+      total_students: existingData.total_students || 0,
+      total_amount: existingData.total_amount || inquiry.conversion_amount || 0,
+      school_contacts: existingData.school_contacts?.length > 0
+        ? existingData.school_contacts.map(c => ({
+            name: c.name || '',
+            phone_number: c.phone?.replace(/^\+\d{1,3}/, '') || '',
+            country_code: c.phone?.match(/^\+\d{1,3}/)?.[0] || '+91',
+            email: c.email || '',
+            role: c.role || ''
+          }))
+        : [{ name: '', phone_number: '', country_code: '+91', email: '', role: '' }],
+      payment_mode: existingData.payment_mode || 'from_school',
+      payment_method: existingData.payment_method || '',
+      payment_tranches: existingData.payment_tranches?.length > 0
+        ? existingData.payment_tranches
+        : [{ amount: '', percentage: '', date: '', notes: '' }],
       contract_start: '',
       contract_end: '',
       mou_url: '',
-      school_contacts: existingData.school_contacts || [],
-      grade_pricing: existingData.grade_pricing || [],
-      payment_tranches: [{ percentage: '100', amount: existingData.total_amount || '', date: '', status: 'pending' }]
+      parent_circular_url: '',
+      payment_link: ''
     });
   };
 
