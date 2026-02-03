@@ -2422,6 +2422,26 @@ const AdminSchoolCRM = () => {
                 </div>
               )}
 
+              {/* Relationship Manager - Show for converted/active schools */}
+              {['converted', 'active', 'renewed'].includes(inquiry.status) && inquiry.relationship_manager_name && (
+                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-2 mb-3">
+                  <p className="text-xs text-indigo-700 flex items-center gap-1">
+                    <User className="w-3 h-3" />
+                    <span className="font-medium">RM:</span> {inquiry.relationship_manager_name}
+                  </p>
+                </div>
+              )}
+
+              {/* Referred By - Show for referral leads */}
+              {inquiry.referred_by && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-2 mb-3">
+                  <p className="text-xs text-green-700 flex items-center gap-1">
+                    <Users className="w-3 h-3" />
+                    <span className="font-medium">Referred by:</span> {inquiry.referred_by}
+                  </p>
+                </div>
+              )}
+
               {/* Followup shown outside - only for non-converted */}
               {inquiry.status !== 'converted' && inquiry.followup_date && (
                 <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-3 mb-3">
