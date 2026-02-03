@@ -31,6 +31,7 @@ const MyBookingsPage = () => {
   const [sessions, setSessions] = useState([]);
   const [studentInfo, setStudentInfo] = useState(null);
   const [activeTab, setActiveTab] = useState('bookings'); // 'bookings' or 'sessions'
+  const [bookingFilter, setBookingFilter] = useState('upcoming'); // 'upcoming', 'completed', 'archived'
   const [loading, setLoading] = useState(true);
   const [showReschedule, setShowReschedule] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
