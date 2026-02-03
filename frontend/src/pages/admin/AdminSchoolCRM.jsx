@@ -211,6 +211,7 @@ const AdminSchoolCRM = () => {
     fetchInquiries();
     fetchTeamUsers();
     fetchOfferings();
+    fetchRelationshipManagers();
   }, []);
 
   // Extract all contacts from all schools for contact management
