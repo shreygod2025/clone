@@ -1013,6 +1013,7 @@ class SchoolInquiryUpdate(BaseModel):
     followup_date: Optional[str] = None
     followup_comment: Optional[str] = None
     conversion_amount: Optional[str] = None
+    quoted_price: Optional[str] = None  # Price quoted during meeting
     assigned_to: Optional[str] = None
     onboarding_data: Optional[dict] = None
     selected_offerings: Optional[list] = None
