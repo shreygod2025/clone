@@ -249,7 +249,8 @@ const AdminSchoolCRM = () => {
     referred_by: '',
     notes: '',
     quoted_price: '',
-    selected_offerings: []
+    selected_offerings: [],
+    assign_option: 'self' // 'self' or 'admin'
   });
 
   useEffect(() => {
