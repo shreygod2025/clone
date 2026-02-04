@@ -2535,14 +2535,6 @@ async def get_team_onboardings(
     onboardings = await db.team_onboarding.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
     return onboardings
 
-@api_router.get("/team-onboarding/{onboarding_id}")
-async def get_team_onboarding(onboarding_id: str, user: dict = Depends(get_current_user)):
-    """Get a specific team onboarding record"""
-    onboarding = await db.team_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
-    if not onboarding:
-        raise HTTPException(status_code=404, detail="Onboarding not found")
-    return onboarding
-
 @api_router.get("/team-onboarding/track/{token}")
 async def get_team_onboarding_public(token: str):
     """Public endpoint to track onboarding progress by token"""
@@ -2559,6 +2551,14 @@ async def get_team_onboarding_public(token: str):
         "steps": onboarding.get("steps"),
         "created_at": onboarding.get("created_at"),
     }
+
+@api_router.get("/team-onboarding/{onboarding_id}")
+async def get_team_onboarding(onboarding_id: str, user: dict = Depends(get_current_user)):
+    """Get a specific team onboarding record"""
+    onboarding = await db.team_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
+    if not onboarding:
+        raise HTTPException(status_code=404, detail="Onboarding not found")
+    return onboarding
 
 @api_router.patch("/team-onboarding/{onboarding_id}")
 async def update_team_onboarding(
