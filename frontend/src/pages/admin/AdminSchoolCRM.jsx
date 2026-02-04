@@ -340,6 +340,70 @@ const AdminSchoolCRM = () => {
     }
   };
 
+  // Helper to open conversion modal with pre-populated data from inquiry
+  const openConversionModal = (inquiry) => {
+    // Pre-populate onboardData with existing inquiry data
+    const existingOnboardData = inquiry.onboarding_data || {};
+    setOnboardData({
+      offering: existingOnboardData.offering || inquiry.selected_offerings?.[0] || '',
+      model: existingOnboardData.model || '',
+      book_type: existingOnboardData.book_type || '',
+      kit_type: existingOnboardData.kit_type || '',
+      training_type: existingOnboardData.training_type || '',
+      grade_pricing: existingOnboardData.grade_pricing?.length > 0 
+        ? existingOnboardData.grade_pricing 
+        : [{ grade: '', students: '', price_per_student: '' }],
+      total_students: existingOnboardData.total_students || 0,
+      total_amount: existingOnboardData.total_amount || inquiry.quoted_price || 0,
+      school_contacts: existingOnboardData.school_contacts?.length > 0 
+        ? existingOnboardData.school_contacts 
+        : [{ name: inquiry.contact_name || '', phone_number: inquiry.phone || '', country_code: '+91', email: inquiry.email || '', role: 'principal' }],
+      payment_mode: existingOnboardData.payment_mode || 'from_school',
+      payment_method: existingOnboardData.payment_method || '',
+      payment_tranches: existingOnboardData.payment_tranches?.length > 0 
+        ? existingOnboardData.payment_tranches 
+        : [{ amount: '', percentage: '', date: '', notes: '' }],
+      contract_start: existingOnboardData.contract_start || '',
+      contract_end: existingOnboardData.contract_end || '',
+      mou_url: existingOnboardData.mou_url || '',
+      parent_circular_url: existingOnboardData.parent_circular_url || '',
+      payment_link: existingOnboardData.payment_link || '',
+      is_draft: false,
+    });
+    setShowOnboardModal(inquiry);
+  };
+
+  // Helper to open renewal conversion modal with pre-populated data
+  const openRenewalConversionModal = (inquiry) => {
+    const existingOnboardData = inquiry.onboarding_data || {};
+    setRenewalConvertData({
+      offering: existingOnboardData.offering || '',
+      model: existingOnboardData.model || '',
+      book_type: existingOnboardData.book_type || '',
+      kit_type: existingOnboardData.kit_type || '',
+      training_type: existingOnboardData.training_type || '',
+      grade_pricing: existingOnboardData.grade_pricing?.length > 0 
+        ? existingOnboardData.grade_pricing 
+        : [{ grade: '', students: '', price_per_student: '' }],
+      total_students: existingOnboardData.total_students || 0,
+      total_amount: existingOnboardData.total_amount || inquiry.conversion_amount || 0,
+      school_contacts: existingOnboardData.school_contacts?.length > 0 
+        ? existingOnboardData.school_contacts 
+        : [{ name: inquiry.contact_name || '', phone_number: inquiry.phone || '', country_code: '+91', email: inquiry.email || '', role: '' }],
+      payment_mode: existingOnboardData.payment_mode || 'from_school',
+      payment_method: existingOnboardData.payment_method || '',
+      payment_tranches: existingOnboardData.payment_tranches?.length > 0 
+        ? existingOnboardData.payment_tranches 
+        : [{ amount: '', percentage: '', date: '', notes: '' }],
+      contract_start: existingOnboardData.contract_start || '',
+      contract_end: existingOnboardData.contract_end || '',
+      mou_url: existingOnboardData.mou_url || '',
+      parent_circular_url: existingOnboardData.parent_circular_url || '',
+      payment_link: existingOnboardData.payment_link || ''
+    });
+    setShowRenewalConvertModal(inquiry);
+  };
+
   // Autocomplete search for existing records
   const searchAutocomplete = async (query, field) => {
     if (!query || query.length < 3) {
