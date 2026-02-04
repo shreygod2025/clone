@@ -2766,11 +2766,11 @@ const AdminSchoolCRM = () => {
 
               {/* Comments shown outside */}
               {inquiry.notes && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-3">
-                  <p className="text-xs text-amber-700 font-medium mb-1 flex items-center gap-1">
+                <div className="bg-slate-50 border border-slate-100 rounded-lg p-2 mb-2">
+                  <p className="text-xs text-slate-500 font-medium mb-0.5 flex items-center gap-1">
                     <MessageSquare className="w-3 h-3" /> Latest Note
                   </p>
-                  <p className="text-sm text-amber-900 line-clamp-2">
+                  <p className="text-xs text-slate-700 line-clamp-2">
                     {inquiry.notes.split('\n\n').pop()?.split('\n').slice(0, 2).join('\n') || inquiry.notes.slice(-150)}
                   </p>
                 </div>
