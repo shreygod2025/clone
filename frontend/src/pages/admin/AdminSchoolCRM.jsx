@@ -2965,6 +2965,23 @@ const AdminSchoolCRM = () => {
                       </div>
                     </div>
                   )}
+                  
+                  {/* Support Needed (from SchoolFunnel) */}
+                  {viewInquiry.support_needed?.length > 0 && (
+                    <div className="bg-green-50 rounded-lg p-3">
+                      <p className="text-xs text-green-600 mb-2">Support Needed</p>
+                      <div className="flex flex-wrap gap-1">
+                        {viewInquiry.support_needed.map((supportId, idx) => {
+                          const offering = offerings.find(o => o.id === supportId);
+                          return (
+                            <span key={idx} className="px-2 py-1 bg-green-100 rounded text-xs text-green-700 font-medium">
+                              {offering ? offering.title : supportId}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   {viewInquiry.meeting_date && (
                     <div className="bg-blue-50 rounded-lg p-3">
