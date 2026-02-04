@@ -18,6 +18,9 @@ const STATUS_SECTIONS = [
   { value: 'contacted', label: 'Contacted', color: 'bg-yellow-500' },
   { value: 'in_discussion', label: 'In Discussion', color: 'bg-purple-500' },
   { value: 'converted', label: 'Converted', color: 'bg-green-500' },
+  { value: 'onboarding', label: 'Onboarding', color: 'bg-orange-500' },
+  { value: 'active', label: 'Active Partners', color: 'bg-emerald-500' },
+  { value: 'discontinued', label: 'Discontinued', color: 'bg-red-500' },
   { value: 'archived', label: 'Archived', color: 'bg-slate-400' },
 ];
 
