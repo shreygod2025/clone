@@ -743,7 +743,7 @@ const AdminEducators = () => {
   return (
     <AdminLayout title="Educator Applications">
       {/* Header Actions */}
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
+      <div className="flex flex-col gap-4 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
           <Input
@@ -754,40 +754,41 @@ const AdminEducators = () => {
             data-testid="educator-search"
           />
         </div>
-        <select
-          value={assigneeFilter}
-          onChange={(e) => setAssigneeFilter(e.target.value)}
-          className="h-10 px-4 border border-slate-200 rounded-lg bg-white"
-          data-testid="assignee-filter"
-        >
-          <option value="all">All Assignees</option>
-          <option value="unassigned">Unassigned</option>
-          {teamUsers.filter(u => u.is_active).map(u => (
-            <option key={u.id} value={u.id}>{u.name}</option>
-          ))}
-        </select>
-        {activeTab === 'onboarding' && (
-          <Button 
-            onClick={() => setShowDirectOnboardModal(true)}
-            className="bg-[#D63031] hover:bg-[#c0392b]"
+        <div className="flex flex-wrap gap-2">
+          <select
+            value={assigneeFilter}
+            onChange={(e) => setAssigneeFilter(e.target.value)}
+            className="h-10 px-4 border border-slate-200 rounded-lg bg-white flex-1 sm:flex-none text-sm"
+            data-testid="assignee-filter"
           >
-            <UserPlus className="w-4 h-4 mr-2" />
-            Direct Onboard
-          </Button>
-        )}
-        {activeTab === 'requirements' && (
-          <Button 
-            onClick={() => {
-              setEditingRequirement(null);
-              setRequirementForm({
-                title: '', skill: '', city: '', area: '', description: '',
-                positions: 1, days: [], timing_from: '', timing_to: '',
-                pay_amount: '', pay_type: 'per_session', is_active: true
-              });
-              setShowRequirementModal(true);
-            }}
-            className="bg-[#D63031] hover:bg-[#c0392b]"
-          >
+            <option value="all">All Assignees</option>
+            <option value="unassigned">Unassigned</option>
+            {teamUsers.filter(u => u.is_active).map(u => (
+              <option key={u.id} value={u.id}>{u.name}</option>
+            ))}
+          </select>
+          {activeTab === 'onboarding' && (
+            <Button 
+              onClick={() => setShowDirectOnboardModal(true)}
+              className="bg-[#D63031] hover:bg-[#c0392b] flex-1 sm:flex-none"
+            >
+              <UserPlus className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Direct</span> Onboard
+            </Button>
+          )}
+          {activeTab === 'requirements' && (
+            <Button 
+              onClick={() => {
+                setEditingRequirement(null);
+                setRequirementForm({
+                  title: '', skill: '', city: '', area: '', description: '',
+                  positions: 1, days: [], timing_from: '', timing_to: '',
+                  pay_amount: '', pay_type: 'per_session', is_active: true
+                });
+                setShowRequirementModal(true);
+              }}
+              className="bg-[#D63031] hover:bg-[#c0392b] flex-1 sm:flex-none"
+            >
             <Plus className="w-4 h-4 mr-2" />
             Add Requirement
           </Button>
