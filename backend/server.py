@@ -2480,6 +2480,216 @@ async def update_team_application(
     return application
 
 # ========================
+# TEAM ONBOARDING ENDPOINTS
+# ========================
+
+@api_router.post("/team-onboarding/init/{application_id}")
+async def init_team_onboarding(
+    application_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Initialize onboarding for a hired team member"""
+    application = await db.team_applications.find_one({"id": application_id}, {"_id": 0})
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    # Check if onboarding already exists
+    existing = await db.team_onboarding.find_one({"team_application_id": application_id}, {"_id": 0})
+    if existing:
+        return existing
+    
+    onboarding = TeamOnboarding(
+        team_application_id=application_id,
+        name=application.get('name', ''),
+        email=application.get('email', ''),
+        phone=application.get('phone', ''),
+        role=application.get('role', ''),
+        city=application.get('city', ''),
+        target_role_id=data.get('target_role_id', '')
+    )
+    
+    doc = onboarding.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    await db.team_onboarding.insert_one(doc)
+    
+    # Update application status to hired
+    await db.team_applications.update_one(
+        {"id": application_id},
+        {"$set": {"status": "hired", "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    
+    return {"message": "Onboarding initialized", "tracking_token": onboarding.tracking_token, "id": onboarding.id}
+
+@api_router.get("/team-onboarding")
+async def get_team_onboardings(
+    status: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    """Get all team onboarding records"""
+    query = {}
+    if status:
+        query["status"] = status
+    
+    onboardings = await db.team_onboarding.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return onboardings
+
+@api_router.get("/team-onboarding/{onboarding_id}")
+async def get_team_onboarding(onboarding_id: str, user: dict = Depends(get_current_user)):
+    """Get a specific team onboarding record"""
+    onboarding = await db.team_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
+    if not onboarding:
+        raise HTTPException(status_code=404, detail="Onboarding not found")
+    return onboarding
+
+@api_router.patch("/team-onboarding/{onboarding_id}")
+async def update_team_onboarding(
+    onboarding_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Update team onboarding details"""
+    update_data = {k: v for k, v in data.items() if v is not None and k not in ["id", "created_at"]}
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    await db.team_onboarding.update_one({"id": onboarding_id}, {"$set": update_data})
+    onboarding = await db.team_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
+    return onboarding
+
+@api_router.post("/team-onboarding/{onboarding_id}/complete-step")
+async def complete_onboarding_step(
+    onboarding_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Mark an onboarding step as complete"""
+    step_name = data.get('step')
+    step_data = data.get('data', {})
+    
+    if step_name not in ["personal_info", "bank_details", "contract_signing", "training"]:
+        raise HTTPException(status_code=400, detail="Invalid step name")
+    
+    update_data = {
+        f"steps.{step_name}.completed": True,
+        f"steps.{step_name}.completed_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Store step-specific data
+    if step_name == "personal_info" and step_data:
+        update_data["personal_info"] = step_data
+    elif step_name == "bank_details" and step_data:
+        update_data["bank_details"] = step_data
+    elif step_name == "contract_signing":
+        if step_data.get('contract_url'):
+            update_data["contract_url"] = step_data['contract_url']
+        update_data["contract_signed_at"] = datetime.now(timezone.utc).isoformat()
+    elif step_name == "training":
+        update_data["training_completed_at"] = datetime.now(timezone.utc).isoformat()
+        if step_data.get('notes'):
+            update_data["training_notes"] = step_data['notes']
+    
+    await db.team_onboarding.update_one({"id": onboarding_id}, {"$set": update_data})
+    onboarding = await db.team_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
+    return onboarding
+
+@api_router.post("/team-onboarding/{onboarding_id}/activate")
+async def activate_team_member(
+    onboarding_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Activate team member - creates a new team user with assigned role"""
+    onboarding = await db.team_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
+    if not onboarding:
+        raise HTTPException(status_code=404, detail="Onboarding not found")
+    
+    # Check if all steps are complete
+    steps = onboarding.get('steps', {})
+    incomplete = [s for s, v in steps.items() if not v.get('completed')]
+    if incomplete:
+        raise HTTPException(status_code=400, detail=f"Complete all steps first: {', '.join(incomplete)}")
+    
+    role_id = data.get('role_id') or onboarding.get('target_role_id')
+    if not role_id:
+        raise HTTPException(status_code=400, detail="Role ID required")
+    
+    # Create team user
+    username = onboarding.get('email', '').split('@')[0] or onboarding.get('name', '').lower().replace(' ', '_')
+    # Make username unique
+    existing = await db.team_users.find_one({"username": username})
+    if existing:
+        username = f"{username}_{str(uuid.uuid4())[:4]}"
+    
+    temp_password = str(uuid.uuid4())[:8]  # Temporary password
+    
+    team_user = TeamUser(
+        email=onboarding.get('email', f"{username}@oll.co"),
+        name=onboarding.get('name', ''),
+        username=username,
+        password_hash=bcrypt.hashpw(temp_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
+        role_id=role_id,
+        city=onboarding.get('city', ''),
+        permissions=[]  # Will inherit from role
+    )
+    
+    doc = team_user.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    await db.team_users.insert_one(doc)
+    
+    # Update onboarding status
+    await db.team_onboarding.update_one(
+        {"id": onboarding_id},
+        {"$set": {
+            "status": "active",
+            "team_user_id": team_user.id,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {
+        "message": "Team member activated",
+        "team_user_id": team_user.id,
+        "username": username,
+        "temp_password": temp_password  # Admin should share this securely
+    }
+
+@api_router.post("/team-onboarding/{onboarding_id}/discontinue")
+async def discontinue_team_member(
+    onboarding_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Discontinue a team member with exit formalities"""
+    reason = data.get('reason', '')
+    exit_formalities = data.get('exit_formalities', {})
+    
+    if not reason:
+        raise HTTPException(status_code=400, detail="Reason required")
+    
+    # Deactivate the team user if exists
+    onboarding = await db.team_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
+    if onboarding and onboarding.get('team_user_id'):
+        await db.team_users.update_one(
+            {"id": onboarding['team_user_id']},
+            {"$set": {"is_active": False}}
+        )
+    
+    await db.team_onboarding.update_one(
+        {"id": onboarding_id},
+        {"$set": {
+            "status": "discontinued",
+            "discontinued_reason": reason,
+            "discontinued_at": datetime.now(timezone.utc).isoformat(),
+            "exit_formalities": exit_formalities,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    return {"message": "Team member discontinued"}
+
+# ========================
 # SCHOOL INQUIRY ENDPOINTS
 # ========================
 
