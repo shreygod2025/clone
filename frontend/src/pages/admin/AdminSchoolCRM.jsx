@@ -7048,8 +7048,135 @@ const AdminSchoolCRM = () => {
               </div>
             </div>
             
+            {/* Source Selector */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Source</label>
+              <select
+                value={ticketData.source}
+                onChange={(e) => setTicketData({ ...ticketData, source: e.target.value })}
+                className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                data-testid="ticket-source"
+              >
+                {TICKET_SOURCE_OPTIONS.map(s => (
+                  <option key={s.value} value={s.value}>{s.label}</option>
+                ))}
+              </select>
+            </div>
+            
+            {/* Attachments & Voice Note */}
+            <div className="border rounded-lg p-3 space-y-3">
+              <label className="block text-sm font-medium text-slate-700">Attachments & Voice Note</label>
+              
+              {/* File Upload & Voice Record Buttons */}
+              <div className="flex gap-2">
+                <input
+                  type="file"
+                  ref={ticketFileInputRef}
+                  onChange={handleTicketFileUpload}
+                  multiple
+                  className="hidden"
+                  accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => ticketFileInputRef.current?.click()}
+                  disabled={ticketUploading}
+                  className="flex items-center gap-1"
+                >
+                  {ticketUploading ? (
+                    <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+                  ) : (
+                    <Upload className="w-4 h-4" />
+                  )}
+                  Upload File
+                </Button>
+                
+                {/* Voice Recording */}
+                {!ticketAudioUrl ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={ticketRecording ? stopTicketRecording : startTicketRecording}
+                    className={`flex items-center gap-1 ${ticketRecording ? 'bg-red-50 border-red-300 text-red-600' : ''}`}
+                  >
+                    {ticketRecording ? (
+                      <>
+                        <MicOff className="w-4 h-4" />
+                        Stop ({ticketRecordTime}s)
+                      </>
+                    ) : (
+                      <>
+                        <Mic className="w-4 h-4" />
+                        Record Voice
+                      </>
+                    )}
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-2 bg-purple-50 px-3 py-1 rounded-lg">
+                    <audio ref={ticketAudioPlayerRef} src={ticketAudioUrl} />
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => {
+                        if (ticketAudioPlayerRef.current) {
+                          ticketAudioPlayerRef.current.paused 
+                            ? ticketAudioPlayerRef.current.play() 
+                            : ticketAudioPlayerRef.current.pause();
+                        }
+                      }} 
+                      className="p-1"
+                    >
+                      <Play className="w-4 h-4" />
+                    </Button>
+                    <span className="text-xs text-purple-600">Voice Note ({ticketRecordTime}s)</span>
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => {
+                        setTicketAudioBlob(null);
+                        setTicketAudioUrl(null);
+                        setTicketRecordTime(0);
+                      }} 
+                      className="p-1 text-red-500"
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+              
+              {/* Uploaded Files List */}
+              {ticketAttachments.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {ticketAttachments.map((att, idx) => (
+                    <div key={idx} className="flex items-center gap-1 bg-blue-50 px-2 py-1 rounded text-xs">
+                      <FileText className="w-3 h-3 text-blue-600" />
+                      <span className="text-blue-700 max-w-[150px] truncate">{att.name}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setTicketAttachments(prev => prev.filter((_, i) => i !== idx))} 
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
             <div className="flex gap-3 pt-2">
-              <Button variant="outline" onClick={() => setShowRaiseTicketModal(null)} className="flex-1">
+              <Button variant="outline" onClick={() => {
+                setShowRaiseTicketModal(null);
+                setTicketAttachments([]);
+                setTicketAudioBlob(null);
+                setTicketAudioUrl(null);
+              }} className="flex-1">
                 Cancel
               </Button>
               <Button 
