@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "./components/ui/sonner";
 import ScrollToTop from "./components/ScrollToTop";
 import { lazy, Suspense } from "react";
+import RaiseQueryButton from "./components/RaiseQueryButton";
 
 // Loading Spinner Component
 const PageLoader = () => (
