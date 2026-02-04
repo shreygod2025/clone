@@ -4,11 +4,12 @@ import { useAuth } from '../../context/AuthContext';
 import { 
   Search, Database, Users, Building2, GraduationCap, 
   Filter, Download, Eye, Phone, Mail, MapPin, 
-  X, RefreshCw, UserCog, TrendingUp
+  X, RefreshCw, UserCog, TrendingUp, Edit, Trash2
 } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
+import { Textarea } from '../../components/ui/textarea';
 import { toast } from 'sonner';
 import axios from 'axios';
 import { format } from 'date-fns';
