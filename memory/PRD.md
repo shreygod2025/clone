@@ -403,6 +403,32 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ Inner content div uses `overflow-y-auto flex-1 pr-2` for proper scrolling
 - ✅ Lead Assignment options (Assign to me / Let admin assign) now visible at bottom
 
+### Feb 5, 2026 - School Card Design Fix & Global Help Button
+
+**School CRM Card Design Overhaul:**
+- ✅ Removed amber/yellow "Viewer Only" styling - now clean white cards with subtle gray badge
+- ✅ Compact card layout with reduced padding and margins
+- ✅ **Icon-only buttons** for common actions (Assign, Note, Delete, Docs, Followup, Archive)
+  - Hover tooltips show action names
+  - Documents button shows badge count
+- ✅ **Primary action buttons** styled as solid colored pills:
+  - "Done" (purple), "Convert" (green), "Renewal" (teal), "Renewed" (emerald), "Reactivate" (green)
+- ✅ Truncated long text (school name, location, assignee) with ellipsis
+- ✅ Compact progress bars and info sections
+- ✅ Overall ~30% reduction in card height
+
+**Global "Need Help?" Sticky Button:**
+- ✅ Created `/app/frontend/src/components/RaiseQueryButton.jsx`
+- ✅ Orange floating button fixed to bottom-right corner on all pages
+- ✅ **Context-aware categories:** Automatically detects current page and sets appropriate category:
+  - Admin pages: Student/School/Educator Management, Orders, Support, Reports, etc.
+  - Public pages: Student/Parent Query, School Query, Educator Query, Demo Booking, etc.
+- ✅ **Dynamic sub-categories** based on page context:
+  - School Management → Lead Issue, Conversion Issue, Onboarding Issue, Kit Delivery, etc.
+  - Student Query → Course Information, Demo Booking, Fee Query, Schedule Query, etc.
+- ✅ **Features:** Priority selection, Attach File, Voice Note, text message
+- ✅ All submissions routed to Support Center with source tracking (`quick_support_{page}`)
+
 ### Feb 4, 2026 - Bug Fixes & Feature Enhancements
 
 **Bug Fixes:**
