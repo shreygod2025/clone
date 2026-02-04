@@ -190,22 +190,39 @@ const AdminReports = () => {
   });
 
   const getDateParams = () => {
+    let params = {};
     if (dateFilterType === 'custom' && customDateRange.start && customDateRange.end) {
-      return { start_date: customDateRange.start, end_date: customDateRange.end };
-    }
-    if (dateFilterType === 'month' && selectedMonth) {
+      params = { start_date: customDateRange.start, end_date: customDateRange.end };
+    } else if (dateFilterType === 'month' && selectedMonth) {
       const [year, month] = selectedMonth.split('-');
       const start = startOfMonth(new Date(parseInt(year), parseInt(month) - 1));
       const end = endOfMonth(new Date(parseInt(year), parseInt(month) - 1));
-      return { start_date: format(start, 'yyyy-MM-dd'), end_date: format(end, 'yyyy-MM-dd') };
-    }
-    if (dateFilterType === 'year' && selectedYear) {
+      params = { start_date: format(start, 'yyyy-MM-dd'), end_date: format(end, 'yyyy-MM-dd') };
+    } else if (dateFilterType === 'year' && selectedYear) {
       const start = startOfYear(new Date(parseInt(selectedYear), 0));
       const end = endOfYear(new Date(parseInt(selectedYear), 0));
-      return { start_date: format(start, 'yyyy-MM-dd'), end_date: format(end, 'yyyy-MM-dd') };
+      params = { start_date: format(start, 'yyyy-MM-dd'), end_date: format(end, 'yyyy-MM-dd') };
     }
-    return {};
+    // Add team member filter if selected
+    if (selectedTeamMember) {
+      params.assigned_to = selectedTeamMember;
+    }
+    return params;
   };
+
+  // Fetch team members for filter
+  const fetchTeamMembers = async () => {
+    try {
+      const res = await axios.get(`${API}/team-users`, { headers: getAuthHeaders() });
+      setTeamMembers(res.data || []);
+    } catch (error) {
+      console.error('Failed to fetch team members:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchTeamMembers();
+  }, []);
 
   const fetchAllData = async () => {
     setLoading(true);
