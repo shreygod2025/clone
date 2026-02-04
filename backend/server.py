@@ -3219,43 +3219,85 @@ async def delete_expense(expense_id: str, user: dict = Depends(get_current_user)
 async def create_school_inquiry(data: SchoolInquiryCreate):
     inquiry = SchoolInquiry(**data.model_dump())
     
-    # Auto-assign to B2B Sales team user (round-robin, prefer same city)
-    # Skip if already assigned (e.g., from team user link)
-    if not data.assigned_to:
+    # Handle assignment based on assign_option
+    assign_option = getattr(data, 'assign_option', None) or 'admin'
+    added_by = getattr(data, 'added_by', None)
+    added_by_name = getattr(data, 'added_by_name', None)
+    
+    if assign_option == 'self' and added_by:
+        # Assign to the user who created it
+        inquiry.assigned_to = added_by
+        inquiry.assigned_to_name = added_by_name or ''
+    elif not data.assigned_to:
+        # Auto-assign to B2B Sales team user (round-robin, prefer same city)
         assigned = await auto_assign_lead('school', data.location or '', 'offline')
         if assigned and assigned.get('user_id'):
             inquiry.assigned_to = assigned['user_id']
+            inquiry.assigned_to_name = assigned.get('user_name', '')
     
-    doc = inquiry.model_dump()
-    doc['created_at'] = doc['created_at'].isoformat()
-    doc['updated_at'] = doc['updated_at'].isoformat()
-    await db.school_inquiries.insert_one(doc)
+    # Store added_by info
+    if added_by:
+        inquiry_dict = inquiry.model_dump()
+        inquiry_dict['added_by'] = added_by
+        inquiry_dict['added_by_name'] = added_by_name
+    else:
+        inquiry_dict = inquiry.model_dump()
+    
+    inquiry_dict['created_at'] = inquiry_dict['created_at'].isoformat()
+    inquiry_dict['updated_at'] = inquiry_dict['updated_at'].isoformat()
+    await db.school_inquiries.insert_one(inquiry_dict)
     return inquiry
 
 @api_router.get("/schools/inquiries")
 async def get_school_inquiries(
     status: Optional[str] = None,
+    view_all: bool = False,
     user: dict = Depends(get_current_user)
 ):
     query = {}
     if status:
         query["status"] = status
     
-    # For team members, only show leads they added or assigned to them
-    if user.get("role") == "team_member":
-        user_id = user.get("user_id", user.get("id", ""))
-        query["$or"] = [
-            {"added_by": user_id},
-            {"assigned_to": user_id}
-        ]
+    # For team members, show all leads but mark which ones they own
+    # If view_all is False, only show their leads
+    user_role = user.get("role", "")
+    user_id = user.get("user_id", user.get("id", ""))
+    
+    # Always return all leads - frontend will handle display
+    # Team members see all but with ownership info
     
     inquiries = await db.school_inquiries.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    
+    # Add ownership flag for team members
     for inq in inquiries:
         if isinstance(inq.get('created_at'), str):
             inq['created_at'] = datetime.fromisoformat(inq['created_at'])
         if isinstance(inq.get('updated_at'), str):
             inq['updated_at'] = datetime.fromisoformat(inq['updated_at'])
+        
+        # Add flags to indicate ownership
+        inq['is_owner'] = inq.get('assigned_to') == user_id or inq.get('added_by') == user_id
+        inq['is_viewer'] = not inq['is_owner']
+    
     return inquiries
+
+@api_router.delete("/schools/inquiry/{inquiry_id}")
+async def delete_school_inquiry(inquiry_id: str, user: dict = Depends(get_current_user)):
+    """Delete a school inquiry/lead"""
+    # Check if user has permission (admin or owner)
+    inquiry = await db.school_inquiries.find_one({"id": inquiry_id}, {"_id": 0})
+    if not inquiry:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    user_id = user.get("user_id", user.get("id", ""))
+    is_admin = user.get("role") in ["admin", "super_admin"]
+    is_owner = inquiry.get("assigned_to") == user_id or inquiry.get("added_by") == user_id
+    
+    if not is_admin and not is_owner:
+        raise HTTPException(status_code=403, detail="You don't have permission to delete this lead")
+    
+    await db.school_inquiries.delete_one({"id": inquiry_id})
+    return {"message": "Lead deleted successfully"}
 
 @api_router.patch("/schools/inquiry/{inquiry_id}", response_model=SchoolInquiry)
 async def update_school_inquiry(
