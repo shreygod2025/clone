@@ -22,6 +22,9 @@ const MAIN_TABS = [
   { value: 'archived', label: 'Archived', color: 'bg-slate-400' },
 ];
 
+// Skills that match student selections
+const EDUCATOR_SKILLS = ['Robotics', 'Coding', 'AI & ML', 'Entrepreneurship', 'Financial Literacy'];
+
 // Sub-status for applicants (New + Demo Scheduled merged)
 const APPLICANT_STATUS = [
   { value: 'new', label: 'New (Demo Pending)', color: 'bg-blue-500' },
