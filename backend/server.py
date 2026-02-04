@@ -5811,6 +5811,7 @@ async def create_support_query(data: dict, user: dict = Depends(get_current_user
         "phone": data.get("phone", ""),
         "email": data.get("email", ""),
         "query_type": data.get("query_type", "other"),
+        "related_to": data.get("related_to", ""),  # Sub-category
         "inquiry_type": data.get("inquiry_type", "student"),
         "message": data.get("message", ""),
         "query_details": data.get("message", ""),  # Also store as query_details for consistency
