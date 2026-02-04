@@ -1255,10 +1255,18 @@ const AdminSupportUnified = () => {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-sm font-medium text-slate-700">Query Type</label>
+                <label className="text-sm font-medium text-slate-700">Query Type (Category)</label>
                 <select
                   value={newTicket.query_type}
-                  onChange={(e) => setNewTicket({ ...newTicket, query_type: e.target.value })}
+                  onChange={(e) => {
+                    const newQueryType = e.target.value;
+                    const relatedOptions = RELATED_TO_OPTIONS[newQueryType] || RELATED_TO_OPTIONS.other;
+                    setNewTicket({ 
+                      ...newTicket, 
+                      query_type: newQueryType,
+                      related_to: relatedOptions[0]?.value || 'other'
+                    });
+                  }}
                   className="w-full h-10 px-3 border border-slate-200 rounded-lg"
                 >
                   {QUERY_TYPES.map(t => (
@@ -1267,10 +1275,33 @@ const AdminSupportUnified = () => {
                 </select>
               </div>
               <div>
+                <label className="text-sm font-medium text-slate-700">Related To (Sub-category)</label>
+                <select
+                  value={newTicket.related_to || ''}
+                  onChange={(e) => setNewTicket({ ...newTicket, related_to: e.target.value })}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                >
+                  {(RELATED_TO_OPTIONS[newTicket.query_type] || RELATED_TO_OPTIONS.other).map(r => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
                 <label className="text-sm font-medium text-slate-700">User Type</label>
                 <select
                   value={newTicket.inquiry_type}
-                  onChange={(e) => setNewTicket({ ...newTicket, inquiry_type: e.target.value })}
+                  onChange={(e) => {
+                    const newInquiryType = e.target.value;
+                    const defaults = DEFAULT_RELATED_TO[newInquiryType] || DEFAULT_RELATED_TO.student;
+                    setNewTicket({ 
+                      ...newTicket, 
+                      inquiry_type: newInquiryType,
+                      query_type: defaults.query_type,
+                      related_to: defaults.related_to
+                    });
+                  }}
                   className="w-full h-10 px-3 border border-slate-200 rounded-lg"
                 >
                   {INQUIRY_TYPES.map(t => (
