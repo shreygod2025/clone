@@ -497,7 +497,7 @@ const AdminSupportUnified = () => {
       });
       toast.success('Ticket created successfully');
       setShowCreateModal(false);
-      setNewTicket({ name: '', phone: '', email: '', query_type: 'other', inquiry_type: 'student', message: '', priority: 'normal', source: 'admin_created' });
+      setNewTicket({ name: '', phone: '', email: '', query_type: 'course_info', related_to: 'course_content', inquiry_type: 'student', message: '', priority: 'normal', source: 'admin_created' });
       setAttachments([]);
       setAudioBlob(null);
       setAudioUrl(null);
