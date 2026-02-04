@@ -23,49 +23,49 @@ const STEP_ICONS = {
 // Step-specific help queries
 const STEP_QUERIES = {
   mou_signing: [
-    { label: "MOU draft review", type: "mou_review" },
-    { label: "Clarification on terms", type: "terms_clarification" },
-    { label: "Request document copy", type: "document_copy" }
+    { label: "MOU draft review", type: "mou_review", faq: "I would like to review the MOU document before signing. Please share the draft for my review." },
+    { label: "Clarification on terms", type: "terms_clarification", faq: "I need clarification on some terms mentioned in the MOU document." },
+    { label: "Request document copy", type: "document_copy", faq: "Please share a copy of the signed MOU document for our records." }
   ],
   payment_collection: [
-    { label: "When is payment due?", type: "payment_due_date" },
-    { label: "What payment methods are accepted?", type: "payment_methods" },
-    { label: "Request payment receipt", type: "payment_receipt" },
-    { label: "Payment plan inquiry", type: "payment_plan" }
+    { label: "When is payment due?", type: "payment_due_date", faq: "Could you please confirm the payment due date and share the payment schedule?" },
+    { label: "What payment methods are accepted?", type: "payment_methods", faq: "What payment methods are accepted? Do you accept cheque, NEFT, or online payment?" },
+    { label: "Request payment receipt", type: "payment_receipt", faq: "I have completed the payment. Please share the payment receipt." },
+    { label: "Payment plan inquiry", type: "payment_plan", faq: "Can we discuss a payment plan with instalments? Please advise on available options." }
   ],
   kit_delivery: [
-    { label: "Track my shipment", type: "track_shipment" },
-    { label: "Delivery not received", type: "delivery_missing" },
-    { label: "Items missing/damaged", type: "items_damaged" },
-    { label: "Change delivery address", type: "change_address" }
+    { label: "Track my shipment", type: "track_shipment", faq: "Please share the tracking details for the kit delivery shipment." },
+    { label: "Delivery not received", type: "delivery_missing", faq: "We have not received the kit delivery yet. Please help track and resolve this." },
+    { label: "Items missing/damaged", type: "items_damaged", faq: "Some items in the delivered kit are missing or damaged. Please arrange replacement." },
+    { label: "Change delivery address", type: "change_address", faq: "I need to update the delivery address. Please update to the new address." }
   ],
   distribution_checking: [
-    { label: "How to distribute kits?", type: "distribution_guide" },
-    { label: "Inventory mismatch", type: "inventory_issue" },
-    { label: "Storage requirements", type: "storage_help" }
+    { label: "How to distribute kits?", type: "distribution_guide", faq: "Please share guidelines on how to distribute the kits to students." },
+    { label: "Inventory mismatch", type: "inventory_issue", faq: "There is a mismatch in the inventory count. Please help resolve this." },
+    { label: "Storage requirements", type: "storage_help", faq: "What are the storage requirements for the kits? Please advise." }
   ],
   technical_check: [
-    { label: "Setup assistance needed", type: "setup_help" },
-    { label: "Equipment not working", type: "equipment_issue" },
-    { label: "Software installation help", type: "software_help" }
+    { label: "Setup assistance needed", type: "setup_help", faq: "We need assistance with setting up the equipment. Please schedule a support call." },
+    { label: "Equipment not working", type: "equipment_issue", faq: "Some equipment is not working properly. Please help troubleshoot." },
+    { label: "Software installation help", type: "software_help", faq: "We need help with software installation. Please provide instructions or remote support." }
   ],
   teacher_training: [
-    { label: "Training schedule inquiry", type: "training_schedule" },
-    { label: "Reschedule training", type: "reschedule_training" },
-    { label: "Training materials needed", type: "training_materials" },
-    { label: "Additional training session", type: "extra_training" }
+    { label: "Training schedule inquiry", type: "training_schedule", faq: "Please share the teacher training schedule and session details." },
+    { label: "Reschedule training", type: "reschedule_training", faq: "We need to reschedule the teacher training session. Please suggest alternative dates." },
+    { label: "Training materials needed", type: "training_materials", faq: "Please share the training materials for our teachers to prepare in advance." },
+    { label: "Additional training session", type: "extra_training", faq: "We would like to request an additional training session for more teachers." }
   ],
   calendar_making: [
-    { label: "Calendar template needed", type: "calendar_template" },
-    { label: "Help with scheduling", type: "scheduling_help" }
+    { label: "Calendar template needed", type: "calendar_template", faq: "Please share the academic calendar template for planning sessions." },
+    { label: "Help with scheduling", type: "scheduling_help", faq: "We need help creating the class schedule. Please advise on best practices." }
   ],
   timetable_finalization: [
-    { label: "Timetable conflict", type: "timetable_conflict" },
-    { label: "Change class timings", type: "timing_change" }
+    { label: "Timetable conflict", type: "timetable_conflict", faq: "There is a scheduling conflict in the timetable. Please help resolve." },
+    { label: "Change class timings", type: "timing_change", faq: "We need to change the class timings. Please update the schedule." }
   ],
   school_confirmation: [
-    { label: "Final review meeting", type: "final_meeting" },
-    { label: "Update school details", type: "update_details" }
+    { label: "Final review meeting", type: "final_meeting", faq: "Please schedule a final review meeting before we go live." },
+    { label: "Update school details", type: "update_details", faq: "I need to update some school details. Please help with the changes." }
   ]
 };
 
