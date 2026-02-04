@@ -139,6 +139,7 @@ function App() {
             <Route path="/admin/educators" element={<ProtectedRoute><AdminEducators /></ProtectedRoute>} />
             <Route path="/admin/growth-partners" element={<ProtectedRoute><AdminGrowthPartners /></ProtectedRoute>} />
             <Route path="/admin/team-applications" element={<ProtectedRoute><AdminTeamApplications /></ProtectedRoute>} />
+            <Route path="/admin/team-onboarding" element={<ProtectedRoute><AdminTeamOnboarding /></ProtectedRoute>} />
             <Route path="/admin/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
             <Route path="/admin/support" element={<ProtectedRoute><AdminSupportUnified /></ProtectedRoute>} />
             <Route path="/admin/requirements" element={<ProtectedRoute><AdminRequirements /></ProtectedRoute>} />
