@@ -993,6 +993,73 @@ const AdminSchoolCRM = () => {
     }
   };
 
+  // Ticket voice recording functions
+  const startTicketRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      ticketMediaRecorderRef.current = new MediaRecorder(stream);
+      ticketAudioChunksRef.current = [];
+      
+      ticketMediaRecorderRef.current.ondataavailable = (event) => {
+        ticketAudioChunksRef.current.push(event.data);
+      };
+      
+      ticketMediaRecorderRef.current.onstop = () => {
+        const blob = new Blob(ticketAudioChunksRef.current, { type: 'audio/webm' });
+        setTicketAudioBlob(blob);
+        setTicketAudioUrl(URL.createObjectURL(blob));
+        stream.getTracks().forEach(track => track.stop());
+      };
+      
+      ticketMediaRecorderRef.current.start();
+      setTicketRecording(true);
+      setTicketRecordTime(0);
+      ticketRecordingIntervalRef.current = setInterval(() => {
+        setTicketRecordTime(prev => prev + 1);
+      }, 1000);
+    } catch (error) {
+      toast.error('Failed to access microphone');
+    }
+  };
+
+  const stopTicketRecording = () => {
+    if (ticketMediaRecorderRef.current && ticketRecording) {
+      ticketMediaRecorderRef.current.stop();
+      setTicketRecording(false);
+      clearInterval(ticketRecordingIntervalRef.current);
+    }
+  };
+
+  const handleTicketFileUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    
+    setTicketUploading(true);
+    try {
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await axios.post(`${API}/upload`, formData, {
+          headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
+        });
+        
+        setTicketAttachments(prev => [...prev, {
+          name: file.name,
+          url: response.data.url,
+          type: file.type,
+          isVoiceNote: false
+        }]);
+      }
+      toast.success('File uploaded');
+    } catch (error) {
+      toast.error('Failed to upload file');
+    } finally {
+      setTicketUploading(false);
+      if (ticketFileInputRef.current) ticketFileInputRef.current.value = '';
+    }
+  };
+
   // Raise Ticket on behalf of school
   const handleRaiseTicket = async () => {
     if (!showRaiseTicketModal || !ticketData.subject || !ticketData.query_type) {
@@ -1000,18 +1067,40 @@ const AdminSchoolCRM = () => {
       return;
     }
     try {
+      // Upload voice note if exists
+      let allAttachments = [...ticketAttachments];
+      if (ticketAudioBlob) {
+        const formData = new FormData();
+        formData.append('file', ticketAudioBlob, 'voice-note.webm');
+        const uploadResponse = await axios.post(`${API}/upload`, formData, {
+          headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
+        });
+        allAttachments.push({
+          name: 'Voice Note',
+          url: uploadResponse.data.url,
+          type: 'audio/webm',
+          isVoiceNote: true
+        });
+      }
+      
       await axios.post(`${API}/schools/${showRaiseTicketModal.id}/raise-ticket`, {
         query_type: ticketData.query_type,
         subject: ticketData.subject,
         description: ticketData.description,
         priority: ticketData.priority,
+        source: ticketData.source,
         contact_name: ticketData.contact_name || showRaiseTicketModal.contact_name,
         contact_phone: ticketData.contact_phone || showRaiseTicketModal.phone,
-        contact_email: ticketData.contact_email || showRaiseTicketModal.email
+        contact_email: ticketData.contact_email || showRaiseTicketModal.email,
+        attachments: allAttachments
       }, { headers: getAuthHeaders() });
       toast.success('Ticket raised successfully');
       setShowRaiseTicketModal(null);
-      setTicketData({ query_type: '', subject: '', description: '', priority: 'medium', contact_name: '', contact_phone: '', contact_email: '' });
+      setTicketData({ query_type: '', subject: '', description: '', priority: 'medium', contact_name: '', contact_phone: '', contact_email: '', source: 'school_crm' });
+      setTicketAttachments([]);
+      setTicketAudioBlob(null);
+      setTicketAudioUrl(null);
+      setTicketRecordTime(0);
     } catch (error) {
       toast.error('Failed to raise ticket');
     }
