@@ -5481,6 +5481,146 @@ async def assign_support_query(query_id: str, data: dict, user: dict = Depends(g
     
     return {"message": "Query assigned successfully", "assigned_to": assigned_to}
 
+@api_router.post("/support/queries/{query_id}/notes")
+async def add_query_note(query_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Add a note to a support query"""
+    note = {
+        "id": str(uuid.uuid4()),
+        "text": data.get("text", ""),
+        "by": user.get("name", user.get("email", "admin")),
+        "by_id": user.get("id", user.get("email")),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Add note and activity history entry
+    activity = {
+        "type": "note_added",
+        "note_id": note["id"],
+        "note_preview": note["text"][:100] if note["text"] else "",
+        "by": note["by"],
+        "date": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.support_queries.update_one(
+        {"id": query_id},
+        {
+            "$push": {"notes": note, "activity_history": activity},
+            "$set": {"updated_at": datetime.now(timezone.utc).isoformat(), "latest_note": note["text"]}
+        }
+    )
+    return {"message": "Note added successfully", "note": note}
+
+@api_router.get("/support/queries/{query_id}/history")
+async def get_query_history(query_id: str, user: dict = Depends(get_current_user)):
+    """Get activity history for a support query"""
+    query = await db.support_queries.find_one({"id": query_id}, {"_id": 0})
+    if not query:
+        raise HTTPException(status_code=404, detail="Query not found")
+    
+    history = []
+    
+    # Add creation event
+    history.append({
+        "type": "created",
+        "description": f"Query created by {query.get('created_by', 'User')}",
+        "date": query.get("created_at", ""),
+        "by": query.get("created_by", "User")
+    })
+    
+    # Add activity history from database
+    activity_history = query.get("activity_history", [])
+    for activity in activity_history:
+        if activity.get("type") == "status_change":
+            history.append({
+                "type": "status_change",
+                "description": f"Status changed to {activity.get('new_status', 'unknown')}",
+                "date": activity.get("date", ""),
+                "by": activity.get("by", "Admin")
+            })
+        elif activity.get("type") == "note_added":
+            history.append({
+                "type": "note_added",
+                "description": f"Note added: {activity.get('note_preview', '')}...",
+                "date": activity.get("date", ""),
+                "by": activity.get("by", "Admin")
+            })
+        elif activity.get("type") == "assigned":
+            history.append({
+                "type": "assigned",
+                "description": f"Assigned to {activity.get('assigned_to_name', activity.get('assigned_to', 'unknown'))}",
+                "date": activity.get("date", ""),
+                "by": activity.get("by", "Admin")
+            })
+    
+    # Add notes as history items (in case they're not in activity_history)
+    notes = query.get("notes", [])
+    for note in notes:
+        # Check if not already in history
+        note_exists = any(h.get("type") == "note_added" and h.get("date") == note.get("created_at") for h in history)
+        if not note_exists:
+            history.append({
+                "type": "note_added",
+                "description": f"Note: {note.get('text', '')[:100]}...",
+                "date": note.get("created_at", ""),
+                "by": note.get("by", "Unknown")
+            })
+    
+    # Sort by date descending
+    history.sort(key=lambda x: x.get("date", ""), reverse=True)
+    
+    return {"query_id": query_id, "history": history, "notes": notes}
+
+@api_router.put("/support/queries/{query_id}")
+async def edit_support_query(query_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Edit/update a support query"""
+    query = await db.support_queries.find_one({"id": query_id}, {"_id": 0})
+    if not query:
+        raise HTTPException(status_code=404, detail="Query not found")
+    
+    # Track what changed
+    changes = []
+    update_data = {}
+    
+    editable_fields = ["name", "phone", "email", "query_type", "inquiry_type", "message", "priority", "source"]
+    for field in editable_fields:
+        if field in data and data[field] != query.get(field):
+            changes.append(f"{field}: '{query.get(field, '')}' -> '{data[field]}'")
+            update_data[field] = data[field]
+    
+    if not update_data:
+        return {"message": "No changes detected"}
+    
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    update_data["updated_by"] = user.get("email", "admin")
+    
+    # Add activity history
+    activity = {
+        "type": "edited",
+        "changes": changes,
+        "by": user.get("name", user.get("email", "admin")),
+        "date": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.support_queries.update_one(
+        {"id": query_id},
+        {"$set": update_data, "$push": {"activity_history": activity}}
+    )
+    
+    return {"message": "Query updated successfully", "changes": changes}
+
+@api_router.delete("/support/queries/{query_id}")
+async def delete_support_query(query_id: str, user: dict = Depends(get_current_user)):
+    """Delete a support query"""
+    # Only admin can delete
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Only admins can delete queries")
+    
+    result = await db.support_queries.delete_one({"id": query_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Query not found")
+    
+    return {"message": "Query deleted successfully"}
+
 @api_router.get("/support/school-queries")
 async def get_school_support_queries(user: dict = Depends(get_current_user)):
     queries = await db.school_support_queries.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
