@@ -145,6 +145,29 @@ const RaiseQueryButton = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const audioRef = React.useRef(null);
   const timerRef = React.useRef(null);
+  
+  // Check authentication on dialog open
+  useEffect(() => {
+    if (isOpen) {
+      const token = localStorage.getItem('oll_token');
+      if (token) {
+        // Try to get user info from token or stored data
+        setIsLoggedIn(true);
+        // Try to get user data from localStorage if available
+        const storedUser = localStorage.getItem('oll_user');
+        if (storedUser) {
+          try {
+            setUserData(JSON.parse(storedUser));
+          } catch (e) {
+            // Token exists but no user data - still logged in
+          }
+        }
+      } else {
+        setIsLoggedIn(false);
+        setUserData(null);
+      }
+    }
+  }, [isOpen]);
 
   const currentPath = window.location.pathname;
   const getPageCategory = () => {
