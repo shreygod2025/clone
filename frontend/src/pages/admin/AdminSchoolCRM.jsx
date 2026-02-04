@@ -2732,27 +2732,30 @@ const AdminSchoolCRM = () => {
 
               {/* Selected Offerings */}
               {inquiry.selected_offerings?.length > 0 && (
-                <div className="flex flex-wrap gap-1 mb-3">
-                  <span className="text-xs text-slate-500 mr-1">Offerings:</span>
-                  {inquiry.selected_offerings.map((offeringId, idx) => {
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {inquiry.selected_offerings.slice(0, 2).map((offeringId, idx) => {
                     const offering = offerings.find(o => o.id === offeringId);
                     return (
-                      <span key={idx} className="px-2 py-0.5 bg-purple-100 rounded text-xs text-purple-700">
+                      <span key={idx} className="px-1.5 py-0.5 bg-purple-100 rounded text-[10px] text-purple-700">
                         {offering ? offering.title : offeringId}
                       </span>
                     );
                   })}
+                  {inquiry.selected_offerings.length > 2 && (
+                    <span className="px-1.5 py-0.5 bg-purple-100 rounded text-[10px] text-purple-700">
+                      +{inquiry.selected_offerings.length - 2}
+                    </span>
+                  )}
                 </div>
               )}
               
               {/* Support Needed (from SchoolFunnel) */}
               {inquiry.support_needed?.length > 0 && (
-                <div className="flex flex-wrap gap-1 mb-3">
-                  <span className="text-xs text-slate-500 mr-1">Support Needed:</span>
-                  {inquiry.support_needed.map((supportId, idx) => {
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {inquiry.support_needed.slice(0, 2).map((supportId, idx) => {
                     const offering = offerings.find(o => o.id === supportId);
                     return (
-                      <span key={idx} className="px-2 py-0.5 bg-green-100 rounded text-xs text-green-700">
+                      <span key={idx} className="px-1.5 py-0.5 bg-green-100 rounded text-[10px] text-green-700">
                         {offering ? offering.title : supportId}
                       </span>
                     );
@@ -2761,9 +2764,9 @@ const AdminSchoolCRM = () => {
               )}
 
               {inquiry.programs_interested?.length > 0 && (
-                <div className="flex flex-wrap gap-1 mb-3">
-                  {inquiry.programs_interested.map((p, idx) => (
-                    <span key={idx} className="px-2 py-0.5 bg-[#1E3A5F]/10 rounded text-xs text-[#1E3A5F] capitalize">
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {inquiry.programs_interested.slice(0, 3).map((p, idx) => (
+                    <span key={idx} className="px-1.5 py-0.5 bg-[#1E3A5F]/10 rounded text-[10px] text-[#1E3A5F] capitalize">
                       {p}
                     </span>
                   ))}
