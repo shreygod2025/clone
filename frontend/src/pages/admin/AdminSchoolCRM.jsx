@@ -1061,6 +1061,38 @@ const AdminSchoolCRM = () => {
     }
   };
 
+  // Delete lead handler
+  const handleDeleteLead = async (inquiry) => {
+    if (!window.confirm(`Are you sure you want to delete the lead for "${inquiry.school_name}"? This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      await axios.delete(`${API}/schools/inquiry/${inquiry.id}`, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Lead deleted successfully');
+      fetchInquiries();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to delete lead');
+    }
+  };
+
+  // Delete contact handler
+  const handleDeleteContact = async (inquiryId, contactIndex, contactName) => {
+    if (!window.confirm(`Are you sure you want to delete the contact "${contactName}"?`)) {
+      return;
+    }
+    try {
+      await axios.delete(`${API}/schools/inquiry/${inquiryId}/contacts/${contactIndex}`, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Contact deleted successfully');
+      fetchInquiries();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to delete contact');
+    }
+  };
+
   // Raise Ticket on behalf of school
   const handleRaiseTicket = async () => {
     if (!showRaiseTicketModal || !ticketData.subject || !ticketData.query_type) {
