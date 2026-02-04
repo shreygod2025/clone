@@ -124,7 +124,7 @@ const AdminEducators = () => {
 
   // Auto-load onboarding details when viewing an onboarding educator
   useEffect(() => {
-    if (viewEducator && viewEducator.status === 'onboarding') {
+    if (viewEducator && viewEducator.status === 'onboarded') {
       fetchOnboardingDetails(viewEducator.id);
     } else {
       setSelectedOnboarding(null);
@@ -448,7 +448,7 @@ const AdminEducators = () => {
   };
 
   const handleOnboard = async (educator) => {
-    await handleStatusChange(educator, 'onboarding', {
+    await handleStatusChange(educator, 'onboarded', {
       onboarding_date: new Date().toISOString().split('T')[0]
     });
     // Create onboarding record
@@ -702,7 +702,7 @@ const AdminEducators = () => {
           </div>
         );
       
-      case 'onboarding':
+      case 'onboarded':
         return (
           <div className="flex gap-1 flex-wrap">
             <button
@@ -767,7 +767,7 @@ const AdminEducators = () => {
               <option key={u.id} value={u.id}>{u.name}</option>
             ))}
           </select>
-          {activeTab === 'onboarding' && (
+          {activeTab === 'onboarded' && (
             <Button 
               onClick={() => setShowDirectOnboardModal(true)}
               className="bg-[#D63031] hover:bg-[#c0392b] flex-1 sm:flex-none"
@@ -822,7 +822,7 @@ const AdminEducators = () => {
             key={tab.value}
             onClick={() => {
               setActiveTab(tab.value);
-              if (tab.value === 'onboarding') {
+              if (tab.value === 'onboarded') {
                 fetchOnboardingProgress();
               }
             }}
@@ -883,7 +883,7 @@ const AdminEducators = () => {
       )}
 
       {/* Onboarding Progress View - Show when onboarding tab is active */}
-      {activeTab === 'onboarding' && onboardingData.length > 0 && (
+      {activeTab === 'onboarded' && onboardingData.length > 0 && (
         <div className="mb-6 bg-gradient-to-r from-orange-50 to-amber-50 rounded-2xl p-6 border border-orange-100">
           <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-orange-500" />
@@ -1440,7 +1440,7 @@ const AdminEducators = () => {
                   </div>
 
                   {/* Document Verification Section - Only for onboarding educators */}
-                  {viewEducator.status === 'onboarding' && (
+                  {viewEducator.status === 'onboarded' && (
                     <div className="border-t pt-4">
                       <h4 className="font-semibold text-[#1E3A5F] mb-3 flex items-center gap-2">
                         <FileText className="w-4 h-4" />
