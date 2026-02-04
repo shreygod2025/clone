@@ -1312,6 +1312,218 @@ const AdminSupportUnified = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Notes Modal */}
+      <Dialog open={!!showNotesModal} onOpenChange={() => { setShowNotesModal(null); setNoteText(''); }}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <StickyNote className="w-5 h-5 text-amber-600" />
+              Notes - {showNotesModal?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Add Note */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Add Note</label>
+              <Textarea
+                value={noteText}
+                onChange={(e) => setNoteText(e.target.value)}
+                placeholder="Type your note here..."
+                rows={3}
+              />
+              <Button onClick={handleAddNote} className="w-full bg-amber-600 hover:bg-amber-700">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Note
+              </Button>
+            </div>
+            
+            {/* Existing Notes */}
+            <div className="border-t pt-4">
+              <p className="text-sm font-medium text-slate-700 mb-3">Previous Notes ({queryNotes.length})</p>
+              {loadingHistory ? (
+                <div className="text-center py-4">
+                  <RefreshCw className="w-5 h-5 animate-spin mx-auto text-slate-400" />
+                </div>
+              ) : queryNotes.length === 0 ? (
+                <p className="text-sm text-slate-500 text-center py-4">No notes yet</p>
+              ) : (
+                <div className="space-y-3 max-h-[300px] overflow-y-auto">
+                  {queryNotes.map((note, idx) => (
+                    <div key={idx} className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                      <p className="text-sm text-slate-700">{note.text}</p>
+                      <p className="text-xs text-slate-500 mt-2">
+                        By {note.by} • {note.created_at ? format(new Date(note.created_at), 'MMM d, yyyy h:mm a') : ''}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Activity History Modal */}
+      <Dialog open={!!showHistoryModal} onOpenChange={() => setShowHistoryModal(null)}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="w-5 h-5 text-purple-600" />
+              Activity History - {showHistoryModal?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {loadingHistory ? (
+              <div className="text-center py-8">
+                <RefreshCw className="w-6 h-6 animate-spin mx-auto text-slate-400" />
+                <p className="text-sm text-slate-500 mt-2">Loading history...</p>
+              </div>
+            ) : queryHistory.length === 0 ? (
+              <p className="text-sm text-slate-500 text-center py-8">No activity history</p>
+            ) : (
+              <div className="space-y-3">
+                {queryHistory.map((item, idx) => (
+                  <div 
+                    key={idx} 
+                    className={`p-3 rounded-lg text-sm border-l-4 ${
+                      item.type === 'created' ? 'bg-blue-50 border-blue-400' :
+                      item.type === 'status_change' ? 'bg-amber-50 border-amber-400' :
+                      item.type === 'note_added' ? 'bg-green-50 border-green-400' :
+                      item.type === 'assigned' ? 'bg-indigo-50 border-indigo-400' :
+                      item.type === 'edited' ? 'bg-orange-50 border-orange-400' :
+                      'bg-slate-50 border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-start gap-2">
+                      <span className="mt-0.5">
+                        {item.type === 'created' && <Plus className="w-4 h-4 text-blue-500" />}
+                        {item.type === 'status_change' && <RefreshCw className="w-4 h-4 text-amber-500" />}
+                        {item.type === 'note_added' && <StickyNote className="w-4 h-4 text-green-500" />}
+                        {item.type === 'assigned' && <UserPlus className="w-4 h-4 text-indigo-500" />}
+                        {item.type === 'edited' && <Edit className="w-4 h-4 text-orange-500" />}
+                      </span>
+                      <div className="flex-1">
+                        <p className="text-slate-700">{item.description}</p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          By {item.by} • {item.date ? format(new Date(item.date), 'MMM d, yyyy h:mm a') : ''}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Query Modal */}
+      <Dialog open={!!showEditModal} onOpenChange={() => { setShowEditModal(null); setEditForm({}); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="w-5 h-5 text-blue-600" />
+              Edit Query
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium text-slate-700">Name</label>
+                <Input
+                  value={editForm.name || ''}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Phone</label>
+                <Input
+                  value={editForm.phone || ''}
+                  onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-700">Email</label>
+              <Input
+                type="email"
+                value={editForm.email || ''}
+                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium text-slate-700">Query Type</label>
+                <select
+                  value={editForm.query_type || ''}
+                  onChange={(e) => setEditForm({ ...editForm, query_type: e.target.value })}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                >
+                  {QUERY_TYPES.map(t => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">User Type</label>
+                <select
+                  value={editForm.inquiry_type || ''}
+                  onChange={(e) => setEditForm({ ...editForm, inquiry_type: e.target.value })}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                >
+                  {INQUIRY_TYPES.map(t => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium text-slate-700">Priority</label>
+                <select
+                  value={editForm.priority || 'normal'}
+                  onChange={(e) => setEditForm({ ...editForm, priority: e.target.value })}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                >
+                  <option value="low">Low</option>
+                  <option value="normal">Normal</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Source</label>
+                <select
+                  value={editForm.source || ''}
+                  onChange={(e) => setEditForm({ ...editForm, source: e.target.value })}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                >
+                  {SOURCE_OPTIONS.map(s => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-700">Message/Details</label>
+              <Textarea
+                value={editForm.message || ''}
+                onChange={(e) => setEditForm({ ...editForm, message: e.target.value })}
+                rows={3}
+              />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => { setShowEditModal(null); setEditForm({}); }} className="flex-1">
+                Cancel
+              </Button>
+              <Button onClick={handleEditQuery} className="flex-1 bg-blue-600 hover:bg-blue-700">
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
