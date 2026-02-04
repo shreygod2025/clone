@@ -267,7 +267,7 @@ const AdminReports = () => {
 
   useEffect(() => {
     fetchAllData();
-  }, [dateFilterType, customDateRange, selectedMonth, selectedYear]);
+  }, [dateFilterType, customDateRange, selectedMonth, selectedYear, selectedTeamMember]);
 
   const handleSaveExpense = async () => {
     if (!expenseForm.title || !expenseForm.amount || !expenseForm.category || !expenseForm.date) {
