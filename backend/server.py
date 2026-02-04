@@ -627,6 +627,7 @@ class TeamUserCreate(BaseModel):
 class TeamUserUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
+    password: Optional[str] = None  # Plain text password - will be hashed before storing
     is_active: Optional[bool] = None
     role_id: Optional[str] = None
     city: Optional[str] = None
