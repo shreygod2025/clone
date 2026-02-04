@@ -8937,6 +8937,288 @@ async def get_team_member_report(
         "period": {"start": start.isoformat(), "end": end.isoformat()}
     }
 
+@api_router.get("/admin/reports/b2c-insights")
+async def get_b2c_insights(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    period: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    """Get B2C (Student) insights - courses, age groups, cities, modes, preferred times"""
+    start, end = get_date_range(start_date, end_date, period)
+    
+    all_students = await db.student_inquiries.find({}, {"_id": 0}).to_list(10000)
+    students = []
+    for s in all_students:
+        created = parse_date_field(s.get('created_at'))
+        if created and start <= created <= end:
+            students.append(s)
+    
+    # Course/Skill breakdown
+    courses = {}
+    for s in students:
+        course = s.get('course') or s.get('skill') or s.get('interest') or 'Unknown'
+        courses[course] = courses.get(course, 0) + 1
+    
+    # Age group breakdown
+    age_groups = {'Under 6': 0, '6-10': 0, '11-15': 0, '16-18': 0, 'Adult': 0, 'Unknown': 0}
+    for s in students:
+        age = s.get('age') or s.get('student_age')
+        if age:
+            try:
+                age = int(age)
+                if age < 6: age_groups['Under 6'] += 1
+                elif age <= 10: age_groups['6-10'] += 1
+                elif age <= 15: age_groups['11-15'] += 1
+                elif age <= 18: age_groups['16-18'] += 1
+                else: age_groups['Adult'] += 1
+            except: age_groups['Unknown'] += 1
+        else:
+            age_groups['Unknown'] += 1
+    
+    # Learning goal breakdown
+    goals = {}
+    for s in students:
+        goal = s.get('learning_goal') or s.get('goal') or 'Not specified'
+        goals[goal] = goals.get(goal, 0) + 1
+    
+    # City breakdown
+    cities = {}
+    for s in students:
+        city = s.get('city') or 'Unknown'
+        cities[city] = cities.get(city, 0) + 1
+    
+    # Mode breakdown (online/offline)
+    modes = {'online': 0, 'offline': 0, 'hybrid': 0, 'unknown': 0}
+    for s in students:
+        mode = (s.get('preferred_mode') or s.get('mode') or 'unknown').lower()
+        if mode in modes:
+            modes[mode] += 1
+        else:
+            modes['unknown'] += 1
+    
+    # Preferred days (from demo bookings)
+    all_demos = await db.demo_bookings.find({}, {"_id": 0}).to_list(10000)
+    day_counts = {'Monday': 0, 'Tuesday': 0, 'Wednesday': 0, 'Thursday': 0, 'Friday': 0, 'Saturday': 0, 'Sunday': 0}
+    time_slots = {'Morning (9-12)': 0, 'Afternoon (12-4)': 0, 'Evening (4-8)': 0, 'Night (8+)': 0}
+    
+    for demo in all_demos:
+        demo_date = demo.get('scheduled_date') or demo.get('date')
+        demo_time = demo.get('scheduled_time') or demo.get('time')
+        if demo_date:
+            try:
+                d = parse_date_field(demo_date)
+                if d:
+                    day_name = d.strftime('%A')
+                    if day_name in day_counts:
+                        day_counts[day_name] += 1
+            except: pass
+        if demo_time:
+            try:
+                hour = int(demo_time.split(':')[0])
+                if 9 <= hour < 12: time_slots['Morning (9-12)'] += 1
+                elif 12 <= hour < 16: time_slots['Afternoon (12-4)'] += 1
+                elif 16 <= hour < 20: time_slots['Evening (4-8)'] += 1
+                else: time_slots['Night (8+)'] += 1
+            except: pass
+    
+    # Calculate revenue
+    student_revenue = sum(float(s.get('payment_amount', 0) or 0) for s in students if s.get('status') == 'converted')
+    
+    return {
+        "total_students": len(students),
+        "revenue": student_revenue,
+        "courses": [{"name": k, "count": v} for k, v in sorted(courses.items(), key=lambda x: -x[1])[:10]],
+        "age_groups": [{"name": k, "count": v} for k, v in age_groups.items()],
+        "learning_goals": [{"name": k, "count": v} for k, v in sorted(goals.items(), key=lambda x: -x[1])[:8]],
+        "cities": [{"name": k, "count": v} for k, v in sorted(cities.items(), key=lambda x: -x[1])[:10]],
+        "modes": [{"name": k, "count": v} for k, v in modes.items()],
+        "preferred_days": [{"name": k, "count": v} for k, v in day_counts.items()],
+        "demo_times": [{"name": k, "count": v} for k, v in time_slots.items()],
+        "period": {"start": start.isoformat(), "end": end.isoformat()}
+    }
+
+@api_router.get("/admin/reports/b2b-insights")
+async def get_b2b_insights(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    period: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    """Get B2B (School) insights - offerings, cities, boards, active schools"""
+    start, end = get_date_range(start_date, end_date, period)
+    
+    all_schools = await db.school_inquiries.find({}, {"_id": 0}).to_list(10000)
+    schools = []
+    for s in all_schools:
+        created = parse_date_field(s.get('created_at'))
+        if created and start <= created <= end:
+            schools.append(s)
+    
+    # Status breakdown including active, renewal_meeting, renewed, lost
+    status_counts = {}
+    for s in all_schools:  # Use all schools for status breakdown
+        status = s.get('status', 'unknown')
+        status_counts[status] = status_counts.get(status, 0) + 1
+    
+    active_count = status_counts.get('active', 0)
+    renewal_meeting_count = status_counts.get('renewal_meeting', 0)
+    renewed_count = status_counts.get('renewed', 0)
+    lost_count = status_counts.get('lost', 0)
+    converted_count = status_counts.get('converted', 0)
+    
+    # Offering breakdown
+    offerings = {}
+    for s in schools:
+        selected = s.get('selected_offerings') or []
+        if isinstance(selected, list):
+            for off in selected:
+                offerings[off] = offerings.get(off, 0) + 1
+        offering = s.get('onboarding_data', {}).get('offering')
+        if offering:
+            offerings[offering] = offerings.get(offering, 0) + 1
+    
+    # City breakdown
+    cities = {}
+    for s in schools:
+        city = s.get('city') or 'Unknown'
+        cities[city] = cities.get(city, 0) + 1
+    
+    # Board breakdown
+    boards = {}
+    for s in schools:
+        board = s.get('board') or 'Unknown'
+        boards[board] = boards.get(board, 0) + 1
+    
+    # School type breakdown
+    types = {}
+    for s in schools:
+        school_type = s.get('school_type') or s.get('type') or 'Unknown'
+        types[school_type] = types.get(school_type, 0) + 1
+    
+    # Calculate revenue
+    school_revenue = sum(float(s.get('conversion_amount', 0) or s.get('quoted_price', 0) or 0) for s in all_schools if s.get('status') in ['converted', 'active', 'renewed'])
+    
+    # Calculate renewal ratio: Renewed / (Active + Renewed + Lost)
+    renewal_base = active_count + renewed_count + lost_count
+    renewal_ratio = round((renewed_count / renewal_base * 100) if renewal_base > 0 else 0, 1)
+    
+    return {
+        "total_schools": len(schools),
+        "revenue": school_revenue,
+        "active_schools": active_count,
+        "renewal_meeting": renewal_meeting_count,
+        "renewed": renewed_count,
+        "lost": lost_count,
+        "converted": converted_count,
+        "renewal_ratio": renewal_ratio,
+        "status_breakdown": [{"name": k, "count": v} for k, v in sorted(status_counts.items(), key=lambda x: -x[1])],
+        "offerings": [{"name": k, "count": v} for k, v in sorted(offerings.items(), key=lambda x: -x[1])[:10]],
+        "cities": [{"name": k, "count": v} for k, v in sorted(cities.items(), key=lambda x: -x[1])[:10]],
+        "boards": [{"name": k, "count": v} for k, v in sorted(boards.items(), key=lambda x: -x[1])],
+        "school_types": [{"name": k, "count": v} for k, v in sorted(types.items(), key=lambda x: -x[1])],
+        "period": {"start": start.isoformat(), "end": end.isoformat()}
+    }
+
+@api_router.get("/admin/reports/support-insights")
+async def get_support_insights(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    period: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    """Get Support insights - resolution time, query types, team member performance"""
+    start, end = get_date_range(start_date, end_date, period)
+    
+    all_queries = await db.support_queries.find({}, {"_id": 0}).to_list(10000)
+    queries = []
+    for q in all_queries:
+        created = parse_date_field(q.get('created_at'))
+        if created and start <= created <= end:
+            queries.append(q)
+    
+    # Query type breakdown
+    query_types = {}
+    for q in queries:
+        qtype = q.get('query_type') or q.get('type') or q.get('category') or 'General'
+        query_types[qtype] = query_types.get(qtype, 0) + 1
+    
+    # Status breakdown
+    status_counts = {'open': 0, 'in_progress': 0, 'resolved': 0, 'closed': 0}
+    for q in queries:
+        status = q.get('status', 'open').lower()
+        if status in status_counts:
+            status_counts[status] += 1
+        else:
+            status_counts['open'] += 1
+    
+    # Calculate resolution times
+    resolution_times = []
+    for q in queries:
+        if q.get('status') in ['resolved', 'closed'] and q.get('resolved_at'):
+            created = parse_date_field(q.get('created_at'))
+            resolved = parse_date_field(q.get('resolved_at'))
+            if created and resolved:
+                delta = (resolved - created).total_seconds() / 3600  # Hours
+                resolution_times.append(delta)
+    
+    avg_resolution_time = round(sum(resolution_times) / len(resolution_times), 1) if resolution_times else 0
+    
+    # Team member performance
+    team_performance = {}
+    team_users = await db.team_users.find({}, {"_id": 0}).to_list(1000)
+    user_names = {u['id']: u.get('name', 'Unknown') for u in team_users}
+    
+    for q in queries:
+        assigned = q.get('assigned_to')
+        if assigned:
+            if assigned not in team_performance:
+                team_performance[assigned] = {'name': user_names.get(assigned, 'Unknown'), 'total': 0, 'resolved': 0}
+            team_performance[assigned]['total'] += 1
+            if q.get('status') in ['resolved', 'closed']:
+                team_performance[assigned]['resolved'] += 1
+    
+    # Calculate resolution rates for each team member
+    team_stats = []
+    for uid, data in team_performance.items():
+        resolution_rate = round((data['resolved'] / data['total'] * 100) if data['total'] > 0 else 0, 1)
+        team_stats.append({
+            'user_id': uid,
+            'name': data['name'],
+            'total': data['total'],
+            'resolved': data['resolved'],
+            'resolution_rate': resolution_rate
+        })
+    team_stats.sort(key=lambda x: -x['resolved'])
+    
+    # Priority breakdown
+    priority_counts = {'high': 0, 'medium': 0, 'low': 0}
+    for q in queries:
+        priority = (q.get('priority') or 'medium').lower()
+        if priority in priority_counts:
+            priority_counts[priority] += 1
+        else:
+            priority_counts['medium'] += 1
+    
+    # Source breakdown
+    source_counts = {}
+    for q in queries:
+        source = q.get('source') or q.get('user_type') or 'Unknown'
+        source_counts[source] = source_counts.get(source, 0) + 1
+    
+    return {
+        "total_queries": len(queries),
+        "resolved": status_counts['resolved'] + status_counts['closed'],
+        "pending": status_counts['open'] + status_counts['in_progress'],
+        "avg_resolution_time_hours": avg_resolution_time,
+        "query_types": [{"name": k, "count": v} for k, v in sorted(query_types.items(), key=lambda x: -x[1])],
+        "status_breakdown": [{"name": k, "count": v} for k, v in status_counts.items()],
+        "priority_breakdown": [{"name": k, "count": v} for k, v in priority_counts.items()],
+        "source_breakdown": [{"name": k, "count": v} for k, v in sorted(source_counts.items(), key=lambda x: -x[1])],
+        "team_performance": team_stats[:10],
+        "period": {"start": start.isoformat(), "end": end.isoformat()}
+    }
+
 # Include router and middleware
 app.include_router(api_router)
 
