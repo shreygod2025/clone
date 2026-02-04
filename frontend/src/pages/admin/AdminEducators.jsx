@@ -2520,18 +2520,41 @@ const AdminEducators = () => {
                   </span>
                 ))}
               </div>
+              
+              {/* Skill Dropdown */}
+              <div className="flex gap-2 mb-2">
+                <select
+                  value=""
+                  onChange={(e) => {
+                    if (e.target.value && !editEducatorForm.skills.includes(e.target.value)) {
+                      setEditEducatorForm({
+                        ...editEducatorForm,
+                        skills: [...editEducatorForm.skills, e.target.value]
+                      });
+                    }
+                  }}
+                  className="flex-1 h-10 px-3 border border-slate-200 rounded-lg"
+                >
+                  <option value="">Select skill to add...</option>
+                  {EDUCATOR_SKILLS.filter(s => !editEducatorForm.skills.includes(s)).map(skill => (
+                    <option key={skill} value={skill}>{skill}</option>
+                  ))}
+                </select>
+              </div>
+              
+              {/* Other Skill Input */}
               <div className="flex gap-2">
                 <Input
                   value={newSkillInput}
                   onChange={(e) => setNewSkillInput(e.target.value)}
-                  placeholder="Add new skill..."
+                  placeholder="Add other skill..."
                   onKeyPress={(e) => e.key === 'Enter' && handleAddSkill()}
                 />
                 <Button type="button" onClick={handleAddSkill} variant="outline" className="border-[#1E3A5F] text-[#1E3A5F]">
                   <Plus className="w-4 h-4" />
                 </Button>
               </div>
-              <p className="text-xs text-slate-500 mt-1">Press Enter or click + to add skill</p>
+              <p className="text-xs text-slate-500 mt-1">Select from dropdown or type custom skill</p>
             </div>
 
             <div>
