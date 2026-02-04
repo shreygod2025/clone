@@ -5509,8 +5509,28 @@ async def get_support_tickets(status: Optional[str] = None, user: dict = Depends
     return tickets
 
 @api_router.patch("/support/tickets/{ticket_id}")
-async def update_support_ticket(ticket_id: str, status: str, user: dict = Depends(get_current_user)):
-    await db.support_tickets.update_one({"id": ticket_id}, {"$set": {"status": status}})
+async def update_support_ticket(ticket_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Update a support ticket"""
+    update_data = {k: v for k, v in data.items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    update_data["updated_by"] = user.get("email", "admin")
+    
+    # Track activity if status changed
+    if "status" in data:
+        activity = {
+            "type": "status_change",
+            "old_status": "",  # Will be filled if we want to track old status
+            "new_status": data["status"],
+            "by": user.get("name", user.get("email", "admin")),
+            "date": datetime.now(timezone.utc).isoformat()
+        }
+        await db.support_tickets.update_one(
+            {"id": ticket_id}, 
+            {"$push": {"activity_history": activity}, "$set": update_data}
+        )
+    else:
+        await db.support_tickets.update_one({"id": ticket_id}, {"$set": update_data})
+    
     return {"message": "Updated successfully"}
 
 # ========================
