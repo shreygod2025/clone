@@ -493,7 +493,7 @@ const AdminOrders = () => {
 
       {/* Payment Update Modal */}
       <Dialog open={!!showPaymentModal} onOpenChange={() => setShowPaymentModal(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <DollarSign className="w-5 h-5 text-green-600" />
