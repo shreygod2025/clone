@@ -5391,7 +5391,22 @@ async def update_support_query(query_id: str, data: dict, user: dict = Depends(g
     update_data = {k: v for k, v in data.items() if v is not None}
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     update_data["updated_by"] = user.get("email", "admin")
-    await db.support_queries.update_one({"id": query_id}, {"$set": update_data})
+    
+    # Track status change in activity history
+    if "status" in data:
+        activity = {
+            "type": "status_change",
+            "new_status": data["status"],
+            "by": user.get("name", user.get("email", "admin")),
+            "date": datetime.now(timezone.utc).isoformat()
+        }
+        await db.support_queries.update_one(
+            {"id": query_id},
+            {"$set": update_data, "$push": {"activity_history": activity}}
+        )
+    else:
+        await db.support_queries.update_one({"id": query_id}, {"$set": update_data})
+    
     return {"message": "Query updated successfully"}
 
 @api_router.post("/support/queries/{query_id}/assign")
