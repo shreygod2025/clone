@@ -5547,9 +5547,11 @@ async def create_support_query(data: dict, user: dict = Depends(get_current_user
         "query_type": data.get("query_type", "other"),
         "inquiry_type": data.get("inquiry_type", "student"),
         "message": data.get("message", ""),
+        "query_details": data.get("message", ""),  # Also store as query_details for consistency
         "priority": data.get("priority", "normal"),
         "status": "open",
-        "source": "admin_created",
+        "source": data.get("source", "admin_created"),
+        "attachments": data.get("attachments", []),  # [{name, url, type, is_voice_note}]
         "created_by": user.get("email", "admin"),
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat(),
