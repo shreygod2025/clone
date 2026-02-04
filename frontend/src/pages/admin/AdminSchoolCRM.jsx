@@ -2529,7 +2529,7 @@ const AdminSchoolCRM = () => {
                       variant="ghost"
                       size="sm"
                       className="h-6 text-xs text-yellow-700 hover:bg-yellow-100"
-                      onClick={() => setShowOnboardModal(inquiry)}
+                      onClick={() => openConversionModal(inquiry)}
                     >
                       Continue →
                     </Button>
