@@ -494,6 +494,60 @@ const AdminEducators = () => {
     await handleStatusChange(educator, 'archived');
   };
 
+  const openEditEducatorModal = (educator) => {
+    setEditEducatorForm({
+      name: educator.name || '',
+      email: educator.email || '',
+      phone: educator.phone || '',
+      skills: educator.skills || [],
+      city: educator.city || '',
+      experience: educator.experience || '',
+      teaching_mode: educator.teaching_mode || ''
+    });
+    setNewSkillInput('');
+    setShowEditEducatorModal(educator);
+  };
+
+  const handleAddSkill = () => {
+    if (!newSkillInput.trim()) return;
+    if (editEducatorForm.skills.includes(newSkillInput.trim())) {
+      toast.error('Skill already added');
+      return;
+    }
+    setEditEducatorForm({
+      ...editEducatorForm,
+      skills: [...editEducatorForm.skills, newSkillInput.trim()]
+    });
+    setNewSkillInput('');
+  };
+
+  const handleRemoveSkill = (skillToRemove) => {
+    setEditEducatorForm({
+      ...editEducatorForm,
+      skills: editEducatorForm.skills.filter(s => s !== skillToRemove)
+    });
+  };
+
+  const handleSaveEducator = async () => {
+    if (!showEditEducatorModal) return;
+    try {
+      await axios.patch(`${API}/educators/application/${showEditEducatorModal.id}`, {
+        name: editEducatorForm.name,
+        email: editEducatorForm.email,
+        phone: editEducatorForm.phone,
+        skills: editEducatorForm.skills,
+        city: editEducatorForm.city,
+        experience: editEducatorForm.experience,
+        teaching_mode: editEducatorForm.teaching_mode
+      }, { headers: getAuthHeaders() });
+      toast.success('Educator updated successfully');
+      setShowEditEducatorModal(null);
+      fetchEducators();
+    } catch (error) {
+      toast.error('Failed to update educator');
+    }
+  };
+
   const handleSendEmail = async (educator, emailType) => {
     try {
       await axios.post(`${API}/educators/${educator.id}/send-email/${emailType}`, {}, {
