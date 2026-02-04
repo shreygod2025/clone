@@ -26,6 +26,7 @@ const REPORT_TABS = [
   { id: 'hr_team', label: 'HR - Team', icon: Briefcase },
   { id: 'educator_hr', label: 'Educator HR', icon: GraduationCap },
   { id: 'growth_partners', label: 'Growth Partners', icon: Handshake },
+  { id: 'support', label: 'Support', icon: MessageSquare },
   { id: 'pnl', label: 'P&L Report', icon: Wallet },
 ];
 
