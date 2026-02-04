@@ -21,6 +21,9 @@ const STATUS_CONFIG = {
   interview_scheduled: { label: 'Interview Scheduled', color: 'bg-purple-100 text-purple-700' },
   interviewed: { label: 'Interviewed', color: 'bg-indigo-100 text-indigo-700' },
   hired: { label: 'Hired', color: 'bg-green-100 text-green-700' },
+  onboarding: { label: 'Onboarding', color: 'bg-orange-100 text-orange-700' },
+  active: { label: 'Active', color: 'bg-emerald-100 text-emerald-700' },
+  discontinued: { label: 'Discontinued', color: 'bg-red-100 text-red-700' },
   rejected: { label: 'Rejected', color: 'bg-red-100 text-red-700' },
   archived: { label: 'Archived', color: 'bg-slate-100 text-slate-700' },
 };
