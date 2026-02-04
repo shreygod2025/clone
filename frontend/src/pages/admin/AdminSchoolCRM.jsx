@@ -2650,20 +2650,21 @@ const AdminSchoolCRM = () => {
           {filteredInquiries.map((inquiry) => (
             <div 
               key={inquiry.id} 
-              className={`bg-white rounded-2xl border ${inquiry.is_viewer ? 'border-amber-200 bg-amber-50/30' : 'border-slate-100'} p-5 hover:shadow-md transition-shadow`}
+              className={`bg-white rounded-xl border ${inquiry.is_viewer ? 'border-slate-200 ring-1 ring-slate-100' : 'border-slate-100'} p-4 hover:shadow-md transition-shadow`}
               data-testid={`school-card-${inquiry.id}`}
             >
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <h3 className="font-semibold text-[#1E3A5F]">{inquiry.school_name}</h3>
-                  <p className="text-sm text-slate-500">{inquiry.contact_name}</p>
+              <div className="flex items-start justify-between mb-2">
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-semibold text-[#1E3A5F] truncate">{inquiry.school_name}</h3>
+                  <p className="text-sm text-slate-500 truncate">{inquiry.contact_name}</p>
                   {inquiry.assigned_to && (
-                    <p className="text-xs text-indigo-600 mt-1 flex items-center gap-1">
-                      <UserPlus className="w-3 h-3" /> Assigned: {inquiry.assigned_to_name || getAssignedUserName(inquiry.assigned_to) || 'Team Member'}
+                    <p className="text-xs text-indigo-600 mt-0.5 flex items-center gap-1 truncate">
+                      <UserPlus className="w-3 h-3 flex-shrink-0" /> 
+                      <span className="truncate">{inquiry.assigned_to_name || getAssignedUserName(inquiry.assigned_to) || 'Team'}</span>
                     </p>
                   )}
                   {inquiry.is_viewer && (
-                    <span className="inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">
+                    <span className="inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">
                       Viewer Only
                     </span>
                   )}
