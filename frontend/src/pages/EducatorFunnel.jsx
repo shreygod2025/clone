@@ -1238,7 +1238,7 @@ const EducatorFunnel = () => {
                   className="btn-primary flex-1"
                   data-testid="submit-req-application"
                 >
-                  {submitting ? 'Submitting...' : 'Submit Application'}
+                  Continue
                 </Button>
               </div>
             </form>
