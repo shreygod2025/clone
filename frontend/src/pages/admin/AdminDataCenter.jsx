@@ -91,6 +91,49 @@ const AdminDataCenter = () => {
   const [results, setResults] = useState({ students: [], schools: [], educators: [], team: [], growth_partners: [], total: 0 });
   const [stats, setStats] = useState(null);
   const [viewItem, setViewItem] = useState(null);
+  
+  // Edit and Delete states
+  const [editItem, setEditItem] = useState(null);
+  const [editForm, setEditForm] = useState({});
+
+  // Delete handler
+  const handleDelete = async (item, type) => {
+    if (!window.confirm(`Are you sure you want to delete this ${type.slice(0, -1)}? This action cannot be undone.`)) {
+      return;
+    }
+    try {
+      await axios.delete(`${API}/data-center/${type}/${item.id}`, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Record deleted successfully');
+      fetchData();
+      fetchStats();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to delete record');
+    }
+  };
+
+  // Edit handler
+  const handleEdit = async () => {
+    if (!editItem) return;
+    try {
+      await axios.put(`${API}/data-center/${editItem._type}/${editItem.id}`, editForm, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Record updated successfully');
+      setEditItem(null);
+      setEditForm({});
+      fetchData();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to update record');
+    }
+  };
+
+  // Open edit modal
+  const openEditModal = (item, type) => {
+    setEditItem({ ...item, _type: type });
+    setEditForm({ ...item });
+  };
 
   const fetchData = async () => {
     setLoading(true);
