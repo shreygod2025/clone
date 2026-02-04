@@ -223,7 +223,8 @@ const InquiryPage = () => {
     assign_option: 'self', // 'self' or 'auto'
     
     // Query fields
-    query_type: '',
+    query_type: 'course_info',
+    related_to: 'course_content',
     query_details: '',
     priority: 'normal', // low, normal, high, urgent
     
