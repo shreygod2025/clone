@@ -451,7 +451,7 @@ const AdminTeamApplications = () => {
     const statusActions = {
       new: ['contacted', 'interview_scheduled', 'archived'],
       contacted: ['interview_scheduled', 'archived'],
-      interview_scheduled: ['interviewed', 'archived'],
+      interview_scheduled: ['interviewed', 'hired', 'rejected'],
       interviewed: ['hired', 'rejected'],
       hired: [],
       rejected: ['new'],
