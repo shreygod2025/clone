@@ -8251,6 +8251,7 @@ class InquiryQuery(BaseModel):
     email: str
     query_type: str  # demo_related, payment, course_info, technical, partnership, feedback, other
     query_details: str = ""
+    priority: str = "normal"  # low, normal, high, urgent
     source: str = "team_inquiry_form"
     status: str = "open"  # open, in_progress, resolved, closed
     attachments: List[dict] = []  # [{name, url, type, is_voice_note}]
