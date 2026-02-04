@@ -4803,6 +4803,36 @@ const AdminSchoolCRM = () => {
                 data-testid="new-school-notes"
               />
             </div>
+            
+            {/* Assignment Option */}
+            <div className="bg-blue-50 rounded-lg p-4">
+              <label className="block text-sm font-medium text-slate-700 mb-3">Lead Assignment</label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="assign_option"
+                    value="self"
+                    checked={newLead.assign_option === 'self'}
+                    onChange={(e) => setNewLead({...newLead, assign_option: e.target.value})}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  <span className="text-sm text-slate-700">Assign to me</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="assign_option"
+                    value="admin"
+                    checked={newLead.assign_option === 'admin'}
+                    onChange={(e) => setNewLead({...newLead, assign_option: e.target.value})}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  <span className="text-sm text-slate-700">Let admin assign</span>
+                </label>
+              </div>
+            </div>
+            
             <div className="flex gap-3 pt-4 border-t">
               <Button variant="outline" onClick={() => setShowAddForm(false)} className="flex-1">
                 Cancel
