@@ -5327,26 +5327,6 @@ async def create_support_ticket(data: SupportTicketCreate):
     await db.support_tickets.insert_one(doc)
     return ticket
 
-@api_router.get("/support/queries")
-async def get_support_queries(user: dict = Depends(get_current_user)):
-    """Get all support queries for admin"""
-    queries = await db.support_queries.find({}, {"_id": 0}).sort("created_at", -1).to_list(200)
-    return queries
-
-@api_router.patch("/support/queries/{query_id}")
-async def update_support_query(query_id: str, data: dict, user: dict = Depends(get_current_user)):
-    """Update support query status"""
-    await db.support_queries.update_one(
-        {"id": query_id},
-        {"$set": {
-            "status": data.get("status", "in_progress"),
-            "admin_notes": data.get("admin_notes", ""),
-            "resolved_by": user.get("name", "Admin"),
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }}
-    )
-    return {"message": "Query updated"}
-
 # School Support Query (for ongoing class issues)
 class SchoolSupportQuery(BaseModel):
     model_config = ConfigDict(extra="ignore")
