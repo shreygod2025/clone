@@ -172,6 +172,10 @@ const AdminReports = () => {
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [selectedYear, setSelectedYear] = useState(String(new Date().getFullYear()));
   
+  // Team member filter
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [selectedTeamMember, setSelectedTeamMember] = useState('');
+  
   // Data states
   const [reportData, setReportData] = useState({});
   
