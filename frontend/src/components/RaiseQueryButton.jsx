@@ -183,13 +183,26 @@ const RaiseQueryButton = () => {
   const totalSteps = isLoggedIn ? 3 : 4;
 
   const handleOpen = () => {
+    // Check auth immediately
+    const token = localStorage.getItem('oll_token');
+    const loggedIn = !!token;
+    setIsLoggedIn(loggedIn);
+    
+    // Try to get user data
+    const storedUser = localStorage.getItem('oll_user');
+    let user = null;
+    if (storedUser) {
+      try { user = JSON.parse(storedUser); } catch (e) {}
+    }
+    setUserData(user);
+    
     setFormData({
       query_type: '',
       related_to: '',
       message: '',
-      name: userData?.name || userData?.full_name || '',
-      phone: userData?.phone || '',
-      email: userData?.email || '',
+      name: user?.name || user?.full_name || '',
+      phone: user?.phone || '',
+      email: user?.email || '',
     });
     setAttachments([]);
     setAudioBlob(null);
