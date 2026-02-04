@@ -940,12 +940,13 @@ const AdminSchoolCRM = () => {
 
   // Raise Ticket on behalf of school
   const handleRaiseTicket = async () => {
-    if (!showRaiseTicketModal || !ticketData.subject) {
-      toast.error('Please enter a subject');
+    if (!showRaiseTicketModal || !ticketData.subject || !ticketData.query_type) {
+      toast.error('Please select query type and enter subject');
       return;
     }
     try {
       await axios.post(`${API}/schools/${showRaiseTicketModal.id}/raise-ticket`, {
+        query_type: ticketData.query_type,
         subject: ticketData.subject,
         description: ticketData.description,
         priority: ticketData.priority,
@@ -955,7 +956,7 @@ const AdminSchoolCRM = () => {
       }, { headers: getAuthHeaders() });
       toast.success('Ticket raised successfully');
       setShowRaiseTicketModal(null);
-      setTicketData({ subject: '', description: '', priority: 'medium', contact_name: '', contact_phone: '', contact_email: '' });
+      setTicketData({ query_type: '', subject: '', description: '', priority: 'medium', contact_name: '', contact_phone: '', contact_email: '' });
     } catch (error) {
       toast.error('Failed to raise ticket');
     }
