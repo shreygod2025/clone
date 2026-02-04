@@ -142,6 +142,11 @@ const AdminSchoolCRM = () => {
   const [editData, setEditData] = useState({ school_name: '', contact_name: '', phone: '', email: '', meeting_date: '', meeting_time: '', notes: '' });
   const [viewComment, setViewComment] = useState('');
   
+  // School History states
+  const [schoolHistory, setSchoolHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [showHistoryTab, setShowHistoryTab] = useState(false);
+  
   // Bulk Import states
   const [bulkImportData, setBulkImportData] = useState([]);
   const [bulkImportFile, setBulkImportFile] = useState(null);
