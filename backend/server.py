@@ -790,6 +790,53 @@ class TeamApplicationUpdate(BaseModel):
     resume_url: Optional[str] = None
     availability: Optional[str] = None
 
+# Team Onboarding Model (for hired team members)
+class TeamOnboarding(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    team_application_id: str  # Reference to the team application
+    name: str
+    email: str = ""
+    phone: str
+    role: str = ""  # Applied role
+    target_role_id: str = ""  # Role to assign when activated
+    city: str = ""
+    tracking_token: str = Field(default_factory=lambda: str(uuid.uuid4())[:8])
+    status: str = "onboarding"  # onboarding, active, discontinued
+    
+    # Onboarding steps
+    steps: dict = Field(default_factory=lambda: {
+        "personal_info": {"completed": False, "completed_at": None},
+        "bank_details": {"completed": False, "completed_at": None},
+        "contract_signing": {"completed": False, "completed_at": None},
+        "training": {"completed": False, "completed_at": None}
+    })
+    
+    # Personal Information
+    personal_info: dict = Field(default_factory=dict)  # full_name, dob, address, emergency_contact, etc.
+    
+    # Bank Details
+    bank_details: dict = Field(default_factory=dict)  # account_number, ifsc, bank_name, etc.
+    
+    # Contract
+    contract_url: str = ""
+    contract_signed_at: Optional[str] = None
+    
+    # Training
+    training_completed_at: Optional[str] = None
+    training_notes: str = ""
+    
+    # Discontinuation
+    discontinued_reason: str = ""
+    discontinued_at: Optional[str] = None
+    exit_formalities: dict = Field(default_factory=dict)
+    
+    # Team user created
+    team_user_id: str = ""
+    
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
 # School Inquiry Models
 class SchoolInquiry(BaseModel):
     model_config = ConfigDict(extra="ignore")
