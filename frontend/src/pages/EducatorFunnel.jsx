@@ -357,8 +357,8 @@ const EducatorFunnel = () => {
           return;
         }
 
-        // Submit application
-        await axios.post(`${API}/educators/apply-verified`, {
+        // Submit application (OTP already verified)
+        await axios.post(`${API}/educators/apply`, {
           name: reqFormData.name,
           email: reqFormData.email,
           phone: fullPhone,
@@ -376,7 +376,7 @@ const EducatorFunnel = () => {
         setSelectedRequirement(null);
         setReqStep('form');
         setReqOtp('');
-        toast.success('Application submitted successfully!');
+        toast.success('Application submitted successfully! We will contact you for a demo.');
       } catch (error) {
         if (error.response?.data?.detail?.includes('OTP')) {
           toast.error('Invalid OTP. Please try again.');
