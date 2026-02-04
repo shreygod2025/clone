@@ -1000,15 +1000,110 @@ const EducatorFunnel = () => {
       </footer>
 
       {/* Requirement-Specific Application Modal */}
-      <Dialog open={showRequirementForm} onOpenChange={setShowRequirementForm}>
+      <Dialog open={showRequirementForm} onOpenChange={(open) => {
+        setShowRequirementForm(open);
+        if (!open) {
+          setReqStep('form');
+          setReqOtp('');
+        }
+      }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-[#1E3A5F]">
-              Apply: {selectedRequirement?.title}
+              {reqStep === 'confirm' ? 'Confirm Application' : reqStep === 'otp' ? 'Verify Phone' : `Apply: ${selectedRequirement?.title}`}
             </DialogTitle>
           </DialogHeader>
           
-          {selectedRequirement && (
+          {selectedRequirement && reqStep === 'confirm' && (
+            <div className="space-y-4">
+              {/* Requirement Confirmation */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
+                <h4 className="font-semibold text-[#1E3A5F] mb-3">Position Details</h4>
+                <div className="space-y-2 text-sm">
+                  <p><strong>Role:</strong> {selectedRequirement.title}</p>
+                  <p><strong>Skill:</strong> {selectedRequirement.skill}</p>
+                  <p><strong>Location:</strong> {selectedRequirement.city}</p>
+                  {selectedRequirement.pay_per_session && (
+                    <p><strong>Pay:</strong> ₹{selectedRequirement.pay_per_session} / {selectedRequirement.pay_type === 'per_session' ? 'session' : 'month'}</p>
+                  )}
+                  {selectedRequirement.timing_from && selectedRequirement.timing_to && (
+                    <p><strong>Timing:</strong> {selectedRequirement.timing_from} - {selectedRequirement.timing_to}</p>
+                  )}
+                  {selectedRequirement.days?.length > 0 && (
+                    <p><strong>Days:</strong> {formatDays(selectedRequirement.days)}</p>
+                  )}
+                </div>
+              </div>
+              
+              {/* Your Application Summary */}
+              <div className="bg-slate-50 rounded-xl p-4">
+                <h4 className="font-semibold text-slate-700 mb-3">Your Application</h4>
+                <div className="space-y-2 text-sm">
+                  <p><strong>Name:</strong> {reqFormData.name}</p>
+                  <p><strong>Email:</strong> {reqFormData.email}</p>
+                  <p><strong>Phone:</strong> {reqFormData.countryCode} {reqFormData.phone}</p>
+                  {reqFormData.experience && <p><strong>Experience:</strong> {reqFormData.experience.substring(0, 100)}...</p>}
+                  {reqFormData.available_days.length > 0 && (
+                    <p><strong>Available:</strong> {reqFormData.available_days.join(', ')}</p>
+                  )}
+                  <p><strong>Demo Ready:</strong> {reqFormData.demo_ready ? 'Yes' : 'No'}</p>
+                </div>
+              </div>
+              
+              <p className="text-sm text-slate-500 text-center">
+                Please verify the details above. Click Continue to verify your phone number via OTP.
+              </p>
+              
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setReqStep('form')} className="flex-1">
+                  Edit Details
+                </Button>
+                <Button onClick={handleRequirementSubmit} disabled={otpSending} className="btn-primary flex-1">
+                  {otpSending ? 'Sending OTP...' : 'Continue & Verify'}
+                </Button>
+              </div>
+            </div>
+          )}
+          
+          {selectedRequirement && reqStep === 'otp' && (
+            <div className="space-y-4">
+              <div className="text-center">
+                <div className="w-16 h-16 rounded-2xl bg-green-100 flex items-center justify-center mx-auto mb-4">
+                  <Shield className="w-8 h-8 text-green-600" />
+                </div>
+                <p className="text-slate-500 mb-4">
+                  OTP sent via <span className="text-green-600 font-medium">WhatsApp</span> to {reqFormData.countryCode} {reqFormData.phone}
+                </p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Enter OTP</label>
+                <Input
+                  type="text"
+                  placeholder="Enter 4-digit OTP"
+                  value={reqOtp}
+                  onChange={(e) => setReqOtp(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  className="text-center text-2xl tracking-widest"
+                  maxLength={4}
+                />
+              </div>
+              
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setReqStep('confirm')} className="flex-1">
+                  Back
+                </Button>
+                <Button 
+                  onClick={handleRequirementSubmit} 
+                  disabled={submitting || reqOtp.length !== 4} 
+                  className="btn-primary flex-1"
+                >
+                  {submitting ? 'Verifying...' : 'Verify & Submit'}
+                </Button>
+              </div>
+            </div>
+          )}
+          
+          {selectedRequirement && reqStep === 'form' && (
             <form onSubmit={handleRequirementSubmit} className="space-y-4">
               {/* Position Details Summary */}
               <div className="bg-slate-50 rounded-xl p-4 space-y-2">
