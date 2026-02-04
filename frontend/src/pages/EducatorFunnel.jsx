@@ -577,8 +577,8 @@ const EducatorFunnel = () => {
               Join OLL as an Educator
             </h1>
             <p className="text-slate-600 max-w-2xl mx-auto text-sm sm:text-base">
-              Share your expertise and be part of India's skill learning revolution. 
-              We're looking for passionate educators to join our growing network.
+              Share your expertise and be part of India&apos;s skill learning revolution. 
+              We&apos;re looking for passionate educators to join our growing network.
             </p>
           </div>
 
