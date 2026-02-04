@@ -118,6 +118,9 @@ function App() {
             {/* Public School Tracking */}
             <Route path="/track/:token" element={<SchoolTrackingPage />} />
             
+            {/* Public Team Onboarding Tracking */}
+            <Route path="/team-track/:token" element={<TeamOnboardingTrack />} />
+            
             {/* User Auth Routes */}
             <Route path="/login" element={<LoginPage />} />
             <Route path="/my-bookings" element={<MyBookingsPage />} />
