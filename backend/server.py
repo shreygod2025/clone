@@ -2810,6 +2810,363 @@ async def discontinue_team_member(
     return {"message": "Team member discontinued"}
 
 # ========================
+# GP ONBOARDING ENDPOINTS
+# ========================
+
+@api_router.post("/gp-onboarding/init/{partner_id}")
+async def init_gp_onboarding(
+    partner_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Initialize onboarding for a converted growth partner"""
+    partner = await db.growth_partners.find_one({"id": partner_id}, {"_id": 0})
+    if not partner:
+        raise HTTPException(status_code=404, detail="Growth Partner not found")
+    
+    # Check if onboarding already exists
+    existing = await db.gp_onboarding.find_one({"growth_partner_id": partner_id}, {"_id": 0})
+    if existing:
+        return existing
+    
+    onboarding = GPOnboarding(
+        growth_partner_id=partner_id,
+        name=partner.get('name', ''),
+        email=partner.get('email', ''),
+        phone=partner.get('phone', ''),
+        city=partner.get('city', ''),
+        interest_type=partner.get('interest_type', ''),
+    )
+    
+    doc = onboarding.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    await db.gp_onboarding.insert_one(doc)
+    
+    # Update GP status to onboarding
+    await db.growth_partners.update_one(
+        {"id": partner_id},
+        {"$set": {"status": "onboarding", "onboarding_id": onboarding.id}}
+    )
+    
+    return {**doc, "_id": None}
+
+@api_router.get("/gp-onboarding/track/{token}")
+async def get_gp_onboarding_public(token: str):
+    """Public endpoint to track GP onboarding progress by token"""
+    onboarding = await db.gp_onboarding.find_one({"tracking_token": token}, {"_id": 0})
+    if not onboarding:
+        raise HTTPException(status_code=404, detail="Invalid tracking link")
+    return {
+        "name": onboarding.get("name"),
+        "email": onboarding.get("email"),
+        "phone": onboarding.get("phone"),
+        "city": onboarding.get("city"),
+        "interest_type": onboarding.get("interest_type"),
+        "status": onboarding.get("status"),
+        "steps": onboarding.get("steps"),
+        "created_at": onboarding.get("created_at"),
+    }
+
+@api_router.get("/gp-onboarding")
+async def get_gp_onboardings(
+    status: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    """Get all GP onboarding records"""
+    query = {}
+    if status:
+        query["status"] = status
+    
+    onboardings = await db.gp_onboarding.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return onboardings
+
+@api_router.get("/gp-onboarding/{onboarding_id}")
+async def get_gp_onboarding(onboarding_id: str, user: dict = Depends(get_current_user)):
+    """Get a specific GP onboarding record"""
+    onboarding = await db.gp_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
+    if not onboarding:
+        raise HTTPException(status_code=404, detail="Onboarding not found")
+    return onboarding
+
+@api_router.post("/gp-onboarding/{onboarding_id}/complete-step")
+async def complete_gp_onboarding_step(
+    onboarding_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Mark a GP onboarding step as complete"""
+    step_name = data.get('step')
+    step_data = data.get('data', {})
+    
+    if step_name not in ["personal_info", "contract_signing", "training"]:
+        raise HTTPException(status_code=400, detail="Invalid step name")
+    
+    update_data = {
+        f"steps.{step_name}.completed": True,
+        f"steps.{step_name}.completed_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Store step-specific data
+    if step_name == "personal_info" and step_data:
+        update_data["personal_info"] = step_data
+        if step_data.get('bank_details'):
+            update_data["bank_details"] = step_data['bank_details']
+    elif step_name == "contract_signing":
+        if step_data.get('contract_url'):
+            update_data["contract_url"] = step_data['contract_url']
+        if step_data.get('commission_structure'):
+            update_data["commission_structure"] = step_data['commission_structure']
+        update_data["contract_signed_at"] = datetime.now(timezone.utc).isoformat()
+    elif step_name == "training":
+        update_data["training_completed_at"] = datetime.now(timezone.utc).isoformat()
+        if step_data.get('notes'):
+            update_data["training_notes"] = step_data['notes']
+    
+    await db.gp_onboarding.update_one({"id": onboarding_id}, {"$set": update_data})
+    onboarding = await db.gp_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
+    return onboarding
+
+@api_router.post("/gp-onboarding/{onboarding_id}/activate")
+async def activate_gp(
+    onboarding_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Activate GP - creates a new team user with Growth Partner role"""
+    onboarding = await db.gp_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
+    if not onboarding:
+        raise HTTPException(status_code=404, detail="Onboarding not found")
+    
+    # Check if all steps are complete
+    steps = onboarding.get('steps', {})
+    incomplete = [s for s, v in steps.items() if not v.get('completed')]
+    if incomplete:
+        raise HTTPException(status_code=400, detail=f"Complete all steps first: {', '.join(incomplete)}")
+    
+    # Find or create Growth Partner role
+    gp_role = await db.roles.find_one({"name": "Growth Partner"}, {"_id": 0})
+    if not gp_role:
+        # Create the role
+        gp_role = {
+            "id": str(uuid.uuid4()),
+            "name": "Growth Partner",
+            "description": "External growth partner with referral capabilities",
+            "permissions": ["students", "schools"],
+            "is_system": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.roles.insert_one(gp_role)
+    
+    role_id = data.get('role_id') or gp_role['id']
+    
+    # Create team user
+    username = onboarding.get('email', '').split('@')[0] or onboarding.get('name', '').lower().replace(' ', '_')
+    existing = await db.team_users.find_one({"username": username})
+    if existing:
+        username = f"gp_{username}_{str(uuid.uuid4())[:4]}"
+    
+    temp_password = str(uuid.uuid4())[:8]
+    
+    team_user = TeamUser(
+        email=onboarding.get('email', f"{username}@oll.co"),
+        name=onboarding.get('name', ''),
+        username=username,
+        password_hash=bcrypt.hashpw(temp_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
+        role_id=role_id,
+        city=onboarding.get('city', ''),
+        permissions=["students", "schools"]  # GP can refer students and schools
+    )
+    
+    doc = team_user.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['is_growth_partner'] = True  # Mark as GP user
+    doc['gp_onboarding_id'] = onboarding_id
+    await db.team_users.insert_one(doc)
+    
+    # Update onboarding status
+    await db.gp_onboarding.update_one(
+        {"id": onboarding_id},
+        {"$set": {
+            "status": "active",
+            "team_user_id": team_user.id,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Update growth partner status
+    await db.growth_partners.update_one(
+        {"id": onboarding.get('growth_partner_id')},
+        {"$set": {"status": "converted", "team_user_id": team_user.id}}
+    )
+    
+    return {
+        "message": "Growth Partner activated",
+        "team_user_id": team_user.id,
+        "username": username,
+        "temp_password": temp_password
+    }
+
+@api_router.post("/gp-onboarding/{onboarding_id}/discontinue")
+async def discontinue_gp(
+    onboarding_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Discontinue a Growth Partner"""
+    reason = data.get('reason', '')
+    
+    if not reason:
+        raise HTTPException(status_code=400, detail="Reason required")
+    
+    # Deactivate the team user if exists
+    onboarding = await db.gp_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
+    if onboarding and onboarding.get('team_user_id'):
+        await db.team_users.update_one(
+            {"id": onboarding['team_user_id']},
+            {"$set": {"is_active": False}}
+        )
+    
+    await db.gp_onboarding.update_one(
+        {"id": onboarding_id},
+        {"$set": {
+            "status": "discontinued",
+            "discontinued_reason": reason,
+            "discontinued_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+    
+    # Update growth partner status
+    if onboarding:
+        await db.growth_partners.update_one(
+            {"id": onboarding.get('growth_partner_id')},
+            {"$set": {"status": "archived"}}
+        )
+    
+    return {"message": "Growth Partner discontinued"}
+
+# ========================
+# EXPENSE ENDPOINTS
+# ========================
+
+EXPENSE_CATEGORIES = [
+    "salary",
+    "marketing",
+    "operations",
+    "technology",
+    "office",
+    "travel",
+    "commission",
+    "utilities",
+    "professional_services",
+    "other"
+]
+
+@api_router.get("/expenses/categories")
+async def get_expense_categories(user: dict = Depends(get_current_user)):
+    """Get list of expense categories"""
+    return {
+        "categories": EXPENSE_CATEGORIES,
+        "subcategories": {
+            "salary": ["full_time", "part_time", "contract", "bonus", "benefits"],
+            "marketing": ["digital_ads", "print", "events", "content", "influencer"],
+            "operations": ["supplies", "equipment", "maintenance", "logistics"],
+            "technology": ["software", "hardware", "hosting", "subscriptions"],
+            "office": ["rent", "furniture", "supplies", "maintenance"],
+            "travel": ["transport", "accommodation", "meals", "conference"],
+            "commission": ["student_referral", "school_referral", "educator_referral"],
+            "utilities": ["electricity", "internet", "phone", "water"],
+            "professional_services": ["legal", "accounting", "consulting", "audit"],
+            "other": []
+        }
+    }
+
+@api_router.post("/expenses")
+async def create_expense(data: ExpenseCreate, user: dict = Depends(get_current_user)):
+    """Create a new expense entry"""
+    expense = Expense(
+        **data.model_dump(),
+        added_by=user.get('id', ''),
+        added_by_name=user.get('name', '')
+    )
+    
+    doc = expense.model_dump()
+    doc['created_at'] = doc['created_at'].isoformat()
+    doc['updated_at'] = doc['updated_at'].isoformat()
+    await db.expenses.insert_one(doc)
+    
+    return {**doc, "_id": None}
+
+@api_router.get("/expenses")
+async def get_expenses(
+    category: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    status: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    """Get all expenses with optional filters"""
+    query = {}
+    if category:
+        query["category"] = category
+    if status:
+        query["status"] = status
+    if start_date and end_date:
+        query["date"] = {"$gte": start_date, "$lte": end_date}
+    elif start_date:
+        query["date"] = {"$gte": start_date}
+    elif end_date:
+        query["date"] = {"$lte": end_date}
+    
+    expenses = await db.expenses.find(query, {"_id": 0}).sort("date", -1).to_list(1000)
+    
+    # Calculate totals
+    total = sum(e.get('amount', 0) for e in expenses)
+    by_category = {}
+    for e in expenses:
+        cat = e.get('category', 'other')
+        by_category[cat] = by_category.get(cat, 0) + e.get('amount', 0)
+    
+    return {
+        "expenses": expenses,
+        "total": total,
+        "by_category": by_category,
+        "count": len(expenses)
+    }
+
+@api_router.get("/expenses/{expense_id}")
+async def get_expense(expense_id: str, user: dict = Depends(get_current_user)):
+    """Get a single expense"""
+    expense = await db.expenses.find_one({"id": expense_id}, {"_id": 0})
+    if not expense:
+        raise HTTPException(status_code=404, detail="Expense not found")
+    return expense
+
+@api_router.patch("/expenses/{expense_id}")
+async def update_expense(
+    expense_id: str,
+    data: ExpenseUpdate,
+    user: dict = Depends(get_current_user)
+):
+    """Update an expense"""
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    await db.expenses.update_one({"id": expense_id}, {"$set": update_data})
+    expense = await db.expenses.find_one({"id": expense_id}, {"_id": 0})
+    return expense
+
+@api_router.delete("/expenses/{expense_id}")
+async def delete_expense(expense_id: str, user: dict = Depends(get_current_user)):
+    """Delete an expense"""
+    result = await db.expenses.delete_one({"id": expense_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Expense not found")
+    return {"message": "Expense deleted"}
+
+# ========================
 # SCHOOL INQUIRY ENDPOINTS
 # ========================
 
