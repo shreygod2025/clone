@@ -1536,8 +1536,8 @@ const AdminSchoolCRM = () => {
         followup_date: format(followupData.date, 'yyyy-MM-dd'),
         followup_time: followupData.followup_type === 'meeting' ? followupData.time : '',
         followup_comment: followupData.comment,
-        followup_auto_email: followupData.auto_email,
-        status: 'followup'
+        followup_auto_email: followupData.auto_email
+        // Note: Status is NOT changed - school stays in current section
       };
       
       // If it's a meeting, also set meeting details
