@@ -1117,6 +1117,154 @@ const AdminGrowthPartners = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* GP Onboarding Step Modal */}
+      <Dialog open={!!showStepModal} onOpenChange={() => setShowStepModal(null)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Complete: {showStepModal?.stepLabel}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {showStepModal?.step === 'personal_info' && (
+              <>
+                <div className="space-y-3">
+                  <h4 className="font-medium text-sm text-slate-700">Personal Details</h4>
+                  <Input placeholder="Full Name" value={stepData.full_name || ''} onChange={(e) => setStepData({...stepData, full_name: e.target.value})} />
+                  <Input type="date" placeholder="Date of Birth" value={stepData.dob || ''} onChange={(e) => setStepData({...stepData, dob: e.target.value})} />
+                  <Textarea placeholder="Address" value={stepData.address || ''} onChange={(e) => setStepData({...stepData, address: e.target.value})} />
+                  <Input placeholder="PAN Number" value={stepData.pan || ''} onChange={(e) => setStepData({...stepData, pan: e.target.value})} />
+                </div>
+                <div className="space-y-3 pt-4 border-t">
+                  <h4 className="font-medium text-sm text-slate-700">Bank Details</h4>
+                  <Input placeholder="Account Holder Name" value={stepData.bank_details?.account_holder || ''} onChange={(e) => setStepData({...stepData, bank_details: {...(stepData.bank_details || {}), account_holder: e.target.value}})} />
+                  <Input placeholder="Account Number" value={stepData.bank_details?.account_number || ''} onChange={(e) => setStepData({...stepData, bank_details: {...(stepData.bank_details || {}), account_number: e.target.value}})} />
+                  <Input placeholder="IFSC Code" value={stepData.bank_details?.ifsc || ''} onChange={(e) => setStepData({...stepData, bank_details: {...(stepData.bank_details || {}), ifsc: e.target.value}})} />
+                </div>
+              </>
+            )}
+            {showStepModal?.step === 'contract_signing' && (
+              <>
+                <Input placeholder="Signed Contract URL" value={stepData.contract_url || ''} onChange={(e) => setStepData({...stepData, contract_url: e.target.value})} />
+                <div className="grid grid-cols-2 gap-3">
+                  <Input placeholder="Student Referral %" type="number" value={stepData.commission_structure?.student_referral || ''} onChange={(e) => setStepData({...stepData, commission_structure: {...(stepData.commission_structure || {}), student_referral: e.target.value}})} />
+                  <Input placeholder="School Referral %" type="number" value={stepData.commission_structure?.school_referral || ''} onChange={(e) => setStepData({...stepData, commission_structure: {...(stepData.commission_structure || {}), school_referral: e.target.value}})} />
+                </div>
+              </>
+            )}
+            {showStepModal?.step === 'training' && (
+              <Textarea placeholder="Training notes" value={stepData.notes || ''} onChange={(e) => setStepData({...stepData, notes: e.target.value})} />
+            )}
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" onClick={() => setShowStepModal(null)} className="flex-1">Cancel</Button>
+              <Button onClick={handleCompleteStep} className="flex-1 bg-green-600 hover:bg-green-700">
+                <CheckCircle2 className="w-4 h-4 mr-2" /> Mark Complete
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* GP Activate Modal */}
+      <Dialog open={!!showActivateModal} onOpenChange={() => setShowActivateModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5 text-green-600" /> Activate Growth Partner
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-green-50 p-4 rounded-lg">
+              <p className="font-medium text-green-800">{showActivateModal?.name}</p>
+              <p className="text-sm text-green-600">{showActivateModal?.interest_type || 'Growth Partner'}</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Assign Role (Optional)</label>
+              <select value={selectedRoleId} onChange={(e) => setSelectedRoleId(e.target.value)} className="w-full h-10 px-3 border border-slate-200 rounded-lg">
+                <option value="">Default: Growth Partner</option>
+                {roles.map(role => <option key={role.id} value={role.id}>{role.name}</option>)}
+              </select>
+            </div>
+            <p className="text-sm text-slate-500">A new user account will be created. Temp password will be copied to clipboard.</p>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => setShowActivateModal(null)} className="flex-1">Cancel</Button>
+              <Button onClick={handleActivateGP} className="flex-1 bg-green-600 hover:bg-green-700">Activate</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* GP Discontinue Modal */}
+      <Dialog open={!!showDiscontinueModal} onOpenChange={() => setShowDiscontinueModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <UserX className="w-5 h-5" /> Discontinue Partner
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-red-50 p-4 rounded-lg">
+              <p className="font-medium text-red-800">{showDiscontinueModal?.name}</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Reason *</label>
+              <select value={discontinueReason} onChange={(e) => setDiscontinueReason(e.target.value)} className="w-full h-10 px-3 border border-slate-200 rounded-lg">
+                <option value="">Select reason</option>
+                <option value="Inactivity">Inactivity</option>
+                <option value="Contract Violation">Contract Violation</option>
+                <option value="Poor Performance">Poor Performance</option>
+                <option value="Partner Request">Partner Request</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => setShowDiscontinueModal(null)} className="flex-1">Cancel</Button>
+              <Button onClick={handleDiscontinueGP} className="flex-1 bg-red-600 hover:bg-red-700">Discontinue</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* GP Reports Modal */}
+      <Dialog open={!!showReportsModal} onOpenChange={() => setShowReportsModal(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-indigo-600" /> Partner Report: {showReportsModal?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-center">
+                <p className="text-3xl font-bold text-blue-600">{showReportsModal?.total_referrals || 0}</p>
+                <p className="text-sm text-slate-600">Total Referrals</p>
+              </div>
+              <div className="bg-green-50 border border-green-100 rounded-xl p-4 text-center">
+                <p className="text-3xl font-bold text-green-600">{showReportsModal?.successful_conversions || 0}</p>
+                <p className="text-sm text-slate-600">Conversions</p>
+              </div>
+              <div className="bg-purple-50 border border-purple-100 rounded-xl p-4 text-center">
+                <p className="text-3xl font-bold text-purple-600">₹{(showReportsModal?.total_earnings || 0).toLocaleString()}</p>
+                <p className="text-sm text-slate-600">Total Earnings</p>
+              </div>
+            </div>
+            {showReportsModal?.commission_structure && (
+              <div className="bg-slate-50 p-4 rounded-lg">
+                <h4 className="font-medium mb-3">Commission Structure</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="bg-white p-3 rounded-lg">
+                    <p className="text-slate-500">Student Referral</p>
+                    <p className="text-xl font-bold text-blue-600">{showReportsModal.commission_structure.student_referral || 0}%</p>
+                  </div>
+                  <div className="bg-white p-3 rounded-lg">
+                    <p className="text-slate-500">School Referral</p>
+                    <p className="text-xl font-bold text-purple-600">{showReportsModal.commission_structure.school_referral || 0}%</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
