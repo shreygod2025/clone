@@ -39,6 +39,19 @@ const STATUS_SECTIONS = [
   { value: 'archived', label: 'Archived', color: 'bg-slate-400' },
 ];
 
+// Ticket query types with FAQ auto-fill
+const TICKET_QUERIES = [
+  { type: 'kit_delivery', label: 'Kit Delivery Issue', faq: 'We have not received the kit delivery yet / items are missing or damaged. Please help resolve this.' },
+  { type: 'payment_query', label: 'Payment Query', faq: 'We have a question regarding payment / invoice / receipt. Please clarify.' },
+  { type: 'teacher_training', label: 'Teacher Training', faq: 'We need assistance with teacher training scheduling / materials / additional sessions.' },
+  { type: 'technical_support', label: 'Technical Support', faq: 'We are facing technical issues with the equipment / software. Please provide support.' },
+  { type: 'curriculum_query', label: 'Curriculum Query', faq: 'We have questions about the curriculum content / lesson plans / assessments.' },
+  { type: 'schedule_change', label: 'Schedule Change', faq: 'We need to change the class schedule / timing. Please help update.' },
+  { type: 'contract_renewal', label: 'Contract/Renewal', faq: 'We have questions regarding contract terms / renewal options / pricing.' },
+  { type: 'feedback_complaint', label: 'Feedback/Complaint', faq: 'We have feedback / concerns about the service that need to be addressed.' },
+  { type: 'other', label: 'Other', faq: '' },
+];
+
 const CITIES = ['Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow'];
 const BOARDS = ['CBSE', 'ICSE', 'IGCSE', 'State Board', 'IB'];
 const TIME_SLOTS = ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'];
