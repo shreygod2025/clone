@@ -1960,7 +1960,7 @@ const AdminSchoolCRM = () => {
         return (
           <div className="flex gap-1 flex-wrap">
             <button
-              onClick={() => setShowOnboardModal(inquiry)}
+              onClick={() => openConversionModal(inquiry)}
               className="text-xs px-3 py-1.5 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 flex items-center gap-1 font-medium"
               data-testid={`convert-${inquiry.id}`}
             >
