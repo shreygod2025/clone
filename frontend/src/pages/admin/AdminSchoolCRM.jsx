@@ -1954,6 +1954,14 @@ const AdminSchoolCRM = () => {
         return (
           <div className="flex gap-1 flex-wrap">
             <button
+              onClick={() => handleEditOnboarding(inquiry)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 flex items-center gap-1 font-medium"
+              data-testid={`edit-${inquiry.id}`}
+            >
+              <Edit className="w-3 h-3" />
+              Edit Details
+            </button>
+            <button
               onClick={() => setShowAssignRMModal(inquiry)}
               className="text-xs px-3 py-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 flex items-center gap-1 font-medium"
               data-testid={`assign-rm-${inquiry.id}`}
