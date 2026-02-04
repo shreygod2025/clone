@@ -822,6 +822,17 @@ const AdminSupportUnified = () => {
                 </div>
               )}
 
+              {/* Latest Note Display */}
+              {query.latest_note && (
+                <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <p className="text-xs font-medium text-amber-700 mb-1 flex items-center gap-1">
+                    <StickyNote className="w-3 h-3" />
+                    Latest Note:
+                  </p>
+                  <p className="text-sm text-amber-800">{query.latest_note}</p>
+                </div>
+              )}
+
               <div className="flex flex-wrap gap-2 items-center justify-between">
                 <div className="flex flex-wrap gap-2">
                   {STATUS_OPTIONS.map(status => (
@@ -837,26 +848,86 @@ const AdminSupportUnified = () => {
                     </Button>
                   ))}
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setShowReplyModal(query)}
-                  className="flex items-center gap-1"
-                  data-testid={`reply-${query.id}`}
-                >
-                  <Send className="w-4 h-4" />
-                  Reply
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setShowAssignModal(query)}
-                  className="flex items-center gap-1 text-indigo-600 border-indigo-200 hover:bg-indigo-50"
-                  data-testid={`assign-${query.id}`}
-                >
-                  <UserPlus className="w-4 h-4" />
-                  Assign
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setShowNotesModal(query);
+                      fetchQueryHistory(query.id);
+                    }}
+                    className="flex items-center gap-1 text-amber-600 border-amber-200 hover:bg-amber-50"
+                    data-testid={`notes-${query.id}`}
+                  >
+                    <StickyNote className="w-4 h-4" />
+                    Notes
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setShowHistoryModal(query);
+                      fetchQueryHistory(query.id);
+                    }}
+                    className="flex items-center gap-1 text-purple-600 border-purple-200 hover:bg-purple-50"
+                    data-testid={`history-${query.id}`}
+                  >
+                    <History className="w-4 h-4" />
+                    History
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowReplyModal(query)}
+                    className="flex items-center gap-1"
+                    data-testid={`reply-${query.id}`}
+                  >
+                    <Send className="w-4 h-4" />
+                    Reply
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowAssignModal(query)}
+                    className="flex items-center gap-1 text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                    data-testid={`assign-${query.id}`}
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    Assign
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setShowEditModal(query);
+                      setEditForm({
+                        name: query.name || '',
+                        phone: query.phone || '',
+                        email: query.email || '',
+                        query_type: query.query_type || '',
+                        inquiry_type: query.inquiry_type || '',
+                        message: query.message || query.query_details || '',
+                        priority: query.priority || 'normal',
+                        source: query.source || ''
+                      });
+                    }}
+                    className="flex items-center gap-1 text-blue-600 border-blue-200 hover:bg-blue-50"
+                    data-testid={`edit-${query.id}`}
+                  >
+                    <Edit className="w-4 h-4" />
+                    Edit
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleDeleteQuery(query)}
+                    className="flex items-center gap-1 text-red-600 border-red-200 hover:bg-red-50"
+                    data-testid={`delete-${query.id}`}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete
+                  </Button>
+                </div>
               </div>
             </div>
           ))}
