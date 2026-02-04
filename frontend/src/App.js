@@ -1,60 +1,73 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "./components/ui/sonner";
 import ScrollToTop from "./components/ScrollToTop";
+import { lazy, Suspense } from "react";
 
-// Public Pages
+// Loading Spinner Component
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#D63031] mx-auto"></div>
+      <p className="mt-3 text-slate-500 text-sm">Loading...</p>
+    </div>
+  </div>
+);
+
+// Public Pages - Eagerly loaded (critical for SEO & first paint)
 import LandingPage from "./pages/LandingPage";
-import StudentFunnel from "./pages/StudentFunnel";
-import EducatorFunnel from "./pages/EducatorFunnel";
-import SchoolFunnel from "./pages/SchoolFunnel";
-import SchoolLandingPage from "./pages/SchoolLandingPage";
-import SchoolOfferingsPage from "./pages/SchoolOfferingsPage";
-import SchoolOfferingDetailPage from "./pages/SchoolOfferingDetailPage";
-import AboutPage from "./pages/AboutPage";
-import BlogsPage from "./pages/BlogsPage";
-import BlogDetailPage from "./pages/BlogDetailPage";
-import ResourcesPage from "./pages/ResourcesPage";
-import FAQPage from "./pages/FAQPage";
-import CentersPage from "./pages/CentersPage";
-import LoginPage from "./pages/LoginPage";
-import MyBookingsPage from "./pages/MyBookingsPage";
-import InquiryPage from "./pages/InquiryPage";
-import GrowthPartnerPage from "./pages/GrowthPartnerPage";
-import EducatorDashboard from "./pages/EducatorDashboard";
-import EducatorOnboarding from "./pages/EducatorOnboarding";
-import JoinTeamPage from "./pages/JoinTeamPage";
-import OfferingsPage from "./pages/OfferingsPage";
-import TermsPage from "./pages/TermsPage";
-import PrivacyPage from "./pages/PrivacyPage";
-import RefundPolicyPage from "./pages/RefundPolicyPage";
 import NotFoundPage from "./pages/NotFoundPage";
-import SchoolTrackingPage from "./pages/SchoolTrackingPage";
-import TeamOnboardingTrack from "./pages/TeamOnboardingTrack";
-import GPOnboardingTrack from "./pages/GPOnboardingTrack";
 
-// Course SEO Pages
-import CoursesListPage from "./pages/courses/CoursesListPage";
-import CoursePage from "./pages/courses/CoursePage";
+// Public Pages - Lazy loaded
+const StudentFunnel = lazy(() => import("./pages/StudentFunnel"));
+const EducatorFunnel = lazy(() => import("./pages/EducatorFunnel"));
+const SchoolFunnel = lazy(() => import("./pages/SchoolFunnel"));
+const SchoolLandingPage = lazy(() => import("./pages/SchoolLandingPage"));
+const SchoolOfferingsPage = lazy(() => import("./pages/SchoolOfferingsPage"));
+const SchoolOfferingDetailPage = lazy(() => import("./pages/SchoolOfferingDetailPage"));
+const AboutPage = lazy(() => import("./pages/AboutPage"));
+const BlogsPage = lazy(() => import("./pages/BlogsPage"));
+const BlogDetailPage = lazy(() => import("./pages/BlogDetailPage"));
+const ResourcesPage = lazy(() => import("./pages/ResourcesPage"));
+const FAQPage = lazy(() => import("./pages/FAQPage"));
+const CentersPage = lazy(() => import("./pages/CentersPage"));
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const MyBookingsPage = lazy(() => import("./pages/MyBookingsPage"));
+const InquiryPage = lazy(() => import("./pages/InquiryPage"));
+const GrowthPartnerPage = lazy(() => import("./pages/GrowthPartnerPage"));
+const EducatorDashboard = lazy(() => import("./pages/EducatorDashboard"));
+const EducatorOnboarding = lazy(() => import("./pages/EducatorOnboarding"));
+const JoinTeamPage = lazy(() => import("./pages/JoinTeamPage"));
+const OfferingsPage = lazy(() => import("./pages/OfferingsPage"));
+const TermsPage = lazy(() => import("./pages/TermsPage"));
+const PrivacyPage = lazy(() => import("./pages/PrivacyPage"));
+const RefundPolicyPage = lazy(() => import("./pages/RefundPolicyPage"));
+const SchoolTrackingPage = lazy(() => import("./pages/SchoolTrackingPage"));
+const TeamOnboardingTrack = lazy(() => import("./pages/TeamOnboardingTrack"));
+const GPOnboardingTrack = lazy(() => import("./pages/GPOnboardingTrack"));
 
-// Admin Pages
-import AdminLogin from "./pages/admin/AdminLogin";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminStudentCRM from "./pages/admin/AdminStudentCRM";
-import AdminSchoolCRM from "./pages/admin/AdminSchoolCRM";
-import AdminOrders from "./pages/admin/AdminOrders";
-import AdminEducators from "./pages/admin/AdminEducators";
-import AdminGrowthPartners from "./pages/admin/AdminGrowthPartners";
-import AdminGPOnboarding from "./pages/admin/AdminGPOnboarding";
-import AdminTeamApplications from "./pages/admin/AdminTeamApplications";
-import AdminTeamOnboarding from "./pages/admin/AdminTeamOnboarding";
-import AdminUsers from "./pages/admin/AdminUsers";
-import AdminRequirements from "./pages/admin/AdminRequirements";
-import AdminSupportUnified from "./pages/admin/AdminSupportUnified";
-import AdminSettings from "./pages/admin/AdminSettings";
-import AdminReports from "./pages/admin/AdminReports";
-import AdminDataCenter from "./pages/admin/AdminDataCenter";
-import AdminBlogs from "./pages/admin/AdminBlogs";
-import CenterDashboard from "./pages/admin/CenterDashboard";
+// Course SEO Pages - Lazy loaded
+const CoursesListPage = lazy(() => import("./pages/courses/CoursesListPage"));
+const CoursePage = lazy(() => import("./pages/courses/CoursePage"));
+
+// Admin Pages - All Lazy loaded (heavy components)
+const AdminLogin = lazy(() => import("./pages/admin/AdminLogin"));
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminStudentCRM = lazy(() => import("./pages/admin/AdminStudentCRM"));
+const AdminSchoolCRM = lazy(() => import("./pages/admin/AdminSchoolCRM"));
+const AdminOrders = lazy(() => import("./pages/admin/AdminOrders"));
+const AdminEducators = lazy(() => import("./pages/admin/AdminEducators"));
+const AdminGrowthPartners = lazy(() => import("./pages/admin/AdminGrowthPartners"));
+const AdminGPOnboarding = lazy(() => import("./pages/admin/AdminGPOnboarding"));
+const AdminTeamApplications = lazy(() => import("./pages/admin/AdminTeamApplications"));
+const AdminTeamOnboarding = lazy(() => import("./pages/admin/AdminTeamOnboarding"));
+const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
+const AdminRequirements = lazy(() => import("./pages/admin/AdminRequirements"));
+const AdminSupportUnified = lazy(() => import("./pages/admin/AdminSupportUnified"));
+const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
+const AdminReports = lazy(() => import("./pages/admin/AdminReports"));
+const AdminDataCenter = lazy(() => import("./pages/admin/AdminDataCenter"));
+const AdminBlogs = lazy(() => import("./pages/admin/AdminBlogs"));
+const CenterDashboard = lazy(() => import("./pages/admin/CenterDashboard"));
 
 // Auth Context
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -64,11 +77,7 @@ const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
   
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D63031]"></div>
-      </div>
-    );
+    return <PageLoader />;
   }
   
   if (!isAuthenticated) {
@@ -84,84 +93,86 @@ function App() {
       <UserAuthProvider>
         <BrowserRouter>
           <ScrollToTop />
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/student" element={<StudentFunnel />} />
-            <Route path="/educator" element={<EducatorFunnel />} />
-            <Route path="/for-schools" element={<SchoolLandingPage />} />
-            <Route path="/school" element={<SchoolFunnel />} />
-            <Route path="/school-offerings" element={<SchoolOfferingsPage />} />
-            <Route path="/school-offerings/:categoryId/:offeringId" element={<SchoolOfferingDetailPage />} />
-            <Route path="/offerings" element={<OfferingsPage />} />
-            <Route path="/about" element={<AboutPage />} />
-            <Route path="/join-team" element={<JoinTeamPage />} />
-            <Route path="/blogs" element={<BlogsPage />} />
-            <Route path="/blogs/:slug" element={<BlogDetailPage />} />
-            <Route path="/resources" element={<ResourcesPage />} />
-            <Route path="/resources/:slug" element={<ResourcesPage />} />
-            <Route path="/faq" element={<FAQPage />} />
-            <Route path="/faqs" element={<FAQPage />} />
-            <Route path="/centers" element={<CentersPage />} />
-            
-            {/* URL Redirects for old/external links */}
-            <Route path="/team" element={<Navigate to="/join-team" replace />} />
-            <Route path="/blog" element={<Navigate to="/blogs" replace />} />
-            <Route path="/help" element={<Navigate to="/faq" replace />} />
-            <Route path="/mycoursedetail/:id" element={<Navigate to="/login" replace />} />
-            <Route path="/all-courses" element={<Navigate to="/offerings" replace />} />
-            <Route path="/about-us" element={<Navigate to="/about" replace />} />
-            
-            {/* Legal Pages */}
-            <Route path="/terms" element={<TermsPage />} />
-            <Route path="/privacy" element={<PrivacyPage />} />
-            <Route path="/refund-policy" element={<RefundPolicyPage />} />
-            
-            {/* Public School Tracking */}
-            <Route path="/track/:token" element={<SchoolTrackingPage />} />
-            
-            {/* Public Team Onboarding Tracking */}
-            <Route path="/team-track/:token" element={<TeamOnboardingTrack />} />
-            
-            {/* Public GP Onboarding Tracking */}
-            <Route path="/gp-track/:token" element={<GPOnboardingTrack />} />
-            
-            {/* User Auth Routes */}
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/my-bookings" element={<MyBookingsPage />} />
-            <Route path="/educator-dashboard" element={<EducatorDashboard />} />
-            <Route path="/educator-onboarding" element={<EducatorOnboarding />} />
-            <Route path="/add" element={<InquiryPage />} />
-            <Route path="/add/:username" element={<InquiryPage />} />
-            <Route path="/growth-partner" element={<GrowthPartnerPage />} />
-            
-            {/* SEO Course Pages */}
-            <Route path="/courses" element={<CoursesListPage />} />
-            <Route path="/courses/:courseSlug" element={<CoursePage />} />
-            
-            {/* Admin Routes */}
-            <Route path="/admin/login" element={<AdminLogin />} />
-            <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-            <Route path="/admin/students" element={<ProtectedRoute><AdminStudentCRM /></ProtectedRoute>} />
-            <Route path="/admin/schools" element={<ProtectedRoute><AdminSchoolCRM /></ProtectedRoute>} />
-            <Route path="/admin/orders" element={<ProtectedRoute><AdminOrders /></ProtectedRoute>} />
-            <Route path="/admin/educators" element={<ProtectedRoute><AdminEducators /></ProtectedRoute>} />
-            <Route path="/admin/growth-partners" element={<ProtectedRoute><AdminGrowthPartners /></ProtectedRoute>} />
-            <Route path="/admin/gp-onboarding" element={<ProtectedRoute><AdminGPOnboarding /></ProtectedRoute>} />
-            <Route path="/admin/team-applications" element={<ProtectedRoute><AdminTeamApplications /></ProtectedRoute>} />
-            <Route path="/admin/team-onboarding" element={<ProtectedRoute><AdminTeamOnboarding /></ProtectedRoute>} />
-            <Route path="/admin/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
-            <Route path="/admin/support" element={<ProtectedRoute><AdminSupportUnified /></ProtectedRoute>} />
-            <Route path="/admin/requirements" element={<ProtectedRoute><AdminRequirements /></ProtectedRoute>} />
-            <Route path="/admin/reports" element={<ProtectedRoute><AdminReports /></ProtectedRoute>} />
-            <Route path="/admin/data-center" element={<ProtectedRoute><AdminDataCenter /></ProtectedRoute>} />
-            <Route path="/admin/blogs" element={<ProtectedRoute><AdminBlogs /></ProtectedRoute>} />
-            <Route path="/admin/settings" element={<ProtectedRoute><AdminSettings /></ProtectedRoute>} />
-            <Route path="/center" element={<ProtectedRoute><CenterDashboard /></ProtectedRoute>} />
-            
-            {/* 404 Not Found - Must be last */}
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/student" element={<StudentFunnel />} />
+              <Route path="/educator" element={<EducatorFunnel />} />
+              <Route path="/for-schools" element={<SchoolLandingPage />} />
+              <Route path="/school" element={<SchoolFunnel />} />
+              <Route path="/school-offerings" element={<SchoolOfferingsPage />} />
+              <Route path="/school-offerings/:categoryId/:offeringId" element={<SchoolOfferingDetailPage />} />
+              <Route path="/offerings" element={<OfferingsPage />} />
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/join-team" element={<JoinTeamPage />} />
+              <Route path="/blogs" element={<BlogsPage />} />
+              <Route path="/blogs/:slug" element={<BlogDetailPage />} />
+              <Route path="/resources" element={<ResourcesPage />} />
+              <Route path="/resources/:slug" element={<ResourcesPage />} />
+              <Route path="/faq" element={<FAQPage />} />
+              <Route path="/faqs" element={<FAQPage />} />
+              <Route path="/centers" element={<CentersPage />} />
+              
+              {/* URL Redirects for old/external links */}
+              <Route path="/team" element={<Navigate to="/join-team" replace />} />
+              <Route path="/blog" element={<Navigate to="/blogs" replace />} />
+              <Route path="/help" element={<Navigate to="/faq" replace />} />
+              <Route path="/mycoursedetail/:id" element={<Navigate to="/login" replace />} />
+              <Route path="/all-courses" element={<Navigate to="/offerings" replace />} />
+              <Route path="/about-us" element={<Navigate to="/about" replace />} />
+              
+              {/* Legal Pages */}
+              <Route path="/terms" element={<TermsPage />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
+              <Route path="/refund-policy" element={<RefundPolicyPage />} />
+              
+              {/* Public School Tracking */}
+              <Route path="/track/:token" element={<SchoolTrackingPage />} />
+              
+              {/* Public Team Onboarding Tracking */}
+              <Route path="/team-track/:token" element={<TeamOnboardingTrack />} />
+              
+              {/* Public GP Onboarding Tracking */}
+              <Route path="/gp-track/:token" element={<GPOnboardingTrack />} />
+              
+              {/* User Auth Routes */}
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/my-bookings" element={<MyBookingsPage />} />
+              <Route path="/educator-dashboard" element={<EducatorDashboard />} />
+              <Route path="/educator-onboarding" element={<EducatorOnboarding />} />
+              <Route path="/add" element={<InquiryPage />} />
+              <Route path="/add/:username" element={<InquiryPage />} />
+              <Route path="/growth-partner" element={<GrowthPartnerPage />} />
+              
+              {/* SEO Course Pages */}
+              <Route path="/courses" element={<CoursesListPage />} />
+              <Route path="/courses/:courseSlug" element={<CoursePage />} />
+              
+              {/* Admin Routes */}
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+              <Route path="/admin/students" element={<ProtectedRoute><AdminStudentCRM /></ProtectedRoute>} />
+              <Route path="/admin/schools" element={<ProtectedRoute><AdminSchoolCRM /></ProtectedRoute>} />
+              <Route path="/admin/orders" element={<ProtectedRoute><AdminOrders /></ProtectedRoute>} />
+              <Route path="/admin/educators" element={<ProtectedRoute><AdminEducators /></ProtectedRoute>} />
+              <Route path="/admin/growth-partners" element={<ProtectedRoute><AdminGrowthPartners /></ProtectedRoute>} />
+              <Route path="/admin/gp-onboarding" element={<ProtectedRoute><AdminGPOnboarding /></ProtectedRoute>} />
+              <Route path="/admin/team-applications" element={<ProtectedRoute><AdminTeamApplications /></ProtectedRoute>} />
+              <Route path="/admin/team-onboarding" element={<ProtectedRoute><AdminTeamOnboarding /></ProtectedRoute>} />
+              <Route path="/admin/users" element={<ProtectedRoute><AdminUsers /></ProtectedRoute>} />
+              <Route path="/admin/support" element={<ProtectedRoute><AdminSupportUnified /></ProtectedRoute>} />
+              <Route path="/admin/requirements" element={<ProtectedRoute><AdminRequirements /></ProtectedRoute>} />
+              <Route path="/admin/reports" element={<ProtectedRoute><AdminReports /></ProtectedRoute>} />
+              <Route path="/admin/data-center" element={<ProtectedRoute><AdminDataCenter /></ProtectedRoute>} />
+              <Route path="/admin/blogs" element={<ProtectedRoute><AdminBlogs /></ProtectedRoute>} />
+              <Route path="/admin/settings" element={<ProtectedRoute><AdminSettings /></ProtectedRoute>} />
+              <Route path="/center" element={<ProtectedRoute><CenterDashboard /></ProtectedRoute>} />
+              
+              {/* 404 Not Found - Must be last */}
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </Suspense>
           <Toaster position="top-right" richColors />
         </BrowserRouter>
       </UserAuthProvider>
