@@ -276,6 +276,29 @@ const AdminSchoolCRM = () => {
     setAllContacts(contacts);
   }, [inquiries]);
 
+  // Fetch school history when viewing a school
+  useEffect(() => {
+    const fetchSchoolHistory = async () => {
+      if (!viewInquiry?.id) {
+        setSchoolHistory([]);
+        return;
+      }
+      setLoadingHistory(true);
+      try {
+        const response = await axios.get(`${API}/schools/${viewInquiry.id}/history`, {
+          headers: getAuthHeaders()
+        });
+        setSchoolHistory(response.data?.history || []);
+      } catch (error) {
+        console.error('Failed to fetch school history:', error);
+        setSchoolHistory([]);
+      } finally {
+        setLoadingHistory(false);
+      }
+    };
+    fetchSchoolHistory();
+  }, [viewInquiry?.id]);
+
   // Get this week's data for dashboard
   const getThisWeekData = () => {
     const today = new Date();
