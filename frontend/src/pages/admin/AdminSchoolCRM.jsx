@@ -4854,6 +4854,41 @@ const AdminSchoolCRM = () => {
           </DialogHeader>
           
           <div className="space-y-4">
+            {/* Reference Data from Previous Stages */}
+            {(showOnboardModal?.quoted_price || showOnboardModal?.notes || showOnboardModal?.selected_offerings?.length > 0) && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <h4 className="text-sm font-medium text-blue-800 mb-2">Reference from Previous Stages</h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                  {showOnboardModal?.quoted_price && (
+                    <div>
+                      <p className="text-blue-600 text-xs">Quoted Price</p>
+                      <p className="font-medium">₹{Number(showOnboardModal.quoted_price).toLocaleString()}</p>
+                    </div>
+                  )}
+                  {showOnboardModal?.selected_offerings?.length > 0 && (
+                    <div>
+                      <p className="text-blue-600 text-xs">Selected Offerings</p>
+                      <p className="font-medium">{showOnboardModal.selected_offerings.join(', ')}</p>
+                    </div>
+                  )}
+                  {showOnboardModal?.meeting_date && (
+                    <div>
+                      <p className="text-blue-600 text-xs">Last Meeting</p>
+                      <p className="font-medium">{format(new Date(showOnboardModal.meeting_date), 'dd MMM yyyy')}</p>
+                    </div>
+                  )}
+                </div>
+                {showOnboardModal?.notes && (
+                  <details className="mt-2">
+                    <summary className="text-xs text-blue-600 cursor-pointer hover:underline">View Meeting Notes</summary>
+                    <p className="text-xs text-slate-600 mt-1 whitespace-pre-wrap max-h-32 overflow-y-auto bg-white p-2 rounded border">
+                      {showOnboardModal.notes}
+                    </p>
+                  </details>
+                )}
+              </div>
+            )}
+
             {/* Offering Selection */}
             <div className="grid grid-cols-2 gap-3">
               <div>
