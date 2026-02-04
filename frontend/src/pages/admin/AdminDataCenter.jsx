@@ -539,14 +539,33 @@ const AdminDataCenter = () => {
                     <div className="col-span-1 text-xs text-slate-500">
                       {item.created_at ? format(new Date(item.created_at), 'MMM d') : '-'}
                     </div>
-                    <div className="col-span-1">
+                    <div className="col-span-1 flex gap-1">
                       <Button 
                         variant="ghost" 
                         size="sm" 
                         onClick={() => setViewItem(item)}
                         className="p-2"
+                        title="View"
                       >
                         <Eye className="w-4 h-4 text-slate-500" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => openEditModal(item, dataType === 'all' ? (item._type || 'students') : dataType)}
+                        className="p-2"
+                        title="Edit"
+                      >
+                        <Edit className="w-4 h-4 text-blue-500" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleDelete(item, dataType === 'all' ? (item._type || 'students') : dataType)}
+                        className="p-2"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-500" />
                       </Button>
                     </div>
                   </div>
