@@ -338,12 +338,114 @@ const AdminTeamApplications = () => {
   });
 
   const sections = [
-    { value: 'new', label: 'New', count: applications.filter(a => a.status === 'new').length },
-    { value: 'contacted', label: 'Contacted', count: applications.filter(a => a.status === 'contacted').length },
-    { value: 'interview_scheduled', label: 'Interview', count: applications.filter(a => a.status === 'interview_scheduled' || a.status === 'interviewed').length },
-    { value: 'hired', label: 'Hired', count: applications.filter(a => a.status === 'hired').length },
-    { value: 'archived', label: 'Archived', count: applications.filter(a => a.status === 'archived' || a.status === 'rejected').length },
+    { value: 'new', label: 'New', count: applications.filter(a => a.status === 'new').length, color: 'bg-blue-500' },
+    { value: 'contacted', label: 'Contacted', count: applications.filter(a => a.status === 'contacted').length, color: 'bg-yellow-500' },
+    { value: 'interview_scheduled', label: 'Interview', count: applications.filter(a => a.status === 'interview_scheduled' || a.status === 'interviewed').length, color: 'bg-purple-500' },
+    { value: 'hired', label: 'Hired', count: applications.filter(a => a.status === 'hired').length, color: 'bg-green-500' },
+    { value: 'onboarding', label: 'Onboarding', count: teamOnboardings.filter(o => o.status === 'onboarding').length, color: 'bg-orange-500' },
+    { value: 'active', label: 'Active', count: teamOnboardings.filter(o => o.status === 'active').length, color: 'bg-emerald-500' },
+    { value: 'discontinued', label: 'Discontinued', count: teamOnboardings.filter(o => o.status === 'discontinued').length, color: 'bg-red-500' },
+    { value: 'archived', label: 'Archived', count: applications.filter(a => a.status === 'archived' || a.status === 'rejected').length, color: 'bg-slate-400' },
   ];
+
+  // Helper functions for onboarding
+  const getCompletedSteps = (steps) => {
+    if (!steps) return 0;
+    return Object.values(steps).filter(s => s.completed).length;
+  };
+
+  const copyTrackingLink = (token) => {
+    navigator.clipboard.writeText(`${window.location.origin}/team-track/${token}`);
+    toast.success('Tracking link copied!');
+  };
+
+  const filteredOnboardings = teamOnboardings.filter(o => {
+    const matchesSearch = !searchQuery ||
+      o.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      o.phone?.includes(searchQuery) ||
+      o.email?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    if (activeSection === 'onboarding') return matchesSearch && o.status === 'onboarding';
+    if (activeSection === 'active') return matchesSearch && o.status === 'active';
+    if (activeSection === 'discontinued') return matchesSearch && o.status === 'discontinued';
+    return false;
+  });
+
+  const handleCompleteStep = async () => {
+    if (!showStepModal) return;
+    try {
+      await axios.post(`${API}/team-onboarding/${showStepModal.onboardingId}/complete-step`, {
+        step: showStepModal.step,
+        data: stepData
+      }, { headers: getAuthHeaders() });
+      toast.success(`${showStepModal.stepLabel} completed!`);
+      setShowStepModal(null);
+      setStepData({});
+      fetchTeamOnboardings();
+    } catch (error) {
+      toast.error('Failed to complete step');
+    }
+  };
+
+  const handleActivate = async () => {
+    if (!showActivateModal || !selectedRoleId) {
+      toast.error('Please select a role');
+      return;
+    }
+    try {
+      const res = await axios.post(`${API}/team-onboarding/${showActivateModal.id}/activate`, {
+        role_id: selectedRoleId
+      }, { headers: getAuthHeaders() });
+      toast.success(`Team member activated! Username: ${res.data.username}`);
+      navigator.clipboard.writeText(res.data.temp_password);
+      toast.info('Temporary password copied to clipboard');
+      setShowActivateModal(null);
+      setSelectedRoleId('');
+      fetchTeamOnboardings();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to activate');
+    }
+  };
+
+  const handleDiscontinue = async () => {
+    if (!showDiscontinueModal || !discontinueReason) {
+      toast.error('Please provide a reason');
+      return;
+    }
+    try {
+      await axios.post(`${API}/team-onboarding/${showDiscontinueModal.id}/discontinue`, {
+        reason: discontinueReason,
+        exit_formalities: exitFormalities
+      }, { headers: getAuthHeaders() });
+      toast.success('Team member discontinued');
+      setShowDiscontinueModal(null);
+      setDiscontinueReason('');
+      setExitFormalities({ assets_returned: false, access_revoked: false, final_settlement: false, exit_interview: false, notes: '' });
+      fetchTeamOnboardings();
+    } catch (error) {
+      toast.error('Failed to discontinue');
+    }
+  };
+
+  const fetchTeamMemberReport = async (member) => {
+    if (!member?.team_user_id) {
+      toast.error('No team user associated with this member');
+      return;
+    }
+    setShowReportsModal(member);
+    setReportLoading(true);
+    try {
+      const res = await axios.get(`${API}/admin/reports/team-member/${member.team_user_id}`, {
+        headers: getAuthHeaders()
+      });
+      setReportData(res.data);
+    } catch (error) {
+      console.error('Failed to fetch report:', error);
+      toast.error('Failed to load report');
+    } finally {
+      setReportLoading(false);
+    }
+  };
 
   const renderActionButtons = (application) => {
     const statusActions = {
