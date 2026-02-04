@@ -5435,19 +5435,33 @@ async def assign_support_query(query_id: str, data: dict, user: dict = Depends(g
     if not assignee:
         assignee = await db.admins.find_one({"id": assigned_to}, {"_id": 0})
     
-    # Update the query with assignment
+    assignee_name = assignee.get("name", "Team Member") if assignee else "Unknown"
+    
+    # Update the query with assignment and activity history
     update_data = {
         "assigned_to": assigned_to,
+        "assigned_to_name": assignee_name,
         "assigned_at": datetime.now(timezone.utc).isoformat(),
         "assigned_by": user.get("email", "admin"),
         "deadline": deadline,
         "status": "in_progress" if query.get("status") == "open" else query.get("status")
     }
-    await db.support_queries.update_one({"id": query_id}, {"$set": update_data})
+    
+    activity = {
+        "type": "assigned",
+        "assigned_to": assigned_to,
+        "assigned_to_name": assignee_name,
+        "by": user.get("name", user.get("email", "admin")),
+        "date": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.support_queries.update_one(
+        {"id": query_id}, 
+        {"$set": update_data, "$push": {"activity_history": activity}}
+    )
     
     # Send notifications to the assignee
     if assignee:
-        assignee_name = assignee.get("name", "Team Member")
         assignee_phone = assignee.get("phone", "")
         assignee_email = assignee.get("email", "")
         
