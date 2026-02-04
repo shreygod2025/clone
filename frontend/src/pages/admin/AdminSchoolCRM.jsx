@@ -63,6 +63,80 @@ const TICKET_QUERIES = [
   { type: 'other', label: 'Other', faq: '' },
 ];
 
+// Related To sub-categories for school tickets
+const TICKET_RELATED_TO_OPTIONS = {
+  kit_delivery: [
+    { value: 'not_received', label: 'Kit Not Received' },
+    { value: 'items_missing', label: 'Items Missing' },
+    { value: 'items_damaged', label: 'Items Damaged' },
+    { value: 'wrong_items', label: 'Wrong Items Delivered' },
+    { value: 'delivery_delay', label: 'Delivery Delay' },
+    { value: 'other', label: 'Other' },
+  ],
+  payment_query: [
+    { value: 'invoice_request', label: 'Invoice Request' },
+    { value: 'receipt_request', label: 'Receipt Request' },
+    { value: 'payment_pending', label: 'Payment Pending' },
+    { value: 'payment_failed', label: 'Payment Failed' },
+    { value: 'refund_request', label: 'Refund Request' },
+    { value: 'emi_query', label: 'EMI / Installment Query' },
+    { value: 'other', label: 'Other' },
+  ],
+  teacher_training: [
+    { value: 'training_schedule', label: 'Training Schedule' },
+    { value: 'training_materials', label: 'Training Materials' },
+    { value: 'additional_session', label: 'Additional Session Needed' },
+    { value: 'trainer_feedback', label: 'Trainer Feedback' },
+    { value: 'certification', label: 'Certification Query' },
+    { value: 'other', label: 'Other' },
+  ],
+  technical_support: [
+    { value: 'equipment_issue', label: 'Equipment Not Working' },
+    { value: 'software_bug', label: 'Software Bug / Error' },
+    { value: 'login_issue', label: 'Login / Access Issue' },
+    { value: 'connectivity', label: 'Connectivity Issue' },
+    { value: 'setup_help', label: 'Setup Assistance Needed' },
+    { value: 'other', label: 'Other' },
+  ],
+  curriculum_query: [
+    { value: 'lesson_plan', label: 'Lesson Plan Query' },
+    { value: 'content_query', label: 'Content Query' },
+    { value: 'assessment_help', label: 'Assessment Help' },
+    { value: 'grade_alignment', label: 'Grade Alignment' },
+    { value: 'additional_resources', label: 'Additional Resources' },
+    { value: 'other', label: 'Other' },
+  ],
+  schedule_change: [
+    { value: 'timing_change', label: 'Change Class Timing' },
+    { value: 'day_change', label: 'Change Class Day' },
+    { value: 'batch_change', label: 'Batch Change' },
+    { value: 'temporary_pause', label: 'Temporary Pause' },
+    { value: 'resume_classes', label: 'Resume Classes' },
+    { value: 'other', label: 'Other' },
+  ],
+  contract_renewal: [
+    { value: 'renewal_query', label: 'Renewal Query' },
+    { value: 'pricing_discussion', label: 'Pricing Discussion' },
+    { value: 'contract_terms', label: 'Contract Terms' },
+    { value: 'upgrade_package', label: 'Upgrade Package' },
+    { value: 'cancellation', label: 'Cancellation Request' },
+    { value: 'other', label: 'Other' },
+  ],
+  feedback_complaint: [
+    { value: 'positive_feedback', label: 'Positive Feedback' },
+    { value: 'service_complaint', label: 'Service Complaint' },
+    { value: 'quality_concern', label: 'Quality Concern' },
+    { value: 'suggestion', label: 'Suggestion' },
+    { value: 'escalation', label: 'Escalation' },
+    { value: 'other', label: 'Other' },
+  ],
+  other: [
+    { value: 'general_query', label: 'General Query' },
+    { value: 'information_request', label: 'Information Request' },
+    { value: 'other', label: 'Other' },
+  ],
+};
+
 const CITIES = ['Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow'];
 const BOARDS = ['CBSE', 'ICSE', 'IGCSE', 'State Board', 'IB'];
 const TIME_SLOTS = ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'];
