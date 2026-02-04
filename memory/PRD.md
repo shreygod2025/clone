@@ -402,6 +402,15 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## Key API Endpoints
 
+### Team Onboarding (NEW - Feb 4, 2026)
+- `POST /api/team-onboarding/init/{application_id}` - Initialize onboarding for hired applicant
+- `GET /api/team-onboarding` - List all onboarding records (filter by status)
+- `GET /api/team-onboarding/{id}` - Get single onboarding record
+- `GET /api/team-onboarding/track/{token}` - Public tracking endpoint
+- `POST /api/team-onboarding/{id}/complete-step` - Complete an onboarding step
+- `POST /api/team-onboarding/{id}/activate` - Activate team member, create user
+- `POST /api/team-onboarding/{id}/discontinue` - Discontinue team member
+
 ### School Onboarding
 - `POST /api/schools/onboard` - Save onboarding data
 - `POST /api/schools/{id}/init-onboarding` - Initialize 9-step workflow
