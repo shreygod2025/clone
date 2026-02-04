@@ -61,6 +61,10 @@ const EducatorFunnel = () => {
   const [otp, setOtp] = useState('');
   const [otpSending, setOtpSending] = useState(false);
   
+  // Requirement OTP state
+  const [reqStep, setReqStep] = useState('form'); // form, confirm, otp
+  const [reqOtp, setReqOtp] = useState('');
+  
   // General application form
   const [formData, setFormData] = useState({
     name: '',
