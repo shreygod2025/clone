@@ -5,25 +5,59 @@ import {
   TrendingUp, Users, GraduationCap, Building2, DollarSign, 
   Calendar, RefreshCw, ArrowUpRight, ArrowDownRight,
   UserCheck, Clock, MessageSquare, Target, BarChart3,
-  Briefcase, Handshake
+  Briefcase, Handshake, Wallet, Receipt, TrendingDown,
+  FileText, Plus, Edit2, Trash2, X, ChevronDown
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Textarea } from '../../components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { toast } from 'sonner';
+import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths } from 'date-fns';
 import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
-// Date filter presets
-const DATE_PRESETS = [
-  { label: 'Today', value: 'day' },
-  { label: 'This Week', value: 'week' },
-  { label: 'This Month', value: 'month' },
-  { label: 'This Year', value: 'year' },
-  { label: 'All Time', value: 'all' },
-  { label: 'Custom', value: 'custom' },
+// Report Tabs
+const REPORT_TABS = [
+  { id: 'overview', label: 'Overview', icon: BarChart3 },
+  { id: 'b2c', label: 'B2C (Students)', icon: Users },
+  { id: 'b2b', label: 'B2B (Schools)', icon: Building2 },
+  { id: 'hr_team', label: 'HR - Team', icon: Briefcase },
+  { id: 'educator_hr', label: 'Educator HR', icon: GraduationCap },
+  { id: 'growth_partners', label: 'Growth Partners', icon: Handshake },
+  { id: 'pnl', label: 'P&L Report', icon: Wallet },
 ];
 
-const StatCard = ({ title, value, subtitle, icon: Icon, color = 'blue', small = false }) => {
+// Generate month options for the past 2 years
+const generateMonthOptions = () => {
+  const months = [];
+  const now = new Date();
+  for (let i = 0; i < 24; i++) {
+    const d = subMonths(now, i);
+    months.push({
+      value: format(d, 'yyyy-MM'),
+      label: format(d, 'MMMM yyyy')
+    });
+  }
+  return months;
+};
+
+// Generate year options
+const generateYearOptions = () => {
+  const years = [];
+  const currentYear = new Date().getFullYear();
+  for (let y = currentYear; y >= currentYear - 5; y--) {
+    years.push({ value: String(y), label: String(y) });
+  }
+  return years;
+};
+
+const MONTH_OPTIONS = generateMonthOptions();
+const YEAR_OPTIONS = generateYearOptions();
+
+// Stat Card Component
+const StatCard = ({ title, value, subtitle, icon: Icon, color = 'blue', trend, small = false }) => {
   const colorClasses = {
     blue: 'from-blue-500 to-blue-600',
     green: 'from-green-500 to-green-600',
@@ -32,6 +66,7 @@ const StatCard = ({ title, value, subtitle, icon: Icon, color = 'blue', small = 
     orange: 'from-orange-500 to-orange-600',
     indigo: 'from-indigo-500 to-indigo-600',
     cyan: 'from-cyan-500 to-cyan-600',
+    slate: 'from-slate-500 to-slate-600',
   };
 
   return (
@@ -41,6 +76,12 @@ const StatCard = ({ title, value, subtitle, icon: Icon, color = 'blue', small = 
           <p className={`${small ? 'text-xs' : 'text-sm'} text-slate-500 mb-1`}>{title}</p>
           <p className={`${small ? 'text-2xl' : 'text-3xl'} font-bold text-[#1E3A5F]`}>{value}</p>
           {subtitle && <p className="text-xs text-slate-400 mt-1">{subtitle}</p>}
+          {trend !== undefined && (
+            <div className={`flex items-center gap-1 mt-1 text-xs ${trend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {trend >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+              {Math.abs(trend)}% vs last period
+            </div>
+          )}
         </div>
         <div className={`${small ? 'w-10 h-10' : 'w-12 h-12'} rounded-xl bg-gradient-to-br ${colorClasses[color]} flex items-center justify-center`}>
           <Icon className={`${small ? 'w-5 h-5' : 'w-6 h-6'} text-white`} />
@@ -50,7 +91,7 @@ const StatCard = ({ title, value, subtitle, icon: Icon, color = 'blue', small = 
   );
 };
 
-// Progress bar component for funnel visualization
+// Progress Bar Component
 const ProgressBar = ({ label, value, total, color = '#1E3A5F' }) => {
   const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
   return (
@@ -69,94 +110,8 @@ const ProgressBar = ({ label, value, total, color = '#1E3A5F' }) => {
   );
 };
 
-// Mini chart component for showing trends
-const MiniBarChart = ({ data, title, color = '#1E3A5F' }) => {
-  if (!data || data.length === 0) return null;
-  const maxValue = Math.max(...data.map(d => d.count));
-  
-  return (
-    <div className="bg-white rounded-2xl border border-slate-100 p-5">
-      <h4 className="font-semibold text-[#1E3A5F] mb-4 text-sm">{title}</h4>
-      <div className="flex items-end gap-1 h-24">
-        {data.slice(0, 10).map((item, idx) => (
-          <div key={idx} className="flex-1 flex flex-col items-center gap-1">
-            <div 
-              className="w-full rounded-t transition-all hover:opacity-80"
-              style={{ 
-                height: `${Math.max((item.count / maxValue) * 80, 4)}px`,
-                backgroundColor: color,
-                opacity: 0.7 + (idx * 0.03)
-              }}
-              title={`${item.name}: ${item.count}`}
-            />
-            <span className="text-[10px] text-slate-500 truncate w-full text-center" title={item.name}>
-              {item.name?.slice(0, 6)}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
-
-// Donut chart for showing distribution
-const DonutChart = ({ data, title, total }) => {
-  if (!data || data.length === 0) return null;
-  
-  const colors = ['#1E3A5F', '#D63031', '#3b82f6', '#f97316', '#9333ea', '#22c55e', '#64748b'];
-  let cumulativePercent = 0;
-  
-  return (
-    <div className="bg-white rounded-2xl border border-slate-100 p-5">
-      <h4 className="font-semibold text-[#1E3A5F] mb-4 text-sm">{title}</h4>
-      <div className="flex items-center gap-4">
-        {/* SVG Donut */}
-        <div className="relative">
-          <svg viewBox="0 0 36 36" className="w-24 h-24">
-            {data.slice(0, 6).map((item, idx) => {
-              const percent = total > 0 ? (item.count / total) * 100 : 0;
-              const dashArray = `${percent} ${100 - percent}`;
-              const dashOffset = 25 - cumulativePercent;
-              cumulativePercent += percent;
-              return (
-                <circle
-                  key={idx}
-                  cx="18"
-                  cy="18"
-                  r="15.9155"
-                  fill="transparent"
-                  stroke={colors[idx % colors.length]}
-                  strokeWidth="3"
-                  strokeDasharray={dashArray}
-                  strokeDashoffset={dashOffset}
-                  className="transition-all duration-500"
-                />
-              );
-            })}
-          </svg>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-lg font-bold text-[#1E3A5F]">{total}</span>
-          </div>
-        </div>
-        {/* Legend */}
-        <div className="flex-1 space-y-1">
-          {data.slice(0, 5).map((item, idx) => (
-            <div key={idx} className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: colors[idx % colors.length] }} />
-                <span className="text-slate-600 capitalize">{item.name?.replace(/_/g, ' ')}</span>
-              </div>
-              <span className="font-medium">{item.count}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Pipeline card showing stages
-const PipelineCard = ({ title, icon: Icon, color, stages, total }) => {
+// Funnel Card Component
+const FunnelCard = ({ title, icon: Icon, color, stages, total }) => {
   return (
     <div className="bg-white rounded-2xl border border-slate-100 p-5">
       <div className="flex items-center justify-between mb-4">
@@ -181,30 +136,70 @@ const PipelineCard = ({ title, icon: Icon, color, stages, total }) => {
   );
 };
 
+// Conversion Rate Card
+const ConversionCard = ({ title, icon: Icon, color, rates, totalLeads }) => {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 p-5">
+      <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
+        <Icon className="w-5 h-5" style={{ color }} />
+        {title}
+      </h3>
+      <div className="grid grid-cols-3 gap-3">
+        {rates.map((rate, idx) => (
+          <div key={idx} className={`text-center p-3 rounded-xl`} style={{ backgroundColor: `${rate.color}15` }}>
+            <p className="text-2xl font-bold" style={{ color: rate.color }}>{rate.value}%</p>
+            <p className="text-xs text-slate-500 mt-1">{rate.label}</p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 pt-4 border-t flex justify-between items-center">
+        <span className="text-sm text-slate-600">Total Leads</span>
+        <span className="text-xl font-bold text-[#1E3A5F]">{totalLeads}</span>
+      </div>
+    </div>
+  );
+};
+
 const AdminReports = () => {
-  const { getAuthHeaders } = useAuth();
+  const { getAuthHeaders, user } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [datePreset, setDatePreset] = useState('month');
+  const [activeTab, setActiveTab] = useState('overview');
+  
+  // Date filter states
+  const [dateFilterType, setDateFilterType] = useState('month'); // 'custom', 'month', 'year'
   const [customDateRange, setCustomDateRange] = useState({ start: '', end: '' });
-  const [showCustomDate, setShowCustomDate] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [selectedYear, setSelectedYear] = useState(String(new Date().getFullYear()));
   
   // Data states
-  const [overview, setOverview] = useState(null);
-  const [salesFunnel, setSalesFunnel] = useState(null);
-  const [schoolFunnel, setSchoolFunnel] = useState(null);
-  const [leadAnalytics, setLeadAnalytics] = useState(null);
-  const [educatorMetrics, setEducatorMetrics] = useState(null);
-  const [supportMetrics, setSupportMetrics] = useState(null);
-  const [userStages, setUserStages] = useState(null);
+  const [reportData, setReportData] = useState({});
+  
+  // Expense management
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [expenses, setExpenses] = useState([]);
+  const [expenseCategories, setExpenseCategories] = useState({ categories: [], subcategories: {} });
+  const [editingExpense, setEditingExpense] = useState(null);
+  const [expenseForm, setExpenseForm] = useState({
+    title: '', description: '', amount: '', category: '', subcategory: '',
+    date: format(new Date(), 'yyyy-MM-dd'), payment_method: '', vendor: '', notes: ''
+  });
 
   const getDateParams = () => {
-    if (datePreset === 'custom' && customDateRange.start && customDateRange.end) {
+    if (dateFilterType === 'custom' && customDateRange.start && customDateRange.end) {
       return { start_date: customDateRange.start, end_date: customDateRange.end };
     }
-    if (datePreset === 'all') {
-      return {};
+    if (dateFilterType === 'month' && selectedMonth) {
+      const [year, month] = selectedMonth.split('-');
+      const start = startOfMonth(new Date(parseInt(year), parseInt(month) - 1));
+      const end = endOfMonth(new Date(parseInt(year), parseInt(month) - 1));
+      return { start_date: format(start, 'yyyy-MM-dd'), end_date: format(end, 'yyyy-MM-dd') };
     }
-    return { period: datePreset };
+    if (dateFilterType === 'year' && selectedYear) {
+      const start = startOfYear(new Date(parseInt(selectedYear), 0));
+      const end = endOfYear(new Date(parseInt(selectedYear), 0));
+      return { start_date: format(start, 'yyyy-MM-dd'), end_date: format(end, 'yyyy-MM-dd') };
+    }
+    return {};
   };
 
   const fetchAllData = async () => {
@@ -213,23 +208,27 @@ const AdminReports = () => {
     const headers = getAuthHeaders();
     
     try {
-      const [overviewRes, studentFunnelRes, schoolFunnelRes, leadsRes, educatorRes, supportRes, stagesRes] = await Promise.all([
+      const [overviewRes, studentFunnelRes, schoolFunnelRes, educatorRes, supportRes, stagesRes, expensesRes, categoriesRes] = await Promise.all([
         axios.get(`${API}/admin/reports/overview`, { params, headers }).catch(() => ({ data: null })),
         axios.get(`${API}/admin/reports/sales-funnel`, { params: { ...params, user_type: 'students' }, headers }).catch(() => ({ data: null })),
         axios.get(`${API}/admin/reports/sales-funnel`, { params: { ...params, user_type: 'schools' }, headers }).catch(() => ({ data: null })),
-        axios.get(`${API}/admin/reports/lead-analytics`, { params, headers }).catch(() => ({ data: null })),
         axios.get(`${API}/admin/reports/educator-metrics`, { params, headers }).catch(() => ({ data: null })),
         axios.get(`${API}/admin/reports/support-metrics`, { params, headers }).catch(() => ({ data: null })),
         axios.get(`${API}/admin/reports/user-stages`, { params, headers }).catch(() => ({ data: null })),
+        axios.get(`${API}/expenses`, { params, headers }).catch(() => ({ data: { expenses: [], total: 0 } })),
+        axios.get(`${API}/expenses/categories`, { headers }).catch(() => ({ data: { categories: [], subcategories: {} } })),
       ]);
       
-      setOverview(overviewRes.data);
-      setSalesFunnel(studentFunnelRes.data);
-      setSchoolFunnel(schoolFunnelRes.data);
-      setLeadAnalytics(leadsRes.data);
-      setEducatorMetrics(educatorRes.data);
-      setSupportMetrics(supportRes.data);
-      setUserStages(stagesRes.data);
+      setReportData({
+        overview: overviewRes.data,
+        studentFunnel: studentFunnelRes.data,
+        schoolFunnel: schoolFunnelRes.data,
+        educator: educatorRes.data,
+        support: supportRes.data,
+        stages: stagesRes.data,
+      });
+      setExpenses(expensesRes.data?.expenses || []);
+      setExpenseCategories(categoriesRes.data || { categories: [], subcategories: {} });
     } catch (error) {
       console.error('Failed to fetch reports:', error);
       toast.error('Failed to load reports');
@@ -240,430 +239,731 @@ const AdminReports = () => {
 
   useEffect(() => {
     fetchAllData();
-  }, [datePreset, customDateRange]);
+  }, [dateFilterType, customDateRange, selectedMonth, selectedYear]);
 
-  const handleDatePresetChange = (preset) => {
-    setDatePreset(preset);
-    setShowCustomDate(preset === 'custom');
+  const handleSaveExpense = async () => {
+    if (!expenseForm.title || !expenseForm.amount || !expenseForm.category || !expenseForm.date) {
+      toast.error('Please fill required fields');
+      return;
+    }
+    try {
+      const payload = { ...expenseForm, amount: parseFloat(expenseForm.amount) };
+      if (editingExpense) {
+        await axios.patch(`${API}/expenses/${editingExpense.id}`, payload, { headers: getAuthHeaders() });
+        toast.success('Expense updated');
+      } else {
+        await axios.post(`${API}/expenses`, payload, { headers: getAuthHeaders() });
+        toast.success('Expense added');
+      }
+      setShowExpenseModal(false);
+      setEditingExpense(null);
+      setExpenseForm({ title: '', description: '', amount: '', category: '', subcategory: '', date: format(new Date(), 'yyyy-MM-dd'), payment_method: '', vendor: '', notes: '' });
+      fetchAllData();
+    } catch (error) {
+      toast.error('Failed to save expense');
+    }
   };
 
-  return (
-    <AdminLayout title="Reports & Analytics">
-      {/* Header Controls */}
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        {/* Date Filter */}
-        <div className="flex flex-wrap gap-2 items-center">
-          <Calendar className="w-5 h-5 text-slate-400" />
-          {DATE_PRESETS.map(preset => (
-            <button
-              key={preset.value}
-              onClick={() => handleDatePresetChange(preset.value)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                datePreset === preset.value
-                  ? 'bg-[#1E3A5F] text-white'
-                  : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300'
-              }`}
-              data-testid={`date-filter-${preset.value}`}
-            >
-              {preset.label}
-            </button>
-          ))}
-        </div>
-        
-        {/* Custom Date Range */}
-        {showCustomDate && (
-          <div className="flex gap-2 items-center">
-            <input
-              type="date"
-              value={customDateRange.start}
-              onChange={(e) => setCustomDateRange({ ...customDateRange, start: e.target.value })}
-              className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm"
-            />
-            <span className="text-slate-400">to</span>
-            <input
-              type="date"
-              value={customDateRange.end}
-              onChange={(e) => setCustomDateRange({ ...customDateRange, end: e.target.value })}
-              className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm"
-            />
-          </div>
-        )}
-        
-        {/* Refresh Button */}
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={fetchAllData}
-          className="ml-auto"
-          data-testid="refresh-reports"
+  const handleDeleteExpense = async (id) => {
+    if (!window.confirm('Delete this expense?')) return;
+    try {
+      await axios.delete(`${API}/expenses/${id}`, { headers: getAuthHeaders() });
+      toast.success('Expense deleted');
+      fetchAllData();
+    } catch (error) {
+      toast.error('Failed to delete expense');
+    }
+  };
+
+  // Calculate derived metrics
+  const { overview, studentFunnel, schoolFunnel, educator, support, stages } = reportData;
+  
+  // School metrics
+  const totalSchools = overview?.schools?.total || 0;
+  const convertedSchools = overview?.schools?.converted || 0;
+  const activeSchools = stages?.schools?.stages?.find(s => s.name === 'active')?.count || 0;
+  const renewedSchools = stages?.schools?.stages?.find(s => s.name === 'renewed')?.count || 0;
+  const lostSchools = stages?.schools?.stages?.find(s => s.name === 'lost')?.count || 0;
+  const renewalRatio = (activeSchools + renewedSchools + lostSchools) > 0 
+    ? Math.round((renewedSchools / (activeSchools + renewedSchools + lostSchools)) * 100) 
+    : 0;
+  
+  // Team metrics
+  const teamTotal = stages?.team?.total || 0;
+  const teamHired = stages?.team?.stages?.find(s => s.name === 'hired')?.count || 0;
+  
+  // GP metrics
+  const gpTotal = stages?.growth_partners?.total || 0;
+  const gpConverted = stages?.growth_partners?.stages?.find(s => s.name === 'converted')?.count || 0;
+  
+  // Expense totals
+  const totalExpenses = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+  const expensesByCategory = {};
+  expenses.forEach(e => {
+    expensesByCategory[e.category] = (expensesByCategory[e.category] || 0) + (e.amount || 0);
+  });
+  
+  // Revenue
+  const totalRevenue = (overview?.overview?.total_revenue || 0);
+  const studentRevenue = (overview?.overview?.student_revenue || 0);
+  const schoolRevenue = (overview?.overview?.school_revenue || 0);
+  const netProfit = totalRevenue - totalExpenses;
+
+  const renderDateFilter = () => (
+    <div className="flex flex-wrap gap-3 items-center bg-white p-4 rounded-xl border border-slate-100">
+      {/* Filter Type Selector */}
+      <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
+        {[
+          { value: 'month', label: 'Month' },
+          { value: 'year', label: 'Year' },
+          { value: 'custom', label: 'Custom' },
+        ].map(opt => (
+          <button
+            key={opt.value}
+            onClick={() => setDateFilterType(opt.value)}
+            className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
+              dateFilterType === opt.value ? 'bg-white shadow text-[#1E3A5F]' : 'text-slate-600 hover:text-slate-800'
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+      
+      {/* Month Selector */}
+      {dateFilterType === 'month' && (
+        <select
+          value={selectedMonth}
+          onChange={(e) => setSelectedMonth(e.target.value)}
+          className="px-3 py-2 border border-slate-200 rounded-lg text-sm"
         >
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+          {MONTH_OPTIONS.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      )}
+      
+      {/* Year Selector */}
+      {dateFilterType === 'year' && (
+        <select
+          value={selectedYear}
+          onChange={(e) => setSelectedYear(e.target.value)}
+          className="px-3 py-2 border border-slate-200 rounded-lg text-sm"
+        >
+          {YEAR_OPTIONS.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      )}
+      
+      {/* Custom Date Range */}
+      {dateFilterType === 'custom' && (
+        <div className="flex gap-2 items-center">
+          <input
+            type="date"
+            value={customDateRange.start}
+            onChange={(e) => setCustomDateRange({ ...customDateRange, start: e.target.value })}
+            className="px-3 py-2 border border-slate-200 rounded-lg text-sm"
+          />
+          <span className="text-slate-400">to</span>
+          <input
+            type="date"
+            value={customDateRange.end}
+            onChange={(e) => setCustomDateRange({ ...customDateRange, end: e.target.value })}
+            className="px-3 py-2 border border-slate-200 rounded-lg text-sm"
+          />
+        </div>
+      )}
+      
+      <Button variant="outline" size="sm" onClick={fetchAllData} className="ml-auto">
+        <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+        Refresh
+      </Button>
+    </div>
+  );
+
+  const renderOverviewTab = () => (
+    <div className="space-y-6">
+      {/* Key Metrics */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <StatCard title="Total Revenue" value={`₹${totalRevenue.toLocaleString()}`} icon={DollarSign} color="green" small />
+        <StatCard title="Total Expenses" value={`₹${totalExpenses.toLocaleString()}`} icon={TrendingDown} color="red" small />
+        <StatCard title="Net Profit" value={`₹${netProfit.toLocaleString()}`} icon={Wallet} color={netProfit >= 0 ? 'green' : 'red'} small />
+        <StatCard title="Paid Students" value={overview?.overview?.paid_students || 0} subtitle={`of ${overview?.students?.total || 0}`} icon={Users} color="blue" small />
+        <StatCard title="Converted Schools" value={convertedSchools} subtitle={`of ${totalSchools}`} icon={Building2} color="purple" small />
+        <StatCard title="Active Educators" value={overview?.overview?.active_educators || 0} icon={GraduationCap} color="orange" small />
       </div>
 
-      {loading ? (
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D63031] mx-auto"></div>
-          <p className="text-slate-500 mt-3">Loading reports...</p>
+      {/* Pipelines */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <FunnelCard
+          title="Students"
+          icon={Users}
+          color="#3b82f6"
+          total={overview?.students?.total || 0}
+          stages={[
+            { label: 'New Leads', value: overview?.students?.new || 0, color: '#3b82f6' },
+            { label: 'Demo Scheduled', value: overview?.students?.demo_scheduled || 0, color: '#9333ea' },
+            { label: 'Demo Completed', value: overview?.students?.demo_completed || 0, color: '#f97316' },
+            { label: 'Converted', value: overview?.students?.converted || 0, color: '#22c55e' },
+          ]}
+        />
+        <FunnelCard
+          title="Schools"
+          icon={Building2}
+          color="#9333ea"
+          total={totalSchools}
+          stages={[
+            { label: 'New Leads', value: overview?.schools?.new || 0, color: '#9333ea' },
+            { label: 'Meeting Done', value: stages?.schools?.stages?.find(s => s.name === 'meeting_done')?.count || 0, color: '#3b82f6' },
+            { label: 'Converted', value: convertedSchools, color: '#f97316' },
+            { label: 'Active', value: activeSchools, color: '#22c55e' },
+          ]}
+        />
+        <FunnelCard
+          title="Educators"
+          icon={GraduationCap}
+          color="#f97316"
+          total={overview?.educators?.total || 0}
+          stages={[
+            { label: 'New', value: overview?.educators?.new || 0, color: '#f97316' },
+            { label: 'Demo Scheduled', value: overview?.educators?.demo_scheduled || 0, color: '#9333ea' },
+            { label: 'Onboarding', value: overview?.educators?.onboarding || 0, color: '#3b82f6' },
+            { label: 'Active', value: overview?.educators?.active || 0, color: '#22c55e' },
+          ]}
+        />
+      </div>
+    </div>
+  );
+
+  const renderB2CTab = () => (
+    <div className="space-y-6">
+      <h2 className="text-lg font-semibold text-[#1E3A5F]">B2C - Student Sales & Marketing</h2>
+      
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard title="Total Leads" value={studentFunnel?.total_leads || 0} icon={Users} color="blue" />
+        <StatCard title="Demos Scheduled" value={overview?.students?.demo_scheduled || 0} icon={Calendar} color="purple" />
+        <StatCard title="Demos Completed" value={overview?.students?.demo_completed || 0} icon={UserCheck} color="orange" />
+        <StatCard title="Conversions" value={overview?.students?.converted || 0} icon={Target} color="green" />
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <ConversionCard
+          title="Student Conversion Rates"
+          icon={Users}
+          color="#3b82f6"
+          totalLeads={studentFunnel?.total_leads || 0}
+          rates={[
+            { label: 'Lead → Demo', value: studentFunnel?.conversion_rates?.lead_to_demo || 0, color: '#3b82f6' },
+            { label: 'Demo → Convert', value: studentFunnel?.conversion_rates?.demo_to_conversion || 0, color: '#f97316' },
+            { label: 'Overall', value: studentFunnel?.conversion_rates?.overall_conversion || 0, color: '#22c55e' },
+          ]}
+        />
+        
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-[#1E3A5F] mb-4">Revenue Breakdown</h3>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+              <span className="text-slate-600">Student Revenue</span>
+              <span className="text-xl font-bold text-blue-600">₹{studentRevenue.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+              <span className="text-slate-600">Avg. Ticket Size</span>
+              <span className="text-xl font-bold text-green-600">
+                ₹{(overview?.students?.converted || 0) > 0 ? Math.round(studentRevenue / overview.students.converted).toLocaleString() : 0}
+              </span>
+            </div>
+          </div>
         </div>
-      ) : (
-        <div className="space-y-6">
-          {/* ============ KEY METRICS ============ */}
-          <div>
-            <h2 className="text-lg font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
-              <BarChart3 className="w-5 h-5" />
-              Key Metrics
-            </h2>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              <StatCard 
-                title="Total Revenue" 
-                value={`₹${(overview?.overview?.total_revenue || 0).toLocaleString()}`}
-                icon={DollarSign}
-                color="green"
-                small
-              />
-              <StatCard 
-                title="Paid Students" 
-                value={overview?.overview?.paid_students || 0}
-                subtitle={`of ${overview?.students?.total || 0}`}
-                icon={Users}
-                color="blue"
-                small
-              />
-              <StatCard 
-                title="Converted Schools" 
-                value={overview?.overview?.converted_schools || 0}
-                subtitle={`of ${overview?.schools?.total || 0}`}
-                icon={Building2}
-                color="purple"
-                small
-              />
-              <StatCard 
-                title="Active Educators" 
-                value={overview?.overview?.active_educators || 0}
-                subtitle={`of ${overview?.educators?.total || 0}`}
-                icon={GraduationCap}
-                color="orange"
-                small
-              />
-              <StatCard 
-                title="Support Open" 
-                value={supportMetrics?.summary?.open || 0}
-                subtitle={`of ${supportMetrics?.summary?.total || 0}`}
-                icon={MessageSquare}
-                color="red"
-                small
-              />
-              <StatCard 
-                title="Team Apps" 
-                value={userStages?.team?.total || 0}
-                icon={Briefcase}
-                color="indigo"
-                small
-              />
+      </div>
+      
+      {/* Stage Distribution */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-5">
+        <h3 className="font-semibold text-[#1E3A5F] mb-4">Lead Stage Distribution</h3>
+        <div className="space-y-3">
+          {stages?.students?.stages?.map((stage, idx) => (
+            <ProgressBar
+              key={idx}
+              label={stage.name?.replace(/_/g, ' ')}
+              value={stage.count}
+              total={stages?.students?.total || 1}
+              color={['#3b82f6', '#9333ea', '#f97316', '#22c55e', '#64748b'][idx % 5]}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderB2BTab = () => (
+    <div className="space-y-6">
+      <h2 className="text-lg font-semibold text-[#1E3A5F]">B2B - School Sales</h2>
+      
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <StatCard title="Total Leads" value={totalSchools} icon={Building2} color="purple" />
+        <StatCard title="Converted" value={convertedSchools} icon={Target} color="orange" />
+        <StatCard title="Active" value={activeSchools} icon={UserCheck} color="green" />
+        <StatCard title="Renewed" value={renewedSchools} icon={RefreshCw} color="blue" />
+        <StatCard title="Renewal Ratio" value={`${renewalRatio}%`} subtitle="Renewed / (Active+Renewed+Lost)" icon={TrendingUp} color={renewalRatio >= 50 ? 'green' : 'orange'} />
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <ConversionCard
+          title="School Conversion Rates"
+          icon={Building2}
+          color="#9333ea"
+          totalLeads={totalSchools}
+          rates={[
+            { label: 'Lead → Meeting', value: schoolFunnel?.conversion_rates?.lead_to_demo || 0, color: '#9333ea' },
+            { label: 'Meeting → Convert', value: schoolFunnel?.conversion_rates?.demo_to_conversion || 0, color: '#f97316' },
+            { label: 'Overall', value: schoolFunnel?.conversion_rates?.overall_conversion || 0, color: '#22c55e' },
+          ]}
+        />
+        
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-[#1E3A5F] mb-4">School Revenue</h3>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
+              <span className="text-slate-600">Total School Revenue</span>
+              <span className="text-xl font-bold text-purple-600">₹{schoolRevenue.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+              <span className="text-slate-600">Avg. Deal Size</span>
+              <span className="text-xl font-bold text-green-600">
+                ₹{convertedSchools > 0 ? Math.round(schoolRevenue / convertedSchools).toLocaleString() : 0}
+              </span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+              <span className="text-slate-600">Lost Schools</span>
+              <span className="text-xl font-bold text-blue-600">{lostSchools}</span>
             </div>
           </div>
+        </div>
+      </div>
+      
+      {/* Stage Distribution */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-5">
+        <h3 className="font-semibold text-[#1E3A5F] mb-4">School Stage Distribution</h3>
+        <div className="space-y-3">
+          {stages?.schools?.stages?.map((stage, idx) => (
+            <ProgressBar
+              key={idx}
+              label={stage.name?.replace(/_/g, ' ')}
+              value={stage.count}
+              total={stages?.schools?.total || 1}
+              color={['#9333ea', '#3b82f6', '#f97316', '#22c55e', '#10b981', '#ef4444', '#64748b'][idx % 7]}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 
-          {/* ============ ALL PIPELINES OVERVIEW ============ */}
-          <div>
-            <h2 className="text-lg font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
-              <TrendingUp className="w-5 h-5" />
-              All Pipelines
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* Student Pipeline */}
-              <PipelineCard
-                title="Students"
-                icon={Users}
-                color="#3b82f6"
-                total={overview?.students?.total || 0}
-                stages={[
-                  { label: 'New Leads', value: overview?.students?.new || 0, color: '#3b82f6' },
-                  { label: 'Demo Scheduled', value: overview?.students?.demo_scheduled || 0, color: '#9333ea' },
-                  { label: 'Demo Completed', value: overview?.students?.demo_completed || 0, color: '#f97316' },
-                  { label: 'Converted', value: overview?.students?.converted || 0, color: '#22c55e' },
-                ]}
-              />
-              
-              {/* School Pipeline */}
-              <PipelineCard
-                title="Schools"
-                icon={Building2}
-                color="#9333ea"
-                total={overview?.schools?.total || 0}
-                stages={[
-                  { label: 'New Leads', value: overview?.schools?.new || 0, color: '#9333ea' },
-                  { label: 'Meeting Scheduled', value: overview?.schools?.meeting_scheduled || 0, color: '#3b82f6' },
-                  { label: 'Proposal Sent', value: overview?.schools?.proposal_sent || 0, color: '#f97316' },
-                  { label: 'Converted', value: overview?.schools?.converted || 0, color: '#22c55e' },
-                ]}
-              />
-              
-              {/* Educator Pipeline */}
-              <PipelineCard
-                title="Educators"
-                icon={GraduationCap}
-                color="#f97316"
-                total={overview?.educators?.total || 0}
-                stages={[
-                  { label: 'New Applications', value: overview?.educators?.new || 0, color: '#f97316' },
-                  { label: 'Demo Scheduled', value: overview?.educators?.demo_scheduled || 0, color: '#9333ea' },
-                  { label: 'Onboarding', value: overview?.educators?.onboarding || 0, color: '#3b82f6' },
-                  { label: 'Active', value: overview?.educators?.active || 0, color: '#22c55e' },
-                ]}
-              />
+  const renderHRTeamTab = () => (
+    <div className="space-y-6">
+      <h2 className="text-lg font-semibold text-[#1E3A5F]">HR - Team Management</h2>
+      
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard title="Total Applications" value={teamTotal} icon={FileText} color="blue" />
+        <StatCard title="Hired" value={teamHired} icon={UserCheck} color="green" />
+        <StatCard title="Hire Rate" value={`${teamTotal > 0 ? Math.round((teamHired / teamTotal) * 100) : 0}%`} icon={Target} color="purple" />
+        <StatCard title="In Pipeline" value={teamTotal - teamHired - (stages?.team?.stages?.find(s => s.name === 'rejected')?.count || 0) - (stages?.team?.stages?.find(s => s.name === 'archived')?.count || 0)} icon={Clock} color="orange" />
+      </div>
+      
+      <div className="bg-white rounded-2xl border border-slate-100 p-5">
+        <h3 className="font-semibold text-[#1E3A5F] mb-4">Application Funnel</h3>
+        <div className="space-y-3">
+          {stages?.team?.stages?.map((stage, idx) => (
+            <ProgressBar
+              key={idx}
+              label={stage.name?.replace(/_/g, ' ')}
+              value={stage.count}
+              total={teamTotal || 1}
+              color={['#3b82f6', '#9333ea', '#f97316', '#22c55e', '#ef4444', '#64748b'][idx % 6]}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 
-              {/* Support Pipeline */}
-              <PipelineCard
-                title="Support Tickets"
-                icon={MessageSquare}
-                color="#D63031"
-                total={supportMetrics?.summary?.total || 0}
-                stages={[
-                  { label: 'New', value: supportMetrics?.summary?.new || 0, color: '#D63031' },
-                  { label: 'Open', value: supportMetrics?.summary?.open || 0, color: '#f97316' },
-                  { label: 'Resolved', value: supportMetrics?.summary?.resolved || 0, color: '#22c55e' },
-                ]}
-              />
-
-              {/* Team Applications */}
-              <PipelineCard
-                title="Team Applications"
-                icon={Briefcase}
-                color="#1E3A5F"
-                total={userStages?.team?.total || 0}
-                stages={userStages?.team?.stages?.slice(0, 4).map(s => ({
-                  label: s.name?.replace(/_/g, ' '),
-                  value: s.count,
-                  color: '#1E3A5F'
-                })) || []}
-              />
-
-              {/* Growth Partners */}
-              <PipelineCard
-                title="Growth Partners"
-                icon={Handshake}
-                color="#D63031"
-                total={userStages?.growth_partners?.total || 0}
-                stages={userStages?.growth_partners?.stages?.slice(0, 4).map(s => ({
-                  label: s.name?.replace(/_/g, ' '),
-                  value: s.count,
-                  color: '#D63031'
-                })) || []}
-              />
+  const renderEducatorHRTab = () => (
+    <div className="space-y-6">
+      <h2 className="text-lg font-semibold text-[#1E3A5F]">Educator HR</h2>
+      
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard title="Total Educators" value={overview?.educators?.total || 0} icon={GraduationCap} color="orange" />
+        <StatCard title="New This Period" value={educator?.summary?.new_educators || 0} icon={UserCheck} color="blue" />
+        <StatCard title="Active" value={educator?.summary?.total_active || 0} icon={Users} color="green" />
+        <StatCard title="In Onboarding" value={overview?.educators?.onboarding || 0} icon={Clock} color="purple" />
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-[#1E3A5F] mb-4">Performance Metrics</h3>
+          <div className="space-y-4">
+            <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+              <span className="text-slate-600">Avg Demos/Educator</span>
+              <span className="text-xl font-bold text-blue-600">{educator?.summary?.avg_demos_per_educator || 0}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+              <span className="text-slate-600">Avg Earnings/Educator</span>
+              <span className="text-xl font-bold text-green-600">₹{(educator?.summary?.avg_earnings_per_educator || 0).toLocaleString()}</span>
             </div>
           </div>
-
-          {/* ============ CONVERSION METRICS ============ */}
-          <div>
-            <h2 className="text-lg font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
-              <Target className="w-5 h-5" />
-              Conversion Rates
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Student Conversions */}
-              <div className="bg-white rounded-2xl border border-slate-100 p-5">
-                <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
-                  <Users className="w-5 h-5 text-blue-500" />
-                  Student Conversion Rates
-                </h3>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="text-center p-3 bg-blue-50 rounded-xl">
-                    <p className="text-2xl font-bold text-blue-600">{salesFunnel?.conversion_rates?.lead_to_demo || 0}%</p>
-                    <p className="text-xs text-slate-500 mt-1">Lead → Demo</p>
+        </div>
+        
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-[#1E3A5F] mb-4">Application Funnel</h3>
+          <div className="space-y-3">
+            {stages?.educators?.stages?.slice(0, 5).map((stage, idx) => (
+              <ProgressBar
+                key={idx}
+                label={stage.name?.replace(/_/g, ' ')}
+                value={stage.count}
+                total={stages?.educators?.total || 1}
+                color={['#f97316', '#9333ea', '#3b82f6', '#22c55e', '#64748b'][idx % 5]}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+      
+      {educator?.top_performers?.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-[#1E3A5F] mb-4">Top Performers</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {educator.top_performers.slice(0, 3).map((edu, idx) => (
+              <div key={idx} className={`p-4 rounded-xl ${idx === 0 ? 'bg-yellow-50 border border-yellow-200' : 'bg-slate-50'}`}>
+                <div className="flex items-center gap-3">
+                  <span className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${idx === 0 ? 'bg-yellow-400 text-white' : 'bg-slate-200 text-slate-600'}`}>
+                    {idx + 1}
+                  </span>
+                  <div>
+                    <p className="font-medium text-[#1E3A5F]">{edu.name}</p>
+                    <p className="text-sm text-slate-500">{edu.demos} demos</p>
                   </div>
-                  <div className="text-center p-3 bg-orange-50 rounded-xl">
-                    <p className="text-2xl font-bold text-orange-600">{salesFunnel?.conversion_rates?.demo_to_conversion || 0}%</p>
-                    <p className="text-xs text-slate-500 mt-1">Demo → Convert</p>
-                  </div>
-                  <div className="text-center p-3 bg-green-50 rounded-xl">
-                    <p className="text-2xl font-bold text-green-600">{salesFunnel?.conversion_rates?.overall_conversion || 0}%</p>
-                    <p className="text-xs text-slate-500 mt-1">Overall</p>
-                  </div>
-                </div>
-                <div className="mt-4 pt-4 border-t flex justify-between items-center">
-                  <span className="text-sm text-slate-600">Total Leads</span>
-                  <span className="text-xl font-bold text-[#1E3A5F]">{salesFunnel?.total_leads || 0}</span>
                 </div>
               </div>
-
-              {/* School Conversions */}
-              <div className="bg-white rounded-2xl border border-slate-100 p-5">
-                <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
-                  <Building2 className="w-5 h-5 text-purple-500" />
-                  School Conversion Rates
-                </h3>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="text-center p-3 bg-purple-50 rounded-xl">
-                    <p className="text-2xl font-bold text-purple-600">{schoolFunnel?.conversion_rates?.lead_to_demo || 0}%</p>
-                    <p className="text-xs text-slate-500 mt-1">Lead → Meeting</p>
-                  </div>
-                  <div className="text-center p-3 bg-orange-50 rounded-xl">
-                    <p className="text-2xl font-bold text-orange-600">{schoolFunnel?.conversion_rates?.demo_to_conversion || 0}%</p>
-                    <p className="text-xs text-slate-500 mt-1">Meeting → Convert</p>
-                  </div>
-                  <div className="text-center p-3 bg-green-50 rounded-xl">
-                    <p className="text-2xl font-bold text-green-600">{schoolFunnel?.conversion_rates?.overall_conversion || 0}%</p>
-                    <p className="text-xs text-slate-500 mt-1">Overall</p>
-                  </div>
-                </div>
-                <div className="mt-4 pt-4 border-t flex justify-between items-center">
-                  <span className="text-sm text-slate-600">Total Leads</span>
-                  <span className="text-xl font-bold text-[#1E3A5F]">{schoolFunnel?.total_leads || 0}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ============ ANALYTICS CHARTS ============ */}
-          <div>
-            <h2 className="text-lg font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
-              <BarChart3 className="w-5 h-5" />
-              Analytics Breakdown
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <DonutChart 
-                data={leadAnalytics?.by_source} 
-                title="Leads by Source" 
-                total={leadAnalytics?.total || 0}
-              />
-              <DonutChart 
-                data={leadAnalytics?.by_age_group} 
-                title="Leads by Age Group" 
-                total={leadAnalytics?.total || 0}
-              />
-              <DonutChart 
-                data={leadAnalytics?.by_course} 
-                title="Course Interest" 
-                total={leadAnalytics?.total || 0}
-              />
-              <DonutChart 
-                data={supportMetrics?.by_type} 
-                title="Support by Type" 
-                total={supportMetrics?.summary?.total || 0}
-              />
-            </div>
-          </div>
-
-          {/* ============ EDUCATOR & SUPPORT METRICS ============ */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Educator Metrics */}
-            <div className="bg-white rounded-2xl border border-slate-100 p-5">
-              <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
-                <GraduationCap className="w-5 h-5 text-orange-500" />
-                Educator Quality Metrics
-              </h3>
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="p-3 bg-orange-50 rounded-xl text-center">
-                  <p className="text-2xl font-bold text-orange-600">{educatorMetrics?.summary?.new_educators || 0}</p>
-                  <p className="text-xs text-slate-500">New This Period</p>
-                </div>
-                <div className="p-3 bg-green-50 rounded-xl text-center">
-                  <p className="text-2xl font-bold text-green-600">{educatorMetrics?.summary?.total_active || 0}</p>
-                  <p className="text-xs text-slate-500">Total Active</p>
-                </div>
-                <div className="p-3 bg-blue-50 rounded-xl text-center">
-                  <p className="text-2xl font-bold text-blue-600">{educatorMetrics?.summary?.avg_demos_per_educator || 0}</p>
-                  <p className="text-xs text-slate-500">Avg Demos/Educator</p>
-                </div>
-                <div className="p-3 bg-purple-50 rounded-xl text-center">
-                  <p className="text-2xl font-bold text-purple-600">₹{(educatorMetrics?.summary?.avg_earnings_per_educator || 0).toLocaleString()}</p>
-                  <p className="text-xs text-slate-500">Avg Earnings</p>
-                </div>
-              </div>
-              {educatorMetrics?.top_performers?.length > 0 && (
-                <div className="border-t pt-4">
-                  <p className="text-sm font-medium text-slate-700 mb-2">Top Performers</p>
-                  {educatorMetrics.top_performers.slice(0, 3).map((edu, idx) => (
-                    <div key={idx} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
-                          idx === 0 ? 'bg-yellow-100 text-yellow-700' : 'bg-slate-100 text-slate-600'
-                        }`}>{idx + 1}</span>
-                        <span className="text-sm">{edu.name}</span>
-                      </div>
-                      <span className="text-sm font-medium text-[#1E3A5F]">{edu.demos} demos</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Support Metrics */}
-            <div className="bg-white rounded-2xl border border-slate-100 p-5">
-              <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
-                <MessageSquare className="w-5 h-5 text-red-500" />
-                Support Metrics
-              </h3>
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="p-3 bg-red-50 rounded-xl text-center">
-                  <p className="text-2xl font-bold text-red-600">{supportMetrics?.summary?.new || 0}</p>
-                  <p className="text-xs text-slate-500">New Tickets</p>
-                </div>
-                <div className="p-3 bg-orange-50 rounded-xl text-center">
-                  <p className="text-2xl font-bold text-orange-600">{supportMetrics?.summary?.open || 0}</p>
-                  <p className="text-xs text-slate-500">Open</p>
-                </div>
-                <div className="p-3 bg-green-50 rounded-xl text-center">
-                  <p className="text-2xl font-bold text-green-600">{supportMetrics?.summary?.resolved || 0}</p>
-                  <p className="text-xs text-slate-500">Resolved</p>
-                </div>
-                <div className="p-3 bg-blue-50 rounded-xl text-center">
-                  <p className="text-2xl font-bold text-blue-600">{supportMetrics?.summary?.avg_resolution_time_hours || 0}h</p>
-                  <p className="text-xs text-slate-500">Avg Resolution</p>
-                </div>
-              </div>
-              {supportMetrics?.by_priority?.length > 0 && (
-                <div className="border-t pt-4">
-                  <p className="text-sm font-medium text-slate-700 mb-2">By Priority</p>
-                  {supportMetrics.by_priority.slice(0, 3).map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
-                      <span className="text-sm capitalize">{item.name?.replace(/_/g, ' ')}</span>
-                      <span className="text-sm font-medium px-2 py-0.5 bg-slate-100 rounded">{item.count}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* ============ STAGE DISTRIBUTION ============ */}
-          <div>
-            <h2 className="text-lg font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
-              <Users className="w-5 h-5" />
-              User Stage Distribution
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-              <DonutChart 
-                data={userStages?.students?.stages} 
-                title="Students" 
-                total={userStages?.students?.total || 0}
-              />
-              <DonutChart 
-                data={userStages?.schools?.stages} 
-                title="Schools" 
-                total={userStages?.schools?.total || 0}
-              />
-              <DonutChart 
-                data={userStages?.educators?.stages} 
-                title="Educators" 
-                total={userStages?.educators?.total || 0}
-              />
-              <DonutChart 
-                data={userStages?.team?.stages} 
-                title="Team" 
-                total={userStages?.team?.total || 0}
-              />
-              <DonutChart 
-                data={userStages?.growth_partners?.stages} 
-                title="Growth Partners" 
-                total={userStages?.growth_partners?.total || 0}
-              />
-            </div>
+            ))}
           </div>
         </div>
       )}
+    </div>
+  );
+
+  const renderGPTab = () => (
+    <div className="space-y-6">
+      <h2 className="text-lg font-semibold text-[#1E3A5F]">Growth Partners</h2>
+      
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard title="Total Partners" value={gpTotal} icon={Handshake} color="orange" />
+        <StatCard title="Converted" value={gpConverted} icon={UserCheck} color="green" />
+        <StatCard title="Conversion Rate" value={`${gpTotal > 0 ? Math.round((gpConverted / gpTotal) * 100) : 0}%`} icon={Target} color="purple" />
+        <StatCard title="In Discussion" value={stages?.growth_partners?.stages?.find(s => s.name === 'in_discussion')?.count || 0} icon={MessageSquare} color="blue" />
+      </div>
+      
+      <div className="bg-white rounded-2xl border border-slate-100 p-5">
+        <h3 className="font-semibold text-[#1E3A5F] mb-4">Partner Pipeline</h3>
+        <div className="space-y-3">
+          {stages?.growth_partners?.stages?.map((stage, idx) => (
+            <ProgressBar
+              key={idx}
+              label={stage.name?.replace(/_/g, ' ')}
+              value={stage.count}
+              total={gpTotal || 1}
+              color={['#f97316', '#9333ea', '#3b82f6', '#22c55e', '#64748b'][idx % 5]}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderPnLTab = () => (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-lg font-semibold text-[#1E3A5F]">Profit & Loss Report</h2>
+        <Button onClick={() => { setEditingExpense(null); setShowExpenseModal(true); }} className="bg-[#D63031] hover:bg-[#b52828]">
+          <Plus className="w-4 h-4 mr-2" /> Add Expense
+        </Button>
+      </div>
+      
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <StatCard title="Total Revenue" value={`₹${totalRevenue.toLocaleString()}`} icon={TrendingUp} color="green" />
+        <StatCard title="Total Expenses" value={`₹${totalExpenses.toLocaleString()}`} icon={TrendingDown} color="red" />
+        <StatCard title="Net Profit" value={`₹${netProfit.toLocaleString()}`} icon={Wallet} color={netProfit >= 0 ? 'green' : 'red'} />
+        <StatCard title="Profit Margin" value={`${totalRevenue > 0 ? Math.round((netProfit / totalRevenue) * 100) : 0}%`} icon={Target} color={netProfit >= 0 ? 'green' : 'red'} />
+      </div>
+      
+      {/* Revenue Breakdown */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-green-500" /> Revenue Breakdown
+          </h3>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+              <span className="text-slate-600">Student Revenue</span>
+              <span className="font-bold text-blue-600">₹{studentRevenue.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
+              <span className="text-slate-600">School Revenue</span>
+              <span className="font-bold text-purple-600">₹{schoolRevenue.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between items-center p-4 bg-green-100 rounded-lg border border-green-200">
+              <span className="font-medium text-green-800">Total Revenue</span>
+              <span className="text-xl font-bold text-green-700">₹{totalRevenue.toLocaleString()}</span>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
+            <TrendingDown className="w-5 h-5 text-red-500" /> Expense Breakdown
+          </h3>
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {Object.entries(expensesByCategory).sort((a, b) => b[1] - a[1]).map(([category, amount]) => (
+              <div key={category} className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
+                <span className="text-slate-600 capitalize">{category.replace(/_/g, ' ')}</span>
+                <span className="font-medium text-slate-800">₹{amount.toLocaleString()}</span>
+              </div>
+            ))}
+            {Object.keys(expensesByCategory).length === 0 && (
+              <p className="text-slate-500 text-center py-4">No expenses recorded</p>
+            )}
+            <div className="flex justify-between items-center p-4 bg-red-100 rounded-lg border border-red-200 mt-2">
+              <span className="font-medium text-red-800">Total Expenses</span>
+              <span className="text-xl font-bold text-red-700">₹{totalExpenses.toLocaleString()}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Expense List */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-5">
+        <h3 className="font-semibold text-[#1E3A5F] mb-4">Recent Expenses</h3>
+        {expenses.length === 0 ? (
+          <p className="text-slate-500 text-center py-8">No expenses recorded for this period</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b text-left">
+                  <th className="pb-3 text-sm font-medium text-slate-500">Date</th>
+                  <th className="pb-3 text-sm font-medium text-slate-500">Title</th>
+                  <th className="pb-3 text-sm font-medium text-slate-500">Category</th>
+                  <th className="pb-3 text-sm font-medium text-slate-500">Amount</th>
+                  <th className="pb-3 text-sm font-medium text-slate-500">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {expenses.slice(0, 20).map(expense => (
+                  <tr key={expense.id} className="border-b last:border-0">
+                    <td className="py-3 text-sm">{expense.date}</td>
+                    <td className="py-3 text-sm font-medium">{expense.title}</td>
+                    <td className="py-3">
+                      <span className="text-xs px-2 py-1 bg-slate-100 rounded-full capitalize">
+                        {expense.category?.replace(/_/g, ' ')}
+                      </span>
+                    </td>
+                    <td className="py-3 text-sm font-medium text-red-600">₹{expense.amount?.toLocaleString()}</td>
+                    <td className="py-3">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setEditingExpense(expense);
+                            setExpenseForm({
+                              title: expense.title,
+                              description: expense.description || '',
+                              amount: String(expense.amount),
+                              category: expense.category,
+                              subcategory: expense.subcategory || '',
+                              date: expense.date,
+                              payment_method: expense.payment_method || '',
+                              vendor: expense.vendor || '',
+                              notes: expense.notes || ''
+                            });
+                            setShowExpenseModal(true);
+                          }}
+                          className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteExpense(expense.id)}
+                          className="p-1 text-red-600 hover:bg-red-50 rounded"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  return (
+    <AdminLayout title="Reports & Analytics">
+      {/* Tab Navigation */}
+      <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+        {REPORT_TABS.map(tab => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              data-testid={`report-tab-${tab.id}`}
+              className={`px-4 py-2 rounded-xl text-sm font-medium transition-all whitespace-nowrap flex items-center gap-2 ${
+                activeTab === tab.id
+                  ? 'bg-[#1E3A5F] text-white'
+                  : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+      
+      {/* Date Filter */}
+      {renderDateFilter()}
+
+      {/* Content */}
+      <div className="mt-6">
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D63031] mx-auto"></div>
+            <p className="text-slate-500 mt-3">Loading reports...</p>
+          </div>
+        ) : (
+          <>
+            {activeTab === 'overview' && renderOverviewTab()}
+            {activeTab === 'b2c' && renderB2CTab()}
+            {activeTab === 'b2b' && renderB2BTab()}
+            {activeTab === 'hr_team' && renderHRTeamTab()}
+            {activeTab === 'educator_hr' && renderEducatorHRTab()}
+            {activeTab === 'growth_partners' && renderGPTab()}
+            {activeTab === 'pnl' && renderPnLTab()}
+          </>
+        )}
+      </div>
+
+      {/* Expense Modal */}
+      <Dialog open={showExpenseModal} onOpenChange={() => { setShowExpenseModal(false); setEditingExpense(null); }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingExpense ? 'Edit Expense' : 'Add Expense'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Title *</label>
+              <Input
+                value={expenseForm.title}
+                onChange={(e) => setExpenseForm({ ...expenseForm, title: e.target.value })}
+                placeholder="e.g., Office Rent, Software Subscription"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Amount (₹) *</label>
+                <Input
+                  type="number"
+                  value={expenseForm.amount}
+                  onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })}
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Date *</label>
+                <Input
+                  type="date"
+                  value={expenseForm.date}
+                  onChange={(e) => setExpenseForm({ ...expenseForm, date: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Category *</label>
+                <select
+                  value={expenseForm.category}
+                  onChange={(e) => setExpenseForm({ ...expenseForm, category: e.target.value, subcategory: '' })}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                >
+                  <option value="">Select category</option>
+                  {expenseCategories.categories?.map(cat => (
+                    <option key={cat} value={cat}>{cat.replace(/_/g, ' ')}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Subcategory</label>
+                <select
+                  value={expenseForm.subcategory}
+                  onChange={(e) => setExpenseForm({ ...expenseForm, subcategory: e.target.value })}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                  disabled={!expenseForm.category}
+                >
+                  <option value="">Select subcategory</option>
+                  {(expenseCategories.subcategories?.[expenseForm.category] || []).map(sub => (
+                    <option key={sub} value={sub}>{sub.replace(/_/g, ' ')}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Payment Method</label>
+                <select
+                  value={expenseForm.payment_method}
+                  onChange={(e) => setExpenseForm({ ...expenseForm, payment_method: e.target.value })}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                >
+                  <option value="">Select method</option>
+                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="upi">UPI</option>
+                  <option value="card">Card</option>
+                  <option value="cash">Cash</option>
+                  <option value="cheque">Cheque</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Vendor</label>
+                <Input
+                  value={expenseForm.vendor}
+                  onChange={(e) => setExpenseForm({ ...expenseForm, vendor: e.target.value })}
+                  placeholder="Vendor name"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
+              <Textarea
+                value={expenseForm.description}
+                onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })}
+                placeholder="Additional details..."
+                rows={2}
+              />
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" onClick={() => { setShowExpenseModal(false); setEditingExpense(null); }} className="flex-1">
+                Cancel
+              </Button>
+              <Button onClick={handleSaveExpense} className="flex-1 bg-[#D63031] hover:bg-[#b52828]">
+                {editingExpense ? 'Update' : 'Add'} Expense
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
