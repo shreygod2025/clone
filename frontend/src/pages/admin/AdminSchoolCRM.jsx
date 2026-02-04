@@ -2246,8 +2246,8 @@ const AdminSchoolCRM = () => {
       {activeTab === 'leads' && (
         <>
           {/* Header Actions */}
-          <div className="flex flex-col md:flex-row gap-4 mb-6">
-            <div className="relative flex-1 flex items-center gap-2">
+          <div className="flex flex-col gap-4 mb-6">
+            <div className="relative flex-1 flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <Input
@@ -2268,35 +2268,37 @@ const AdminSchoolCRM = () => {
                 Search all
               </label>
             </div>
-            <select
-              value={assigneeFilter}
-              onChange={(e) => setAssigneeFilter(e.target.value)}
-              className="h-10 px-4 border border-slate-200 rounded-lg bg-white text-sm"
-              data-testid="school-assignee-filter"
-            >
-              <option value="all">All Assignees</option>
-              <option value="unassigned">Unassigned</option>
-              {teamUsers.filter(u => u.is_active).map(u => (
-                <option key={u.id} value={u.id}>{u.name}</option>
-              ))}
-            </select>
-            {activeSection === 'active' && (
-              <Button
-                onClick={() => setShowBulkImportModal(true)}
-                variant="outline"
-                className="flex items-center gap-2"
-                data-testid="bulk-import-btn"
+            <div className="flex flex-wrap gap-2">
+              <select
+                value={assigneeFilter}
+                onChange={(e) => setAssigneeFilter(e.target.value)}
+                className="h-10 px-4 border border-slate-200 rounded-lg bg-white text-sm flex-1 sm:flex-none"
+                data-testid="school-assignee-filter"
               >
-                <FileSpreadsheet className="w-4 h-4" /> Bulk Import
+                <option value="all">All Assignees</option>
+                <option value="unassigned">Unassigned</option>
+                {teamUsers.filter(u => u.is_active).map(u => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
+                ))}
+              </select>
+              {activeSection === 'active' && (
+                <Button
+                  onClick={() => setShowBulkImportModal(true)}
+                  variant="outline"
+                  className="flex items-center gap-2 flex-1 sm:flex-none justify-center"
+                  data-testid="bulk-import-btn"
+                >
+                  <FileSpreadsheet className="w-4 h-4" /> <span className="hidden sm:inline">Bulk</span> Import
+                </Button>
+              )}
+              <Button
+                onClick={() => setShowAddForm(true)}
+                className="btn-primary flex items-center gap-2 flex-1 sm:flex-none justify-center"
+                data-testid="add-school-lead-btn"
+              >
+                <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Add</span> Lead
               </Button>
-            )}
-            <Button
-              onClick={() => setShowAddForm(true)}
-              className="btn-primary flex items-center gap-2"
-              data-testid="add-school-lead-btn"
-            >
-              <Plus className="w-4 h-4" /> Add Lead
-            </Button>
+            </div>
           </div>
 
           {/* Section Tabs */}
