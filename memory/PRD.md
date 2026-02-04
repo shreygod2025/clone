@@ -551,6 +551,8 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ Team Onboarding Workflow (COMPLETED Feb 4, 2026)
 - ✅ GP Onboarding Workflow (COMPLETED Feb 4, 2026)
 - ✅ Reports Overhaul with Expense Management (COMPLETED Feb 4, 2026)
+- ✅ Merge Onboarding Pages into Lead Management (COMPLETED Feb 4, 2026)
+- ✅ Reports Support Tab with Insights (COMPLETED Feb 4, 2026)
 - Generate Proposal & MOU PDFs from /add page
 
 ### P1 (High)
@@ -558,6 +560,7 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ School CRM Data Transfer - Ensure data transfers across popups (COMPLETED Feb 4, 2026)
 - ✅ Team Member Reports - Performance metrics for active team members (COMPLETED Feb 4, 2026)
 - ✅ Mobile Responsiveness - Admin pages mobile-friendly (COMPLETED Feb 4, 2026)
+- Team member filters in Reports section
 - Implement background scheduler (APScheduler) for AI follow-up emails at 9 AM
 - CSV Export for all CRM, Data Center, Reports pages
 
@@ -566,6 +569,7 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - Real calendar integration (Calendly)
 - RBAC enforcement on frontend/backend
 - Lead scoring system
+- Refactor server.py into modular routers (auth, reports, onboarding, etc.)
 
 ### Future
 - SMS/Email reminders for students
