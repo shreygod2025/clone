@@ -3223,6 +3223,67 @@ const AdminSchoolCRM = () => {
                     </div>
                   </div>
 
+                  {/* School History Section */}
+                  <div className="border-t pt-4">
+                    <button
+                      onClick={() => setShowHistoryTab(!showHistoryTab)}
+                      className="w-full flex items-center justify-between text-left font-semibold text-[#1E3A5F] mb-3"
+                      data-testid="school-history-toggle"
+                    >
+                      <div className="flex items-center gap-2">
+                        <History className="w-4 h-4" />
+                        Activity History ({schoolHistory.length})
+                      </div>
+                      {showHistoryTab ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+                    
+                    {showHistoryTab && (
+                      <div className="space-y-2 max-h-[250px] overflow-y-auto" data-testid="school-history-timeline">
+                        {loadingHistory ? (
+                          <div className="text-center py-4">
+                            <RefreshCw className="w-5 h-5 animate-spin mx-auto text-slate-400" />
+                            <p className="text-sm text-slate-500 mt-2">Loading history...</p>
+                          </div>
+                        ) : schoolHistory.length === 0 ? (
+                          <p className="text-sm text-slate-500 text-center py-4">No history available</p>
+                        ) : (
+                          schoolHistory.map((item, idx) => (
+                            <div key={idx} className={`p-3 rounded-lg text-sm ${
+                              item.type === 'created' ? 'bg-blue-50 border-l-4 border-blue-400' :
+                              item.type === 'status_change' ? 'bg-amber-50 border-l-4 border-amber-400' :
+                              item.type === 'meeting_scheduled' ? 'bg-purple-50 border-l-4 border-purple-400' :
+                              item.type === 'followup' ? 'bg-orange-50 border-l-4 border-orange-400' :
+                              item.type === 'converted' ? 'bg-green-50 border-l-4 border-green-500' :
+                              item.type === 'onboarding_step' ? 'bg-teal-50 border-l-4 border-teal-400' :
+                              item.type === 'ticket' ? 'bg-red-50 border-l-4 border-red-400' :
+                              item.type === 'note' ? 'bg-slate-50 border-l-4 border-slate-300' :
+                              'bg-slate-50 border-l-4 border-slate-300'
+                            }`}>
+                              <div className="flex items-start gap-2">
+                                <span className="mt-0.5">
+                                  {item.type === 'created' && <Plus className="w-4 h-4 text-blue-500" />}
+                                  {item.type === 'status_change' && <RefreshCw className="w-4 h-4 text-amber-500" />}
+                                  {item.type === 'meeting_scheduled' && <Calendar className="w-4 h-4 text-purple-500" />}
+                                  {item.type === 'followup' && <Clock className="w-4 h-4 text-orange-500" />}
+                                  {item.type === 'converted' && <CheckCircle className="w-4 h-4 text-green-500" />}
+                                  {item.type === 'onboarding_step' && <FileCheck className="w-4 h-4 text-teal-500" />}
+                                  {item.type === 'ticket' && <Ticket className="w-4 h-4 text-red-500" />}
+                                  {item.type === 'note' && <FileText className="w-4 h-4 text-slate-500" />}
+                                </span>
+                                <div className="flex-1">
+                                  <p className="text-slate-700">{item.description}</p>
+                                  <p className="text-xs text-slate-400 mt-1">
+                                    {item.date ? new Date(item.date).toLocaleString() : 'No date'}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="pt-4 border-t">
                     <p className="text-xs text-slate-400">
                       Status: <span className="font-medium text-[#1E3A5F] capitalize">{viewInquiry.status?.replace('_', ' ')}</span>
