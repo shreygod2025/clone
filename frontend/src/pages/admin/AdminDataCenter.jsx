@@ -680,6 +680,161 @@ const AdminDataCenter = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Edit Modal */}
+      <Dialog open={!!editItem} onOpenChange={() => { setEditItem(null); setEditForm({}); }}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="w-5 h-5 text-blue-600" />
+              Edit Record
+            </DialogTitle>
+          </DialogHeader>
+          {editItem && (
+            <div className="space-y-4">
+              {/* Common fields */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium text-slate-700">Name</label>
+                  <Input
+                    value={editForm.name || editForm.school_name || editForm.contact_name || ''}
+                    onChange={(e) => {
+                      if (editItem._type === 'schools') {
+                        setEditForm({ ...editForm, school_name: e.target.value });
+                      } else {
+                        setEditForm({ ...editForm, name: e.target.value });
+                      }
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-slate-700">Phone</label>
+                  <Input
+                    value={editForm.phone || ''}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Email</label>
+                <Input
+                  type="email"
+                  value={editForm.email || ''}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium text-slate-700">City/Location</label>
+                  <Input
+                    value={editForm.city || editForm.location || ''}
+                    onChange={(e) => {
+                      if (editItem._type === 'schools') {
+                        setEditForm({ ...editForm, location: e.target.value });
+                      } else {
+                        setEditForm({ ...editForm, city: e.target.value });
+                      }
+                    }}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-slate-700">Status</label>
+                  <select
+                    value={editForm.status || ''}
+                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                    className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                  >
+                    {(STATUSES[editItem._type] || []).map(s => (
+                      <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Type-specific fields */}
+              {editItem._type === 'students' && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-sm font-medium text-slate-700">Age Group</label>
+                      <select
+                        value={editForm.age_group || ''}
+                        onChange={(e) => setEditForm({ ...editForm, age_group: e.target.value })}
+                        className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                      >
+                        <option value="">Select</option>
+                        {AGE_GROUPS.map(a => <option key={a} value={a}>{a}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-slate-700">Skill</label>
+                      <select
+                        value={editForm.skill || ''}
+                        onChange={(e) => setEditForm({ ...editForm, skill: e.target.value })}
+                        className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                      >
+                        <option value="">Select</option>
+                        {SKILLS.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {editItem._type === 'schools' && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-sm font-medium text-slate-700">Board</label>
+                      <Input
+                        value={editForm.board || ''}
+                        onChange={(e) => setEditForm({ ...editForm, board: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-slate-700">Student Count</label>
+                      <Input
+                        value={editForm.school_size || editForm.student_count || ''}
+                        onChange={(e) => setEditForm({ ...editForm, school_size: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {editItem._type === 'educators' && (
+                <>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Experience</label>
+                    <Input
+                      value={editForm.experience || ''}
+                      onChange={(e) => setEditForm({ ...editForm, experience: e.target.value })}
+                    />
+                  </div>
+                </>
+              )}
+
+              <div>
+                <label className="text-sm font-medium text-slate-700">Notes</label>
+                <Textarea
+                  value={editForm.notes || editForm.admin_notes || ''}
+                  onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                  rows={3}
+                />
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t">
+                <Button variant="outline" onClick={() => { setEditItem(null); setEditForm({}); }} className="flex-1">
+                  Cancel
+                </Button>
+                <Button onClick={handleEdit} className="flex-1 bg-blue-600 hover:bg-blue-700">
+                  Save Changes
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
