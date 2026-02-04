@@ -13,6 +13,23 @@ import uuid
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
+@pytest.fixture(scope="module")
+def admin_token():
+    """Get admin authentication token"""
+    login_response = requests.post(f"{BASE_URL}/api/auth/login", json={
+        "email": "admin@oll.co",
+        "password": "Dagaji03@"
+    })
+    if login_response.status_code != 200:
+        pytest.skip("Admin login failed")
+    return login_response.json().get("access_token")
+
+@pytest.fixture(scope="module")
+def admin_headers(admin_token):
+    """Get headers with admin token"""
+    return {"Authorization": f"Bearer {admin_token}"}
+
+
 class TestHealthCheck:
     """Basic health check tests"""
     
@@ -54,7 +71,6 @@ class TestTeamApplications:
         assert data["name"] == test_data["name"], "Name should match"
         assert data.get("applied_position_id") == "test-position-123", "applied_position_id should be set"
         print(f"Team application created successfully with id: {data['id']}")
-        return data["id"]
     
     def test_create_team_application_with_empty_position_id(self):
         """Test creating team application with empty applied_position_id (default case)"""
@@ -107,23 +123,10 @@ class TestGrowthPartnerApplications:
         assert "id" in data, "Response should contain id"
         assert data["name"] == test_data["name"], "Name should match"
         print(f"Growth partner created with id: {data['id']}")
-        return data["id"]
     
-    def test_get_growth_partners_list(self):
+    def test_get_growth_partners_list(self, admin_headers):
         """Test fetching growth partners list (admin visibility)"""
-        # First login as admin
-        login_response = requests.post(f"{BASE_URL}/api/auth/login", json={
-            "email": "admin@oll.co",
-            "password": "Dagaji03@"
-        })
-        
-        if login_response.status_code != 200:
-            pytest.skip("Admin login failed - skipping authenticated test")
-        
-        token = login_response.json().get("token")
-        headers = {"Authorization": f"Bearer {token}"}
-        
-        response = requests.get(f"{BASE_URL}/api/growth-partners", headers=headers)
+        response = requests.get(f"{BASE_URL}/api/growth-partners", headers=admin_headers)
         print(f"Growth partners list response: {response.status_code}")
         
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
@@ -131,6 +134,10 @@ class TestGrowthPartnerApplications:
         data = response.json()
         assert isinstance(data, list), "Response should be a list"
         print(f"Found {len(data)} growth partners")
+        
+        # Check if TEST_ prefixed partners are visible
+        test_partners = [p for p in data if p.get("name", "").startswith("TEST_")]
+        print(f"Found {len(test_partners)} test growth partners")
 
 
 class TestSchoolCRM:
@@ -152,7 +159,7 @@ class TestSchoolCRM:
             "message": "Interested in skill programs"
         }
         
-        response = requests.post(f"{BASE_URL}/api/school-inquiries", json=test_data)
+        response = requests.post(f"{BASE_URL}/api/schools/inquiry", json=test_data)
         print(f"School inquiry creation response: {response.status_code}")
         
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
@@ -164,28 +171,30 @@ class TestSchoolCRM:
         if "selected_offerings" in data:
             print(f"selected_offerings preserved: {data['selected_offerings']}")
         print(f"School inquiry created with id: {data['id']}")
-        return data["id"]
+    
+    def test_get_school_inquiries(self, admin_headers):
+        """Test fetching school inquiries list"""
+        response = requests.get(f"{BASE_URL}/api/schools/inquiries", headers=admin_headers)
+        print(f"School inquiries list response: {response.status_code}")
+        
+        assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+        
+        data = response.json()
+        assert isinstance(data, list), "Response should be a list"
+        print(f"Found {len(data)} school inquiries")
+        
+        # Check for selected_offerings field in responses
+        for inquiry in data[:5]:  # Check first 5
+            if inquiry.get("selected_offerings"):
+                print(f"School {inquiry.get('school_name')} has selected_offerings: {inquiry.get('selected_offerings')}")
 
 
 class TestEducatorCRM:
     """Test Educator CRM onboarding count"""
     
-    def test_get_educators_list(self):
+    def test_get_educators_list(self, admin_headers):
         """Test fetching educators list with status counts"""
-        # Login as admin
-        login_response = requests.post(f"{BASE_URL}/api/auth/login", json={
-            "email": "admin@oll.co",
-            "password": "Dagaji03@"
-        })
-        
-        if login_response.status_code != 200:
-            pytest.skip("Admin login failed - skipping authenticated test")
-        
-        token = login_response.json().get("token")
-        headers = {"Authorization": f"Bearer {token}"}
-        
-        # Get all educators
-        response = requests.get(f"{BASE_URL}/api/educator-applications", headers=headers)
+        response = requests.get(f"{BASE_URL}/api/educators/applications", headers=admin_headers)
         print(f"Educators list response: {response.status_code}")
         
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
@@ -210,21 +219,9 @@ class TestEducatorCRM:
 class TestTeamApplicationStatusActions:
     """Test Team Application status actions for interview_scheduled"""
     
-    def test_get_team_applications_with_status(self):
+    def test_get_team_applications_with_status(self, admin_headers):
         """Test fetching team applications and verify status actions"""
-        # Login as admin
-        login_response = requests.post(f"{BASE_URL}/api/auth/login", json={
-            "email": "admin@oll.co",
-            "password": "Dagaji03@"
-        })
-        
-        if login_response.status_code != 200:
-            pytest.skip("Admin login failed - skipping authenticated test")
-        
-        token = login_response.json().get("token")
-        headers = {"Authorization": f"Bearer {token}"}
-        
-        response = requests.get(f"{BASE_URL}/api/team-applications", headers=headers)
+        response = requests.get(f"{BASE_URL}/api/team-applications", headers=admin_headers)
         print(f"Team applications list response: {response.status_code}")
         
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
@@ -241,20 +238,8 @@ class TestTeamApplicationStatusActions:
         print(f"Team application status counts: {status_counts}")
         print(f"Total team applications: {len(data)}")
     
-    def test_update_team_application_status_to_hired(self):
+    def test_update_team_application_status_to_hired(self, admin_headers):
         """Test updating team application status from interview_scheduled to hired"""
-        # Login as admin
-        login_response = requests.post(f"{BASE_URL}/api/auth/login", json={
-            "email": "admin@oll.co",
-            "password": "Dagaji03@"
-        })
-        
-        if login_response.status_code != 200:
-            pytest.skip("Admin login failed - skipping authenticated test")
-        
-        token = login_response.json().get("token")
-        headers = {"Authorization": f"Bearer {token}"}
-        
         # First create a test application
         test_data = {
             "name": f"TEST_HireCandidate_{uuid.uuid4().hex[:6]}",
@@ -283,15 +268,16 @@ class TestTeamApplicationStatusActions:
         update_response = requests.patch(
             f"{BASE_URL}/api/team-applications/{app_id}",
             json={"status": "interview_scheduled"},
-            headers=headers
+            headers=admin_headers
         )
         print(f"Update to interview_scheduled: {update_response.status_code}")
+        assert update_response.status_code == 200, f"Failed to update to interview_scheduled: {update_response.text}"
         
         # Now update to hired (this is the new action button)
         update_response = requests.patch(
             f"{BASE_URL}/api/team-applications/{app_id}",
             json={"status": "hired"},
-            headers=headers
+            headers=admin_headers
         )
         print(f"Update to hired: {update_response.status_code}")
         
@@ -300,33 +286,80 @@ class TestTeamApplicationStatusActions:
         data = update_response.json()
         assert data.get("status") == "hired", f"Status should be 'hired', got {data.get('status')}"
         print(f"Successfully updated application to hired status")
-
-
-class TestOrdersModal:
-    """Test Orders page Payment Update modal scrollability"""
     
-    def test_get_orders_list(self):
-        """Test fetching orders list"""
-        # Login as admin
-        login_response = requests.post(f"{BASE_URL}/api/auth/login", json={
-            "email": "admin@oll.co",
-            "password": "Dagaji03@"
-        })
+    def test_update_team_application_status_to_rejected(self, admin_headers):
+        """Test updating team application status from interview_scheduled to rejected"""
+        # First create a test application
+        test_data = {
+            "name": f"TEST_RejectCandidate_{uuid.uuid4().hex[:6]}",
+            "email": f"reject_{uuid.uuid4().hex[:6]}@example.com",
+            "phone": "9876543215",
+            "role": "Marketing",
+            "experience": "1 year",
+            "city": "Hyderabad",
+            "availability": "1 month",
+            "linkedin": "",
+            "portfolio": "",
+            "resume_url": "",
+            "applied_position_id": "",
+            "message": "Test for reject flow",
+            "source": "about_page"
+        }
         
-        if login_response.status_code != 200:
-            pytest.skip("Admin login failed - skipping authenticated test")
+        create_response = requests.post(f"{BASE_URL}/api/team-applications", json=test_data)
+        if create_response.status_code != 200:
+            pytest.skip("Could not create test application")
         
-        token = login_response.json().get("token")
-        headers = {"Authorization": f"Bearer {token}"}
+        app_id = create_response.json()["id"]
+        print(f"Created test application: {app_id}")
         
-        response = requests.get(f"{BASE_URL}/api/orders", headers=headers)
-        print(f"Orders list response: {response.status_code}")
+        # Update to interview_scheduled first
+        update_response = requests.patch(
+            f"{BASE_URL}/api/team-applications/{app_id}",
+            json={"status": "interview_scheduled"},
+            headers=admin_headers
+        )
+        print(f"Update to interview_scheduled: {update_response.status_code}")
+        
+        # Now update to rejected (this is the new action button)
+        update_response = requests.patch(
+            f"{BASE_URL}/api/team-applications/{app_id}",
+            json={"status": "rejected"},
+            headers=admin_headers
+        )
+        print(f"Update to rejected: {update_response.status_code}")
+        
+        assert update_response.status_code == 200, f"Expected 200, got {update_response.status_code}"
+        
+        data = update_response.json()
+        assert data.get("status") == "rejected", f"Status should be 'rejected', got {data.get('status')}"
+        print(f"Successfully updated application to rejected status")
+
+
+class TestOrdersPayments:
+    """Test Orders page payments"""
+    
+    def test_get_school_payments(self, admin_headers):
+        """Test fetching school payments list"""
+        response = requests.get(f"{BASE_URL}/api/orders/school-payments", headers=admin_headers)
+        print(f"School payments list response: {response.status_code}")
         
         assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
         
         data = response.json()
         assert isinstance(data, list), "Response should be a list"
-        print(f"Found {len(data)} orders")
+        print(f"Found {len(data)} school payments")
+    
+    def test_get_student_payments(self, admin_headers):
+        """Test fetching student payments list"""
+        response = requests.get(f"{BASE_URL}/api/orders/student-payments", headers=admin_headers)
+        print(f"Student payments list response: {response.status_code}")
+        
+        assert response.status_code == 200, f"Expected 200, got {response.status_code}: {response.text}"
+        
+        data = response.json()
+        assert isinstance(data, list), "Response should be a list"
+        print(f"Found {len(data)} student payments")
 
 
 if __name__ == "__main__":
