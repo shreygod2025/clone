@@ -443,15 +443,18 @@ const AdminReports = () => {
     </div>
   );
 
-  const renderB2CTab = () => (
+  const renderB2CTab = () => {
+    const b2cInsights = reportData.b2cInsights;
+    return (
     <div className="space-y-6">
       <h2 className="text-lg font-semibold text-[#1E3A5F]">B2C - Student Sales & Marketing</h2>
       
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <StatCard title="Total Leads" value={studentFunnel?.total_leads || 0} icon={Users} color="blue" />
         <StatCard title="Demos Scheduled" value={overview?.students?.demo_scheduled || 0} icon={Calendar} color="purple" />
         <StatCard title="Demos Completed" value={overview?.students?.demo_completed || 0} icon={UserCheck} color="orange" />
         <StatCard title="Conversions" value={overview?.students?.converted || 0} icon={Target} color="green" />
+        <StatCard title="Revenue" value={`₹${(b2cInsights?.revenue || studentRevenue).toLocaleString()}`} icon={DollarSign} color="green" />
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -484,6 +487,101 @@ const AdminReports = () => {
         </div>
       </div>
       
+      {/* B2C Insights Section */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6">
+        <h3 className="font-semibold text-[#1E3A5F] mb-4">📊 Student Insights</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Course/Skill Breakdown */}
+          <div className="bg-white rounded-xl p-4">
+            <h4 className="text-sm font-medium text-slate-700 mb-3">Courses/Skills</h4>
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {b2cInsights?.courses?.slice(0, 5).map((c, i) => (
+                <div key={i} className="flex justify-between text-sm">
+                  <span className="text-slate-600 truncate">{c.name}</span>
+                  <span className="font-medium text-blue-600">{c.count}</span>
+                </div>
+              ))}
+              {(!b2cInsights?.courses?.length) && <p className="text-sm text-slate-400">No data</p>}
+            </div>
+          </div>
+          
+          {/* Age Group */}
+          <div className="bg-white rounded-xl p-4">
+            <h4 className="text-sm font-medium text-slate-700 mb-3">Age Groups</h4>
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {b2cInsights?.age_groups?.map((a, i) => (
+                <div key={i} className="flex justify-between text-sm">
+                  <span className="text-slate-600">{a.name}</span>
+                  <span className="font-medium text-purple-600">{a.count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          {/* Learning Goals */}
+          <div className="bg-white rounded-xl p-4">
+            <h4 className="text-sm font-medium text-slate-700 mb-3">Learning Goals</h4>
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {b2cInsights?.learning_goals?.slice(0, 5).map((g, i) => (
+                <div key={i} className="flex justify-between text-sm">
+                  <span className="text-slate-600 truncate">{g.name}</span>
+                  <span className="font-medium text-green-600">{g.count}</span>
+                </div>
+              ))}
+              {(!b2cInsights?.learning_goals?.length) && <p className="text-sm text-slate-400">No data</p>}
+            </div>
+          </div>
+          
+          {/* City Breakdown */}
+          <div className="bg-white rounded-xl p-4">
+            <h4 className="text-sm font-medium text-slate-700 mb-3">Top Cities</h4>
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {b2cInsights?.cities?.slice(0, 5).map((c, i) => (
+                <div key={i} className="flex justify-between text-sm">
+                  <span className="text-slate-600 truncate">{c.name}</span>
+                  <span className="font-medium text-orange-600">{c.count}</span>
+                </div>
+              ))}
+              {(!b2cInsights?.cities?.length) && <p className="text-sm text-slate-400">No data</p>}
+            </div>
+          </div>
+          
+          {/* Mode Preference */}
+          <div className="bg-white rounded-xl p-4">
+            <h4 className="text-sm font-medium text-slate-700 mb-3">Preferred Mode</h4>
+            <div className="space-y-2">
+              {b2cInsights?.modes?.map((m, i) => (
+                <div key={i} className="flex justify-between text-sm">
+                  <span className="text-slate-600 capitalize">{m.name}</span>
+                  <span className="font-medium text-cyan-600">{m.count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          {/* Preferred Days & Times */}
+          <div className="bg-white rounded-xl p-4">
+            <h4 className="text-sm font-medium text-slate-700 mb-3">Demo Timing</h4>
+            <div className="mb-3">
+              <p className="text-xs text-slate-500 mb-1">Popular Days</p>
+              <div className="flex flex-wrap gap-1">
+                {b2cInsights?.preferred_days?.slice(0, 3).map((d, i) => (
+                  <span key={i} className="text-xs px-2 py-1 bg-indigo-100 text-indigo-700 rounded">{d.name}: {d.count}</span>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 mb-1">Popular Times</p>
+              <div className="flex flex-wrap gap-1">
+                {b2cInsights?.demo_times?.filter(t => t.count > 0).slice(0, 2).map((t, i) => (
+                  <span key={i} className="text-xs px-2 py-1 bg-emerald-100 text-emerald-700 rounded">{t.name}: {t.count}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
       {/* Stage Distribution */}
       <div className="bg-white rounded-2xl border border-slate-100 p-5">
         <h3 className="font-semibold text-[#1E3A5F] mb-4">Lead Stage Distribution</h3>
@@ -500,7 +598,8 @@ const AdminReports = () => {
         </div>
       </div>
     </div>
-  );
+    );
+  };
 
   const renderB2BTab = () => (
     <div className="space-y-6">
