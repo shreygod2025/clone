@@ -78,6 +78,26 @@ const AdminTeamOnboarding = () => {
     }
   };
 
+  const fetchTeamMemberReport = async (member) => {
+    if (!member?.team_user_id) {
+      toast.error('No team user associated with this member');
+      return;
+    }
+    setShowReportsModal(member);
+    setReportLoading(true);
+    try {
+      const res = await axios.get(`${API}/admin/reports/team-member/${member.team_user_id}`, {
+        headers: getAuthHeaders()
+      });
+      setReportData(res.data);
+    } catch (error) {
+      console.error('Failed to fetch report:', error);
+      toast.error('Failed to load report');
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
   const handleCompleteStep = async () => {
     if (!showStepModal) return;
     try {
