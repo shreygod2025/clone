@@ -2434,11 +2434,11 @@ const AdminSchoolCRM = () => {
                   <span className="text-xs text-slate-500 mr-1">Offerings:</span>
                   {inquiry.selected_offerings.map((offeringId, idx) => {
                     const offering = offerings.find(o => o.id === offeringId);
-                    return offering ? (
+                    return (
                       <span key={idx} className="px-2 py-0.5 bg-purple-100 rounded text-xs text-purple-700">
-                        {offering.title}
+                        {offering ? offering.title : offeringId}
                       </span>
-                    ) : null;
+                    );
                   })}
                 </div>
               )}
