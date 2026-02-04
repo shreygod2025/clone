@@ -345,6 +345,22 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ School card in CRM now displays selected offerings (purple badges)
 - ✅ School card shows Quoted Price in blue when not yet converted
 
+### Feb 4, 2026 - Bug Fixes & Feature Enhancements
+
+**Bug Fixes:**
+- ✅ **Team Application Submit** - Fixed `applied_position_id` sending null instead of empty string
+- ✅ **GP from Website Visibility** - Verified GP applications from website are visible in Admin GP CRM
+- ✅ **School CRM Offering Field** - Added `selected_offerings` to `SchoolInquiryCreate` model
+- ✅ **Orders Popup Scrollable** - Added `max-h-[90vh] overflow-y-auto` to Payment Update modal
+- ✅ **Educator Onboarding Count** - Fixed tabs checking 'onboarding' instead of 'onboarded' status
+- ✅ **Team Interview Actions** - Added 'hired' and 'rejected' buttons to interview_scheduled stage
+
+**Feature Enhancements:**
+- ✅ **Support Ticket FAQs** - Added FAQ auto-fill to query type selection in School Tracking Page
+- ✅ **Edit Converted School Details** - Added "Edit Details" button for converted (onboarding) schools
+- ✅ **Educator Requirement OTP Flow** - Added confirmation screen + OTP verification for requirement applications
+- ✅ **Team Applications Onboarding Tabs** - Merged onboarding functionality into Team Applications page with Onboarding/Active/Discontinued tabs
+
 ### Feb 4, 2026 - UI Consolidation & Reports Enhancement
 
 **Onboarding Pages Merged into Lead Management:**
