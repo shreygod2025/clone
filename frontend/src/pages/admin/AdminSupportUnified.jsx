@@ -78,8 +78,22 @@ const AdminSupportUnified = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [newTicket, setNewTicket] = useState({
-    name: '', phone: '', email: '', query_type: 'other', inquiry_type: 'student', message: '', priority: 'normal'
+    name: '', phone: '', email: '', query_type: 'other', inquiry_type: 'student', message: '', priority: 'normal', source: 'admin_created'
   });
+  
+  // Attachment & Voice Note states
+  const [attachments, setAttachments] = useState([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioBlob, setAudioBlob] = useState(null);
+  const [audioUrl, setAudioUrl] = useState(null);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const recordingIntervalRef = useRef(null);
+  const audioPlayerRef = useRef(null);
+  const fileInputRef = useRef(null);
   
   // Autocomplete states
   const [autocompleteSuggestions, setAutocompleteSuggestions] = useState([]);
@@ -100,6 +114,95 @@ const AdminSupportUnified = () => {
     } catch (error) {
       console.error('Failed to fetch team users:', error);
     }
+  };
+
+  // Voice Recording Functions
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorderRef.current = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+      
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        audioChunksRef.current.push(event.data);
+      };
+      
+      mediaRecorderRef.current.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        setAudioBlob(blob);
+        setAudioUrl(URL.createObjectURL(blob));
+        stream.getTracks().forEach(track => track.stop());
+      };
+      
+      mediaRecorderRef.current.start();
+      setIsRecording(true);
+      setRecordingTime(0);
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+    } catch (error) {
+      toast.error('Failed to access microphone');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      clearInterval(recordingIntervalRef.current);
+    }
+  };
+
+  const togglePlayPause = () => {
+    if (audioPlayerRef.current) {
+      if (isPlaying) {
+        audioPlayerRef.current.pause();
+      } else {
+        audioPlayerRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const removeVoiceNote = () => {
+    setAudioBlob(null);
+    setAudioUrl(null);
+    setRecordingTime(0);
+    setIsPlaying(false);
+  };
+
+  const handleFileUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    
+    setUploadingAttachment(true);
+    try {
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await axios.post(`${API}/upload`, formData, {
+          headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
+        });
+        
+        setAttachments(prev => [...prev, {
+          name: file.name,
+          url: response.data.url,
+          type: file.type,
+          isVoiceNote: false
+        }]);
+      }
+      toast.success('File(s) uploaded successfully');
+    } catch (error) {
+      toast.error('Failed to upload file');
+    } finally {
+      setUploadingAttachment(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const removeAttachment = (index) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
   // Autocomplete search for existing records
