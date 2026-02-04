@@ -789,29 +789,30 @@ const AdminEducators = () => {
               }}
               className="bg-[#D63031] hover:bg-[#c0392b] flex-1 sm:flex-none"
             >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Requirement
-          </Button>
-        )}
-        {activeTab === 'active' && (
-          <div className="flex gap-2">
-            <Button 
-              onClick={() => setShowAddEducatorModal(true)}
-              className="bg-[#D63031] hover:bg-[#c0392b]"
-            >
-              <UserPlus className="w-4 h-4 mr-2" />
-              Add Educator
+              <Plus className="w-4 h-4 mr-2" />
+              <span className="hidden sm:inline">Add</span> Requirement
             </Button>
-            <Button 
-              onClick={() => setShowBulkImportModal(true)}
-              variant="outline"
-              className="border-[#1E3A5F] text-[#1E3A5F]"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Bulk Import
-            </Button>
-          </div>
-        )}
+          )}
+          {activeTab === 'active' && (
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => setShowAddEducatorModal(true)}
+                className="bg-[#D63031] hover:bg-[#c0392b]"
+              >
+                <UserPlus className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Add</span> Educator
+              </Button>
+              <Button 
+                onClick={() => setShowBulkImportModal(true)}
+                variant="outline"
+                className="border-[#1E3A5F] text-[#1E3A5F]"
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                <span className="hidden sm:inline">Bulk</span> Import
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Main Tabs */}
