@@ -8577,6 +8577,7 @@ class InquiryQuery(BaseModel):
     phone: str
     email: str
     query_type: str  # demo_related, payment, course_info, technical, partnership, feedback, other
+    related_to: str = ""  # sub-category within query_type
     query_details: str = ""
     priority: str = "normal"  # low, normal, high, urgent
     source: str = "team_inquiry_form"
