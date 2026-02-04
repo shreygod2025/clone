@@ -411,6 +411,22 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - `POST /api/team-onboarding/{id}/activate` - Activate team member, create user
 - `POST /api/team-onboarding/{id}/discontinue` - Discontinue team member
 
+### GP Onboarding (NEW - Feb 4, 2026)
+- `POST /api/gp-onboarding/init/{partner_id}` - Initialize onboarding for converted GP
+- `GET /api/gp-onboarding` - List all GP onboarding records (filter by status)
+- `GET /api/gp-onboarding/{id}` - Get single GP onboarding record
+- `GET /api/gp-onboarding/track/{token}` - Public GP tracking endpoint
+- `POST /api/gp-onboarding/{id}/complete-step` - Complete GP onboarding step
+- `POST /api/gp-onboarding/{id}/activate` - Activate GP, create team user with GP role
+- `POST /api/gp-onboarding/{id}/discontinue` - Discontinue GP
+
+### Expenses (NEW - Feb 4, 2026)
+- `GET /api/expenses/categories` - Get expense categories and subcategories
+- `POST /api/expenses` - Create new expense
+- `GET /api/expenses` - List expenses with date filters
+- `PATCH /api/expenses/{id}` - Update expense
+- `DELETE /api/expenses/{id}` - Delete expense
+
 ### School Onboarding
 - `POST /api/schools/onboard` - Save onboarding data
 - `POST /api/schools/{id}/init-onboarding` - Initialize 9-step workflow
