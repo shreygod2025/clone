@@ -8476,6 +8476,7 @@ async def get_sales_funnel_report(
     end_date: Optional[str] = None,
     period: Optional[str] = None,
     user_type: str = "students",  # students, schools
+    assigned_to: Optional[str] = None,
     user: dict = Depends(get_current_user)
 ):
     """Get sales funnel metrics with conversion rates"""
@@ -8491,6 +8492,8 @@ async def get_sales_funnel_report(
     for item in all_items:
         created = parse_date_field(item.get('created_at'))
         if created and start <= created <= end:
+            if assigned_to and item.get('assigned_to') != assigned_to:
+                continue
             items.append(item)
     
     total = len(items)
