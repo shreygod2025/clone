@@ -733,6 +733,7 @@ const InquiryPage = () => {
       phone: fullPhone,
       email: formData.email || '',
       query_type: formData.query_type,
+      related_to: formData.related_to || 'other',
       query_details: formData.query_details,
       priority: formData.priority || 'normal',
       source: formData.source || 'team_added',
