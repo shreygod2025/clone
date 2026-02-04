@@ -30,6 +30,7 @@ import RefundPolicyPage from "./pages/RefundPolicyPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import SchoolTrackingPage from "./pages/SchoolTrackingPage";
 import TeamOnboardingTrack from "./pages/TeamOnboardingTrack";
+import GPOnboardingTrack from "./pages/GPOnboardingTrack";
 
 // Course SEO Pages
 import CoursesListPage from "./pages/courses/CoursesListPage";
@@ -43,6 +44,7 @@ import AdminSchoolCRM from "./pages/admin/AdminSchoolCRM";
 import AdminOrders from "./pages/admin/AdminOrders";
 import AdminEducators from "./pages/admin/AdminEducators";
 import AdminGrowthPartners from "./pages/admin/AdminGrowthPartners";
+import AdminGPOnboarding from "./pages/admin/AdminGPOnboarding";
 import AdminTeamApplications from "./pages/admin/AdminTeamApplications";
 import AdminTeamOnboarding from "./pages/admin/AdminTeamOnboarding";
 import AdminUsers from "./pages/admin/AdminUsers";
