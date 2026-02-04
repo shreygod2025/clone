@@ -808,7 +808,7 @@ const AdminStudentCRM = () => {
   return (
     <AdminLayout title="Student CRM">
       {/* Header Actions */}
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
+      <div className="flex flex-col gap-4 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
           <Input
@@ -819,25 +819,27 @@ const AdminStudentCRM = () => {
             data-testid="student-search"
           />
         </div>
-        <select
-          value={assigneeFilter}
-          onChange={(e) => setAssigneeFilter(e.target.value)}
-          className="h-10 px-4 border border-slate-200 rounded-lg bg-white text-sm"
-          data-testid="assignee-filter"
-        >
-          <option value="all">All Assignees</option>
-          <option value="unassigned">Unassigned</option>
-          {teamUsers.filter(u => u.is_active).map(u => (
-            <option key={u.id} value={u.id}>{u.name}</option>
-          ))}
-        </select>
-        <Button
-          onClick={() => setShowAddForm(true)}
-          className="btn-primary flex items-center gap-2"
-          data-testid="add-lead-btn"
-        >
-          <Plus className="w-4 h-4" /> Add Lead
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <select
+            value={assigneeFilter}
+            onChange={(e) => setAssigneeFilter(e.target.value)}
+            className="h-10 px-4 border border-slate-200 rounded-lg bg-white text-sm flex-1 sm:flex-none"
+            data-testid="assignee-filter"
+          >
+            <option value="all">All Assignees</option>
+            <option value="unassigned">Unassigned</option>
+            {teamUsers.filter(u => u.is_active).map(u => (
+              <option key={u.id} value={u.id}>{u.name}</option>
+            ))}
+          </select>
+          <Button
+            onClick={() => setShowAddForm(true)}
+            className="btn-primary flex items-center gap-2 flex-1 sm:flex-none justify-center"
+            data-testid="add-lead-btn"
+          >
+            <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Add</span> Lead
+          </Button>
+        </div>
       </div>
 
       {/* Section Tabs */}
