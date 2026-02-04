@@ -2543,6 +2543,23 @@ async def get_team_onboarding(onboarding_id: str, user: dict = Depends(get_curre
         raise HTTPException(status_code=404, detail="Onboarding not found")
     return onboarding
 
+@api_router.get("/team-onboarding/track/{token}")
+async def get_team_onboarding_public(token: str):
+    """Public endpoint to track onboarding progress by token"""
+    onboarding = await db.team_onboarding.find_one({"tracking_token": token}, {"_id": 0})
+    if not onboarding:
+        raise HTTPException(status_code=404, detail="Invalid tracking link")
+    # Return limited info for public view
+    return {
+        "name": onboarding.get("name"),
+        "email": onboarding.get("email"),
+        "phone": onboarding.get("phone"),
+        "role": onboarding.get("role"),
+        "status": onboarding.get("status"),
+        "steps": onboarding.get("steps"),
+        "created_at": onboarding.get("created_at"),
+    }
+
 @api_router.patch("/team-onboarding/{onboarding_id}")
 async def update_team_onboarding(
     onboarding_id: str,
