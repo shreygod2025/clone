@@ -3301,6 +3301,57 @@ async def delete_school_inquiry(inquiry_id: str, user: dict = Depends(get_curren
     await db.school_inquiries.delete_one({"id": inquiry_id})
     return {"message": "Lead deleted successfully"}
 
+@api_router.delete("/schools/inquiry/{inquiry_id}/contacts/{contact_index}")
+async def delete_school_contact(inquiry_id: str, contact_index: int, user: dict = Depends(get_current_user)):
+    """Delete a contact from a school inquiry"""
+    inquiry = await db.school_inquiries.find_one({"id": inquiry_id}, {"_id": 0})
+    if not inquiry:
+        raise HTTPException(status_code=404, detail="School not found")
+    
+    school_contacts = inquiry.get("school_contacts", [])
+    if contact_index < 0 or contact_index >= len(school_contacts):
+        raise HTTPException(status_code=404, detail="Contact not found")
+    
+    school_contacts.pop(contact_index)
+    await db.school_inquiries.update_one(
+        {"id": inquiry_id}, 
+        {"$set": {"school_contacts": school_contacts, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    return {"message": "Contact deleted successfully"}
+
+@api_router.delete("/educator-applications/{application_id}")
+async def delete_educator_application(application_id: str, user: dict = Depends(get_current_user)):
+    """Delete an educator application"""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Only admins can delete applications")
+    
+    result = await db.educator_applications.delete_one({"id": application_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Application not found")
+    return {"message": "Application deleted successfully"}
+
+@api_router.delete("/team-applications/{application_id}")
+async def delete_team_application(application_id: str, user: dict = Depends(get_current_user)):
+    """Delete a team application"""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Only admins can delete applications")
+    
+    result = await db.team_applications.delete_one({"id": application_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Application not found")
+    return {"message": "Application deleted successfully"}
+
+@api_router.delete("/growth-partner-applications/{application_id}")
+async def delete_growth_partner_application(application_id: str, user: dict = Depends(get_current_user)):
+    """Delete a growth partner application"""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Only admins can delete applications")
+    
+    result = await db.growth_partner_applications.delete_one({"id": application_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Application not found")
+    return {"message": "Application deleted successfully"}
+
 @api_router.patch("/schools/inquiry/{inquiry_id}", response_model=SchoolInquiry)
 async def update_school_inquiry(
     inquiry_id: str, 
