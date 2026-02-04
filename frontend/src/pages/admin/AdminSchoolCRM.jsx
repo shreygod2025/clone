@@ -2368,11 +2368,11 @@ const AdminSchoolCRM = () => {
             {documentsButton}
             <button
               onClick={() => openLostReasonModal(inquiry)}
-              className="text-xs px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 font-medium"
+              className="p-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700"
               data-testid={`lost-${inquiry.id}`}
+              title="Mark Lost"
             >
-              <X className="w-3 h-3" />
-              Lost
+              <X className="w-3.5 h-3.5" />
             </button>
             {baseButtons}
           </div>
@@ -2380,22 +2380,22 @@ const AdminSchoolCRM = () => {
       
       case 'renewed':
         return (
-          <div className="flex gap-1 flex-wrap">
+          <div className="flex gap-1 flex-wrap items-center">
             <button
               onClick={() => handleEditOnboarding(inquiry)}
-              className="text-xs px-3 py-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 flex items-center gap-1 font-medium"
+              className="p-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700"
               data-testid={`edit-${inquiry.id}`}
+              title="Edit"
             >
-              <Edit className="w-3 h-3" />
-              Edit
+              <Edit className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => openLostReasonModal(inquiry)}
-              className="text-xs px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 font-medium"
+              className="p-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700"
               data-testid={`lost-${inquiry.id}`}
+              title="Mark Lost"
             >
-              <X className="w-3 h-3" />
-              Lost
+              <X className="w-3.5 h-3.5" />
             </button>
             {baseButtons}
           </div>
@@ -2403,10 +2403,10 @@ const AdminSchoolCRM = () => {
       
       case 'lost':
         return (
-          <div className="flex gap-1 flex-wrap">
+          <div className="flex gap-1 flex-wrap items-center">
             <button
               onClick={() => handleStatusChange(inquiry, 'active')}
-              className="text-xs px-3 py-1.5 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 flex items-center gap-1 font-medium"
+              className="text-xs px-2 py-1 rounded-lg bg-green-500 hover:bg-green-600 text-white flex items-center gap-1 font-medium"
               data-testid={`reactivate-${inquiry.id}`}
             >
               <RefreshCw className="w-3 h-3" />
@@ -2417,7 +2417,7 @@ const AdminSchoolCRM = () => {
         );
       
       case 'archived':
-        return <div className="flex gap-1 flex-wrap">{followupButton}{baseButtons}</div>;
+        return <div className="flex gap-1 flex-wrap items-center">{followupButton}{baseButtons}</div>;
       
       default:
         return null;
