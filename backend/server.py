@@ -1924,6 +1924,12 @@ async def update_team_user(user_id: str, data: TeamUserUpdate, user: dict = Depe
         raise HTTPException(status_code=403, detail="Only admins can update team users")
     
     update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    
+    # Hash password if provided
+    if "password" in update_data and update_data["password"]:
+        update_data["password_hash"] = hash_password(update_data["password"])
+        del update_data["password"]  # Remove plain text password
+    
     if update_data:
         await db.team_users.update_one({"id": user_id}, {"$set": update_data})
     return {"message": "User updated"}
