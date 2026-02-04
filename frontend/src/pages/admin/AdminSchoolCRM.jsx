@@ -2458,6 +2458,21 @@ const AdminSchoolCRM = () => {
                   })}
                 </div>
               )}
+              
+              {/* Support Needed (from SchoolFunnel) */}
+              {inquiry.support_needed?.length > 0 && (
+                <div className="flex flex-wrap gap-1 mb-3">
+                  <span className="text-xs text-slate-500 mr-1">Support Needed:</span>
+                  {inquiry.support_needed.map((supportId, idx) => {
+                    const offering = offerings.find(o => o.id === supportId);
+                    return (
+                      <span key={idx} className="px-2 py-0.5 bg-green-100 rounded text-xs text-green-700">
+                        {offering ? offering.title : supportId}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
 
               {inquiry.programs_interested?.length > 0 && (
                 <div className="flex flex-wrap gap-1 mb-3">
