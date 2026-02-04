@@ -6689,7 +6689,7 @@ const AdminSchoolCRM = () => {
 
       {/* Raise Ticket Modal */}
       <Dialog open={!!showRaiseTicketModal} onOpenChange={() => setShowRaiseTicketModal(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-orange-600" />
@@ -6697,6 +6697,34 @@ const AdminSchoolCRM = () => {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Query Type Selector with FAQs */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Query Type *</label>
+              <div className="space-y-2 max-h-48 overflow-y-auto border border-slate-200 rounded-lg p-3">
+                {TICKET_QUERIES.map((query) => (
+                  <button
+                    key={query.type}
+                    onClick={() => {
+                      setTicketData({ 
+                        ...ticketData, 
+                        query_type: query.type,
+                        subject: query.label,
+                        description: query.faq 
+                      });
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
+                      ticketData.query_type === query.type
+                        ? 'bg-orange-100 text-orange-800 border border-orange-300'
+                        : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-transparent'
+                    }`}
+                    data-testid={`query-type-${query.type}`}
+                  >
+                    {query.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Subject *</label>
               <Input
@@ -6767,7 +6795,11 @@ const AdminSchoolCRM = () => {
               <Button variant="outline" onClick={() => setShowRaiseTicketModal(null)} className="flex-1">
                 Cancel
               </Button>
-              <Button onClick={handleRaiseTicket} className="flex-1 bg-orange-600 hover:bg-orange-700">
+              <Button 
+                onClick={handleRaiseTicket} 
+                disabled={!ticketData.query_type || !ticketData.subject}
+                className="flex-1 bg-orange-600 hover:bg-orange-700"
+              >
                 <AlertCircle className="w-4 h-4 mr-2" />
                 Raise Ticket
               </Button>
