@@ -786,6 +786,129 @@ const AdminReports = () => {
     </div>
   );
 
+  const renderSupportTab = () => {
+    const supportInsights = reportData.supportInsights;
+    return (
+      <div className="space-y-6">
+        <h2 className="text-lg font-semibold text-[#1E3A5F]">Support Center Analytics</h2>
+        
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <StatCard title="Total Tickets" value={support?.total || 0} icon={MessageSquare} color="blue" />
+          <StatCard title="Open" value={support?.open || 0} icon={Clock} color="orange" />
+          <StatCard title="In Progress" value={support?.in_progress || 0} icon={UserCheck} color="purple" />
+          <StatCard title="Resolved" value={support?.resolved || 0} icon={Target} color="green" />
+          <StatCard 
+            title="Resolution Rate" 
+            value={`${(support?.total || 0) > 0 ? Math.round(((support?.resolved || 0) / support.total) * 100) : 0}%`} 
+            icon={TrendingUp} 
+            color={(support?.total || 0) > 0 && ((support?.resolved || 0) / support.total) >= 0.7 ? 'green' : 'orange'} 
+          />
+        </div>
+        
+        {/* Support Insights */}
+        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-2xl p-6">
+          <h3 className="font-semibold text-[#1E3A5F] mb-4">📊 Support Insights</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* By User Type */}
+            <div className="bg-white rounded-xl p-4">
+              <h4 className="text-sm font-medium text-slate-700 mb-3">Tickets by User Type</h4>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {supportInsights?.by_user_type?.map((item, i) => (
+                  <div key={i} className="flex justify-between text-sm">
+                    <span className="text-slate-600 capitalize">{item.name || 'Unknown'}</span>
+                    <span className="font-medium text-blue-600">{item.count}</span>
+                  </div>
+                ))}
+                {(!supportInsights?.by_user_type?.length) && <p className="text-sm text-slate-400">No data</p>}
+              </div>
+            </div>
+            
+            {/* By Priority */}
+            <div className="bg-white rounded-xl p-4">
+              <h4 className="text-sm font-medium text-slate-700 mb-3">Tickets by Priority</h4>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {supportInsights?.by_priority?.map((item, i) => (
+                  <div key={i} className="flex justify-between text-sm">
+                    <span className={`capitalize ${
+                      item.name === 'high' ? 'text-red-600' : 
+                      item.name === 'medium' ? 'text-orange-600' : 'text-green-600'
+                    }`}>{item.name || 'Unknown'}</span>
+                    <span className="font-medium">{item.count}</span>
+                  </div>
+                ))}
+                {(!supportInsights?.by_priority?.length) && <p className="text-sm text-slate-400">No data</p>}
+              </div>
+            </div>
+            
+            {/* By Source */}
+            <div className="bg-white rounded-xl p-4">
+              <h4 className="text-sm font-medium text-slate-700 mb-3">Tickets by Source</h4>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {supportInsights?.by_source?.map((item, i) => (
+                  <div key={i} className="flex justify-between text-sm">
+                    <span className="text-slate-600 capitalize">{item.name?.replace(/_/g, ' ') || 'Unknown'}</span>
+                    <span className="font-medium text-purple-600">{item.count}</span>
+                  </div>
+                ))}
+                {(!supportInsights?.by_source?.length) && <p className="text-sm text-slate-400">No data</p>}
+              </div>
+            </div>
+            
+            {/* Resolution Time */}
+            <div className="bg-white rounded-xl p-4">
+              <h4 className="text-sm font-medium text-slate-700 mb-3">Avg Resolution Time</h4>
+              <div className="text-center py-4">
+                <p className="text-3xl font-bold text-indigo-600">{supportInsights?.avg_resolution_hours || 0}</p>
+                <p className="text-sm text-slate-500">hours</p>
+              </div>
+            </div>
+            
+            {/* By Category */}
+            <div className="bg-white rounded-xl p-4">
+              <h4 className="text-sm font-medium text-slate-700 mb-3">Top Categories</h4>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {supportInsights?.by_category?.slice(0, 5).map((item, i) => (
+                  <div key={i} className="flex justify-between text-sm">
+                    <span className="text-slate-600 truncate capitalize">{item.name?.replace(/_/g, ' ') || 'General'}</span>
+                    <span className="font-medium text-cyan-600">{item.count}</span>
+                  </div>
+                ))}
+                {(!supportInsights?.by_category?.length) && <p className="text-sm text-slate-400">No data</p>}
+              </div>
+            </div>
+            
+            {/* Status Distribution */}
+            <div className="bg-white rounded-xl p-4">
+              <h4 className="text-sm font-medium text-slate-700 mb-3">Status Distribution</h4>
+              <div className="space-y-2">
+                {supportInsights?.by_status?.map((item, i) => (
+                  <div key={i} className="flex justify-between text-sm">
+                    <span className={`capitalize ${
+                      item.name === 'resolved' ? 'text-green-600' : 
+                      item.name === 'open' ? 'text-blue-600' : 'text-orange-600'
+                    }`}>{item.name}</span>
+                    <span className="font-medium">{item.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Ticket Status Breakdown */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-[#1E3A5F] mb-4">Ticket Status Breakdown</h3>
+          <div className="space-y-3">
+            <ProgressBar label="Open" value={support?.open || 0} total={support?.total || 1} color="#3b82f6" />
+            <ProgressBar label="In Progress" value={support?.in_progress || 0} total={support?.total || 1} color="#f97316" />
+            <ProgressBar label="Resolved" value={support?.resolved || 0} total={support?.total || 1} color="#22c55e" />
+            <ProgressBar label="Closed" value={support?.closed || 0} total={support?.total || 1} color="#64748b" />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderPnLTab = () => (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
