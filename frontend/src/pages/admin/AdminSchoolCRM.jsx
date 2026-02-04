@@ -15,6 +15,17 @@ import Papa from 'papaparse';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+const TICKET_SOURCE_OPTIONS = [
+  { value: 'school_crm', label: 'School CRM' },
+  { value: 'phone_call', label: 'Phone Call' },
+  { value: 'whatsapp', label: 'WhatsApp' },
+  { value: 'email', label: 'Email' },
+  { value: 'school_visit', label: 'School Visit' },
+  { value: 'meeting', label: 'Meeting' },
+  { value: 'referral', label: 'Referral' },
+  { value: 'other', label: 'Other' },
+];
+
 // Helper to safely extract error message from API errors
 const getErrorMessage = (error, fallback = 'An error occurred') => {
   const detail = error?.response?.data?.detail;
