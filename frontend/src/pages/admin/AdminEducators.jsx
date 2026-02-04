@@ -17,7 +17,7 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const MAIN_TABS = [
   { value: 'requirements', label: 'Requirements', color: 'bg-indigo-500' },
   { value: 'applicants', label: 'Applicants', color: 'bg-blue-500' },
-  { value: 'onboarding', label: 'Onboarding', color: 'bg-orange-500' },
+  { value: 'onboarded', label: 'Onboarding', color: 'bg-orange-500' },
   { value: 'active', label: 'Active Educators', color: 'bg-green-500' },
   { value: 'archived', label: 'Archived', color: 'bg-slate-400' },
 ];
