@@ -149,8 +149,9 @@ const RaiseQueryButton = () => {
   // Check if user is logged in
   useEffect(() => {
     const checkAuth = () => {
-      const token = localStorage.getItem('token') || localStorage.getItem('admin_token');
-      const user = localStorage.getItem('user') || localStorage.getItem('admin_user');
+      // Check for admin or user token
+      const token = localStorage.getItem('oll_token') || localStorage.getItem('token') || localStorage.getItem('admin_token');
+      const user = localStorage.getItem('oll_user') || localStorage.getItem('user') || localStorage.getItem('admin_user');
       if (token && user) {
         try {
           const parsedUser = JSON.parse(user);
