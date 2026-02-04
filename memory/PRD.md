@@ -440,10 +440,14 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ Fix School Onboarding UX (COMPLETED Jan 27, 2026)
 - ✅ Fix Edit Active Schools bug (COMPLETED Feb 2, 2026)
 - ✅ Fix Bulk Upload not updating existing schools (COMPLETED Feb 2, 2026)
+- ✅ Team Onboarding Workflow (COMPLETED Feb 4, 2026)
 - Generate Proposal & MOU PDFs from /add page
 
 ### P1 (High)
 - ✅ MOU Auto-Complete on school conversion (COMPLETED Feb 2, 2026)
+- School CRM Data Transfer: Ensure data entered in one popup is visible in subsequent stages
+- Team Member Reports: Performance metrics dashboard for active team members
+- Admin Reports Enhancement: Add filters for team members in Reports section
 - Implement background scheduler (APScheduler) for AI follow-up emails at 9 AM
 - CSV Export for all CRM, Data Center, Reports pages
 
