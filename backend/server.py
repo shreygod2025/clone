@@ -8068,6 +8068,69 @@ async def autocomplete_search(
     
     return results[:10]
 
+@api_router.put("/data-center/{data_type}/{record_id}")
+async def update_data_center_record(
+    data_type: str,
+    record_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Update a record in the data center"""
+    collection_map = {
+        "students": "student_inquiries",
+        "schools": "school_inquiries",
+        "educators": "educator_applications",
+        "team": "team_applications",
+        "growth_partners": "growth_partner_applications"
+    }
+    
+    if data_type not in collection_map:
+        raise HTTPException(status_code=400, detail="Invalid data type")
+    
+    collection_name = collection_map[data_type]
+    collection = db[collection_name]
+    
+    # Remove fields that shouldn't be updated
+    update_data = {k: v for k, v in data.items() if k not in ["id", "_id", "created_at"]}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    result = await collection.update_one({"id": record_id}, {"$set": update_data})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Record not found")
+    
+    return {"message": "Record updated successfully"}
+
+@api_router.delete("/data-center/{data_type}/{record_id}")
+async def delete_data_center_record(
+    data_type: str,
+    record_id: str,
+    user: dict = Depends(get_current_user)
+):
+    """Delete a record from the data center"""
+    # Only admin can delete
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Only admins can delete records")
+    
+    collection_map = {
+        "students": "student_inquiries",
+        "schools": "school_inquiries",
+        "educators": "educator_applications",
+        "team": "team_applications",
+        "growth_partners": "growth_partner_applications"
+    }
+    
+    if data_type not in collection_map:
+        raise HTTPException(status_code=400, detail="Invalid data type")
+    
+    collection_name = collection_map[data_type]
+    collection = db[collection_name]
+    
+    result = await collection.delete_one({"id": record_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Record not found")
+    
+    return {"message": "Record deleted successfully"}
+
 # Public autocomplete endpoint (no auth required) for /add page
 @api_router.get("/public/autocomplete")
 async def public_autocomplete_search(
