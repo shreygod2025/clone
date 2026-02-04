@@ -267,8 +267,10 @@ class TestTeamMemberReports:
             report_data = report_response.json()
             
             # Verify report structure
-            assert "total_leads" in report_data or "leads" in report_data
+            assert "member" in report_data
+            assert "metrics" in report_data
             print(f"Team member report fetched for: {active_member['name']}")
+            print(f"Report metrics: {report_data.get('metrics', {}).keys()}")
         else:
             pytest.skip("No active team member with team_user_id found")
 
