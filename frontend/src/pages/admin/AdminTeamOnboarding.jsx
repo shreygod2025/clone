@@ -37,6 +37,8 @@ const AdminTeamOnboarding = () => {
   const [showActivateModal, setShowActivateModal] = useState(null);
   const [showDiscontinueModal, setShowDiscontinueModal] = useState(null);
   const [showReportsModal, setShowReportsModal] = useState(null);
+  const [reportData, setReportData] = useState(null);
+  const [reportLoading, setReportLoading] = useState(false);
   const [selectedRoleId, setSelectedRoleId] = useState('');
   const [discontinueReason, setDiscontinueReason] = useState('');
   const [exitFormalities, setExitFormalities] = useState({
