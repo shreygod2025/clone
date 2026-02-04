@@ -7125,9 +7125,11 @@ const AdminSchoolCRM = () => {
                   <button
                     key={query.type}
                     onClick={() => {
+                      const relatedOptions = TICKET_RELATED_TO_OPTIONS[query.type] || TICKET_RELATED_TO_OPTIONS.other;
                       setTicketData({ 
                         ...ticketData, 
                         query_type: query.type,
+                        related_to: relatedOptions[0]?.value || 'other',
                         subject: query.label,
                         description: query.faq 
                       });
@@ -7144,6 +7146,23 @@ const AdminSchoolCRM = () => {
                 ))}
               </div>
             </div>
+
+            {/* Related To (Sub-category) Selector */}
+            {ticketData.query_type && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Related To (Sub-category)</label>
+                <select
+                  value={ticketData.related_to}
+                  onChange={(e) => setTicketData({ ...ticketData, related_to: e.target.value })}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                  data-testid="ticket-related-to"
+                >
+                  {(TICKET_RELATED_TO_OPTIONS[ticketData.query_type] || TICKET_RELATED_TO_OPTIONS.other).map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Subject *</label>
