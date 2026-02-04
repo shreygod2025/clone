@@ -514,6 +514,8 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ Fix Edit Active Schools bug (COMPLETED Feb 2, 2026)
 - ✅ Fix Bulk Upload not updating existing schools (COMPLETED Feb 2, 2026)
 - ✅ Team Onboarding Workflow (COMPLETED Feb 4, 2026)
+- ✅ GP Onboarding Workflow (COMPLETED Feb 4, 2026)
+- ✅ Reports Overhaul with Expense Management (COMPLETED Feb 4, 2026)
 - Generate Proposal & MOU PDFs from /add page
 
 ### P1 (High)
