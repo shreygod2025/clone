@@ -445,6 +445,78 @@ const AdminSupportUnified = () => {
     return hoursSinceCreation > 24;
   };
 
+  // Add Note handler
+  const handleAddNote = async () => {
+    if (!noteText.trim() || !showNotesModal) {
+      toast.error('Please enter a note');
+      return;
+    }
+    try {
+      await axios.post(`${API}/support/queries/${showNotesModal.id}/notes`, {
+        text: noteText
+      }, { headers: getAuthHeaders() });
+      toast.success('Note added successfully');
+      setNoteText('');
+      fetchAllQueries();
+      // Refresh notes
+      if (showNotesModal) {
+        fetchQueryHistory(showNotesModal.id);
+      }
+    } catch (error) {
+      toast.error('Failed to add note');
+    }
+  };
+
+  // Fetch Query History
+  const fetchQueryHistory = async (queryId) => {
+    setLoadingHistory(true);
+    try {
+      const response = await axios.get(`${API}/support/queries/${queryId}/history`, {
+        headers: getAuthHeaders()
+      });
+      setQueryHistory(response.data.history || []);
+      setQueryNotes(response.data.notes || []);
+    } catch (error) {
+      console.error('Failed to fetch history:', error);
+      setQueryHistory([]);
+      setQueryNotes([]);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  // Edit Query handler
+  const handleEditQuery = async () => {
+    if (!showEditModal) return;
+    try {
+      await axios.put(`${API}/support/queries/${showEditModal.id}`, editForm, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Query updated successfully');
+      setShowEditModal(null);
+      setEditForm({});
+      fetchAllQueries();
+    } catch (error) {
+      toast.error('Failed to update query');
+    }
+  };
+
+  // Delete Query handler
+  const handleDeleteQuery = async (query) => {
+    if (!window.confirm('Are you sure you want to delete this query? This action cannot be undone.')) {
+      return;
+    }
+    try {
+      await axios.delete(`${API}/support/queries/${query.id}`, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Query deleted successfully');
+      fetchAllQueries();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to delete query');
+    }
+  };
+
   // Combine and filter all queries
   const allQueriesRaw = [...queries, ...legacyTickets];
   
