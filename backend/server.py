@@ -3438,11 +3438,13 @@ async def raise_school_ticket(
         "query_type": data.get('query_type', 'general'),
         "subject": data.get('subject', ''),
         "description": data.get('description', ''),
+        "query_details": data.get('description', ''),  # Also store as query_details for consistency
         "priority": data.get('priority', 'medium'),
         "status": "open",
         "raised_by": user.get('email', ''),
         "raised_by_name": user.get('name', ''),
-        "source": "school_crm",
+        "source": data.get('source', 'school_crm'),
+        "attachments": data.get('attachments', []),  # [{name, url, type, is_voice_note}]
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
