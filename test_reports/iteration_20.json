@@ -73,7 +73,7 @@
   "test_execution_details": {
     "test_type": "Backend API Testing + Frontend UI Testing",
     "tools_used": ["pytest", "Playwright Browser Automation"],
-    "test_url": "https://skillhub-150.preview.emergentagent.com",
+    "test_url": "https://learn-hub-474.preview.emergentagent.com",
     "pages_tested": [
       "/admin/login",
       "/admin/school-crm (Leads & Schools tab - Converted section)",
