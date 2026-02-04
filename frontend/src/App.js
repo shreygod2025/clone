@@ -43,6 +43,7 @@ import AdminOrders from "./pages/admin/AdminOrders";
 import AdminEducators from "./pages/admin/AdminEducators";
 import AdminGrowthPartners from "./pages/admin/AdminGrowthPartners";
 import AdminTeamApplications from "./pages/admin/AdminTeamApplications";
+import AdminTeamOnboarding from "./pages/admin/AdminTeamOnboarding";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminRequirements from "./pages/admin/AdminRequirements";
 import AdminSupportUnified from "./pages/admin/AdminSupportUnified";
