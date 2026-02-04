@@ -131,7 +131,23 @@ const AdminSchoolCRM = () => {
   const [showAssignRMModal, setShowAssignRMModal] = useState(null);
   const [relationshipManagers, setRelationshipManagers] = useState([]);
   const [showRaiseTicketModal, setShowRaiseTicketModal] = useState(null);
-  const [ticketData, setTicketData] = useState({ query_type: '', subject: '', description: '', priority: 'medium', contact_name: '', contact_phone: '', contact_email: '' });
+  const [ticketData, setTicketData] = useState({ 
+    query_type: '', subject: '', description: '', priority: 'medium', 
+    contact_name: '', contact_phone: '', contact_email: '', source: 'school_crm'
+  });
+  
+  // Ticket Attachments & Voice Note
+  const [ticketAttachments, setTicketAttachments] = useState([]);
+  const [ticketRecording, setTicketRecording] = useState(false);
+  const [ticketAudioBlob, setTicketAudioBlob] = useState(null);
+  const [ticketAudioUrl, setTicketAudioUrl] = useState(null);
+  const [ticketRecordTime, setTicketRecordTime] = useState(0);
+  const [ticketUploading, setTicketUploading] = useState(false);
+  const ticketMediaRecorderRef = useRef(null);
+  const ticketAudioChunksRef = useRef([]);
+  const ticketRecordingIntervalRef = useRef(null);
+  const ticketAudioPlayerRef = useRef(null);
+  const ticketFileInputRef = useRef(null);
   
   // Document upload states
   const [showDocumentsModal, setShowDocumentsModal] = useState(null);
