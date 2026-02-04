@@ -2787,9 +2787,9 @@ const AdminSchoolCRM = () => {
 
               {/* Relationship Manager - Show for converted/active schools */}
               {['converted', 'active', 'renewed'].includes(inquiry.status) && inquiry.relationship_manager_name && (
-                <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-2 mb-3">
-                  <p className="text-xs text-indigo-700 flex items-center gap-1">
-                    <User className="w-3 h-3" />
+                <div className="bg-indigo-50/50 rounded px-2 py-1 mb-2">
+                  <p className="text-[10px] text-indigo-700 flex items-center gap-1">
+                    <User className="w-2.5 h-2.5" />
                     <span className="font-medium">RM:</span> {inquiry.relationship_manager_name}
                   </p>
                 </div>
@@ -2797,67 +2797,61 @@ const AdminSchoolCRM = () => {
 
               {/* Referred By - Show for referral leads */}
               {inquiry.referred_by && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-2 mb-3">
-                  <p className="text-xs text-green-700 flex items-center gap-1">
-                    <Users className="w-3 h-3" />
-                    <span className="font-medium">Referred by:</span> {inquiry.referred_by}
+                <div className="bg-green-50/50 rounded px-2 py-1 mb-2">
+                  <p className="text-[10px] text-green-700 flex items-center gap-1">
+                    <Users className="w-2.5 h-2.5" />
+                    <span className="font-medium">Ref:</span> {inquiry.referred_by}
                   </p>
                 </div>
               )}
 
               {/* Followup shown outside - only for non-converted */}
               {inquiry.status !== 'converted' && inquiry.followup_date && (
-                <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-3 mb-3">
-                  <p className="text-xs text-cyan-700 font-medium mb-1 flex items-center gap-1">
-                    <Clock className="w-3 h-3" /> Followup: {inquiry.followup_date}
+                <div className="bg-cyan-50/50 rounded px-2 py-1 mb-2">
+                  <p className="text-[10px] text-cyan-700 font-medium flex items-center gap-1">
+                    <Clock className="w-2.5 h-2.5" /> Followup: {inquiry.followup_date}
                   </p>
-                  {inquiry.followup_comment && (
-                    <p className="text-sm text-cyan-900">{inquiry.followup_comment}</p>
-                  )}
                 </div>
               )}
 
               {/* Draft Progress Bar - Show if onboarding is in draft state */}
               {inquiry.onboarding_status === 'draft' && inquiry.onboarding_id && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs text-yellow-700 font-medium flex items-center gap-1">
-                      <Clock className="w-3 h-3" /> Onboarding Draft
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 mb-2">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-[10px] text-amber-700 font-medium flex items-center gap-1">
+                      <Clock className="w-2.5 h-2.5" /> Draft
                     </p>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-6 text-xs text-yellow-700 hover:bg-yellow-100"
+                      className="h-5 text-[10px] text-amber-700 hover:bg-amber-100 px-1"
                       onClick={() => openConversionModal(inquiry)}
                     >
                       Continue →
                     </Button>
                   </div>
-                  <div className="w-full bg-yellow-200 rounded-full h-2">
+                  <div className="w-full bg-amber-200 rounded-full h-1.5">
                     <div 
-                      className="bg-yellow-500 h-2 rounded-full transition-all" 
+                      className="bg-amber-500 h-1.5 rounded-full transition-all" 
                       style={{ width: `${inquiry.total_students ? 60 : 25}%` }}
                     />
                   </div>
-                  <p className="text-xs text-yellow-600 mt-1">
-                    {inquiry.total_students ? `${inquiry.total_students} students added` : 'Click Continue to complete'}
-                  </p>
                 </div>
               )}
 
               {/* Onboarding Progress - Show for converted and renewed schools with onboarding_workflow */}
               {inquiry.onboarding_workflow && ['converted', 'renewed'].includes(inquiry.status) && (
-                <div className={`${inquiry.status === 'renewed' ? 'bg-emerald-50 border-emerald-200' : 'bg-purple-50 border-purple-200'} border rounded-lg p-3 mb-3`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className={`text-xs font-medium flex items-center gap-1 ${inquiry.status === 'renewed' ? 'text-emerald-700' : 'text-purple-700'}`}>
-                      <CheckCircle2 className="w-3 h-3" />
-                      {inquiry.status === 'renewed' ? 'Re-Onboarding Progress' : 'Onboarding Progress'}
+                <div className={`${inquiry.status === 'renewed' ? 'bg-emerald-50 border-emerald-200' : 'bg-purple-50 border-purple-200'} border rounded-lg p-2 mb-2`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className={`text-[10px] font-medium flex items-center gap-1 ${inquiry.status === 'renewed' ? 'text-emerald-700' : 'text-purple-700'}`}>
+                      <CheckCircle2 className="w-2.5 h-2.5" />
+                      {inquiry.status === 'renewed' ? 'Re-Onboarding' : 'Onboarding'}
                     </p>
                     <button
                       onClick={() => setShowOnboardingWorkflowModal(inquiry)}
-                      className={`text-xs font-medium ${inquiry.status === 'renewed' ? 'text-emerald-600 hover:text-emerald-800' : 'text-purple-600 hover:text-purple-800'}`}
+                      className={`text-[10px] font-medium ${inquiry.status === 'renewed' ? 'text-emerald-600 hover:text-emerald-800' : 'text-purple-600 hover:text-purple-800'}`}
                     >
-                      View Details →
+                      View →
                     </button>
                   </div>
                   {/* Progress Bar */}
