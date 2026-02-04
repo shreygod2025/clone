@@ -1192,6 +1192,7 @@ const AdminSchoolCRM = () => {
       
       await axios.post(`${API}/schools/${showRaiseTicketModal.id}/raise-ticket`, {
         query_type: ticketData.query_type,
+        related_to: ticketData.related_to,
         subject: ticketData.subject,
         description: ticketData.description,
         priority: ticketData.priority,
@@ -1203,7 +1204,7 @@ const AdminSchoolCRM = () => {
       }, { headers: getAuthHeaders() });
       toast.success('Ticket raised successfully');
       setShowRaiseTicketModal(null);
-      setTicketData({ query_type: '', subject: '', description: '', priority: 'medium', contact_name: '', contact_phone: '', contact_email: '', source: 'school_crm' });
+      setTicketData({ query_type: '', related_to: '', subject: '', description: '', priority: 'medium', contact_name: '', contact_phone: '', contact_email: '', source: 'school_crm' });
       setTicketAttachments([]);
       setTicketAudioBlob(null);
       setTicketAudioUrl(null);
