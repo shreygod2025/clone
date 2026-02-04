@@ -217,7 +217,7 @@ const AdminSchoolCRM = () => {
   const [relationshipManagers, setRelationshipManagers] = useState([]);
   const [showRaiseTicketModal, setShowRaiseTicketModal] = useState(null);
   const [ticketData, setTicketData] = useState({ 
-    query_type: '', subject: '', description: '', priority: 'medium', 
+    query_type: '', related_to: '', subject: '', description: '', priority: 'medium', 
     contact_name: '', contact_phone: '', contact_email: '', source: 'school_crm'
   });
   
