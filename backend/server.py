@@ -837,6 +837,110 @@ class TeamOnboarding(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+# Growth Partner Onboarding Model (for onboarded GPs)
+class GPOnboarding(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    growth_partner_id: str  # Reference to growth partner
+    name: str
+    email: str = ""
+    phone: str
+    city: str = ""
+    interest_type: str = ""
+    tracking_token: str = Field(default_factory=lambda: str(uuid.uuid4())[:8])
+    status: str = "onboarding"  # onboarding, active, discontinued
+    
+    # Onboarding steps (3 steps for GP)
+    steps: dict = Field(default_factory=lambda: {
+        "personal_info": {"completed": False, "completed_at": None},
+        "contract_signing": {"completed": False, "completed_at": None},
+        "training": {"completed": False, "completed_at": None}
+    })
+    
+    # Personal Information
+    personal_info: dict = Field(default_factory=dict)  # full_name, address, pan, aadhar, etc.
+    
+    # Bank Details (for commission payouts)
+    bank_details: dict = Field(default_factory=dict)
+    
+    # Contract
+    contract_url: str = ""
+    contract_signed_at: Optional[str] = None
+    commission_structure: dict = Field(default_factory=dict)  # student_referral, school_referral rates
+    
+    # Training
+    training_completed_at: Optional[str] = None
+    training_notes: str = ""
+    
+    # Discontinuation
+    discontinued_reason: str = ""
+    discontinued_at: Optional[str] = None
+    
+    # Team user created (GP gets user access)
+    team_user_id: str = ""
+    
+    # Performance metrics
+    total_referrals: int = 0
+    successful_conversions: int = 0
+    total_earnings: float = 0
+    
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+# Expense Model for PnL Reports
+class Expense(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    title: str
+    description: str = ""
+    amount: float
+    category: str  # salary, marketing, operations, technology, office, travel, other
+    subcategory: str = ""
+    date: str  # YYYY-MM-DD
+    payment_method: str = ""  # cash, bank_transfer, card, upi
+    vendor: str = ""
+    invoice_url: str = ""
+    receipt_url: str = ""
+    added_by: str = ""
+    added_by_name: str = ""
+    notes: str = ""
+    is_recurring: bool = False
+    recurring_frequency: str = ""  # monthly, quarterly, yearly
+    status: str = "approved"  # pending, approved, rejected
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class ExpenseCreate(BaseModel):
+    title: str
+    description: str = ""
+    amount: float
+    category: str
+    subcategory: str = ""
+    date: str
+    payment_method: str = ""
+    vendor: str = ""
+    invoice_url: str = ""
+    receipt_url: str = ""
+    notes: str = ""
+    is_recurring: bool = False
+    recurring_frequency: str = ""
+
+class ExpenseUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    amount: Optional[float] = None
+    category: Optional[str] = None
+    subcategory: Optional[str] = None
+    date: Optional[str] = None
+    payment_method: Optional[str] = None
+    vendor: Optional[str] = None
+    invoice_url: Optional[str] = None
+    receipt_url: Optional[str] = None
+    notes: Optional[str] = None
+    is_recurring: Optional[bool] = None
+    recurring_frequency: Optional[str] = None
+    status: Optional[str] = None
+
 # School Inquiry Models
 class SchoolInquiry(BaseModel):
     model_config = ConfigDict(extra="ignore")
