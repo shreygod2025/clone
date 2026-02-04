@@ -25,11 +25,114 @@ const QUERY_TYPES = [
   { value: 'demo_related', label: 'Demo Related' },
   { value: 'payment', label: 'Payment Related' },
   { value: 'course_info', label: 'Course Information' },
+  { value: 'ongoing_classes', label: 'Ongoing Classes' },
   { value: 'technical', label: 'Technical Support' },
   { value: 'partnership', label: 'Partnership Query' },
   { value: 'feedback', label: 'Feedback / Complaint' },
+  { value: 'educator_query', label: 'Educator Query' },
+  { value: 'admission', label: 'Admission' },
+  { value: 'scheduling', label: 'Scheduling' },
   { value: 'other', label: 'Other' },
 ];
+
+// Related To sub-categories based on Query Type
+const RELATED_TO_OPTIONS = {
+  demo_related: [
+    { value: 'demo_booking', label: 'Demo Booking' },
+    { value: 'demo_reschedule', label: 'Demo Reschedule' },
+    { value: 'demo_cancellation', label: 'Demo Cancellation' },
+    { value: 'demo_feedback', label: 'Demo Feedback' },
+    { value: 'demo_no_show', label: 'Demo No Show' },
+    { value: 'other', label: 'Other' },
+  ],
+  payment: [
+    { value: 'payment_pending', label: 'Payment Pending' },
+    { value: 'payment_failed', label: 'Payment Failed' },
+    { value: 'refund_request', label: 'Refund Request' },
+    { value: 'invoice_request', label: 'Invoice Request' },
+    { value: 'payment_plan', label: 'Payment Plan / EMI' },
+    { value: 'discount_query', label: 'Discount Query' },
+    { value: 'other', label: 'Other' },
+  ],
+  course_info: [
+    { value: 'course_content', label: 'Course Content' },
+    { value: 'course_duration', label: 'Course Duration' },
+    { value: 'course_pricing', label: 'Course Pricing' },
+    { value: 'course_eligibility', label: 'Eligibility / Prerequisites' },
+    { value: 'course_certification', label: 'Certification' },
+    { value: 'batch_timing', label: 'Batch Timing' },
+    { value: 'other', label: 'Other' },
+  ],
+  ongoing_classes: [
+    { value: 'class_reschedule', label: 'Class Reschedule' },
+    { value: 'class_missed', label: 'Missed Class' },
+    { value: 'teacher_issue', label: 'Teacher Issue' },
+    { value: 'class_quality', label: 'Class Quality' },
+    { value: 'progress_report', label: 'Progress Report' },
+    { value: 'batch_change', label: 'Batch Change Request' },
+    { value: 'other', label: 'Other' },
+  ],
+  technical: [
+    { value: 'login_issue', label: 'Login Issue' },
+    { value: 'app_bug', label: 'App Bug / Error' },
+    { value: 'video_issue', label: 'Video / Audio Issue' },
+    { value: 'payment_gateway', label: 'Payment Gateway Issue' },
+    { value: 'notification_issue', label: 'Notification Issue' },
+    { value: 'other', label: 'Other' },
+  ],
+  partnership: [
+    { value: 'school_partnership', label: 'School Partnership' },
+    { value: 'center_partnership', label: 'Center Partnership' },
+    { value: 'franchise_inquiry', label: 'Franchise Inquiry' },
+    { value: 'bulk_enrollment', label: 'Bulk Enrollment' },
+    { value: 'corporate_training', label: 'Corporate Training' },
+    { value: 'other', label: 'Other' },
+  ],
+  feedback: [
+    { value: 'positive_feedback', label: 'Positive Feedback' },
+    { value: 'complaint', label: 'Complaint' },
+    { value: 'suggestion', label: 'Suggestion' },
+    { value: 'testimonial', label: 'Testimonial' },
+    { value: 'other', label: 'Other' },
+  ],
+  educator_query: [
+    { value: 'application_status', label: 'Application Status' },
+    { value: 'payment_query', label: 'Payment / Payout Query' },
+    { value: 'schedule_query', label: 'Schedule Query' },
+    { value: 'training_support', label: 'Training Support' },
+    { value: 'student_issue', label: 'Student Issue' },
+    { value: 'other', label: 'Other' },
+  ],
+  admission: [
+    { value: 'new_admission', label: 'New Admission' },
+    { value: 'admission_process', label: 'Admission Process' },
+    { value: 'document_submission', label: 'Document Submission' },
+    { value: 'seat_availability', label: 'Seat Availability' },
+    { value: 'other', label: 'Other' },
+  ],
+  scheduling: [
+    { value: 'slot_availability', label: 'Slot Availability' },
+    { value: 'preferred_timing', label: 'Preferred Timing' },
+    { value: 'teacher_preference', label: 'Teacher Preference' },
+    { value: 'batch_inquiry', label: 'Batch Inquiry' },
+    { value: 'other', label: 'Other' },
+  ],
+  other: [
+    { value: 'general_inquiry', label: 'General Inquiry' },
+    { value: 'career_inquiry', label: 'Career Inquiry' },
+    { value: 'media_inquiry', label: 'Media Inquiry' },
+    { value: 'other', label: 'Other' },
+  ],
+};
+
+// Default related_to based on inquiry_type (user type)
+const DEFAULT_QUERY_FOR_TYPE = {
+  student: { query_type: 'course_info', related_to: 'course_content' },
+  school: { query_type: 'partnership', related_to: 'school_partnership' },
+  educator: { query_type: 'educator_query', related_to: 'application_status' },
+  teacher: { query_type: 'educator_query', related_to: 'schedule_query' },
+  growth_partner: { query_type: 'partnership', related_to: 'center_partnership' },
+};
 
 const SKILL_OPTIONS = [
   { value: 'robotics', label: 'Robotics' },
