@@ -1820,13 +1820,23 @@ async def create_role(data: dict, user: dict = Depends(get_current_user)):
 
 @api_router.patch("/roles/{role_id}")
 async def update_role(role_id: str, data: dict, user: dict = Depends(get_current_user)):
-    """Update a role"""
+    """Update a role (including system roles - only permissions can be updated for system roles)"""
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Only admins can update roles")
     
-    update_data = {k: v for k, v in data.items() if v is not None and k not in ["id", "created_at"]}
+    role = await db.roles.find_one({"id": role_id}, {"_id": 0})
+    if not role:
+        raise HTTPException(status_code=404, detail="Role not found")
+    
+    # For system roles, only allow updating permissions and description
+    if role.get("is_system"):
+        allowed_fields = ["permissions", "description"]
+        update_data = {k: v for k, v in data.items() if k in allowed_fields and v is not None}
+    else:
+        update_data = {k: v for k, v in data.items() if v is not None and k not in ["id", "created_at"]}
     
     if update_data:
+        update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
         await db.roles.update_one({"id": role_id}, {"$set": update_data})
     
     role = await db.roles.find_one({"id": role_id}, {"_id": 0})
