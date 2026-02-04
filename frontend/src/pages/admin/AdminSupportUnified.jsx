@@ -179,7 +179,7 @@ const AdminSupportUnified = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [newTicket, setNewTicket] = useState({
-    name: '', phone: '', email: '', query_type: 'other', inquiry_type: 'student', message: '', priority: 'normal', source: 'admin_created'
+    name: '', phone: '', email: '', query_type: 'course_info', related_to: 'course_content', inquiry_type: 'student', message: '', priority: 'normal', source: 'admin_created'
   });
   
   // Notes, History, Edit, Delete states
