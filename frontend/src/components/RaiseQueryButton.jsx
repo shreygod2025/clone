@@ -124,22 +124,8 @@ const RaiseQueryButton = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState(1); // 1: Category, 2: Sub-category, 3: Description, 4: Contact (if not logged in)
   const [loading, setLoading] = useState(false);
-  
-  // Check if user is logged in - check immediately on render
-  const checkAuth = () => {
-    const token = localStorage.getItem('oll_token') || localStorage.getItem('token') || localStorage.getItem('admin_token');
-    const user = localStorage.getItem('oll_user') || localStorage.getItem('user') || localStorage.getItem('admin_user');
-    if (token && user) {
-      try {
-        return { isLoggedIn: true, userData: JSON.parse(user) };
-      } catch (e) {
-        return { isLoggedIn: false, userData: null };
-      }
-    }
-    return { isLoggedIn: false, userData: null };
-  };
-  
-  const { isLoggedIn, userData } = checkAuth();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userData, setUserData] = useState(null);
   
   const [formData, setFormData] = useState({
     query_type: '',
