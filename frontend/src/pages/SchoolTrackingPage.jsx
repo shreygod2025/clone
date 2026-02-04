@@ -730,7 +730,11 @@ const SchoolTrackingPage = () => {
                         {(STEP_QUERIES[current_step] || STEP_QUERIES.mou_signing).map((query, idx) => (
                           <button
                             key={idx}
-                            onClick={() => setTicketForm({ ...ticketForm, query_type: query.type })}
+                            onClick={() => setTicketForm({ 
+                              ...ticketForm, 
+                              query_type: query.type,
+                              description: query.faq || ''
+                            })}
                             className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
                               ticketForm.query_type === query.type
                                 ? 'bg-[#1E3A5F] text-white'
@@ -741,7 +745,7 @@ const SchoolTrackingPage = () => {
                           </button>
                         ))}
                         <button
-                          onClick={() => setTicketForm({ ...ticketForm, query_type: 'other' })}
+                          onClick={() => setTicketForm({ ...ticketForm, query_type: 'other', description: '' })}
                           className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
                             ticketForm.query_type === 'other'
                               ? 'bg-[#1E3A5F] text-white'
