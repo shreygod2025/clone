@@ -1027,7 +1027,9 @@ class SchoolInquiryCreate(BaseModel):
     source: str = "website"
     referred_by: str = ""
     added_by: str = ""
+    added_by_name: str = ""
     assigned_to: str = ""
+    assign_option: str = "admin"  # 'self' or 'admin'
     notes: str = ""
 
 class SchoolInquiryUpdate(BaseModel):
