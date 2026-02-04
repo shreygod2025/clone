@@ -986,6 +986,8 @@ class SchoolInquiryCreate(BaseModel):
     board: str = ""
     programs_interested: List[str] = []
     support_needed: List[str] = []
+    selected_offerings: Optional[List[str]] = None
+    quoted_price: Optional[str] = None
     meeting_date: Optional[str] = None
     meeting_time: Optional[str] = None
     meeting_type: str = "offline"
