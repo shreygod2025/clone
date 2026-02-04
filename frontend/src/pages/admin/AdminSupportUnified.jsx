@@ -690,9 +690,53 @@ const AdminSupportUnified = () => {
                 </div>
               </div>
 
-              {query.query_details && (
+              {/* Priority & Source Row */}
+              <div className="flex flex-wrap gap-3 mb-3">
+                {query.priority && query.priority !== 'normal' && (
+                  <span className={`text-xs px-2 py-1 rounded font-medium ${
+                    query.priority === 'urgent' ? 'bg-red-100 text-red-700' :
+                    query.priority === 'high' ? 'bg-orange-100 text-orange-700' :
+                    query.priority === 'low' ? 'bg-slate-100 text-slate-600' :
+                    'bg-blue-100 text-blue-700'
+                  }`}>
+                    {query.priority.charAt(0).toUpperCase() + query.priority.slice(1)} Priority
+                  </span>
+                )}
+                {query.source && query.source !== 'admin_created' && (
+                  <span className="text-xs px-2 py-1 rounded bg-cyan-100 text-cyan-700">
+                    Source: {SOURCE_OPTIONS.find(s => s.value === query.source)?.label || query.source}
+                  </span>
+                )}
+              </div>
+
+              {(query.query_details || query.message) && (
                 <div className="bg-slate-50 rounded-xl p-4 mb-4">
-                  <p className="text-slate-600 whitespace-pre-wrap">{query.query_details}</p>
+                  <p className="text-slate-600 whitespace-pre-wrap">{query.query_details || query.message}</p>
+                </div>
+              )}
+
+              {/* Attachments Display */}
+              {query.attachments && query.attachments.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-xs font-medium text-slate-500 mb-2">Attachments:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {query.attachments.map((att, idx) => (
+                      <a
+                        key={idx}
+                        href={att.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded text-xs ${
+                          att.isVoiceNote || att.is_voice_note
+                            ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                            : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                        }`}
+                      >
+                        {att.isVoiceNote || att.is_voice_note ? <Mic className="w-3 h-3" /> : <Paperclip className="w-3 h-3" />}
+                        {att.name || 'Attachment'}
+                      </a>
+                    ))}
+                  </div>
                 </div>
               )}
 
