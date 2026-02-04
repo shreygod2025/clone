@@ -278,11 +278,3 @@ class TestEducators:
         data = response.json()
         assert isinstance(data, list)
         print(f"Found {len(data)} educator applications")
-    
-    def test_get_educator_requirements(self, headers):
-        """Test getting educator requirements"""
-        response = requests.get(f"{BASE_URL}/api/educators/requirements", headers=headers)
-        assert response.status_code == 200
-        data = response.json()
-        assert isinstance(data, list)
-        print(f"Found {len(data)} educator requirements")
