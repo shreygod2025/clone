@@ -629,6 +629,7 @@ const InquiryPage = () => {
       email: formData.email || '',
       query_type: formData.query_type,
       query_details: formData.query_details,
+      priority: formData.priority || 'normal',
       source: formData.source || 'team_added',
       added_by: teamUser?.id || '',
       attachments: attachments.map(a => ({
