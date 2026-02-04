@@ -8575,14 +8575,15 @@ class InquiryQuery(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     inquiry_type: str  # student, school, growth_partner, teacher, team
     action_type: str = "query"
-    name: str
-    phone: str
-    email: str
+    name: str = ""
+    phone: str = ""
+    email: str = ""
     query_type: str  # demo_related, payment, course_info, technical, partnership, feedback, other
     related_to: str = ""  # sub-category within query_type
     query_details: str = ""
     priority: str = "normal"  # low, normal, high, urgent
     source: str = "team_inquiry_form"
+    page_context: str = ""  # which page the query was submitted from
     status: str = "open"  # open, in_progress, resolved, closed
     attachments: List[dict] = []  # [{name, url, type, is_voice_note}]
     added_by: str = ""
