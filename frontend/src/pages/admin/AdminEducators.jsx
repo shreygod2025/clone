@@ -92,6 +92,13 @@ const AdminEducators = () => {
   const [newComment, setNewComment] = useState('');
   const [scheduleData, setScheduleData] = useState({ date: null, time: '' });
   
+  // Edit Educator state
+  const [showEditEducatorModal, setShowEditEducatorModal] = useState(null);
+  const [editEducatorForm, setEditEducatorForm] = useState({
+    name: '', email: '', phone: '', skills: [], city: '', experience: '', teaching_mode: ''
+  });
+  const [newSkillInput, setNewSkillInput] = useState('');
+  
   // Direct onboard form
   const [directOnboardForm, setDirectOnboardForm] = useState({
     name: '', email: '', phone: '', skills: '', city: '', experience: ''
