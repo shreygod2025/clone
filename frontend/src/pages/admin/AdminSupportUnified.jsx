@@ -1025,18 +1025,32 @@ const AdminSupportUnified = () => {
                 </select>
               </div>
             </div>
-            <div>
-              <label className="text-sm font-medium text-slate-700">Priority</label>
-              <select
-                value={newTicket.priority}
-                onChange={(e) => setNewTicket({ ...newTicket, priority: e.target.value })}
-                className="w-full h-10 px-3 border border-slate-200 rounded-lg"
-              >
-                <option value="low">Low</option>
-                <option value="normal">Normal</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </select>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium text-slate-700">Priority</label>
+                <select
+                  value={newTicket.priority}
+                  onChange={(e) => setNewTicket({ ...newTicket, priority: e.target.value })}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                >
+                  <option value="low">Low</option>
+                  <option value="normal">Normal</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Source</label>
+                <select
+                  value={newTicket.source}
+                  onChange={(e) => setNewTicket({ ...newTicket, source: e.target.value })}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                >
+                  {SOURCE_OPTIONS.map(s => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             <div>
               <label className="text-sm font-medium text-slate-700">Message</label>
@@ -1047,8 +1061,95 @@ const AdminSupportUnified = () => {
                 rows={3}
               />
             </div>
+            
+            {/* Attachments Section */}
+            <div className="border rounded-lg p-3 space-y-3">
+              <label className="text-sm font-medium text-slate-700">Attachments & Voice Note</label>
+              
+              {/* File Upload */}
+              <div className="flex gap-2">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  multiple
+                  className="hidden"
+                  accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingAttachment}
+                  className="flex items-center gap-1"
+                >
+                  {uploadingAttachment ? (
+                    <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+                  ) : (
+                    <Upload className="w-4 h-4" />
+                  )}
+                  Upload File
+                </Button>
+                
+                {/* Voice Recording */}
+                {!audioUrl ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={isRecording ? stopRecording : startRecording}
+                    className={`flex items-center gap-1 ${isRecording ? 'bg-red-50 border-red-300 text-red-600' : ''}`}
+                  >
+                    {isRecording ? (
+                      <>
+                        <MicOff className="w-4 h-4" />
+                        Stop ({recordingTime}s)
+                      </>
+                    ) : (
+                      <>
+                        <Mic className="w-4 h-4" />
+                        Record Voice
+                      </>
+                    )}
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-2 bg-purple-50 px-3 py-1 rounded-lg">
+                    <audio ref={audioPlayerRef} src={audioUrl} onEnded={() => setIsPlaying(false)} />
+                    <Button type="button" variant="ghost" size="sm" onClick={togglePlayPause} className="p-1">
+                      {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                    </Button>
+                    <span className="text-xs text-purple-600">Voice Note ({recordingTime}s)</span>
+                    <Button type="button" variant="ghost" size="sm" onClick={removeVoiceNote} className="p-1 text-red-500">
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+              
+              {/* Uploaded Files List */}
+              {attachments.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {attachments.map((att, idx) => (
+                    <div key={idx} className="flex items-center gap-1 bg-blue-50 px-2 py-1 rounded text-xs">
+                      <FileText className="w-3 h-3 text-blue-600" />
+                      <span className="text-blue-700 max-w-[150px] truncate">{att.name}</span>
+                      <button type="button" onClick={() => removeAttachment(idx)} className="text-red-500 hover:text-red-700">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
             <div className="flex gap-3 pt-2">
-              <Button variant="outline" onClick={() => setShowCreateModal(false)} className="flex-1">
+              <Button variant="outline" onClick={() => {
+                setShowCreateModal(false);
+                setAttachments([]);
+                setAudioBlob(null);
+                setAudioUrl(null);
+              }} className="flex-1">
                 Cancel
               </Button>
               <Button onClick={handleCreateTicket} className="flex-1 bg-[#D63031] hover:bg-red-600">
