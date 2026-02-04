@@ -212,6 +212,49 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ **Latest Note Display:** Changed "Comments" display to "Latest Note" in all CRM cards (School, Student, Educator). Now shows only the last paragraph (2 lines max) instead of full notes with line-clamp-2.
 - ✅ **Archive Reason Modal (Student CRM):** When archiving a student lead, a modal now asks for reason with dropdown options: Not interested, Budget constraints, Chose competitor, No response, Wrong contact, Age not suitable, Location not serviceable, Duplicate lead, Other.
 
+### Feb 4, 2026 - Team Onboarding Workflow (P0)
+**Complete Team Member Lifecycle Management:**
+- ✅ **Team Onboarding Page (`/admin/team-onboarding`):** New admin page with 3 tabs:
+  - Onboarding: Shows team members in the hiring/onboarding process
+  - Active: Shows activated team members
+  - Discontinued: Shows discontinued team members with reasons
+- ✅ **Navigation Link:** Added "Team Onboarding" link in admin sidebar under Team Applications
+- ✅ **4-Step Onboarding Process:**
+  - Step 1: Personal Information (name, DOB, address, emergency contact)
+  - Step 2: Bank Details (account holder, number, IFSC, bank name, PAN)
+  - Step 3: Contract Signing (upload signed contract URL)
+  - Step 4: Training (completion notes)
+- ✅ **Step Completion Modals:** Click on any incomplete step to open form modal and mark as complete
+- ✅ **Progress Tracking:** Visual progress bar showing completed steps (e.g., "2/4 steps")
+- ✅ **Auto-Onboarding Initiation:** When team application is marked as "Hired", onboarding record is automatically created
+- ✅ **Activation Workflow:**
+  - "Activate" button appears when all 4 steps are complete
+  - Opens modal to select role assignment
+  - Creates new team_user with generated username and temporary password
+  - Temp password copied to clipboard
+- ✅ **Discontinuation Workflow:**
+  - "Discontinue" button on active members
+  - Modal with reason dropdown (Resignation, Termination, Contract End, Performance Issues, etc.)
+  - Exit formalities checklist (Assets returned, Access revoked, Final settlement, Exit interview)
+  - Notes field for additional details
+  - Deactivates the team user account
+- ✅ **View Details Modal:** Shows all personal info, bank details, role, city, status
+- ✅ **Public Tracking Page (`/team-track/{token}`):**
+  - Team members can view their onboarding progress
+  - Shows all 4 steps with completion status and timestamps
+  - Displays "discontinued" notice if applicable
+  - Beautiful gradient UI with OLL branding
+- ✅ **Copy Tracking Link:** Button to copy tracking link for sharing with new hires
+
+**Backend Endpoints:**
+- `POST /api/team-onboarding/init/{application_id}` - Initialize onboarding for hired applicant
+- `GET /api/team-onboarding` - List all onboarding records (with status filter)
+- `GET /api/team-onboarding/{id}` - Get single onboarding record
+- `GET /api/team-onboarding/track/{token}` - Public tracking endpoint
+- `POST /api/team-onboarding/{id}/complete-step` - Mark step as complete
+- `POST /api/team-onboarding/{id}/activate` - Activate team member (create user)
+- `POST /api/team-onboarding/{id}/discontinue` - Discontinue team member
+
 **Quoted Price & Offerings for School Leads:**
 - ✅ Added Quoted Price (₹) field to Admin School CRM Add Lead form
 - ✅ Added Offerings selection checkboxes to Admin School CRM Add Lead form
