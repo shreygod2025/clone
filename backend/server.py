@@ -3298,6 +3298,118 @@ async def assign_relationship_manager(
     
     return {"message": "Relationship manager assigned successfully"}
 
+@api_router.get("/schools/{school_id}/history")
+async def get_school_history(school_id: str, user: dict = Depends(get_current_user)):
+    """Get complete history of a school including status changes, meetings, notes, tickets, onboarding"""
+    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+    
+    history = []
+    
+    # Created event
+    if school.get('created_at'):
+        history.append({
+            "type": "created",
+            "date": school.get('created_at'),
+            "description": f"School inquiry created from {school.get('source', 'website')}",
+            "details": {"source": school.get('source')}
+        })
+    
+    # Status history from activity log if exists
+    activity_log = school.get('activity_log', [])
+    for activity in activity_log:
+        history.append({
+            "type": "status_change",
+            "date": activity.get('timestamp'),
+            "description": activity.get('description', f"Status changed to {activity.get('new_status', '')}"),
+            "details": activity
+        })
+    
+    # Meeting scheduled
+    if school.get('meeting_date'):
+        history.append({
+            "type": "meeting_scheduled",
+            "date": school.get('meeting_date'),
+            "description": f"Meeting scheduled for {school.get('meeting_date')} at {school.get('meeting_time', 'TBD')}",
+            "details": {
+                "meeting_date": school.get('meeting_date'),
+                "meeting_time": school.get('meeting_time'),
+                "meeting_mode": school.get('meeting_mode'),
+                "meeting_link": school.get('meeting_link')
+            }
+        })
+    
+    # Followup scheduled
+    if school.get('followup_date'):
+        history.append({
+            "type": "followup",
+            "date": school.get('followup_date'),
+            "description": f"Followup {school.get('followup_type', '')} scheduled for {school.get('followup_date')}",
+            "details": {
+                "followup_type": school.get('followup_type'),
+                "followup_comment": school.get('followup_comment')
+            }
+        })
+    
+    # Conversion/Onboarding
+    if school.get('onboarding_data'):
+        onb_data = school.get('onboarding_data', {})
+        history.append({
+            "type": "converted",
+            "date": onb_data.get('converted_at', school.get('updated_at')),
+            "description": f"School converted - {onb_data.get('total_students', 0)} students, ₹{onb_data.get('total_amount', 0)}",
+            "details": onb_data
+        })
+        
+        # Onboarding steps
+        steps = onb_data.get('onboarding_steps', {})
+        for step_name, step_data in steps.items():
+            if step_data.get('completed'):
+                history.append({
+                    "type": "onboarding_step",
+                    "date": step_data.get('completed_at'),
+                    "description": f"Onboarding step completed: {step_name.replace('_', ' ').title()}",
+                    "details": step_data
+                })
+    
+    # Notes
+    if school.get('notes'):
+        history.append({
+            "type": "note",
+            "date": school.get('updated_at'),
+            "description": f"Notes: {school.get('notes')[:100]}...",
+            "details": {"notes": school.get('notes')}
+        })
+    
+    # Get tickets for this school
+    tickets = await db.support_tickets.find({"school_id": school_id}, {"_id": 0}).to_list(50)
+    for ticket in tickets:
+        history.append({
+            "type": "ticket",
+            "date": ticket.get('created_at'),
+            "description": f"Ticket raised: {ticket.get('subject', 'N/A')} ({ticket.get('status', 'open')})",
+            "details": ticket
+        })
+    
+    # Sort by date descending
+    def parse_date(item):
+        date_val = item.get('date')
+        if not date_val:
+            return datetime.min.replace(tzinfo=timezone.utc)
+        if isinstance(date_val, datetime):
+            return date_val if date_val.tzinfo else date_val.replace(tzinfo=timezone.utc)
+        if isinstance(date_val, str):
+            try:
+                return datetime.fromisoformat(date_val.replace('Z', '+00:00'))
+            except:
+                return datetime.min.replace(tzinfo=timezone.utc)
+        return datetime.min.replace(tzinfo=timezone.utc)
+    
+    history.sort(key=parse_date, reverse=True)
+    
+    return {"school_id": school_id, "history": history}
+
 @api_router.post("/schools/{school_id}/raise-ticket")
 async def raise_school_ticket(
     school_id: str,
