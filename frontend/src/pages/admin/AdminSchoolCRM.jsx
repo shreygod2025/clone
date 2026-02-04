@@ -2252,6 +2252,7 @@ const AdminSchoolCRM = () => {
                 setShowRaiseTicketModal(inquiry);
                 setTicketData({
                   query_type: '',
+                  related_to: '',
                   subject: '',
                   description: '',
                   priority: 'medium',
@@ -2307,6 +2308,7 @@ const AdminSchoolCRM = () => {
                 setShowRaiseTicketModal(inquiry);
                 setTicketData({
                   query_type: '',
+                  related_to: '',
                   subject: '',
                   description: '',
                   priority: 'medium',
