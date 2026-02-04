@@ -209,7 +209,7 @@ const AdminReports = () => {
     const headers = getAuthHeaders();
     
     try {
-      const [overviewRes, studentFunnelRes, schoolFunnelRes, educatorRes, supportRes, stagesRes, expensesRes, categoriesRes] = await Promise.all([
+      const [overviewRes, studentFunnelRes, schoolFunnelRes, educatorRes, supportRes, stagesRes, expensesRes, categoriesRes, b2cInsightsRes, b2bInsightsRes, supportInsightsRes] = await Promise.all([
         axios.get(`${API}/admin/reports/overview`, { params, headers }).catch(() => ({ data: null })),
         axios.get(`${API}/admin/reports/sales-funnel`, { params: { ...params, user_type: 'students' }, headers }).catch(() => ({ data: null })),
         axios.get(`${API}/admin/reports/sales-funnel`, { params: { ...params, user_type: 'schools' }, headers }).catch(() => ({ data: null })),
@@ -218,6 +218,9 @@ const AdminReports = () => {
         axios.get(`${API}/admin/reports/user-stages`, { params, headers }).catch(() => ({ data: null })),
         axios.get(`${API}/expenses`, { params, headers }).catch(() => ({ data: { expenses: [], total: 0 } })),
         axios.get(`${API}/expenses/categories`, { headers }).catch(() => ({ data: { categories: [], subcategories: {} } })),
+        axios.get(`${API}/admin/reports/b2c-insights`, { params, headers }).catch(() => ({ data: null })),
+        axios.get(`${API}/admin/reports/b2b-insights`, { params, headers }).catch(() => ({ data: null })),
+        axios.get(`${API}/admin/reports/support-insights`, { params, headers }).catch(() => ({ data: null })),
       ]);
       
       setReportData({
@@ -227,6 +230,9 @@ const AdminReports = () => {
         educator: educatorRes.data,
         support: supportRes.data,
         stages: stagesRes.data,
+        b2cInsights: b2cInsightsRes.data,
+        b2bInsights: b2bInsightsRes.data,
+        supportInsights: supportInsightsRes.data,
       });
       setExpenses(expensesRes.data?.expenses || []);
       setExpenseCategories(categoriesRes.data || { categories: [], subcategories: {} });
