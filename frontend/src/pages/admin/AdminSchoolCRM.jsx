@@ -2855,60 +2855,55 @@ const AdminSchoolCRM = () => {
                     </button>
                   </div>
                   {/* Progress Bar */}
-                  <div className={`w-full ${inquiry.status === 'renewed' ? 'bg-emerald-200' : 'bg-purple-200'} rounded-full h-2 mb-2`}>
+                  <div className={`w-full ${inquiry.status === 'renewed' ? 'bg-emerald-200' : 'bg-purple-200'} rounded-full h-1.5 mb-1`}>
                     <div 
-                      className={`${inquiry.status === 'renewed' ? 'bg-emerald-500' : 'bg-purple-500'} h-2 rounded-full transition-all`}
+                      className={`${inquiry.status === 'renewed' ? 'bg-emerald-500' : 'bg-purple-500'} h-1.5 rounded-full transition-all`}
                       style={{ 
                         width: `${(Object.values(inquiry.onboarding_workflow.steps || {}).filter(s => s.completed).length / 9 * 100).toFixed(0)}%` 
                       }}
                     />
                   </div>
-                  <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center justify-between text-[10px]">
                     <span className={inquiry.status === 'renewed' ? 'text-emerald-600' : 'text-purple-600'}>
-                      {Object.values(inquiry.onboarding_workflow.steps || {}).filter(s => s.completed).length}/9 steps
+                      {Object.values(inquiry.onboarding_workflow.steps || {}).filter(s => s.completed).length}/9
                     </span>
-                    <span className={`font-medium capitalize ${inquiry.status === 'renewed' ? 'text-emerald-700' : 'text-purple-700'}`}>
-                      {typeof (inquiry.onboarding_workflow.current_step || 'payment_collection') === 'string' 
-                        ? (inquiry.onboarding_workflow.current_step || 'payment_collection').replace(/_/g, ' ')
-                        : 'In Progress'}
-                    </span>
+                    {inquiry.onboarding_workflow.tracking_token && (
+                      <button
+                        onClick={() => {
+                          const url = `${window.location.origin}/track/${inquiry.onboarding_workflow.tracking_token}`;
+                          navigator.clipboard.writeText(url);
+                          toast.success('Link copied!');
+                        }}
+                        className={`flex items-center gap-0.5 ${inquiry.status === 'renewed' ? 'text-emerald-500 hover:text-emerald-700' : 'text-purple-500 hover:text-purple-700'}`}
+                      >
+                        <Gift className="w-2.5 h-2.5" /> Copy link
+                      </button>
+                    )}
                   </div>
-                  {/* Tracking Link */}
-                  {inquiry.onboarding_workflow.tracking_token && (
-                    <button
-                      onClick={() => {
-                        const url = `${window.location.origin}/track/${inquiry.onboarding_workflow.tracking_token}`;
-                        navigator.clipboard.writeText(url);
-                        toast.success('Tracking link copied!');
-                      }}
-                      className={`mt-2 text-xs flex items-center gap-1 ${inquiry.status === 'renewed' ? 'text-emerald-500 hover:text-emerald-700' : 'text-purple-500 hover:text-purple-700'}`}
-                    >
-                      <Gift className="w-3 h-3" /> Copy tracking link
-                    </button>
-                  )}
                 </div>
               )}
 
               {/* View Button */}
-              <div className="flex gap-2 mb-3">
+              <div className="flex gap-1.5 mb-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex-1"
+                  className="flex-1 h-7 text-xs"
                   onClick={() => setViewInquiry(inquiry)}
                   data-testid={`view-school-${inquiry.id}`}
                 >
-                  <Eye className="w-4 h-4 mr-1" /> View
+                  <Eye className="w-3 h-3 mr-1" /> View
                 </Button>
                 {/* Add Meeting button for relevant statuses */}
                 {['meeting_done', 'converted', 'active', 'renewed'].includes(inquiry.status) && (
                   <Button
                     variant="outline"
                     size="sm"
+                    className="h-7 px-2"
                     onClick={() => setShowAddMeetingModal(inquiry)}
                     data-testid={`add-meeting-${inquiry.id}`}
                   >
-                    <Plus className="w-4 h-4" />
+                    <Plus className="w-3 h-3" />
                   </Button>
                 )}
               </div>
