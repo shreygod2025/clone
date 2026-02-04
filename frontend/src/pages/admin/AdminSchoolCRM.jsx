@@ -2934,6 +2934,23 @@ const AdminSchoolCRM = () => {
                     </div>
                   )}
 
+                  {/* Selected Offerings / Support Needed */}
+                  {viewInquiry.selected_offerings?.length > 0 && (
+                    <div className="bg-purple-50 rounded-lg p-3">
+                      <p className="text-xs text-purple-500 mb-2">Selected Offerings / Support Needed</p>
+                      <div className="flex flex-wrap gap-1">
+                        {viewInquiry.selected_offerings.map((offeringId, idx) => {
+                          const offering = offerings.find(o => o.id === offeringId);
+                          return (
+                            <span key={idx} className="px-2 py-1 bg-purple-100 rounded text-xs text-purple-700 font-medium">
+                              {offering ? offering.title : offeringId}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {viewInquiry.meeting_date && (
                     <div className="bg-blue-50 rounded-lg p-3">
                       <p className="text-xs text-blue-500 mb-1">Meeting Scheduled</p>
