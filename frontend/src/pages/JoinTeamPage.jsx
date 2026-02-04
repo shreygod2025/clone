@@ -124,7 +124,7 @@ const JoinTeamPage = () => {
         phone: fullPhone,
         city: form.city === 'Other' ? form.otherCity : form.city,
         role: selectedPosition ? selectedPosition.title : form.role,
-        applied_position_id: selectedPosition?.id || null,
+        applied_position_id: selectedPosition?.id || '',
         source: selectedPosition ? 'open_position' : 'general'
       };
       delete submitData.countryCode;
