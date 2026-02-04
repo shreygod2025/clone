@@ -403,6 +403,24 @@ const AdminReports = () => {
         </div>
       )}
       
+      {/* Team Member Filter */}
+      <div className="flex items-center gap-2">
+        <Users className="w-4 h-4 text-slate-400" />
+        <select
+          value={selectedTeamMember}
+          onChange={(e) => setSelectedTeamMember(e.target.value)}
+          className="px-3 py-2 border border-slate-200 rounded-lg text-sm min-w-[160px]"
+          data-testid="team-member-filter"
+        >
+          <option value="">All Team Members</option>
+          {teamMembers.map(member => (
+            <option key={member.id} value={member.id}>
+              {member.name || member.username}
+            </option>
+          ))}
+        </select>
+      </div>
+      
       <Button variant="outline" size="sm" onClick={fetchAllData} className="ml-auto">
         <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
         Refresh
