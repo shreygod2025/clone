@@ -1486,18 +1486,34 @@ const InquiryPage = () => {
                 Query Details
               </h2>
               <div className="space-y-4">
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Query Type</label>
-                  <Select value={formData.query_type} onValueChange={(v) => updateForm('query_type', v)}>
-                    <SelectTrigger className="h-10 sm:h-11">
-                      <SelectValue placeholder="Select query type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {QUERY_TYPES.map(q => (
-                        <SelectItem key={q.value} value={q.value}>{q.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Query Type</label>
+                    <Select value={formData.query_type} onValueChange={(v) => updateForm('query_type', v)}>
+                      <SelectTrigger className="h-10 sm:h-11">
+                        <SelectValue placeholder="Select query type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {QUERY_TYPES.map(q => (
+                          <SelectItem key={q.value} value={q.value}>{q.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Priority</label>
+                    <Select value={formData.priority || 'normal'} onValueChange={(v) => updateForm('priority', v)}>
+                      <SelectTrigger className="h-10 sm:h-11">
+                        <SelectValue placeholder="Select priority" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="normal">Normal</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="urgent">Urgent</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Query Details</label>
