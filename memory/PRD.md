@@ -255,6 +255,54 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - `POST /api/team-onboarding/{id}/activate` - Activate team member (create user)
 - `POST /api/team-onboarding/{id}/discontinue` - Discontinue team member
 
+### Feb 4, 2026 - GP Onboarding Workflow (P0)
+**Complete Growth Partner Lifecycle Management:**
+- ✅ **GP Onboarding Page (`/admin/gp-onboarding`):** New admin page with 3 tabs:
+  - Onboarding: Shows GPs in the onboarding process
+  - Active: Shows activated growth partners with referral stats
+  - Discontinued: Shows discontinued partners with reasons
+- ✅ **Navigation Link:** Added "GP Onboarding" link in admin sidebar under Growth Partners
+- ✅ **3-Step Onboarding Process:**
+  - Step 1: Personal Information (name, DOB, address, PAN, Aadhar, bank details)
+  - Step 2: Contract Signing (contract URL, commission structure - student/school referral %)
+  - Step 3: Training (completion notes)
+- ✅ **Auto-Onboarding Initiation:** When Growth Partner is marked as "Converted", onboarding record is automatically created
+- ✅ **Activation Workflow:**
+  - "Activate" button appears when all 3 steps are complete
+  - Auto-creates "Growth Partner" role if not exists
+  - Creates team_user with GP permissions (students, schools)
+  - Marks user as `is_growth_partner: true`
+  - Returns temp password copied to clipboard
+- ✅ **Partner Stats Display:** Shows referrals, conversions, earnings for active partners
+- ✅ **Discontinuation Workflow:** With reason dropdown (Inactivity, Contract Violation, etc.)
+- ✅ **Public Tracking Page (`/gp-track/{token}`):** Orange gradient UI for partners to track progress
+
+### Feb 4, 2026 - Reports Overhaul (P0)
+**Complete Reports & Analytics Redesign:**
+- ✅ **7 Report Tabs:**
+  - Overview: Key metrics, revenue, expenses, pipeline funnels
+  - B2C (Students): Sales & Marketing, demos, conversions, revenue breakdown
+  - B2B (Schools): Lead funnel, conversion rates, **renewal ratio** calculation
+  - HR - Team: Applications, hired, hire rate, pipeline distribution
+  - Educator HR: Applications, active, performance metrics, top performers
+  - Growth Partners: Total, converted, conversion rate, pipeline
+  - P&L Report: Revenue/expense breakdown, profit margin, expense management
+- ✅ **Date Filtering:**
+  - Month selector (past 24 months)
+  - Year selector (past 5 years)
+  - Custom date range picker (From - To)
+- ✅ **Renewal Ratio Calculation:** `Renewed / (Active + Renewed + Lost) * 100%`
+- ✅ **Expense Management System:**
+  - CRUD operations for expenses
+  - 10 categories: salary, marketing, operations, technology, office, travel, commission, utilities, professional_services, other
+  - Subcategories for each category
+  - Payment method tracking
+  - Expense breakdown by category in P&L
+- ✅ **Visual Components:**
+  - StatCard, ProgressBar, FunnelCard, ConversionCard
+  - Color-coded metrics (green for profit, red for expenses)
+  - Pipeline visualization with progress bars
+
 **Quoted Price & Offerings for School Leads:**
 - ✅ Added Quoted Price (₹) field to Admin School CRM Add Lead form
 - ✅ Added Offerings selection checkboxes to Admin School CRM Add Lead form
