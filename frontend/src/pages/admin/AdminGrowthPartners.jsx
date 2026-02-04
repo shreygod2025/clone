@@ -116,7 +116,21 @@ const AdminGrowthPartners = () => {
       await axios.patch(`${API}/growth-partners/${partner.id}`, { status: newStatus }, {
         headers: getAuthHeaders()
       });
-      toast.success('Status updated');
+      
+      // If converting to onboarding/converted, initiate GP onboarding
+      if (newStatus === 'converted') {
+        try {
+          await axios.post(`${API}/gp-onboarding/init/${partner.id}`, {}, {
+            headers: getAuthHeaders()
+          });
+          toast.success('Partner converted! Onboarding process initiated.');
+        } catch (onboardError) {
+          console.error('Failed to initiate GP onboarding:', onboardError);
+          toast.success('Status updated. Onboarding may already exist.');
+        }
+      } else {
+        toast.success('Status updated');
+      }
       fetchPartners();
     } catch (error) {
       toast.error('Failed to update status');
