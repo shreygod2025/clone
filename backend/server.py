@@ -8355,6 +8355,7 @@ async def get_reports_overview(
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
     period: Optional[str] = None,
+    assigned_to: Optional[str] = None,
     user: dict = Depends(get_current_user)
 ):
     """Get overall metrics for the dashboard"""
@@ -8366,6 +8367,8 @@ async def get_reports_overview(
     for inq in all_student_inquiries:
         created = parse_date_field(inq.get('created_at'))
         if created and start <= created <= end:
+            if assigned_to and inq.get('assigned_to') != assigned_to:
+                continue
             student_inquiries.append(inq)
     
     # Get all school inquiries
@@ -8374,6 +8377,8 @@ async def get_reports_overview(
     for inq in all_school_inquiries:
         created = parse_date_field(inq.get('created_at'))
         if created and start <= created <= end:
+            if assigned_to and inq.get('assigned_to') != assigned_to:
+                continue
             school_inquiries.append(inq)
     
     # Get all educator applications
@@ -8382,6 +8387,8 @@ async def get_reports_overview(
     for edu in all_educators:
         created = parse_date_field(edu.get('created_at'))
         if created and start <= created <= end:
+            if assigned_to and edu.get('assigned_to') != assigned_to:
+                continue
             educators.append(edu)
     
     # Get demo bookings
