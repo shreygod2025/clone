@@ -2107,48 +2107,54 @@ const AdminSchoolCRM = () => {
 
   // Render action buttons based on status
   const renderActionButtons = (inquiry) => {
+    // Compact icon buttons for common actions
     const baseButtons = (
       <>
         <button
           onClick={() => setShowAssignModal(inquiry)}
-          className="text-xs px-3 py-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 flex items-center gap-1 font-medium"
+          className="p-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700"
           data-testid={`assign-${inquiry.id}`}
+          title="Assign"
         >
-          <UserPlus className="w-3 h-3" />
-          Assign
+          <UserPlus className="w-3.5 h-3.5" />
         </button>
         <button
           onClick={() => setShowCommentModal(inquiry)}
-          className="text-xs px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-700 flex items-center gap-1 font-medium"
+          className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700"
           data-testid={`comment-${inquiry.id}`}
+          title="Add Note"
         >
-          <MessageSquare className="w-3 h-3" />
-          Note
+          <MessageSquare className="w-3.5 h-3.5" />
         </button>
         <button
           onClick={() => handleDeleteLead(inquiry)}
-          className="text-xs px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 font-medium"
+          className="p-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700"
           data-testid={`delete-lead-${inquiry.id}`}
+          title="Delete"
         >
-          <Trash2 className="w-3 h-3" />
-          Delete
+          <Trash2 className="w-3.5 h-3.5" />
         </button>
       </>
     );
 
-    // Documents button for stages that need it
+    // Documents button - compact icon
     const documentsButton = (
       <button
         onClick={() => setShowDocumentsModal(inquiry)}
-        className="text-xs px-3 py-1.5 rounded-lg bg-cyan-100 hover:bg-cyan-200 text-cyan-700 flex items-center gap-1 font-medium"
+        className="p-1.5 rounded-lg bg-cyan-100 hover:bg-cyan-200 text-cyan-700 relative"
         data-testid={`documents-${inquiry.id}`}
+        title="Documents"
       >
-        <Paperclip className="w-3 h-3" />
-        Docs {inquiry.documents?.length > 0 && `(${inquiry.documents.length})`}
+        <Paperclip className="w-3.5 h-3.5" />
+        {inquiry.documents?.length > 0 && (
+          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-cyan-500 text-white text-[10px] flex items-center justify-center">
+            {inquiry.documents.length}
+          </span>
+        )}
       </button>
     );
 
-    // Followup button - shown in all sections except converted
+    // Followup button - compact icon
     const followupButton = inquiry.status !== 'converted' && (
       <button
         onClick={() => {
@@ -2158,21 +2164,21 @@ const AdminSchoolCRM = () => {
             comment: inquiry.followup_comment || '' 
           });
         }}
-        className="text-xs px-3 py-1.5 rounded-lg bg-cyan-100 hover:bg-cyan-200 text-cyan-700 flex items-center gap-1 font-medium"
+        className="p-1.5 rounded-lg bg-teal-100 hover:bg-teal-200 text-teal-700"
         data-testid={`followup-${inquiry.id}`}
+        title="Followup"
       >
-        <Clock className="w-3 h-3" />
-        Followup
+        <Clock className="w-3.5 h-3.5" />
       </button>
     );
 
     switch (inquiry.status) {
       case 'new':
         return (
-          <div className="flex gap-1 flex-wrap">
+          <div className="flex gap-1 flex-wrap items-center">
             <button
               onClick={() => handleMeetingDone(inquiry)}
-              className="text-xs px-3 py-1.5 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-700 flex items-center gap-1 font-medium"
+              className="text-xs px-2 py-1 rounded-lg bg-purple-500 hover:bg-purple-600 text-white flex items-center gap-1 font-medium"
               data-testid={`meeting-done-${inquiry.id}`}
             >
               <CheckCircle2 className="w-3 h-3" />
