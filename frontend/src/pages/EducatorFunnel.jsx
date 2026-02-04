@@ -314,29 +314,78 @@ const EducatorFunnel = () => {
       return;
     }
 
-    const fullPhone = reqFormData.countryCode === '+91' ? reqFormData.phone : `${reqFormData.countryCode}${reqFormData.phone}`;
-    setSubmitting(true);
-    try {
-      await axios.post(`${API}/educators/apply`, {
-        name: reqFormData.name,
-        email: reqFormData.email,
-        phone: fullPhone,
-        skills: [selectedRequirement.skill],
-        experience: reqFormData.experience,
-        grades_comfortable: [],
-        city: selectedRequirement.city,
-        availability: reqFormData.available_days.join(', ') || 'Flexible',
-        demo_ready: reqFormData.demo_ready,
-        requirement_id: selectedRequirement.id,
-        requirement_title: selectedRequirement.title,
-      });
-      setShowRequirementForm(false);
-      setSelectedRequirement(null);
-      toast.success('Application submitted successfully!');
-    } catch (error) {
-      toast.error('Failed to submit. Please try again.');
-    } finally {
-      setSubmitting(false);
+    // Step 1: Show confirmation
+    if (reqStep === 'form') {
+      setReqStep('confirm');
+      return;
+    }
+
+    // Step 2: Send OTP
+    if (reqStep === 'confirm') {
+      const fullPhone = reqFormData.countryCode === '+91' ? reqFormData.phone : `${reqFormData.countryCode}${reqFormData.phone}`;
+      setOtpSending(true);
+      try {
+        await sendOTP(fullPhone);
+        setReqStep('otp');
+        toast.success('OTP sent to your phone');
+      } catch (error) {
+        toast.error('Failed to send OTP');
+      } finally {
+        setOtpSending(false);
+      }
+      return;
+    }
+
+    // Step 3: Verify OTP and submit
+    if (reqStep === 'otp') {
+      if (!reqOtp || reqOtp.length !== 4) {
+        toast.error('Please enter the 4-digit OTP');
+        return;
+      }
+      const fullPhone = reqFormData.countryCode === '+91' ? reqFormData.phone : `${reqFormData.countryCode}${reqFormData.phone}`;
+      setSubmitting(true);
+      try {
+        // Verify OTP
+        const verifyRes = await axios.post(`${API}/auth/verify-otp`, {
+          phone: fullPhone,
+          otp: reqOtp
+        });
+        
+        if (!verifyRes.data?.verified) {
+          toast.error('Invalid OTP');
+          setSubmitting(false);
+          return;
+        }
+
+        // Submit application
+        await axios.post(`${API}/educators/apply-verified`, {
+          name: reqFormData.name,
+          email: reqFormData.email,
+          phone: fullPhone,
+          skills: [selectedRequirement.skill],
+          experience: reqFormData.experience,
+          grades_comfortable: [],
+          city: selectedRequirement.city,
+          availability: reqFormData.available_days.join(', ') || 'Flexible',
+          demo_ready: reqFormData.demo_ready,
+          requirement_id: selectedRequirement.id,
+          requirement_title: selectedRequirement.title,
+          why_interested: reqFormData.why_interested || '',
+        });
+        setShowRequirementForm(false);
+        setSelectedRequirement(null);
+        setReqStep('form');
+        setReqOtp('');
+        toast.success('Application submitted successfully!');
+      } catch (error) {
+        if (error.response?.data?.detail?.includes('OTP')) {
+          toast.error('Invalid OTP. Please try again.');
+        } else {
+          toast.error('Failed to submit. Please try again.');
+        }
+      } finally {
+        setSubmitting(false);
+      }
     }
   };
 
