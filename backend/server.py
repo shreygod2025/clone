@@ -5384,7 +5384,7 @@ async def get_school_support_queries(user: dict = Depends(get_current_user)):
     queries = await db.school_support_queries.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
     return queries
 
-@api_router.get("/support/tickets", response_model=List[SupportTicket])
+@api_router.get("/support/tickets")
 async def get_support_tickets(status: Optional[str] = None, user: dict = Depends(get_current_user)):
     query = {"source": {"$ne": "tracking_page"}}  # Exclude tracking page tickets
     if status:
@@ -5392,7 +5392,18 @@ async def get_support_tickets(status: Optional[str] = None, user: dict = Depends
     tickets = await db.support_tickets.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
     for ticket in tickets:
         if isinstance(ticket.get('created_at'), str):
-            ticket['created_at'] = datetime.fromisoformat(ticket['created_at'])
+            try:
+                ticket['created_at'] = datetime.fromisoformat(ticket['created_at'].replace('Z', '+00:00'))
+            except:
+                pass
+        # Normalize fields for school_crm tickets
+        if ticket.get('source') == 'school_crm':
+            ticket['name'] = ticket.get('contact_name', ticket.get('school_name', ''))
+            ticket['email'] = ticket.get('contact_email', '')
+            ticket['phone'] = ticket.get('contact_phone', '')
+            ticket['message'] = ticket.get('description', '')
+            ticket['user_type'] = 'school'
+            ticket['query_type'] = ticket.get('query_type', 'general')
     return tickets
 
 @api_router.patch("/support/tickets/{ticket_id}")
