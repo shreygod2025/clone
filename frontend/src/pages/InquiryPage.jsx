@@ -375,7 +375,28 @@ const InquiryPage = () => {
   };
 
   const updateForm = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    // Auto-update related_to when query_type changes
+    if (field === 'query_type') {
+      const relatedOptions = RELATED_TO_OPTIONS[value] || RELATED_TO_OPTIONS.other;
+      setFormData(prev => ({ 
+        ...prev, 
+        query_type: value,
+        related_to: relatedOptions[0]?.value || 'other'
+      }));
+    } 
+    // Auto-set query_type and related_to based on inquiry_type
+    else if (field === 'inquiry_type') {
+      const defaults = DEFAULT_QUERY_FOR_TYPE[value] || DEFAULT_QUERY_FOR_TYPE.student;
+      setFormData(prev => ({ 
+        ...prev, 
+        inquiry_type: value,
+        query_type: defaults.query_type,
+        related_to: defaults.related_to
+      }));
+    }
+    else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
   };
 
   const toggleArrayField = (field, value) => {
