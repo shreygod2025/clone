@@ -2437,6 +2437,122 @@ const AdminEducators = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Educator Modal */}
+      <Dialog open={!!showEditEducatorModal} onOpenChange={() => setShowEditEducatorModal(null)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="w-5 h-5 text-[#1E3A5F]" />
+              Edit Educator: {showEditEducatorModal?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
+                <Input
+                  value={editEducatorForm.name}
+                  onChange={(e) => setEditEducatorForm({ ...editEducatorForm, name: e.target.value })}
+                  placeholder="Name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Phone</label>
+                <Input
+                  value={editEducatorForm.phone}
+                  onChange={(e) => setEditEducatorForm({ ...editEducatorForm, phone: e.target.value })}
+                  placeholder="Phone"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                <Input
+                  value={editEducatorForm.email}
+                  onChange={(e) => setEditEducatorForm({ ...editEducatorForm, email: e.target.value })}
+                  placeholder="Email"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">City</label>
+                <Input
+                  value={editEducatorForm.city}
+                  onChange={(e) => setEditEducatorForm({ ...editEducatorForm, city: e.target.value })}
+                  placeholder="City"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Teaching Mode</label>
+                <select
+                  value={editEducatorForm.teaching_mode}
+                  onChange={(e) => setEditEducatorForm({ ...editEducatorForm, teaching_mode: e.target.value })}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                >
+                  <option value="">Select mode</option>
+                  <option value="online">Online</option>
+                  <option value="offline_home">Offline - At Home</option>
+                  <option value="offline_center">Offline - At Center</option>
+                  <option value="both">Both Online & Offline</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Skills Management */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Skills</label>
+              <div className="flex flex-wrap gap-2 mb-3">
+                {editEducatorForm.skills.map((skill, idx) => (
+                  <span
+                    key={idx}
+                    className="px-3 py-1.5 bg-[#1E3A5F]/10 text-[#1E3A5F] rounded-full text-sm flex items-center gap-2"
+                  >
+                    {skill}
+                    <button
+                      onClick={() => handleRemoveSkill(skill)}
+                      className="hover:bg-red-100 rounded-full p-0.5"
+                      data-testid={`remove-skill-${idx}`}
+                    >
+                      <X className="w-3 h-3 text-red-500" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  value={newSkillInput}
+                  onChange={(e) => setNewSkillInput(e.target.value)}
+                  placeholder="Add new skill..."
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddSkill()}
+                />
+                <Button type="button" onClick={handleAddSkill} variant="outline" className="border-[#1E3A5F] text-[#1E3A5F]">
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">Press Enter or click + to add skill</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Experience</label>
+              <Textarea
+                value={editEducatorForm.experience}
+                onChange={(e) => setEditEducatorForm({ ...editEducatorForm, experience: e.target.value })}
+                placeholder="Experience details..."
+                className="min-h-[80px]"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => setShowEditEducatorModal(null)} className="flex-1">
+                Cancel
+              </Button>
+              <Button onClick={handleSaveEducator} className="flex-1 bg-[#1E3A5F] hover:bg-[#152c47]">
+                <Save className="w-4 h-4 mr-2" />
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
