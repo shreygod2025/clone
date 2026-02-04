@@ -964,6 +964,8 @@ class SchoolInquiry(BaseModel):
     followup_date: Optional[str] = None
     followup_comment: str = ""
     conversion_amount: Optional[str] = None
+    quoted_price: Optional[str] = None  # Price quoted during meeting
+    selected_offerings: Optional[List[str]] = None  # Offerings selected during meeting
     source: str = "website"
     referred_by: str = ""  # Name of person who referred (when source is referral)
     added_by: str = ""
