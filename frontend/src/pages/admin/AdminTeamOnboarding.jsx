@@ -361,7 +361,7 @@ const AdminTeamOnboarding = () => {
                   {member.status === 'active' && (
                     <>
                       <button
-                        onClick={() => setShowReportsModal(member)}
+                        onClick={() => fetchTeamMemberReport(member)}
                         className="text-xs px-3 py-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 flex items-center gap-1"
                       >
                         <BarChart3 className="w-3 h-3" /> Reports
