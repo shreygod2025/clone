@@ -122,6 +122,7 @@ const InquiryPage = () => {
     // Query fields
     query_type: '',
     query_details: '',
+    priority: 'normal', // low, normal, high, urgent
     
     // Student fields
     age_group: '',
