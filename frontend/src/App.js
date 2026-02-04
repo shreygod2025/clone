@@ -175,6 +175,7 @@ function App() {
             </Routes>
           </Suspense>
           <Toaster position="top-right" richColors />
+          <RaiseQueryButton />
         </BrowserRouter>
       </UserAuthProvider>
     </AuthProvider>
