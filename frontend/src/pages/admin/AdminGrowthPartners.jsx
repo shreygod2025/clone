@@ -302,6 +302,74 @@ const AdminGrowthPartners = () => {
     return teamUser?.name || null;
   };
 
+  // GP Onboarding Functions
+  const getOnboardingForPartner = (partnerId) => {
+    return gpOnboardings.find(o => o.growth_partner_id === partnerId);
+  };
+
+  const getCompletedSteps = (steps) => {
+    if (!steps) return 0;
+    return Object.values(steps).filter(s => s.completed).length;
+  };
+
+  const handleCompleteStep = async () => {
+    if (!showStepModal) return;
+    try {
+      await axios.post(`${API}/gp-onboarding/${showStepModal.onboardingId}/complete-step`, {
+        step: showStepModal.step,
+        data: stepData
+      }, { headers: getAuthHeaders() });
+      toast.success(`${showStepModal.stepLabel} completed!`);
+      setShowStepModal(null);
+      setStepData({});
+      fetchGpOnboardings();
+    } catch (error) {
+      toast.error('Failed to complete step');
+    }
+  };
+
+  const handleActivateGP = async () => {
+    if (!showActivateModal) return;
+    try {
+      const res = await axios.post(`${API}/gp-onboarding/${showActivateModal.id}/activate`, {
+        role_id: selectedRoleId || undefined
+      }, { headers: getAuthHeaders() });
+      toast.success(`Growth Partner activated! Username: ${res.data.username}`);
+      navigator.clipboard.writeText(res.data.temp_password);
+      toast.info('Temporary password copied to clipboard');
+      setShowActivateModal(null);
+      setSelectedRoleId('');
+      fetchGpOnboardings();
+      fetchPartners();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to activate');
+    }
+  };
+
+  const handleDiscontinueGP = async () => {
+    if (!showDiscontinueModal || !discontinueReason) {
+      toast.error('Please provide a reason');
+      return;
+    }
+    try {
+      await axios.post(`${API}/gp-onboarding/${showDiscontinueModal.id}/discontinue`, {
+        reason: discontinueReason
+      }, { headers: getAuthHeaders() });
+      toast.success('Growth Partner discontinued');
+      setShowDiscontinueModal(null);
+      setDiscontinueReason('');
+      fetchGpOnboardings();
+      fetchPartners();
+    } catch (error) {
+      toast.error('Failed to discontinue');
+    }
+  };
+
+  const copyTrackingLink = (token) => {
+    navigator.clipboard.writeText(`${window.location.origin}/gp-track/${token}`);
+    toast.success('Tracking link copied!');
+  };
+
   const filteredPartners = partners.filter(p => {
     const matchesSearch = p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.phone?.includes(searchQuery) ||
@@ -310,7 +378,25 @@ const AdminGrowthPartners = () => {
     return matchesSearch && matchesSection;
   });
 
-  const getCount = (status) => partners.filter(p => p.status === status).length;
+  // For onboarding/active/discontinued tabs, filter from gpOnboardings
+  const filteredOnboardings = gpOnboardings.filter(o => {
+    const matchesSearch = !searchQuery ||
+      o.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      o.phone?.includes(searchQuery) ||
+      o.email?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    if (activeSection === 'onboarding') return matchesSearch && o.status === 'onboarding';
+    if (activeSection === 'active') return matchesSearch && o.status === 'active';
+    if (activeSection === 'discontinued') return matchesSearch && o.status === 'discontinued';
+    return false;
+  });
+
+  const getCount = (status) => {
+    if (['onboarding', 'active', 'discontinued'].includes(status)) {
+      return gpOnboardings.filter(o => o.status === status).length;
+    }
+    return partners.filter(p => p.status === status).length;
+  };
 
   const renderActionButtons = (partner) => {
     const statusActions = {
