@@ -345,6 +345,34 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ School card in CRM now displays selected offerings (purple badges)
 - ✅ School card shows Quoted Price in blue when not yet converted
 
+### Feb 4, 2026 - UI Consolidation & Reports Enhancement
+
+**Onboarding Pages Merged into Lead Management:**
+- ✅ **Team Applications:** Added Onboarding, Active, Discontinued tabs with color-coded badges
+- ✅ **Team Onboarding UI:** Shows progress bar (0-4 steps), step buttons (Personal Info, Bank Details, Contract, Training)
+- ✅ **Step Modals:** Clicking incomplete step opens modal with relevant form fields
+- ✅ **Activate Modal:** Appears for members with 4/4 steps, allows role selection and creates user account
+- ✅ **Discontinue Modal:** Exit formalities checklist with reason dropdown
+- ✅ **Reports Modal:** View team member performance metrics from Active tab
+- ✅ **Growth Partners:** All onboarding functionality already merged (Onboarding/Active/Discontinued tabs)
+- ✅ **Sidebar Cleanup:** Removed separate "GP Onboarding" and "Team Onboarding" links
+
+**Reports Page - Support Tab:**
+- ✅ **New Support Tab:** Added to Reports page tabs (Overview, B2C, B2B, HR Team, Educator HR, GP, **Support**, P&L)
+- ✅ **Support Metrics Cards:** Total Tickets, Pending, In Progress, Resolved, Resolution Rate
+- ✅ **Support Insights Section:** 6 insight cards with data from `/admin/reports/support-insights`
+  - Tickets by Category (query_types)
+  - Tickets by Priority (priority_breakdown)
+  - Tickets by Source (source_breakdown)
+  - Avg Resolution Time (avg_resolution_time_hours)
+  - Team Performance (team_performance)
+  - Status Distribution (status_breakdown)
+- ✅ **API Field Mapping:** Fixed frontend to match backend response field names
+
+**Code Changes:**
+- `/app/frontend/src/pages/admin/AdminTeamApplications.jsx` - Added onboarding tabs, step modals, activate/discontinue/reports modals
+- `/app/frontend/src/pages/admin/AdminReports.jsx` - Added renderSupportTab() function with insight cards
+- `/app/frontend/src/pages/admin/AdminDashboard.jsx` - Removed separate onboarding nav links
 ### Jan 28, 2026 - Team Applications & Inquiry Enhancements
 **Team Applications View Modal Enhancement:**
 - ✅ Expanded view modal to show all application details
