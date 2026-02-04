@@ -7,7 +7,7 @@ import { Textarea } from './ui/textarea';
 import axios from 'axios';
 import { toast } from 'sonner';
 
-const API = process.env.REACT_APP_BACKEND_URL;
+const API = process.env.REACT_APP_BACKEND_URL + '/api';
 
 // Page-specific query types - Logged-in users get simplified options
 const LOGGED_IN_USER_QUERIES = {
