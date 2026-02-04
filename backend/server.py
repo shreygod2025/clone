@@ -8834,6 +8834,106 @@ async def get_user_stages_report(
         "period": {"start": start.isoformat(), "end": end.isoformat()}
     }
 
+@api_router.get("/admin/reports/team-member/{user_id}")
+async def get_team_member_report(
+    user_id: str,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    period: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    """Get performance report for a specific team member"""
+    start, end = get_date_range(start_date, end_date, period)
+    
+    # Get the team member info
+    team_member = await db.team_users.find_one({"id": user_id}, {"_id": 0})
+    if not team_member:
+        raise HTTPException(status_code=404, detail="Team member not found")
+    
+    # Get their role
+    role = await db.roles.find_one({"id": team_member.get('role_id')}, {"_id": 0})
+    role_name = role.get('name', 'Unknown') if role else 'Unknown'
+    
+    def is_in_range(item):
+        created = parse_date_field(item.get('created_at'))
+        if created is None:
+            return True
+        return start <= created <= end
+    
+    # Calculate metrics based on assigned leads and activities
+    # Students assigned
+    all_student_leads = await db.student_inquiries.find({"assigned_to": user_id}, {"_id": 0}).to_list(10000)
+    student_leads = [s for s in all_student_leads if is_in_range(s)]
+    student_converted = len([s for s in student_leads if s.get('status') == 'converted'])
+    
+    # Schools assigned
+    all_school_leads = await db.school_inquiries.find({"assigned_to": user_id}, {"_id": 0}).to_list(10000)
+    school_leads = [s for s in all_school_leads if is_in_range(s)]
+    school_converted = len([s for s in school_leads if s.get('status') in ['converted', 'active', 'renewed']])
+    
+    # Schools as RM
+    all_rm_schools = await db.school_inquiries.find({"relationship_manager": user_id}, {"_id": 0}).to_list(10000)
+    rm_schools = [s for s in all_rm_schools if is_in_range(s)]
+    
+    # Educators assigned
+    all_educator_leads = await db.educator_applications.find({"assigned_to": user_id}, {"_id": 0}).to_list(10000)
+    educator_leads = [e for e in all_educator_leads if is_in_range(e)]
+    educator_active = len([e for e in educator_leads if e.get('status') == 'active'])
+    
+    # Support tickets handled
+    all_tickets = await db.support_queries.find({"assigned_to": user_id}, {"_id": 0}).to_list(10000)
+    tickets = [t for t in all_tickets if is_in_range(t)]
+    tickets_resolved = len([t for t in tickets if t.get('status') == 'resolved'])
+    
+    # Demo bookings facilitated
+    all_demos = await db.demo_bookings.find({"assigned_to": user_id}, {"_id": 0}).to_list(10000)
+    demos = [d for d in all_demos if is_in_range(d)]
+    demos_completed = len([d for d in demos if d.get('status') == 'completed'])
+    
+    # Calculate conversion rates
+    student_conversion_rate = round((student_converted / len(student_leads) * 100) if student_leads else 0, 1)
+    school_conversion_rate = round((school_converted / len(school_leads) * 100) if school_leads else 0, 1)
+    ticket_resolution_rate = round((tickets_resolved / len(tickets) * 100) if tickets else 0, 1)
+    
+    return {
+        "member": {
+            "id": user_id,
+            "name": team_member.get('name'),
+            "email": team_member.get('email'),
+            "role": role_name,
+            "city": team_member.get('city', ''),
+            "is_active": team_member.get('is_active', True),
+            "joined_at": team_member.get('created_at')
+        },
+        "metrics": {
+            "students": {
+                "assigned": len(student_leads),
+                "converted": student_converted,
+                "conversion_rate": student_conversion_rate
+            },
+            "schools": {
+                "assigned": len(school_leads),
+                "converted": school_converted,
+                "conversion_rate": school_conversion_rate,
+                "as_rm": len(rm_schools)
+            },
+            "educators": {
+                "assigned": len(educator_leads),
+                "active": educator_active
+            },
+            "support": {
+                "total_tickets": len(tickets),
+                "resolved": tickets_resolved,
+                "resolution_rate": ticket_resolution_rate
+            },
+            "demos": {
+                "total": len(demos),
+                "completed": demos_completed
+            }
+        },
+        "period": {"start": start.isoformat(), "end": end.isoformat()}
+    }
+
 # Include router and middleware
 app.include_router(api_router)
 
