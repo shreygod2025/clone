@@ -115,7 +115,21 @@ const AdminTeamApplications = () => {
       }, {
         headers: getAuthHeaders()
       });
-      toast.success('Status updated');
+      
+      // If hired, initiate team onboarding
+      if (newStatus === 'hired') {
+        try {
+          await axios.post(`${API}/team-onboarding/init/${application.id}`, {}, {
+            headers: getAuthHeaders()
+          });
+          toast.success('Applicant hired! Onboarding process initiated.');
+        } catch (onboardError) {
+          console.error('Failed to initiate onboarding:', onboardError);
+          toast.success('Status updated. Onboarding may already exist.');
+        }
+      } else {
+        toast.success('Status updated');
+      }
       fetchApplications();
     } catch (error) {
       toast.error('Failed to update status');
