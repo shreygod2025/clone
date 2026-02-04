@@ -345,6 +345,26 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ School card in CRM now displays selected offerings (purple badges)
 - ✅ School card shows Quoted Price in blue when not yet converted
 
+### Feb 4, 2026 - Team Member Filter & Backend Refactoring
+
+**Team Member Filter in Reports:**
+- ✅ Added team member dropdown to Reports filter bar
+- ✅ Fetches team members from `/api/team-users` endpoint
+- ✅ Passes `assigned_to` parameter to all report endpoints
+- ✅ Data filters correctly when team member is selected (tested: Students, Schools, Educators, Revenue all update)
+
+**GP Application Visibility:**
+- ✅ Verified GP applications from website are visible in Admin GP CRM
+- ✅ Website sources correctly shown: `growth_partner_page`, `centers_page`, `about_page`
+
+**Backend Refactoring:**
+- ✅ Added TABLE OF CONTENTS comment at top of server.py (lines 52-82)
+- ✅ Lists all major sections with line numbers for easy navigation
+- ✅ Created `/app/backend/routes/` directory structure for future modularization:
+  - `utils.py`: Shared utility functions (date parsing)
+  - `reports.py`: Prepared for reports endpoint extraction
+  - `onboarding.py`: Prepared for onboarding endpoint extraction
+
 ### Feb 4, 2026 - Bug Fixes & Feature Enhancements
 
 **Bug Fixes:**
