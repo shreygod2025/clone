@@ -836,6 +836,12 @@ const AdminSupportUnified = () => {
                     {query.status?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                   </span>
                   {getQueryTypeBadge(query.query_type)}
+                  {/* Related To Sub-category */}
+                  {query.related_to && (
+                    <span className="text-xs px-2 py-1 rounded bg-slate-100 text-slate-600 font-medium">
+                      → {(RELATED_TO_OPTIONS[query.query_type] || RELATED_TO_OPTIONS.other).find(r => r.value === query.related_to)?.label || query.related_to?.replace(/_/g, ' ')}
+                    </span>
+                  )}
                   <span className="text-sm text-slate-500 capitalize">
                     {INQUIRY_TYPES.find(t => t.value === query.inquiry_type)?.label || query.inquiry_type}
                   </span>
