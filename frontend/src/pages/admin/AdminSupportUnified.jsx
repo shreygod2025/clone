@@ -81,6 +81,16 @@ const AdminSupportUnified = () => {
     name: '', phone: '', email: '', query_type: 'other', inquiry_type: 'student', message: '', priority: 'normal', source: 'admin_created'
   });
   
+  // Notes, History, Edit, Delete states
+  const [showNotesModal, setShowNotesModal] = useState(null);
+  const [showHistoryModal, setShowHistoryModal] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(null);
+  const [noteText, setNoteText] = useState('');
+  const [editForm, setEditForm] = useState({});
+  const [queryHistory, setQueryHistory] = useState([]);
+  const [queryNotes, setQueryNotes] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  
   // Attachment & Voice Note states
   const [attachments, setAttachments] = useState([]);
   const [isRecording, setIsRecording] = useState(false);
