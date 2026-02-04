@@ -131,7 +131,7 @@ const AdminSchoolCRM = () => {
   const [showAssignRMModal, setShowAssignRMModal] = useState(null);
   const [relationshipManagers, setRelationshipManagers] = useState([]);
   const [showRaiseTicketModal, setShowRaiseTicketModal] = useState(null);
-  const [ticketData, setTicketData] = useState({ subject: '', description: '', priority: 'medium', contact_name: '', contact_phone: '', contact_email: '' });
+  const [ticketData, setTicketData] = useState({ query_type: '', subject: '', description: '', priority: 'medium', contact_name: '', contact_phone: '', contact_email: '' });
   
   // Document upload states
   const [showDocumentsModal, setShowDocumentsModal] = useState(null);
