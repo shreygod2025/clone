@@ -614,42 +614,156 @@ const AdminTeamOnboarding = () => {
       </Dialog>
 
       {/* Reports Modal */}
-      <Dialog open={!!showReportsModal} onOpenChange={() => setShowReportsModal(null)}>
+      <Dialog open={!!showReportsModal} onOpenChange={() => { setShowReportsModal(null); setReportData(null); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <BarChart3 className="w-5 h-5 text-indigo-600" />
-              Reports: {showReportsModal?.name}
+              Performance Report: {showReportsModal?.name}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="bg-indigo-50 p-4 rounded-lg">
-              <p className="text-sm text-indigo-700">
-                Reports based on allocated features will be shown here.
-                <br />
-                <strong>Coming soon:</strong> Leads assigned, conversions, demos conducted, etc.
+          {reportLoading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mx-auto"></div>
+              <p className="text-slate-500 mt-3">Loading report...</p>
+            </div>
+          ) : reportData ? (
+            <div className="space-y-4">
+              {/* Member Info */}
+              <div className="bg-indigo-50 p-4 rounded-lg">
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <p className="text-indigo-600 text-xs">Role</p>
+                    <p className="font-medium">{reportData.member?.role}</p>
+                  </div>
+                  <div>
+                    <p className="text-indigo-600 text-xs">City</p>
+                    <p className="font-medium">{reportData.member?.city || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-indigo-600 text-xs">Status</p>
+                    <p className={`font-medium ${reportData.member?.is_active ? 'text-green-600' : 'text-red-600'}`}>
+                      {reportData.member?.is_active ? 'Active' : 'Inactive'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Main Metrics */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="bg-white border rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-blue-600">
+                    {(reportData.metrics?.students?.assigned || 0) + (reportData.metrics?.schools?.assigned || 0)}
+                  </p>
+                  <p className="text-xs text-slate-500">Total Leads</p>
+                </div>
+                <div className="bg-white border rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-green-600">
+                    {(reportData.metrics?.students?.converted || 0) + (reportData.metrics?.schools?.converted || 0)}
+                  </p>
+                  <p className="text-xs text-slate-500">Conversions</p>
+                </div>
+                <div className="bg-white border rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-purple-600">{reportData.metrics?.demos?.completed || 0}</p>
+                  <p className="text-xs text-slate-500">Demos Done</p>
+                </div>
+                <div className="bg-white border rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-orange-600">{reportData.metrics?.support?.resolved || 0}</p>
+                  <p className="text-xs text-slate-500">Tickets Resolved</p>
+                </div>
+              </div>
+              
+              {/* Detailed Breakdown */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Students */}
+                <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
+                  <h4 className="font-medium text-blue-800 mb-3 text-sm">Student Leads</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">Assigned</span>
+                      <span className="font-medium">{reportData.metrics?.students?.assigned || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">Converted</span>
+                      <span className="font-medium text-green-600">{reportData.metrics?.students?.converted || 0}</span>
+                    </div>
+                    <div className="flex justify-between border-t pt-2">
+                      <span className="text-slate-600">Conversion Rate</span>
+                      <span className="font-bold text-blue-600">{reportData.metrics?.students?.conversion_rate || 0}%</span>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Schools */}
+                <div className="bg-purple-50 border border-purple-100 rounded-lg p-4">
+                  <h4 className="font-medium text-purple-800 mb-3 text-sm">School Leads</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">Assigned</span>
+                      <span className="font-medium">{reportData.metrics?.schools?.assigned || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">Converted</span>
+                      <span className="font-medium text-green-600">{reportData.metrics?.schools?.converted || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">As RM</span>
+                      <span className="font-medium">{reportData.metrics?.schools?.as_rm || 0}</span>
+                    </div>
+                    <div className="flex justify-between border-t pt-2">
+                      <span className="text-slate-600">Conversion Rate</span>
+                      <span className="font-bold text-purple-600">{reportData.metrics?.schools?.conversion_rate || 0}%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Support & Educators */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-orange-50 border border-orange-100 rounded-lg p-4">
+                  <h4 className="font-medium text-orange-800 mb-3 text-sm">Support Tickets</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">Total Handled</span>
+                      <span className="font-medium">{reportData.metrics?.support?.total_tickets || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">Resolved</span>
+                      <span className="font-medium text-green-600">{reportData.metrics?.support?.resolved || 0}</span>
+                    </div>
+                    <div className="flex justify-between border-t pt-2">
+                      <span className="text-slate-600">Resolution Rate</span>
+                      <span className="font-bold text-orange-600">{reportData.metrics?.support?.resolution_rate || 0}%</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="bg-green-50 border border-green-100 rounded-lg p-4">
+                  <h4 className="font-medium text-green-800 mb-3 text-sm">Educators Assigned</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">Assigned</span>
+                      <span className="font-medium">{reportData.metrics?.educators?.assigned || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-600">Now Active</span>
+                      <span className="font-medium text-green-600">{reportData.metrics?.educators?.active || 0}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <p className="text-xs text-slate-400 text-center mt-4">
+                Report period: {reportData.period?.start?.split('T')[0]} to {reportData.period?.end?.split('T')[0]}
               </p>
             </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white border rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-blue-600">-</p>
-                <p className="text-sm text-slate-500">Leads Assigned</p>
-              </div>
-              <div className="bg-white border rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-green-600">-</p>
-                <p className="text-sm text-slate-500">Conversions</p>
-              </div>
-              <div className="bg-white border rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-purple-600">-</p>
-                <p className="text-sm text-slate-500">Demos Conducted</p>
-              </div>
-              <div className="bg-white border rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-orange-600">-</p>
-                <p className="text-sm text-slate-500">Tickets Resolved</p>
-              </div>
+          ) : (
+            <div className="bg-yellow-50 p-4 rounded-lg">
+              <p className="text-sm text-yellow-700">
+                No report data available. This member may not have a team user account yet.
+              </p>
             </div>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
     </AdminLayout>
