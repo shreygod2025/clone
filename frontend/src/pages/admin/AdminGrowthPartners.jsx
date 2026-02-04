@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Eye, Phone, Mail, Clock, Plus, ChevronRight, MessageSquare, Archive, CheckCircle2, User, MapPin, Briefcase, Send, UserPlus, Edit, Save } from 'lucide-react';
+import { 
+  Search, Eye, Phone, Mail, Clock, Plus, ChevronRight, MessageSquare, Archive, 
+  CheckCircle2, User, MapPin, Briefcase, Send, UserPlus, Edit, Save, 
+  FileText, GraduationCap, CreditCard, Copy, UserX, BarChart3, ExternalLink
+} from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
