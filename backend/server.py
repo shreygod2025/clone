@@ -3316,6 +3316,7 @@ async def raise_school_ticket(
         "contact_name": data.get('contact_name', school.get('contact_name', '')),
         "contact_phone": data.get('contact_phone', school.get('phone', '')),
         "contact_email": data.get('contact_email', school.get('email', '')),
+        "query_type": data.get('query_type', 'general'),
         "subject": data.get('subject', ''),
         "description": data.get('description', ''),
         "priority": data.get('priority', 'medium'),
