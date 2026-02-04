@@ -49,7 +49,9 @@ const SOURCE_OPTIONS = [
 const AdminGrowthPartners = () => {
   const { getAuthHeaders, user } = useAuth();
   const [partners, setPartners] = useState([]);
+  const [gpOnboardings, setGpOnboardings] = useState([]);
   const [teamUsers, setTeamUsers] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSection, setActiveSection] = useState('new');
@@ -61,6 +63,17 @@ const AdminGrowthPartners = () => {
   const [showCommentModal, setShowCommentModal] = useState(null);
   const [showAssignModal, setShowAssignModal] = useState(null);
   const [newComment, setNewComment] = useState('');
+  
+  // GP Onboarding modal states
+  const [showStepModal, setShowStepModal] = useState(null);
+  const [showActivateModal, setShowActivateModal] = useState(null);
+  const [showDiscontinueModal, setShowDiscontinueModal] = useState(null);
+  const [showReportsModal, setShowReportsModal] = useState(null);
+  const [reportData, setReportData] = useState(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [selectedRoleId, setSelectedRoleId] = useState('');
+  const [discontinueReason, setDiscontinueReason] = useState('');
+  const [stepData, setStepData] = useState({});
   
   // View/Edit states
   const [editMode, setEditMode] = useState(false);
@@ -78,10 +91,19 @@ const AdminGrowthPartners = () => {
     source: 'website',
   });
 
+  // GP Onboarding steps
+  const ONBOARDING_STEPS = [
+    { key: 'personal_info', label: 'Personal Info', icon: User },
+    { key: 'contract_signing', label: 'Contract', icon: FileText },
+    { key: 'training', label: 'Training', icon: GraduationCap },
+  ];
+
   useEffect(() => {
     fetchPartners();
+    fetchGpOnboardings();
     fetchCities();
     fetchTeamUsers();
+    fetchRoles();
   }, []);
 
   const fetchTeamUsers = async () => {
@@ -92,6 +114,24 @@ const AdminGrowthPartners = () => {
       setTeamUsers(response.data || []);
     } catch (error) {
       console.error('Failed to fetch team users:', error);
+    }
+  };
+
+  const fetchRoles = async () => {
+    try {
+      const res = await axios.get(`${API}/roles`, { headers: getAuthHeaders() });
+      setRoles(res.data || []);
+    } catch (error) {
+      console.error('Failed to fetch roles:', error);
+    }
+  };
+
+  const fetchGpOnboardings = async () => {
+    try {
+      const res = await axios.get(`${API}/gp-onboarding`, { headers: getAuthHeaders() });
+      setGpOnboardings(res.data || []);
+    } catch (error) {
+      console.error('Failed to fetch GP onboardings:', error);
     }
   };
 
