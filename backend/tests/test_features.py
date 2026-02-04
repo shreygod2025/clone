@@ -246,7 +246,7 @@ class TestStudentCRM:
     
     def test_get_student_inquiries(self, headers):
         """Test getting student inquiries"""
-        response = requests.get(f"{BASE_URL}/api/inquiries", headers=headers)
+        response = requests.get(f"{BASE_URL}/api/students/inquiries", headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
