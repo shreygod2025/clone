@@ -1987,6 +1987,7 @@ const AdminSchoolCRM = () => {
               onClick={() => {
                 setShowRaiseTicketModal(inquiry);
                 setTicketData({
+                  query_type: '',
                   subject: '',
                   description: '',
                   priority: 'medium',
@@ -2037,6 +2038,7 @@ const AdminSchoolCRM = () => {
               onClick={() => {
                 setShowRaiseTicketModal(inquiry);
                 setTicketData({
+                  query_type: '',
                   subject: '',
                   description: '',
                   priority: 'medium',
