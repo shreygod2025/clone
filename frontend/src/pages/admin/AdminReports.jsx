@@ -1080,6 +1080,7 @@ const AdminReports = () => {
             {activeTab === 'hr_team' && renderHRTeamTab()}
             {activeTab === 'educator_hr' && renderEducatorHRTab()}
             {activeTab === 'growth_partners' && renderGPTab()}
+            {activeTab === 'support' && renderSupportTab()}
             {activeTab === 'pnl' && renderPnLTab()}
           </>
         )}
