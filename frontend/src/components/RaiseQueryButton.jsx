@@ -160,27 +160,6 @@ const RaiseQueryButton = () => {
   const audioRef = React.useRef(null);
   const timerRef = React.useRef(null);
 
-  // Check if user is logged in
-  useEffect(() => {
-    const checkAuth = () => {
-      // Check for admin or user token
-      const token = localStorage.getItem('oll_token') || localStorage.getItem('token') || localStorage.getItem('admin_token');
-      const user = localStorage.getItem('oll_user') || localStorage.getItem('user') || localStorage.getItem('admin_user');
-      if (token && user) {
-        try {
-          const parsedUser = JSON.parse(user);
-          setIsLoggedIn(true);
-          setUserData(parsedUser);
-        } catch (e) {
-          setIsLoggedIn(false);
-        }
-      } else {
-        setIsLoggedIn(false);
-      }
-    };
-    checkAuth();
-  }, [isOpen]);
-
   const currentPath = window.location.pathname;
   const getPageCategory = () => {
     if (PAGE_CATEGORIES[currentPath]) return PAGE_CATEGORIES[currentPath];
