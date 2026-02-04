@@ -3531,6 +3531,7 @@ async def raise_school_ticket(
         "contact_phone": data.get('contact_phone', school.get('phone', '')),
         "contact_email": data.get('contact_email', school.get('email', '')),
         "query_type": data.get('query_type', 'general'),
+        "related_to": data.get('related_to', ''),  # Sub-category
         "subject": data.get('subject', ''),
         "description": data.get('description', ''),
         "query_details": data.get('description', ''),  # Also store as query_details for consistency
