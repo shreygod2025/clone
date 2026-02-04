@@ -1080,6 +1080,7 @@ class EducatorApplicationCreate(BaseModel):
     demo_time: Optional[str] = None
     requirement_id: Optional[str] = None
     requirement_title: Optional[str] = None
+    why_interested: Optional[str] = None
     source: str = "website"
     added_by: str = ""
     assigned_to: str = ""
