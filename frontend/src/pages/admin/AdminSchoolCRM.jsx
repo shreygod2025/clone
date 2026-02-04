@@ -2700,31 +2700,31 @@ const AdminSchoolCRM = () => {
                 </div>
               </div>
 
-              <div className="space-y-1 text-sm text-slate-600 mb-3">
-                <p className="flex items-center gap-1">
+              <div className="space-y-0.5 text-sm text-slate-600 mb-2">
+                <p className="flex items-center gap-1 text-xs">
                   <Phone className="w-3 h-3 text-slate-400" /> {inquiry.phone}
                 </p>
                 {inquiry.location && (
-                  <p className="flex items-center gap-1">
-                    <MapPin className="w-3 h-3 text-slate-400" /> {inquiry.location}
+                  <p className="flex items-center gap-1 text-xs truncate">
+                    <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" /> <span className="truncate">{inquiry.location}</span>
                   </p>
                 )}
                 {inquiry.board && (
-                  <p><span className="text-slate-400">Board:</span> {inquiry.board}</p>
+                  <p className="text-xs"><span className="text-slate-400">Board:</span> {inquiry.board}</p>
                 )}
                 {inquiry.meeting_date && (
-                  <p className="flex items-center gap-1 text-[#D63031] font-medium">
+                  <p className="flex items-center gap-1 text-[#D63031] font-medium text-xs">
                     <Calendar className="w-3 h-3" />
-                    Meeting: {inquiry.meeting_date} {inquiry.meeting_time && `at ${inquiry.meeting_time}`}
+                    {inquiry.meeting_date} {inquiry.meeting_time && `${inquiry.meeting_time}`}
                   </p>
                 )}
                 {inquiry.conversion_amount && (
-                  <p className="text-green-600 font-medium">
+                  <p className="text-green-600 font-medium text-xs">
                     ₹{Number(inquiry.conversion_amount).toLocaleString()}
                   </p>
                 )}
                 {inquiry.quoted_price && !inquiry.conversion_amount && (
-                  <p className="text-blue-600 font-medium">
+                  <p className="text-blue-600 font-medium text-xs">
                     Quoted: ₹{Number(inquiry.quoted_price).toLocaleString()}
                   </p>
                 )}
