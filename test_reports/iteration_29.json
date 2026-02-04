@@ -1,0 +1,56 @@
+{
+  "summary": "Completed testing of 'Related To' (sub-category) feature across all 3 ticket creation points. All P0 features verified working correctly - backend APIs save related_to field, frontend displays Related To dropdowns in Admin Support, public /add page, and School CRM Raise Ticket modal. Add Lead modal scrolling verified with Lead Assignment options visible at bottom.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "features_verified": [
+    {
+      "feature": "P0: Admin Support Panel - Create Ticket with Related To field",
+      "status": "PASSED",
+      "verification": "Create Support Ticket modal shows 'Query Type (Category)' and 'Related To (Sub-category)' dropdowns. When query_type changes, related_to auto-updates to first option. Backend POST /api/support/queries/create saves related_to field correctly."
+    },
+    {
+      "feature": "P0: Public /add page - Query form with Related To field",
+      "status": "PASSED",
+      "verification": "Query Details section (step 4) shows 'Query Type' dropdown with 'Course Information' and 'Related To' dropdown with 'Course Content'. Backend POST /api/inquiry/query saves related_to field correctly."
+    },
+    {
+      "feature": "P0: School CRM - Raise Ticket modal with Related To field",
+      "status": "PASSED",
+      "verification": "Raise Ticket modal shows Query Type buttons (Kit Delivery Issue, Payment Query, etc.). After selecting a query type, 'Related To (Sub-category)' dropdown appears with relevant options (e.g., 'Kit Not Received' for Kit Delivery Issue). Backend POST /api/schools/{school_id}/raise-ticket saves related_to field."
+    },
+    {
+      "feature": "P0: Support Center displays sub-category badges",
+      "status": "PASSED",
+      "verification": "Support Center page shows tickets with query_type badge (e.g., 'Demo Related') and related_to sub-category (e.g., '→ Demo Reschedule'). Verified in screenshot showing 'Demo Related → Demo Reschedule' badges."
+    },
+    {
+      "feature": "P0: Add Lead modal scrollable with Lead Assignment visible",
+      "status": "PASSED",
+      "verification": "Add New School Lead modal uses 'flex flex-col' layout with 'overflow-y-auto flex-1' for scrolling. After scrolling to bottom, 'Lead Assignment' section is visible with 'Assign to me' and 'Let admin assign' radio buttons. Cancel and Add Lead buttons visible at bottom."
+    }
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_related_to_feature.py",
+    "/app/test_reports/pytest/pytest_results_iter29.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_related_to_feature.py"
+  ],
+  "success_rate": {
+    "backend": "100% (6/6 tests passed)",
+    "frontend": "100% (5/5 features verified)"
+  },
+  "seed_data_creation": "Created test tickets/queries with TEST_ prefix for backend testing",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Related To (sub-category) feature is fully implemented across all ticket creation points. RELATED_TO_OPTIONS defined in AdminSupportUnified.jsx (lines 43-130) and InquiryPage.jsx (lines 39-126). TICKET_RELATED_TO_OPTIONS defined in AdminSchoolCRM.jsx (lines 67-138). Backend endpoints save related_to field: POST /api/support/queries/create (line 5815), POST /api/inquiry/query (InquiryQuery model line 8582), POST /api/schools/{school_id}/raise-ticket (line 3534)."
+}
