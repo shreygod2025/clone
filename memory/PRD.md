@@ -417,17 +417,19 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ Compact progress bars and info sections
 - ✅ Overall ~30% reduction in card height
 
-**Global "Need Help?" Sticky Button:**
-- ✅ Created `/app/frontend/src/components/RaiseQueryButton.jsx`
-- ✅ Orange floating button fixed to bottom-right corner on all pages
-- ✅ **Context-aware categories:** Automatically detects current page and sets appropriate category:
-  - Admin pages: Student/School/Educator Management, Orders, Support, Reports, etc.
-  - Public pages: Student/Parent Query, School Query, Educator Query, Demo Booking, etc.
-- ✅ **Dynamic sub-categories** based on page context:
-  - School Management → Lead Issue, Conversion Issue, Onboarding Issue, Kit Delivery, etc.
-  - Student Query → Course Information, Demo Booking, Fee Query, Schedule Query, etc.
-- ✅ **Features:** Priority selection, Attach File, Voice Note, text message
-- ✅ All submissions routed to Support Center with source tracking (`quick_support_{page}`)
+**Global "Need Help?" Sticky Button - Redesigned:**
+- ✅ **Glassmorphism design:** Frosted glass effect with backdrop-blur, semi-transparent white gradient
+- ✅ **Step-wise wizard flow:**
+  - Step 1: Select Category (7 options with icons: Course & Programs, Demo & Trial, Payment & Billing, Technical Support, Partnership, Feedback & Suggestions, Other)
+  - Step 2: Select Sub-category (dynamic options based on Step 1)
+  - Step 3: Describe issue (text + attachments + voice note)
+  - Step 4: Contact details (Name, Phone, Email) - **ONLY for non-logged-in users**
+- ✅ **Smart user detection:** Checks `oll_token` in localStorage to determine login state
+- ✅ **For logged-in users:** Only 3 steps (skips contact info), uses stored user data
+- ✅ **For non-logged-in users:** 4 steps, collects contact info at the end
+- ✅ **Removed priority selector** from frontend (defaults to "normal")
+- ✅ Progress indicator shows completed steps with green checkmarks
+- ✅ Selected category shown as summary badge in description step
 
 ### Feb 4, 2026 - Bug Fixes & Feature Enhancements
 
