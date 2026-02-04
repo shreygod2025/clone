@@ -1606,6 +1606,24 @@ const InquiryPage = () => {
                     </Select>
                   </div>
                   <div>
+                    <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Related To</label>
+                    <Select 
+                      value={formData.related_to || ''} 
+                      onValueChange={(v) => updateForm('related_to', v)}
+                    >
+                      <SelectTrigger className="h-10 sm:h-11">
+                        <SelectValue placeholder="Select sub-category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(RELATED_TO_OPTIONS[formData.query_type] || RELATED_TO_OPTIONS.other).map(r => (
+                          <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
                     <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1">Priority</label>
                     <Select value={formData.priority || 'normal'} onValueChange={(v) => updateForm('priority', v)}>
                       <SelectTrigger className="h-10 sm:h-11">
