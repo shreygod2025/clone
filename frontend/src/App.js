@@ -29,6 +29,7 @@ import PrivacyPage from "./pages/PrivacyPage";
 import RefundPolicyPage from "./pages/RefundPolicyPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import SchoolTrackingPage from "./pages/SchoolTrackingPage";
+import TeamOnboardingTrack from "./pages/TeamOnboardingTrack";
 
 // Course SEO Pages
 import CoursesListPage from "./pages/courses/CoursesListPage";
