@@ -2573,7 +2573,7 @@ const AdminSchoolCRM = () => {
           {filteredInquiries.map((inquiry) => (
             <div 
               key={inquiry.id} 
-              className="bg-white rounded-2xl border border-slate-100 p-5 hover:shadow-md transition-shadow"
+              className={`bg-white rounded-2xl border ${inquiry.is_viewer ? 'border-amber-200 bg-amber-50/30' : 'border-slate-100'} p-5 hover:shadow-md transition-shadow`}
               data-testid={`school-card-${inquiry.id}`}
             >
               <div className="flex items-start justify-between mb-3">
@@ -2582,8 +2582,13 @@ const AdminSchoolCRM = () => {
                   <p className="text-sm text-slate-500">{inquiry.contact_name}</p>
                   {inquiry.assigned_to && (
                     <p className="text-xs text-indigo-600 mt-1 flex items-center gap-1">
-                      <UserPlus className="w-3 h-3" /> Assigned: {getAssignedUserName(inquiry.assigned_to) || 'Team Member'}
+                      <UserPlus className="w-3 h-3" /> Assigned: {inquiry.assigned_to_name || getAssignedUserName(inquiry.assigned_to) || 'Team Member'}
                     </p>
+                  )}
+                  {inquiry.is_viewer && (
+                    <span className="inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-700">
+                      Viewer Only
+                    </span>
                   )}
                 </div>
                 <div className="flex flex-col items-end gap-1">
