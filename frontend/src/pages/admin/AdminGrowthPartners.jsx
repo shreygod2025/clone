@@ -490,11 +490,164 @@ const AdminGrowthPartners = () => {
         ))}
       </div>
 
-      {/* Partners List */}
+      {/* Partners List / Onboarding List */}
       {loading ? (
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D63031] mx-auto"></div>
         </div>
+      ) : ['onboarding', 'active', 'discontinued'].includes(activeSection) ? (
+        /* GP Onboarding Content */
+        filteredOnboardings.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">
+            <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+            <p className="text-slate-500">
+              {activeSection === 'onboarding' ? 'No partners in onboarding. Convert partners to start onboarding.' :
+               activeSection === 'active' ? 'No active partners yet.' : 'No discontinued partners.'}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredOnboardings.map((gp) => (
+              <div key={gp.id} className="bg-white rounded-2xl border border-slate-100 p-4 hover:shadow-md transition-shadow">
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="font-semibold text-[#1E3A5F]">{gp.name}</h3>
+                      <span className={`text-xs px-2 py-1 rounded-full ${
+                        gp.status === 'onboarding' ? 'bg-orange-100 text-orange-700' :
+                        gp.status === 'active' ? 'bg-green-100 text-green-700' :
+                        'bg-slate-100 text-slate-700'
+                      }`}>
+                        {gp.status === 'onboarding' ? 'Onboarding' :
+                         gp.status === 'active' ? 'Active Partner' : 'Discontinued'}
+                      </span>
+                      {gp.interest_type && (
+                        <span className="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-700">
+                          {gp.interest_type}
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-3 text-sm text-slate-600">
+                      {gp.phone && <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" /> {gp.phone}</span>}
+                      {gp.email && <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5" /> {gp.email}</span>}
+                      {gp.city && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {gp.city}</span>}
+                    </div>
+
+                    {/* Progress for onboarding */}
+                    {gp.status === 'onboarding' && (
+                      <div className="mt-3">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-orange-500 transition-all"
+                              style={{ width: `${(getCompletedSteps(gp.steps) / 3) * 100}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-slate-500">{getCompletedSteps(gp.steps)}/3 steps</span>
+                        </div>
+                        <div className="flex gap-2 flex-wrap">
+                          {ONBOARDING_STEPS.map(step => {
+                            const isCompleted = gp.steps?.[step.key]?.completed;
+                            const Icon = step.icon;
+                            return (
+                              <button
+                                key={step.key}
+                                onClick={() => {
+                                  if (!isCompleted) {
+                                    setShowStepModal({ onboardingId: gp.id, step: step.key, stepLabel: step.label });
+                                    setStepData({});
+                                  }
+                                }}
+                                className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${
+                                  isCompleted 
+                                    ? 'bg-green-100 text-green-700 cursor-default' 
+                                    : 'bg-slate-100 text-slate-600 hover:bg-orange-100 hover:text-orange-700'
+                                }`}
+                              >
+                                {isCompleted ? <CheckCircle2 className="w-3 h-3" /> : <Icon className="w-3 h-3" />}
+                                {step.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Active partner stats */}
+                    {gp.status === 'active' && (
+                      <div className="mt-3 flex gap-4">
+                        <div className="text-center p-2 bg-blue-50 rounded-lg">
+                          <p className="text-lg font-bold text-blue-600">{gp.total_referrals || 0}</p>
+                          <p className="text-xs text-slate-500">Referrals</p>
+                        </div>
+                        <div className="text-center p-2 bg-green-50 rounded-lg">
+                          <p className="text-lg font-bold text-green-600">{gp.successful_conversions || 0}</p>
+                          <p className="text-xs text-slate-500">Conversions</p>
+                        </div>
+                        <div className="text-center p-2 bg-purple-50 rounded-lg">
+                          <p className="text-lg font-bold text-purple-600">₹{(gp.total_earnings || 0).toLocaleString()}</p>
+                          <p className="text-xs text-slate-500">Earnings</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Discontinued info */}
+                    {gp.status === 'discontinued' && gp.discontinued_reason && (
+                      <div className="mt-3 p-2 bg-red-50 rounded-lg">
+                        <p className="text-xs text-red-600"><strong>Reason:</strong> {gp.discontinued_reason}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-2 flex-wrap">
+                    {gp.status === 'onboarding' && (
+                      <>
+                        <button
+                          onClick={() => copyTrackingLink(gp.tracking_token)}
+                          className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1"
+                        >
+                          <Copy className="w-3 h-3" /> Copy Link
+                        </button>
+                        {getCompletedSteps(gp.steps) === 3 && (
+                          <button
+                            onClick={() => setShowActivateModal(gp)}
+                            className="text-xs px-3 py-1.5 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 flex items-center gap-1 font-medium"
+                          >
+                            <UserPlus className="w-3 h-3" /> Activate
+                          </button>
+                        )}
+                      </>
+                    )}
+                    {gp.status === 'active' && (
+                      <>
+                        <button
+                          onClick={() => setShowReportsModal(gp)}
+                          className="text-xs px-3 py-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 flex items-center gap-1"
+                        >
+                          <BarChart3 className="w-3 h-3" /> Reports
+                        </button>
+                        <button
+                          onClick={() => setShowDiscontinueModal(gp)}
+                          className="text-xs px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1"
+                        >
+                          <UserX className="w-3 h-3" /> Discontinue
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={() => setViewPartner(partners.find(p => p.id === gp.growth_partner_id) || gp)}
+                      className="text-xs px-3 py-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 flex items-center gap-1"
+                    >
+                      <Eye className="w-3 h-3" /> View
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
       ) : filteredPartners.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">
           <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-4" />
