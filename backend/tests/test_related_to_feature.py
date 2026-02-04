@@ -28,7 +28,7 @@ class TestRelatedToFeature:
         self.created_ticket_ids = []
         
         # Login to get auth token
-        login_response = requests.post(f"{BASE_URL}/api/admin/login", json={
+        login_response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": self.admin_email,
             "password": self.admin_password
         })
@@ -51,7 +51,7 @@ class TestRelatedToFeature:
     
     def test_admin_login(self):
         """Test admin login works"""
-        response = requests.post(f"{BASE_URL}/api/admin/login", json={
+        response = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": self.admin_email,
             "password": self.admin_password
         })
