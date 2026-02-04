@@ -4614,11 +4614,11 @@ const AdminSchoolCRM = () => {
 
       {/* Add Lead Dialog */}
       <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Add New School Lead</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-y-auto pr-2 flex-1">
             {/* Auto-fill hint */}
             <div className="bg-blue-50 text-blue-700 text-xs p-2 rounded-lg">
               💡 Type at least 3 characters in School Name, Phone, or Email to auto-fill from existing records
