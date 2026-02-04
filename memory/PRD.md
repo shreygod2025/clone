@@ -345,6 +345,21 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ School card in CRM now displays selected offerings (purple badges)
 - ✅ School card shows Quoted Price in blue when not yet converted
 
+### Feb 4, 2026 - School CRM Enhancements
+
+**Selected Offerings & Meeting Display:**
+- ✅ School cards now show `selected_offerings` with purple badges
+- ✅ If offering title not found in database, displays the offering ID as fallback
+- ✅ Meeting date/time displayed in red with Calendar icon: "Meeting: 2026-02-10 at 10:00 AM"
+
+**Raise Ticket Modal Enhancement:**
+- ✅ Added Query Type selector with 9 options:
+  - Kit Delivery Issue, Payment Query, Teacher Training, Technical Support
+  - Curriculum Query, Schedule Change, Contract/Renewal, Feedback/Complaint, Other
+- ✅ Clicking query type auto-fills Subject and Description (FAQ content)
+- ✅ Submit button disabled until query_type is selected
+- ✅ Modal now scrollable (`max-h-[90vh] overflow-y-auto`)
+
 ### Feb 4, 2026 - Team Member Filter & Backend Refactoring
 
 **Team Member Filter in Reports:**
