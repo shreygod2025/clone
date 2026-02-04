@@ -380,6 +380,29 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
   - `reports.py`: Prepared for reports endpoint extraction
   - `onboarding.py`: Prepared for onboarding endpoint extraction
 
+### Feb 4, 2026 - Query Sub-categorization System (P0)
+
+**"Related To" Sub-category Feature:**
+- ✅ **Admin Support Panel:** Create Ticket modal now has "Related To" dropdown that changes based on Query Type
+- ✅ **Public Inquiry Page (/add):** Query form includes Related To sub-category selection
+- ✅ **School CRM Raise Ticket:** Added TICKET_RELATED_TO_OPTIONS with sub-categories for each query type:
+  - Kit Delivery: Not Received, Items Missing, Items Damaged, Wrong Items, Delivery Delay
+  - Payment Query: Invoice Request, Receipt Request, Payment Pending, Refund Request, EMI Query
+  - Teacher Training: Schedule, Materials, Additional Session, Feedback, Certification
+  - Technical Support: Equipment Issue, Software Bug, Login Issue, Connectivity, Setup Help
+  - And more for: Curriculum, Schedule Change, Contract/Renewal, Feedback/Complaint, Other
+- ✅ **Support Center Display:** Tickets now show sub-category badge (e.g., "Kit Delivery → Items Missing")
+- ✅ **Backend Support:** All 3 endpoints save `related_to` field:
+  - `POST /api/support/queries/create`
+  - `POST /api/inquiry/query`
+  - `POST /api/schools/{school_id}/raise-ticket`
+
+**Add Lead Modal Scroll Fix:**
+- ✅ Fixed non-scrollable modal in School CRM Add Lead dialog
+- ✅ Changed DialogContent to `flex flex-col` layout with `max-h-[85vh]`
+- ✅ Inner content div uses `overflow-y-auto flex-1 pr-2` for proper scrolling
+- ✅ Lead Assignment options (Assign to me / Let admin assign) now visible at bottom
+
 ### Feb 4, 2026 - Bug Fixes & Feature Enhancements
 
 **Bug Fixes:**
