@@ -1286,6 +1286,207 @@ const AdminTeamApplications = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Team Onboarding Step Modal */}
+      <Dialog open={!!showStepModal} onOpenChange={() => setShowStepModal(null)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Complete: {showStepModal?.stepLabel}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {showStepModal?.step === 'personal_info' && (
+              <>
+                <div className="space-y-3">
+                  <h4 className="font-medium text-sm text-slate-700">Personal Details</h4>
+                  <Input placeholder="Full Name" value={stepData.full_name || ''} onChange={(e) => setStepData({...stepData, full_name: e.target.value})} />
+                  <Input type="date" placeholder="Date of Birth" value={stepData.dob || ''} onChange={(e) => setStepData({...stepData, dob: e.target.value})} />
+                  <Textarea placeholder="Address" value={stepData.address || ''} onChange={(e) => setStepData({...stepData, address: e.target.value})} />
+                  <Input placeholder="Emergency Contact Name" value={stepData.emergency_contact_name || ''} onChange={(e) => setStepData({...stepData, emergency_contact_name: e.target.value})} />
+                  <Input placeholder="Emergency Contact Phone" value={stepData.emergency_contact_phone || ''} onChange={(e) => setStepData({...stepData, emergency_contact_phone: e.target.value})} />
+                </div>
+              </>
+            )}
+            {showStepModal?.step === 'bank_details' && (
+              <>
+                <div className="space-y-3">
+                  <h4 className="font-medium text-sm text-slate-700">Bank Details</h4>
+                  <Input placeholder="Account Holder Name" value={stepData.account_holder || ''} onChange={(e) => setStepData({...stepData, account_holder: e.target.value})} />
+                  <Input placeholder="Account Number" value={stepData.account_number || ''} onChange={(e) => setStepData({...stepData, account_number: e.target.value})} />
+                  <Input placeholder="IFSC Code" value={stepData.ifsc || ''} onChange={(e) => setStepData({...stepData, ifsc: e.target.value})} />
+                  <Input placeholder="Bank Name" value={stepData.bank_name || ''} onChange={(e) => setStepData({...stepData, bank_name: e.target.value})} />
+                  <Input placeholder="PAN Number" value={stepData.pan || ''} onChange={(e) => setStepData({...stepData, pan: e.target.value})} />
+                </div>
+              </>
+            )}
+            {showStepModal?.step === 'contract_signing' && (
+              <>
+                <Input placeholder="Signed Contract Document URL" value={stepData.contract_url || ''} onChange={(e) => setStepData({...stepData, contract_url: e.target.value})} />
+                <p className="text-sm text-slate-500">Upload the signed contract and paste the URL above</p>
+              </>
+            )}
+            {showStepModal?.step === 'training' && (
+              <>
+                <Textarea placeholder="Training completion notes" value={stepData.notes || ''} onChange={(e) => setStepData({...stepData, notes: e.target.value})} />
+                <p className="text-sm text-slate-500">Add any notes about the training completion</p>
+              </>
+            )}
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" onClick={() => setShowStepModal(null)} className="flex-1">Cancel</Button>
+              <Button onClick={handleCompleteStep} className="flex-1 bg-green-600 hover:bg-green-700">
+                <CheckCircle2 className="w-4 h-4 mr-2" /> Mark Complete
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Activate Team Member Modal */}
+      <Dialog open={!!showActivateModal} onOpenChange={() => setShowActivateModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5 text-green-600" /> Activate Team Member
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-green-50 p-4 rounded-lg">
+              <p className="font-medium text-green-800">{showActivateModal?.name}</p>
+              <p className="text-sm text-green-600">{showActivateModal?.role || 'Team Member'}</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Assign Role *</label>
+              <select value={selectedRoleId} onChange={(e) => setSelectedRoleId(e.target.value)} className="w-full h-10 px-3 border border-slate-200 rounded-lg">
+                <option value="">Select role</option>
+                {roles.map(role => <option key={role.id} value={role.id}>{role.name}</option>)}
+              </select>
+            </div>
+            <p className="text-sm text-slate-500">A new user account will be created. Temp password will be copied to clipboard.</p>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => setShowActivateModal(null)} className="flex-1">Cancel</Button>
+              <Button onClick={handleActivate} className="flex-1 bg-green-600 hover:bg-green-700">Activate</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Discontinue Team Member Modal */}
+      <Dialog open={!!showDiscontinueModal} onOpenChange={() => setShowDiscontinueModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <UserX className="w-5 h-5" /> Discontinue Team Member
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-red-50 p-4 rounded-lg">
+              <p className="font-medium text-red-800">{showDiscontinueModal?.name}</p>
+              <p className="text-sm text-red-600">{showDiscontinueModal?.role}</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Reason *</label>
+              <select value={discontinueReason} onChange={(e) => setDiscontinueReason(e.target.value)} className="w-full h-10 px-3 border border-slate-200 rounded-lg">
+                <option value="">Select reason</option>
+                <option value="Resignation">Resignation</option>
+                <option value="Termination">Termination</option>
+                <option value="Contract End">Contract End</option>
+                <option value="Performance Issues">Performance Issues</option>
+                <option value="Misconduct">Misconduct</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-slate-700">Exit Formalities Checklist</p>
+              <div className="space-y-2 bg-slate-50 p-3 rounded-lg">
+                {['assets_returned', 'access_revoked', 'final_settlement', 'exit_interview'].map(item => (
+                  <label key={item} className="flex items-center gap-2 text-sm">
+                    <input 
+                      type="checkbox" 
+                      checked={exitFormalities[item] || false}
+                      onChange={(e) => setExitFormalities({...exitFormalities, [item]: e.target.checked})}
+                      className="rounded"
+                    />
+                    {item.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => setShowDiscontinueModal(null)} className="flex-1">Cancel</Button>
+              <Button onClick={handleDiscontinue} className="flex-1 bg-red-600 hover:bg-red-700">Discontinue</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Team Member Reports Modal */}
+      <Dialog open={!!showReportsModal} onOpenChange={() => { setShowReportsModal(null); setReportData(null); }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-indigo-600" /> Team Member Report: {showReportsModal?.name}
+            </DialogTitle>
+          </DialogHeader>
+          {reportLoading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+              <p className="text-slate-500 mt-3">Loading report...</p>
+            </div>
+          ) : reportData ? (
+            <div className="space-y-4">
+              {/* Member Info */}
+              <div className="bg-slate-50 p-4 rounded-lg">
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div><span className="text-slate-500">Role:</span> <span className="font-medium">{reportData.member_info?.role || '-'}</span></div>
+                  <div><span className="text-slate-500">City:</span> <span className="font-medium">{reportData.member_info?.city || '-'}</span></div>
+                  <div><span className="text-slate-500">Status:</span> <span className="font-medium capitalize">{reportData.member_info?.status || '-'}</span></div>
+                </div>
+              </div>
+              
+              {/* Key Metrics */}
+              <div className="grid grid-cols-4 gap-4">
+                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-center">
+                  <p className="text-3xl font-bold text-blue-600">{(reportData.students?.assigned || 0) + (reportData.schools?.assigned || 0)}</p>
+                  <p className="text-sm text-slate-600">Total Leads</p>
+                </div>
+                <div className="bg-green-50 border border-green-100 rounded-xl p-4 text-center">
+                  <p className="text-3xl font-bold text-green-600">{(reportData.students?.converted || 0) + (reportData.schools?.converted || 0)}</p>
+                  <p className="text-sm text-slate-600">Conversions</p>
+                </div>
+                <div className="bg-purple-50 border border-purple-100 rounded-xl p-4 text-center">
+                  <p className="text-3xl font-bold text-purple-600">{reportData.demos?.completed || 0}</p>
+                  <p className="text-sm text-slate-600">Demos Done</p>
+                </div>
+                <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 text-center">
+                  <p className="text-3xl font-bold text-orange-600">{reportData.support?.resolved || 0}</p>
+                  <p className="text-sm text-slate-600">Tickets Resolved</p>
+                </div>
+              </div>
+              
+              {/* Detailed Breakdown */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white border rounded-xl p-4">
+                  <h4 className="font-medium text-slate-700 mb-3">Students</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between"><span>Assigned</span><span className="font-medium">{reportData.students?.assigned || 0}</span></div>
+                    <div className="flex justify-between"><span>Converted</span><span className="font-medium text-green-600">{reportData.students?.converted || 0}</span></div>
+                    <div className="flex justify-between"><span>Conversion Rate</span><span className="font-medium">{reportData.students?.conversion_rate || 0}%</span></div>
+                  </div>
+                </div>
+                <div className="bg-white border rounded-xl p-4">
+                  <h4 className="font-medium text-slate-700 mb-3">Schools</h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between"><span>Assigned</span><span className="font-medium">{reportData.schools?.assigned || 0}</span></div>
+                    <div className="flex justify-between"><span>Converted</span><span className="font-medium text-green-600">{reportData.schools?.converted || 0}</span></div>
+                    <div className="flex justify-between"><span>As RM</span><span className="font-medium">{reportData.schools?.as_rm || 0}</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-center text-slate-500 py-8">No report data available</p>
+          )}
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
