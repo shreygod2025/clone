@@ -1414,6 +1414,9 @@ const AdminSchoolCRM = () => {
         notes: newLead.notes,
         quoted_price: newLead.quoted_price,
         selected_offerings: newLead.selected_offerings,
+        assign_option: newLead.assign_option,
+        added_by: user?.id || user?.email,
+        added_by_name: user?.name || 'Admin'
       }, {
         headers: getAuthHeaders()
       });
@@ -1435,7 +1438,8 @@ const AdminSchoolCRM = () => {
         referred_by: '',
         notes: '',
         quoted_price: '',
-        selected_offerings: []
+        selected_offerings: [],
+        assign_option: 'self'
       });
       fetchInquiries();
     } catch (error) {
