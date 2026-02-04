@@ -2190,10 +2190,14 @@ const AdminSchoolCRM = () => {
                   subject: '',
                   description: '',
                   priority: 'medium',
+                  source: 'school_crm',
                   contact_name: inquiry.contact_name,
                   contact_phone: inquiry.phone,
                   contact_email: inquiry.email
                 });
+                setTicketAttachments([]);
+                setTicketAudioBlob(null);
+                setTicketAudioUrl(null);
               }}
               className="text-xs px-3 py-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-700 flex items-center gap-1 font-medium"
               data-testid={`raise-ticket-${inquiry.id}`}
