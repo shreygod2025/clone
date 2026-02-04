@@ -36,8 +36,10 @@ const STATUS_CONFIG = {
 const AdminTeamApplications = () => {
   const { getAuthHeaders, user } = useAuth();
   const [applications, setApplications] = useState([]);
+  const [teamOnboardings, setTeamOnboardings] = useState([]);
   const [teamUsers, setTeamUsers] = useState([]);
   const [teamRequirements, setTeamRequirements] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSection, setActiveSection] = useState('new');
@@ -50,6 +52,18 @@ const AdminTeamApplications = () => {
   const [showRequirementsModal, setShowRequirementsModal] = useState(false);
   const [editingRequirement, setEditingRequirement] = useState(null);
   const [newComment, setNewComment] = useState('');
+  
+  // Onboarding modal states
+  const [showStepModal, setShowStepModal] = useState(null);
+  const [showActivateModal, setShowActivateModal] = useState(null);
+  const [showDiscontinueModal, setShowDiscontinueModal] = useState(null);
+  const [showReportsModal, setShowReportsModal] = useState(null);
+  const [reportData, setReportData] = useState(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [selectedRoleId, setSelectedRoleId] = useState('');
+  const [discontinueReason, setDiscontinueReason] = useState('');
+  const [exitFormalities, setExitFormalities] = useState({});
+  const [stepData, setStepData] = useState({});
   
   const [newApplication, setNewApplication] = useState({
     name: '',
@@ -73,11 +87,39 @@ const AdminTeamApplications = () => {
     is_active: true
   });
 
+  // Onboarding steps
+  const ONBOARDING_STEPS = [
+    { key: 'personal_info', label: 'Personal Info', icon: User },
+    { key: 'bank_details', label: 'Bank Details', icon: CreditCard },
+    { key: 'contract_signing', label: 'Contract', icon: FileText },
+    { key: 'training', label: 'Training', icon: GraduationCap },
+  ];
+
   useEffect(() => {
     fetchApplications();
+    fetchTeamOnboardings();
     fetchTeamUsers();
     fetchTeamRequirements();
+    fetchRoles();
   }, []);
+
+  const fetchRoles = async () => {
+    try {
+      const res = await axios.get(`${API}/roles`, { headers: getAuthHeaders() });
+      setRoles(res.data || []);
+    } catch (error) {
+      console.error('Failed to fetch roles:', error);
+    }
+  };
+
+  const fetchTeamOnboardings = async () => {
+    try {
+      const res = await axios.get(`${API}/team-onboarding`, { headers: getAuthHeaders() });
+      setTeamOnboardings(res.data || []);
+    } catch (error) {
+      console.error('Failed to fetch team onboardings:', error);
+    }
+  };
 
   const fetchTeamRequirements = async () => {
     try {
