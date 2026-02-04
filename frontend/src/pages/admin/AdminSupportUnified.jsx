@@ -362,12 +362,35 @@ const AdminSupportUnified = () => {
       return;
     }
     try {
-      await axios.post(`${API}/support/queries/create`, newTicket, {
+      // Upload voice note if exists
+      let allAttachments = [...attachments];
+      if (audioBlob) {
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'voice-note.webm');
+        const uploadResponse = await axios.post(`${API}/upload`, formData, {
+          headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
+        });
+        allAttachments.push({
+          name: 'Voice Note',
+          url: uploadResponse.data.url,
+          type: 'audio/webm',
+          isVoiceNote: true
+        });
+      }
+      
+      await axios.post(`${API}/support/queries/create`, {
+        ...newTicket,
+        attachments: allAttachments
+      }, {
         headers: getAuthHeaders()
       });
       toast.success('Ticket created successfully');
       setShowCreateModal(false);
-      setNewTicket({ name: '', phone: '', email: '', query_type: 'other', inquiry_type: 'student', message: '', priority: 'normal' });
+      setNewTicket({ name: '', phone: '', email: '', query_type: 'other', inquiry_type: 'student', message: '', priority: 'normal', source: 'admin_created' });
+      setAttachments([]);
+      setAudioBlob(null);
+      setAudioUrl(null);
+      setRecordingTime(0);
       fetchAllQueries();
     } catch (error) {
       toast.error('Failed to create ticket');
