@@ -31,6 +31,7 @@ const AdminOrders = () => {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [expandedSchools, setExpandedSchools] = useState({}); // Track expanded schools
   
   // Modal states
   const [showPaymentModal, setShowPaymentModal] = useState(null);
