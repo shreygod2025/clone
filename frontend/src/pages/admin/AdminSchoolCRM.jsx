@@ -188,6 +188,8 @@ const AdminSchoolCRM = () => {
     book_type: '',
     kit_type: '',
     training_type: '',
+    pricing_type: 'per_student', // 'per_student', 'fixed', 'both'
+    fixed_price: '',
     grade_pricing: [{ grade: '', students: '', price_per_student: '' }],
     total_students: 0,
     total_amount: 0,
@@ -199,7 +201,17 @@ const AdminSchoolCRM = () => {
     contract_end: '',
     mou_url: '',
     parent_circular_url: '',
-    payment_link: ''
+    payment_link: '',
+    // School share fields
+    school_share_type: 'none', // 'none', 'percentage', 'amount'
+    school_share_calc: 'lumpsum', // 'per_student', 'lumpsum'
+    school_share_value: '',
+    school_share_amount: 0,
+    // GP share fields
+    gp_share_type: 'none', // 'none', 'percentage', 'amount'
+    gp_share_calc: 'lumpsum', // 'per_student', 'lumpsum'
+    gp_share_value: '',
+    gp_share_amount: 0
   });
   const [uploadingRenewalMOU, setUploadingRenewalMOU] = useState(false);
   const [meetingDoneData, setMeetingDoneData] = useState({ 
