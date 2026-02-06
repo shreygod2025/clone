@@ -478,6 +478,7 @@ const RaiseQueryButton = () => {
     setIsLoggedIn(auth.isLoggedIn);
     setUserData(auth.userData);
     setSubmitted(false);
+    setQuickAction(null);
     
     setFormData({
       query_type: '',
@@ -498,18 +499,46 @@ const RaiseQueryButton = () => {
     setIsOpen(false);
     setStep(1);
     setSubmitted(false);
+    setQuickAction(null);
   };
 
   // Auto-advance when selecting category
   const handleCategorySelect = (value) => {
     setFormData({ ...formData, query_type: value, related_to: '' });
+    setQuickAction(null);
     setStep(2);
   };
 
-  // Auto-advance when selecting sub-category
+  // Auto-advance when selecting sub-category - check for quick action
   const handleSubCategorySelect = (value) => {
     setFormData({ ...formData, related_to: value });
+    
+    // Check if there's a quick action for this selection
+    const pageType = getPageTypeKey(currentPath);
+    const actions = QUICK_ACTIONS[pageType];
+    if (actions && actions[formData.query_type] && actions[formData.query_type][value]) {
+      setQuickAction(actions[formData.query_type][value]);
+    } else {
+      setQuickAction(null);
+    }
     setStep(3);
+  };
+
+  // Handle quick action navigation
+  const handleQuickAction = () => {
+    if (quickAction?.link) {
+      handleClose();
+      const [path, hash] = quickAction.link.split('#');
+      navigate(path);
+      if (hash) {
+        setTimeout(() => {
+          const element = document.getElementById(hash);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 300);
+      }
+    }
   };
 
   // Voice recording
