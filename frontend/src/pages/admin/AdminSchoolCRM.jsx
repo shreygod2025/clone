@@ -3417,11 +3417,11 @@ const AdminSchoolCRM = () => {
                     </div>
                   )}
 
-                  {viewInquiry.conversion_amount && (
+                  {(viewInquiry.conversion_amount || viewInquiry.onboarding_data?.total_amount) && (
                     <div className="bg-green-50 rounded-lg p-3">
                       <p className="text-xs text-green-500 mb-1">Conversion Details</p>
                       <p className="font-medium text-green-700">
-                        Deal Amount: ₹{viewInquiry.conversion_amount}
+                        Deal Amount: ₹{Number(viewInquiry.conversion_amount || viewInquiry.onboarding_data?.total_amount).toLocaleString()}
                       </p>
                     </div>
                   )}
