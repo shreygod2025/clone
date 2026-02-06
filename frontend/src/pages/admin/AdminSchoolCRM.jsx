@@ -4294,50 +4294,267 @@ const AdminSchoolCRM = () => {
               </div>
             </div>
 
-            {/* Grade-wise Pricing */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium text-slate-700">Grade-wise Student Count & Pricing</label>
-                <Button variant="ghost" size="sm" onClick={addRenewalGradePricing} className="text-blue-600">
-                  <Plus className="w-4 h-4 mr-1" /> Add Grade
-                </Button>
+            {/* Pricing Type Selection */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <label className="text-sm font-medium text-amber-800 mb-2 block">Pricing Type *</label>
+              <div className="flex gap-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="pricing_type"
+                    value="per_student"
+                    checked={renewalConvertData.pricing_type === 'per_student'}
+                    onChange={(e) => setRenewalConvertData(prev => ({ ...prev, pricing_type: e.target.value }))}
+                    className="w-4 h-4 text-amber-600"
+                  />
+                  <span className="text-sm">Per Student</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="pricing_type"
+                    value="fixed"
+                    checked={renewalConvertData.pricing_type === 'fixed'}
+                    onChange={(e) => setRenewalConvertData(prev => ({ ...prev, pricing_type: e.target.value }))}
+                    className="w-4 h-4 text-amber-600"
+                  />
+                  <span className="text-sm">Fixed Price</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="pricing_type"
+                    value="both"
+                    checked={renewalConvertData.pricing_type === 'both'}
+                    onChange={(e) => setRenewalConvertData(prev => ({ ...prev, pricing_type: e.target.value }))}
+                    className="w-4 h-4 text-amber-600"
+                  />
+                  <span className="text-sm">Both</span>
+                </label>
               </div>
-              <div className="space-y-2">
-                {renewalConvertData.grade_pricing.map((gp, idx) => (
-                  <div key={idx} className="grid grid-cols-5 gap-2 items-center">
-                    <Input
-                      placeholder="Grade (e.g., 1-5)"
-                      value={gp.grade}
-                      onChange={(e) => updateRenewalGradePricing(idx, 'grade', e.target.value)}
-                    />
-                    <Input
-                      type="number"
-                      placeholder="No. of students"
-                      value={gp.students}
-                      onChange={(e) => updateRenewalGradePricing(idx, 'students', e.target.value)}
-                    />
-                    <Input
-                      type="number"
-                      placeholder="Price/student"
-                      value={gp.price_per_student}
-                      onChange={(e) => updateRenewalGradePricing(idx, 'price_per_student', e.target.value)}
-                    />
-                    <div className="flex items-center justify-center text-sm text-slate-600">
-                      ₹{((parseInt(gp.students) || 0) * (parseFloat(gp.price_per_student) || 0)).toLocaleString()}
+            </div>
+
+            {/* Fixed Price Input - Show if fixed or both */}
+            {(renewalConvertData.pricing_type === 'fixed' || renewalConvertData.pricing_type === 'both') && (
+              <div>
+                <label className="text-sm font-medium text-slate-700">Fixed Price Amount (₹)</label>
+                <Input
+                  type="number"
+                  placeholder="Enter fixed price"
+                  value={renewalConvertData.fixed_price}
+                  onChange={(e) => setRenewalConvertData(prev => ({ ...prev, fixed_price: e.target.value }))}
+                  className="mt-1"
+                />
+              </div>
+            )}
+
+            {/* Grade-wise Pricing - Show if per_student or both */}
+            {(renewalConvertData.pricing_type === 'per_student' || renewalConvertData.pricing_type === 'both') && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-slate-700">Grade-wise Student Count & Pricing</label>
+                  <Button variant="ghost" size="sm" onClick={addRenewalGradePricing} className="text-blue-600">
+                    <Plus className="w-4 h-4 mr-1" /> Add Grade
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {renewalConvertData.grade_pricing.map((gp, idx) => (
+                    <div key={idx} className="grid grid-cols-5 gap-2 items-center">
+                      <Input
+                        placeholder="Grade (e.g., 1-5)"
+                        value={gp.grade}
+                        onChange={(e) => updateRenewalGradePricing(idx, 'grade', e.target.value)}
+                      />
+                      <Input
+                        type="number"
+                        placeholder="No. of students"
+                        value={gp.students}
+                        onChange={(e) => updateRenewalGradePricing(idx, 'students', e.target.value)}
+                      />
+                      <Input
+                        type="number"
+                        placeholder="Price/student"
+                        value={gp.price_per_student}
+                        onChange={(e) => updateRenewalGradePricing(idx, 'price_per_student', e.target.value)}
+                      />
+                      <div className="flex items-center justify-center text-sm text-slate-600">
+                        ₹{((parseInt(gp.students) || 0) * (parseFloat(gp.price_per_student) || 0)).toLocaleString()}
+                      </div>
+                      {renewalConvertData.grade_pricing.length > 1 && (
+                        <Button variant="ghost" size="sm" onClick={() => removeRenewalGradePricing(idx)} className="text-red-500">
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
-                    {renewalConvertData.grade_pricing.length > 1 && (
-                      <Button variant="ghost" size="sm" onClick={() => removeRenewalGradePricing(idx)} className="text-red-500">
-                        <X className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
+                  ))}
+                </div>
+                <div className="mt-2 p-2 bg-green-50 rounded-lg text-sm">
+                  <span className="font-medium">Per-Student Total: </span>
+                  {renewalConvertData.grade_pricing.reduce((sum, g) => sum + (parseInt(g.students) || 0), 0)} students • 
+                  ₹{renewalConvertData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0).toLocaleString()}
+                </div>
               </div>
-              <div className="mt-2 p-2 bg-green-50 rounded-lg text-sm">
-                <span className="font-medium">Total: </span>
-                {renewalConvertData.grade_pricing.reduce((sum, g) => sum + (parseInt(g.students) || 0), 0)} students • 
-                ₹{renewalConvertData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0).toLocaleString()}
+            )}
+
+            {/* Grand Total */}
+            <div className="p-3 bg-emerald-100 rounded-lg border border-emerald-200">
+              <span className="font-semibold text-emerald-800">Grand Total: ₹</span>
+              <span className="font-bold text-emerald-900 text-lg">
+                {(() => {
+                  let total = 0;
+                  if (renewalConvertData.pricing_type === 'per_student' || renewalConvertData.pricing_type === 'both') {
+                    total += renewalConvertData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
+                  }
+                  if (renewalConvertData.pricing_type === 'fixed' || renewalConvertData.pricing_type === 'both') {
+                    total += parseFloat(renewalConvertData.fixed_price) || 0;
+                  }
+                  return total.toLocaleString();
+                })()}
+              </span>
+            </div>
+
+            {/* School Share */}
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+              <label className="text-sm font-medium text-purple-800 mb-2 block">School Share (Revenue Sharing)</label>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs text-slate-500">Type</label>
+                  <select
+                    value={renewalConvertData.school_share_type}
+                    onChange={(e) => setRenewalConvertData(prev => ({ ...prev, school_share_type: e.target.value }))}
+                    className="w-full h-9 px-2 border border-slate-200 rounded-lg text-sm"
+                  >
+                    <option value="none">None</option>
+                    <option value="percentage">Percentage (%)</option>
+                    <option value="amount">Fixed Amount (₹)</option>
+                  </select>
+                </div>
+                {renewalConvertData.school_share_type !== 'none' && (
+                  <>
+                    <div>
+                      <label className="text-xs text-slate-500">Calculation</label>
+                      <select
+                        value={renewalConvertData.school_share_calc}
+                        onChange={(e) => setRenewalConvertData(prev => ({ ...prev, school_share_calc: e.target.value }))}
+                        className="w-full h-9 px-2 border border-slate-200 rounded-lg text-sm"
+                      >
+                        <option value="lumpsum">Lumpsum</option>
+                        <option value="per_student">Per Student</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-500">
+                        {renewalConvertData.school_share_type === 'percentage' ? 'Percentage' : 'Amount'}
+                      </label>
+                      <Input
+                        type="number"
+                        placeholder={renewalConvertData.school_share_type === 'percentage' ? '10' : '5000'}
+                        value={renewalConvertData.school_share_value}
+                        onChange={(e) => setRenewalConvertData(prev => ({ ...prev, school_share_value: e.target.value }))}
+                        className="h-9"
+                      />
+                    </div>
+                  </>
+                )}
               </div>
+              {renewalConvertData.school_share_type !== 'none' && renewalConvertData.school_share_value && (
+                <div className="mt-2 p-2 bg-purple-100 rounded text-sm">
+                  <span className="font-medium text-purple-800">Calculated School Share: ₹</span>
+                  <span className="font-bold text-purple-900">
+                    {(() => {
+                      const totalStudents = renewalConvertData.grade_pricing.reduce((sum, g) => sum + (parseInt(g.students) || 0), 0);
+                      let grandTotal = 0;
+                      if (renewalConvertData.pricing_type === 'per_student' || renewalConvertData.pricing_type === 'both') {
+                        grandTotal += renewalConvertData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
+                      }
+                      if (renewalConvertData.pricing_type === 'fixed' || renewalConvertData.pricing_type === 'both') {
+                        grandTotal += parseFloat(renewalConvertData.fixed_price) || 0;
+                      }
+                      const shareValue = parseFloat(renewalConvertData.school_share_value) || 0;
+                      if (renewalConvertData.school_share_type === 'percentage') {
+                        return ((shareValue / 100) * grandTotal).toLocaleString();
+                      } else {
+                        if (renewalConvertData.school_share_calc === 'per_student') {
+                          return (shareValue * totalStudents).toLocaleString();
+                        }
+                        return shareValue.toLocaleString();
+                      }
+                    })()}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* GP Share */}
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+              <label className="text-sm font-medium text-orange-800 mb-2 block">Growth Partner (GP) Share</label>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs text-slate-500">Type</label>
+                  <select
+                    value={renewalConvertData.gp_share_type}
+                    onChange={(e) => setRenewalConvertData(prev => ({ ...prev, gp_share_type: e.target.value }))}
+                    className="w-full h-9 px-2 border border-slate-200 rounded-lg text-sm"
+                  >
+                    <option value="none">None</option>
+                    <option value="percentage">Percentage (%)</option>
+                    <option value="amount">Fixed Amount (₹)</option>
+                  </select>
+                </div>
+                {renewalConvertData.gp_share_type !== 'none' && (
+                  <>
+                    <div>
+                      <label className="text-xs text-slate-500">Calculation</label>
+                      <select
+                        value={renewalConvertData.gp_share_calc}
+                        onChange={(e) => setRenewalConvertData(prev => ({ ...prev, gp_share_calc: e.target.value }))}
+                        className="w-full h-9 px-2 border border-slate-200 rounded-lg text-sm"
+                      >
+                        <option value="lumpsum">Lumpsum</option>
+                        <option value="per_student">Per Student</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-500">
+                        {renewalConvertData.gp_share_type === 'percentage' ? 'Percentage' : 'Amount'}
+                      </label>
+                      <Input
+                        type="number"
+                        placeholder={renewalConvertData.gp_share_type === 'percentage' ? '5' : '2000'}
+                        value={renewalConvertData.gp_share_value}
+                        onChange={(e) => setRenewalConvertData(prev => ({ ...prev, gp_share_value: e.target.value }))}
+                        className="h-9"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+              {renewalConvertData.gp_share_type !== 'none' && renewalConvertData.gp_share_value && (
+                <div className="mt-2 p-2 bg-orange-100 rounded text-sm">
+                  <span className="font-medium text-orange-800">Calculated GP Share: ₹</span>
+                  <span className="font-bold text-orange-900">
+                    {(() => {
+                      const totalStudents = renewalConvertData.grade_pricing.reduce((sum, g) => sum + (parseInt(g.students) || 0), 0);
+                      let grandTotal = 0;
+                      if (renewalConvertData.pricing_type === 'per_student' || renewalConvertData.pricing_type === 'both') {
+                        grandTotal += renewalConvertData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
+                      }
+                      if (renewalConvertData.pricing_type === 'fixed' || renewalConvertData.pricing_type === 'both') {
+                        grandTotal += parseFloat(renewalConvertData.fixed_price) || 0;
+                      }
+                      const shareValue = parseFloat(renewalConvertData.gp_share_value) || 0;
+                      if (renewalConvertData.gp_share_type === 'percentage') {
+                        return ((shareValue / 100) * grandTotal).toLocaleString();
+                      } else {
+                        if (renewalConvertData.gp_share_calc === 'per_student') {
+                          return (shareValue * totalStudents).toLocaleString();
+                        }
+                        return shareValue.toLocaleString();
+                      }
+                    })()}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* School Contacts */}
