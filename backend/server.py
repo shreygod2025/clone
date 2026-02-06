@@ -6209,10 +6209,55 @@ async def create_school_onboarding(data: dict, user: dict = Depends(get_current_
 
 @api_router.put("/schools/onboarding/{onboarding_id}")
 async def update_school_onboarding(onboarding_id: str, data: dict, user: dict = Depends(get_current_user)):
-    """Update school onboarding details"""
+    """Update school onboarding details and sync to school_inquiries.onboarding_data"""
     update_data = {k: v for k, v in data.items() if v is not None}
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    # Update the school_onboarding collection
     await db.school_onboarding.update_one({"id": onboarding_id}, {"$set": update_data})
+    
+    # Get the onboarding record to find the school_id
+    onboarding_record = await db.school_onboarding.find_one({"id": onboarding_id})
+    if onboarding_record:
+        school_id = onboarding_record.get("school_id")
+        if school_id:
+            # Sync relevant fields to school_inquiries.onboarding_data
+            # This ensures the tracking page and other views show updated data
+            sync_fields = {
+                "onboarding_data.mou_url": data.get("mou_url"),
+                "onboarding_data.offering": data.get("offering"),
+                "onboarding_data.model": data.get("model"),
+                "onboarding_data.book_type": data.get("book_type"),
+                "onboarding_data.kit_type": data.get("kit_type"),
+                "onboarding_data.training_type": data.get("training_type"),
+                "onboarding_data.total_students": data.get("total_students"),
+                "onboarding_data.total_amount": data.get("total_amount"),
+                "onboarding_data.school_contacts": data.get("school_contacts"),
+                "onboarding_data.payment_mode": data.get("payment_mode"),
+                "onboarding_data.payment_method": data.get("payment_method"),
+                "onboarding_data.payment_tranches": data.get("payment_tranches"),
+                "onboarding_data.contract_start": data.get("contract_start"),
+                "onboarding_data.contract_end": data.get("contract_end"),
+                "onboarding_data.pricing_type": data.get("pricing_type"),
+                "onboarding_data.fixed_price": data.get("fixed_price"),
+                "onboarding_data.grade_pricing": data.get("grade_pricing"),
+                "onboarding_data.school_share_type": data.get("school_share_type"),
+                "onboarding_data.school_share_calc": data.get("school_share_calc"),
+                "onboarding_data.school_share_value": data.get("school_share_value"),
+                "onboarding_data.school_share_amount": data.get("school_share_amount"),
+                "onboarding_data.gp_share_type": data.get("gp_share_type"),
+                "onboarding_data.gp_share_calc": data.get("gp_share_calc"),
+                "onboarding_data.gp_share_value": data.get("gp_share_value"),
+                "onboarding_data.gp_share_amount": data.get("gp_share_amount"),
+            }
+            # Only update fields that are provided (not None)
+            sync_update = {k: v for k, v in sync_fields.items() if v is not None}
+            if sync_update:
+                await db.school_inquiries.update_one(
+                    {"id": school_id},
+                    {"$set": sync_update}
+                )
+    
     return {"message": "Onboarding updated successfully"}
 
 @api_router.get("/schools/bulk-import/template")
