@@ -541,12 +541,27 @@ const RaiseQueryButton = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const canSubmit = () => formData.message.trim().length > 0;
+  // Validate name and phone are required
+  const canSubmit = () => {
+    return formData.message.trim().length > 0 && 
+           formData.name.trim().length > 0 && 
+           formData.phone.trim().length >= 10;
+  };
 
   const handleNext = () => {
-    if (step === 3 && (isLoggedIn || isAdminPage)) {
-      handleSubmit();
-    } else if (step === totalSteps) {
+    if (step === 3) {
+      // Go to contact info step
+      setStep(4);
+    } else if (step === 4) {
+      // Validate before submit
+      if (!formData.name.trim()) {
+        toast.error('Please enter your name');
+        return;
+      }
+      if (!formData.phone.trim() || formData.phone.length < 10) {
+        toast.error('Please enter a valid phone number');
+        return;
+      }
       handleSubmit();
     } else {
       setStep(step + 1);
