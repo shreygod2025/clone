@@ -815,6 +815,8 @@ const AdminSchoolCRM = () => {
       book_type: existingData.book_type || '',
       kit_type: existingData.kit_type || '',
       training_type: existingData.training_type || '',
+      pricing_type: existingData.pricing_type || 'per_student',
+      fixed_price: existingData.fixed_price || '',
       grade_pricing: existingData.grade_pricing?.length > 0 
         ? existingData.grade_pricing 
         : [{ grade: '', students: '', price_per_student: '' }],
@@ -838,7 +840,15 @@ const AdminSchoolCRM = () => {
       contract_end: '',
       mou_url: '',
       parent_circular_url: '',
-      payment_link: ''
+      payment_link: '',
+      school_share_type: existingData.school_share_type || 'none',
+      school_share_calc: existingData.school_share_calc || 'lumpsum',
+      school_share_value: existingData.school_share_value || '',
+      school_share_amount: existingData.school_share_amount || 0,
+      gp_share_type: existingData.gp_share_type || 'none',
+      gp_share_calc: existingData.gp_share_calc || 'lumpsum',
+      gp_share_value: existingData.gp_share_value || '',
+      gp_share_amount: existingData.gp_share_amount || 0
     });
   };
 
