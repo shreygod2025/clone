@@ -1003,6 +1003,7 @@ class SchoolInquiry(BaseModel):
     referred_by: str = ""  # Name of person who referred (when source is referral)
     added_by: str = ""
     assigned_to: str = ""
+    assigned_to_name: str = ""  # Name of assigned team member
     relationship_manager_id: str = ""  # RM assigned to converted schools
     relationship_manager_name: str = ""
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
