@@ -403,6 +403,19 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ Inner content div uses `overflow-y-auto flex-1 pr-2` for proper scrolling
 - ✅ Lead Assignment options (Assign to me / Let admin assign) now visible at bottom
 
+### Feb 6, 2026 - Query Deletion Verification & Backend Refactoring Start
+
+**Query Deletion Fix Verified:**
+- ✅ **DELETE /api/inquiry/queries/{id}** - Tested and working, deletes from `inquiry_queries` collection
+- ✅ **DELETE /api/support/queries/{id}** - Tested and working, deletes from `support_queries` collection
+- ✅ Frontend `AdminSupportUnified.jsx` correctly routes deletions based on `_source` field
+
+**Backend Refactoring Groundwork:**
+- ✅ Created `/app/backend/routes/shared.py` with common dependencies (db, auth, helpers)
+- ✅ Created `/app/backend/routes/auth.py` with auth route structure (ready for extraction)
+- ✅ Updated `/app/backend/routes/__init__.py` with proper exports
+- ⚠️ Full refactoring of server.py (9,700+ lines) deferred to P2 for incremental approach
+
 ### Feb 5, 2026 - School Card Design Fix & Global Help Button
 
 **School CRM Card Design Overhaul:**
