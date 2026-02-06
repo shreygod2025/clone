@@ -2107,54 +2107,49 @@ const AdminSchoolCRM = () => {
 
   // Render action buttons based on status
   const renderActionButtons = (inquiry) => {
-    // Compact icon buttons for common actions
+    // Action buttons with names and icons
     const baseButtons = (
       <>
         <button
           onClick={() => setShowAssignModal(inquiry)}
-          className="p-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700"
+          className="text-xs px-2.5 py-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 flex items-center gap-1 font-medium"
           data-testid={`assign-${inquiry.id}`}
-          title="Assign"
         >
-          <UserPlus className="w-3.5 h-3.5" />
+          <UserPlus className="w-3 h-3" />
+          Assign
         </button>
         <button
           onClick={() => setShowCommentModal(inquiry)}
-          className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700"
+          className="text-xs px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1 font-medium"
           data-testid={`comment-${inquiry.id}`}
-          title="Add Note"
         >
-          <MessageSquare className="w-3.5 h-3.5" />
+          <MessageSquare className="w-3 h-3" />
+          Note
         </button>
         <button
           onClick={() => handleDeleteLead(inquiry)}
-          className="p-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700"
+          className="text-xs px-2.5 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 font-medium"
           data-testid={`delete-lead-${inquiry.id}`}
-          title="Delete"
         >
-          <Trash2 className="w-3.5 h-3.5" />
+          <Trash2 className="w-3 h-3" />
+          Delete
         </button>
       </>
     );
 
-    // Documents button - compact icon
+    // Documents button
     const documentsButton = (
       <button
         onClick={() => setShowDocumentsModal(inquiry)}
-        className="p-1.5 rounded-lg bg-cyan-100 hover:bg-cyan-200 text-cyan-700 relative"
+        className="text-xs px-2.5 py-1.5 rounded-lg bg-cyan-100 hover:bg-cyan-200 text-cyan-700 flex items-center gap-1 font-medium"
         data-testid={`documents-${inquiry.id}`}
-        title="Documents"
       >
-        <Paperclip className="w-3.5 h-3.5" />
-        {inquiry.documents?.length > 0 && (
-          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-cyan-500 text-white text-[10px] flex items-center justify-center">
-            {inquiry.documents.length}
-          </span>
-        )}
+        <Paperclip className="w-3 h-3" />
+        Docs {inquiry.documents?.length > 0 && `(${inquiry.documents.length})`}
       </button>
     );
 
-    // Followup button - compact icon
+    // Followup button
     const followupButton = inquiry.status !== 'converted' && (
       <button
         onClick={() => {
@@ -2164,57 +2159,57 @@ const AdminSchoolCRM = () => {
             comment: inquiry.followup_comment || '' 
           });
         }}
-        className="p-1.5 rounded-lg bg-teal-100 hover:bg-teal-200 text-teal-700"
+        className="text-xs px-2.5 py-1.5 rounded-lg bg-teal-100 hover:bg-teal-200 text-teal-700 flex items-center gap-1 font-medium"
         data-testid={`followup-${inquiry.id}`}
-        title="Followup"
       >
-        <Clock className="w-3.5 h-3.5" />
+        <Clock className="w-3 h-3" />
+        Followup
       </button>
     );
 
     switch (inquiry.status) {
       case 'new':
         return (
-          <div className="flex gap-1 flex-wrap items-center">
+          <div className="flex gap-1.5 flex-wrap items-center">
             <button
               onClick={() => handleMeetingDone(inquiry)}
-              className="text-xs px-2 py-1 rounded-lg bg-purple-500 hover:bg-purple-600 text-white flex items-center gap-1 font-medium"
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-purple-500 hover:bg-purple-600 text-white flex items-center gap-1 font-medium"
               data-testid={`meeting-done-${inquiry.id}`}
             >
               <CheckCircle2 className="w-3 h-3" />
-              Done
+              Meeting Done
             </button>
             <button
               onClick={() => {
                 setShowRescheduleModal(inquiry);
                 setRescheduleData({ date: null, time: '', meeting_type: inquiry.meeting_type || 'offline', reason: '' });
               }}
-              className="p-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700"
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 flex items-center gap-1 font-medium"
               data-testid={`reschedule-${inquiry.id}`}
-              title="Reschedule"
             >
-              <CalendarClock className="w-3.5 h-3.5" />
+              <CalendarClock className="w-3 h-3" />
+              Reschedule
             </button>
             {followupButton}
             {documentsButton}
             {baseButtons}
             <button
               onClick={() => handleArchive(inquiry)}
-              className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600"
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1 font-medium"
               data-testid={`archive-${inquiry.id}`}
-              title="Archive"
             >
-              <Archive className="w-3.5 h-3.5" />
+              <Archive className="w-3 h-3" />
+              Archive
             </button>
           </div>
         );
       
       case 'meeting_done':
         return (
-          <div className="flex gap-1 flex-wrap items-center">
+          <div className="flex gap-1.5 flex-wrap items-center">
             <button
               onClick={() => openConversionModal(inquiry)}
-              className="text-xs px-2 py-1 rounded-lg bg-green-500 hover:bg-green-600 text-white flex items-center gap-1 font-medium"
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-green-500 hover:bg-green-600 text-white flex items-center gap-1 font-medium"
               data-testid={`convert-${inquiry.id}`}
             >
               <CheckCircle2 className="w-3 h-3" />
@@ -2225,33 +2220,33 @@ const AdminSchoolCRM = () => {
             {baseButtons}
             <button
               onClick={() => handleArchive(inquiry)}
-              className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600"
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1 font-medium"
               data-testid={`archive-${inquiry.id}`}
-              title="Archive"
             >
-              <Archive className="w-3.5 h-3.5" />
+              <Archive className="w-3 h-3" />
+              Archive
             </button>
           </div>
         );
       
       case 'converted':
         return (
-          <div className="flex gap-1 flex-wrap items-center">
+          <div className="flex gap-1.5 flex-wrap items-center">
             <button
               onClick={() => handleEditOnboarding(inquiry)}
-              className="p-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700"
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 flex items-center gap-1 font-medium"
               data-testid={`edit-${inquiry.id}`}
-              title="Edit Details"
             >
-              <Edit className="w-3.5 h-3.5" />
+              <Edit className="w-3 h-3" />
+              Edit
             </button>
             <button
               onClick={() => setShowAssignRMModal(inquiry)}
-              className="text-xs px-2 py-1 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 flex items-center gap-1 font-medium"
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 flex items-center gap-1 font-medium"
               data-testid={`assign-rm-${inquiry.id}`}
             >
               <UserPlus className="w-3 h-3" />
-              {inquiry.relationship_manager_name ? 'RM' : 'RM'}
+              {inquiry.relationship_manager_name ? 'Change RM' : 'Assign RM'}
             </button>
             <button
               onClick={() => {
