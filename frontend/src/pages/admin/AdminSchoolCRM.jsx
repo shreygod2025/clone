@@ -1550,7 +1550,8 @@ const AdminSchoolCRM = () => {
       });
       fetchInquiries();
     } catch (error) {
-      toast.error('Failed to add lead');
+      console.error('Add lead error:', error?.response?.data || error);
+      toast.error(error?.response?.data?.detail || 'Failed to add lead');
     }
   };
 
