@@ -142,7 +142,8 @@ const AdminStudentCRM = () => {
 
   const fetchOnboardedEducators = async () => {
     try {
-      const response = await axios.get(`${API}/educators/applications`, {
+      // Use for_assignment=true to get all onboarded educators (not just team member's own)
+      const response = await axios.get(`${API}/educators/applications?for_assignment=true`, {
         headers: getAuthHeaders()
       });
       // Filter to only onboarded educators
