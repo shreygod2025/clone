@@ -460,7 +460,7 @@ const RaiseQueryButton = () => {
       const storedUser = localStorage.getItem('oll_user');
       let user = null;
       if (storedUser) {
-        try { user = JSON.parse(storedUser); } catch (e) {}
+        try { user = JSON.parse(storedUser); } catch (e) { /* ignore parse error */ }
       }
       return { isLoggedIn: true, userData: user };
     }
