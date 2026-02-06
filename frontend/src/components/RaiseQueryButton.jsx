@@ -392,11 +392,9 @@ const RaiseQueryButton = () => {
 
   const pageConfig = getPageConfig(currentPath, isLoggedIn);
   const selectedQueryType = pageConfig.queries.find(q => q.value === formData.query_type);
-  // For logged-in users (non-admin): only 3 steps, no contact info
-  // For admin users: 3 steps
-  // For non-logged-in: 4 steps with contact info
-  const isAdminPage = currentPath.includes('/admin');
-  const totalSteps = (isLoggedIn || isAdminPage) ? 3 : 4;
+  // Always 4 steps - contact info is mandatory for all users
+  // For logged-in users, contact info is auto-filled
+  const totalSteps = 4;
 
   const handleOpen = () => {
     const auth = checkAuth();
