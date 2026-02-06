@@ -2058,6 +2058,17 @@ const AdminSchoolCRM = () => {
         email: school.email,
         location: school.location,
         board: school.board,
+        // Ensure share fields exist
+        pricing_type: response.data.pricing_type || 'per_student',
+        fixed_price: response.data.fixed_price || '',
+        school_share_type: response.data.school_share_type || 'none',
+        school_share_calc: response.data.school_share_calc || 'lumpsum',
+        school_share_value: response.data.school_share_value || '',
+        school_share_amount: response.data.school_share_amount || 0,
+        gp_share_type: response.data.gp_share_type || 'none',
+        gp_share_calc: response.data.gp_share_calc || 'lumpsum',
+        gp_share_value: response.data.gp_share_value || '',
+        gp_share_amount: response.data.gp_share_amount || 0,
       });
       setShowEditOnboardingModal(school);
     } catch (error) {
@@ -2075,6 +2086,8 @@ const AdminSchoolCRM = () => {
         book_type: '',
         kit_type: '',
         training_type: '',
+        pricing_type: 'per_student',
+        fixed_price: '',
         grade_pricing: [],
         total_students: school.total_students || 0,
         total_amount: 0,
@@ -2084,6 +2097,14 @@ const AdminSchoolCRM = () => {
         payment_tranches: [],
         contract_start: '',
         contract_end: '',
+        school_share_type: 'none',
+        school_share_calc: 'lumpsum',
+        school_share_value: '',
+        school_share_amount: 0,
+        gp_share_type: 'none',
+        gp_share_calc: 'lumpsum',
+        gp_share_value: '',
+        gp_share_amount: 0,
       });
       setShowEditOnboardingModal(school);
     }
