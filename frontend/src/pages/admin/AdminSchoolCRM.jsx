@@ -5908,9 +5908,29 @@ const AdminSchoolCRM = () => {
                 ))}
               </div>
               <div className="mt-2 p-2 bg-green-50 rounded-lg text-sm">
-                <span className="font-medium">Total: </span>
+                <span className="font-medium">Per-Student Total: </span>
                 {onboardData.grade_pricing.reduce((sum, g) => sum + (parseInt(g.students) || 0), 0)} students • 
                 ₹{onboardData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0).toLocaleString()}
+              </div>
+            </div>
+            )}
+
+            {/* Grand Total */}
+            <div className="bg-green-100 border border-green-300 rounded-lg p-3">
+              <div className="flex justify-between items-center">
+                <span className="font-semibold text-green-800">Grand Total:</span>
+                <span className="font-bold text-lg text-green-800">
+                  ₹{(() => {
+                    let total = 0;
+                    if (onboardData.pricing_type === 'per_student' || onboardData.pricing_type === 'both') {
+                      total += onboardData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
+                    }
+                    if (onboardData.pricing_type === 'fixed' || onboardData.pricing_type === 'both') {
+                      total += parseFloat(onboardData.fixed_price) || 0;
+                    }
+                    return total.toLocaleString();
+                  })()}
+                </span>
               </div>
             </div>
 
