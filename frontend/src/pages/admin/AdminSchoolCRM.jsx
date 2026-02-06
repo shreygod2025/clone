@@ -2864,12 +2864,12 @@ const AdminSchoolCRM = () => {
                     {inquiry.meeting_date} {inquiry.meeting_time && `${inquiry.meeting_time}`}
                   </p>
                 )}
-                {inquiry.conversion_amount && (
+                {(inquiry.conversion_amount || inquiry.onboarding_data?.total_amount) && (
                   <p className="text-green-600 font-medium text-xs">
-                    ₹{Number(inquiry.conversion_amount).toLocaleString()}
+                    ₹{Number(inquiry.conversion_amount || inquiry.onboarding_data?.total_amount).toLocaleString()}
                   </p>
                 )}
-                {inquiry.quoted_price && !inquiry.conversion_amount && (
+                {inquiry.quoted_price && !inquiry.conversion_amount && !inquiry.onboarding_data?.total_amount && (
                   <p className="text-blue-600 font-medium text-xs">
                     Quoted: ₹{Number(inquiry.quoted_price).toLocaleString()}
                   </p>
