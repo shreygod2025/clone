@@ -422,15 +422,219 @@ const AdminOrders = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {sortedPayments.map((payment) => (
+                  {activeTab === 'school' ? (
+                    /* Grouped School Payments with Expandable Sub-rows */
+                    groupedSchoolPayments.map((group) => (
+                      <>
+                        {/* School Parent Row */}
+                        <tr 
+                          key={group.school_id} 
+                          className={`hover:bg-slate-50 cursor-pointer ${group.tranches.length > 1 ? 'bg-slate-25' : ''}`}
+                          onClick={() => group.tranches.length > 1 && toggleSchoolExpand(group.school_id)}
+                        >
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              {group.tranches.length > 1 && (
+                                <button 
+                                  className="p-0.5 hover:bg-slate-200 rounded"
+                                  onClick={(e) => { e.stopPropagation(); toggleSchoolExpand(group.school_id); }}
+                                >
+                                  {expandedSchools[group.school_id] ? (
+                                    <ChevronDown className="w-4 h-4 text-slate-500" />
+                                  ) : (
+                                    <ChevronRight className="w-4 h-4 text-slate-500" />
+                                  )}
+                                </button>
+                              )}
+                              <div>
+                                <p className="font-medium text-slate-800">{group.school_name}</p>
+                                <p className="text-sm text-slate-500">
+                                  {group.contact_name}
+                                  {group.tranches.length > 1 && (
+                                    <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
+                                      {group.tranches.length} tranches
+                                    </span>
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <p className="font-semibold text-slate-800">₹{group.totalAmount.toLocaleString()}</p>
+                            {group.paidAmount > 0 && group.paidAmount < group.totalAmount && (
+                              <p className="text-xs text-green-600">₹{group.paidAmount.toLocaleString()} paid</p>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="text-slate-400 text-sm">-</span>
+                          </td>
+                          <td className="px-4 py-3">
+                            {group.tranches.length === 1 && group.tranches[0].due_date ? (
+                              <p className={`text-sm ${
+                                isPast(parseISO(group.tranches[0].due_date)) && group.tranches[0].status !== 'paid'
+                                  ? 'text-red-600 font-medium'
+                                  : 'text-slate-600'
+                              }`}>
+                                {format(parseISO(group.tranches[0].due_date), 'MMM d, yyyy')}
+                              </p>
+                            ) : group.tranches.length > 1 ? (
+                              <span className="text-slate-500 text-sm">Multiple</span>
+                            ) : (
+                              <span className="text-slate-400">-</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            {group.tranches.length === 1 ? (
+                              getStatusBadge(group.tranches[0])
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                {group.hasOverdue && (
+                                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                                    Overdue
+                                  </span>
+                                )}
+                                {group.hasPending && (
+                                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+                                    Pending
+                                  </span>
+                                )}
+                                {group.paidAmount === group.totalAmount && (
+                                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                                    All Paid
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            {group.tranches.length === 1 && group.tranches[0].invoice_url ? (
+                              <a href={group.tranches[0].invoice_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1">
+                                <FileText className="w-4 h-4" /> View
+                              </a>
+                            ) : (
+                              <span className="text-slate-400 text-sm">{group.tranches.length > 1 ? '-' : 'Not uploaded'}</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            {group.tranches.length === 1 && group.tranches[0].receipt_url ? (
+                              <a href={group.tranches[0].receipt_url} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:text-green-800 text-sm flex items-center gap-1">
+                                <Receipt className="w-4 h-4" /> View
+                              </a>
+                            ) : (
+                              <span className="text-slate-400 text-sm">{group.tranches.length > 1 ? '-' : 'Not uploaded'}</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => { e.stopPropagation(); fetchSchoolDetails(group.school_id); }}
+                                className="text-blue-600 hover:text-blue-800"
+                                data-testid={`view-details-${group.school_id}`}
+                              >
+                                <ExternalLink className="w-4 h-4 mr-1" />
+                                Details
+                              </Button>
+                              {group.tranches.length === 1 && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => { e.stopPropagation(); openPaymentModal(group.tranches[0]); }}
+                                  data-testid={`update-payment-${group.tranches[0].id}`}
+                                >
+                                  <Eye className="w-4 h-4 mr-1" />
+                                  Update
+                                </Button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                        
+                        {/* Tranche Sub-rows (only shown when expanded and has multiple tranches) */}
+                        {expandedSchools[group.school_id] && group.tranches.length > 1 && group.tranches.map((payment, idx) => (
+                          <tr key={payment.id} className="bg-slate-50/50 hover:bg-slate-100/50">
+                            <td className="px-4 py-2 pl-12">
+                              <div className="flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                                <p className="text-sm text-slate-600">{payment.tranche_info || `Tranche ${idx + 1}`}</p>
+                              </div>
+                            </td>
+                            <td className="px-4 py-2">
+                              <p className="text-sm font-medium text-slate-700">₹{(payment.amount || 0).toLocaleString()}</p>
+                            </td>
+                            <td className="px-4 py-2">
+                              {payment.gst_type ? (
+                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                  payment.gst_type === 'book_gst' ? 'bg-blue-100 text-blue-700' :
+                                  payment.gst_type === 'inclusive' ? 'bg-green-100 text-green-700' :
+                                  'bg-orange-100 text-orange-700'
+                                }`}>
+                                  {payment.gst_type === 'book_gst' ? 'Book GST' : payment.gst_type === 'inclusive' ? 'Inclusive' : 'Exclusive'}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 text-xs">-</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-2">
+                              {payment.due_date ? (
+                                <p className={`text-sm ${
+                                  isPast(parseISO(payment.due_date)) && payment.status !== 'paid' ? 'text-red-600 font-medium' : 'text-slate-600'
+                                }`}>
+                                  {format(parseISO(payment.due_date), 'MMM d, yyyy')}
+                                </p>
+                              ) : (
+                                <span className="text-slate-400 text-xs">-</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-2">
+                              {getStatusBadge(payment)}
+                            </td>
+                            <td className="px-4 py-2">
+                              {payment.invoice_url ? (
+                                <a href={payment.invoice_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-xs flex items-center gap-1">
+                                  <FileText className="w-3 h-3" /> View
+                                </a>
+                              ) : (
+                                <span className="text-slate-400 text-xs">-</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-2">
+                              {payment.receipt_url ? (
+                                <a href={payment.receipt_url} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:text-green-800 text-xs flex items-center gap-1">
+                                  <Receipt className="w-3 h-3" /> View
+                                </a>
+                              ) : (
+                                <span className="text-slate-400 text-xs">-</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openPaymentModal(payment)}
+                                className="text-xs h-7"
+                                data-testid={`update-payment-${payment.id}`}
+                              >
+                                <Eye className="w-3 h-3 mr-1" />
+                                Update
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </>
+                    ))
+                  ) : (
+                    /* Student Payments - Original flat list */
+                    sortedPayments.map((payment) => (
                     <tr key={payment.id} className="hover:bg-slate-50">
                       <td className="px-4 py-3">
                         <div>
                           <p className="font-medium text-slate-800">
-                            {activeTab === 'school' ? payment.school_name : payment.student_name}
+                            {payment.student_name}
                           </p>
                           <p className="text-sm text-slate-500">
-                            {payment.contact_name || payment.description}
+                            {payment.description}
                           </p>
                         </div>
                       </td>
@@ -502,19 +706,7 @@ const AdminOrders = () => {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          {activeTab === 'school' && payment.school_id && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => fetchSchoolDetails(payment.school_id)}
-                              className="text-blue-600 hover:text-blue-800"
-                              data-testid={`view-details-${payment.id}`}
-                            >
-                              <ExternalLink className="w-4 h-4 mr-1" />
-                              Details
-                            </Button>
-                          )}
-                          {activeTab === 'student' && payment.conversion_details && (
+                          {payment.conversion_details && (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -538,6 +730,8 @@ const AdminOrders = () => {
                         </div>
                       </td>
                     </tr>
+                  ))
+                  )}
                   ))}
                 </tbody>
               </table>
