@@ -853,12 +853,21 @@ const AdminSchoolCRM = () => {
   };
 
   const handleRenewalConvert = async () => {
-    // Calculate totals from grade pricing
-    const totalStudents = renewalConvertData.grade_pricing.reduce((sum, g) => sum + (parseInt(g.students) || 0), 0);
-    const totalAmount = renewalConvertData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
+    // Calculate totals based on pricing type
+    let totalStudents = 0;
+    let totalAmount = 0;
+    
+    if (renewalConvertData.pricing_type === 'per_student' || renewalConvertData.pricing_type === 'both') {
+      totalStudents = renewalConvertData.grade_pricing.reduce((sum, g) => sum + (parseInt(g.students) || 0), 0);
+      totalAmount = renewalConvertData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
+    }
+    
+    if (renewalConvertData.pricing_type === 'fixed' || renewalConvertData.pricing_type === 'both') {
+      totalAmount += parseFloat(renewalConvertData.fixed_price) || 0;
+    }
     
     if (totalAmount === 0 && !renewalConvertData.total_amount) {
-      toast.error('Please add grade-wise pricing or enter a total amount');
+      toast.error('Please add pricing details');
       return;
     }
     
@@ -897,6 +906,44 @@ const AdminSchoolCRM = () => {
       
       const finalAmount = totalAmount > 0 ? totalAmount : (renewalConvertData.total_amount || 0);
       
+      // Calculate school share
+      let schoolShareAmount = 0;
+      if (renewalConvertData.school_share_type !== 'none' && renewalConvertData.school_share_value) {
+        const shareValue = parseFloat(renewalConvertData.school_share_value) || 0;
+        if (renewalConvertData.school_share_type === 'percentage') {
+          if (renewalConvertData.school_share_calc === 'per_student') {
+            schoolShareAmount = (shareValue / 100) * totalAmount;
+          } else {
+            schoolShareAmount = (shareValue / 100) * finalAmount;
+          }
+        } else {
+          if (renewalConvertData.school_share_calc === 'per_student') {
+            schoolShareAmount = shareValue * totalStudents;
+          } else {
+            schoolShareAmount = shareValue;
+          }
+        }
+      }
+      
+      // Calculate GP share
+      let gpShareAmount = 0;
+      if (renewalConvertData.gp_share_type !== 'none' && renewalConvertData.gp_share_value) {
+        const shareValue = parseFloat(renewalConvertData.gp_share_value) || 0;
+        if (renewalConvertData.gp_share_type === 'percentage') {
+          if (renewalConvertData.gp_share_calc === 'per_student') {
+            gpShareAmount = (shareValue / 100) * totalAmount;
+          } else {
+            gpShareAmount = (shareValue / 100) * finalAmount;
+          }
+        } else {
+          if (renewalConvertData.gp_share_calc === 'per_student') {
+            gpShareAmount = shareValue * totalStudents;
+          } else {
+            gpShareAmount = shareValue;
+          }
+        }
+      }
+      
       // Update school with renewal data
       await axios.patch(`${API}/schools/inquiry/${showRenewalConvertModal.id}`, {
         status: 'renewed',
@@ -908,9 +955,11 @@ const AdminSchoolCRM = () => {
           kit_type: renewalConvertData.kit_type,
           book_type: renewalConvertData.book_type,
           training_type: renewalConvertData.training_type,
+          pricing_type: renewalConvertData.pricing_type,
+          fixed_price: renewalConvertData.fixed_price,
           total_students: totalStudents > 0 ? totalStudents : renewalConvertData.total_students,
           total_amount: finalAmount,
-          grade_pricing: renewalConvertData.grade_pricing.filter(g => g.grade && g.students),
+          grade_pricing: renewalConvertData.grade_pricing.filter(g => g.grade),
           contract_start: contractStart,
           contract_end: contractEnd,
           mou_url: renewalConvertData.mou_url,
@@ -920,7 +969,16 @@ const AdminSchoolCRM = () => {
           payment_tranches: formattedTranches,
           parent_circular_url: renewalConvertData.parent_circular_url,
           payment_link: renewalConvertData.payment_link,
-          renewal_date: new Date().toISOString()
+          renewal_date: new Date().toISOString(),
+          // Share details
+          school_share_type: renewalConvertData.school_share_type,
+          school_share_calc: renewalConvertData.school_share_calc,
+          school_share_value: renewalConvertData.school_share_value,
+          school_share_amount: schoolShareAmount,
+          gp_share_type: renewalConvertData.gp_share_type,
+          gp_share_calc: renewalConvertData.gp_share_calc,
+          gp_share_value: renewalConvertData.gp_share_value,
+          gp_share_amount: gpShareAmount
         },
         notes: showRenewalConvertModal.notes 
           ? `${showRenewalConvertModal.notes}\n\n--- Renewed (${format(new Date(), 'dd MMM yyyy')}) ---\nAmount: ₹${Number(finalAmount).toLocaleString()}`
@@ -947,13 +1005,16 @@ const AdminSchoolCRM = () => {
       setShowRenewalConvertModal(null);
       setRenewalConvertData({
         offering: '', model: '', book_type: '', kit_type: '', training_type: '',
+        pricing_type: 'per_student', fixed_price: '',
         grade_pricing: [{ grade: '', students: '', price_per_student: '' }],
         total_students: 0, total_amount: 0,
         school_contacts: [{ name: '', phone_number: '', country_code: '+91', email: '', role: '' }],
         payment_mode: 'from_school', payment_method: '',
         payment_tranches: [{ amount: '', percentage: '', date: '', notes: '' }],
         contract_start: '', contract_end: '', mou_url: '',
-        parent_circular_url: '', payment_link: ''
+        parent_circular_url: '', payment_link: '',
+        school_share_type: 'none', school_share_calc: 'lumpsum', school_share_value: '', school_share_amount: 0,
+        gp_share_type: 'none', gp_share_calc: 'lumpsum', gp_share_value: '', gp_share_amount: 0
       });
       fetchInquiries();
     } catch (error) {
