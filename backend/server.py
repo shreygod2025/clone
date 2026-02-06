@@ -2581,8 +2581,50 @@ async def update_growth_partner(
     data: GrowthPartnerUpdate,
     user: dict = Depends(get_current_user)
 ):
+    # Get current partner data to check status change
+    current_partner = await db.growth_partners.find_one({"id": partner_id}, {"_id": 0})
+    
     update_data = {k: v for k, v in data.model_dump().items() if v is not None}
     update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    # Check if status is changing to 'active' - auto-create team user with GP role
+    new_status = update_data.get('status')
+    old_status = current_partner.get('status') if current_partner else None
+    
+    if new_status == 'active' and old_status != 'active' and current_partner:
+        # Check if team user already exists for this GP
+        existing_team_user = await db.team_users.find_one({
+            "$or": [
+                {"email": current_partner.get('email')},
+                {"phone": current_partner.get('phone')}
+            ]
+        })
+        
+        if not existing_team_user:
+            # Find the "Growth Partner" role
+            gp_role = await db.roles.find_one({"name": "Growth Partner"}, {"_id": 0})
+            gp_role_id = gp_role.get('id') if gp_role else None
+            
+            # Create team user for this GP with Growth Partner role
+            team_user_id = str(uuid.uuid4())
+            team_user_doc = {
+                "id": team_user_id,
+                "name": current_partner.get('name', ''),
+                "email": current_partner.get('email', ''),
+                "phone": current_partner.get('phone', ''),
+                "role_id": gp_role_id,
+                "role_name": "Growth Partner",
+                "is_active": True,
+                "growth_partner_id": partner_id,  # Link back to GP
+                "permissions": ['dashboard', 'schools', 'students'],  # Default GP permissions
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+            await db.team_users.insert_one(team_user_doc)
+            
+            # Update GP with team_user_id reference
+            update_data['team_user_id'] = team_user_id
+    
     await db.growth_partners.update_one({"id": partner_id}, {"$set": update_data})
     partner = await db.growth_partners.find_one({"id": partner_id}, {"_id": 0})
     return partner
