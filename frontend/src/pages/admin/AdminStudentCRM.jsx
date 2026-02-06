@@ -142,13 +142,15 @@ const AdminStudentCRM = () => {
 
   const fetchOnboardedEducators = async () => {
     try {
-      // Use for_assignment=true to get all onboarded educators (not just team member's own)
+      // Use for_assignment=true to get all educators (not just team member's own)
       const response = await axios.get(`${API}/educators/applications?for_assignment=true`, {
         headers: getAuthHeaders()
       });
-      // Filter to only onboarded educators
-      const onboarded = (response.data || []).filter(e => e.status === 'onboarded');
-      setOnboardedEducators(onboarded);
+      // Filter to educators who can take sessions (onboarded or active)
+      const activeEducators = (response.data || []).filter(e => 
+        e.status === 'onboarded' || e.status === 'active'
+      );
+      setOnboardedEducators(activeEducators);
     } catch (error) {
       console.error('Failed to fetch educators:', error);
     }
