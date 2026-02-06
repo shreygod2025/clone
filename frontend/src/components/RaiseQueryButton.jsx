@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { MessageCircleQuestion, X, Loader2, Paperclip, Mic, Square, Play, Pause, ChevronLeft, Check, CheckCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { MessageCircleQuestion, X, Loader2, Paperclip, Mic, Square, Play, Pause, ChevronLeft, Check, CheckCircle, ExternalLink } from 'lucide-react';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogTitle } from './ui/dialog';
 import { Input } from './ui/input';
@@ -8,6 +9,68 @@ import axios from 'axios';
 import { toast } from 'sonner';
 
 const API = process.env.REACT_APP_BACKEND_URL + '/api';
+
+// Smart routing - show quick action buttons instead of form for certain queries
+const QUICK_ACTIONS = {
+  // Student pages
+  student: {
+    'course_info': {
+      'programs': { label: 'View All Programs', link: '/student#offerings', icon: '📚' },
+      'pricing': { label: 'See Pricing', link: '/student#pricing', icon: '💰' },
+    },
+    'demo': {
+      'book_demo': { label: 'Book a Free Demo', link: '/student', icon: '🎯', scroll: 'demo-form' },
+    },
+  },
+  // School pages
+  school: {
+    'partnership': {
+      'program_details': { label: 'View School Offerings', link: '/schools#offerings', icon: '📚' },
+      'pricing': { label: 'Get Pricing', link: '/schools#contact', icon: '💰' },
+    },
+    'demo': {
+      'schedule_demo': { label: 'Schedule a Meeting', link: '/schools#contact', icon: '🎯' },
+    },
+  },
+  // Educator pages
+  educator: {
+    'job_opportunity': {
+      'openings': { label: 'See Open Positions', link: '/educator#requirements', icon: '💼' },
+    },
+    'application': {
+      'status_check': null, // no quick action
+    },
+  },
+  // Partner pages
+  partner: {
+    'partnership': {
+      'center_setup': { label: 'Open a Center', link: '/centers', icon: '🏢' },
+      'investment': { label: 'Partnership Details', link: '/growth-partner', icon: '📊' },
+    },
+    'application': {
+      'apply': { label: 'Apply as Partner', link: '/growth-partner#apply', icon: '📝' },
+    },
+  },
+  // Course pages
+  course: {
+    'demo': {
+      'book_trial': { label: 'Book Free Trial', link: '/student', icon: '🎯' },
+    },
+    'course_details': {
+      'curriculum': { label: 'View Curriculum', link: '/student#offerings', icon: '📖' },
+    },
+  },
+  // General
+  general: {
+    'course_info': {
+      'programs': { label: 'Explore Programs', link: '/student', icon: '📚' },
+    },
+    'partnership': {
+      'school': { label: 'School Partnership', link: '/schools', icon: '🏫' },
+      'center': { label: 'Open a Center', link: '/centers', icon: '🏢' },
+    },
+  },
+};
 
 // Page-specific query types - Logged-in users get simplified options
 const LOGGED_IN_USER_QUERIES = {
