@@ -3277,6 +3277,417 @@ async def discontinue_gp(
     
     return {"message": "Growth Partner discontinued"}
 
+# PUBLIC GP ONBOARDING SUBMISSION ENDPOINTS (No auth required - use tracking token)
+
+@api_router.get("/gp-onboard/{token}")
+async def get_gp_onboarding_full(token: str):
+    """Public endpoint to get full GP onboarding data for filling form"""
+    onboarding = await db.gp_onboarding.find_one({"tracking_token": token}, {"_id": 0})
+    if not onboarding:
+        raise HTTPException(status_code=404, detail="Invalid tracking link")
+    
+    # Return all data needed for the onboarding form
+    return onboarding
+
+@api_router.post("/gp-onboard/{token}/personal-info")
+async def submit_gp_personal_info(token: str, data: dict):
+    """Public endpoint for GP to submit personal information"""
+    onboarding = await db.gp_onboarding.find_one({"tracking_token": token}, {"_id": 0})
+    if not onboarding:
+        raise HTTPException(status_code=404, detail="Invalid tracking link")
+    
+    # Update personal info
+    personal_info = {
+        "full_name": data.get("full_name", ""),
+        "email": data.get("email", ""),
+        "phone": data.get("phone", ""),
+        "aadhar_number": data.get("aadhar_number", ""),
+        "aadhar_url": data.get("aadhar_url", ""),
+        "pan_number": data.get("pan_number", ""),
+        "pan_url": data.get("pan_url", ""),
+        "address": data.get("address", ""),
+        "city": data.get("city", ""),
+        "state": data.get("state", ""),
+        "pincode": data.get("pincode", ""),
+        "tshirt_size": data.get("tshirt_size", "")
+    }
+    
+    now = datetime.now(timezone.utc).isoformat()
+    
+    await db.gp_onboarding.update_one(
+        {"tracking_token": token},
+        {"$set": {
+            "personal_info": personal_info,
+            "name": data.get("full_name", onboarding.get("name", "")),
+            "email": data.get("email", onboarding.get("email", "")),
+            "phone": data.get("phone", onboarding.get("phone", "")),
+            "city": data.get("city", onboarding.get("city", "")),
+            "steps.personal_info.completed": True,
+            "steps.personal_info.completed_at": now,
+            "steps.personal_info.data": personal_info,
+            "updated_at": now
+        }}
+    )
+    
+    return {"message": "Personal information saved", "next_step": "bank_details"}
+
+@api_router.post("/gp-onboard/{token}/bank-details")
+async def submit_gp_bank_details(token: str, data: dict):
+    """Public endpoint for GP to submit bank details"""
+    onboarding = await db.gp_onboarding.find_one({"tracking_token": token}, {"_id": 0})
+    if not onboarding:
+        raise HTTPException(status_code=404, detail="Invalid tracking link")
+    
+    bank_details = {
+        "account_holder_name": data.get("account_holder_name", ""),
+        "bank_name": data.get("bank_name", ""),
+        "account_number": data.get("account_number", ""),
+        "ifsc_code": data.get("ifsc_code", ""),
+        "branch": data.get("branch", ""),
+        "upi_id": data.get("upi_id", ""),
+        "cancelled_cheque_url": data.get("cancelled_cheque_url", "")
+    }
+    
+    now = datetime.now(timezone.utc).isoformat()
+    
+    await db.gp_onboarding.update_one(
+        {"tracking_token": token},
+        {"$set": {
+            "bank_details": bank_details,
+            "steps.bank_details.completed": True,
+            "steps.bank_details.completed_at": now,
+            "steps.bank_details.data": bank_details,
+            "updated_at": now
+        }}
+    )
+    
+    return {"message": "Bank details saved", "next_step": "contract_signing"}
+
+@api_router.post("/gp-onboard/{token}/contract")
+async def submit_gp_contract(token: str, data: dict):
+    """Public endpoint for GP to sign contract"""
+    onboarding = await db.gp_onboarding.find_one({"tracking_token": token}, {"_id": 0})
+    if not onboarding:
+        raise HTTPException(status_code=404, detail="Invalid tracking link")
+    
+    now = datetime.now(timezone.utc).isoformat()
+    
+    await db.gp_onboarding.update_one(
+        {"tracking_token": token},
+        {"$set": {
+            "contract_signed_at": now,
+            "contract_signature_url": data.get("signature_url", ""),
+            "steps.contract_signing.completed": True,
+            "steps.contract_signing.completed_at": now,
+            "steps.contract_signing.data": {
+                "signed_at": now,
+                "signature_url": data.get("signature_url", ""),
+                "agreed_terms": True
+            },
+            "updated_at": now
+        }}
+    )
+    
+    return {"message": "Contract signed", "next_step": "payment"}
+
+@api_router.post("/gp-onboard/{token}/payment")
+async def submit_gp_payment(token: str, data: dict):
+    """Public endpoint for GP to submit payment proof"""
+    onboarding = await db.gp_onboarding.find_one({"tracking_token": token}, {"_id": 0})
+    if not onboarding:
+        raise HTTPException(status_code=404, detail="Invalid tracking link")
+    
+    now = datetime.now(timezone.utc).isoformat()
+    
+    payment_data = {
+        "amount": data.get("amount", 0),
+        "transaction_id": data.get("transaction_id", ""),
+        "screenshot_url": data.get("screenshot_url", ""),
+        "payment_date": data.get("payment_date", now[:10]),
+        "payment_method": data.get("payment_method", "")
+    }
+    
+    await db.gp_onboarding.update_one(
+        {"tracking_token": token},
+        {"$set": {
+            "payment_amount": data.get("amount", 0),
+            "payment_status": "pending_verification",
+            "payment_screenshot_url": data.get("screenshot_url", ""),
+            "payment_transaction_id": data.get("transaction_id", ""),
+            "payment_date": data.get("payment_date", now[:10]),
+            "steps.payment.completed": True,
+            "steps.payment.completed_at": now,
+            "steps.payment.data": payment_data,
+            "steps.payment.verified": False,
+            "updated_at": now
+        }}
+    )
+    
+    return {"message": "Payment proof submitted. Awaiting admin verification.", "next_step": "kit_delivery"}
+
+@api_router.post("/gp-onboard/{token}/training/{step}")
+async def submit_gp_training_step(token: str, step: str, data: dict):
+    """Public endpoint for GP to submit training step progress"""
+    onboarding = await db.gp_onboarding.find_one({"tracking_token": token}, {"_id": 0})
+    if not onboarding:
+        raise HTTPException(status_code=404, detail="Invalid tracking link")
+    
+    valid_steps = ["about_company", "about_skill", "implementation_models", "product_training", 
+                   "target_audiences", "pricing_training", "software_training"]
+    if step not in valid_steps:
+        raise HTTPException(status_code=400, detail=f"Invalid training step. Valid steps: {valid_steps}")
+    
+    now = datetime.now(timezone.utc).isoformat()
+    training_progress = onboarding.get("training_progress", {})
+    step_data = training_progress.get(step, {})
+    
+    # Update videos watched
+    if "video_id" in data:
+        videos_watched = step_data.get("videos_watched", [])
+        if data["video_id"] not in videos_watched:
+            videos_watched.append(data["video_id"])
+        step_data["videos_watched"] = videos_watched
+    
+    # Update assessment
+    if "assessment" in data:
+        step_data["assessment"] = {
+            **step_data.get("assessment", {}),
+            **data["assessment"],
+            "submitted": True,
+            "submitted_at": now
+        }
+    
+    # Mark step as completed if all required items are done
+    if data.get("mark_complete", False):
+        step_data["completed"] = True
+        step_data["completed_at"] = now
+    
+    training_progress[step] = step_data
+    
+    # Check if all training steps are complete
+    all_training_complete = all(
+        training_progress.get(s, {}).get("completed", False) 
+        for s in valid_steps
+    )
+    
+    update_data = {
+        f"training_progress.{step}": step_data,
+        "updated_at": now
+    }
+    
+    if all_training_complete:
+        update_data["steps.training.completed"] = True
+        update_data["steps.training.completed_at"] = now
+        update_data["training_completed_at"] = now
+    
+    await db.gp_onboarding.update_one(
+        {"tracking_token": token},
+        {"$set": update_data}
+    )
+    
+    next_steps = {
+        "about_company": "about_skill",
+        "about_skill": "implementation_models",
+        "implementation_models": "product_training",
+        "product_training": "target_audiences",
+        "target_audiences": "pricing_training",
+        "pricing_training": "software_training",
+        "software_training": "complete"
+    }
+    
+    return {
+        "message": f"Training step '{step}' updated",
+        "next_step": next_steps.get(step, "complete"),
+        "all_training_complete": all_training_complete
+    }
+
+# Admin endpoints for GP onboarding verification
+@api_router.post("/gp-onboarding/{onboarding_id}/verify-payment")
+async def verify_gp_payment(
+    onboarding_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Admin endpoint to verify GP payment"""
+    now = datetime.now(timezone.utc).isoformat()
+    
+    await db.gp_onboarding.update_one(
+        {"id": onboarding_id},
+        {"$set": {
+            "payment_status": "verified",
+            "steps.payment.verified": True,
+            "steps.payment.verified_by": user.get("id"),
+            "steps.payment.verified_at": now,
+            "updated_at": now
+        }}
+    )
+    
+    return {"message": "Payment verified"}
+
+@api_router.post("/gp-onboarding/{onboarding_id}/ship-kit")
+async def ship_gp_kit(
+    onboarding_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Admin endpoint to mark kit as shipped"""
+    now = datetime.now(timezone.utc).isoformat()
+    
+    await db.gp_onboarding.update_one(
+        {"id": onboarding_id},
+        {"$set": {
+            "kit_delivery_status": "shipped",
+            "kit_tracking_number": data.get("tracking_number", ""),
+            "steps.kit_delivery.tracking_number": data.get("tracking_number", ""),
+            "updated_at": now
+        }}
+    )
+    
+    return {"message": "Kit marked as shipped"}
+
+@api_router.post("/gp-onboard/{token}/confirm-kit")
+async def confirm_gp_kit_delivery(token: str, data: dict):
+    """Public endpoint for GP to confirm kit received"""
+    onboarding = await db.gp_onboarding.find_one({"tracking_token": token}, {"_id": 0})
+    if not onboarding:
+        raise HTTPException(status_code=404, detail="Invalid tracking link")
+    
+    now = datetime.now(timezone.utc).isoformat()
+    
+    await db.gp_onboarding.update_one(
+        {"tracking_token": token},
+        {"$set": {
+            "kit_delivery_status": "delivered",
+            "kit_delivery_date": now[:10],
+            "kit_received_confirmation": True,
+            "steps.kit_delivery.completed": True,
+            "steps.kit_delivery.completed_at": now,
+            "steps.kit_delivery.delivered": True,
+            "steps.kit_delivery.delivered_at": now,
+            "updated_at": now
+        }}
+    )
+    
+    return {"message": "Kit delivery confirmed", "next_step": "training"}
+
+@api_router.post("/gp-onboarding/{onboarding_id}/review-assessment")
+async def review_gp_assessment(
+    onboarding_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Admin endpoint to review GP training assessment"""
+    training_step = data.get("training_step")
+    passed = data.get("passed", False)
+    review_notes = data.get("review_notes", "")
+    
+    now = datetime.now(timezone.utc).isoformat()
+    
+    await db.gp_onboarding.update_one(
+        {"id": onboarding_id},
+        {"$set": {
+            f"training_progress.{training_step}.assessment.reviewed": True,
+            f"training_progress.{training_step}.assessment.review_notes": review_notes,
+            f"training_progress.{training_step}.assessment.passed": passed,
+            f"training_progress.{training_step}.assessment.reviewed_by": user.get("id"),
+            f"training_progress.{training_step}.assessment.reviewed_at": now,
+            "updated_at": now
+        }}
+    )
+    
+    return {"message": f"Assessment for {training_step} reviewed", "passed": passed}
+
+@api_router.post("/gp-onboarding/{onboarding_id}/complete-onboarding")
+async def complete_gp_onboarding(
+    onboarding_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Admin endpoint to complete GP onboarding and create credentials"""
+    onboarding = await db.gp_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
+    if not onboarding:
+        raise HTTPException(status_code=404, detail="Onboarding not found")
+    
+    # Verify all steps are complete
+    steps = onboarding.get("steps", {})
+    incomplete_steps = []
+    for step_key, step_val in steps.items():
+        if not step_val.get("completed"):
+            incomplete_steps.append(step_key)
+    
+    if incomplete_steps:
+        raise HTTPException(status_code=400, detail=f"Incomplete steps: {', '.join(incomplete_steps)}")
+    
+    # Find Growth Partner role
+    gp_role = await db.roles.find_one({"name": "Growth Partner"}, {"_id": 0})
+    role_id = gp_role.get("id") if gp_role else None
+    
+    # Generate credentials
+    email = onboarding.get("email") or onboarding.get("personal_info", {}).get("email", "")
+    name = onboarding.get("name") or onboarding.get("personal_info", {}).get("full_name", "")
+    phone = onboarding.get("phone") or onboarding.get("personal_info", {}).get("phone", "")
+    
+    username = email.split("@")[0] if email else name.lower().replace(" ", "_")
+    # Ensure unique username
+    existing = await db.team_users.find_one({"username": username})
+    if existing:
+        username = f"gp_{username}_{str(uuid.uuid4())[:4]}"
+    
+    temp_password = str(uuid.uuid4())[:8]
+    
+    # Create team user
+    team_user_id = str(uuid.uuid4())
+    team_user_doc = {
+        "id": team_user_id,
+        "name": name,
+        "email": email,
+        "phone": phone,
+        "username": username,
+        "password_hash": bcrypt.hashpw(temp_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
+        "role_id": role_id,
+        "role_name": "Growth Partner",
+        "is_active": True,
+        "is_growth_partner": True,
+        "gp_onboarding_id": onboarding_id,
+        "permissions": ["dashboard", "schools", "students"],
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.team_users.insert_one(team_user_doc)
+    
+    now = datetime.now(timezone.utc).isoformat()
+    credentials = {
+        "username": username,
+        "email": email,
+        "temp_password": temp_password,
+        "login_url": "/admin/login",
+        "created_at": now
+    }
+    
+    # Update onboarding record
+    await db.gp_onboarding.update_one(
+        {"id": onboarding_id},
+        {"$set": {
+            "status": "active",
+            "team_user_id": team_user_id,
+            "team_user_credentials": credentials,
+            "lms_access_granted": True,
+            "updated_at": now
+        }}
+    )
+    
+    # Update growth partner status
+    await db.growth_partners.update_one(
+        {"id": onboarding.get("growth_partner_id")},
+        {"$set": {"status": "active", "team_user_id": team_user_id}}
+    )
+    
+    return {
+        "message": "GP onboarding completed",
+        "credentials": credentials,
+        "team_user_id": team_user_id
+    }
+
 # ========================
 # EXPENSE ENDPOINTS
 # ========================
