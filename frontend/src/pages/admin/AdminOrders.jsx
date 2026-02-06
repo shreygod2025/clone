@@ -208,6 +208,60 @@ const AdminOrders = () => {
     return 0;
   });
 
+  // Group school payments by school_id for sub-row display
+  const groupedSchoolPayments = useMemo(() => {
+    if (activeTab !== 'school') return [];
+    
+    const groups = {};
+    sortedPayments.forEach(payment => {
+      const schoolId = payment.school_id;
+      if (!schoolId) return;
+      
+      if (!groups[schoolId]) {
+        groups[schoolId] = {
+          school_id: schoolId,
+          school_name: payment.school_name,
+          contact_name: payment.contact_name,
+          tranches: [],
+          totalAmount: 0,
+          paidAmount: 0,
+          hasOverdue: false,
+          hasPending: false,
+        };
+      }
+      
+      groups[schoolId].tranches.push(payment);
+      groups[schoolId].totalAmount += payment.amount || 0;
+      if (payment.status === 'paid') {
+        groups[schoolId].paidAmount += payment.amount || 0;
+      }
+      
+      let status = payment.status || 'pending';
+      if (status === 'pending' && payment.due_date && isPast(parseISO(payment.due_date))) {
+        groups[schoolId].hasOverdue = true;
+      } else if (status === 'pending') {
+        groups[schoolId].hasPending = true;
+      }
+    });
+    
+    // Sort groups by urgency (overdue first, then pending, then all paid)
+    return Object.values(groups).sort((a, b) => {
+      if (a.hasOverdue && !b.hasOverdue) return -1;
+      if (!a.hasOverdue && b.hasOverdue) return 1;
+      if (a.hasPending && !b.hasPending) return -1;
+      if (!a.hasPending && b.hasPending) return 1;
+      return 0;
+    });
+  }, [sortedPayments, activeTab]);
+
+  // Toggle school expansion
+  const toggleSchoolExpand = (schoolId) => {
+    setExpandedSchools(prev => ({
+      ...prev,
+      [schoolId]: !prev[schoolId]
+    }));
+  };
+
   const stats = {
     total: payments.length,
     pending: payments.filter(p => (p.status || 'pending') === 'pending' && (!p.due_date || !isPast(parseISO(p.due_date)))).length,
