@@ -608,9 +608,16 @@ const AdminSupportUnified = () => {
       return;
     }
     try {
-      await axios.delete(`${API}/support/queries/${query.id}`, {
-        headers: getAuthHeaders()
-      });
+      // Use the correct endpoint based on source
+      if (query._source === 'inquiry') {
+        await axios.delete(`${API}/inquiry/queries/${query.id}`, {
+          headers: getAuthHeaders()
+        });
+      } else {
+        await axios.delete(`${API}/support/queries/${query.id}`, {
+          headers: getAuthHeaders()
+        });
+      }
       toast.success('Query deleted successfully');
       fetchAllQueries();
     } catch (error) {
