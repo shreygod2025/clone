@@ -382,13 +382,14 @@ const AdminGPOnboarding = () => {
 
       {/* View Details Modal */}
       <Dialog open={!!viewOnboarding} onOpenChange={() => setViewOnboarding(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Growth Partner Details</DialogTitle>
           </DialogHeader>
           {viewOnboarding && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              {/* Basic Info */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div>
                   <p className="text-sm text-slate-500">Name</p>
                   <p className="font-medium">{viewOnboarding.name}</p>
@@ -406,43 +407,236 @@ const AdminGPOnboarding = () => {
                   <p className="font-medium">{viewOnboarding.city || '-'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-slate-500">Interest Type</p>
-                  <p className="font-medium capitalize">{viewOnboarding.interest_type || '-'}</p>
+                  <p className="text-sm text-slate-500">Status</p>
+                  <p className={`font-medium capitalize ${viewOnboarding.status === 'active' ? 'text-green-600' : viewOnboarding.status === 'discontinued' ? 'text-red-600' : 'text-yellow-600'}`}>
+                    {viewOnboarding.status}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-sm text-slate-500">Status</p>
-                  <p className="font-medium capitalize">{viewOnboarding.status}</p>
+                  <p className="text-sm text-slate-500">Onboarding Link</p>
+                  <a 
+                    href={`/gp-onboard/${viewOnboarding.tracking_token}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline text-sm flex items-center gap-1"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    /gp-onboard/{viewOnboarding.tracking_token}
+                  </a>
                 </div>
               </div>
               
+              {/* Personal Information */}
               {viewOnboarding.personal_info && Object.keys(viewOnboarding.personal_info).length > 0 && (
-                <div className="bg-slate-50 p-4 rounded-lg">
-                  <h4 className="font-medium mb-2">Personal Information</h4>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    {Object.entries(viewOnboarding.personal_info).filter(([k]) => k !== 'bank_details').map(([key, value]) => (
-                      <div key={key}>
-                        <span className="text-slate-500">{key.replace(/_/g, ' ')}:</span>{' '}
-                        <span className="font-medium">{String(value)}</span>
-                      </div>
-                    ))}
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h4 className="font-medium mb-3 text-blue-800 flex items-center gap-2">
+                    <User className="w-4 h-4" />
+                    Personal Information
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                    <div>
+                      <span className="text-blue-600">Full Name:</span>
+                      <p className="font-medium">{viewOnboarding.personal_info.full_name || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-blue-600">Email:</span>
+                      <p className="font-medium">{viewOnboarding.personal_info.email || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-blue-600">Phone:</span>
+                      <p className="font-medium">{viewOnboarding.personal_info.phone || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-blue-600">Aadhar Number:</span>
+                      <p className="font-medium">{viewOnboarding.personal_info.aadhar_number || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-blue-600">PAN Number:</span>
+                      <p className="font-medium">{viewOnboarding.personal_info.pan_number || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-blue-600">T-Shirt Size:</span>
+                      <p className="font-medium">{viewOnboarding.personal_info.tshirt_size || '-'}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="text-blue-600">Address:</span>
+                      <p className="font-medium">
+                        {viewOnboarding.personal_info.address || '-'}, {viewOnboarding.personal_info.city || ''}, {viewOnboarding.personal_info.state || ''} - {viewOnboarding.personal_info.pincode || ''}
+                      </p>
+                    </div>
+                  </div>
+                  {/* Document Links */}
+                  <div className="flex gap-4 mt-3 pt-3 border-t border-blue-200">
+                    {viewOnboarding.personal_info.aadhar_url && (
+                      <a href={viewOnboarding.personal_info.aadhar_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm flex items-center gap-1">
+                        <FileText className="w-3 h-3" /> View Aadhar
+                      </a>
+                    )}
+                    {viewOnboarding.personal_info.pan_url && (
+                      <a href={viewOnboarding.personal_info.pan_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm flex items-center gap-1">
+                        <FileText className="w-3 h-3" /> View PAN
+                      </a>
+                    )}
                   </div>
                 </div>
               )}
               
+              {/* Bank Details */}
               {viewOnboarding.bank_details && Object.keys(viewOnboarding.bank_details).length > 0 && (
-                <div className="bg-slate-50 p-4 rounded-lg">
-                  <h4 className="font-medium mb-2">Bank Details</h4>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    {Object.entries(viewOnboarding.bank_details).map(([key, value]) => (
-                      <div key={key}>
-                        <span className="text-slate-500">{key.replace(/_/g, ' ')}:</span>{' '}
-                        <span className="font-medium">{String(value)}</span>
+                <div className="bg-purple-50 p-4 rounded-lg">
+                  <h4 className="font-medium mb-3 text-purple-800 flex items-center gap-2">
+                    <CreditCard className="w-4 h-4" />
+                    Bank Details
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                    <div>
+                      <span className="text-purple-600">Account Holder:</span>
+                      <p className="font-medium">{viewOnboarding.bank_details.account_holder_name || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-purple-600">Bank Name:</span>
+                      <p className="font-medium">{viewOnboarding.bank_details.bank_name || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-purple-600">Account Number:</span>
+                      <p className="font-medium">{viewOnboarding.bank_details.account_number || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-purple-600">IFSC Code:</span>
+                      <p className="font-medium">{viewOnboarding.bank_details.ifsc_code || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-purple-600">Branch:</span>
+                      <p className="font-medium">{viewOnboarding.bank_details.branch || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-purple-600">UPI ID:</span>
+                      <p className="font-medium">{viewOnboarding.bank_details.upi_id || '-'}</p>
+                    </div>
+                  </div>
+                  {viewOnboarding.bank_details.cancelled_cheque_url && (
+                    <div className="mt-3 pt-3 border-t border-purple-200">
+                      <a href={viewOnboarding.bank_details.cancelled_cheque_url} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:underline text-sm flex items-center gap-1">
+                        <FileText className="w-3 h-3" /> View Cancelled Cheque
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Payment Information */}
+              {(viewOnboarding.payment_status || viewOnboarding.payment_amount) && (
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <h4 className="font-medium mb-3 text-green-800 flex items-center gap-2">
+                    <DollarSign className="w-4 h-4" />
+                    Payment Information
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                    <div>
+                      <span className="text-green-600">Amount:</span>
+                      <p className="font-medium">₹{viewOnboarding.payment_amount || 0}</p>
+                    </div>
+                    <div>
+                      <span className="text-green-600">Transaction ID:</span>
+                      <p className="font-medium">{viewOnboarding.payment_transaction_id || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-green-600">Status:</span>
+                      <p className={`font-medium capitalize ${viewOnboarding.payment_status === 'verified' ? 'text-green-600' : 'text-yellow-600'}`}>
+                        {viewOnboarding.payment_status || 'Pending'}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-green-600">Payment Date:</span>
+                      <p className="font-medium">{viewOnboarding.payment_date || '-'}</p>
+                    </div>
+                  </div>
+                  {viewOnboarding.payment_screenshot_url && (
+                    <div className="mt-3 pt-3 border-t border-green-200">
+                      <a href={viewOnboarding.payment_screenshot_url} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:underline text-sm flex items-center gap-1">
+                        <FileText className="w-3 h-3" /> View Payment Screenshot
+                      </a>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Kit Delivery */}
+              {viewOnboarding.kit_delivery_status && (
+                <div className="bg-orange-50 p-4 rounded-lg">
+                  <h4 className="font-medium mb-3 text-orange-800 flex items-center gap-2">
+                    <Briefcase className="w-4 h-4" />
+                    Kit Delivery
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                    <div>
+                      <span className="text-orange-600">Status:</span>
+                      <p className={`font-medium capitalize ${viewOnboarding.kit_delivery_status === 'delivered' ? 'text-green-600' : 'text-yellow-600'}`}>
+                        {viewOnboarding.kit_delivery_status}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-orange-600">Tracking Number:</span>
+                      <p className="font-medium">{viewOnboarding.kit_tracking_number || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-orange-600">Delivery Date:</span>
+                      <p className="font-medium">{viewOnboarding.kit_delivery_date || '-'}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Training Progress */}
+              {viewOnboarding.training_progress && Object.keys(viewOnboarding.training_progress).length > 0 && (
+                <div className="bg-indigo-50 p-4 rounded-lg">
+                  <h4 className="font-medium mb-3 text-indigo-800 flex items-center gap-2">
+                    <GraduationCap className="w-4 h-4" />
+                    Training Progress
+                  </h4>
+                  <div className="space-y-2">
+                    {Object.entries(viewOnboarding.training_progress).map(([key, value]) => (
+                      <div key={key} className="flex items-center justify-between p-2 bg-white rounded">
+                        <span className="text-sm capitalize">{key.replace(/_/g, ' ')}</span>
+                        <div className="flex items-center gap-2">
+                          {value?.completed ? (
+                            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">Completed</span>
+                          ) : value?.assessment?.submitted ? (
+                            <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded">Submitted</span>
+                          ) : (
+                            <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded">Pending</span>
+                          )}
+                          {value?.assessment?.passed && (
+                            <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">Passed</span>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
+              {/* Credentials (for active GPs) */}
+              {viewOnboarding.team_user_credentials && Object.keys(viewOnboarding.team_user_credentials).length > 0 && (
+                <div className="bg-slate-100 p-4 rounded-lg">
+                  <h4 className="font-medium mb-3 text-slate-800 flex items-center gap-2">
+                    <UserPlus className="w-4 h-4" />
+                    Login Credentials
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-slate-600">Email:</span>
+                      <p className="font-medium">{viewOnboarding.team_user_credentials.email || '-'}</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-600">Username:</span>
+                      <p className="font-medium">{viewOnboarding.team_user_credentials.username || '-'}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Commission Structure */}
               {viewOnboarding.commission_structure && Object.keys(viewOnboarding.commission_structure).length > 0 && (
                 <div className="bg-green-50 p-4 rounded-lg">
                   <h4 className="font-medium mb-2 text-green-800">Commission Structure</h4>
