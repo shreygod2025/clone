@@ -1373,9 +1373,25 @@ const AdminSchoolCRM = () => {
     if (!showOnboardModal) return;
     
     try {
-      // Calculate totals
-      const totalStudents = onboardData.grade_pricing.reduce((sum, g) => sum + (parseInt(g.students) || 0), 0);
-      const totalAmount = onboardData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
+      // Calculate totals based on pricing type
+      let totalStudents = 0;
+      let totalAmount = 0;
+      
+      // Per student pricing
+      if (onboardData.pricing_type === 'per_student' || onboardData.pricing_type === 'both' || !onboardData.pricing_type) {
+        totalStudents = onboardData.grade_pricing.reduce((sum, g) => sum + (parseInt(g.students) || 0), 0);
+        totalAmount = onboardData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
+      }
+      
+      // Fixed price - add fixed_price to totalAmount
+      if (onboardData.pricing_type === 'fixed' || onboardData.pricing_type === 'both') {
+        totalAmount += parseFloat(onboardData.fixed_price) || 0;
+      }
+      
+      // If no total calculated, use the manual total_amount
+      if (totalAmount === 0 && onboardData.total_amount > 0) {
+        totalAmount = onboardData.total_amount;
+      }
       
       // Convert dates to strings - ensure they are proper string format
       const contractStart = onboardData.contract_start 
