@@ -1056,7 +1056,7 @@ const AdminGrowthPartners = () => {
 
       {/* Assign Lead Modal */}
       <Dialog open={!!showAssignModal} onOpenChange={() => setShowAssignModal(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <UserPlus className="w-5 h-5 text-indigo-600" />
