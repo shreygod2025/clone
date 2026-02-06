@@ -759,35 +759,37 @@ const RaiseQueryButton = () => {
                   </div>
                 )}
 
-                {/* Step 4: Contact Details (non-logged-in, non-admin only) */}
-                {step === 4 && !isLoggedIn && !isAdminPage && (
+                {/* Step 4: Contact Details - Always shown, auto-filled for logged-in users */}
+                {step === 4 && (
                   <div className="space-y-3">
                     <p className="text-xs text-slate-500">
-                      Share your contact details so we can get back to you.
+                      {isLoggedIn ? 'Please confirm your contact details.' : 'Share your contact details so we can get back to you.'}
                     </p>
                     <div>
-                      <label className="block text-xs font-medium text-slate-600 mb-1">Name</label>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Name <span className="text-red-500">*</span></label>
                       <Input
                         placeholder="Your name"
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         className="h-9 text-sm"
+                        required
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-slate-600 mb-1">Phone</label>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Phone <span className="text-red-500">*</span></label>
                       <Input
                         placeholder="Phone number"
                         value={formData.phone}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                         className="h-9 text-sm"
+                        required
                       />
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-slate-600 mb-1">Email</label>
                       <Input
                         type="email"
-                        placeholder="Email address"
+                        placeholder="Email address (optional)"
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                         className="h-9 text-sm"
@@ -810,7 +812,17 @@ const RaiseQueryButton = () => {
                     Back
                   </Button>
                 )}
-                {step >= 3 && (
+                {step === 3 && (
+                  <Button
+                    size="sm"
+                    className="flex-1 bg-[#FF6B35] hover:bg-[#E55A2B] text-white h-9"
+                    onClick={handleNext}
+                    disabled={!formData.message.trim()}
+                  >
+                    Next
+                  </Button>
+                )}
+                {step === 4 && (
                   <Button
                     size="sm"
                     className="flex-1 bg-[#FF6B35] hover:bg-[#E55A2B] text-white h-9"
@@ -818,7 +830,7 @@ const RaiseQueryButton = () => {
                     disabled={!canSubmit() || loading}
                   >
                     {loading ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
-                    {(step === totalSteps || (step === 3 && (isLoggedIn || isAdminPage))) ? 'Submit' : 'Next'}
+                    Submit
                   </Button>
                 )}
               </div>
