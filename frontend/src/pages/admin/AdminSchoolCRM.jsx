@@ -1480,6 +1480,7 @@ const AdminSchoolCRM = () => {
       setShowOnboardModal(null);
       setOnboardData({
         offering: '', model: '', book_type: '', kit_type: '', training_type: '',
+        pricing_type: 'per_student', fixed_price: '',
         grade_pricing: [{ grade: '', students: '', price_per_student: '' }],
         total_students: 0, total_amount: 0, school_contacts: [{ name: '', phone_number: '', country_code: '+91', email: '', role: '' }],
         payment_mode: 'from_school', payment_method: '', payment_tranches: [{ amount: '', percentage: '', date: '', notes: '' }],
