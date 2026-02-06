@@ -18,9 +18,12 @@ import axios from 'axios';
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const ONBOARDING_STEPS = [
-  { key: 'personal_info', label: 'Personal Information', icon: User, description: 'Complete personal & bank details' },
-  { key: 'contract_signing', label: 'Contract Signing', icon: FileText, description: 'Review and sign partnership contract' },
-  { key: 'training', label: 'Training', icon: GraduationCap, description: 'Complete partner training program' },
+  { key: 'personal_info', label: 'Personal Information', icon: User, description: 'Personal details & documents' },
+  { key: 'bank_details', label: 'Bank Details', icon: CreditCard, description: 'Bank account for payouts' },
+  { key: 'contract_signing', label: 'Contract Signing', icon: FileText, description: 'Partnership contract' },
+  { key: 'payment', label: 'Onboarding Fees', icon: DollarSign, description: 'Payment verification' },
+  { key: 'kit_delivery', label: 'Kit Delivery', icon: Briefcase, description: 'Onboarding kit shipping' },
+  { key: 'training', label: 'Training', icon: GraduationCap, description: 'Complete training program' },
 ];
 
 const AdminGPOnboarding = () => {
