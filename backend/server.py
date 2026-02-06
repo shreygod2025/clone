@@ -3648,6 +3648,7 @@ async def create_educator_application_verified(data: EducatorApplyWithOTP):
 @api_router.get("/educators/applications", response_model=List[EducatorApplication])
 async def get_educator_applications(
     status: Optional[str] = None,
+    for_assignment: Optional[bool] = False,
     user: dict = Depends(get_current_user)
 ):
     query = {}
@@ -3655,7 +3656,8 @@ async def get_educator_applications(
         query["status"] = status
     
     # For team members, only show leads they added or assigned to them
-    if user.get("role") == "team_member":
+    # UNLESS for_assignment=true (need to see all onboarded educators for dropdown)
+    if user.get("role") == "team_member" and not for_assignment:
         user_id = user.get("user_id", user.get("id", ""))
         query["$or"] = [
             {"added_by": user_id},
