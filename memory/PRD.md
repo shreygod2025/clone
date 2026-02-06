@@ -416,6 +416,16 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ Updated `/app/backend/routes/__init__.py` with proper exports
 - ⚠️ Full refactoring of server.py (9,700+ lines) deferred to P2 for incremental approach
 
+**Need Help Popup UX Improvements:**
+- ✅ **Fixed duplicate X buttons** - Hidden default DialogContent close button using `[&>button]:hidden` CSS
+- ✅ **Smart Routing / Quick Actions** - Added contextual quick action buttons based on user selection:
+  - Student: "Book a Free Demo" for demo-related queries
+  - School: "View School Offerings" for program details, "Schedule a Meeting" for demo requests
+  - Educator: "See Open Positions" for job inquiries
+  - Partner: "Open a Center", "Partnership Details" for center-related queries
+- ✅ Quick actions navigate directly to relevant page sections with smooth scroll
+- ✅ Users can still describe their specific question if quick action doesn't apply
+
 ### Feb 5, 2026 - School Card Design Fix & Global Help Button
 
 **School CRM Card Design Overhaul:**
