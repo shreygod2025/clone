@@ -1501,11 +1501,13 @@ const AdminSchoolCRM = () => {
       return;
     }
     const fullPhone = newLead.countryCode === '+91' ? newLead.phone : `${newLead.countryCode}${newLead.phone}`;
+    // Clean phone for email generation - remove spaces and special chars
+    const cleanPhone = newLead.phone.replace(/[^0-9]/g, '');
     try {
       await axios.post(`${API}/schools/inquiry`, {
         school_name: newLead.school_name,
         contact_name: newLead.contact_name,
-        email: newLead.email || `${newLead.phone}@school.oll`,
+        email: newLead.email || `${cleanPhone}@school.oll`,
         phone: fullPhone,
         location: newLead.location,
         school_size: newLead.student_count || '',
