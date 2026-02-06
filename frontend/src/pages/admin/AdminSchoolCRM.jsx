@@ -2330,11 +2330,11 @@ const AdminSchoolCRM = () => {
             </button>
             <button
               onClick={() => openLostReasonModal(inquiry)}
-              className="p-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700"
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 font-medium"
               data-testid={`lost-${inquiry.id}`}
-              title="Mark Lost"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-3 h-3" />
+              Lost
             </button>
             {documentsButton}
             {baseButtons}
@@ -2343,10 +2343,10 @@ const AdminSchoolCRM = () => {
       
       case 'renewal_meeting':
         return (
-          <div className="flex gap-1 flex-wrap items-center">
+          <div className="flex gap-1.5 flex-wrap items-center">
             <button
               onClick={() => openRenewalConvertModal(inquiry)}
-              className="text-xs px-2 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white flex items-center gap-1 font-medium"
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white flex items-center gap-1 font-medium"
               data-testid={`renew-convert-${inquiry.id}`}
             >
               <CheckCircle className="w-3 h-3" />
@@ -2354,20 +2354,20 @@ const AdminSchoolCRM = () => {
             </button>
             <button
               onClick={() => setShowFollowupModal(inquiry)}
-              className="p-1.5 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-700"
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-700 flex items-center gap-1 font-medium"
               data-testid={`followup-${inquiry.id}`}
-              title="Follow-up"
             >
-              <Clock className="w-3.5 h-3.5" />
+              <Clock className="w-3 h-3" />
+              Followup
             </button>
             {documentsButton}
             <button
               onClick={() => openLostReasonModal(inquiry)}
-              className="p-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700"
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 font-medium"
               data-testid={`lost-${inquiry.id}`}
-              title="Mark Lost"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-3 h-3" />
+              Lost
             </button>
             {baseButtons}
           </div>
@@ -2375,22 +2375,22 @@ const AdminSchoolCRM = () => {
       
       case 'renewed':
         return (
-          <div className="flex gap-1 flex-wrap items-center">
+          <div className="flex gap-1.5 flex-wrap items-center">
             <button
               onClick={() => handleEditOnboarding(inquiry)}
-              className="p-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700"
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 flex items-center gap-1 font-medium"
               data-testid={`edit-${inquiry.id}`}
-              title="Edit"
             >
-              <Edit className="w-3.5 h-3.5" />
+              <Edit className="w-3 h-3" />
+              Edit
             </button>
             <button
               onClick={() => openLostReasonModal(inquiry)}
-              className="p-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700"
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 font-medium"
               data-testid={`lost-${inquiry.id}`}
-              title="Mark Lost"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="w-3 h-3" />
+              Lost
             </button>
             {baseButtons}
           </div>
@@ -2398,10 +2398,10 @@ const AdminSchoolCRM = () => {
       
       case 'lost':
         return (
-          <div className="flex gap-1 flex-wrap items-center">
+          <div className="flex gap-1.5 flex-wrap items-center">
             <button
               onClick={() => handleStatusChange(inquiry, 'active')}
-              className="text-xs px-2 py-1 rounded-lg bg-green-500 hover:bg-green-600 text-white flex items-center gap-1 font-medium"
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-green-500 hover:bg-green-600 text-white flex items-center gap-1 font-medium"
               data-testid={`reactivate-${inquiry.id}`}
             >
               <RefreshCw className="w-3 h-3" />
