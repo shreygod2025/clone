@@ -883,25 +883,160 @@ class GPOnboarding(BaseModel):
     tracking_token: str = Field(default_factory=lambda: str(uuid.uuid4())[:8])
     status: str = "onboarding"  # onboarding, active, discontinued
     
-    # Onboarding steps (3 steps for GP)
+    # Onboarding steps (6 main steps for GP)
     steps: dict = Field(default_factory=lambda: {
-        "personal_info": {"completed": False, "completed_at": None},
-        "contract_signing": {"completed": False, "completed_at": None},
-        "training": {"completed": False, "completed_at": None}
+        "personal_info": {"completed": False, "completed_at": None, "data": {}},
+        "bank_details": {"completed": False, "completed_at": None, "data": {}},
+        "contract_signing": {"completed": False, "completed_at": None, "data": {}},
+        "payment": {"completed": False, "completed_at": None, "verified": False, "verified_by": None, "verified_at": None, "data": {}},
+        "kit_delivery": {"completed": False, "completed_at": None, "delivered": False, "delivered_at": None, "tracking_number": "", "data": {}},
+        "training": {"completed": False, "completed_at": None, "data": {}}
     })
     
-    # Personal Information
-    personal_info: dict = Field(default_factory=dict)  # full_name, address, pan, aadhar, etc.
+    # Step 1: Personal Information
+    personal_info: dict = Field(default_factory=lambda: {
+        "full_name": "",
+        "email": "",
+        "phone": "",
+        "aadhar_number": "",
+        "aadhar_url": "",  # Uploaded Aadhar document
+        "pan_number": "",
+        "pan_url": "",  # Uploaded PAN document
+        "address": "",
+        "city": "",
+        "state": "",
+        "pincode": "",
+        "tshirt_size": ""  # XS, S, M, L, XL, XXL
+    })
     
-    # Bank Details (for commission payouts)
-    bank_details: dict = Field(default_factory=dict)
+    # Step 2: Bank Details (for commission payouts)
+    bank_details: dict = Field(default_factory=lambda: {
+        "account_holder_name": "",
+        "bank_name": "",
+        "account_number": "",
+        "ifsc_code": "",
+        "branch": "",
+        "upi_id": "",
+        "cancelled_cheque_url": ""  # Uploaded cancelled cheque
+    })
     
-    # Contract
+    # Step 3: Contract
     contract_url: str = ""
     contract_signed_at: Optional[str] = None
+    contract_signature_url: str = ""  # Digital signature image
     commission_structure: dict = Field(default_factory=dict)  # student_referral, school_referral rates
     
-    # Training
+    # Step 4: Payment
+    payment_amount: float = 0
+    payment_status: str = ""  # pending, paid, verified
+    payment_screenshot_url: str = ""
+    payment_transaction_id: str = ""
+    payment_date: str = ""
+    
+    # Step 5: Kit Delivery
+    kit_delivery_status: str = ""  # pending, shipped, delivered
+    kit_tracking_number: str = ""
+    kit_delivery_date: str = ""
+    kit_received_confirmation: bool = False
+    
+    # Step 6: Training - All sub-steps
+    training_progress: dict = Field(default_factory=lambda: {
+        "about_company": {
+            "completed": False,
+            "completed_at": None,
+            "videos_watched": [],
+            "assessment": {
+                "submitted": False,
+                "submitted_at": None,
+                "answers": {},  # MCQ answers
+                "score": 0,
+                "passed": False
+            }
+        },
+        "about_skill": {
+            "completed": False,
+            "completed_at": None,
+            "videos_watched": [],
+            "assessment": {
+                "submitted": False,
+                "submitted_at": None,
+                "answers": {},  # Long text answers
+                "reviewed": False,
+                "review_notes": "",
+                "passed": False
+            }
+        },
+        "implementation_models": {
+            "completed": False,
+            "completed_at": None,
+            "videos_watched": [],
+            "assessment": {
+                "submitted": False,
+                "submitted_at": None,
+                "answers": {},  # FAQ answers
+                "reviewed": False,
+                "review_notes": "",
+                "passed": False
+            }
+        },
+        "product_training": {
+            "completed": False,
+            "completed_at": None,
+            "videos_watched": [],
+            "samples_created": [],  # URLs of sample project photos/videos
+            "component_names_learned": False
+        },
+        "target_audiences": {
+            "completed": False,
+            "completed_at": None,
+            "videos_watched": [],
+            "assessment": {
+                "submitted": False,
+                "submitted_at": None,
+                "pitch_videos": {
+                    "trustee_management": "",  # Video URL
+                    "principal": "",
+                    "teachers_demo": "",
+                    "students_demo": "",
+                    "parent_orientation": ""
+                },
+                "reviewed": False,
+                "review_notes": "",
+                "passed": False
+            }
+        },
+        "pricing_training": {
+            "completed": False,
+            "completed_at": None,
+            "materials_reviewed": False,
+            "assessment": {
+                "submitted": False,
+                "submitted_at": None,
+                "negotiation_scenarios": {},  # Answers to negotiation scenarios
+                "reviewed": False,
+                "review_notes": "",
+                "passed": False
+            }
+        },
+        "software_training": {
+            "completed": False,
+            "completed_at": None,
+            "assessment": {
+                "submitted": False,
+                "submitted_at": None,
+                "proposal_url": "",
+                "mou_url": "",
+                "email_sent": False,
+                "whatsapp_sent": False,
+                "campaign_created": False,
+                "reviewed": False,
+                "review_notes": "",
+                "passed": False
+            }
+        }
+    })
+    
+    # Training completion
     training_completed_at: Optional[str] = None
     training_notes: str = ""
     
@@ -909,13 +1044,18 @@ class GPOnboarding(BaseModel):
     discontinued_reason: str = ""
     discontinued_at: Optional[str] = None
     
-    # Team user created (GP gets user access)
+    # Team user created (GP gets user access after training)
     team_user_id: str = ""
+    team_user_credentials: dict = Field(default_factory=dict)  # Store login info to show GP
     
     # Performance metrics
     total_referrals: int = 0
     successful_conversions: int = 0
     total_earnings: float = 0
+    
+    # LMS Access (shown after training)
+    lms_access_granted: bool = False
+    lms_credentials: dict = Field(default_factory=dict)
     
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
