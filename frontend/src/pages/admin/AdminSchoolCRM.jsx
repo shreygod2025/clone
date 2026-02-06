@@ -2412,7 +2412,7 @@ const AdminSchoolCRM = () => {
         );
       
       case 'archived':
-        return <div className="flex gap-1 flex-wrap items-center">{followupButton}{baseButtons}</div>;
+        return <div className="flex gap-1.5 flex-wrap items-center">{followupButton}{baseButtons}</div>;
       
       default:
         return null;
