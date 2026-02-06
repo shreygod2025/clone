@@ -70,7 +70,7 @@
   "test_execution_details": {
     "test_type": "Backend API + Frontend UI Testing",
     "tools_used": ["pytest", "Playwright Browser Automation"],
-    "test_url": "https://teachtool.preview.emergentagent.com",
+    "test_url": "https://eduadmin-51.preview.emergentagent.com",
     "pages_tested": [
       "/admin/login",
       "/admin/team-onboarding (all 3 tabs)",
