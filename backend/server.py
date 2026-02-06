@@ -3359,8 +3359,95 @@ async def update_school_inquiry(
     data: SchoolInquiryUpdate,
     user: dict = Depends(get_current_user)
 ):
+    # Get current inquiry to track changes
+    current_inquiry = await db.school_inquiries.find_one({"id": inquiry_id}, {"_id": 0})
+    if not current_inquiry:
+        raise HTTPException(status_code=404, detail="Inquiry not found")
+    
     update_data = {k: v for k, v in data.model_dump().items() if v is not None}
     update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    # Track status changes and other important updates in activity_log
+    activity_entries = []
+    
+    # Status change
+    if 'status' in update_data and update_data['status'] != current_inquiry.get('status'):
+        activity_entries.append({
+            "type": "status_change",
+            "timestamp": update_data['updated_at'],
+            "old_status": current_inquiry.get('status'),
+            "new_status": update_data['status'],
+            "description": f"Status changed from {current_inquiry.get('status', 'new')} to {update_data['status']}",
+            "by": user.get('name', user.get('email', 'System'))
+        })
+    
+    # Meeting scheduled
+    if 'meeting_date' in update_data and update_data.get('meeting_date') != current_inquiry.get('meeting_date'):
+        activity_entries.append({
+            "type": "meeting_scheduled",
+            "timestamp": update_data['updated_at'],
+            "description": f"Meeting scheduled for {update_data.get('meeting_date')} at {update_data.get('meeting_time', 'TBD')}",
+            "details": {
+                "meeting_date": update_data.get('meeting_date'),
+                "meeting_time": update_data.get('meeting_time'),
+                "meeting_mode": update_data.get('meeting_mode')
+            },
+            "by": user.get('name', user.get('email', 'System'))
+        })
+    
+    # Renewal meeting scheduled
+    if 'renewal_meeting_date' in update_data and update_data.get('renewal_meeting_date') != current_inquiry.get('renewal_meeting_date'):
+        activity_entries.append({
+            "type": "renewal_meeting_scheduled",
+            "timestamp": update_data['updated_at'],
+            "description": f"Renewal meeting scheduled for {update_data.get('renewal_meeting_date')} at {update_data.get('renewal_meeting_time', 'TBD')}",
+            "details": {
+                "meeting_date": update_data.get('renewal_meeting_date'),
+                "meeting_time": update_data.get('renewal_meeting_time'),
+                "meeting_type": update_data.get('renewal_meeting_type')
+            },
+            "by": user.get('name', user.get('email', 'System'))
+        })
+    
+    # Followup scheduled
+    if 'followup_date' in update_data and update_data.get('followup_date') != current_inquiry.get('followup_date'):
+        activity_entries.append({
+            "type": "followup_scheduled",
+            "timestamp": update_data['updated_at'],
+            "description": f"Followup ({update_data.get('followup_type', 'general')}) scheduled for {update_data.get('followup_date')}",
+            "details": {
+                "followup_date": update_data.get('followup_date'),
+                "followup_type": update_data.get('followup_type'),
+                "followup_comment": update_data.get('followup_comment')
+            },
+            "by": user.get('name', user.get('email', 'System'))
+        })
+    
+    # Notes added/updated
+    if 'notes' in update_data and update_data.get('notes') != current_inquiry.get('notes'):
+        activity_entries.append({
+            "type": "notes_updated",
+            "timestamp": update_data['updated_at'],
+            "description": f"Notes updated: {(update_data.get('notes') or '')[:50]}...",
+            "by": user.get('name', user.get('email', 'System'))
+        })
+    
+    # Assignment changed
+    if 'assigned_to' in update_data and update_data.get('assigned_to') != current_inquiry.get('assigned_to'):
+        activity_entries.append({
+            "type": "assigned",
+            "timestamp": update_data['updated_at'],
+            "description": f"Assigned to {update_data.get('assigned_to_name', update_data.get('assigned_to', 'team member'))}",
+            "by": user.get('name', user.get('email', 'System'))
+        })
+    
+    # Add activity entries to the log
+    if activity_entries:
+        await db.school_inquiries.update_one(
+            {"id": inquiry_id},
+            {"$push": {"activity_log": {"$each": activity_entries}}}
+        )
+    
     await db.school_inquiries.update_one({"id": inquiry_id}, {"$set": update_data})
     inquiry = await db.school_inquiries.find_one({"id": inquiry_id}, {"_id": 0})
     if isinstance(inquiry.get('created_at'), str):
