@@ -1438,6 +1438,8 @@ const AdminSchoolCRM = () => {
         book_type: String(onboardData.book_type || ''),
         kit_type: String(onboardData.kit_type || ''),
         training_type: String(onboardData.training_type || ''),
+        pricing_type: String(onboardData.pricing_type || 'per_student'),
+        fixed_price: String(onboardData.fixed_price || ''),
         grade_pricing: onboardData.grade_pricing.filter(g => g.grade && g.students),
         total_students: totalStudents,
         total_amount: totalAmount,
