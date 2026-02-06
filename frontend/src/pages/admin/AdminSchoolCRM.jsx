@@ -2137,6 +2137,8 @@ const AdminSchoolCRM = () => {
           book_type: editOnboardData.book_type,
           kit_type: editOnboardData.kit_type,
           training_type: editOnboardData.training_type,
+          pricing_type: editOnboardData.pricing_type,
+          fixed_price: editOnboardData.fixed_price,
           grade_pricing: editOnboardData.grade_pricing,
           total_students: editOnboardData.total_students,
           total_amount: editOnboardData.total_amount,
@@ -2147,6 +2149,14 @@ const AdminSchoolCRM = () => {
           contract_start: editOnboardData.contract_start,
           contract_end: editOnboardData.contract_end,
           mou_url: editOnboardData.mou_url,
+          school_share_type: editOnboardData.school_share_type,
+          school_share_calc: editOnboardData.school_share_calc,
+          school_share_value: editOnboardData.school_share_value,
+          school_share_amount: editOnboardData.school_share_amount,
+          gp_share_type: editOnboardData.gp_share_type,
+          gp_share_calc: editOnboardData.gp_share_calc,
+          gp_share_value: editOnboardData.gp_share_value,
+          gp_share_amount: editOnboardData.gp_share_amount,
         }, {
           headers: getAuthHeaders()
         });
@@ -2159,6 +2169,8 @@ const AdminSchoolCRM = () => {
           book_type: editOnboardData.book_type,
           kit_type: editOnboardData.kit_type,
           training_type: editOnboardData.training_type,
+          pricing_type: editOnboardData.pricing_type,
+          fixed_price: editOnboardData.fixed_price,
           grade_pricing: editOnboardData.grade_pricing,
           total_students: editOnboardData.total_students,
           total_amount: editOnboardData.total_amount,
@@ -2169,6 +2181,14 @@ const AdminSchoolCRM = () => {
           contract_start: editOnboardData.contract_start,
           contract_end: editOnboardData.contract_end,
           mou_url: editOnboardData.mou_url,
+          school_share_type: editOnboardData.school_share_type,
+          school_share_calc: editOnboardData.school_share_calc,
+          school_share_value: editOnboardData.school_share_value,
+          school_share_amount: editOnboardData.school_share_amount,
+          gp_share_type: editOnboardData.gp_share_type,
+          gp_share_calc: editOnboardData.gp_share_calc,
+          gp_share_value: editOnboardData.gp_share_value,
+          gp_share_amount: editOnboardData.gp_share_amount,
         }, {
           headers: getAuthHeaders()
         });
