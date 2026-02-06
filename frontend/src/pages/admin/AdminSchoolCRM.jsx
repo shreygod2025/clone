@@ -6389,7 +6389,62 @@ const AdminSchoolCRM = () => {
                 </div>
               </div>
 
-              {/* Grade-wise Pricing */}
+              {/* Pricing Type Selection */}
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <label className="text-sm font-medium text-amber-800 mb-2 block">Pricing Type</label>
+                <div className="flex gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="edit_pricing_type"
+                      value="per_student"
+                      checked={editOnboardData.pricing_type === 'per_student'}
+                      onChange={(e) => setEditOnboardData(prev => ({ ...prev, pricing_type: e.target.value }))}
+                      className="w-4 h-4 text-amber-600"
+                    />
+                    <span className="text-sm">Per Student</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="edit_pricing_type"
+                      value="fixed"
+                      checked={editOnboardData.pricing_type === 'fixed'}
+                      onChange={(e) => setEditOnboardData(prev => ({ ...prev, pricing_type: e.target.value }))}
+                      className="w-4 h-4 text-amber-600"
+                    />
+                    <span className="text-sm">Fixed Price</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="edit_pricing_type"
+                      value="both"
+                      checked={editOnboardData.pricing_type === 'both'}
+                      onChange={(e) => setEditOnboardData(prev => ({ ...prev, pricing_type: e.target.value }))}
+                      className="w-4 h-4 text-amber-600"
+                    />
+                    <span className="text-sm">Both</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Fixed Price Input */}
+              {(editOnboardData.pricing_type === 'fixed' || editOnboardData.pricing_type === 'both') && (
+                <div>
+                  <label className="text-sm font-medium text-slate-700">Fixed Price Amount (₹)</label>
+                  <Input
+                    type="number"
+                    placeholder="Enter fixed price"
+                    value={editOnboardData.fixed_price || ''}
+                    onChange={(e) => setEditOnboardData(prev => ({ ...prev, fixed_price: e.target.value }))}
+                    className="mt-1"
+                  />
+                </div>
+              )}
+
+              {/* Grade-wise Pricing - Show if per_student or both */}
+              {(editOnboardData.pricing_type === 'per_student' || editOnboardData.pricing_type === 'both') && (
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-sm font-medium text-slate-700">Grade-wise Student Count & Pricing</label>
@@ -6440,9 +6495,171 @@ const AdminSchoolCRM = () => {
                 </div>
                 {(editOnboardData.grade_pricing || []).length > 0 && (
                   <div className="mt-2 p-2 bg-green-50 rounded-lg text-sm">
-                    <span className="font-medium">Total: </span>
+                    <span className="font-medium">Per-Student Total: </span>
                     {(editOnboardData.grade_pricing || []).reduce((sum, g) => sum + (parseInt(g.students) || 0), 0)} students • 
                     ₹{(editOnboardData.grade_pricing || []).reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0).toLocaleString()}
+                  </div>
+                )}
+              </div>
+              )}
+
+              {/* Grand Total */}
+              <div className="p-3 bg-emerald-100 rounded-lg border border-emerald-200">
+                <span className="font-semibold text-emerald-800">Grand Total: ₹</span>
+                <span className="font-bold text-emerald-900 text-lg">
+                  {(() => {
+                    let total = 0;
+                    if (editOnboardData.pricing_type === 'per_student' || editOnboardData.pricing_type === 'both') {
+                      total += (editOnboardData.grade_pricing || []).reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
+                    }
+                    if (editOnboardData.pricing_type === 'fixed' || editOnboardData.pricing_type === 'both') {
+                      total += parseFloat(editOnboardData.fixed_price) || 0;
+                    }
+                    return total.toLocaleString();
+                  })()}
+                </span>
+              </div>
+
+              {/* School Share */}
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <label className="text-sm font-medium text-purple-800 mb-2 block">School Share (Revenue Sharing)</label>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-xs text-slate-500">Type</label>
+                    <select
+                      value={editOnboardData.school_share_type || 'none'}
+                      onChange={(e) => setEditOnboardData(prev => ({ ...prev, school_share_type: e.target.value }))}
+                      className="w-full h-9 px-2 border border-slate-200 rounded-lg text-sm"
+                    >
+                      <option value="none">None</option>
+                      <option value="percentage">Percentage (%)</option>
+                      <option value="amount">Fixed Amount (₹)</option>
+                    </select>
+                  </div>
+                  {editOnboardData.school_share_type !== 'none' && (
+                    <>
+                      <div>
+                        <label className="text-xs text-slate-500">Calculation</label>
+                        <select
+                          value={editOnboardData.school_share_calc || 'lumpsum'}
+                          onChange={(e) => setEditOnboardData(prev => ({ ...prev, school_share_calc: e.target.value }))}
+                          className="w-full h-9 px-2 border border-slate-200 rounded-lg text-sm"
+                        >
+                          <option value="lumpsum">Lumpsum</option>
+                          <option value="per_student">Per Student</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs text-slate-500">
+                          {editOnboardData.school_share_type === 'percentage' ? 'Percentage' : 'Amount'}
+                        </label>
+                        <Input
+                          type="number"
+                          placeholder={editOnboardData.school_share_type === 'percentage' ? '10' : '5000'}
+                          value={editOnboardData.school_share_value || ''}
+                          onChange={(e) => setEditOnboardData(prev => ({ ...prev, school_share_value: e.target.value }))}
+                          className="h-9"
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+                {editOnboardData.school_share_type !== 'none' && editOnboardData.school_share_value && (
+                  <div className="mt-2 p-2 bg-purple-100 rounded text-sm">
+                    <span className="font-medium text-purple-800">Calculated School Share: ₹</span>
+                    <span className="font-bold text-purple-900">
+                      {(() => {
+                        const totalStudents = (editOnboardData.grade_pricing || []).reduce((sum, g) => sum + (parseInt(g.students) || 0), 0);
+                        let grandTotal = 0;
+                        if (editOnboardData.pricing_type === 'per_student' || editOnboardData.pricing_type === 'both') {
+                          grandTotal += (editOnboardData.grade_pricing || []).reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
+                        }
+                        if (editOnboardData.pricing_type === 'fixed' || editOnboardData.pricing_type === 'both') {
+                          grandTotal += parseFloat(editOnboardData.fixed_price) || 0;
+                        }
+                        const shareValue = parseFloat(editOnboardData.school_share_value) || 0;
+                        if (editOnboardData.school_share_type === 'percentage') {
+                          return ((shareValue / 100) * grandTotal).toLocaleString();
+                        } else {
+                          if (editOnboardData.school_share_calc === 'per_student') {
+                            return (shareValue * totalStudents).toLocaleString();
+                          }
+                          return shareValue.toLocaleString();
+                        }
+                      })()}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* GP Share */}
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                <label className="text-sm font-medium text-orange-800 mb-2 block">Growth Partner (GP) Share</label>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-xs text-slate-500">Type</label>
+                    <select
+                      value={editOnboardData.gp_share_type || 'none'}
+                      onChange={(e) => setEditOnboardData(prev => ({ ...prev, gp_share_type: e.target.value }))}
+                      className="w-full h-9 px-2 border border-slate-200 rounded-lg text-sm"
+                    >
+                      <option value="none">None</option>
+                      <option value="percentage">Percentage (%)</option>
+                      <option value="amount">Fixed Amount (₹)</option>
+                    </select>
+                  </div>
+                  {editOnboardData.gp_share_type !== 'none' && (
+                    <>
+                      <div>
+                        <label className="text-xs text-slate-500">Calculation</label>
+                        <select
+                          value={editOnboardData.gp_share_calc || 'lumpsum'}
+                          onChange={(e) => setEditOnboardData(prev => ({ ...prev, gp_share_calc: e.target.value }))}
+                          className="w-full h-9 px-2 border border-slate-200 rounded-lg text-sm"
+                        >
+                          <option value="lumpsum">Lumpsum</option>
+                          <option value="per_student">Per Student</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-xs text-slate-500">
+                          {editOnboardData.gp_share_type === 'percentage' ? 'Percentage' : 'Amount'}
+                        </label>
+                        <Input
+                          type="number"
+                          placeholder={editOnboardData.gp_share_type === 'percentage' ? '5' : '2000'}
+                          value={editOnboardData.gp_share_value || ''}
+                          onChange={(e) => setEditOnboardData(prev => ({ ...prev, gp_share_value: e.target.value }))}
+                          className="h-9"
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+                {editOnboardData.gp_share_type !== 'none' && editOnboardData.gp_share_value && (
+                  <div className="mt-2 p-2 bg-orange-100 rounded text-sm">
+                    <span className="font-medium text-orange-800">Calculated GP Share: ₹</span>
+                    <span className="font-bold text-orange-900">
+                      {(() => {
+                        const totalStudents = (editOnboardData.grade_pricing || []).reduce((sum, g) => sum + (parseInt(g.students) || 0), 0);
+                        let grandTotal = 0;
+                        if (editOnboardData.pricing_type === 'per_student' || editOnboardData.pricing_type === 'both') {
+                          grandTotal += (editOnboardData.grade_pricing || []).reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
+                        }
+                        if (editOnboardData.pricing_type === 'fixed' || editOnboardData.pricing_type === 'both') {
+                          grandTotal += parseFloat(editOnboardData.fixed_price) || 0;
+                        }
+                        const shareValue = parseFloat(editOnboardData.gp_share_value) || 0;
+                        if (editOnboardData.gp_share_type === 'percentage') {
+                          return ((shareValue / 100) * grandTotal).toLocaleString();
+                        } else {
+                          if (editOnboardData.gp_share_calc === 'per_student') {
+                            return (shareValue * totalStudents).toLocaleString();
+                          }
+                          return shareValue.toLocaleString();
+                        }
+                      })()}
+                    </span>
                   </div>
                 )}
               </div>
