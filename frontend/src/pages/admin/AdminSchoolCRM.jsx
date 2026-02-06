@@ -5815,7 +5815,65 @@ const AdminSchoolCRM = () => {
               </div>
             </div>
 
+            {/* Pricing Type Selection */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <label className="text-sm font-medium text-amber-800 flex items-center gap-2 mb-3">
+                <DollarSign className="w-4 h-4" />
+                Pricing Type *
+              </label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="onboard_pricing_type"
+                    value="per_student"
+                    checked={onboardData.pricing_type === 'per_student'}
+                    onChange={(e) => setOnboardData(prev => ({ ...prev, pricing_type: e.target.value }))}
+                    className="w-4 h-4 text-amber-600"
+                  />
+                  <span className="text-sm text-slate-700">Per Student</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="onboard_pricing_type"
+                    value="fixed"
+                    checked={onboardData.pricing_type === 'fixed'}
+                    onChange={(e) => setOnboardData(prev => ({ ...prev, pricing_type: e.target.value }))}
+                    className="w-4 h-4 text-amber-600"
+                  />
+                  <span className="text-sm text-slate-700">Fixed Price</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="onboard_pricing_type"
+                    value="both"
+                    checked={onboardData.pricing_type === 'both'}
+                    onChange={(e) => setOnboardData(prev => ({ ...prev, pricing_type: e.target.value }))}
+                    className="w-4 h-4 text-amber-600"
+                  />
+                  <span className="text-sm text-slate-700">Both</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Fixed Price Input */}
+            {(onboardData.pricing_type === 'fixed' || onboardData.pricing_type === 'both') && (
+              <div>
+                <label className="text-sm font-medium text-slate-700">Fixed Price Amount (₹)</label>
+                <Input
+                  type="number"
+                  placeholder="Enter fixed price amount"
+                  value={onboardData.fixed_price}
+                  onChange={(e) => setOnboardData(prev => ({ ...prev, fixed_price: e.target.value }))}
+                  className="mt-1"
+                />
+              </div>
+            )}
+
             {/* Grade-wise Pricing */}
+            {(onboardData.pricing_type === 'per_student' || onboardData.pricing_type === 'both') && (
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="text-sm font-medium text-slate-700">Grade-wise Student Count & Pricing</label>
