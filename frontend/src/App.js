@@ -45,6 +45,7 @@ const RefundPolicyPage = lazy(() => import("./pages/RefundPolicyPage"));
 const SchoolTrackingPage = lazy(() => import("./pages/SchoolTrackingPage"));
 const TeamOnboardingTrack = lazy(() => import("./pages/TeamOnboardingTrack"));
 const GPOnboardingTrack = lazy(() => import("./pages/GPOnboardingTrack"));
+const GPSelfOnboarding = lazy(() => import("./pages/GPSelfOnboarding"));
 
 // Course SEO Pages - Lazy loaded
 const CoursesListPage = lazy(() => import("./pages/courses/CoursesListPage"));
