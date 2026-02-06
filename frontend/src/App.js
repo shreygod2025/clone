@@ -138,6 +138,9 @@ function App() {
               {/* Public GP Onboarding Tracking */}
               <Route path="/gp-track/:token" element={<GPOnboardingTrack />} />
               
+              {/* GP Self Onboarding - Full onboarding form */}
+              <Route path="/gp-onboard/:token" element={<GPSelfOnboarding />} />
+              
               {/* User Auth Routes */}
               <Route path="/login" element={<LoginPage />} />
               <Route path="/my-bookings" element={<MyBookingsPage />} />
