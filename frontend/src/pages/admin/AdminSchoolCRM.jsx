@@ -301,6 +301,8 @@ const AdminSchoolCRM = () => {
     book_type: '', // individual_books, no_books
     kit_type: '', // lab_setup, individual, no_kit
     training_type: '', // student_training, teacher_training
+    pricing_type: 'per_student', // 'per_student', 'fixed', 'both'
+    fixed_price: '',
     grade_pricing: [{ grade: '', students: '', price_per_student: '' }],
     total_students: 0,
     total_amount: 0,
