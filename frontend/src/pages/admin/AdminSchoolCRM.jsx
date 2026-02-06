@@ -2658,13 +2658,29 @@ const AdminSchoolCRM = () => {
               data-testid={`school-card-${inquiry.id}`}
             >
               <div className="flex items-start justify-between mb-2">
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-semibold text-[#1E3A5F] truncate">{inquiry.school_name}</h3>
-                  <p className="text-sm text-slate-500 truncate">{inquiry.contact_name}</p>
+                <div className="min-w-0 flex-1 pr-2">
+                  <h3 className="font-semibold text-[#1E3A5F] break-words">{inquiry.school_name}</h3>
+                  <p className="text-sm text-slate-500">{inquiry.contact_name}</p>
+                  {/* Source badge on separate line */}
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                      inquiry.source === 'website' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
+                    }`}>
+                      {inquiry.source || 'website'}
+                    </span>
+                    {inquiry.meeting_type && (
+                      <span className={`px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1 ${
+                        inquiry.meeting_type === 'online' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+                      }`}>
+                        {inquiry.meeting_type === 'online' ? <Video className="w-3 h-3" /> : <Users className="w-3 h-3" />}
+                        {inquiry.meeting_type === 'online' ? 'Online' : 'Offline'}
+                      </span>
+                    )}
+                  </div>
                   {inquiry.assigned_to && (
-                    <p className="text-xs text-indigo-600 mt-0.5 flex items-center gap-1 truncate">
+                    <p className="text-xs text-indigo-600 mt-1 flex items-center gap-1">
                       <UserPlus className="w-3 h-3 flex-shrink-0" /> 
-                      <span className="truncate">{inquiry.assigned_to_name || getAssignedUserName(inquiry.assigned_to) || 'Team'}</span>
+                      <span>{inquiry.assigned_to_name || getAssignedUserName(inquiry.assigned_to) || 'Team'}</span>
                     </p>
                   )}
                   {inquiry.is_viewer && (
@@ -2680,19 +2696,6 @@ const AdminSchoolCRM = () => {
                       STATUS_SECTIONS.find(s => s.value === inquiry.status)?.color || 'bg-slate-100'
                     } text-white`}>
                       {STATUS_SECTIONS.find(s => s.value === inquiry.status)?.label || inquiry.status}
-                    </span>
-                  )}
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                    inquiry.source === 'website' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
-                  }`}>
-                    {inquiry.source || 'website'}
-                  </span>
-                  {inquiry.meeting_type && (
-                    <span className={`px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1 ${
-                      inquiry.meeting_type === 'online' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
-                    }`}>
-                      {inquiry.meeting_type === 'online' ? <Video className="w-3 h-3" /> : <Users className="w-3 h-3" />}
-                      {inquiry.meeting_type === 'online' ? 'Online' : 'Offline'}
                     </span>
                   )}
                 </div>
