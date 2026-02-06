@@ -410,13 +410,27 @@ const getPageConfig = (path, isLoggedIn) => {
   return PAGE_QUERY_CONFIG.general;
 };
 
+// Get page type key for quick actions lookup
+const getPageTypeKey = (path) => {
+  if (path.includes('/robotics') || path.includes('/coding') || path.includes('/ai') || 
+      path.includes('/course') || path.includes('/program')) return 'course';
+  if (path.includes('/admin')) return 'admin';
+  if (path.includes('/student')) return 'student';
+  if (path.includes('/school')) return 'school';
+  if (path.includes('/educator')) return 'educator';
+  if (path.includes('/centers') || path.includes('/growth-partner')) return 'partner';
+  return 'general';
+};
+
 const RaiseQueryButton = () => {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userData, setUserData] = useState(null);
+  const [quickAction, setQuickAction] = useState(null); // For smart routing
   
   const [formData, setFormData] = useState({
     query_type: '',
