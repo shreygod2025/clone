@@ -693,9 +693,9 @@ const RaiseQueryButton = () => {
         <span className="font-medium text-sm">Need Help?</span>
       </button>
 
-      {/* Query Dialog */}
+      {/* Query Dialog - hide default close button with [&>button]:hidden */}
       <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogContent className={`p-0 overflow-hidden bg-white rounded-2xl ${step === 1 ? 'max-w-sm' : 'max-w-md'}`}>
+        <DialogContent className={`p-0 overflow-hidden bg-white rounded-2xl [&>button]:hidden ${step === 1 ? 'max-w-sm' : 'max-w-md'}`}>
           <DialogTitle className="sr-only">Need Help?</DialogTitle>
           
           {/* Success Animation */}
