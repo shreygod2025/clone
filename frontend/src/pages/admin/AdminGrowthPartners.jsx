@@ -974,6 +974,56 @@ const AdminGrowthPartners = () => {
                     </div>
                   )}
 
+                  {/* Onboarding Link - Show for partners with onboarding */}
+                  {viewPartner.status === 'onboarding' && onboardingList.find(o => o.growth_partner_id === viewPartner.id) && (
+                    <div className="bg-indigo-50 rounded-lg p-3">
+                      <p className="text-xs text-indigo-500 mb-2">Onboarding Link</p>
+                      <a 
+                        href={`/gp-onboard/${onboardingList.find(o => o.growth_partner_id === viewPartner.id)?.tracking_token}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-indigo-600 hover:underline text-sm flex items-center gap-1"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        Open Onboarding Form
+                      </a>
+                    </div>
+                  )}
+
+                  {/* Quick Onboarding Status - If partner has started onboarding */}
+                  {(() => {
+                    const onboarding = onboardingList.find(o => o.growth_partner_id === viewPartner.id);
+                    if (!onboarding) return null;
+                    return (
+                      <div className="bg-green-50 rounded-lg p-3">
+                        <p className="text-xs text-green-600 mb-2 font-medium">Onboarding Progress</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          {Object.entries(onboarding.steps || {}).map(([key, step]) => (
+                            <div key={key} className={`p-2 rounded text-center text-xs ${step.completed ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                              {step.completed ? '✓' : '○'} {key.replace(/_/g, ' ')}
+                            </div>
+                          ))}
+                        </div>
+                        {onboarding.personal_info?.full_name && (
+                          <div className="mt-3 pt-2 border-t border-green-200 text-sm">
+                            <p className="text-green-700"><strong>Personal Info:</strong> {onboarding.personal_info.full_name} | {onboarding.personal_info.phone}</p>
+                            {onboarding.personal_info.city && <p className="text-green-600">City: {onboarding.personal_info.city}</p>}
+                          </div>
+                        )}
+                        {onboarding.bank_details?.account_number && (
+                          <div className="mt-2 text-sm">
+                            <p className="text-green-700"><strong>Bank:</strong> {onboarding.bank_details.bank_name} - ****{onboarding.bank_details.account_number.slice(-4)}</p>
+                          </div>
+                        )}
+                        {onboarding.payment_status && (
+                          <div className="mt-2 text-sm">
+                            <p className="text-green-700"><strong>Payment:</strong> <span className={onboarding.payment_status === 'verified' ? 'text-green-600' : 'text-yellow-600'}>{onboarding.payment_status}</span></p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   {/* Comments Section */}
                   <div className="border-t pt-4">
                     <h4 className="font-semibold text-[#1E3A5F] mb-3 flex items-center gap-2">
