@@ -8746,6 +8746,19 @@ async def update_inquiry_query(query_id: str, data: dict, user: dict = Depends(g
     await db.inquiry_queries.update_one({"id": query_id}, {"$set": update_data})
     return {"message": "Query updated successfully"}
 
+@api_router.delete("/inquiry/queries/{query_id}")
+async def delete_inquiry_query(query_id: str, user: dict = Depends(get_current_user)):
+    """Delete an inquiry query"""
+    # Only admin can delete
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Only admins can delete queries")
+    
+    result = await db.inquiry_queries.delete_one({"id": query_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Query not found")
+    
+    return {"message": "Query deleted successfully"}
+
 # ========================
 # HEALTH CHECK
 # ========================
