@@ -101,6 +101,16 @@ const AdminGrowthPartners = () => {
 
   // Modal state for payment verification
   const [showPaymentVerifyModal, setShowPaymentVerifyModal] = useState(null);
+  
+  // Modal state for kit delivery management
+  const [showKitDeliveryModal, setShowKitDeliveryModal] = useState(null);
+  const [kitDeliveryData, setKitDeliveryData] = useState({
+    tracking_number: '',
+    courier_name: '',
+    dispatch_date: '',
+    expected_delivery_date: '',
+    status: 'pending'
+  });
 
   useEffect(() => {
     fetchPartners();
