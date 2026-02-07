@@ -574,79 +574,75 @@ const AdminOrders = () => {
                         
                         {/* Tranche Sub-rows (only shown when expanded and has multiple tranches) */}
                         {expandedSchools[group.school_id] && group.tranches.length > 1 && group.tranches.map((payment, idx) => (
-                          <tr key={payment.id} className="bg-slate-50/50 hover:bg-slate-100/50">
-                            <td className="px-4 py-2 pl-12">
-                              <div className="flex items-center gap-2">
-                                <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
-                                <p className="text-sm text-slate-600">{payment.tranche_info || `Tranche ${idx + 1}`}</p>
+                          <tr key={payment.id} className="bg-gradient-to-r from-slate-50 to-white hover:from-orange-50/30 hover:to-white transition-all duration-200 border-l-2 border-l-orange-200">
+                            <td className="px-6 py-4 pl-16">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center text-orange-600 font-semibold text-sm">
+                                  {idx + 1}
+                                </div>
+                                <p className="text-sm font-medium text-slate-700">{payment.tranche_info || `Tranche ${idx + 1}`}</p>
                               </div>
                             </td>
-                            <td className="px-4 py-2">
-                              <p className="text-sm font-medium text-slate-700">₹{(payment.amount || 0).toLocaleString()}</p>
+                            <td className="px-6 py-4">
+                              <div>
+                                <p className="font-semibold text-slate-800">₹{(payment.amount || 0).toLocaleString()}</p>
+                                {payment.gst_type && (
+                                  <span className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full font-medium ${
+                                    payment.gst_type === 'book_gst' ? 'bg-blue-100 text-blue-700' :
+                                    payment.gst_type === 'inclusive' ? 'bg-emerald-100 text-emerald-700' :
+                                    'bg-amber-100 text-amber-700'
+                                  }`}>
+                                    {payment.gst_type === 'book_gst' ? 'Book GST' : payment.gst_type === 'inclusive' ? 'Inclusive' : 'Exclusive'}
+                                  </span>
+                                )}
+                              </div>
                             </td>
-                            <td className="px-4 py-2">
-                              {payment.gst_type ? (
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
-                                  payment.gst_type === 'book_gst' ? 'bg-blue-100 text-blue-700' :
-                                  payment.gst_type === 'inclusive' ? 'bg-green-100 text-green-700' :
-                                  'bg-orange-100 text-orange-700'
-                                }`}>
-                                  {payment.gst_type === 'book_gst' ? 'Book GST' : payment.gst_type === 'inclusive' ? 'Inclusive' : 'Exclusive'}
-                                </span>
-                              ) : (
-                                <span className="text-slate-400 text-xs">-</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-2">
+                            <td className="px-6 py-4">
                               {payment.due_date ? (
-                                <p className={`text-sm ${
-                                  isPast(parseISO(payment.due_date)) && payment.status !== 'paid' ? 'text-red-600 font-medium' : 'text-slate-600'
-                                }`}>
-                                  {format(parseISO(payment.due_date), 'MMM d, yyyy')}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                  <Calendar className={`w-4 h-4 ${isPast(parseISO(payment.due_date)) && payment.status !== 'paid' ? 'text-red-500' : 'text-slate-400'}`} />
+                                  <p className={`text-sm ${
+                                    isPast(parseISO(payment.due_date)) && payment.status !== 'paid' ? 'text-red-600 font-medium' : 'text-slate-600'
+                                  }`}>
+                                    {format(parseISO(payment.due_date), 'MMM d, yyyy')}
+                                  </p>
+                                </div>
                               ) : (
-                                <span className="text-slate-400 text-xs">-</span>
+                                <span className="text-slate-400 text-sm">Not set</span>
                               )}
                             </td>
-                            <td className="px-4 py-2">
+                            <td className="px-6 py-4">
                               {getStatusBadge(payment)}
                             </td>
-                            <td className="px-4 py-2">
-                              {payment.invoice_url ? (
-                                <a href={payment.invoice_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-xs flex items-center gap-1">
-                                  <FileText className="w-3 h-3" /> View
-                                </a>
-                              ) : (
-                                <span className="text-slate-400 text-xs">-</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-2">
-                              {payment.receipt_url ? (
-                                <a href={payment.receipt_url} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:text-green-800 text-xs flex items-center gap-1">
-                                  <Receipt className="w-3 h-3" /> View
-                                </a>
-                              ) : (
-                                <span className="text-slate-400 text-xs">-</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openPaymentModal(payment)}
-                                className="text-xs h-7"
-                                data-testid={`update-payment-${payment.id}`}
-                              >
-                                <Eye className="w-3 h-3 mr-1" />
-                                Update
-                              </Button>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center justify-end gap-2">
+                                {payment.invoice_url && (
+                                  <a href={payment.invoice_url} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors" title="View Invoice">
+                                    <FileText className="w-4 h-4 text-blue-600" />
+                                  </a>
+                                )}
+                                {payment.receipt_url && (
+                                  <a href={payment.receipt_url} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-green-50 rounded-lg hover:bg-green-100 transition-colors" title="View Receipt">
+                                    <Receipt className="w-4 h-4 text-green-600" />
+                                  </a>
+                                )}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => openPaymentModal(payment)}
+                                  className="border-orange-200 text-orange-600 hover:bg-orange-50"
+                                  data-testid={`update-payment-${payment.id}`}
+                                >
+                                  Update
+                                </Button>
+                              </div>
                             </td>
                           </tr>
                         ))}
                       </>
                     ))
                   ) : (
-                    /* Student Payments - Original flat list */
+                    /* Student Payments - Redesigned */
                     sortedPayments.map((payment) => (
                     <tr key={payment.id} className="hover:bg-slate-50">
                       <td className="px-4 py-3">
