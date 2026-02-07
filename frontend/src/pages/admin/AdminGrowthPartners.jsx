@@ -975,11 +975,11 @@ const AdminGrowthPartners = () => {
                   )}
 
                   {/* Onboarding Link - Show for partners with onboarding */}
-                  {viewPartner.status === 'onboarding' && onboardingList.find(o => o.growth_partner_id === viewPartner.id) && (
+                  {viewPartner.status === 'onboarding' && gpOnboardings.find(o => o.growth_partner_id === viewPartner.id) && (
                     <div className="bg-indigo-50 rounded-lg p-3">
                       <p className="text-xs text-indigo-500 mb-2">Onboarding Link</p>
                       <a 
-                        href={`/gp-onboard/${onboardingList.find(o => o.growth_partner_id === viewPartner.id)?.tracking_token}`}
+                        href={`/gp-onboard/${gpOnboardings.find(o => o.growth_partner_id === viewPartner.id)?.tracking_token}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-indigo-600 hover:underline text-sm flex items-center gap-1"
@@ -992,7 +992,7 @@ const AdminGrowthPartners = () => {
 
                   {/* Quick Onboarding Status - If partner has started onboarding */}
                   {(() => {
-                    const onboarding = onboardingList.find(o => o.growth_partner_id === viewPartner.id);
+                    const onboarding = gpOnboardings.find(o => o.growth_partner_id === viewPartner.id);
                     if (!onboarding) return null;
                     return (
                       <div className="bg-green-50 rounded-lg p-3">
