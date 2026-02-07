@@ -558,38 +558,50 @@ const GPSelfOnboarding = () => {
           <div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
             <Award className="w-8 h-8 sm:w-10 sm:h-10 text-green-600" />
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 mb-2">Congratulations! 🎉</h1>
-          <p className="text-slate-600 mb-6 text-sm sm:text-base">You have successfully completed the Growth Partner onboarding!</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 mb-2">Welcome to OLL! 🎉</h1>
+          <p className="text-slate-600 mb-6 text-sm sm:text-base">
+            Congratulations <strong>{onboarding.name}</strong>! You are now an official OLL Growth Partner.
+          </p>
           
-          <div className="bg-slate-50 rounded-xl p-6 text-left mb-6">
-            <h3 className="font-semibold text-slate-800 mb-4">Your Login Credentials</h3>
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 sm:p-6 text-left mb-6">
+            <h3 className="font-semibold text-green-800 mb-4 flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5" />
+              Your Login Credentials
+            </h3>
             <div className="space-y-3">
-              <div>
-                <p className="text-xs text-slate-500">Email</p>
-                <p className="font-medium text-slate-800">{onboarding.team_user_credentials.email}</p>
+              <div className="bg-white rounded-lg p-3">
+                <p className="text-xs text-slate-500 mb-1">Email</p>
+                <p className="font-medium text-slate-800 break-all">{onboarding.team_user_credentials.email}</p>
               </div>
-              <div>
-                <p className="text-xs text-slate-500">Username</p>
-                <p className="font-medium text-slate-800">{onboarding.team_user_credentials.username}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Temporary Password</p>
-                <p className="font-medium text-slate-800 font-mono bg-yellow-50 px-2 py-1 rounded">
+              {onboarding.team_user_credentials.username && (
+                <div className="bg-white rounded-lg p-3">
+                  <p className="text-xs text-slate-500 mb-1">Username</p>
+                  <p className="font-medium text-slate-800">{onboarding.team_user_credentials.username}</p>
+                </div>
+              )}
+              <div className="bg-yellow-50 rounded-lg p-3 border border-yellow-200">
+                <p className="text-xs text-yellow-700 mb-1">Temporary Password</p>
+                <p className="font-medium text-slate-800 font-mono text-lg">
                   {onboarding.team_user_credentials.temp_password}
                 </p>
+                <p className="text-xs text-yellow-600 mt-1">⚠️ Please change this after first login</p>
               </div>
             </div>
           </div>
           
           <a 
             href="/admin/login"
-            className="inline-flex items-center gap-2 bg-orange-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-orange-600 transition-colors"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-orange-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-orange-600 transition-colors"
           >
             <ExternalLink className="w-4 h-4" />
-            Go to Admin Panel
+            Login to Dashboard
           </a>
           
-          <p className="text-xs text-slate-500 mt-4">Please change your password after first login</p>
+          <div className="mt-6 pt-4 border-t border-slate-200">
+            <p className="text-xs text-slate-500">
+              Need help? Contact <a href="mailto:partners@oll.co" className="text-green-600 hover:underline">partners@oll.co</a>
+            </p>
+          </div>
         </div>
       </div>
     );
