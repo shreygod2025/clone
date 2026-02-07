@@ -691,11 +691,11 @@ const GPSelfOnboarding = () => {
             </div>
 
             {/* Main Content */}
-            <div className="lg:col-span-3">
+            <div className="lg:col-span-3 order-1 lg:order-2">
               <div className="bg-white rounded-2xl p-4 sm:p-6 md:p-8 shadow-sm">
                 {/* Step 1: Personal Information */}
                 {currentStep === 'personal_info' && (
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                   <div>
                     <h2 className="text-2xl font-bold text-slate-800 mb-2">Personal Information</h2>
                     <p className="text-slate-600">Please provide your personal details and upload required documents.</p>
