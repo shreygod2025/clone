@@ -622,6 +622,20 @@ const AdminGrowthPartners = () => {
                         {gp.status === 'onboarding' ? 'Onboarding' :
                          gp.status === 'active' ? 'Active Partner' : 'Discontinued'}
                       </span>
+                      {/* Training Complete Badge - show when all 6 steps complete */}
+                      {gp.status === 'onboarding' && getCompletedSteps(gp.steps) === 6 && (
+                        <span className="text-xs px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 font-medium flex items-center gap-1">
+                          <GraduationCap className="w-3 h-3" />
+                          Training Complete
+                        </span>
+                      )}
+                      {/* Ready for Activation Badge */}
+                      {gp.status === 'onboarding' && getCompletedSteps(gp.steps) === 6 && gp.steps?.payment?.verified && (
+                        <span className="text-xs px-2 py-1 rounded-full bg-green-500 text-white font-medium animate-pulse flex items-center gap-1">
+                          <UserPlus className="w-3 h-3" />
+                          Ready to Activate
+                        </span>
+                      )}
                       {gp.interest_type && (
                         <span className="text-xs px-2 py-1 rounded-full bg-purple-100 text-purple-700">
                           {gp.interest_type}
