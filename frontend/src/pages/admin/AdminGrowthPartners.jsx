@@ -1016,34 +1016,192 @@ const AdminGrowthPartners = () => {
                     </div>
                   )}
 
-                  {/* Quick Onboarding Status - If partner has started onboarding */}
+                  {/* Complete Onboarding Data - If partner has started onboarding */}
                   {(() => {
                     const onboarding = gpOnboardings.find(o => o.growth_partner_id === viewPartner.id);
                     if (!onboarding) return null;
                     return (
-                      <div className="bg-green-50 rounded-lg p-3">
-                        <p className="text-xs text-green-600 mb-2 font-medium">Onboarding Progress</p>
-                        <div className="grid grid-cols-3 gap-2">
-                          {Object.entries(onboarding.steps || {}).map(([key, step]) => (
-                            <div key={key} className={`p-2 rounded text-center text-xs ${step.completed ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
-                              {step.completed ? '✓' : '○'} {key.replace(/_/g, ' ')}
-                            </div>
-                          ))}
+                      <div className="space-y-4">
+                        {/* Progress Overview */}
+                        <div className="bg-green-50 rounded-lg p-3">
+                          <p className="text-xs text-green-600 mb-2 font-medium">Onboarding Progress</p>
+                          <div className="grid grid-cols-3 gap-2">
+                            {Object.entries(onboarding.steps || {}).map(([key, step]) => (
+                              <div key={key} className={`p-2 rounded text-center text-xs ${step.completed ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                                {step.completed ? '✓' : '○'} {key.replace(/_/g, ' ')}
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                        {onboarding.personal_info?.full_name && (
-                          <div className="mt-3 pt-2 border-t border-green-200 text-sm">
-                            <p className="text-green-700"><strong>Personal Info:</strong> {onboarding.personal_info.full_name} | {onboarding.personal_info.phone}</p>
-                            {onboarding.personal_info.city && <p className="text-green-600">City: {onboarding.personal_info.city}</p>}
+
+                        {/* Personal Information */}
+                        {onboarding.personal_info && Object.keys(onboarding.personal_info).some(k => onboarding.personal_info[k]) && (
+                          <div className="bg-blue-50 rounded-lg p-3">
+                            <p className="text-xs text-blue-600 mb-2 font-medium flex items-center gap-1">
+                              <User className="w-3 h-3" /> Personal Information
+                            </p>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              {onboarding.personal_info.full_name && (
+                                <div><span className="text-slate-500">Name:</span> <span className="text-slate-700">{onboarding.personal_info.full_name}</span></div>
+                              )}
+                              {onboarding.personal_info.email && (
+                                <div><span className="text-slate-500">Email:</span> <span className="text-slate-700">{onboarding.personal_info.email}</span></div>
+                              )}
+                              {onboarding.personal_info.phone && (
+                                <div><span className="text-slate-500">Phone:</span> <span className="text-slate-700">{onboarding.personal_info.phone}</span></div>
+                              )}
+                              {onboarding.personal_info.city && (
+                                <div><span className="text-slate-500">City:</span> <span className="text-slate-700">{onboarding.personal_info.city}</span></div>
+                              )}
+                              {onboarding.personal_info.state && (
+                                <div><span className="text-slate-500">State:</span> <span className="text-slate-700">{onboarding.personal_info.state}</span></div>
+                              )}
+                              {onboarding.personal_info.pincode && (
+                                <div><span className="text-slate-500">Pincode:</span> <span className="text-slate-700">{onboarding.personal_info.pincode}</span></div>
+                              )}
+                              {onboarding.personal_info.address && (
+                                <div className="col-span-2"><span className="text-slate-500">Address:</span> <span className="text-slate-700">{onboarding.personal_info.address}</span></div>
+                              )}
+                              {onboarding.personal_info.aadhar_number && (
+                                <div><span className="text-slate-500">Aadhar:</span> <span className="text-slate-700">{onboarding.personal_info.aadhar_number}</span></div>
+                              )}
+                              {onboarding.personal_info.pan_number && (
+                                <div><span className="text-slate-500">PAN:</span> <span className="text-slate-700">{onboarding.personal_info.pan_number}</span></div>
+                              )}
+                              {onboarding.personal_info.tshirt_size && (
+                                <div><span className="text-slate-500">T-Shirt Size:</span> <span className="text-slate-700">{onboarding.personal_info.tshirt_size}</span></div>
+                              )}
+                            </div>
+                            {/* Document Links */}
+                            <div className="flex gap-2 mt-2 flex-wrap">
+                              {onboarding.personal_info.aadhar_url && (
+                                <a href={onboarding.personal_info.aadhar_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline flex items-center gap-1">
+                                  <FileText className="w-3 h-3" /> Aadhar Card
+                                </a>
+                              )}
+                              {onboarding.personal_info.pan_url && (
+                                <a href={onboarding.personal_info.pan_url} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline flex items-center gap-1">
+                                  <FileText className="w-3 h-3" /> PAN Card
+                                </a>
+                              )}
+                            </div>
                           </div>
                         )}
-                        {onboarding.bank_details?.account_number && (
-                          <div className="mt-2 text-sm">
-                            <p className="text-green-700"><strong>Bank:</strong> {onboarding.bank_details.bank_name} - ****{onboarding.bank_details.account_number.slice(-4)}</p>
+
+                        {/* Bank Details */}
+                        {onboarding.bank_details && Object.keys(onboarding.bank_details).some(k => onboarding.bank_details[k]) && (
+                          <div className="bg-purple-50 rounded-lg p-3">
+                            <p className="text-xs text-purple-600 mb-2 font-medium flex items-center gap-1">
+                              <CreditCard className="w-3 h-3" /> Bank Details
+                            </p>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              {onboarding.bank_details.account_holder_name && (
+                                <div><span className="text-slate-500">Account Holder:</span> <span className="text-slate-700">{onboarding.bank_details.account_holder_name}</span></div>
+                              )}
+                              {onboarding.bank_details.bank_name && (
+                                <div><span className="text-slate-500">Bank:</span> <span className="text-slate-700">{onboarding.bank_details.bank_name}</span></div>
+                              )}
+                              {onboarding.bank_details.account_number && (
+                                <div><span className="text-slate-500">Account No:</span> <span className="text-slate-700">{onboarding.bank_details.account_number}</span></div>
+                              )}
+                              {onboarding.bank_details.ifsc_code && (
+                                <div><span className="text-slate-500">IFSC:</span> <span className="text-slate-700">{onboarding.bank_details.ifsc_code}</span></div>
+                              )}
+                              {onboarding.bank_details.branch && (
+                                <div><span className="text-slate-500">Branch:</span> <span className="text-slate-700">{onboarding.bank_details.branch}</span></div>
+                              )}
+                              {onboarding.bank_details.upi_id && (
+                                <div><span className="text-slate-500">UPI ID:</span> <span className="text-slate-700">{onboarding.bank_details.upi_id}</span></div>
+                              )}
+                            </div>
+                            {onboarding.bank_details.cancelled_cheque_url && (
+                              <a href={onboarding.bank_details.cancelled_cheque_url} target="_blank" rel="noopener noreferrer" className="text-xs text-purple-600 hover:underline flex items-center gap-1 mt-2">
+                                <FileText className="w-3 h-3" /> Cancelled Cheque
+                              </a>
+                            )}
                           </div>
                         )}
-                        {onboarding.payment_status && (
-                          <div className="mt-2 text-sm">
-                            <p className="text-green-700"><strong>Payment:</strong> <span className={onboarding.payment_status === 'verified' ? 'text-green-600' : 'text-yellow-600'}>{onboarding.payment_status}</span></p>
+
+                        {/* Contract Details */}
+                        {(onboarding.contract_url || onboarding.contract_signed_at) && (
+                          <div className="bg-amber-50 rounded-lg p-3">
+                            <p className="text-xs text-amber-600 mb-2 font-medium flex items-center gap-1">
+                              <FileText className="w-3 h-3" /> Contract Details
+                            </p>
+                            <div className="text-sm space-y-1">
+                              {onboarding.contract_signed_at && (
+                                <div><span className="text-slate-500">Signed At:</span> <span className="text-slate-700">{new Date(onboarding.contract_signed_at).toLocaleString()}</span></div>
+                              )}
+                              {onboarding.contract_url && (
+                                <a href={onboarding.contract_url} target="_blank" rel="noopener noreferrer" className="text-xs text-amber-600 hover:underline flex items-center gap-1">
+                                  <FileText className="w-3 h-3" /> View Contract
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Payment Details */}
+                        {(onboarding.payment_status || onboarding.payment_amount) && (
+                          <div className="bg-emerald-50 rounded-lg p-3">
+                            <p className="text-xs text-emerald-600 mb-2 font-medium flex items-center gap-1">
+                              <CreditCard className="w-3 h-3" /> Payment Details
+                            </p>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              {onboarding.payment_amount > 0 && (
+                                <div><span className="text-slate-500">Amount:</span> <span className="text-slate-700">₹{onboarding.payment_amount}</span></div>
+                              )}
+                              {onboarding.payment_status && (
+                                <div><span className="text-slate-500">Status:</span> <span className={`font-medium ${onboarding.payment_status === 'verified' ? 'text-green-600' : 'text-yellow-600'}`}>{onboarding.payment_status}</span></div>
+                              )}
+                              {onboarding.payment_transaction_id && (
+                                <div><span className="text-slate-500">Transaction ID:</span> <span className="text-slate-700">{onboarding.payment_transaction_id}</span></div>
+                              )}
+                              {onboarding.payment_date && (
+                                <div><span className="text-slate-500">Date:</span> <span className="text-slate-700">{onboarding.payment_date}</span></div>
+                              )}
+                            </div>
+                            {onboarding.payment_screenshot_url && (
+                              <a href={onboarding.payment_screenshot_url} target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-600 hover:underline flex items-center gap-1 mt-2">
+                                <FileText className="w-3 h-3" /> Payment Screenshot
+                              </a>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Kit Delivery */}
+                        {(onboarding.kit_delivery_status || onboarding.kit_tracking_number) && (
+                          <div className="bg-cyan-50 rounded-lg p-3">
+                            <p className="text-xs text-cyan-600 mb-2 font-medium flex items-center gap-1">
+                              <Package className="w-3 h-3" /> Kit Delivery
+                            </p>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                              {onboarding.kit_delivery_status && (
+                                <div><span className="text-slate-500">Status:</span> <span className="text-slate-700">{onboarding.kit_delivery_status}</span></div>
+                              )}
+                              {onboarding.kit_tracking_number && (
+                                <div><span className="text-slate-500">Tracking #:</span> <span className="text-slate-700">{onboarding.kit_tracking_number}</span></div>
+                              )}
+                              {onboarding.kit_delivery_date && (
+                                <div><span className="text-slate-500">Delivery Date:</span> <span className="text-slate-700">{onboarding.kit_delivery_date}</span></div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Training Progress */}
+                        {onboarding.training_progress && Object.keys(onboarding.training_progress).length > 0 && (
+                          <div className="bg-orange-50 rounded-lg p-3">
+                            <p className="text-xs text-orange-600 mb-2 font-medium flex items-center gap-1">
+                              <GraduationCap className="w-3 h-3" /> Training Progress
+                            </p>
+                            <div className="grid grid-cols-2 gap-2">
+                              {Object.entries(onboarding.training_progress).map(([step, data]) => (
+                                <div key={step} className={`text-xs p-2 rounded ${data.completed ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+                                  {data.completed ? '✓' : '○'} {step.replace(/_/g, ' ')}
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </div>
