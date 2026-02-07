@@ -3210,6 +3210,51 @@ async def verify_gp_payment(
     updated = await db.gp_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
     return {"message": "Payment verified successfully", "onboarding": updated}
 
+@api_router.post("/gp-onboarding/{onboarding_id}/kit-delivery")
+async def update_kit_delivery(
+    onboarding_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Update kit delivery status - admin action"""
+    onboarding = await db.gp_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
+    if not onboarding:
+        raise HTTPException(status_code=404, detail="Onboarding not found")
+    
+    now = datetime.now(timezone.utc).isoformat()
+    status = data.get('status', 'pending')
+    
+    update_data = {
+        "kit_delivery_status": status,
+        "kit_tracking_number": data.get('tracking_number', ''),
+        "kit_courier_name": data.get('courier_name', ''),
+        "kit_dispatch_date": data.get('dispatch_date', ''),
+        "kit_expected_delivery_date": data.get('expected_delivery_date', ''),
+        "updated_at": now
+    }
+    
+    # If dispatched, mark step as in progress
+    if status == 'dispatched':
+        update_data["kit_dispatched_at"] = now
+        update_data["kit_dispatched_by"] = user.get('id') or user.get('email')
+    
+    # If delivered, mark step as completed and auto-move to training
+    if status == 'delivered':
+        update_data["kit_delivered_at"] = now
+        update_data["kit_delivery_date"] = now[:10]  # Just the date part
+        update_data["steps.kit_delivery.completed"] = True
+        update_data["steps.kit_delivery.completed_at"] = now
+        update_data["steps.kit_delivery.data"] = {
+            "delivered_at": now,
+            "tracking_number": data.get('tracking_number', ''),
+            "courier_name": data.get('courier_name', '')
+        }
+    
+    await db.gp_onboarding.update_one({"id": onboarding_id}, {"$set": update_data})
+    
+    updated = await db.gp_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
+    return {"message": f"Kit delivery updated to {status}", "onboarding": updated}
+
 @api_router.post("/gp-onboarding/{onboarding_id}/activate")
 async def activate_gp(
     onboarding_id: str,
