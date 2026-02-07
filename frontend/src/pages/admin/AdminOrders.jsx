@@ -638,7 +638,7 @@ const AdminOrders = () => {
                             </td>
                           </tr>
                         ))}
-                      </>
+                      </React.Fragment>
                     ))
                   ) : (
                     /* Student Payments - Redesigned */
