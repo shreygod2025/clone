@@ -695,6 +695,52 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 }
 ```
 
+### Feb 7, 2026 - Admin Orders Redesign & GP Training Phase 2
+
+**Admin Orders UI Redesign:**
+- ✅ **Stat Cards Redesign:** 5 stat cards with modern gradient styling (Total Orders, Pending, Overdue, Paid, Collected)
+- ✅ **Dark Table Header:** Gradient header from slate-800 to slate-700 with white text
+- ✅ **Visual Hierarchy Improvements:**
+  - Building2/GraduationCap icons for schools/students
+  - Calendar icons with conditional coloring (red for overdue)
+  - Left border indicators: red for overdue, amber for pending
+- ✅ **Expandable School Payment Groups:** Schools with multiple tranches now show expand/collapse buttons with ChevronRight/ChevronDown icons
+- ✅ **Tranche Sub-rows:** Expanded tranches show in styled sub-rows with numbered badges
+- ✅ **Document Icons in Actions:** Invoice (FileText) and Receipt icons integrated into actions column
+- ✅ **Progress Bar for Partial Payments:** Shows paid/total amount with visual progress indicator
+- ✅ **Status Badges:** Improved status badges with icons (AlertCircle for Overdue, Clock for Pending, CheckCircle2 for Paid)
+
+**GP Role Assignment Fix:**
+- ✅ **Fixed Role Name:** Changed from "Growth Partner" to "GP Manager" when GP is activated
+- ✅ **Auto-Create Role:** If "GP Manager" role doesn't exist, it's automatically created with appropriate permissions
+- ✅ **Updated Permissions:** GP Manager now has `dashboard`, `schools`, `students`, `growth_partners` permissions
+- ✅ **Updated in 3 Locations:**
+  - `update_growth_partner` function (line ~2745)
+  - `activate_gp` endpoint (line ~3195)
+  - `complete_gp_onboarding` endpoint (line ~3665)
+
+**GP Onboarding Phase 2 - Training Module:**
+- ✅ **About Company Step:** YouTube video with company overview + MCQ assessment
+- ✅ **About Skill (STEM/Robotics) Step:** Video explaining the skill domain + MCQ assessment
+- ✅ **Implementation Models Step:** Videos on how schools implement programs + FAQ-style assessment
+- ✅ **Product Training Step:** 
+  - Component explanation videos grid
+  - Sample projects per grade level with tutorial links
+  - LMS access credentials display (per-grade passwords)
+  - Project URL submission fields
+- ✅ **Target Audiences Step:** Videos on stakeholder communication + pitch video recording submissions
+- ✅ **Pricing Training Step:** 
+  - Materials review links (pricing sheets)
+  - Negotiation scenario assessments
+- ✅ **Software Training Step:** 
+  - Tools overview (CRM, Proposals, Communication)
+  - Task completion checkboxes and URL submissions
+- ✅ **Progress Tracking:** Training answers stored in `trainingAnswers` state, submitted via API
+
+**Backend Endpoints:**
+- `POST /api/gp-onboard/{token}/training/{step}` - Submit training step data with assessment answers
+- Fixed React key warning in AdminOrders.jsx (changed `<>` to `<React.Fragment key={group.school_id}>`)
+
 ## Prioritized Backlog
 
 ### P0 (Critical)
@@ -706,6 +752,8 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ Reports Overhaul with Expense Management (COMPLETED Feb 4, 2026)
 - ✅ Merge Onboarding Pages into Lead Management (COMPLETED Feb 4, 2026)
 - ✅ Reports Support Tab with Insights (COMPLETED Feb 4, 2026)
+- ✅ GP Role Assignment Fix (COMPLETED Feb 7, 2026)
+- ✅ Admin Orders UI Redesign (COMPLETED Feb 7, 2026)
 - Generate Proposal & MOU PDFs from /add page
 
 ### P1 (High)
@@ -713,9 +761,11 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ School CRM Data Transfer - Ensure data transfers across popups (COMPLETED Feb 4, 2026)
 - ✅ Team Member Reports - Performance metrics for active team members (COMPLETED Feb 4, 2026)
 - ✅ Mobile Responsiveness - Admin pages mobile-friendly (COMPLETED Feb 4, 2026)
+- ✅ GP Onboarding Phase 2 - Training Module (COMPLETED Feb 7, 2026)
 - Team member filters in Reports section
 - Implement background scheduler (APScheduler) for AI follow-up emails at 9 AM
 - CSV Export for all CRM, Data Center, Reports pages
+- School CRM Full Regression Test
 
 ### P2 (Medium)
 - PO generation system with vendor panel
