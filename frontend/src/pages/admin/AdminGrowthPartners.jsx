@@ -418,6 +418,44 @@ const AdminGrowthPartners = () => {
     }
   };
 
+  const handleUpdateKitDelivery = async (status) => {
+    if (!showKitDeliveryModal) return;
+    try {
+      const dataToSend = {
+        ...kitDeliveryData,
+        status: status || kitDeliveryData.status
+      };
+      await axios.post(`${API}/gp-onboarding/${showKitDeliveryModal.id}/kit-delivery`, dataToSend, {
+        headers: getAuthHeaders()
+      });
+      
+      if (status === 'delivered') {
+        toast.success('Kit marked as delivered! GP can now proceed to training.');
+      } else if (status === 'dispatched') {
+        toast.success('Kit marked as dispatched!');
+      } else {
+        toast.success('Kit delivery details updated!');
+      }
+      
+      setShowKitDeliveryModal(null);
+      setKitDeliveryData({ tracking_number: '', courier_name: '', dispatch_date: '', expected_delivery_date: '', status: 'pending' });
+      fetchGpOnboardings();
+    } catch (error) {
+      toast.error('Failed to update kit delivery');
+    }
+  };
+
+  const openKitDeliveryModal = (gp) => {
+    setKitDeliveryData({
+      tracking_number: gp.kit_tracking_number || '',
+      courier_name: gp.kit_courier_name || '',
+      dispatch_date: gp.kit_dispatch_date || '',
+      expected_delivery_date: gp.kit_expected_delivery_date || '',
+      status: gp.kit_delivery_status || 'pending'
+    });
+    setShowKitDeliveryModal(gp);
+  };
+
   const copyTrackingLink = (token) => {
     navigator.clipboard.writeText(`${window.location.origin}/gp-track/${token}`);
     toast.success('Tracking link copied!');
