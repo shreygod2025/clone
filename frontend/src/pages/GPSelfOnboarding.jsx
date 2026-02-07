@@ -404,14 +404,22 @@ const GPSelfOnboarding = () => {
         ...data,
         mark_complete: markComplete
       });
-      toast.success(`Training step "${step}" updated`);
-      fetchOnboarding();
+      toast.success(`Training step "${step}" completed!`);
       
-      // Move to next training step
-      const stepIndex = TRAINING_STEPS.findIndex(s => s.key === step);
-      if (stepIndex < TRAINING_STEPS.length - 1 && markComplete) {
-        setCurrentTrainingStep(TRAINING_STEPS[stepIndex + 1].key);
+      // Move to next training step BEFORE fetching (immediate UI feedback)
+      if (markComplete) {
+        const stepIndex = TRAINING_STEPS.findIndex(s => s.key === step);
+        if (stepIndex < TRAINING_STEPS.length - 1) {
+          const nextStep = TRAINING_STEPS[stepIndex + 1].key;
+          setCurrentTrainingStep(nextStep);
+          toast.info(`Moving to: ${TRAINING_STEPS[stepIndex + 1].label}`);
+        } else {
+          toast.success('🎉 Training complete! You are now a certified Growth Partner.');
+        }
       }
+      
+      // Refresh data from server
+      await fetchOnboarding();
     } catch (err) {
       toast.error('Failed to save training progress');
     } finally {
