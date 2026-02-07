@@ -533,27 +533,29 @@ const GPSelfOnboarding = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-500 to-orange-600">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Header */}
-        <div className="text-center text-white mb-8">
-          <h1 className="text-3xl font-bold mb-2">Growth Partner Onboarding</h1>
-          <p className="text-orange-100">Welcome, {onboarding.name}! Complete your onboarding to become an OLL Growth Partner.</p>
+        <div className="text-center text-white mb-6 sm:mb-8">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-2">Growth Partner Onboarding</h1>
+          <p className="text-orange-100 text-sm sm:text-base">Welcome, {onboarding.name}! Complete your onboarding to become an OLL Growth Partner.</p>
+          <div className="mt-2 sm:hidden text-sm font-medium">{completedSteps}/{ONBOARDING_STEPS.length} Steps</div>
         </div>
 
         {/* Progress Bar */}
-        <div className="bg-white/20 rounded-full h-3 mb-8 max-w-2xl mx-auto">
+        <div className="bg-white/20 rounded-full h-2 sm:h-3 mb-6 sm:mb-8 max-w-2xl mx-auto">
           <div 
-            className="bg-white rounded-full h-3 transition-all duration-500"
+            className="bg-white rounded-full h-2 sm:h-3 transition-all duration-500"
             style={{ width: `${progress}%` }}
           />
         </div>
 
-        <div className="grid lg:grid-cols-4 gap-6">
-          {/* Sidebar - Steps Navigation */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl p-4 sticky top-4">
-              <h3 className="font-semibold text-slate-800 mb-4">Onboarding Steps</h3>
-              <div className="space-y-2">
+        <div className="flex flex-col lg:grid lg:grid-cols-4 gap-4 sm:gap-6">
+          {/* Sidebar - Steps Navigation (horizontal on mobile, vertical on desktop) */}
+          <div className="lg:col-span-1 order-2 lg:order-1">
+            <div className="bg-white rounded-xl sm:rounded-2xl p-3 sm:p-4 lg:sticky lg:top-4">
+              <h3 className="font-semibold text-slate-800 mb-3 sm:mb-4 hidden lg:block">Onboarding Steps</h3>
+              {/* Mobile: Horizontal scrollable tabs */}
+              <div className="flex lg:flex-col gap-2 overflow-x-auto pb-2 lg:pb-0 -mx-1 px-1 lg:mx-0 lg:px-0">
                 {ONBOARDING_STEPS.map((step, idx) => {
                   const status = getStepStatus(step.key);
                   const isActive = currentStep === step.key;
@@ -564,7 +566,7 @@ const GPSelfOnboarding = () => {
                       key={step.key}
                       onClick={() => status !== 'pending' && setCurrentStep(step.key)}
                       disabled={status === 'pending' && idx > completedSteps}
-                      className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-all ${
+                      className={`flex-shrink-0 lg:w-full flex items-center gap-2 lg:gap-3 px-3 py-2 lg:p-3 rounded-full lg:rounded-lg text-left transition-all ${
                         isActive 
                           ? 'bg-orange-100 border-2 border-orange-500' 
                           : status === 'completed'
@@ -573,7 +575,7 @@ const GPSelfOnboarding = () => {
                       }`}
                       data-testid={`step-${step.key}`}
                     >
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      <div className={`w-7 h-7 lg:w-8 lg:h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                         status === 'completed' 
                           ? 'bg-green-500 text-white' 
                           : isActive
