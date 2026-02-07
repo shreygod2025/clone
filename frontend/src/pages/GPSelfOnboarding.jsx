@@ -1873,7 +1873,6 @@ const GPSelfOnboarding = () => {
           </div>
         </div>
       </div>
-      </div>
 
       {/* Footer */}
       <footer className="bg-[#1E3A5F] text-white mt-auto">
