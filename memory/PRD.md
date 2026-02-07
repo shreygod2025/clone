@@ -759,18 +759,38 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ **Adaptive Header:** Step counter displayed prominently on mobile, compact progress bar
 - ✅ **Responsive Typography:** Text sizes scale appropriately (text-sm on mobile, text-base on desktop)
 
+**GP Onboarding Status Screens:**
+- ✅ **"Under Review" Screen:** Shown when GP completes all training but awaiting admin activation
+  - Amber/orange theme with Clock icon
+  - Checklist of completed steps with green checkmarks
+  - "What happens next?" section explaining 24-48 hour review process
+- ✅ **"Welcome to OLL" Screen:** Shown after admin activates GP
+  - Green theme with Award icon
+  - Personalized congratulations message
+  - Login credentials displayed (email, temp password with change warning)
+  - Fallback message if credentials not stored in DB
+  - "Login to Dashboard" button
+
+**Admin Panel Enhancements:**
+- ✅ **"Training Complete" Badge:** Green badge with graduation cap shown when GP completes all 6 steps
+- ✅ **"Ready to Activate" Badge:** Pulsing green badge shown when payment is verified and training complete
+
 **Files Modified:**
 - `/app/frontend/src/pages/GPSelfOnboarding.jsx`:
   - `submitTrainingStep` function - Fixed step progression logic
   - `fetchOnboarding` function - Added training step determination
-  - Main layout - Added responsive Tailwind classes (lg:, sm:, hidden)
-  - Training navigation - Added horizontal scroll and number display
+  - Added "Under Review" screen component
+  - Enhanced "Welcome" screen with credential display
+  - Main layout - Added responsive Tailwind classes
+- `/app/frontend/src/pages/admin/AdminGrowthPartners.jsx`:
+  - Added "Training Complete" badge
+  - Added "Ready to Activate" badge
 
 **Testing Results:**
-- ✅ All 4 features verified by testing agent (100% pass rate)
+- ✅ All features verified via screenshots
 - ✅ Mobile viewport (375x800) displays correctly
-- ✅ Training step auto-advances with toast notification
-- ✅ Step numbers visible on mobile navigation
+- ✅ "Under Review" screen shows for complete-but-inactive GPs
+- ✅ "Welcome" screen shows for activated GPs
 
 ## Prioritized Backlog
 
