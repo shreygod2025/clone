@@ -424,10 +424,9 @@ const AdminOrders = () => {
                   {activeTab === 'school' ? (
                     /* Grouped School Payments with Expandable Sub-rows */
                     groupedSchoolPayments.map((group) => (
-                      <>
+                      <React.Fragment key={group.school_id}>
                         {/* School Parent Row */}
                         <tr 
-                          key={group.school_id} 
                           className={`hover:bg-orange-50/50 transition-all duration-200 ${group.tranches.length > 1 ? 'bg-gradient-to-r from-orange-50/30 to-white' : ''} ${group.hasOverdue ? 'border-l-4 border-l-red-400' : group.hasPending ? 'border-l-4 border-l-amber-400' : ''}`}
                           onClick={() => group.tranches.length > 1 && toggleSchoolExpand(group.school_id)}
                         >
