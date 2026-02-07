@@ -792,6 +792,38 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ "Under Review" screen shows for complete-but-inactive GPs
 - ✅ "Welcome" screen shows for activated GPs
 
+### Feb 7, 2026 - Need Help Button Updates & Pre-deployment Testing
+
+**Need Help Button Updates (Home Page):**
+- ✅ **Course Information** → Redirects to Offerings page (/offerings)
+- ✅ **Partnership Opportunities:**
+  - School Partnership → /for-schools
+  - Center Partnership / Franchise → /growth-partner
+- ✅ **Existing Customer Support:**
+  - Missing / Damaged Kit → Opens query form
+  - LMS Login Help → External link to lms.oll.co
+  - Class / Schedule Issue → Opens query form
+  - Payment Query → Opens query form
+- ✅ **Join OLL:**
+  - Join OLL Team → /join-team
+  - Become an Educator → /educator
+
+**Pre-deployment Testing (100% Pass Rate - 13/13 Features):**
+- ✅ Home Page - Hero section, navigation, user type cards
+- ✅ Need Help Button - New options working
+- ✅ Student Funnel - Skill selection flow
+- ✅ School Landing - Stats, CTAs visible
+- ✅ Educator Funnel - Application form
+- ✅ Growth Partner Page - Partner requirements
+- ✅ Offerings Page - All programs displayed
+- ✅ Join Team Page - Application form
+- ✅ Admin Login - Successful authentication
+- ✅ Admin Dashboard - Stats, quick actions
+- ✅ Admin School CRM - Tabs, data loading
+- ✅ Admin Growth Partners - Training Complete badges
+- ✅ GP Onboarding (Under Review) - Completed steps checklist
+- ✅ GP Onboarding (Welcome) - Login credentials display
+
 ## Prioritized Backlog
 
 ### P0 (Critical)
