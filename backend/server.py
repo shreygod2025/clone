@@ -3184,6 +3184,32 @@ async def complete_gp_onboarding_step(
     onboarding = await db.gp_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
     return onboarding
 
+@api_router.post("/gp-onboarding/{onboarding_id}/verify-payment")
+async def verify_gp_payment(
+    onboarding_id: str,
+    user: dict = Depends(get_current_user)
+):
+    """Verify GP payment - admin action"""
+    onboarding = await db.gp_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
+    if not onboarding:
+        raise HTTPException(status_code=404, detail="Onboarding not found")
+    
+    # Update payment step to verified
+    now = datetime.now(timezone.utc).isoformat()
+    await db.gp_onboarding.update_one(
+        {"id": onboarding_id},
+        {"$set": {
+            "steps.payment.verified": True,
+            "steps.payment.verified_at": now,
+            "steps.payment.verified_by": user.get('id') or user.get('email'),
+            "payment_status": "verified",
+            "updated_at": now
+        }}
+    )
+    
+    updated = await db.gp_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
+    return {"message": "Payment verified successfully", "onboarding": updated}
+
 @api_router.post("/gp-onboarding/{onboarding_id}/activate")
 async def activate_gp(
     onboarding_id: str,
