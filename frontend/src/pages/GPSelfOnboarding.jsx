@@ -1241,25 +1241,21 @@ const GPSelfOnboarding = () => {
                             </div>
                           </div>
                         ))}
-                              className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
-                            >
-                              <Play className="w-5 h-5" />
-                              {video.title}
-                              <ExternalLink className="w-4 h-4" />
-                            </a>
-                          </div>
-                        ))}
                       </div>
 
                       {/* Long Text Assessment */}
                       <div className="space-y-4">
-                        <h4 className="font-medium text-slate-800">Assessment - Long Text Answers</h4>
+                        <h4 className="font-medium text-slate-800">Assessment - Long Text Answers <span className="text-red-500">*</span></h4>
+                        <p className="text-sm text-slate-500">Answer all questions to proceed to the next step.</p>
                         {TRAINING_CONTENT.about_skill.questions.map((q, idx) => (
-                          <div key={q.id} className="bg-white border rounded-lg p-4">
+                          <div key={q.id} className={`bg-white border rounded-lg p-4 ${
+                            trainingAnswers.about_skill?.assessment?.answers?.[q.id]?.length > 20 ? 'border-green-300' : 'border-slate-200'
+                          }`}>
                             <p className="font-medium text-slate-800 mb-3">{idx + 1}. {q.question}</p>
                             <Textarea
-                              placeholder="Write your detailed answer here..."
+                              placeholder="Write your detailed answer here (minimum 20 characters)..."
                               rows={4}
+                              value={trainingAnswers.about_skill?.assessment?.answers?.[q.id] || ''}
                               onChange={(e) => setTrainingAnswers(prev => ({
                                 ...prev,
                                 about_skill: {
@@ -1284,9 +1280,19 @@ const GPSelfOnboarding = () => {
                           Previous
                         </Button>
                         <Button 
-                          onClick={() => submitTrainingStep('about_skill', { 
-                            assessment: trainingAnswers.about_skill?.assessment 
-                          }, true)} 
+                          onClick={() => {
+                            // Validate all answers are provided with minimum length
+                            const answers = trainingAnswers.about_skill?.assessment?.answers || {};
+                            const requiredQuestions = TRAINING_CONTENT.about_skill.questions.map(q => q.id);
+                            const unanswered = requiredQuestions.filter(qId => !answers[qId] || answers[qId].length < 20);
+                            if (unanswered.length > 0) {
+                              toast.error(`Please provide detailed answers (min 20 chars) for all ${unanswered.length} remaining question(s).`);
+                              return;
+                            }
+                            submitTrainingStep('about_skill', { 
+                              assessment: trainingAnswers.about_skill?.assessment 
+                            }, true);
+                          }} 
                           disabled={submitting}
                           className="bg-orange-500 hover:bg-orange-600"
                         >
