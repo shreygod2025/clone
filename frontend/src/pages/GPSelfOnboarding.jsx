@@ -1108,15 +1108,15 @@ const GPSelfOnboarding = () => {
 
               {/* Step 6: Training */}
               {currentStep === 'training' && (
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                   <div>
-                    <h2 className="text-2xl font-bold text-slate-800 mb-2">Training Program</h2>
-                    <p className="text-slate-600">Complete all training modules to become a certified Growth Partner.</p>
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">Training Program</h2>
+                    <p className="text-slate-600 text-sm sm:text-base">Complete all training modules to become a certified Growth Partner.</p>
                   </div>
 
-                  {/* Training Steps Navigation */}
-                  <div className="bg-slate-50 rounded-xl p-4">
-                    <div className="flex flex-wrap gap-2">
+                  {/* Training Steps Navigation - Horizontal scroll on mobile */}
+                  <div className="bg-slate-50 rounded-xl p-3 sm:p-4">
+                    <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
                       {TRAINING_STEPS.map((step, idx) => {
                         const stepProgress = onboarding?.training_progress?.[step.key];
                         const isComplete = stepProgress?.completed;
@@ -1127,7 +1127,7 @@ const GPSelfOnboarding = () => {
                           <button
                             key={step.key}
                             onClick={() => setCurrentTrainingStep(step.key)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                            className={`flex-shrink-0 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                               isActive 
                                 ? 'bg-orange-500 text-white' 
                                 : isComplete
@@ -1135,8 +1135,9 @@ const GPSelfOnboarding = () => {
                                   : 'bg-white text-slate-600 hover:bg-slate-100'
                             }`}
                           >
-                            {isComplete ? <Check className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
-                            {step.label}
+                            {isComplete ? <Check className="w-3 h-3 sm:w-4 sm:h-4" /> : <Icon className="w-3 h-3 sm:w-4 sm:h-4" />}
+                            <span className="hidden sm:inline">{step.label}</span>
+                            <span className="sm:hidden">{idx + 1}</span>
                           </button>
                         );
                       })}
@@ -1145,8 +1146,8 @@ const GPSelfOnboarding = () => {
 
                   {/* Training Content - About Company */}
                   {currentTrainingStep === 'about_company' && (
-                    <div className="space-y-6">
-                      <div className="bg-orange-50 rounded-xl p-6">
+                    <div className="space-y-4 sm:space-y-6">
+                      <div className="bg-orange-50 rounded-xl p-4 sm:p-6">
                         <h3 className="font-semibold text-orange-800 mb-2">About the Company</h3>
                         <p className="text-orange-700 text-sm">Learn about Shreyaan's story, OLL's vision, mission, team & achievements.</p>
                       </div>
