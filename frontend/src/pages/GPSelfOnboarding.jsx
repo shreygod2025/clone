@@ -613,10 +613,11 @@ const GPSelfOnboarding = () => {
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="grid lg:grid-cols-4 gap-6">
             {/* Sidebar - Steps Navigation */}
-            <div className="lg:col-span-1">
-              <div className="bg-white rounded-2xl p-4 sticky top-24 shadow-sm">
-                <h3 className="font-semibold text-slate-800 mb-4">Onboarding Steps</h3>
-                <div className="space-y-2">
+            <div className="lg:col-span-1 order-2 lg:order-1">
+              <div className="bg-white rounded-2xl p-4 lg:sticky lg:top-24 shadow-sm">
+                <h3 className="font-semibold text-slate-800 mb-4 hidden lg:block">Onboarding Steps</h3>
+                {/* Mobile: Horizontal scroll, Desktop: Vertical list */}
+                <div className="flex lg:flex-col gap-2 overflow-x-auto pb-2 lg:pb-0 lg:overflow-visible -mx-2 px-2 lg:mx-0 lg:px-0">
                   {ONBOARDING_STEPS.map((step, idx) => {
                     const status = getStepStatus(step.key);
                     const isActive = currentStep === step.key;
