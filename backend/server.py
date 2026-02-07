@@ -3176,7 +3176,7 @@ async def activate_gp(
     data: dict,
     user: dict = Depends(get_current_user)
 ):
-    """Activate GP - creates a new team user with Growth Partner role"""
+    """Activate GP - creates a new team user with GP Manager role"""
     onboarding = await db.gp_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
     if not onboarding:
         raise HTTPException(status_code=404, detail="Onboarding not found")
@@ -3187,16 +3187,17 @@ async def activate_gp(
     if incomplete:
         raise HTTPException(status_code=400, detail=f"Complete all steps first: {', '.join(incomplete)}")
     
-    # Find or create Growth Partner role
-    gp_role = await db.roles.find_one({"name": "Growth Partner"}, {"_id": 0})
+    # Find or create GP Manager role
+    gp_role = await db.roles.find_one({"name": "GP Manager"}, {"_id": 0})
     if not gp_role:
         # Create the role
         gp_role = {
             "id": str(uuid.uuid4()),
-            "name": "Growth Partner",
-            "description": "External growth partner with referral capabilities",
-            "permissions": ["students", "schools"],
-            "is_system": True,
+            "name": "GP Manager",
+            "description": "Growth Partner Manager - Can manage schools and student leads",
+            "permissions": ["dashboard", "students", "schools", "growth_partners"],
+            "is_system": False,
+            "is_active": True,
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         await db.roles.insert_one(gp_role)
@@ -3218,7 +3219,7 @@ async def activate_gp(
         password_hash=bcrypt.hashpw(temp_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
         role_id=role_id,
         city=onboarding.get('city', ''),
-        permissions=["students", "schools"]  # GP can refer students and schools
+        permissions=["dashboard", "students", "schools", "growth_partners"]  # GP Manager permissions
     )
     
     doc = team_user.model_dump()
