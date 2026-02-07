@@ -4,7 +4,7 @@ import {
   CheckCircle2, User, FileText, GraduationCap, CreditCard, Package, 
   Phone, Mail, Clock, ArrowLeft, ArrowRight, ExternalLink, Handshake, 
   MapPin, Upload, Play, ChevronRight, Building2, BookOpen, Video,
-  Target, DollarSign, Monitor, Award, Loader2, Check, X, AlertCircle
+  Target, DollarSign, Monitor, Award, Loader2, Check, X, AlertCircle, Download, Truck, Calendar
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Input } from '../components/ui/input';
