@@ -811,38 +811,44 @@ const GPSelfOnboarding = () => {
                 <div className="space-y-6">
                   <div>
                     <h2 className="text-2xl font-bold text-slate-800 mb-2">Contract Signing</h2>
-                    <p className="text-slate-600">Review and sign the Growth Partner agreement.</p>
+                    <p className="text-slate-600">Review and sign the Growth Partner MOU (Memorandum of Understanding).</p>
                   </div>
 
-                  <div className="bg-slate-50 rounded-xl p-6 max-h-96 overflow-y-auto">
-                    <h3 className="font-semibold text-slate-800 mb-4">Growth Partner Agreement</h3>
-                    <div className="prose prose-sm text-slate-600">
-                      <p>This Growth Partner Agreement ("Agreement") is entered into between OLL Education Private Limited ("Company") and the Growth Partner.</p>
-                      
-                      <h4>1. Partnership Terms</h4>
-                      <p>The Growth Partner agrees to promote and refer potential customers (schools, students, and parents) to the Company's educational programs and services.</p>
-                      
-                      <h4>2. Commission Structure</h4>
-                      <p>The Growth Partner will receive commissions as per the agreed rates for successful referrals that result in conversions.</p>
-                      
-                      <h4>3. Responsibilities</h4>
-                      <ul>
-                        <li>Represent the Company professionally</li>
-                        <li>Complete all required training modules</li>
-                        <li>Maintain confidentiality of business information</li>
-                        <li>Follow ethical business practices</li>
-                      </ul>
-                      
-                      <h4>4. Term and Termination</h4>
-                      <p>This agreement is valid for one year from the date of signing and may be terminated by either party with 30 days notice.</p>
+                  {/* PDF Preview */}
+                  <div className="bg-slate-50 rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+                        <FileText className="w-5 h-5 text-orange-500" />
+                        OLL x Growth Partner MOU
+                      </h3>
+                      <a 
+                        href="https://customer-assets.emergentagent.com/job_skill-hub-55/artifacts/tkbt7jy3_OLL%20x%20Growth%20Partner%20MOU.pdf"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-orange-600 hover:text-orange-700 flex items-center gap-1"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                        Open in New Tab
+                      </a>
                     </div>
+                    <iframe 
+                      src="https://customer-assets.emergentagent.com/job_skill-hub-55/artifacts/tkbt7jy3_OLL%20x%20Growth%20Partner%20MOU.pdf"
+                      className="w-full h-[400px] rounded-lg border border-slate-200"
+                      title="Growth Partner MOU"
+                    />
                   </div>
 
                   <div className="bg-orange-50 rounded-lg p-4">
-                    <label className="flex items-start gap-3">
-                      <input type="checkbox" className="mt-1" id="agree-terms" />
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="mt-1 w-5 h-5 text-orange-500 rounded" 
+                        id="agree-terms"
+                        checked={contractAgreed}
+                        onChange={(e) => setContractAgreed(e.target.checked)}
+                      />
                       <span className="text-sm text-slate-700">
-                        I have read and agree to the terms and conditions of the Growth Partner Agreement. I understand my responsibilities and commission structure.
+                        I have read and agree to the terms and conditions of the Growth Partner MOU (Memorandum of Understanding). I understand my responsibilities and commission structure as outlined in the document.
                       </span>
                     </label>
                   </div>
@@ -852,9 +858,13 @@ const GPSelfOnboarding = () => {
                       <ArrowLeft className="w-4 h-4 mr-2" />
                       Previous
                     </Button>
-                    <Button onClick={submitContract} disabled={submitting} className="bg-orange-500 hover:bg-orange-600">
+                    <Button 
+                      onClick={submitContract} 
+                      disabled={submitting || !contractAgreed} 
+                      className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50"
+                    >
                       {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                      Sign Contract
+                      Sign & Download Contract
                       <FileText className="w-4 h-4 ml-2" />
                     </Button>
                   </div>
