@@ -551,7 +551,9 @@ const GPSelfOnboarding = () => {
   }
 
   // Check if onboarding is complete and activated
-  if (onboarding.status === 'active' && onboarding.team_user_credentials) {
+  if (onboarding.status === 'active') {
+    const hasCredentials = onboarding.team_user_credentials && Object.keys(onboarding.team_user_credentials).length > 0;
+    
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl p-6 sm:p-8 text-center max-w-lg mx-4">
@@ -563,16 +565,17 @@ const GPSelfOnboarding = () => {
             Congratulations <strong>{onboarding.name}</strong>! You are now an official OLL Growth Partner.
           </p>
           
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4 sm:p-6 text-left mb-6">
-            <h3 className="font-semibold text-green-800 mb-4 flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5" />
-              Your Login Credentials
-            </h3>
-            <div className="space-y-3">
-              <div className="bg-white rounded-lg p-3">
-                <p className="text-xs text-slate-500 mb-1">Email</p>
-                <p className="font-medium text-slate-800 break-all">{onboarding.team_user_credentials.email}</p>
-              </div>
+          {hasCredentials ? (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 sm:p-6 text-left mb-6">
+              <h3 className="font-semibold text-green-800 mb-4 flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5" />
+                Your Login Credentials
+              </h3>
+              <div className="space-y-3">
+                <div className="bg-white rounded-lg p-3">
+                  <p className="text-xs text-slate-500 mb-1">Email</p>
+                  <p className="font-medium text-slate-800 break-all">{onboarding.team_user_credentials.email}</p>
+                </div>
               {onboarding.team_user_credentials.username && (
                 <div className="bg-white rounded-lg p-3">
                   <p className="text-xs text-slate-500 mb-1">Username</p>
