@@ -741,6 +741,37 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - `POST /api/gp-onboard/{token}/training/{step}` - Submit training step data with assessment answers
 - Fixed React key warning in AdminOrders.jsx (changed `<>` to `<React.Fragment key={group.school_id}>`)
 
+### Feb 7, 2026 - GP Onboarding Bug Fixes & Mobile Responsiveness
+
+**Training Step Progression Bug Fix:**
+- ✅ **Fixed Auto-Advance Issue:** Training module now automatically advances to the next step after completion
+- ✅ **Root Cause:** `setCurrentTrainingStep` was being overwritten by `fetchOnboarding` race condition
+- ✅ **Solution:** 
+  - Move `setCurrentTrainingStep` call BEFORE `fetchOnboarding` for immediate UI feedback
+  - Added `await fetchOnboarding()` to ensure proper sequencing
+  - Added toast notification "Moving to: {next step label}" for user feedback
+  - Enhanced `fetchOnboarding` to determine current training step from progress data
+
+**Mobile Responsiveness Improvements:**
+- ✅ **Main Steps Sidebar:** Horizontal scrollable on mobile with pill-shaped buttons showing step numbers (1-6)
+- ✅ **Training Steps Navigation:** Horizontal scrollable tabs with step numbers (1-7) on mobile
+- ✅ **Responsive Form Layout:** Form fields stack vertically on mobile, 2-column on desktop
+- ✅ **Adaptive Header:** Step counter displayed prominently on mobile, compact progress bar
+- ✅ **Responsive Typography:** Text sizes scale appropriately (text-sm on mobile, text-base on desktop)
+
+**Files Modified:**
+- `/app/frontend/src/pages/GPSelfOnboarding.jsx`:
+  - `submitTrainingStep` function - Fixed step progression logic
+  - `fetchOnboarding` function - Added training step determination
+  - Main layout - Added responsive Tailwind classes (lg:, sm:, hidden)
+  - Training navigation - Added horizontal scroll and number display
+
+**Testing Results:**
+- ✅ All 4 features verified by testing agent (100% pass rate)
+- ✅ Mobile viewport (375x800) displays correctly
+- ✅ Training step auto-advances with toast notification
+- ✅ Step numbers visible on mobile navigation
+
 ## Prioritized Backlog
 
 ### P0 (Critical)
@@ -754,6 +785,8 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ Reports Support Tab with Insights (COMPLETED Feb 4, 2026)
 - ✅ GP Role Assignment Fix (COMPLETED Feb 7, 2026)
 - ✅ Admin Orders UI Redesign (COMPLETED Feb 7, 2026)
+- ✅ GP Training Step Progression Fix (COMPLETED Feb 7, 2026)
+- ✅ GP Onboarding Mobile Responsiveness (COMPLETED Feb 7, 2026)
 - Generate Proposal & MOU PDFs from /add page
 
 ### P1 (High)
