@@ -63,11 +63,20 @@ const QUICK_ACTIONS = {
   // General
   general: {
     'course_info': {
-      'programs': { label: 'Explore Programs', link: '/student', icon: '📚' },
+      'programs': { label: 'Explore Programs', link: '/offerings', icon: '📚' },
     },
     'partnership': {
       'school': { label: 'School Partnership', link: '/schools', icon: '🏫' },
-      'center': { label: 'Open a Center', link: '/centers', icon: '🏢' },
+      'center': { label: 'Center Partnership', link: '/growth-partner', icon: '🏢' },
+      'franchise': { label: 'Franchise Opportunity', link: '/growth-partner', icon: '💼' },
+    },
+    'opportunities': {
+      'join_team': { label: 'Join OLL Team', link: '/join-team', icon: '👥' },
+      'educator': { label: 'Become an Educator', link: '/educator', icon: '👨‍🏫' },
+    },
+    'support': {
+      'lms': { label: 'LMS Login', link: 'https://lms.oll.co', icon: '🎓', external: true },
+      'store': { label: 'Kit & Materials Store', link: '/store', icon: '📦' },
     },
   },
 };
