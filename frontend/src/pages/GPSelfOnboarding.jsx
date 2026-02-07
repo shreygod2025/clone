@@ -346,8 +346,8 @@ const GPSelfOnboarding = () => {
   };
 
   const submitPayment = async () => {
-    if (!paymentData.transaction_id || !paymentData.screenshot_url) {
-      toast.error('Please provide payment details and screenshot');
+    if (!paymentData.transaction_id) {
+      toast.error('Please provide transaction ID');
       return;
     }
     setSubmitting(true);
