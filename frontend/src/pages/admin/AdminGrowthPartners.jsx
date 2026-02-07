@@ -92,9 +92,15 @@ const AdminGrowthPartners = () => {
   // GP Onboarding steps
   const ONBOARDING_STEPS = [
     { key: 'personal_info', label: 'Personal Info', icon: User },
+    { key: 'bank_details', label: 'Bank Details', icon: CreditCard },
     { key: 'contract_signing', label: 'Contract', icon: FileText },
+    { key: 'payment', label: 'Payment', icon: CreditCard },
+    { key: 'kit_delivery', label: 'Kit Delivery', icon: Package },
     { key: 'training', label: 'Training', icon: GraduationCap },
   ];
+
+  // Modal state for payment verification
+  const [showPaymentVerifyModal, setShowPaymentVerifyModal] = useState(null);
 
   useEffect(() => {
     fetchPartners();
