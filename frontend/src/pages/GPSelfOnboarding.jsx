@@ -197,10 +197,7 @@ const TRAINING_CONTENT = {
     ],
     requirements: [
       { id: 'proposal', label: 'Upload a sample proposal', type: 'upload' },
-      { id: 'mou', label: 'Upload a sample MOU', type: 'upload' },
-      { id: 'email', label: 'Send test email to verify', type: 'action' },
-      { id: 'whatsapp', label: 'Send test WhatsApp message', type: 'action' },
-      { id: 'campaign', label: 'Create a bulk marketing campaign', type: 'action' }
+      { id: 'mou', label: 'Upload a sample MOU', type: 'upload' }
     ]
   }
 };
