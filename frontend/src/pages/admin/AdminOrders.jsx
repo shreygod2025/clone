@@ -644,104 +644,98 @@ const AdminOrders = () => {
                   ) : (
                     /* Student Payments - Redesigned */
                     sortedPayments.map((payment) => (
-                    <tr key={payment.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-3">
-                        <div>
-                          <p className="font-medium text-slate-800">
-                            {payment.student_name}
-                          </p>
-                          <p className="text-sm text-slate-500">
-                            {payment.description}
-                          </p>
+                    <tr key={payment.id} className={`hover:bg-orange-50/50 transition-all duration-200 ${
+                      payment.status === 'pending' && payment.due_date && isPast(parseISO(payment.due_date)) 
+                        ? 'border-l-4 border-l-red-400' 
+                        : payment.status === 'pending' ? 'border-l-4 border-l-amber-400' : ''
+                    }`}>
+                      <td className="px-6 py-5">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-50 rounded-xl flex items-center justify-center">
+                            <GraduationCap className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-slate-800 text-base">
+                              {payment.student_name}
+                            </p>
+                            <p className="text-sm text-slate-500">
+                              {payment.description || payment.parent_name || 'Student enrollment'}
+                            </p>
+                          </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3">
-                        <p className="font-semibold text-slate-800">₹{(payment.amount || 0).toLocaleString()}</p>
-                        {payment.tranche_info && (
-                          <p className="text-xs text-slate-500">{payment.tranche_info}</p>
-                        )}
+                      <td className="px-6 py-5">
+                        <div>
+                          <p className="font-bold text-lg text-slate-800">₹{(payment.amount || 0).toLocaleString()}</p>
+                          {payment.tranche_info && (
+                            <p className="text-xs text-slate-500 mt-1">{payment.tranche_info}</p>
+                          )}
+                          {payment.gst_type && (
+                            <span className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full font-medium ${
+                              payment.gst_type === 'book_gst' ? 'bg-blue-100 text-blue-700' :
+                              payment.gst_type === 'inclusive' ? 'bg-emerald-100 text-emerald-700' :
+                              'bg-amber-100 text-amber-700'
+                            }`}>
+                              {payment.gst_type === 'book_gst' ? 'Book GST' :
+                               payment.gst_type === 'inclusive' ? 'Inclusive' : 'Exclusive'}
+                            </span>
+                          )}
+                        </div>
                       </td>
-                      <td className="px-4 py-3">
-                        {payment.gst_type ? (
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            payment.gst_type === 'book_gst' ? 'bg-blue-100 text-blue-700' :
-                            payment.gst_type === 'inclusive' ? 'bg-green-100 text-green-700' :
-                            'bg-orange-100 text-orange-700'
-                          }`}>
-                            {payment.gst_type === 'book_gst' ? 'Book GST' :
-                             payment.gst_type === 'inclusive' ? 'Inclusive' : 'Exclusive'}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400 text-sm">-</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
+                      <td className="px-6 py-5">
                         {payment.due_date ? (
-                          <p className={`text-sm ${
-                            isPast(parseISO(payment.due_date)) && payment.status !== 'paid'
-                              ? 'text-red-600 font-medium'
-                              : 'text-slate-600'
-                          }`}>
-                            {format(parseISO(payment.due_date), 'MMM d, yyyy')}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <Calendar className={`w-4 h-4 ${isPast(parseISO(payment.due_date)) && payment.status !== 'paid' ? 'text-red-500' : 'text-slate-400'}`} />
+                            <p className={`text-sm font-medium ${
+                              isPast(parseISO(payment.due_date)) && payment.status !== 'paid'
+                                ? 'text-red-600'
+                                : 'text-slate-700'
+                            }`}>
+                              {format(parseISO(payment.due_date), 'MMM d, yyyy')}
+                            </p>
+                          </div>
                         ) : (
-                          <span className="text-slate-400">-</span>
+                          <span className="text-slate-400 text-sm">Not set</span>
                         )}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-6 py-5">
                         {getStatusBadge(payment)}
                       </td>
-                      <td className="px-4 py-3">
-                        {payment.invoice_url ? (
-                          <a 
-                            href={payment.invoice_url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1"
-                          >
-                            <FileText className="w-4 h-4" />
-                            View
-                          </a>
-                        ) : (
-                          <span className="text-slate-400 text-sm">Not uploaded</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        {payment.receipt_url ? (
-                          <a 
-                            href={payment.receipt_url} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-green-600 hover:text-green-800 text-sm flex items-center gap-1"
-                          >
-                            <Receipt className="w-4 h-4" />
-                            View
-                          </a>
-                        ) : (
-                          <span className="text-slate-400 text-sm">Not uploaded</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
+                      <td className="px-6 py-5">
+                        <div className="flex items-center justify-end gap-2">
+                          {/* Document indicators */}
+                          {(payment.invoice_url || payment.receipt_url) && (
+                            <div className="flex items-center gap-1 mr-2">
+                              {payment.invoice_url && (
+                                <a href={payment.invoice_url} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors" title="View Invoice">
+                                  <FileText className="w-4 h-4 text-blue-600" />
+                                </a>
+                              )}
+                              {payment.receipt_url && (
+                                <a href={payment.receipt_url} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-green-50 rounded-lg hover:bg-green-100 transition-colors" title="View Receipt">
+                                  <Receipt className="w-4 h-4 text-green-600" />
+                                </a>
+                              )}
+                            </div>
+                          )}
                           {payment.conversion_details && (
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => setShowStudentDetails(payment)}
-                              className="text-blue-600 hover:text-blue-800"
+                              className="text-slate-600 hover:text-blue-600 hover:bg-blue-50"
                               data-testid={`view-student-details-${payment.id}`}
                             >
-                              <ExternalLink className="w-4 h-4 mr-1" />
-                              Details
+                              <ExternalLink className="w-4 h-4" />
                             </Button>
                           )}
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={() => openPaymentModal(payment)}
+                            className="border-orange-200 text-orange-600 hover:bg-orange-50 hover:border-orange-300"
                             data-testid={`update-payment-${payment.id}`}
                           >
-                            <Eye className="w-4 h-4 mr-1" />
                             Update
                           </Button>
                         </div>
