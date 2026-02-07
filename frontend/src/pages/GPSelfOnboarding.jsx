@@ -591,6 +591,18 @@ const GPSelfOnboarding = () => {
               </div>
             </div>
           </div>
+          ) : (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 sm:p-6 text-left mb-6">
+              <h3 className="font-semibold text-blue-800 mb-2 flex items-center gap-2">
+                <Mail className="w-5 h-5" />
+                Login Details
+              </h3>
+              <p className="text-sm text-blue-700">
+                Your login credentials have been sent to your registered email address. 
+                Please check your inbox (and spam folder) for the details.
+              </p>
+            </div>
+          )}
           
           <a 
             href="/admin/login"
