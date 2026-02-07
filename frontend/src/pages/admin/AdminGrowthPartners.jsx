@@ -394,6 +394,20 @@ const AdminGrowthPartners = () => {
     }
   };
 
+  const handleVerifyPayment = async () => {
+    if (!showPaymentVerifyModal) return;
+    try {
+      await axios.post(`${API}/gp-onboarding/${showPaymentVerifyModal.id}/verify-payment`, {}, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Payment verified successfully!');
+      setShowPaymentVerifyModal(null);
+      fetchGpOnboardings();
+    } catch (error) {
+      toast.error('Failed to verify payment');
+    }
+  };
+
   const copyTrackingLink = (token) => {
     navigator.clipboard.writeText(`${window.location.origin}/gp-track/${token}`);
     toast.success('Tracking link copied!');
