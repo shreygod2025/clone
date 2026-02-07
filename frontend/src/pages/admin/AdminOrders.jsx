@@ -388,19 +388,19 @@ const AdminOrders = () => {
         </div>
 
         {/* Payments Table */}
-        <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
           {loading ? (
             <div className="p-12 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1E3A5F] mx-auto"></div>
-              <p className="text-slate-500 mt-4">Loading payments...</p>
+              <div className="animate-spin rounded-full h-10 w-10 border-3 border-orange-500 border-t-transparent mx-auto"></div>
+              <p className="text-slate-500 mt-4 font-medium">Loading payments...</p>
             </div>
           ) : sortedPayments.length === 0 ? (
-            <div className="p-16 text-center">
-              <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Receipt className="w-10 h-10 text-slate-300" />
+            <div className="p-20 text-center">
+              <div className="w-24 h-24 bg-gradient-to-br from-slate-100 to-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-inner">
+                <Receipt className="w-12 h-12 text-slate-300" />
               </div>
-              <p className="text-lg font-medium text-slate-600">No payments found</p>
-              <p className="text-sm text-slate-400 mt-2 max-w-md mx-auto">
+              <p className="text-xl font-semibold text-slate-700">No payments found</p>
+              <p className="text-sm text-slate-400 mt-3 max-w-md mx-auto leading-relaxed">
                 {activeTab === 'school' 
                   ? 'School payments will appear here when schools are converted with payment tranches'
                   : 'Student payments will appear here when students book sessions'}
@@ -409,17 +409,15 @@ const AdminOrders = () => {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200">
-                  <tr>
-                    <th className="text-left px-5 py-4 text-xs font-bold text-slate-600 uppercase tracking-wider">
+                <thead>
+                  <tr className="bg-gradient-to-r from-slate-800 to-slate-700">
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider">
                       {activeTab === 'school' ? 'School' : 'Student'}
                     </th>
-                    <th className="text-left px-5 py-4 text-xs font-bold text-slate-600 uppercase tracking-wider">Amount</th>
-                    <th className="text-left px-5 py-4 text-xs font-bold text-slate-600 uppercase tracking-wider">GST</th>
-                    <th className="text-left px-5 py-4 text-xs font-bold text-slate-600 uppercase tracking-wider">Due Date</th>
-                    <th className="text-left px-5 py-4 text-xs font-bold text-slate-600 uppercase tracking-wider">Status</th>
-                    <th className="text-left px-5 py-4 text-xs font-bold text-slate-600 uppercase tracking-wider">Documents</th>
-                    <th className="text-right px-5 py-4 text-xs font-bold text-slate-600 uppercase tracking-wider">Actions</th>
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider">Amount</th>
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider">Due Date</th>
+                    <th className="text-left px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider">Status</th>
+                    <th className="text-right px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -430,121 +428,143 @@ const AdminOrders = () => {
                         {/* School Parent Row */}
                         <tr 
                           key={group.school_id} 
-                          className={`hover:bg-orange-50/30 transition-colors cursor-pointer ${group.tranches.length > 1 ? 'bg-gradient-to-r from-slate-50/50 to-white' : ''}`}
+                          className={`hover:bg-orange-50/50 transition-all duration-200 ${group.tranches.length > 1 ? 'bg-gradient-to-r from-orange-50/30 to-white' : ''} ${group.hasOverdue ? 'border-l-4 border-l-red-400' : group.hasPending ? 'border-l-4 border-l-amber-400' : ''}`}
                           onClick={() => group.tranches.length > 1 && toggleSchoolExpand(group.school_id)}
                         >
-                          <td className="px-5 py-4">
-                            <div className="flex items-center gap-3">
-                              {group.tranches.length > 1 && (
+                          <td className="px-6 py-5">
+                            <div className="flex items-center gap-4">
+                              {group.tranches.length > 1 ? (
                                 <button 
-                                  className="p-1.5 hover:bg-orange-100 rounded-lg transition-colors"
+                                  className={`p-2 rounded-xl transition-all duration-200 ${expandedSchools[group.school_id] ? 'bg-orange-100 rotate-0' : 'bg-slate-100 hover:bg-orange-50'}`}
                                   onClick={(e) => { e.stopPropagation(); toggleSchoolExpand(group.school_id); }}
                                 >
                                   {expandedSchools[group.school_id] ? (
-                                    <ChevronDown className="w-5 h-5 text-orange-500" />
+                                    <ChevronDown className="w-5 h-5 text-orange-600" />
                                   ) : (
-                                    <ChevronRight className="w-5 h-5 text-slate-400" />
+                                    <ChevronRight className="w-5 h-5 text-slate-500" />
                                   )}
                                 </button>
+                              ) : (
+                                <div className="w-10 h-10 bg-gradient-to-br from-orange-100 to-orange-50 rounded-xl flex items-center justify-center">
+                                  <Building2 className="w-5 h-5 text-orange-600" />
+                                </div>
                               )}
                               <div>
-                                <p className="font-semibold text-slate-800">{group.school_name}</p>
-                                <p className="text-sm text-slate-500">
-                                  {group.contact_name}
+                                <p className="font-semibold text-slate-800 text-base">{group.school_name}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <p className="text-sm text-slate-500">{group.contact_name}</p>
                                   {group.tranches.length > 1 && (
-                                    <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">
+                                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
                                       {group.tranches.length} tranches
                                     </span>
                                   )}
-                                </p>
+                                </div>
                               </div>
                             </div>
                           </td>
-                          <td className="px-4 py-3">
-                            <p className="font-semibold text-slate-800">₹{group.totalAmount.toLocaleString()}</p>
-                            {group.paidAmount > 0 && group.paidAmount < group.totalAmount && (
-                              <p className="text-xs text-green-600">₹{group.paidAmount.toLocaleString()} paid</p>
-                            )}
+                          <td className="px-6 py-5">
+                            <div>
+                              <p className="font-bold text-lg text-slate-800">₹{group.totalAmount.toLocaleString()}</p>
+                              {group.paidAmount > 0 && group.paidAmount < group.totalAmount && (
+                                <div className="mt-1">
+                                  <p className="text-xs text-green-600 font-medium">₹{group.paidAmount.toLocaleString()} paid</p>
+                                  <div className="w-20 h-1.5 bg-slate-200 rounded-full mt-1 overflow-hidden">
+                                    <div 
+                                      className="h-full bg-green-500 rounded-full transition-all" 
+                                      style={{ width: `${(group.paidAmount / group.totalAmount) * 100}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                              {group.tranches[0]?.gst_type && group.tranches.length === 1 && (
+                                <span className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full font-medium ${
+                                  group.tranches[0].gst_type === 'book_gst' ? 'bg-blue-100 text-blue-700' :
+                                  group.tranches[0].gst_type === 'inclusive' ? 'bg-emerald-100 text-emerald-700' :
+                                  'bg-amber-100 text-amber-700'
+                                }`}>
+                                  {group.tranches[0].gst_type === 'book_gst' ? 'Book GST' : group.tranches[0].gst_type === 'inclusive' ? 'Inclusive' : 'Exclusive'}
+                                </span>
+                              )}
+                            </div>
                           </td>
-                          <td className="px-4 py-3">
-                            <span className="text-slate-400 text-sm">-</span>
-                          </td>
-                          <td className="px-4 py-3">
+                          <td className="px-6 py-5">
                             {group.tranches.length === 1 && group.tranches[0].due_date ? (
-                              <p className={`text-sm ${
-                                isPast(parseISO(group.tranches[0].due_date)) && group.tranches[0].status !== 'paid'
-                                  ? 'text-red-600 font-medium'
-                                  : 'text-slate-600'
-                              }`}>
-                                {format(parseISO(group.tranches[0].due_date), 'MMM d, yyyy')}
-                              </p>
+                              <div className="flex items-center gap-2">
+                                <Calendar className={`w-4 h-4 ${isPast(parseISO(group.tranches[0].due_date)) && group.tranches[0].status !== 'paid' ? 'text-red-500' : 'text-slate-400'}`} />
+                                <p className={`text-sm font-medium ${
+                                  isPast(parseISO(group.tranches[0].due_date)) && group.tranches[0].status !== 'paid'
+                                    ? 'text-red-600'
+                                    : 'text-slate-700'
+                                }`}>
+                                  {format(parseISO(group.tranches[0].due_date), 'MMM d, yyyy')}
+                                </p>
+                              </div>
                             ) : group.tranches.length > 1 ? (
-                              <span className="text-slate-500 text-sm">Multiple</span>
+                              <span className="text-slate-500 text-sm italic">Multiple dates</span>
                             ) : (
-                              <span className="text-slate-400">-</span>
+                              <span className="text-slate-400 text-sm">Not set</span>
                             )}
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-6 py-5">
                             {group.tranches.length === 1 ? (
                               getStatusBadge(group.tranches[0])
                             ) : (
-                              <div className="flex items-center gap-1">
+                              <div className="flex flex-wrap items-center gap-1.5">
                                 {group.hasOverdue && (
-                                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 flex items-center gap-1">
+                                    <AlertCircle className="w-3 h-3" />
                                     Overdue
                                   </span>
                                 )}
-                                {group.hasPending && (
-                                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+                                {group.hasPending && !group.hasOverdue && (
+                                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 flex items-center gap-1">
+                                    <Clock className="w-3 h-3" />
                                     Pending
                                   </span>
                                 )}
                                 {group.paidAmount === group.totalAmount && (
-                                  <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                                    All Paid
+                                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 flex items-center gap-1">
+                                    <CheckCircle2 className="w-3 h-3" />
+                                    Paid
                                   </span>
                                 )}
                               </div>
                             )}
                           </td>
-                          <td className="px-4 py-3">
-                            {group.tranches.length === 1 && group.tranches[0].invoice_url ? (
-                              <a href={group.tranches[0].invoice_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1">
-                                <FileText className="w-4 h-4" /> View
-                              </a>
-                            ) : (
-                              <span className="text-slate-400 text-sm">{group.tranches.length > 1 ? '-' : 'Not uploaded'}</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3">
-                            {group.tranches.length === 1 && group.tranches[0].receipt_url ? (
-                              <a href={group.tranches[0].receipt_url} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:text-green-800 text-sm flex items-center gap-1">
-                                <Receipt className="w-4 h-4" /> View
-                              </a>
-                            ) : (
-                              <span className="text-slate-400 text-sm">{group.tranches.length > 1 ? '-' : 'Not uploaded'}</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
+                          <td className="px-6 py-5">
+                            <div className="flex items-center justify-end gap-2">
+                              {/* Document indicators */}
+                              {group.tranches.length === 1 && (group.tranches[0].invoice_url || group.tranches[0].receipt_url) && (
+                                <div className="flex items-center gap-1 mr-2">
+                                  {group.tranches[0].invoice_url && (
+                                    <a href={group.tranches[0].invoice_url} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors" title="View Invoice">
+                                      <FileText className="w-4 h-4 text-blue-600" />
+                                    </a>
+                                  )}
+                                  {group.tranches[0].receipt_url && (
+                                    <a href={group.tranches[0].receipt_url} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-green-50 rounded-lg hover:bg-green-100 transition-colors" title="View Receipt">
+                                      <Receipt className="w-4 h-4 text-green-600" />
+                                    </a>
+                                  )}
+                                </div>
+                              )}
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={(e) => { e.stopPropagation(); fetchSchoolDetails(group.school_id); }}
-                                className="text-blue-600 hover:text-blue-800"
+                                className="text-slate-600 hover:text-blue-600 hover:bg-blue-50"
                                 data-testid={`view-details-${group.school_id}`}
                               >
-                                <ExternalLink className="w-4 h-4 mr-1" />
-                                Details
+                                <ExternalLink className="w-4 h-4" />
                               </Button>
                               {group.tranches.length === 1 && (
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   onClick={(e) => { e.stopPropagation(); openPaymentModal(group.tranches[0]); }}
+                                  className="border-orange-200 text-orange-600 hover:bg-orange-50 hover:border-orange-300"
                                   data-testid={`update-payment-${group.tranches[0].id}`}
                                 >
-                                  <Eye className="w-4 h-4 mr-1" />
                                   Update
                                 </Button>
                               )}
