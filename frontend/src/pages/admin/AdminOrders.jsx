@@ -278,10 +278,10 @@ const AdminOrders = () => {
         <div className="flex gap-2 border-b border-slate-200">
           <button
             onClick={() => setActiveTab('school')}
-            className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors flex items-center gap-2 ${
+            className={`px-6 py-3 font-medium text-sm border-b-2 transition-all flex items-center gap-2 ${
               activeTab === 'school'
-                ? 'border-[#1E3A5F] text-[#1E3A5F]'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
+                ? 'border-orange-500 text-orange-600 bg-orange-50/50'
+                : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
             }`}
             data-testid="school-payments-tab"
           >
@@ -290,10 +290,10 @@ const AdminOrders = () => {
           </button>
           <button
             onClick={() => setActiveTab('student')}
-            className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors flex items-center gap-2 ${
+            className={`px-6 py-3 font-medium text-sm border-b-2 transition-all flex items-center gap-2 ${
               activeTab === 'student'
-                ? 'border-[#1E3A5F] text-[#1E3A5F]'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
+                ? 'border-orange-500 text-orange-600 bg-orange-50/50'
+                : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
             }`}
             data-testid="student-payments-tab"
           >
@@ -302,60 +302,60 @@ const AdminOrders = () => {
           </button>
         </div>
 
-        {/* Stats Cards */}
+        {/* Stats Cards - Redesigned */}
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
-                <Receipt className="w-5 h-5 text-slate-600" />
-              </div>
+          <div className="bg-gradient-to-br from-slate-50 to-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-slate-500">Total Orders</p>
-                <p className="text-xl font-bold text-slate-800">{stats.total}</p>
+                <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Total Orders</p>
+                <p className="text-3xl font-bold text-slate-800 mt-1">{stats.total}</p>
+              </div>
+              <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center">
+                <Receipt className="w-6 h-6 text-slate-500" />
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl p-4 border border-yellow-100 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <Clock className="w-5 h-5 text-yellow-600" />
-              </div>
+          <div className="bg-gradient-to-br from-amber-50 to-white rounded-2xl p-5 border border-amber-200 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-slate-500">Pending</p>
-                <p className="text-xl font-bold text-yellow-600">{stats.pending}</p>
+                <p className="text-xs font-medium text-amber-500 uppercase tracking-wide">Pending</p>
+                <p className="text-3xl font-bold text-amber-600 mt-1">{stats.pending}</p>
+              </div>
+              <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
+                <Clock className="w-6 h-6 text-amber-500" />
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl p-4 border border-red-100 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                <AlertCircle className="w-5 h-5 text-red-600" />
-              </div>
+          <div className="bg-gradient-to-br from-red-50 to-white rounded-2xl p-5 border border-red-200 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-slate-500">Overdue</p>
-                <p className="text-xl font-bold text-red-600">{stats.overdue}</p>
+                <p className="text-xs font-medium text-red-500 uppercase tracking-wide">Overdue</p>
+                <p className="text-3xl font-bold text-red-600 mt-1">{stats.overdue}</p>
+              </div>
+              <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                <AlertCircle className="w-6 h-6 text-red-500" />
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl p-4 border border-green-100 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                <CheckCircle2 className="w-5 h-5 text-green-600" />
-              </div>
+          <div className="bg-gradient-to-br from-emerald-50 to-white rounded-2xl p-5 border border-emerald-200 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-slate-500">Paid</p>
-                <p className="text-xl font-bold text-green-600">{stats.paid}</p>
+                <p className="text-xs font-medium text-emerald-500 uppercase tracking-wide">Paid</p>
+                <p className="text-3xl font-bold text-emerald-600 mt-1">{stats.paid}</p>
+              </div>
+              <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
+                <CheckCircle2 className="w-6 h-6 text-emerald-500" />
               </div>
             </div>
           </div>
-          <div className="bg-white rounded-xl p-4 border border-blue-100 shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                <DollarSign className="w-5 h-5 text-blue-600" />
-              </div>
+          <div className="bg-gradient-to-br from-blue-50 to-white rounded-2xl p-5 border border-blue-200 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-slate-500">Collected</p>
-                <p className="text-lg font-bold text-blue-600">₹{stats.collectedAmount.toLocaleString()}</p>
+                <p className="text-xs font-medium text-blue-500 uppercase tracking-wide">Collected</p>
+                <p className="text-2xl font-bold text-blue-600 mt-1">₹{stats.collectedAmount.toLocaleString()}</p>
+              </div>
+              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                <DollarSign className="w-6 h-6 text-blue-500" />
               </div>
             </div>
           </div>
