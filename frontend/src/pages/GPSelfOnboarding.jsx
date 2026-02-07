@@ -829,46 +829,80 @@ const GPSelfOnboarding = () => {
                 <div className="space-y-6">
                   <div>
                     <h2 className="text-2xl font-bold text-slate-800 mb-2">Contract Signing</h2>
-                    <p className="text-slate-600">Review and sign the Growth Partner MOU (Memorandum of Understanding).</p>
+                    <p className="text-slate-600">Download, sign, and upload the Growth Partner MOU.</p>
                   </div>
 
-                  {/* PDF Preview */}
-                  <div className="bg-slate-50 rounded-xl p-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-semibold text-slate-800 flex items-center gap-2">
-                        <FileText className="w-5 h-5 text-orange-500" />
-                        OLL x Growth Partner MOU
-                      </h3>
-                      <a 
-                        href={GP_MOU_PDF_URL}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-orange-600 hover:text-orange-700 flex items-center gap-1"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                        Open in New Tab
-                      </a>
+                  {/* Step 1: Download Contract */}
+                  <div className="bg-blue-50 rounded-xl p-5 border border-blue-200">
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 font-bold shrink-0">1</div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-slate-800 mb-2">Download the MOU</h3>
+                        <p className="text-sm text-slate-600 mb-3">Download the Growth Partner MOU, print it, sign it, and scan/photograph it.</p>
+                        <div className="flex gap-3">
+                          <a 
+                            href={GP_MOU_PDF_URL}
+                            download="OLL_Growth_Partner_MOU.pdf"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
+                          >
+                            <Download className="w-4 h-4" />
+                            Download MOU
+                          </a>
+                          <a 
+                            href={GP_MOU_PDF_URL}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 text-sm font-medium"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                            Preview
+                          </a>
+                        </div>
+                      </div>
                     </div>
-                    <iframe 
-                      src={GP_MOU_PDF_URL}
-                      className="w-full h-[400px] rounded-lg border border-slate-200"
-                      title="Growth Partner MOU"
-                    />
                   </div>
 
-                  <div className="bg-orange-50 rounded-lg p-4">
-                    <label className="flex items-start gap-3 cursor-pointer">
-                      <input 
-                        type="checkbox" 
-                        className="mt-1 w-5 h-5 text-orange-500 rounded" 
-                        id="agree-terms"
-                        checked={contractAgreed}
-                        onChange={(e) => setContractAgreed(e.target.checked)}
-                      />
-                      <span className="text-sm text-slate-700">
-                        I have read and agree to the terms and conditions of the Growth Partner MOU (Memorandum of Understanding). I understand my responsibilities and commission structure as outlined in the document.
-                      </span>
-                    </label>
+                  {/* Step 2: Upload Signed Contract */}
+                  <div className="bg-orange-50 rounded-xl p-5 border border-orange-200">
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center text-orange-600 font-bold shrink-0">2</div>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-slate-800 mb-2">Upload Signed Contract</h3>
+                        <p className="text-sm text-slate-600 mb-3">Upload the signed MOU (PDF, JPG, or PNG format).</p>
+                        
+                        {signedContractUrl ? (
+                          <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                            <CheckCircle2 className="w-5 h-5 text-green-600" />
+                            <span className="text-sm text-green-700 font-medium">Signed contract uploaded</span>
+                            <a href={signedContractUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm ml-auto">View</a>
+                            <button onClick={() => setSignedContractUrl('')} className="text-red-500 hover:text-red-700 text-sm">Remove</button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="file"
+                              accept=".pdf,.jpg,.jpeg,.png"
+                              id="contract-upload"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                  const url = await uploadFile(file, 'contract');
+                                  if (url) setSignedContractUrl(url);
+                                }
+                              }}
+                            />
+                            <label 
+                              htmlFor="contract-upload"
+                              className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 text-sm font-medium cursor-pointer"
+                            >
+                              <Upload className="w-4 h-4" />
+                              Upload Signed Contract
+                            </label>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   <div className="flex justify-between">
@@ -878,12 +912,12 @@ const GPSelfOnboarding = () => {
                     </Button>
                     <Button 
                       onClick={submitContract} 
-                      disabled={submitting || !contractAgreed} 
+                      disabled={submitting || !signedContractUrl} 
                       className="bg-orange-500 hover:bg-orange-600 disabled:opacity-50"
                     >
                       {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                      Sign & Download Contract
-                      <FileText className="w-4 h-4 ml-2" />
+                      Submit Contract
+                      <ArrowRight className="w-4 h-4 ml-2" />
                     </Button>
                   </div>
                 </div>
