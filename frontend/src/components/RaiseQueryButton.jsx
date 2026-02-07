@@ -367,23 +367,42 @@ const PAGE_QUERY_CONFIG = {
     ]
   },
   
-  // Default/General
+  // Default/General - Home page options
   general: {
-    label: 'General',
+    label: 'How can we help?',
     queries: [
       { 
         value: 'course_info', label: 'Course Information', icon: '📚',
         subCategories: [
-          { value: 'programs', label: 'Programs' },
-          { value: 'pricing', label: 'Pricing' },
+          { value: 'programs', label: 'View All Programs' },
+          { value: 'pricing', label: 'Pricing & Fees' },
+          { value: 'schedules', label: 'Class Schedules' },
           { value: 'other', label: 'Other' },
         ]
       },
       { 
-        value: 'partnership', label: 'Partnership', icon: '🤝',
+        value: 'partnership', label: 'Partnership Opportunities', icon: '🤝',
         subCategories: [
           { value: 'school', label: 'School Partnership' },
-          { value: 'center', label: 'Center Partnership' },
+          { value: 'center', label: 'Center Partnership / Franchise' },
+          { value: 'other', label: 'Other' },
+        ]
+      },
+      { 
+        value: 'support', label: 'Existing Customer Support', icon: '🛠️',
+        subCategories: [
+          { value: 'kit_issue', label: 'Missing / Damaged Kit' },
+          { value: 'lms', label: 'LMS Login Help' },
+          { value: 'class_issue', label: 'Class / Schedule Issue' },
+          { value: 'payment', label: 'Payment Query' },
+          { value: 'other', label: 'Other' },
+        ]
+      },
+      { 
+        value: 'opportunities', label: 'Join OLL', icon: '💼',
+        subCategories: [
+          { value: 'join_team', label: 'Join OLL Team' },
+          { value: 'educator', label: 'Become an Educator' },
           { value: 'other', label: 'Other' },
         ]
       },
