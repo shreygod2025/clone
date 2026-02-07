@@ -1871,9 +1871,9 @@ const GPSelfOnboarding = () => {
                 <Phone className="w-4 h-4" />
                 <span className="hidden sm:inline">+91 99201 88188</span>
               </a>
-              <a href="mailto:support@oll.co" className="flex items-center gap-1 text-white/80 hover:text-white transition-colors">
+              <a href="mailto:info@oll.co" className="flex items-center gap-1 text-white/80 hover:text-white transition-colors">
                 <Mail className="w-4 h-4" />
-                <span className="hidden sm:inline">support@oll.co</span>
+                <span className="hidden sm:inline">info@oll.co</span>
               </a>
             </div>
           </div>
