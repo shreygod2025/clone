@@ -1645,6 +1645,112 @@ const AdminGrowthPartners = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Kit Delivery Management Modal */}
+      <Dialog open={!!showKitDeliveryModal} onOpenChange={() => setShowKitDeliveryModal(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-blue-600">
+              <Package className="w-5 h-5" /> Manage Kit Delivery
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <p className="font-semibold text-blue-800 text-lg">{showKitDeliveryModal?.name || showKitDeliveryModal?.personal_info?.full_name}</p>
+              <p className="text-sm text-blue-700 mt-1">
+                Current Status: <span className="font-medium capitalize">{showKitDeliveryModal?.kit_delivery_status || 'Pending'}</span>
+              </p>
+            </div>
+
+            {/* Delivery Details Form */}
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Courier Name</label>
+                  <Input
+                    placeholder="e.g., Delhivery, BlueDart"
+                    value={kitDeliveryData.courier_name}
+                    onChange={(e) => setKitDeliveryData(prev => ({ ...prev, courier_name: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Tracking Number</label>
+                  <Input
+                    placeholder="AWB/Tracking number"
+                    value={kitDeliveryData.tracking_number}
+                    onChange={(e) => setKitDeliveryData(prev => ({ ...prev, tracking_number: e.target.value }))}
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Dispatch Date</label>
+                  <Input
+                    type="date"
+                    value={kitDeliveryData.dispatch_date}
+                    onChange={(e) => setKitDeliveryData(prev => ({ ...prev, dispatch_date: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Expected Delivery</label>
+                  <Input
+                    type="date"
+                    value={kitDeliveryData.expected_delivery_date}
+                    onChange={(e) => setKitDeliveryData(prev => ({ ...prev, expected_delivery_date: e.target.value }))}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Shipping Address */}
+            {showKitDeliveryModal?.personal_info?.address && (
+              <div className="bg-slate-50 rounded-lg p-3">
+                <p className="text-xs text-slate-500 mb-1">Shipping Address</p>
+                <p className="text-sm text-slate-700">{showKitDeliveryModal?.personal_info?.address}</p>
+                <p className="text-sm text-slate-700">
+                  {showKitDeliveryModal?.personal_info?.city}, {showKitDeliveryModal?.personal_info?.state} - {showKitDeliveryModal?.personal_info?.pincode}
+                </p>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => setShowKitDeliveryModal(null)} className="flex-1">
+                Cancel
+              </Button>
+              {(!showKitDeliveryModal?.kit_delivery_status || showKitDeliveryModal?.kit_delivery_status === 'pending') && (
+                <Button 
+                  onClick={() => handleUpdateKitDelivery('dispatched')} 
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  disabled={!kitDeliveryData.tracking_number}
+                >
+                  <Package className="w-4 h-4 mr-2" /> Mark as Dispatched
+                </Button>
+              )}
+              {showKitDeliveryModal?.kit_delivery_status === 'dispatched' && (
+                <Button 
+                  onClick={() => handleUpdateKitDelivery('delivered')} 
+                  className="flex-1 bg-green-600 hover:bg-green-700"
+                >
+                  <CheckCircle2 className="w-4 h-4 mr-2" /> Mark as Delivered
+                </Button>
+              )}
+            </div>
+            
+            {/* Save Details Only */}
+            {showKitDeliveryModal?.kit_delivery_status !== 'delivered' && (
+              <Button 
+                variant="outline" 
+                onClick={() => handleUpdateKitDelivery()} 
+                className="w-full"
+              >
+                <Save className="w-4 h-4 mr-2" /> Save Details Only
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* GP Reports Modal */}
       <Dialog open={!!showReportsModal} onOpenChange={() => setShowReportsModal(null)}>
         <DialogContent className="max-w-2xl">
