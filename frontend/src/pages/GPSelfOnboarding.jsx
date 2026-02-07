@@ -1204,22 +1204,447 @@ const GPSelfOnboarding = () => {
                     </div>
                   )}
 
-                  {/* More training steps would follow... */}
-                  {/* For brevity, showing placeholder for remaining steps */}
-                  {['implementation_models', 'product_training', 'target_audiences', 'pricing_training', 'software_training'].includes(currentTrainingStep) && (
-                    <div className="bg-slate-50 rounded-xl p-8 text-center">
-                      <GraduationCap className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-                      <h3 className="text-xl font-semibold text-slate-700 mb-2">
-                        {TRAINING_STEPS.find(s => s.key === currentTrainingStep)?.label}
-                      </h3>
-                      <p className="text-slate-600 mb-4">
-                        {TRAINING_STEPS.find(s => s.key === currentTrainingStep)?.description}
-                      </p>
-                      <p className="text-sm text-slate-500">Training content loading...</p>
+                  {/* Training Content - Implementation Models */}
+                  {currentTrainingStep === 'implementation_models' && (
+                    <div className="space-y-6">
+                      <div className="bg-purple-50 rounded-xl p-6">
+                        <h3 className="font-semibold text-purple-800 mb-2">Implementation Models</h3>
+                        <p className="text-purple-700 text-sm">Learn how schools implement robotics programs and answer common questions.</p>
+                      </div>
+
+                      {/* Video */}
+                      <div className="space-y-4">
+                        <h4 className="font-medium text-slate-800">Watch Required Videos</h4>
+                        {TRAINING_CONTENT.implementation_models.videos.map(video => (
+                          <div key={video.id} className="bg-slate-50 rounded-lg p-4">
+                            <a 
+                              href={video.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 text-purple-600 hover:text-purple-700 font-medium"
+                            >
+                              <Play className="w-5 h-5" />
+                              {video.title}
+                              <ExternalLink className="w-4 h-4" />
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* FAQ Assessment */}
+                      <div className="space-y-4">
+                        <h4 className="font-medium text-slate-800">Assessment - Answer FAQs</h4>
+                        <p className="text-sm text-slate-600">Answer these common questions you'll encounter from schools:</p>
+                        {TRAINING_CONTENT.implementation_models.faqQuestions.map((q, idx) => (
+                          <div key={q.id} className="bg-white border rounded-lg p-4">
+                            <p className="font-medium text-slate-800 mb-3">{idx + 1}. {q.question}</p>
+                            <Textarea
+                              placeholder="Write your detailed answer here..."
+                              rows={3}
+                              onChange={(e) => setTrainingAnswers(prev => ({
+                                ...prev,
+                                implementation_models: {
+                                  ...prev.implementation_models,
+                                  assessment: {
+                                    ...prev.implementation_models?.assessment,
+                                    answers: {
+                                      ...prev.implementation_models?.assessment?.answers,
+                                      [q.id]: e.target.value
+                                    }
+                                  }
+                                }
+                              }))}
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex justify-between">
+                        <Button variant="outline" onClick={() => setCurrentTrainingStep('about_skill')}>
+                          <ArrowLeft className="w-4 h-4 mr-2" />
+                          Previous
+                        </Button>
+                        <Button 
+                          onClick={() => submitTrainingStep('implementation_models', { 
+                            assessment: trainingAnswers.implementation_models?.assessment 
+                          }, true)} 
+                          disabled={submitting}
+                          className="bg-orange-500 hover:bg-orange-600"
+                        >
+                          {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                          Submit & Continue
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </Button>
+                      </div>
                     </div>
                   )}
 
-                  <div className="flex justify-between">
+                  {/* Training Content - Product Training */}
+                  {currentTrainingStep === 'product_training' && (
+                    <div className="space-y-6">
+                      <div className="bg-green-50 rounded-xl p-6">
+                        <h3 className="font-semibold text-green-800 mb-2">Product Training</h3>
+                        <p className="text-green-700 text-sm">Learn about OLL products, components, and create sample projects.</p>
+                      </div>
+
+                      {/* Component Videos */}
+                      <div className="space-y-4">
+                        <h4 className="font-medium text-slate-800">Watch Component Explanation Videos</h4>
+                        <div className="grid md:grid-cols-2 gap-3">
+                          {TRAINING_CONTENT.product_training.componentVideos.map(video => (
+                            <a 
+                              key={video.id}
+                              href={video.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 bg-slate-50 rounded-lg p-3 text-green-600 hover:bg-green-50 transition-colors"
+                            >
+                              <Video className="w-5 h-5" />
+                              <span className="text-sm font-medium">{video.title}</span>
+                              <ExternalLink className="w-4 h-4 ml-auto" />
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Sample Projects */}
+                      <div className="space-y-4">
+                        <h4 className="font-medium text-slate-800">Build Sample Projects (One per Grade)</h4>
+                        <p className="text-sm text-slate-600">Watch these tutorials and create the projects. Upload photos/videos of your completed projects.</p>
+                        <div className="grid gap-3">
+                          {TRAINING_CONTENT.product_training.sampleProjects.map(project => (
+                            <div key={project.grade} className="flex items-center gap-4 bg-white border rounded-lg p-4">
+                              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center font-bold text-green-700">
+                                G{project.grade}
+                              </div>
+                              <div className="flex-1">
+                                <p className="font-medium text-slate-800">{project.title}</p>
+                                {project.url && (
+                                  <a href={project.url} target="_blank" rel="noopener noreferrer" className="text-sm text-green-600 hover:underline flex items-center gap-1">
+                                    <Play className="w-3 h-3" /> Watch Tutorial
+                                  </a>
+                                )}
+                              </div>
+                              <Input
+                                type="url"
+                                placeholder="Paste your project video/photo URL"
+                                className="w-64"
+                                onChange={(e) => setTrainingAnswers(prev => ({
+                                  ...prev,
+                                  product_training: {
+                                    ...prev.product_training,
+                                    samples_created: {
+                                      ...prev.product_training?.samples_created,
+                                      [`grade_${project.grade}`]: e.target.value
+                                    }
+                                  }
+                                }))}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* LMS Access */}
+                      <div className="bg-blue-50 rounded-xl p-6">
+                        <h4 className="font-semibold text-blue-800 mb-3">LMS Access Credentials</h4>
+                        <p className="text-sm text-blue-700 mb-4">Access the Learning Management System to explore curriculum:</p>
+                        <a href={TRAINING_CONTENT.product_training.lmsAccess.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 font-medium hover:underline flex items-center gap-2">
+                          <ExternalLink className="w-4 h-4" />
+                          {TRAINING_CONTENT.product_training.lmsAccess.url}
+                        </a>
+                        <div className="grid grid-cols-3 gap-2 mt-4 text-xs">
+                          {Object.entries(TRAINING_CONTENT.product_training.lmsAccess.passwords).map(([grade, password]) => (
+                            <div key={grade} className="bg-white rounded-lg p-2">
+                              <span className="font-medium">{grade}:</span> <span className="font-mono">{password}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between">
+                        <Button variant="outline" onClick={() => setCurrentTrainingStep('implementation_models')}>
+                          <ArrowLeft className="w-4 h-4 mr-2" />
+                          Previous
+                        </Button>
+                        <Button 
+                          onClick={() => submitTrainingStep('product_training', { 
+                            samples_created: trainingAnswers.product_training?.samples_created,
+                            component_names_learned: true
+                          }, true)} 
+                          disabled={submitting}
+                          className="bg-orange-500 hover:bg-orange-600"
+                        >
+                          {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                          Submit & Continue
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Training Content - Target Audiences */}
+                  {currentTrainingStep === 'target_audiences' && (
+                    <div className="space-y-6">
+                      <div className="bg-indigo-50 rounded-xl p-6">
+                        <h3 className="font-semibold text-indigo-800 mb-2">Target Audiences</h3>
+                        <p className="text-indigo-700 text-sm">Learn to communicate with different stakeholders and record pitch videos.</p>
+                      </div>
+
+                      {/* Video */}
+                      <div className="space-y-4">
+                        <h4 className="font-medium text-slate-800">Watch Required Videos</h4>
+                        {TRAINING_CONTENT.target_audiences.videos.map(video => (
+                          <div key={video.id} className="bg-slate-50 rounded-lg p-4">
+                            <a 
+                              href={video.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 text-indigo-600 hover:text-indigo-700 font-medium"
+                            >
+                              <Play className="w-5 h-5" />
+                              {video.title}
+                              <ExternalLink className="w-4 h-4" />
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Pitch Video Recordings */}
+                      <div className="space-y-4">
+                        <h4 className="font-medium text-slate-800">Record Pitch Videos</h4>
+                        <p className="text-sm text-slate-600">Record yourself pitching to each audience type. Upload video links (YouTube, Google Drive, etc.)</p>
+                        {TRAINING_CONTENT.target_audiences.pitchRequirements.map((pitch) => (
+                          <div key={pitch.id} className="bg-white border rounded-lg p-4">
+                            <div className="flex items-center gap-4">
+                              <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+                                <Video className="w-5 h-5 text-indigo-600" />
+                              </div>
+                              <div className="flex-1">
+                                <p className="font-medium text-slate-800">{pitch.label}</p>
+                                <p className="text-xs text-slate-500">Record a 2-3 minute pitch video</p>
+                              </div>
+                              <Input
+                                type="url"
+                                placeholder="Paste video URL"
+                                className="w-72"
+                                onChange={(e) => setTrainingAnswers(prev => ({
+                                  ...prev,
+                                  target_audiences: {
+                                    ...prev.target_audiences,
+                                    assessment: {
+                                      ...prev.target_audiences?.assessment,
+                                      pitch_videos: {
+                                        ...prev.target_audiences?.assessment?.pitch_videos,
+                                        [pitch.id]: e.target.value
+                                      }
+                                    }
+                                  }
+                                }))}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex justify-between">
+                        <Button variant="outline" onClick={() => setCurrentTrainingStep('product_training')}>
+                          <ArrowLeft className="w-4 h-4 mr-2" />
+                          Previous
+                        </Button>
+                        <Button 
+                          onClick={() => submitTrainingStep('target_audiences', { 
+                            assessment: trainingAnswers.target_audiences?.assessment 
+                          }, true)} 
+                          disabled={submitting}
+                          className="bg-orange-500 hover:bg-orange-600"
+                        >
+                          {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                          Submit & Continue
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Training Content - Pricing Training */}
+                  {currentTrainingStep === 'pricing_training' && (
+                    <div className="space-y-6">
+                      <div className="bg-amber-50 rounded-xl p-6">
+                        <h3 className="font-semibold text-amber-800 mb-2">Pricing Training</h3>
+                        <p className="text-amber-700 text-sm">Master the pricing structure and negotiation techniques.</p>
+                      </div>
+
+                      {/* Materials */}
+                      <div className="space-y-4">
+                        <h4 className="font-medium text-slate-800">Review Required Materials</h4>
+                        <div className="grid md:grid-cols-2 gap-3">
+                          {TRAINING_CONTENT.pricing_training.materials.map((material, idx) => (
+                            <a 
+                              key={idx}
+                              href={material.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-3 bg-white border rounded-lg p-4 hover:border-amber-300 transition-colors"
+                            >
+                              <FileText className="w-5 h-5 text-amber-600" />
+                              <span className="font-medium text-slate-700">{material.title}</span>
+                              <ExternalLink className="w-4 h-4 ml-auto text-slate-400" />
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Negotiation Scenarios */}
+                      <div className="space-y-4">
+                        <h4 className="font-medium text-slate-800">Negotiation Scenarios</h4>
+                        <p className="text-sm text-slate-600">How would you handle these pricing scenarios?</p>
+                        {TRAINING_CONTENT.pricing_training.scenarios.map((scenario, idx) => (
+                          <div key={scenario.id} className="bg-white border rounded-lg p-4">
+                            <p className="font-medium text-slate-800 mb-3">{idx + 1}. {scenario.question}</p>
+                            <Textarea
+                              placeholder="Describe your negotiation approach..."
+                              rows={3}
+                              onChange={(e) => setTrainingAnswers(prev => ({
+                                ...prev,
+                                pricing_training: {
+                                  ...prev.pricing_training,
+                                  assessment: {
+                                    ...prev.pricing_training?.assessment,
+                                    negotiation_scenarios: {
+                                      ...prev.pricing_training?.assessment?.negotiation_scenarios,
+                                      [scenario.id]: e.target.value
+                                    }
+                                  }
+                                }
+                              }))}
+                            />
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="flex justify-between">
+                        <Button variant="outline" onClick={() => setCurrentTrainingStep('target_audiences')}>
+                          <ArrowLeft className="w-4 h-4 mr-2" />
+                          Previous
+                        </Button>
+                        <Button 
+                          onClick={() => submitTrainingStep('pricing_training', { 
+                            assessment: trainingAnswers.pricing_training?.assessment,
+                            materials_reviewed: true
+                          }, true)} 
+                          disabled={submitting}
+                          className="bg-orange-500 hover:bg-orange-600"
+                        >
+                          {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                          Submit & Continue
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Training Content - Software Training */}
+                  {currentTrainingStep === 'software_training' && (
+                    <div className="space-y-6">
+                      <div className="bg-cyan-50 rounded-xl p-6">
+                        <h3 className="font-semibold text-cyan-800 mb-2">Software Training</h3>
+                        <p className="text-cyan-700 text-sm">Learn to use the CRM, create proposals, and communication tools.</p>
+                      </div>
+
+                      {/* Tools Overview */}
+                      <div className="space-y-4">
+                        <h4 className="font-medium text-slate-800">Tools You'll Learn</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {TRAINING_CONTENT.software_training.tools.map((tool, idx) => (
+                            <span key={idx} className="px-3 py-1.5 bg-cyan-100 text-cyan-700 rounded-full text-sm font-medium">
+                              {tool}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Requirements */}
+                      <div className="space-y-4">
+                        <h4 className="font-medium text-slate-800">Complete These Tasks</h4>
+                        <p className="text-sm text-slate-600">Demonstrate your proficiency by completing these tasks:</p>
+                        {TRAINING_CONTENT.software_training.requirements.map((req) => (
+                          <div key={req.id} className="bg-white border rounded-lg p-4">
+                            <div className="flex items-center gap-4">
+                              <div className="w-10 h-10 bg-cyan-100 rounded-lg flex items-center justify-center">
+                                {req.type === 'upload' ? <Upload className="w-5 h-5 text-cyan-600" /> : <Monitor className="w-5 h-5 text-cyan-600" />}
+                              </div>
+                              <div className="flex-1">
+                                <p className="font-medium text-slate-800">{req.label}</p>
+                                {req.type === 'upload' && (
+                                  <Input
+                                    type="url"
+                                    placeholder="Paste document/screenshot URL"
+                                    className="mt-2"
+                                    onChange={(e) => setTrainingAnswers(prev => ({
+                                      ...prev,
+                                      software_training: {
+                                        ...prev.software_training,
+                                        assessment: {
+                                          ...prev.software_training?.assessment,
+                                          [req.id]: e.target.value
+                                        }
+                                      }
+                                    }))}
+                                  />
+                                )}
+                                {req.type === 'action' && (
+                                  <label className="flex items-center gap-2 mt-2 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      className="w-4 h-4 text-cyan-600"
+                                      onChange={(e) => setTrainingAnswers(prev => ({
+                                        ...prev,
+                                        software_training: {
+                                          ...prev.software_training,
+                                          assessment: {
+                                            ...prev.software_training?.assessment,
+                                            [`${req.id}_done`]: e.target.checked
+                                          }
+                                        }
+                                      }))}
+                                    />
+                                    <span className="text-sm text-slate-600">I have completed this task</span>
+                                  </label>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
+                        <Award className="w-12 h-12 text-green-600 mx-auto mb-3" />
+                        <h4 className="font-semibold text-green-800 mb-2">Almost Done!</h4>
+                        <p className="text-green-700 text-sm">Complete this final step to finish your training and become a certified Growth Partner!</p>
+                      </div>
+
+                      <div className="flex justify-between">
+                        <Button variant="outline" onClick={() => setCurrentTrainingStep('pricing_training')}>
+                          <ArrowLeft className="w-4 h-4 mr-2" />
+                          Previous
+                        </Button>
+                        <Button 
+                          onClick={() => submitTrainingStep('software_training', { 
+                            assessment: trainingAnswers.software_training?.assessment 
+                          }, true)} 
+                          disabled={submitting}
+                          className="bg-green-500 hover:bg-green-600"
+                        >
+                          {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                          Complete Training
+                          <Award className="w-4 h-4 ml-2" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between mt-6 pt-6 border-t">
                     <Button variant="outline" onClick={() => setCurrentStep('kit_delivery')}>
                       <ArrowLeft className="w-4 h-4 mr-2" />
                       Back to Kit Delivery
