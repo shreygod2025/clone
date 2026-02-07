@@ -192,6 +192,23 @@ const AdminGrowthPartners = () => {
     }
   };
 
+  // Handle starting onboarding for converted partners
+  const handleStartOnboarding = async (partner) => {
+    try {
+      const res = await axios.post(`${API}/gp-onboarding/init/${partner.id}`, {}, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Onboarding started! Check the Onboarding tab.');
+      fetchPartners();
+      fetchGpOnboardings();
+      // Switch to onboarding tab
+      setActiveSection('onboarding');
+    } catch (error) {
+      console.error('Failed to start onboarding:', error);
+      toast.error('Failed to start onboarding');
+    }
+  };
+
   const handleAddPartner = async () => {
     if (!newPartner.name || !newPartner.phone) {
       toast.error('Name and phone are required');
