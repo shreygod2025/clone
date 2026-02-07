@@ -2741,11 +2741,23 @@ async def update_growth_partner(
         })
         
         if not existing_team_user:
-            # Find the "Growth Partner" role
-            gp_role = await db.roles.find_one({"name": "Growth Partner"}, {"_id": 0})
-            gp_role_id = gp_role.get('id') if gp_role else None
+            # Find the "GP Manager" role (as requested by user)
+            gp_role = await db.roles.find_one({"name": "GP Manager"}, {"_id": 0})
+            if not gp_role:
+                # Create the GP Manager role if it doesn't exist
+                gp_role = {
+                    "id": str(uuid.uuid4()),
+                    "name": "GP Manager",
+                    "description": "Growth Partner Manager - Can manage schools and student leads",
+                    "permissions": ["dashboard", "schools", "students", "growth_partners"],
+                    "is_system": False,
+                    "is_active": True,
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+                await db.roles.insert_one(gp_role)
+            gp_role_id = gp_role.get('id')
             
-            # Create team user for this GP with Growth Partner role
+            # Create team user for this GP with GP Manager role
             team_user_id = str(uuid.uuid4())
             team_user_doc = {
                 "id": team_user_id,
@@ -2753,10 +2765,10 @@ async def update_growth_partner(
                 "email": current_partner.get('email', ''),
                 "phone": current_partner.get('phone', ''),
                 "role_id": gp_role_id,
-                "role_name": "Growth Partner",
+                "role_name": "GP Manager",
                 "is_active": True,
                 "growth_partner_id": partner_id,  # Link back to GP
-                "permissions": ['dashboard', 'schools', 'students'],  # Default GP permissions
+                "permissions": ['dashboard', 'schools', 'students', 'growth_partners'],  # GP Manager permissions
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             }
