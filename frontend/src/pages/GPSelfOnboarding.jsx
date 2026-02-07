@@ -173,18 +173,6 @@ const TRAINING_CONTENT = {
       }
     }
   },
-  target_audiences: {
-    videos: [
-      { id: 'stakeholders', title: 'Understanding Stakeholders', url: 'https://youtu.be/je_sf7_ovfI' }
-    ],
-    pitchRequirements: [
-      { id: 'trustee_management', label: 'Pitch to Trustee/Management' },
-      { id: 'principal', label: 'Pitch to Principal' },
-      { id: 'teachers_demo', label: 'Demo to Teachers' },
-      { id: 'students_demo', label: 'Demo to Students' },
-      { id: 'parent_orientation', label: 'Parent Orientation' }
-    ]
-  },
   pricing_training: {
     materials: [
       { title: "Principal's PPT", url: 'https://www.canva.com/design/DAGUjTRnVvA/wNWNjc8PsYMXZrGdtcPpvA/edit' },
