@@ -3631,9 +3631,20 @@ async def complete_gp_onboarding(
     if incomplete_steps:
         raise HTTPException(status_code=400, detail=f"Incomplete steps: {', '.join(incomplete_steps)}")
     
-    # Find Growth Partner role
-    gp_role = await db.roles.find_one({"name": "Growth Partner"}, {"_id": 0})
-    role_id = gp_role.get("id") if gp_role else None
+    # Find or create GP Manager role
+    gp_role = await db.roles.find_one({"name": "GP Manager"}, {"_id": 0})
+    if not gp_role:
+        gp_role = {
+            "id": str(uuid.uuid4()),
+            "name": "GP Manager",
+            "description": "Growth Partner Manager - Can manage schools and student leads",
+            "permissions": ["dashboard", "students", "schools", "growth_partners"],
+            "is_system": False,
+            "is_active": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.roles.insert_one(gp_role)
+    role_id = gp_role.get("id")
     
     # Generate credentials
     email = onboarding.get("email") or onboarding.get("personal_info", {}).get("email", "")
@@ -3658,11 +3669,11 @@ async def complete_gp_onboarding(
         "username": username,
         "password_hash": bcrypt.hashpw(temp_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
         "role_id": role_id,
-        "role_name": "Growth Partner",
+        "role_name": "GP Manager",
         "is_active": True,
         "is_growth_partner": True,
         "gp_onboarding_id": onboarding_id,
-        "permissions": ["dashboard", "schools", "students"],
+        "permissions": ["dashboard", "schools", "students", "growth_partners"],
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat()
     }
