@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { 
   Search, Eye, Phone, Mail, Clock, Plus, ChevronRight, MessageSquare, Archive, 
   CheckCircle2, User, MapPin, Briefcase, Send, UserPlus, Edit, Save, 
-  FileText, GraduationCap, CreditCard, Copy, UserX, BarChart3, ExternalLink
+  FileText, GraduationCap, CreditCard, Copy, UserX, BarChart3, ExternalLink, Package
 } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
