@@ -232,6 +232,10 @@ const GPSelfOnboarding = () => {
   });
   
   const [trainingAnswers, setTrainingAnswers] = useState({});
+  const [contractAgreed, setContractAgreed] = useState(false);
+
+  // GP MOU PDF URL
+  const GP_MOU_PDF_URL = "https://customer-assets.emergentagent.com/job_skill-hub-55/artifacts/tkbt7jy3_OLL%20x%20Growth%20Partner%20MOU.pdf";
 
   useEffect(() => {
     fetchOnboarding();
