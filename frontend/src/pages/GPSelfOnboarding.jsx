@@ -515,39 +515,111 @@ const GPSelfOnboarding = () => {
   const progress = (completedSteps / ONBOARDING_STEPS.length) * 100;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-500 to-orange-600">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="text-center text-white mb-8">
-          <h1 className="text-3xl font-bold mb-2">Growth Partner Onboarding</h1>
-          <p className="text-orange-100">Welcome, {onboarding.name}! Complete your onboarding to become an OLL Growth Partner.</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-orange-50 flex flex-col">
+      {/* Header/Navbar */}
+      <header className="bg-white shadow-sm sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="flex items-center justify-between h-16">
+            <Link to="/" className="flex items-center gap-2">
+              <img 
+                src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png" 
+                alt="OLL Logo"
+                className="h-10 w-auto"
+              />
+            </Link>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-slate-600 hidden sm:block">Growth Partner Onboarding</span>
+              <div className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-medium">
+                {completedSteps}/{ONBOARDING_STEPS.length} Steps
+              </div>
+            </div>
+          </div>
         </div>
+      </header>
 
-        {/* Progress Bar */}
-        <div className="bg-white/20 rounded-full h-3 mb-8 max-w-2xl mx-auto">
-          <div 
-            className="bg-white rounded-full h-3 transition-all duration-500"
-            style={{ width: `${progress}%` }}
-          />
+      {/* Hero Section */}
+      <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white py-6">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3">
+                <GraduationCap className="w-8 h-8" />
+                Welcome, {onboarding.name}!
+              </h1>
+              <p className="text-white/80 text-sm mt-2">
+                Complete your onboarding to become an OLL Growth Partner.
+              </p>
+            </div>
+            <div className="text-left md:text-right">
+              <div className="text-3xl font-bold">{Math.round(progress)}%</div>
+              <div className="text-sm text-white/80">{completedSteps} of {ONBOARDING_STEPS.length} steps complete</div>
+            </div>
+          </div>
+          {/* Progress Bar */}
+          <div className="bg-white/20 rounded-full h-2 mt-4">
+            <div 
+              className="bg-white rounded-full h-2 transition-all duration-500"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
         </div>
+      </div>
 
-        <div className="grid lg:grid-cols-4 gap-6">
-          {/* Sidebar - Steps Navigation */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl p-4 sticky top-4">
-              <h3 className="font-semibold text-slate-800 mb-4">Onboarding Steps</h3>
-              <div className="space-y-2">
-                {ONBOARDING_STEPS.map((step, idx) => {
-                  const status = getStepStatus(step.key);
-                  const isActive = currentStep === step.key;
-                  const Icon = step.icon;
-                  
-                  return (
-                    <button
-                      key={step.key}
-                      onClick={() => status !== 'pending' && setCurrentStep(step.key)}
-                      disabled={status === 'pending' && idx > completedSteps}
-                      className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-all ${
+      {/* Kit Delivery Status Banner */}
+      {onboarding.kit_delivery_status && onboarding.kit_delivery_status !== 'pending' && (
+        <div className={`py-3 px-4 text-center text-sm font-medium ${
+          onboarding.kit_delivery_status === 'delivered' 
+            ? 'bg-green-500 text-white' 
+            : 'bg-blue-500 text-white'
+        }`}>
+          <div className="flex items-center justify-center gap-2">
+            {onboarding.kit_delivery_status === 'dispatched' ? (
+              <>
+                <Truck className="w-4 h-4" />
+                Your kit has been dispatched! 
+                {onboarding.kit_tracking_number && (
+                  <span>Tracking: <strong>{onboarding.kit_tracking_number}</strong></span>
+                )}
+                {onboarding.kit_courier_name && (
+                  <span>via {onboarding.kit_courier_name}</span>
+                )}
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="w-4 h-4" />
+                Kit Delivered Successfully! You can now proceed to Training.
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div className="flex-1 py-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="grid lg:grid-cols-4 gap-6">
+            {/* Sidebar - Steps Navigation */}
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-2xl p-4 sticky top-24 shadow-sm">
+                <h3 className="font-semibold text-slate-800 mb-4">Onboarding Steps</h3>
+                <div className="space-y-2">
+                  {ONBOARDING_STEPS.map((step, idx) => {
+                    const status = getStepStatus(step.key);
+                    const isActive = currentStep === step.key;
+                    const Icon = step.icon;
+                    
+                    // Special handling for kit_delivery status
+                    let kitStatus = null;
+                    if (step.key === 'kit_delivery') {
+                      kitStatus = onboarding.kit_delivery_status;
+                    }
+                    
+                    return (
+                      <button
+                        key={step.key}
+                        onClick={() => status !== 'pending' && setCurrentStep(step.key)}
+                        disabled={status === 'pending' && idx > completedSteps}
+                        className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-all ${
                         isActive 
                           ? 'bg-orange-100 border-2 border-orange-500' 
                           : status === 'completed'
