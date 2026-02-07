@@ -923,7 +923,7 @@ const GPSelfOnboarding = () => {
                       </div>
 
                       <div>
-                        <label className="text-sm font-medium text-slate-700">Upload Payment Screenshot *</label>
+                        <label className="text-sm font-medium text-slate-700">Upload Payment Screenshot (Optional)</label>
                         <input
                           type="file"
                           accept="image/*"
