@@ -645,19 +645,43 @@ const AdminGrowthPartners = () => {
                             const stepData = gp.steps?.[step.key];
                             const isCompleted = stepData?.completed;
                             const isAwaitingVerification = step.key === 'payment' && stepData?.completed && !stepData?.verified;
+                            const isKitDelivery = step.key === 'kit_delivery';
+                            const kitStatus = gp.kit_delivery_status;
                             const Icon = step.icon;
+                            
+                            // Determine kit delivery button state
+                            let kitButtonClass = '';
+                            let kitButtonLabel = step.label;
+                            if (isKitDelivery) {
+                              if (isCompleted) {
+                                kitButtonClass = 'bg-green-100 text-green-700';
+                              } else if (kitStatus === 'dispatched') {
+                                kitButtonClass = 'bg-blue-100 text-blue-700 hover:bg-blue-200';
+                                kitButtonLabel = 'Kit Dispatched';
+                              } else if (gp.steps?.payment?.verified) {
+                                kitButtonClass = 'bg-orange-100 text-orange-700 hover:bg-orange-200';
+                                kitButtonLabel = 'Manage Kit';
+                              } else {
+                                kitButtonClass = 'bg-slate-100 text-slate-400 cursor-not-allowed';
+                              }
+                            }
+                            
                             return (
                               <button
                                 key={step.key}
                                 onClick={() => {
                                   if (isAwaitingVerification) {
                                     setShowPaymentVerifyModal(gp);
-                                  } else if (!isCompleted) {
+                                  } else if (isKitDelivery && gp.steps?.payment?.verified && !isCompleted) {
+                                    openKitDeliveryModal(gp);
+                                  } else if (!isCompleted && !isKitDelivery) {
                                     setShowStepModal({ onboardingId: gp.id, step: step.key, stepLabel: step.label });
                                     setStepData({});
                                   }
                                 }}
+                                disabled={isKitDelivery && !gp.steps?.payment?.verified && !isCompleted}
                                 className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${
+                                  isKitDelivery ? kitButtonClass :
                                   isAwaitingVerification
                                     ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
                                     : isCompleted 
@@ -666,7 +690,7 @@ const AdminGrowthPartners = () => {
                                 }`}
                               >
                                 {isAwaitingVerification ? <Clock className="w-3 h-3" /> : isCompleted ? <CheckCircle2 className="w-3 h-3" /> : <Icon className="w-3 h-3" />}
-                                {step.label}
+                                {isKitDelivery ? kitButtonLabel : step.label}
                                 {isAwaitingVerification && <span className="text-[10px]">(Verify)</span>}
                               </button>
                             );
