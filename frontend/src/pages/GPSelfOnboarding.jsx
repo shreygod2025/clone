@@ -86,18 +86,19 @@ const TSHIRT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
 const TRAINING_CONTENT = {
   about_company: {
     videos: [
-      { id: 'shark_tank', title: 'Shark Tank Episode', url: 'https://youtu.be/8WsTCgkC_bM' }
+      { id: 'shark_tank', title: 'Shark Tank Episode', url: 'https://youtu.be/DFOYBZ5N2Qc', embedId: 'DFOYBZ5N2Qc' },
+      { id: 'kbc', title: 'KBC Video', url: 'https://youtu.be/8M3A_InpVKw', embedId: '8M3A_InpVKw' }
     ],
     mcqQuestions: [
-      { id: 'founder', question: "Who's the company's founder?", options: ['Shreyaan', 'Rahul', 'Priya', 'Amit'] },
-      { id: 'vision', question: "What's the company's vision & mission?", options: ['Option A', 'Option B', 'Option C', 'Option D'] },
-      { id: 'advisor', question: "Who is the Curriculum advisor at OLL?", options: ['Option A', 'Option B', 'Option C', 'Option D'] },
-      { id: 'retention', question: "What's OLL's retention rate?", options: ['70%', '80%', '90%', '95%'] }
+      { id: 'founder', question: "Who's the company's founder?", options: ['Shreyaan', 'Rahul', 'Priya', 'Amit'], correct: 'Shreyaan' },
+      { id: 'vision', question: "What's the company's vision & mission?", options: ['Making robotics accessible to all students', 'Building robots for industries', 'Creating AI software', 'Manufacturing drones'], correct: 'Making robotics accessible to all students' },
+      { id: 'advisor', question: "Who is the Curriculum advisor at OLL?", options: ['Dr. Smith', 'Expert Team from IIT', 'Foreign University', 'Self-developed'], correct: 'Expert Team from IIT' },
+      { id: 'retention', question: "What's OLL's retention rate?", options: ['70%', '80%', '90%', '95%'], correct: '90%' }
     ]
   },
   about_skill: {
     videos: [
-      { id: 'robotics_ai', title: 'Robotics & AI Importance', url: 'https://youtu.be/Cp5yOaW-2bk' }
+      { id: 'robotics_ai', title: 'Robotics & AI Importance', url: 'https://youtu.be/Cp5yOaW-2bk', embedId: 'Cp5yOaW-2bk' }
     ],
     questions: [
       { id: 'q1', question: "Why is it important to learn robotics & AI for kids? Why should my students learn Robotics, AI, and IoT at this age? Isn't it more suitable for engineers or older students?" },
@@ -109,7 +110,7 @@ const TRAINING_CONTENT = {
   },
   implementation_models: {
     videos: [
-      { id: 'school_impl', title: 'School Implementation', url: 'https://youtu.be/IMxCOzez9Jc' }
+      { id: 'school_impl', title: 'School Implementation', url: 'https://youtu.be/IMxCOzez9Jc', embedId: 'IMxCOzez9Jc' }
     ],
     faqQuestions: [
       { id: 'how_implement', question: "How can it be implemented in a school?" },
@@ -122,12 +123,22 @@ const TRAINING_CONTENT = {
       { id: 'certification', question: "Do they get assessed or certified?" }
     ]
   },
+  target_audiences: {
+    videos: [
+      { id: 'stakeholders', title: 'Understanding Stakeholders', url: 'https://youtu.be/je_sf7_ovfI', embedId: 'je_sf7_ovfI' }
+    ],
+    pitchRequirements: [
+      { id: 'principal', label: 'Pitch to Principal/Management' },
+      { id: 'teachers', label: 'Pitch to Teachers/Coordinators' },
+      { id: 'parents', label: 'Pitch to Parents' }
+    ]
+  },
   product_training: {
     componentVideos: [
-      { id: 'witbrix', title: 'Witbrix Explanation', url: 'https://youtu.be/JLeCHQFLQoA' },
-      { id: 'lock_key', title: 'Lock & Key Explanation', url: 'https://youtu.be/dre-OiFVkhM' },
-      { id: 'witblox1', title: 'Witblox Part 1', url: 'https://youtu.be/ehCU8Bl-JdY' },
-      { id: 'witblox2', title: 'Witblox Part 2', url: 'https://youtu.be/lYfNdaYxtp8' },
+      { id: 'witbrix', title: 'Witbrix Explanation', url: 'https://youtu.be/JLeCHQFLQoA', embedId: 'JLeCHQFLQoA' },
+      { id: 'lock_key', title: 'Lock & Key Explanation', url: 'https://youtu.be/dre-OiFVkhM', embedId: 'dre-OiFVkhM' },
+      { id: 'witblox1', title: 'Witblox Part 1', url: 'https://youtu.be/ehCU8Bl-JdY', embedId: 'ehCU8Bl-JdY' },
+      { id: 'witblox2', title: 'Witblox Part 2', url: 'https://youtu.be/lYfNdaYxtp8', embedId: 'lYfNdaYxtp8' },
       { id: 'witblox3', title: 'Witblox Part 3', url: 'https://youtu.be/Nhl_q8FEtU8' },
       { id: 'witpro', title: 'Witpro Installation', url: 'https://youtu.be/okFWSXqb8uo' },
       { id: 'ai_vision', title: 'AI Vision', url: 'https://youtu.be/3iN5C5acVF0' }
