@@ -1123,32 +1123,38 @@ const GPSelfOnboarding = () => {
                         <p className="text-orange-700 text-sm">Learn about Shreyaan's story, OLL's vision, mission, team & achievements.</p>
                       </div>
 
-                      {/* Video */}
+                      {/* Embedded Videos */}
                       <div className="space-y-4">
                         <h4 className="font-medium text-slate-800">Watch Required Videos</h4>
-                        {TRAINING_CONTENT.about_company.videos.map(video => (
-                          <div key={video.id} className="bg-slate-50 rounded-lg p-4">
-                            <div className="flex items-center gap-4">
-                              <a 
-                                href={video.url} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-2 text-orange-600 hover:text-orange-700 font-medium"
-                              >
-                                <Play className="w-5 h-5" />
-                                {video.title}
-                                <ExternalLink className="w-4 h-4" />
-                              </a>
+                        <div className="grid gap-4">
+                          {TRAINING_CONTENT.about_company.videos.map(video => (
+                            <div key={video.id} className="bg-slate-50 rounded-xl overflow-hidden">
+                              <div className="p-3 bg-slate-100 border-b flex items-center gap-2">
+                                <Play className="w-4 h-4 text-orange-500" />
+                                <span className="font-medium text-slate-700">{video.title}</span>
+                              </div>
+                              <div className="aspect-video">
+                                <iframe
+                                  src={`https://www.youtube.com/embed/${video.embedId}`}
+                                  title={video.title}
+                                  className="w-full h-full"
+                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                  allowFullScreen
+                                />
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
 
                       {/* MCQ Assessment */}
                       <div className="space-y-4">
-                        <h4 className="font-medium text-slate-800">Assessment - MCQ</h4>
+                        <h4 className="font-medium text-slate-800">Assessment - MCQ <span className="text-red-500">*</span></h4>
+                        <p className="text-sm text-slate-500">Answer all questions to proceed to the next step.</p>
                         {TRAINING_CONTENT.about_company.mcqQuestions.map((q, idx) => (
-                          <div key={q.id} className="bg-white border rounded-lg p-4">
+                          <div key={q.id} className={`bg-white border rounded-lg p-4 ${
+                            trainingAnswers.about_company?.assessment?.answers?.[q.id] ? 'border-green-300' : 'border-slate-200'
+                          }`}>
                             <p className="font-medium text-slate-800 mb-3">{idx + 1}. {q.question}</p>
                             <div className="space-y-2">
                               {q.options.map((opt, optIdx) => (
@@ -1157,6 +1163,7 @@ const GPSelfOnboarding = () => {
                                     type="radio"
                                     name={`mcq_${q.id}`}
                                     value={opt}
+                                    checked={trainingAnswers.about_company?.assessment?.answers?.[q.id] === opt}
                                     onChange={(e) => setTrainingAnswers(prev => ({
                                       ...prev,
                                       about_company: {
