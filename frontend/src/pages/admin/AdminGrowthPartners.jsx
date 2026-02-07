@@ -631,7 +631,7 @@ const AdminGrowthPartners = () => {
                     {gp.status === 'onboarding' && (
                       <>
                         <button
-                          onClick={() => copyTrackingLink(gp.tracking_token)}
+                          onClick={() => copyOnboardingLink(gp.tracking_token)}
                           className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1"
                         >
                           <Copy className="w-3 h-3" /> Copy Link
