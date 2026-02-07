@@ -1506,28 +1506,31 @@ const GPSelfOnboarding = () => {
                         <p className="text-indigo-700 text-sm">Learn to communicate with different stakeholders and record pitch videos.</p>
                       </div>
 
-                      {/* Video */}
+                      {/* Embedded Video */}
                       <div className="space-y-4">
                         <h4 className="font-medium text-slate-800">Watch Required Videos</h4>
                         {TRAINING_CONTENT.target_audiences.videos.map(video => (
-                          <div key={video.id} className="bg-slate-50 rounded-lg p-4">
-                            <a 
-                              href={video.url} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-2 text-indigo-600 hover:text-indigo-700 font-medium"
-                            >
-                              <Play className="w-5 h-5" />
-                              {video.title}
-                              <ExternalLink className="w-4 h-4" />
-                            </a>
+                          <div key={video.id} className="bg-slate-50 rounded-xl overflow-hidden">
+                            <div className="p-3 bg-slate-100 border-b flex items-center gap-2">
+                              <Play className="w-4 h-4 text-indigo-500" />
+                              <span className="font-medium text-slate-700">{video.title}</span>
+                            </div>
+                            <div className="aspect-video">
+                              <iframe
+                                src={`https://www.youtube.com/embed/${video.embedId}`}
+                                title={video.title}
+                                className="w-full h-full"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                              />
+                            </div>
                           </div>
                         ))}
                       </div>
 
                       {/* Pitch Video Recordings */}
                       <div className="space-y-4">
-                        <h4 className="font-medium text-slate-800">Record Pitch Videos</h4>
+                        <h4 className="font-medium text-slate-800">Record Pitch Videos <span className="text-red-500">*</span></h4>
                         <p className="text-sm text-slate-600">Record yourself pitching to each audience type. Upload video links (YouTube, Google Drive, etc.)</p>
                         {TRAINING_CONTENT.target_audiences.pitchRequirements.map((pitch) => (
                           <div key={pitch.id} className="bg-white border rounded-lg p-4">
