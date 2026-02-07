@@ -689,7 +689,6 @@ const GPSelfOnboarding = () => {
                 })}
               </div>
             </div>
-          </div>
 
             {/* Main Content */}
             <div className="lg:col-span-3 order-1 lg:order-2">
