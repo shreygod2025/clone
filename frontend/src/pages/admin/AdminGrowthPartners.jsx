@@ -72,6 +72,7 @@ const AdminGrowthPartners = () => {
   const [selectedRoleId, setSelectedRoleId] = useState('');
   const [discontinueReason, setDiscontinueReason] = useState('');
   const [stepData, setStepData] = useState({});
+  const [showCredentialsModal, setShowCredentialsModal] = useState(null);
   
   // View/Edit states
   const [editMode, setEditMode] = useState(false);
