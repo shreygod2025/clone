@@ -346,28 +346,21 @@ const GPSelfOnboarding = () => {
   };
 
   const submitContract = async () => {
-    if (!contractAgreed) {
-      toast.error('Please agree to the terms and conditions');
+    if (!signedContractUrl) {
+      toast.error('Please upload the signed contract');
       return;
     }
     setSubmitting(true);
     try {
-      await axios.post(`${API}/gp-onboard/${token}/contract`, { agreed: true });
-      toast.success('Contract signed successfully! Downloading...');
-      
-      // Trigger PDF download
-      const link = document.createElement('a');
-      link.href = GP_MOU_PDF_URL;
-      link.download = 'OLL_Growth_Partner_MOU.pdf';
-      link.target = '_blank';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
+      await axios.post(`${API}/gp-onboard/${token}/contract`, { 
+        agreed: true,
+        signed_contract_url: signedContractUrl 
+      });
+      toast.success('Contract submitted successfully!');
       setCurrentStep('payment');
       fetchOnboarding();
     } catch (err) {
-      toast.error('Failed to sign contract');
+      toast.error('Failed to submit contract');
     } finally {
       setSubmitting(false);
     }
