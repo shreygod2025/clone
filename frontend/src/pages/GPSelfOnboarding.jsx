@@ -1846,13 +1846,6 @@ const GPSelfOnboarding = () => {
                       </div>
                     </div>
                   )}
-
-                  <div className="flex justify-between mt-6 pt-6 border-t">
-                    <Button variant="outline" onClick={() => setCurrentStep('kit_delivery')}>
-                      <ArrowLeft className="w-4 h-4 mr-2" />
-                      Back to Kit Delivery
-                    </Button>
-                  </div>
                 </div>
               )}
             </div>
