@@ -1859,6 +1859,33 @@ const GPSelfOnboarding = () => {
           </div>
         </div>
       </div>
+      </div>
+
+      {/* Footer */}
+      <footer className="bg-[#1E3A5F] text-white mt-auto">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <img 
+                src="https://customer-assets.emergentagent.com/job_oll-skill-edu/artifacts/wzn0gh6k_OLL-horizontal-logo-white.png"
+                alt="OLL Logo"
+                className="h-8 w-auto"
+              />
+              <span className="text-sm text-white/70">© {new Date().getFullYear()} Clonefutura Live Solutions Pvt. Ltd</span>
+            </div>
+            <div className="flex items-center gap-4 text-sm">
+              <a href="tel:+919920188188" className="flex items-center gap-1 text-white/80 hover:text-white transition-colors">
+                <Phone className="w-4 h-4" />
+                <span className="hidden sm:inline">+91 99201 88188</span>
+              </a>
+              <a href="mailto:support@oll.co" className="flex items-center gap-1 text-white/80 hover:text-white transition-colors">
+                <Mail className="w-4 h-4" />
+                <span className="hidden sm:inline">support@oll.co</span>
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
