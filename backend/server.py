@@ -3069,6 +3069,20 @@ async def init_gp_onboarding(
     # Check if onboarding already exists
     existing = await db.gp_onboarding.find_one({"growth_partner_id": partner_id}, {"_id": 0})
     if existing:
+        # Update GP status to onboarding (in case it was reverted)
+        await db.growth_partners.update_one(
+            {"id": partner_id},
+            {"$set": {"status": "onboarding", "onboarding_id": existing.get('id')}}
+        )
+        # Also update onboarding status if it was discontinued
+        if existing.get('status') == 'discontinued':
+            new_token = str(uuid.uuid4())[:8]
+            await db.gp_onboarding.update_one(
+                {"id": existing.get('id')},
+                {"$set": {"status": "onboarding", "tracking_token": new_token, "updated_at": datetime.now(timezone.utc).isoformat()}}
+            )
+            existing['status'] = 'onboarding'
+            existing['tracking_token'] = new_token
         return existing
     
     onboarding = GPOnboarding(
