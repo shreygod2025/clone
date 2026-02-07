@@ -262,9 +262,18 @@ const GPSelfOnboarding = () => {
       }
       if (res.data.training_progress) {
         setTrainingAnswers(res.data.training_progress);
+        
+        // Determine current training step (find first incomplete one)
+        const trainingProgress = res.data.training_progress;
+        for (const trainingStep of TRAINING_STEPS) {
+          if (!trainingProgress[trainingStep.key]?.completed) {
+            setCurrentTrainingStep(trainingStep.key);
+            break;
+          }
+        }
       }
       
-      // Determine current step
+      // Determine current main step
       const steps = res.data.steps || {};
       for (const step of ONBOARDING_STEPS) {
         if (!steps[step.key]?.completed) {
