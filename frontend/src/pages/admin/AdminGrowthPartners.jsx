@@ -1494,6 +1494,85 @@ const AdminGrowthPartners = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Payment Verification Modal */}
+      <Dialog open={!!showPaymentVerifyModal} onOpenChange={() => setShowPaymentVerifyModal(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-yellow-600">
+              <CreditCard className="w-5 h-5" /> Verify Payment
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-yellow-50 p-4 rounded-lg">
+              <p className="font-semibold text-yellow-800 text-lg">{showPaymentVerifyModal?.name || showPaymentVerifyModal?.personal_info?.full_name}</p>
+              <p className="text-sm text-yellow-700 mt-1">Payment awaiting verification</p>
+            </div>
+            
+            {/* Payment Details */}
+            <div className="bg-slate-50 rounded-lg p-4 space-y-3">
+              <h4 className="font-medium text-slate-800 mb-2">Payment Details</h4>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                {showPaymentVerifyModal?.payment_amount > 0 && (
+                  <div>
+                    <span className="text-slate-500">Amount:</span>
+                    <span className="ml-2 font-medium text-slate-800">₹{showPaymentVerifyModal?.payment_amount}</span>
+                  </div>
+                )}
+                {showPaymentVerifyModal?.payment_transaction_id && (
+                  <div>
+                    <span className="text-slate-500">Transaction ID:</span>
+                    <span className="ml-2 font-medium text-slate-800">{showPaymentVerifyModal?.payment_transaction_id}</span>
+                  </div>
+                )}
+                {showPaymentVerifyModal?.payment_date && (
+                  <div>
+                    <span className="text-slate-500">Date:</span>
+                    <span className="ml-2 font-medium text-slate-800">{showPaymentVerifyModal?.payment_date}</span>
+                  </div>
+                )}
+                {showPaymentVerifyModal?.payment_method && (
+                  <div>
+                    <span className="text-slate-500">Method:</span>
+                    <span className="ml-2 font-medium text-slate-800">{showPaymentVerifyModal?.payment_method}</span>
+                  </div>
+                )}
+              </div>
+              {showPaymentVerifyModal?.payment_screenshot_url && (
+                <div className="mt-3">
+                  <a 
+                    href={showPaymentVerifyModal?.payment_screenshot_url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                  >
+                    <FileText className="w-4 h-4" /> View Payment Screenshot
+                  </a>
+                </div>
+              )}
+            </div>
+
+            {/* Bank Details for Reference */}
+            {showPaymentVerifyModal?.bank_details && (
+              <div className="bg-purple-50 rounded-lg p-4">
+                <h4 className="font-medium text-purple-800 mb-2 text-sm">Bank Details (for reference)</h4>
+                <div className="text-xs text-purple-700 space-y-1">
+                  <p><span className="text-purple-500">Account:</span> {showPaymentVerifyModal?.bank_details?.account_holder_name} - {showPaymentVerifyModal?.bank_details?.bank_name}</p>
+                  <p><span className="text-purple-500">A/C No:</span> {showPaymentVerifyModal?.bank_details?.account_number}</p>
+                  <p><span className="text-purple-500">IFSC:</span> {showPaymentVerifyModal?.bank_details?.ifsc_code}</p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => setShowPaymentVerifyModal(null)} className="flex-1">Cancel</Button>
+              <Button onClick={handleVerifyPayment} className="flex-1 bg-green-600 hover:bg-green-700">
+                <CheckCircle2 className="w-4 h-4 mr-2" /> Verify Payment
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* GP Reports Modal */}
       <Dialog open={!!showReportsModal} onOpenChange={() => setShowReportsModal(null)}>
         <DialogContent className="max-w-2xl">
