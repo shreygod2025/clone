@@ -3418,30 +3418,32 @@ async def submit_gp_bank_details(token: str, data: dict):
 
 @api_router.post("/gp-onboard/{token}/contract")
 async def submit_gp_contract(token: str, data: dict):
-    """Public endpoint for GP to sign contract"""
+    """Public endpoint for GP to submit signed contract"""
     onboarding = await db.gp_onboarding.find_one({"tracking_token": token}, {"_id": 0})
     if not onboarding:
         raise HTTPException(status_code=404, detail="Invalid tracking link")
     
     now = datetime.now(timezone.utc).isoformat()
+    signed_contract_url = data.get("signed_contract_url", "")
     
     await db.gp_onboarding.update_one(
         {"tracking_token": token},
         {"$set": {
             "contract_signed_at": now,
-            "contract_signature_url": data.get("signature_url", ""),
+            "signed_contract_url": signed_contract_url,
+            "contract_url": signed_contract_url,  # Also save to contract_url for admin view
             "steps.contract_signing.completed": True,
             "steps.contract_signing.completed_at": now,
             "steps.contract_signing.data": {
                 "signed_at": now,
-                "signature_url": data.get("signature_url", ""),
+                "signed_contract_url": signed_contract_url,
                 "agreed_terms": True
             },
             "updated_at": now
         }}
     )
     
-    return {"message": "Contract signed", "next_step": "payment"}
+    return {"message": "Contract submitted", "next_step": "payment"}
 
 @api_router.post("/gp-onboard/{token}/payment")
 async def submit_gp_payment(token: str, data: dict):
