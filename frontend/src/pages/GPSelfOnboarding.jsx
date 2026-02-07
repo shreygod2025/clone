@@ -624,28 +624,41 @@ const GPSelfOnboarding = () => {
                           ? 'bg-orange-100 border-2 border-orange-500' 
                           : status === 'completed'
                             ? 'bg-green-50 hover:bg-green-100'
-                            : 'bg-slate-50 hover:bg-slate-100 opacity-60'
+                            : kitStatus === 'dispatched'
+                              ? 'bg-blue-50 hover:bg-blue-100'
+                              : 'bg-slate-50 hover:bg-slate-100 opacity-60'
                       }`}
                       data-testid={`step-${step.key}`}
                     >
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                         status === 'completed' 
                           ? 'bg-green-500 text-white' 
-                          : isActive
-                            ? 'bg-orange-500 text-white'
-                            : 'bg-slate-200 text-slate-500'
+                          : kitStatus === 'dispatched'
+                            ? 'bg-blue-500 text-white'
+                            : isActive
+                              ? 'bg-orange-500 text-white'
+                              : 'bg-slate-200 text-slate-500'
                       }`}>
-                        {status === 'completed' ? <Check className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
+                        {status === 'completed' ? <Check className="w-4 h-4" /> : 
+                         kitStatus === 'dispatched' ? <Truck className="w-4 h-4" /> : 
+                         <Icon className="w-4 h-4" />}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium truncate ${isActive ? 'text-orange-700' : 'text-slate-700'}`}>
+                        <p className={`text-sm font-medium truncate ${
+                          isActive ? 'text-orange-700' : 
+                          kitStatus === 'dispatched' ? 'text-blue-700' : 
+                          'text-slate-700'
+                        }`}>
                           {step.label}
                         </p>
                         {status === 'awaiting_verification' && (
                           <p className="text-xs text-yellow-600">Awaiting verification</p>
                         )}
-                        {status === 'shipped' && (
-                          <p className="text-xs text-blue-600">Kit shipped</p>
+                        {kitStatus === 'dispatched' && (
+                          <p className="text-xs text-blue-600">Kit dispatched</p>
+                        )}
+                        {kitStatus === 'delivered' && status !== 'completed' && (
+                          <p className="text-xs text-green-600">Kit delivered</p>
                         )}
                       </div>
                     </button>
@@ -657,7 +670,7 @@ const GPSelfOnboarding = () => {
 
           {/* Main Content */}
           <div className="lg:col-span-3">
-            <div className="bg-white rounded-2xl p-6 md:p-8">
+            <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm">
               {/* Step 1: Personal Information */}
               {currentStep === 'personal_info' && (
                 <div className="space-y-6">
