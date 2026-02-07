@@ -573,32 +573,39 @@ const AdminGrowthPartners = () => {
                           <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
                             <div 
                               className="h-full bg-orange-500 transition-all"
-                              style={{ width: `${(getCompletedSteps(gp.steps) / 3) * 100}%` }}
+                              style={{ width: `${(getCompletedSteps(gp.steps) / 6) * 100}%` }}
                             />
                           </div>
-                          <span className="text-xs text-slate-500">{getCompletedSteps(gp.steps)}/3 steps</span>
+                          <span className="text-xs text-slate-500">{getCompletedSteps(gp.steps)}/6 steps</span>
                         </div>
                         <div className="flex gap-2 flex-wrap">
                           {ONBOARDING_STEPS.map(step => {
-                            const isCompleted = gp.steps?.[step.key]?.completed;
+                            const stepData = gp.steps?.[step.key];
+                            const isCompleted = stepData?.completed;
+                            const isAwaitingVerification = step.key === 'payment' && stepData?.completed && !stepData?.verified;
                             const Icon = step.icon;
                             return (
                               <button
                                 key={step.key}
                                 onClick={() => {
-                                  if (!isCompleted) {
+                                  if (isAwaitingVerification) {
+                                    setShowPaymentVerifyModal(gp);
+                                  } else if (!isCompleted) {
                                     setShowStepModal({ onboardingId: gp.id, step: step.key, stepLabel: step.label });
                                     setStepData({});
                                   }
                                 }}
                                 className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${
-                                  isCompleted 
-                                    ? 'bg-green-100 text-green-700 cursor-default' 
-                                    : 'bg-slate-100 text-slate-600 hover:bg-orange-100 hover:text-orange-700'
+                                  isAwaitingVerification
+                                    ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                                    : isCompleted 
+                                      ? 'bg-green-100 text-green-700 cursor-default' 
+                                      : 'bg-slate-100 text-slate-600 hover:bg-orange-100 hover:text-orange-700'
                                 }`}
                               >
-                                {isCompleted ? <CheckCircle2 className="w-3 h-3" /> : <Icon className="w-3 h-3" />}
+                                {isAwaitingVerification ? <Clock className="w-3 h-3" /> : isCompleted ? <CheckCircle2 className="w-3 h-3" /> : <Icon className="w-3 h-3" />}
                                 {step.label}
+                                {isAwaitingVerification && <span className="text-[10px]">(Verify)</span>}
                               </button>
                             );
                           })}
