@@ -840,7 +840,7 @@ const GPSelfOnboarding = () => {
                         OLL x Growth Partner MOU
                       </h3>
                       <a 
-                        href="https://customer-assets.emergentagent.com/job_skill-hub-55/artifacts/tkbt7jy3_OLL%20x%20Growth%20Partner%20MOU.pdf"
+                        href={GP_MOU_PDF_URL}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-sm text-orange-600 hover:text-orange-700 flex items-center gap-1"
@@ -850,7 +850,7 @@ const GPSelfOnboarding = () => {
                       </a>
                     </div>
                     <iframe 
-                      src="https://customer-assets.emergentagent.com/job_skill-hub-55/artifacts/tkbt7jy3_OLL%20x%20Growth%20Partner%20MOU.pdf"
+                      src={GP_MOU_PDF_URL}
                       className="w-full h-[400px] rounded-lg border border-slate-200"
                       title="Growth Partner MOU"
                     />
