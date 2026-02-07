@@ -336,10 +336,24 @@ const GPSelfOnboarding = () => {
   };
 
   const submitContract = async () => {
+    if (!contractAgreed) {
+      toast.error('Please agree to the terms and conditions');
+      return;
+    }
     setSubmitting(true);
     try {
       await axios.post(`${API}/gp-onboard/${token}/contract`, { agreed: true });
-      toast.success('Contract signed successfully');
+      toast.success('Contract signed successfully! Downloading...');
+      
+      // Trigger PDF download
+      const link = document.createElement('a');
+      link.href = GP_MOU_PDF_URL;
+      link.download = 'OLL_Growth_Partner_MOU.pdf';
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
       setCurrentStep('payment');
       fetchOnboarding();
     } catch (err) {
