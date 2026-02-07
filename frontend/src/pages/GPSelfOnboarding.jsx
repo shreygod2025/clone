@@ -634,7 +634,7 @@ const GPSelfOnboarding = () => {
                         key={step.key}
                         onClick={() => status !== 'pending' && setCurrentStep(step.key)}
                         disabled={status === 'pending' && idx > completedSteps}
-                        className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-all ${
+                        className={`flex-shrink-0 lg:w-full flex items-center gap-2 lg:gap-3 px-3 py-2 lg:p-3 rounded-full lg:rounded-lg text-left transition-all ${
                         isActive 
                           ? 'bg-orange-100 border-2 border-orange-500' 
                           : status === 'completed'
@@ -645,7 +645,7 @@ const GPSelfOnboarding = () => {
                       }`}
                       data-testid={`step-${step.key}`}
                     >
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      <div className={`w-7 h-7 lg:w-8 lg:h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
                         status === 'completed' 
                           ? 'bg-green-500 text-white' 
                           : kitStatus === 'dispatched'
@@ -654,11 +654,11 @@ const GPSelfOnboarding = () => {
                               ? 'bg-orange-500 text-white'
                               : 'bg-slate-200 text-slate-500'
                       }`}>
-                        {status === 'completed' ? <Check className="w-4 h-4" /> : 
-                         kitStatus === 'dispatched' ? <Truck className="w-4 h-4" /> : 
-                         <Icon className="w-4 h-4" />}
+                        {status === 'completed' ? <Check className="w-3 h-3 lg:w-4 lg:h-4" /> : 
+                         kitStatus === 'dispatched' ? <Truck className="w-3 h-3 lg:w-4 lg:h-4" /> : 
+                         <Icon className="w-3 h-3 lg:w-4 lg:h-4" />}
                       </div>
-                      <div className="flex-1 min-w-0">
+                      <div className="min-w-0 hidden lg:block flex-1">
                         <p className={`text-sm font-medium truncate ${
                           isActive ? 'text-orange-700' : 
                           kitStatus === 'dispatched' ? 'text-blue-700' : 
@@ -676,6 +676,14 @@ const GPSelfOnboarding = () => {
                           <p className="text-xs text-green-600">Kit delivered</p>
                         )}
                       </div>
+                      {/* Mobile: Show abbreviated label */}
+                      <span className={`lg:hidden text-xs font-medium whitespace-nowrap ${
+                        isActive ? 'text-orange-700' : 
+                        status === 'completed' ? 'text-green-700' :
+                        'text-slate-600'
+                      }`}>
+                        {idx + 1}
+                      </span>
                     </button>
                   );
                 })}
