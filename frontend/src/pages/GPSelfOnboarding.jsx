@@ -483,16 +483,83 @@ const GPSelfOnboarding = () => {
     );
   }
 
-  // Check if onboarding is complete
+  // Check if all training is complete and awaiting activation
+  const isTrainingComplete = onboarding.steps?.training?.completed || onboarding.training_completed_at;
+  const isAwaitingActivation = isTrainingComplete && onboarding.status === 'onboarding';
+  
+  if (isAwaitingActivation) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl p-6 sm:p-8 text-center max-w-lg mx-4">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+            <Clock className="w-8 h-8 sm:w-10 sm:h-10 text-amber-600" />
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 mb-2">Under Review 🎯</h1>
+          <p className="text-slate-600 mb-6 text-sm sm:text-base">
+            Congratulations on completing all training modules! Your application is now under review by the OLL team.
+          </p>
+          
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 sm:p-6 text-left mb-6">
+            <h3 className="font-semibold text-amber-800 mb-3 flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5" />
+              What you've completed:
+            </h3>
+            <ul className="space-y-2 text-sm text-amber-700">
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-green-500" />
+                Personal Information & Documents
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-green-500" />
+                Bank Details for Commissions
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-green-500" />
+                Contract Signing
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-green-500" />
+                Onboarding Fees Payment
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-green-500" />
+                Kit Delivery Confirmed
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-green-500" />
+                All 7 Training Modules Completed
+              </li>
+            </ul>
+          </div>
+          
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-left">
+            <h3 className="font-semibold text-blue-800 mb-2 text-sm">What happens next?</h3>
+            <p className="text-sm text-blue-700">
+              Our team will review your submissions and activate your Growth Partner account within 24-48 hours. 
+              You'll receive your login credentials on this page once approved.
+            </p>
+          </div>
+          
+          <div className="mt-6 text-center">
+            <p className="text-xs text-slate-500">
+              Questions? Contact us at <a href="mailto:partners@oll.co" className="text-orange-600 hover:underline">partners@oll.co</a>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Check if onboarding is complete and activated
   if (onboarding.status === 'active' && onboarding.team_user_credentials) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl p-8 text-center max-w-lg">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Award className="w-10 h-10 text-green-600" />
+        <div className="bg-white rounded-2xl p-6 sm:p-8 text-center max-w-lg mx-4">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+            <Award className="w-8 h-8 sm:w-10 sm:h-10 text-green-600" />
           </div>
-          <h1 className="text-3xl font-bold text-slate-800 mb-2">Congratulations! 🎉</h1>
-          <p className="text-slate-600 mb-6">You have successfully completed the Growth Partner onboarding!</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 mb-2">Congratulations! 🎉</h1>
+          <p className="text-slate-600 mb-6 text-sm sm:text-base">You have successfully completed the Growth Partner onboarding!</p>
           
           <div className="bg-slate-50 rounded-xl p-6 text-left mb-6">
             <h3 className="font-semibold text-slate-800 mb-4">Your Login Credentials</h3>
