@@ -197,7 +197,10 @@ const TRAINING_CONTENT = {
     ],
     requirements: [
       { id: 'proposal', label: 'Upload a sample proposal', type: 'upload' },
-      { id: 'mou', label: 'Upload a sample MOU', type: 'upload' }
+      { id: 'mou', label: 'Upload a sample MOU', type: 'upload' },
+      { id: 'email', label: 'Send test email to verify', type: 'action' },
+      { id: 'whatsapp', label: 'Send test WhatsApp message', type: 'action' },
+      { id: 'campaign', label: 'Create a bulk marketing campaign', type: 'action' }
     ]
   }
 };
@@ -262,18 +265,9 @@ const GPSelfOnboarding = () => {
       }
       if (res.data.training_progress) {
         setTrainingAnswers(res.data.training_progress);
-        
-        // Determine current training step (find first incomplete one)
-        const trainingProgress = res.data.training_progress;
-        for (const trainingStep of TRAINING_STEPS) {
-          if (!trainingProgress[trainingStep.key]?.completed) {
-            setCurrentTrainingStep(trainingStep.key);
-            break;
-          }
-        }
       }
       
-      // Determine current main step
+      // Determine current step
       const steps = res.data.steps || {};
       for (const step of ONBOARDING_STEPS) {
         if (!steps[step.key]?.completed) {
@@ -410,22 +404,14 @@ const GPSelfOnboarding = () => {
         ...data,
         mark_complete: markComplete
       });
-      toast.success(`Training step "${step}" completed!`);
+      toast.success(`Training step "${step}" updated`);
+      fetchOnboarding();
       
-      // Move to next training step BEFORE fetching (immediate UI feedback)
-      if (markComplete) {
-        const stepIndex = TRAINING_STEPS.findIndex(s => s.key === step);
-        if (stepIndex < TRAINING_STEPS.length - 1) {
-          const nextStep = TRAINING_STEPS[stepIndex + 1].key;
-          setCurrentTrainingStep(nextStep);
-          toast.info(`Moving to: ${TRAINING_STEPS[stepIndex + 1].label}`);
-        } else {
-          toast.success('🎉 Training complete! You are now a certified Growth Partner.');
-        }
+      // Move to next training step
+      const stepIndex = TRAINING_STEPS.findIndex(s => s.key === step);
+      if (stepIndex < TRAINING_STEPS.length - 1 && markComplete) {
+        setCurrentTrainingStep(TRAINING_STEPS[stepIndex + 1].key);
       }
-      
-      // Refresh data from server (won't reset currentTrainingStep now)
-      await fetchOnboarding();
     } catch (err) {
       toast.error('Failed to save training progress');
     } finally {
@@ -529,173 +515,80 @@ const GPSelfOnboarding = () => {
   const progress = (completedSteps / ONBOARDING_STEPS.length) * 100;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-orange-50 flex flex-col">
-      {/* Header/Navbar */}
-      <header className="bg-white shadow-sm sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="flex items-center justify-between h-16">
-            <Link to="/" className="flex items-center gap-2">
-              <img 
-                src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png" 
-                alt="OLL Logo"
-                className="h-10 w-auto"
-              />
-            </Link>
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-slate-600 hidden sm:block">Growth Partner Onboarding</span>
-              <div className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-medium">
-                {completedSteps}/{ONBOARDING_STEPS.length} Steps
-              </div>
-            </div>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-orange-500 to-orange-600">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="text-center text-white mb-8">
+          <h1 className="text-3xl font-bold mb-2">Growth Partner Onboarding</h1>
+          <p className="text-orange-100">Welcome, {onboarding.name}! Complete your onboarding to become an OLL Growth Partner.</p>
         </div>
-      </header>
 
-      {/* Hero Section */}
-      <div className="bg-gradient-to-r from-orange-500 to-orange-600 text-white py-6">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3">
-                <GraduationCap className="w-8 h-8" />
-                Welcome, {onboarding.name}!
-              </h1>
-              <p className="text-white/80 text-sm mt-2">
-                Complete your onboarding to become an OLL Growth Partner.
-              </p>
-            </div>
-            <div className="text-left md:text-right">
-              <div className="text-3xl font-bold">{Math.round(progress)}%</div>
-              <div className="text-sm text-white/80">{completedSteps} of {ONBOARDING_STEPS.length} steps complete</div>
-            </div>
-          </div>
-          {/* Progress Bar */}
-          <div className="bg-white/20 rounded-full h-2 mt-4">
-            <div 
-              className="bg-white rounded-full h-2 transition-all duration-500"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
+        {/* Progress Bar */}
+        <div className="bg-white/20 rounded-full h-3 mb-8 max-w-2xl mx-auto">
+          <div 
+            className="bg-white rounded-full h-3 transition-all duration-500"
+            style={{ width: `${progress}%` }}
+          />
         </div>
-      </div>
 
-      {/* Kit Delivery Status Banner */}
-      {onboarding.kit_delivery_status && onboarding.kit_delivery_status !== 'pending' && (
-        <div className={`py-3 px-4 text-center text-sm font-medium ${
-          onboarding.kit_delivery_status === 'delivered' 
-            ? 'bg-green-500 text-white' 
-            : 'bg-blue-500 text-white'
-        }`}>
-          <div className="flex items-center justify-center gap-2">
-            {onboarding.kit_delivery_status === 'dispatched' ? (
-              <>
-                <Truck className="w-4 h-4" />
-                Your kit has been dispatched! 
-                {onboarding.kit_tracking_number && (
-                  <span>Tracking: <strong>{onboarding.kit_tracking_number}</strong></span>
-                )}
-                {onboarding.kit_courier_name && (
-                  <span>via {onboarding.kit_courier_name}</span>
-                )}
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="w-4 h-4" />
-                Kit Delivered Successfully! You can now proceed to Training.
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Main Content */}
-      <div className="flex-1 py-8">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="grid lg:grid-cols-4 gap-6">
-            {/* Sidebar - Steps Navigation */}
-            <div className="lg:col-span-1 order-2 lg:order-1">
-              <div className="bg-white rounded-2xl p-4 lg:sticky lg:top-24 shadow-sm">
-                <h3 className="font-semibold text-slate-800 mb-4 hidden lg:block">Onboarding Steps</h3>
-                {/* Mobile: Horizontal scroll, Desktop: Vertical list */}
-                <div className="flex lg:flex-col gap-2 overflow-x-auto pb-2 lg:pb-0 lg:overflow-visible -mx-2 px-2 lg:mx-0 lg:px-0">
-                  {ONBOARDING_STEPS.map((step, idx) => {
-                    const status = getStepStatus(step.key);
-                    const isActive = currentStep === step.key;
-                    const Icon = step.icon;
-                    
-                    // Special handling for kit_delivery status
-                    let kitStatus = null;
-                    if (step.key === 'kit_delivery') {
-                      kitStatus = onboarding.kit_delivery_status;
-                    }
-                    
-                    return (
-                      <button
-                        key={step.key}
-                        onClick={() => status !== 'pending' && setCurrentStep(step.key)}
-                        disabled={status === 'pending' && idx > completedSteps}
-                        className={`flex-shrink-0 lg:w-full flex items-center gap-2 lg:gap-3 px-3 py-2 lg:p-3 rounded-full lg:rounded-lg text-left transition-all ${
+        <div className="grid lg:grid-cols-4 gap-6">
+          {/* Sidebar - Steps Navigation */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-2xl p-4 sticky top-4">
+              <h3 className="font-semibold text-slate-800 mb-4">Onboarding Steps</h3>
+              <div className="space-y-2">
+                {ONBOARDING_STEPS.map((step, idx) => {
+                  const status = getStepStatus(step.key);
+                  const isActive = currentStep === step.key;
+                  const Icon = step.icon;
+                  
+                  return (
+                    <button
+                      key={step.key}
+                      onClick={() => status !== 'pending' && setCurrentStep(step.key)}
+                      disabled={status === 'pending' && idx > completedSteps}
+                      className={`w-full flex items-center gap-3 p-3 rounded-lg text-left transition-all ${
                         isActive 
                           ? 'bg-orange-100 border-2 border-orange-500' 
                           : status === 'completed'
                             ? 'bg-green-50 hover:bg-green-100'
-                            : kitStatus === 'dispatched'
-                              ? 'bg-blue-50 hover:bg-blue-100'
-                              : 'bg-slate-50 hover:bg-slate-100 opacity-60'
+                            : 'bg-slate-50 hover:bg-slate-100 opacity-60'
                       }`}
                       data-testid={`step-${step.key}`}
                     >
-                      <div className={`w-7 h-7 lg:w-8 lg:h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                         status === 'completed' 
                           ? 'bg-green-500 text-white' 
-                          : kitStatus === 'dispatched'
-                            ? 'bg-blue-500 text-white'
-                            : isActive
-                              ? 'bg-orange-500 text-white'
-                              : 'bg-slate-200 text-slate-500'
+                          : isActive
+                            ? 'bg-orange-500 text-white'
+                            : 'bg-slate-200 text-slate-500'
                       }`}>
-                        {status === 'completed' ? <Check className="w-3 h-3 lg:w-4 lg:h-4" /> : 
-                         kitStatus === 'dispatched' ? <Truck className="w-3 h-3 lg:w-4 lg:h-4" /> : 
-                         <Icon className="w-3 h-3 lg:w-4 lg:h-4" />}
+                        {status === 'completed' ? <Check className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
                       </div>
-                      <div className="min-w-0 hidden lg:block flex-1">
-                        <p className={`text-sm font-medium truncate ${
-                          isActive ? 'text-orange-700' : 
-                          kitStatus === 'dispatched' ? 'text-blue-700' : 
-                          'text-slate-700'
-                        }`}>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium truncate ${isActive ? 'text-orange-700' : 'text-slate-700'}`}>
                           {step.label}
                         </p>
                         {status === 'awaiting_verification' && (
                           <p className="text-xs text-yellow-600">Awaiting verification</p>
                         )}
-                        {kitStatus === 'dispatched' && (
-                          <p className="text-xs text-blue-600">Kit dispatched</p>
-                        )}
-                        {kitStatus === 'delivered' && status !== 'completed' && (
-                          <p className="text-xs text-green-600">Kit delivered</p>
+                        {status === 'shipped' && (
+                          <p className="text-xs text-blue-600">Kit shipped</p>
                         )}
                       </div>
-                      {/* Mobile: Show abbreviated label */}
-                      <span className={`lg:hidden text-xs font-medium whitespace-nowrap ${
-                        isActive ? 'text-orange-700' : 
-                        status === 'completed' ? 'text-green-700' :
-                        'text-slate-600'
-                      }`}>
-                        {idx + 1}
-                      </span>
                     </button>
                   );
                 })}
               </div>
             </div>
+          </div>
 
-            {/* Main Content */}
-            <div className="lg:col-span-3 order-1 lg:order-2">
-              <div className="bg-white rounded-2xl p-4 sm:p-6 md:p-8 shadow-sm">
-                {/* Step 1: Personal Information */}
-                {currentStep === 'personal_info' && (
-                <div className="space-y-4 sm:space-y-6">
+          {/* Main Content */}
+          <div className="lg:col-span-3">
+            <div className="bg-white rounded-2xl p-6 md:p-8">
+              {/* Step 1: Personal Information */}
+              {currentStep === 'personal_info' && (
+                <div className="space-y-6">
                   <div>
                     <h2 className="text-2xl font-bold text-slate-800 mb-2">Personal Information</h2>
                     <p className="text-slate-600">Please provide your personal details and upload required documents.</p>
@@ -1048,38 +941,30 @@ const GPSelfOnboarding = () => {
                     </div>
                   ) : (
                     <>
-                      <div className="bg-blue-50 rounded-xl p-4 md:p-6">
+                      <div className="bg-blue-50 rounded-xl p-6">
                         <h3 className="font-semibold text-blue-800 mb-2">Payment Details</h3>
                         <p className="text-sm text-blue-700 mb-4">Please transfer the onboarding fees to the following account:</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 text-sm">
-                          <div className="bg-white rounded-lg p-3">
-                            <p className="text-blue-600 text-xs">Company Name</p>
-                            <p className="font-semibold text-blue-800">Clonefutura Live Solutions Pvt Ltd</p>
+                        <div className="grid md:grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <p className="text-blue-600">Account Name</p>
+                            <p className="font-medium text-blue-800">OLL Education Pvt Ltd</p>
                           </div>
-                          <div className="bg-white rounded-lg p-3">
-                            <p className="text-blue-600 text-xs">Account Number</p>
-                            <p className="font-semibold text-blue-800 font-mono">50200063789133</p>
+                          <div>
+                            <p className="text-blue-600">Account Number</p>
+                            <p className="font-medium text-blue-800">XXXXXXXXXXXXXX</p>
                           </div>
-                          <div className="bg-white rounded-lg p-3">
-                            <p className="text-blue-600 text-xs">IFSC Code</p>
-                            <p className="font-semibold text-blue-800 font-mono">HDFC0000240</p>
+                          <div>
+                            <p className="text-blue-600">IFSC Code</p>
+                            <p className="font-medium text-blue-800">HDFC0001234</p>
                           </div>
-                          <div className="bg-white rounded-lg p-3">
-                            <p className="text-blue-600 text-xs">Bank & Branch</p>
-                            <p className="font-semibold text-blue-800">HDFC Bank, Sandoz House Worli</p>
-                          </div>
-                          <div className="bg-white rounded-lg p-3">
-                            <p className="text-blue-600 text-xs">UPI ID</p>
-                            <p className="font-semibold text-blue-800 font-mono">shreyaandaga@okhdfcbank</p>
-                          </div>
-                          <div className="bg-white rounded-lg p-3">
-                            <p className="text-blue-600 text-xs">GST No / PAN</p>
-                            <p className="font-semibold text-blue-800 font-mono text-xs">27AAKCC1113B1ZC / AAKCC1113B</p>
+                          <div>
+                            <p className="text-blue-600">UPI ID</p>
+                            <p className="font-medium text-blue-800">oll@upi</p>
                           </div>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="grid md:grid-cols-2 gap-4">
                         <div>
                           <label className="text-sm font-medium text-slate-700">Amount Paid</label>
                           <Input
@@ -1197,13 +1082,13 @@ const GPSelfOnboarding = () => {
               {currentStep === 'training' && (
                 <div className="space-y-6">
                   <div>
-                    <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">Training Program</h2>
-                    <p className="text-slate-600 text-sm sm:text-base">Complete all training modules to become a certified Growth Partner.</p>
+                    <h2 className="text-2xl font-bold text-slate-800 mb-2">Training Program</h2>
+                    <p className="text-slate-600">Complete all training modules to become a certified Growth Partner.</p>
                   </div>
 
                   {/* Training Steps Navigation */}
-                  <div className="bg-slate-50 rounded-xl p-3 sm:p-4">
-                    <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
+                  <div className="bg-slate-50 rounded-xl p-4">
+                    <div className="flex flex-wrap gap-2">
                       {TRAINING_STEPS.map((step, idx) => {
                         const stepProgress = onboarding?.training_progress?.[step.key];
                         const isComplete = stepProgress?.completed;
@@ -1214,7 +1099,7 @@ const GPSelfOnboarding = () => {
                           <button
                             key={step.key}
                             onClick={() => setCurrentTrainingStep(step.key)}
-                            className={`flex-shrink-0 flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                               isActive 
                                 ? 'bg-orange-500 text-white' 
                                 : isComplete
@@ -1222,9 +1107,8 @@ const GPSelfOnboarding = () => {
                                   : 'bg-white text-slate-600 hover:bg-slate-100'
                             }`}
                           >
-                            {isComplete ? <Check className="w-3 h-3 sm:w-4 sm:h-4" /> : <Icon className="w-3 h-3 sm:w-4 sm:h-4" />}
-                            <span className="hidden sm:inline">{step.label}</span>
-                            <span className="sm:hidden">{idx + 1}</span>
+                            {isComplete ? <Check className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
+                            {step.label}
                           </button>
                         );
                       })}
@@ -1233,44 +1117,38 @@ const GPSelfOnboarding = () => {
 
                   {/* Training Content - About Company */}
                   {currentTrainingStep === 'about_company' && (
-                    <div className="space-y-4 sm:space-y-6">
-                      <div className="bg-orange-50 rounded-xl p-4 sm:p-6">
+                    <div className="space-y-6">
+                      <div className="bg-orange-50 rounded-xl p-6">
                         <h3 className="font-semibold text-orange-800 mb-2">About the Company</h3>
                         <p className="text-orange-700 text-sm">Learn about Shreyaan's story, OLL's vision, mission, team & achievements.</p>
                       </div>
 
-                      {/* Embedded Videos */}
+                      {/* Video */}
                       <div className="space-y-4">
                         <h4 className="font-medium text-slate-800">Watch Required Videos</h4>
-                        <div className="grid gap-4">
-                          {TRAINING_CONTENT.about_company.videos.map(video => (
-                            <div key={video.id} className="bg-slate-50 rounded-xl overflow-hidden">
-                              <div className="p-3 bg-slate-100 border-b flex items-center gap-2">
-                                <Play className="w-4 h-4 text-orange-500" />
-                                <span className="font-medium text-slate-700">{video.title}</span>
-                              </div>
-                              <div className="aspect-video">
-                                <iframe
-                                  src={`https://www.youtube.com/embed/${video.embedId}`}
-                                  title={video.title}
-                                  className="w-full h-full"
-                                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                  allowFullScreen
-                                />
-                              </div>
+                        {TRAINING_CONTENT.about_company.videos.map(video => (
+                          <div key={video.id} className="bg-slate-50 rounded-lg p-4">
+                            <div className="flex items-center gap-4">
+                              <a 
+                                href={video.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 text-orange-600 hover:text-orange-700 font-medium"
+                              >
+                                <Play className="w-5 h-5" />
+                                {video.title}
+                                <ExternalLink className="w-4 h-4" />
+                              </a>
                             </div>
-                          ))}
-                        </div>
+                          </div>
+                        ))}
                       </div>
 
                       {/* MCQ Assessment */}
                       <div className="space-y-4">
-                        <h4 className="font-medium text-slate-800">Assessment - MCQ <span className="text-red-500">*</span></h4>
-                        <p className="text-sm text-slate-500">Answer all questions to proceed to the next step.</p>
+                        <h4 className="font-medium text-slate-800">Assessment - MCQ</h4>
                         {TRAINING_CONTENT.about_company.mcqQuestions.map((q, idx) => (
-                          <div key={q.id} className={`bg-white border rounded-lg p-4 ${
-                            trainingAnswers.about_company?.assessment?.answers?.[q.id] ? 'border-green-300' : 'border-slate-200'
-                          }`}>
+                          <div key={q.id} className="bg-white border rounded-lg p-4">
                             <p className="font-medium text-slate-800 mb-3">{idx + 1}. {q.question}</p>
                             <div className="space-y-2">
                               {q.options.map((opt, optIdx) => (
@@ -1279,7 +1157,6 @@ const GPSelfOnboarding = () => {
                                     type="radio"
                                     name={`mcq_${q.id}`}
                                     value={opt}
-                                    checked={trainingAnswers.about_company?.assessment?.answers?.[q.id] === opt}
                                     onChange={(e) => setTrainingAnswers(prev => ({
                                       ...prev,
                                       about_company: {
@@ -1303,29 +1180,17 @@ const GPSelfOnboarding = () => {
                         ))}
                       </div>
 
-                      <div className="flex justify-end">
-                        <Button 
-                          onClick={() => {
-                            // Validate all MCQ answers are provided
-                            const answers = trainingAnswers.about_company?.assessment?.answers || {};
-                            const requiredQuestions = TRAINING_CONTENT.about_company.mcqQuestions.map(q => q.id);
-                            const unanswered = requiredQuestions.filter(qId => !answers[qId]);
-                            if (unanswered.length > 0) {
-                              toast.error(`Please answer all ${unanswered.length} remaining question(s) before proceeding.`);
-                              return;
-                            }
-                            submitTrainingStep('about_company', { 
-                              assessment: trainingAnswers.about_company?.assessment 
-                            }, true);
-                          }} 
-                          disabled={submitting}
-                          className="bg-orange-500 hover:bg-orange-600"
-                        >
-                          {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                          Submit & Continue
-                          <ArrowRight className="w-4 h-4 ml-2" />
-                        </Button>
-                      </div>
+                      <Button 
+                        onClick={() => submitTrainingStep('about_company', { 
+                          assessment: trainingAnswers.about_company?.assessment 
+                        }, true)} 
+                        disabled={submitting}
+                        className="bg-orange-500 hover:bg-orange-600"
+                      >
+                        {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                        Submit & Continue
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </Button>
                     </div>
                   )}
 
@@ -1337,41 +1202,34 @@ const GPSelfOnboarding = () => {
                         <p className="text-blue-700 text-sm">Understanding Robotics & AI importance for kids and career opportunities.</p>
                       </div>
 
-                      {/* Embedded Video */}
+                      {/* Video */}
                       <div className="space-y-4">
                         <h4 className="font-medium text-slate-800">Watch Required Videos</h4>
                         {TRAINING_CONTENT.about_skill.videos.map(video => (
-                          <div key={video.id} className="bg-slate-50 rounded-xl overflow-hidden">
-                            <div className="p-3 bg-slate-100 border-b flex items-center gap-2">
-                              <Play className="w-4 h-4 text-blue-500" />
-                              <span className="font-medium text-slate-700">{video.title}</span>
-                            </div>
-                            <div className="aspect-video">
-                              <iframe
-                                src={`https://www.youtube.com/embed/${video.embedId}`}
-                                title={video.title}
-                                className="w-full h-full"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen
-                              />
-                            </div>
+                          <div key={video.id} className="bg-slate-50 rounded-lg p-4">
+                            <a 
+                              href={video.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
+                            >
+                              <Play className="w-5 h-5" />
+                              {video.title}
+                              <ExternalLink className="w-4 h-4" />
+                            </a>
                           </div>
                         ))}
                       </div>
 
                       {/* Long Text Assessment */}
                       <div className="space-y-4">
-                        <h4 className="font-medium text-slate-800">Assessment - Long Text Answers <span className="text-red-500">*</span></h4>
-                        <p className="text-sm text-slate-500">Answer all questions to proceed to the next step.</p>
+                        <h4 className="font-medium text-slate-800">Assessment - Long Text Answers</h4>
                         {TRAINING_CONTENT.about_skill.questions.map((q, idx) => (
-                          <div key={q.id} className={`bg-white border rounded-lg p-4 ${
-                            trainingAnswers.about_skill?.assessment?.answers?.[q.id]?.length > 20 ? 'border-green-300' : 'border-slate-200'
-                          }`}>
+                          <div key={q.id} className="bg-white border rounded-lg p-4">
                             <p className="font-medium text-slate-800 mb-3">{idx + 1}. {q.question}</p>
                             <Textarea
-                              placeholder="Write your detailed answer here (minimum 20 characters)..."
+                              placeholder="Write your detailed answer here..."
                               rows={4}
-                              value={trainingAnswers.about_skill?.assessment?.answers?.[q.id] || ''}
                               onChange={(e) => setTrainingAnswers(prev => ({
                                 ...prev,
                                 about_skill: {
@@ -1396,19 +1254,9 @@ const GPSelfOnboarding = () => {
                           Previous
                         </Button>
                         <Button 
-                          onClick={() => {
-                            // Validate all answers are provided with minimum length
-                            const answers = trainingAnswers.about_skill?.assessment?.answers || {};
-                            const requiredQuestions = TRAINING_CONTENT.about_skill.questions.map(q => q.id);
-                            const unanswered = requiredQuestions.filter(qId => !answers[qId] || answers[qId].length < 20);
-                            if (unanswered.length > 0) {
-                              toast.error(`Please provide detailed answers (min 20 chars) for all ${unanswered.length} remaining question(s).`);
-                              return;
-                            }
-                            submitTrainingStep('about_skill', { 
-                              assessment: trainingAnswers.about_skill?.assessment 
-                            }, true);
-                          }} 
+                          onClick={() => submitTrainingStep('about_skill', { 
+                            assessment: trainingAnswers.about_skill?.assessment 
+                          }, true)} 
                           disabled={submitting}
                           className="bg-orange-500 hover:bg-orange-600"
                         >
@@ -1428,41 +1276,35 @@ const GPSelfOnboarding = () => {
                         <p className="text-purple-700 text-sm">Learn how schools implement robotics programs and answer common questions.</p>
                       </div>
 
-                      {/* Embedded Video */}
+                      {/* Video */}
                       <div className="space-y-4">
                         <h4 className="font-medium text-slate-800">Watch Required Videos</h4>
                         {TRAINING_CONTENT.implementation_models.videos.map(video => (
-                          <div key={video.id} className="bg-slate-50 rounded-xl overflow-hidden">
-                            <div className="p-3 bg-slate-100 border-b flex items-center gap-2">
-                              <Play className="w-4 h-4 text-purple-500" />
-                              <span className="font-medium text-slate-700">{video.title}</span>
-                            </div>
-                            <div className="aspect-video">
-                              <iframe
-                                src={`https://www.youtube.com/embed/${video.embedId}`}
-                                title={video.title}
-                                className="w-full h-full"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen
-                              />
-                            </div>
+                          <div key={video.id} className="bg-slate-50 rounded-lg p-4">
+                            <a 
+                              href={video.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 text-purple-600 hover:text-purple-700 font-medium"
+                            >
+                              <Play className="w-5 h-5" />
+                              {video.title}
+                              <ExternalLink className="w-4 h-4" />
+                            </a>
                           </div>
                         ))}
                       </div>
 
                       {/* FAQ Assessment */}
                       <div className="space-y-4">
-                        <h4 className="font-medium text-slate-800">Assessment - Answer FAQs <span className="text-red-500">*</span></h4>
-                        <p className="text-sm text-slate-500">Answer all questions you'll encounter from schools:</p>
+                        <h4 className="font-medium text-slate-800">Assessment - Answer FAQs</h4>
+                        <p className="text-sm text-slate-600">Answer these common questions you'll encounter from schools:</p>
                         {TRAINING_CONTENT.implementation_models.faqQuestions.map((q, idx) => (
-                          <div key={q.id} className={`bg-white border rounded-lg p-4 ${
-                            trainingAnswers.implementation_models?.assessment?.answers?.[q.id]?.length > 20 ? 'border-green-300' : 'border-slate-200'
-                          }`}>
+                          <div key={q.id} className="bg-white border rounded-lg p-4">
                             <p className="font-medium text-slate-800 mb-3">{idx + 1}. {q.question}</p>
                             <Textarea
-                              placeholder="Write your detailed answer here (minimum 20 characters)..."
+                              placeholder="Write your detailed answer here..."
                               rows={3}
-                              value={trainingAnswers.implementation_models?.assessment?.answers?.[q.id] || ''}
                               onChange={(e) => setTrainingAnswers(prev => ({
                                 ...prev,
                                 implementation_models: {
@@ -1487,18 +1329,9 @@ const GPSelfOnboarding = () => {
                           Previous
                         </Button>
                         <Button 
-                          onClick={() => {
-                            const answers = trainingAnswers.implementation_models?.assessment?.answers || {};
-                            const requiredQuestions = TRAINING_CONTENT.implementation_models.faqQuestions.map(q => q.id);
-                            const unanswered = requiredQuestions.filter(qId => !answers[qId] || answers[qId].length < 20);
-                            if (unanswered.length > 0) {
-                              toast.error(`Please provide detailed answers for all ${unanswered.length} remaining question(s).`);
-                              return;
-                            }
-                            submitTrainingStep('implementation_models', { 
-                              assessment: trainingAnswers.implementation_models?.assessment 
-                            }, true);
-                          }} 
+                          onClick={() => submitTrainingStep('implementation_models', { 
+                            assessment: trainingAnswers.implementation_models?.assessment 
+                          }, true)} 
                           disabled={submitting}
                           className="bg-orange-500 hover:bg-orange-600"
                         >
@@ -1622,31 +1455,28 @@ const GPSelfOnboarding = () => {
                         <p className="text-indigo-700 text-sm">Learn to communicate with different stakeholders and record pitch videos.</p>
                       </div>
 
-                      {/* Embedded Video */}
+                      {/* Video */}
                       <div className="space-y-4">
                         <h4 className="font-medium text-slate-800">Watch Required Videos</h4>
                         {TRAINING_CONTENT.target_audiences.videos.map(video => (
-                          <div key={video.id} className="bg-slate-50 rounded-xl overflow-hidden">
-                            <div className="p-3 bg-slate-100 border-b flex items-center gap-2">
-                              <Play className="w-4 h-4 text-indigo-500" />
-                              <span className="font-medium text-slate-700">{video.title}</span>
-                            </div>
-                            <div className="aspect-video">
-                              <iframe
-                                src={`https://www.youtube.com/embed/${video.embedId}`}
-                                title={video.title}
-                                className="w-full h-full"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen
-                              />
-                            </div>
+                          <div key={video.id} className="bg-slate-50 rounded-lg p-4">
+                            <a 
+                              href={video.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 text-indigo-600 hover:text-indigo-700 font-medium"
+                            >
+                              <Play className="w-5 h-5" />
+                              {video.title}
+                              <ExternalLink className="w-4 h-4" />
+                            </a>
                           </div>
                         ))}
                       </div>
 
                       {/* Pitch Video Recordings */}
                       <div className="space-y-4">
-                        <h4 className="font-medium text-slate-800">Record Pitch Videos <span className="text-red-500">*</span></h4>
+                        <h4 className="font-medium text-slate-800">Record Pitch Videos</h4>
                         <p className="text-sm text-slate-600">Record yourself pitching to each audience type. Upload video links (YouTube, Google Drive, etc.)</p>
                         {TRAINING_CONTENT.target_audiences.pitchRequirements.map((pitch) => (
                           <div key={pitch.id} className="bg-white border rounded-lg p-4">
@@ -1877,38 +1707,19 @@ const GPSelfOnboarding = () => {
                       </div>
                     </div>
                   )}
+
+                  <div className="flex justify-between mt-6 pt-6 border-t">
+                    <Button variant="outline" onClick={() => setCurrentStep('kit_delivery')}>
+                      <ArrowLeft className="w-4 h-4 mr-2" />
+                      Back to Kit Delivery
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
           </div>
         </div>
       </div>
-
-      {/* Footer */}
-      <footer className="bg-[#1E3A5F] text-white mt-auto">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <img 
-                src="https://customer-assets.emergentagent.com/job_oll-skill-edu/artifacts/wzn0gh6k_OLL-horizontal-logo-white.png"
-                alt="OLL Logo"
-                className="h-8 w-auto"
-              />
-              <span className="text-sm text-white/70">© {new Date().getFullYear()} Clonefutura Live Solutions Pvt. Ltd</span>
-            </div>
-            <div className="flex items-center gap-4 text-sm">
-              <a href="tel:+919920188188" className="flex items-center gap-1 text-white/80 hover:text-white transition-colors">
-                <Phone className="w-4 h-4" />
-                <span className="hidden sm:inline">+91 99201 88188</span>
-              </a>
-              <a href="mailto:info@oll.co" className="flex items-center gap-1 text-white/80 hover:text-white transition-colors">
-                <Mail className="w-4 h-4" />
-                <span className="hidden sm:inline">info@oll.co</span>
-              </a>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };
