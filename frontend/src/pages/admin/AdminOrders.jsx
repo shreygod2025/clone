@@ -395,10 +395,12 @@ const AdminOrders = () => {
               <p className="text-slate-500 mt-4">Loading payments...</p>
             </div>
           ) : sortedPayments.length === 0 ? (
-            <div className="p-12 text-center">
-              <Receipt className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-              <p className="text-slate-500">No payments found</p>
-              <p className="text-sm text-slate-400 mt-1">
+            <div className="p-16 text-center">
+              <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Receipt className="w-10 h-10 text-slate-300" />
+              </div>
+              <p className="text-lg font-medium text-slate-600">No payments found</p>
+              <p className="text-sm text-slate-400 mt-2 max-w-md mx-auto">
                 {activeTab === 'school' 
                   ? 'School payments will appear here when schools are converted with payment tranches'
                   : 'Student payments will appear here when students book sessions'}
@@ -407,18 +409,17 @@ const AdminOrders = () => {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-slate-50 border-b border-slate-100">
+                <thead className="bg-gradient-to-r from-slate-50 to-slate-100 border-b-2 border-slate-200">
                   <tr>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">
+                    <th className="text-left px-5 py-4 text-xs font-bold text-slate-600 uppercase tracking-wider">
                       {activeTab === 'school' ? 'School' : 'Student'}
                     </th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Amount</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">GST Type</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Due Date</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Status</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Invoice</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Receipt</th>
-                    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Actions</th>
+                    <th className="text-left px-5 py-4 text-xs font-bold text-slate-600 uppercase tracking-wider">Amount</th>
+                    <th className="text-left px-5 py-4 text-xs font-bold text-slate-600 uppercase tracking-wider">GST</th>
+                    <th className="text-left px-5 py-4 text-xs font-bold text-slate-600 uppercase tracking-wider">Due Date</th>
+                    <th className="text-left px-5 py-4 text-xs font-bold text-slate-600 uppercase tracking-wider">Status</th>
+                    <th className="text-left px-5 py-4 text-xs font-bold text-slate-600 uppercase tracking-wider">Documents</th>
+                    <th className="text-right px-5 py-4 text-xs font-bold text-slate-600 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -429,25 +430,25 @@ const AdminOrders = () => {
                         {/* School Parent Row */}
                         <tr 
                           key={group.school_id} 
-                          className={`hover:bg-slate-50 cursor-pointer ${group.tranches.length > 1 ? 'bg-slate-25' : ''}`}
+                          className={`hover:bg-orange-50/30 transition-colors cursor-pointer ${group.tranches.length > 1 ? 'bg-gradient-to-r from-slate-50/50 to-white' : ''}`}
                           onClick={() => group.tranches.length > 1 && toggleSchoolExpand(group.school_id)}
                         >
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-3">
                               {group.tranches.length > 1 && (
                                 <button 
-                                  className="p-0.5 hover:bg-slate-200 rounded"
+                                  className="p-1.5 hover:bg-orange-100 rounded-lg transition-colors"
                                   onClick={(e) => { e.stopPropagation(); toggleSchoolExpand(group.school_id); }}
                                 >
                                   {expandedSchools[group.school_id] ? (
-                                    <ChevronDown className="w-4 h-4 text-slate-500" />
+                                    <ChevronDown className="w-5 h-5 text-orange-500" />
                                   ) : (
-                                    <ChevronRight className="w-4 h-4 text-slate-500" />
+                                    <ChevronRight className="w-5 h-5 text-slate-400" />
                                   )}
                                 </button>
                               )}
                               <div>
-                                <p className="font-medium text-slate-800">{group.school_name}</p>
+                                <p className="font-semibold text-slate-800">{group.school_name}</p>
                                 <p className="text-sm text-slate-500">
                                   {group.contact_name}
                                   {group.tranches.length > 1 && (
