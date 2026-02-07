@@ -1187,17 +1187,29 @@ const GPSelfOnboarding = () => {
                         ))}
                       </div>
 
-                      <Button 
-                        onClick={() => submitTrainingStep('about_company', { 
-                          assessment: trainingAnswers.about_company?.assessment 
-                        }, true)} 
-                        disabled={submitting}
-                        className="bg-orange-500 hover:bg-orange-600"
-                      >
-                        {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                        Submit & Continue
-                        <ArrowRight className="w-4 h-4 ml-2" />
-                      </Button>
+                      <div className="flex justify-end">
+                        <Button 
+                          onClick={() => {
+                            // Validate all MCQ answers are provided
+                            const answers = trainingAnswers.about_company?.assessment?.answers || {};
+                            const requiredQuestions = TRAINING_CONTENT.about_company.mcqQuestions.map(q => q.id);
+                            const unanswered = requiredQuestions.filter(qId => !answers[qId]);
+                            if (unanswered.length > 0) {
+                              toast.error(`Please answer all ${unanswered.length} remaining question(s) before proceeding.`);
+                              return;
+                            }
+                            submitTrainingStep('about_company', { 
+                              assessment: trainingAnswers.about_company?.assessment 
+                            }, true);
+                          }} 
+                          disabled={submitting}
+                          className="bg-orange-500 hover:bg-orange-600"
+                        >
+                          {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                          Submit & Continue
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </Button>
+                      </div>
                     </div>
                   )}
 
@@ -1209,15 +1221,26 @@ const GPSelfOnboarding = () => {
                         <p className="text-blue-700 text-sm">Understanding Robotics & AI importance for kids and career opportunities.</p>
                       </div>
 
-                      {/* Video */}
+                      {/* Embedded Video */}
                       <div className="space-y-4">
                         <h4 className="font-medium text-slate-800">Watch Required Videos</h4>
                         {TRAINING_CONTENT.about_skill.videos.map(video => (
-                          <div key={video.id} className="bg-slate-50 rounded-lg p-4">
-                            <a 
-                              href={video.url} 
-                              target="_blank" 
-                              rel="noopener noreferrer"
+                          <div key={video.id} className="bg-slate-50 rounded-xl overflow-hidden">
+                            <div className="p-3 bg-slate-100 border-b flex items-center gap-2">
+                              <Play className="w-4 h-4 text-blue-500" />
+                              <span className="font-medium text-slate-700">{video.title}</span>
+                            </div>
+                            <div className="aspect-video">
+                              <iframe
+                                src={`https://www.youtube.com/embed/${video.embedId}`}
+                                title={video.title}
+                                className="w-full h-full"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                              />
+                            </div>
+                          </div>
+                        ))}
                               className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
                             >
                               <Play className="w-5 h-5" />
