@@ -649,7 +649,16 @@ const AdminGrowthPartners = () => {
                         >
                           <Copy className="w-3 h-3" /> Copy Link
                         </button>
-                        {getCompletedSteps(gp.steps) === 3 && (
+                        {/* Show Verify Payment button if payment is awaiting verification */}
+                        {gp.steps?.payment?.completed && !gp.steps?.payment?.verified && (
+                          <button
+                            onClick={() => setShowPaymentVerifyModal(gp)}
+                            className="text-xs px-3 py-1.5 rounded-lg bg-yellow-100 hover:bg-yellow-200 text-yellow-700 flex items-center gap-1 font-medium"
+                          >
+                            <CreditCard className="w-3 h-3" /> Verify Payment
+                          </button>
+                        )}
+                        {getCompletedSteps(gp.steps) === 6 && gp.steps?.payment?.verified && (
                           <button
                             onClick={() => setShowActivateModal(gp)}
                             className="text-xs px-3 py-1.5 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 flex items-center gap-1 font-medium"
