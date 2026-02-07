@@ -374,9 +374,15 @@ const AdminGrowthPartners = () => {
       const res = await axios.post(`${API}/gp-onboarding/${showActivateModal.id}/activate`, {
         role_id: selectedRoleId || undefined
       }, { headers: getAuthHeaders() });
-      toast.success(`Growth Partner activated! Username: ${res.data.username}`);
-      navigator.clipboard.writeText(res.data.temp_password);
-      toast.info('Temporary password copied to clipboard');
+      
+      // Show credentials modal with email and password
+      setShowCredentialsModal({
+        name: showActivateModal.name || showActivateModal.personal_info?.full_name,
+        email: res.data.email || showActivateModal.email || showActivateModal.personal_info?.email,
+        username: res.data.username,
+        password: res.data.temp_password
+      });
+      
       setShowActivateModal(null);
       setSelectedRoleId('');
       fetchGpOnboardings();
