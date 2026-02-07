@@ -1023,30 +1023,38 @@ const GPSelfOnboarding = () => {
                     </div>
                   ) : (
                     <>
-                      <div className="bg-blue-50 rounded-xl p-6">
+                      <div className="bg-blue-50 rounded-xl p-4 md:p-6">
                         <h3 className="font-semibold text-blue-800 mb-2">Payment Details</h3>
                         <p className="text-sm text-blue-700 mb-4">Please transfer the onboarding fees to the following account:</p>
-                        <div className="grid md:grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <p className="text-blue-600">Account Name</p>
-                            <p className="font-medium text-blue-800">OLL Education Pvt Ltd</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 text-sm">
+                          <div className="bg-white rounded-lg p-3">
+                            <p className="text-blue-600 text-xs">Company Name</p>
+                            <p className="font-semibold text-blue-800">Clonefutura Live Solutions Pvt Ltd</p>
                           </div>
-                          <div>
-                            <p className="text-blue-600">Account Number</p>
-                            <p className="font-medium text-blue-800">XXXXXXXXXXXXXX</p>
+                          <div className="bg-white rounded-lg p-3">
+                            <p className="text-blue-600 text-xs">Account Number</p>
+                            <p className="font-semibold text-blue-800 font-mono">50200063789133</p>
                           </div>
-                          <div>
-                            <p className="text-blue-600">IFSC Code</p>
-                            <p className="font-medium text-blue-800">HDFC0001234</p>
+                          <div className="bg-white rounded-lg p-3">
+                            <p className="text-blue-600 text-xs">IFSC Code</p>
+                            <p className="font-semibold text-blue-800 font-mono">HDFC0000240</p>
                           </div>
-                          <div>
-                            <p className="text-blue-600">UPI ID</p>
-                            <p className="font-medium text-blue-800">oll@upi</p>
+                          <div className="bg-white rounded-lg p-3">
+                            <p className="text-blue-600 text-xs">Bank & Branch</p>
+                            <p className="font-semibold text-blue-800">HDFC Bank, Sandoz House Worli</p>
+                          </div>
+                          <div className="bg-white rounded-lg p-3">
+                            <p className="text-blue-600 text-xs">UPI ID</p>
+                            <p className="font-semibold text-blue-800 font-mono">shreyaandaga@okhdfcbank</p>
+                          </div>
+                          <div className="bg-white rounded-lg p-3">
+                            <p className="text-blue-600 text-xs">GST No / PAN</p>
+                            <p className="font-semibold text-blue-800 font-mono text-xs">27AAKCC1113B1ZC / AAKCC1113B</p>
                           </div>
                         </div>
                       </div>
 
-                      <div className="grid md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label className="text-sm font-medium text-slate-700">Amount Paid</label>
                           <Input
