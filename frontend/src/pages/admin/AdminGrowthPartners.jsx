@@ -411,7 +411,7 @@ const AdminGrowthPartners = () => {
       new: ['contacted', 'archived'],
       contacted: ['in_discussion', 'archived'],
       in_discussion: ['converted', 'archived'],
-      converted: [],
+      converted: ['start_onboarding', 'archived'],
       archived: ['new'],
     };
     const actions = statusActions[partner.status] || [];
@@ -421,20 +421,23 @@ const AdminGrowthPartners = () => {
         {actions.map(action => (
           <button
             key={action}
-            onClick={() => handleStatusChange(partner, action)}
+            onClick={() => action === 'start_onboarding' ? handleStartOnboarding(partner) : handleStatusChange(partner, action)}
             className={`text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 font-medium ${
               action === 'archived' 
                 ? 'bg-slate-100 hover:bg-slate-200 text-slate-600'
                 : action === 'converted'
                   ? 'bg-green-100 hover:bg-green-200 text-green-700'
-                  : 'bg-blue-100 hover:bg-blue-200 text-blue-700'
+                  : action === 'start_onboarding'
+                    ? 'bg-orange-100 hover:bg-orange-200 text-orange-700'
+                    : 'bg-blue-100 hover:bg-blue-200 text-blue-700'
             }`}
             data-testid={`${action}-${partner.id}`}
           >
             {action === 'archived' ? <Archive className="w-3 h-3" /> : 
              action === 'converted' ? <CheckCircle2 className="w-3 h-3" /> :
+             action === 'start_onboarding' ? <GraduationCap className="w-3 h-3" /> :
              <ChevronRight className="w-3 h-3" />}
-            {action.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+            {action === 'start_onboarding' ? 'Start Onboarding' : action.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
           </button>
         ))}
         <button
