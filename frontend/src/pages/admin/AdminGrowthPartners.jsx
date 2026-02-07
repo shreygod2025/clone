@@ -1799,6 +1799,73 @@ const AdminGrowthPartners = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* GP Credentials Modal - Shown after activation */}
+      <Dialog open={!!showCredentialsModal} onOpenChange={() => setShowCredentialsModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-green-600">
+              <CheckCircle2 className="w-5 h-5" /> Growth Partner Activated!
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-green-50 p-4 rounded-xl text-center">
+              <p className="font-semibold text-green-800 text-lg mb-1">{showCredentialsModal?.name}</p>
+              <p className="text-green-600 text-sm">is now an active Growth Partner</p>
+            </div>
+            
+            <div className="bg-slate-50 rounded-xl p-4">
+              <h4 className="font-medium text-slate-800 mb-3 flex items-center gap-2">
+                <CreditCard className="w-4 h-4" /> Login Credentials
+              </h4>
+              <div className="space-y-3">
+                <div className="bg-white rounded-lg p-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-slate-500">Email / Username</p>
+                    <p className="font-mono text-slate-800">{showCredentialsModal?.email || showCredentialsModal?.username}</p>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      navigator.clipboard.writeText(showCredentialsModal?.email || showCredentialsModal?.username);
+                      toast.success('Email copied!');
+                    }}
+                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                  >
+                    <Copy className="w-4 h-4 text-slate-500" />
+                  </button>
+                </div>
+                <div className="bg-white rounded-lg p-3 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-slate-500">Temporary Password</p>
+                    <p className="font-mono text-slate-800 font-bold">{showCredentialsModal?.password}</p>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      navigator.clipboard.writeText(showCredentialsModal?.password);
+                      toast.success('Password copied!');
+                    }}
+                    className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                  >
+                    <Copy className="w-4 h-4 text-slate-500" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+              <p className="font-medium mb-1">Important:</p>
+              <p>Please share these credentials with the Growth Partner. They should change their password upon first login.</p>
+            </div>
+
+            <Button 
+              onClick={() => setShowCredentialsModal(null)} 
+              className="w-full bg-green-600 hover:bg-green-700"
+            >
+              Done
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
