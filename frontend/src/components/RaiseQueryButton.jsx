@@ -64,19 +64,22 @@ const QUICK_ACTIONS = {
   general: {
     'course_info': {
       'programs': { label: 'Explore Programs', link: '/offerings', icon: '📚' },
+      'pricing': { label: 'See Pricing', link: '/offerings', icon: '💰' },
+      'schedules': { label: 'Class Schedules', link: '/student', icon: '📅' },
     },
     'partnership': {
-      'school': { label: 'School Partnership', link: '/schools', icon: '🏫' },
-      'center': { label: 'Center Partnership', link: '/growth-partner', icon: '🏢' },
-      'franchise': { label: 'Franchise Opportunity', link: '/growth-partner', icon: '💼' },
+      'school': { label: 'School Partnership', link: '/for-schools', icon: '🏫' },
+      'center': { label: 'Center / Franchise', link: '/growth-partner', icon: '🏢' },
+    },
+    'support': {
+      'kit_issue': null, // Opens form for kit issues
+      'lms': { label: 'Go to LMS', link: 'https://lms.oll.co', icon: '🎓', external: true },
+      'class_issue': null, // Opens form
+      'payment': null, // Opens form
     },
     'opportunities': {
       'join_team': { label: 'Join OLL Team', link: '/join-team', icon: '👥' },
       'educator': { label: 'Become an Educator', link: '/educator', icon: '👨‍🏫' },
-    },
-    'support': {
-      'lms': { label: 'LMS Login', link: 'https://lms.oll.co', icon: '🎓', external: true },
-      'store': { label: 'Kit & Materials Store', link: '/store', icon: '📦' },
     },
   },
 };
