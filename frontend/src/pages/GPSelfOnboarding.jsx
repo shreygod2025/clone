@@ -582,9 +582,10 @@ const GPSelfOnboarding = () => {
                             ? 'bg-orange-500 text-white'
                             : 'bg-slate-200 text-slate-500'
                       }`}>
-                        {status === 'completed' ? <Check className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
+                        {status === 'completed' ? <Check className="w-3 h-3 lg:w-4 lg:h-4" /> : <Icon className="w-3 h-3 lg:w-4 lg:h-4" />}
                       </div>
-                      <div className="flex-1 min-w-0">
+                      {/* Desktop: Show full label */}
+                      <div className="hidden lg:block flex-1 min-w-0">
                         <p className={`text-sm font-medium truncate ${isActive ? 'text-orange-700' : 'text-slate-700'}`}>
                           {step.label}
                         </p>
@@ -595,6 +596,14 @@ const GPSelfOnboarding = () => {
                           <p className="text-xs text-blue-600">Kit shipped</p>
                         )}
                       </div>
+                      {/* Mobile: Show step number */}
+                      <span className={`lg:hidden text-xs font-medium ${
+                        isActive ? 'text-orange-700' : 
+                        status === 'completed' ? 'text-green-700' :
+                        'text-slate-600'
+                      }`}>
+                        {idx + 1}
+                      </span>
                     </button>
                   );
                 })}
@@ -603,17 +612,17 @@ const GPSelfOnboarding = () => {
           </div>
 
           {/* Main Content */}
-          <div className="lg:col-span-3">
-            <div className="bg-white rounded-2xl p-6 md:p-8">
+          <div className="lg:col-span-3 order-1 lg:order-2">
+            <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8">
               {/* Step 1: Personal Information */}
               {currentStep === 'personal_info' && (
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                   <div>
-                    <h2 className="text-2xl font-bold text-slate-800 mb-2">Personal Information</h2>
-                    <p className="text-slate-600">Please provide your personal details and upload required documents.</p>
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">Personal Information</h2>
+                    <p className="text-slate-600 text-sm sm:text-base">Please provide your personal details and upload required documents.</p>
                   </div>
 
-                  <div className="grid md:grid-cols-2 gap-4">
+                  <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
                     <div>
                       <label className="text-sm font-medium text-slate-700">Full Name *</label>
                       <Input
