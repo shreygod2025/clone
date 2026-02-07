@@ -3333,6 +3333,7 @@ async def activate_gp(
         "message": "Growth Partner activated",
         "team_user_id": team_user.id,
         "username": username,
+        "email": team_user.email,
         "temp_password": temp_password
     }
 
