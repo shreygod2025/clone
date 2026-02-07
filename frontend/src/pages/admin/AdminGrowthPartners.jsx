@@ -393,6 +393,11 @@ const AdminGrowthPartners = () => {
     toast.success('Tracking link copied!');
   };
 
+  const copyOnboardingLink = (token) => {
+    navigator.clipboard.writeText(`${window.location.origin}/gp-onboard/${token}`);
+    toast.success('Onboarding form link copied!');
+  };
+
   const filteredPartners = partners.filter(p => {
     const matchesSearch = p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       p.phone?.includes(searchQuery) ||
