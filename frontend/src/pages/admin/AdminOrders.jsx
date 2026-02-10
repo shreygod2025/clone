@@ -4,7 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import { 
   DollarSign, Building2, GraduationCap, Upload, Download, Eye, 
   CheckCircle2, Clock, AlertCircle, Calendar, Search, Filter,
-  FileText, Receipt, CreditCard, X, ExternalLink, ChevronDown, ChevronRight
+  FileText, Receipt, CreditCard, X, ExternalLink, ChevronDown, ChevronRight,
+  Phone, Mail, User
 } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
