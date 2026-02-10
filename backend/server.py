@@ -8051,6 +8051,66 @@ async def get_school_onboarding(school_id: str, user: dict = Depends(get_current
         "workflow": school.get("onboarding_workflow", {})
     }
 
+@api_router.post("/schools/{school_id}/lms-students")
+async def upload_lms_students(school_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Upload student credentials for LMS setup"""
+    school = await db.school_inquiries.find_one({"id": school_id})
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+    
+    students = data.get("students", [])
+    file_url = data.get("file_url", "")
+    
+    workflow = school.get("onboarding_workflow", {})
+    if not workflow:
+        raise HTTPException(status_code=400, detail="Onboarding not initialized")
+    
+    # Update lms_setup step
+    if "lms_setup" not in workflow.get("steps", {}):
+        workflow["steps"]["lms_setup"] = {
+            "title": "LMS Setup",
+            "description": "Student credentials uploaded to LMS",
+            "completed": False,
+            "completed_date": None,
+            "data": {
+                "students_uploaded": 0,
+                "upload_date": None,
+                "file_url": "",
+                "students_list": [],
+                "notes": ""
+            }
+        }
+    
+    workflow["steps"]["lms_setup"]["data"]["students_list"] = students
+    workflow["steps"]["lms_setup"]["data"]["students_uploaded"] = len(students)
+    workflow["steps"]["lms_setup"]["data"]["file_url"] = file_url
+    workflow["steps"]["lms_setup"]["data"]["upload_date"] = datetime.now(timezone.utc).isoformat()
+    
+    if len(students) > 0:
+        workflow["steps"]["lms_setup"]["completed"] = True
+        workflow["steps"]["lms_setup"]["completed_date"] = datetime.now(timezone.utc).isoformat()
+    
+    # Add to timeline
+    timeline = workflow.get("timeline", [])
+    timeline.append({
+        "action": "lms_students_uploaded",
+        "date": datetime.now(timezone.utc).isoformat(),
+        "by": user.get("name", user.get("email")),
+        "details": f"Uploaded {len(students)} student credentials for LMS"
+    })
+    workflow["timeline"] = timeline
+    
+    await db.school_inquiries.update_one(
+        {"id": school_id},
+        {"$set": {"onboarding_workflow": workflow}}
+    )
+    
+    return {
+        "success": True,
+        "students_uploaded": len(students),
+        "message": f"Successfully uploaded {len(students)} student credentials"
+    }
+
 # Public tracking endpoint (no auth required)
 @api_router.get("/track/{tracking_token}")
 async def get_public_tracking(tracking_token: str):
