@@ -3746,7 +3746,7 @@ const AdminSchoolCRM = () => {
                           <p className="text-xs text-purple-600 mb-2">MOU Document</p>
                           <div className="flex items-center gap-2">
                             <a 
-                              href={viewInquiry.onboarding_data.mou_url} 
+                              href={getAbsoluteUrl(viewInquiry.onboarding_data.mou_url)} 
                               target="_blank" 
                               rel="noopener noreferrer"
                               className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800 bg-white/50 px-3 py-2 rounded border border-blue-200"
@@ -3755,7 +3755,7 @@ const AdminSchoolCRM = () => {
                               View MOU
                             </a>
                             <a 
-                              href={viewInquiry.onboarding_data.mou_url} 
+                              href={getAbsoluteUrl(viewInquiry.onboarding_data.mou_url)} 
                               download
                               className="inline-flex items-center gap-2 text-sm text-green-600 hover:text-green-800 bg-white/50 px-3 py-2 rounded border border-green-200"
                             >
