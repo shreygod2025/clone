@@ -634,7 +634,7 @@ const SchoolTrackingPage = () => {
                     {documents?.map((doc, idx) => (
                       <a 
                         key={idx}
-                        href={doc.url}
+                        href={getAbsoluteUrl(doc.url)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-slate-100 transition-colors"
