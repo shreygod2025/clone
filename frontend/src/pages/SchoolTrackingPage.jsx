@@ -425,7 +425,7 @@ const SchoolTrackingPage = () => {
                                 </div>
                                 {tranchePayment?.invoice_url && (
                                   <a 
-                                    href={tranchePayment.invoice_url}
+                                    href={getAbsoluteUrl(tranchePayment.invoice_url)}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="inline-flex items-center gap-1 mt-2 text-xs text-blue-600 hover:underline"
