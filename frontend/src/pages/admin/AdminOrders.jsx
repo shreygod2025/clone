@@ -1055,6 +1055,84 @@ const AdminOrders = () => {
                     </div>
                   </div>
 
+                  {/* MOU Document */}
+                  {(showSchoolDetails.onboarding_workflow?.steps?.mou_signing?.data?.document_link || 
+                    showSchoolDetails.documents?.find(d => d.type === 'MOU')) && (
+                    <div className="bg-amber-50 rounded-lg p-4">
+                      <h4 className="text-sm font-semibold text-amber-700 mb-3 flex items-center gap-2">
+                        <FileText className="w-4 h-4" />
+                        MOU Document
+                      </h4>
+                      <div className="flex items-center gap-3">
+                        {showSchoolDetails.onboarding_workflow?.steps?.mou_signing?.data?.document_link ? (
+                          <a 
+                            href={showSchoolDetails.onboarding_workflow.steps.mou_signing.data.document_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition-colors text-sm font-medium"
+                          >
+                            <FileText className="w-4 h-4" />
+                            View MOU
+                          </a>
+                        ) : showSchoolDetails.documents?.find(d => d.type === 'MOU') && (
+                          <a 
+                            href={showSchoolDetails.documents.find(d => d.type === 'MOU').url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition-colors text-sm font-medium"
+                          >
+                            <FileText className="w-4 h-4" />
+                            View MOU
+                          </a>
+                        )}
+                        {showSchoolDetails.onboarding_workflow?.steps?.mou_signing?.completed && (
+                          <span className="text-xs text-green-600 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" />
+                            Signed
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Accounts Coordinator - Highlighted */}
+                  {(() => {
+                    const accountsCoordinator = showSchoolDetails.onboarding_data?.school_contacts?.find(
+                      c => c.role === 'accounts_coordinator' || c.role === 'accountant' || c.role?.toLowerCase().includes('account')
+                    );
+                    if (!accountsCoordinator) return null;
+                    return (
+                      <div className="bg-cyan-50 rounded-lg p-4 border-2 border-cyan-200">
+                        <h4 className="text-sm font-semibold text-cyan-700 mb-3 flex items-center gap-2">
+                          <DollarSign className="w-4 h-4" />
+                          Accounts Coordinator
+                        </h4>
+                        <div className="flex items-center gap-4 bg-white rounded-lg p-3">
+                          <div className="w-10 h-10 rounded-full bg-cyan-100 flex items-center justify-center">
+                            <User className="w-5 h-5 text-cyan-600" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-slate-800">{accountsCoordinator.name}</p>
+                            <div className="flex items-center gap-4 mt-1">
+                              {accountsCoordinator.phone && (
+                                <a href={`tel:${accountsCoordinator.phone}`} className="text-sm text-cyan-600 flex items-center gap-1 hover:underline">
+                                  <Phone className="w-3 h-3" />
+                                  {accountsCoordinator.phone}
+                                </a>
+                              )}
+                              {accountsCoordinator.email && (
+                                <a href={`mailto:${accountsCoordinator.email}`} className="text-sm text-cyan-600 flex items-center gap-1 hover:underline">
+                                  <Mail className="w-3 h-3" />
+                                  {accountsCoordinator.email}
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Grade-wise Pricing */}
                   {showSchoolDetails.onboarding_data.grade_pricing?.length > 0 && (
                     <div className="bg-purple-50 rounded-lg p-4">
