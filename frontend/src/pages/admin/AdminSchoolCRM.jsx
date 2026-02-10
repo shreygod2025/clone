@@ -141,6 +141,26 @@ const CITIES = ['Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad
 const BOARDS = ['CBSE', 'ICSE', 'IGCSE', 'State Board', 'IB'];
 const TIME_SLOTS = ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'];
 
+// Helper function to get absolute URL for uploads
+const getAbsoluteUrl = (url) => {
+  if (!url) return '';
+  // If already absolute, return as is
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  // If relative path starting with /api/uploads, prepend the API base
+  if (url.startsWith('/api/uploads')) {
+    const baseUrl = process.env.REACT_APP_BACKEND_URL || '';
+    return `${baseUrl}${url}`;
+  }
+  // For other relative paths, also prepend API base
+  if (url.startsWith('/')) {
+    const baseUrl = process.env.REACT_APP_BACKEND_URL || '';
+    return `${baseUrl}${url}`;
+  }
+  return url;
+};
+
 // LMS Setup Section Component
 const LMSSetupSection = ({ step, schoolId, onUpdate, authToken }) => {
   const [students, setStudents] = useState(step.data?.students_list || []);
