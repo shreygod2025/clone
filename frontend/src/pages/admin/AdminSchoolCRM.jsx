@@ -141,6 +141,198 @@ const CITIES = ['Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad
 const BOARDS = ['CBSE', 'ICSE', 'IGCSE', 'State Board', 'IB'];
 const TIME_SLOTS = ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'];
 
+// LMS Setup Section Component
+const LMSSetupSection = ({ step, schoolId, onUpdate, authToken }) => {
+  const [students, setStudents] = useState(step.data?.students_list || []);
+  const [uploading, setUploading] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const fileInputRef = useRef(null);
+  
+  const SAMPLE_TEMPLATE_URL = 'https://customer-assets.emergentagent.com/job_oll-multiuser/artifacts/ohnqw227_student_upload_template%20%288%29.xlsx';
+  
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const allowedTypes = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel',
+      'text/csv'
+    ];
+    
+    if (!allowedTypes.includes(file.type) && !file.name.endsWith('.csv') && !file.name.endsWith('.xlsx')) {
+      toast.error('Please upload a CSV or Excel file');
+      return;
+    }
+    
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (results) => {
+        const parsedStudents = results.data
+          .filter(row => row.Name && row.Username && row.Password)
+          .map(row => ({
+            name: row.Name || row.name || '',
+            username: row.Username || row.username || '',
+            password: row.Password || row.password || '',
+            class: row.Class || row.class || ''
+          }));
+        
+        if (parsedStudents.length === 0) {
+          toast.error('No valid student data found. Please check the file format.');
+          return;
+        }
+        
+        setStudents(parsedStudents);
+        setShowPreview(true);
+        toast.success(`Parsed ${parsedStudents.length} students`);
+      },
+      error: (error) => {
+        toast.error(`Error parsing file: ${error.message}`);
+      }
+    });
+  };
+  
+  const handleSaveStudents = async () => {
+    if (students.length === 0) {
+      toast.error('No students to upload');
+      return;
+    }
+    
+    setUploading(true);
+    try {
+      await axios.post(`${API}/schools/${schoolId}/lms-students`, {
+        students: students
+      }, {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      
+      toast.success(`Successfully uploaded ${students.length} student credentials`);
+      onUpdate({ data: { students_list: students, students_uploaded: students.length } });
+      setShowPreview(false);
+    } catch (err) {
+      toast.error('Failed to upload student credentials');
+    } finally {
+      setUploading(false);
+    }
+  };
+  
+  return (
+    <div className="space-y-4">
+      <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+        <h4 className="font-medium text-blue-800 mb-2 flex items-center gap-2">
+          <Users className="w-4 h-4" />
+          Upload Student Credentials
+        </h4>
+        <p className="text-sm text-blue-700 mb-3">
+          Upload a CSV/Excel file with student names, usernames, and passwords for LMS access.
+        </p>
+        
+        <div className="flex flex-wrap gap-2 mb-3">
+          <a 
+            href={SAMPLE_TEMPLATE_URL}
+            download
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-blue-300 text-blue-700 rounded-lg text-sm hover:bg-blue-50 transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            Download Sample Template
+          </a>
+          
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            accept=".csv,.xlsx,.xls"
+            className="hidden"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-1.5"
+          >
+            <Upload className="w-4 h-4" />
+            Upload File
+          </Button>
+        </div>
+        
+        {/* Existing Data */}
+        {step.data?.students_uploaded > 0 && !showPreview && (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+            <div className="flex items-center gap-2 text-green-700">
+              <CheckCircle className="w-4 h-4" />
+              <span className="text-sm font-medium">{step.data.students_uploaded} students uploaded</span>
+            </div>
+            {step.data?.upload_date && (
+              <p className="text-xs text-green-600 mt-1">
+                Uploaded on {format(new Date(step.data.upload_date), 'MMM d, yyyy h:mm a')}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+      
+      {/* Preview Table */}
+      {showPreview && students.length > 0 && (
+        <div className="border rounded-lg overflow-hidden">
+          <div className="bg-slate-50 px-4 py-2 border-b flex items-center justify-between">
+            <span className="font-medium text-sm">{students.length} Students to Upload</span>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => { setShowPreview(false); setStudents([]); }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSaveStudents}
+                disabled={uploading}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {uploading ? 'Uploading...' : 'Save & Upload'}
+              </Button>
+            </div>
+          </div>
+          <div className="max-h-60 overflow-y-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-100 sticky top-0">
+                <tr>
+                  <th className="text-left px-3 py-2 font-medium">Name</th>
+                  <th className="text-left px-3 py-2 font-medium">Username</th>
+                  <th className="text-left px-3 py-2 font-medium">Password</th>
+                  <th className="text-left px-3 py-2 font-medium">Class</th>
+                </tr>
+              </thead>
+              <tbody>
+                {students.slice(0, 50).map((student, idx) => (
+                  <tr key={idx} className="border-t hover:bg-slate-50">
+                    <td className="px-3 py-2">{student.name}</td>
+                    <td className="px-3 py-2 font-mono text-xs">{student.username}</td>
+                    <td className="px-3 py-2 font-mono text-xs">{student.password}</td>
+                    <td className="px-3 py-2">{student.class || '-'}</td>
+                  </tr>
+                ))}
+                {students.length > 50 && (
+                  <tr className="border-t bg-slate-50">
+                    <td colSpan={4} className="px-3 py-2 text-center text-slate-500 text-xs">
+                      ... and {students.length - 50} more students
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const AdminSchoolCRM = () => {
   const { getAuthHeaders, user } = useAuth();
   const [inquiries, setInquiries] = useState([]);
