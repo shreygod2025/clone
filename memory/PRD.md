@@ -855,7 +855,13 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - `/app/backend/server.py` - Added lms_setup to DEFAULT_ONBOARDING_STEPS, added POST /api/schools/{school_id}/lms-students
 - `/app/frontend/src/pages/admin/AdminSchoolCRM.jsx` - Added LMSSetupSection component, fixed reschedule modal scrolling
 - `/app/frontend/src/pages/admin/AdminOrders.jsx` - Added MOU Document and Accounts Coordinator sections
-- `/app/frontend/src/pages/SchoolTrackingPage.jsx` - Added lms_setup icon and help queries
+- `/app/frontend/src/pages/SchoolTrackingPage.jsx` - Added lms_setup icon, help queries, and LMS display section
+
+**Additional Fixes:**
+- ✅ **Public School Tracker (LMS Step):** Step 10 "LMS Setup" now appears on public tracking page (`/track/:token`)
+- ✅ **PDF URL Fix:** Added `getAbsoluteUrl()` helper function to fix relative URL issues on production
+  - Applied to: MOU downloads, invoices, receipts, documents in AdminSchoolCRM, AdminOrders, and SchoolTrackingPage
+  - This fixes PDFs not opening on oll.co production server
 
 **Testing Results (100% Pass Rate):**
 - ✅ Backend: 7/7 tests passed
