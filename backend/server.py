@@ -8164,6 +8164,8 @@ async def get_public_tracking(tracking_token: str):
             # Additional date fields for other steps
             "payment_date": step_data.get("payment_date") if key == "payment_collection" else None,
             "mou_date": step_data.get("mou_date") if key == "mou_signing" else None,
+            # LMS data
+            "data": step_data if key == "lms_setup" else None,
         })
     
     # Public timeline (last 10 entries)
