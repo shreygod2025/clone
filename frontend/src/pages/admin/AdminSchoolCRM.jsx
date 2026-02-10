@@ -7876,7 +7876,7 @@ const AdminSchoolCRM = () => {
                           step={step}
                           schoolId={showOnboardingWorkflowModal.id}
                           onUpdate={(data) => handleUpdateOnboardingStep(showOnboardingWorkflowModal.id, key, data)}
-                          authToken={token}
+                          authToken={getAuthHeaders()?.Authorization?.replace('Bearer ', '') || ''}
                         />
                       )}
                     </div>
