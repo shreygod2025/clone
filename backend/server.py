@@ -7657,6 +7657,19 @@ DEFAULT_ONBOARDING_STEPS = {
             "feedback": "",
             "notes": ""
         }
+    },
+    "lms_setup": {
+        "title": "LMS Setup",
+        "description": "Student credentials uploaded to LMS",
+        "completed": False,
+        "completed_date": None,
+        "data": {
+            "students_uploaded": 0,
+            "upload_date": None,
+            "file_url": "",
+            "students_list": [],
+            "notes": ""
+        }
     }
 }
 
