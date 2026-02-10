@@ -8,6 +8,16 @@ import { toast } from 'sonner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+// Helper function to get absolute URL for uploads
+const getAbsoluteUrl = (url) => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('/')) {
+    return `${process.env.REACT_APP_BACKEND_URL || ''}${url}`;
+  }
+  return url;
+};
+
 const STEP_ICONS = {
   mou_signing: <FileText className="w-5 h-5" />,
   payment_collection: <DollarSign className="w-5 h-5" />,
