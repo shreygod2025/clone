@@ -67,6 +67,12 @@ const STEP_QUERIES = {
   school_confirmation: [
     { label: "Final review meeting", type: "final_meeting", faq: "Please schedule a final review meeting before we go live." },
     { label: "Update school details", type: "update_details", faq: "I need to update some school details. Please help with the changes." }
+  ],
+  lms_setup: [
+    { label: "LMS login issue", type: "lms_login", faq: "Students are facing issues logging into the LMS. Please help resolve." },
+    { label: "Student credentials not working", type: "credentials_issue", faq: "Some student credentials are not working. Please reset or regenerate." },
+    { label: "Add more students", type: "add_students", faq: "We need to add more students to the LMS. Please provide guidance." },
+    { label: "LMS access help", type: "lms_access", faq: "We need help accessing the LMS platform. Please provide support." }
   ]
 };
 
