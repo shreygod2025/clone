@@ -17,6 +17,26 @@ import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+// Helper function to get absolute URL for uploads
+const getAbsoluteUrl = (url) => {
+  if (!url) return '';
+  // If already absolute, return as is
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  // If relative path starting with /api/uploads, prepend the API base
+  if (url.startsWith('/api/uploads')) {
+    const baseUrl = process.env.REACT_APP_BACKEND_URL || '';
+    return `${baseUrl}${url}`;
+  }
+  // For other relative paths, also prepend API base
+  if (url.startsWith('/')) {
+    const baseUrl = process.env.REACT_APP_BACKEND_URL || '';
+    return `${baseUrl}${url}`;
+  }
+  return url;
+};
+
 const STATUS_COLORS = {
   pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
   paid: 'bg-green-100 text-green-700 border-green-200',
