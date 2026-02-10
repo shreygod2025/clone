@@ -4194,7 +4194,7 @@ const AdminSchoolCRM = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         <a
-                          href={doc.url}
+                          href={getAbsoluteUrl(doc.url)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs px-2 py-1 bg-cyan-100 text-cyan-700 rounded hover:bg-cyan-200"
