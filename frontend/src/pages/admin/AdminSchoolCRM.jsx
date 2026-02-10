@@ -5996,7 +5996,7 @@ const AdminSchoolCRM = () => {
                       MOU uploaded
                     </span>
                     <a 
-                      href={onboardData.mou_url} 
+                      href={getAbsoluteUrl(onboardData.mou_url)} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="text-xs text-blue-600 underline"
