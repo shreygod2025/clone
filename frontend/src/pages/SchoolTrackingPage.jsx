@@ -17,7 +17,8 @@ const STEP_ICONS = {
   teacher_training: <BookOpen className="w-5 h-5" />,
   calendar_making: <Calendar className="w-5 h-5" />,
   timetable_finalization: <Clock className="w-5 h-5" />,
-  school_confirmation: <ThumbsUp className="w-5 h-5" />
+  school_confirmation: <ThumbsUp className="w-5 h-5" />,
+  lms_setup: <GraduationCap className="w-5 h-5" />
 };
 
 // Step-specific help queries
