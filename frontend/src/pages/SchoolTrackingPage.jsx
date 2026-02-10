@@ -333,7 +333,7 @@ const SchoolTrackingPage = () => {
                       {/* MOU Download - Step 1 */}
                       {step.key === 'mou_signing' && (mou_url || onboarding_details?.mou_url) && (
                         <a 
-                          href={mou_url || onboarding_details?.mou_url} 
+                          href={getAbsoluteUrl(mou_url || onboarding_details?.mou_url)} 
                           target="_blank" 
                           rel="noopener noreferrer"
                           className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-[#1E3A5F] text-white text-sm rounded-lg hover:bg-[#2d4a6f] transition-colors"
