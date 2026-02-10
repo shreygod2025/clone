@@ -824,6 +824,43 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - ✅ GP Onboarding (Under Review) - Completed steps checklist
 - ✅ GP Onboarding (Welcome) - Login credentials display
 
+### Feb 7, 2026 - School Onboarding LMS Setup & Orders Page Enhancements
+
+**School Onboarding - LMS Setup Step:**
+- ✅ Added new "LMS Setup" step to onboarding workflow
+- ✅ Features:
+  - Download Sample Template button (Excel template with Name, Username, Password, Class columns)
+  - CSV/Excel file upload for student credentials
+  - Preview table showing parsed student data before upload
+  - Save & Upload functionality with backend API
+  - Shows uploaded students count and upload date
+- ✅ Backend: `POST /api/schools/{school_id}/lms-students` endpoint
+- ✅ Template URL: https://customer-assets.emergentagent.com/job_oll-multiuser/artifacts/ohnqw227_student_upload_template%20%288%29.xlsx
+
+**School CRM Reschedule Modal Fix:**
+- ✅ Added `max-h-[90vh] overflow-y-auto` for proper scrolling on smaller screens
+- ✅ Modal now scrolls when content exceeds viewport height
+
+**Orders Page - MOU & Coordinator Display:**
+- ✅ **MOU Document Section:**
+  - Shows MOU document link from onboarding_workflow or documents array
+  - "View MOU" button with amber highlight
+  - Shows "Signed" badge if MOU step is completed
+- ✅ **Accounts Coordinator Section:**
+  - Highlighted cyan background (bg-cyan-50)
+  - Shows coordinator name, phone (clickable), email (clickable)
+  - Auto-detects contacts with role: accounts_coordinator, accountant, or role containing "account"
+
+**Files Modified:**
+- `/app/backend/server.py` - Added lms_setup to DEFAULT_ONBOARDING_STEPS, added POST /api/schools/{school_id}/lms-students
+- `/app/frontend/src/pages/admin/AdminSchoolCRM.jsx` - Added LMSSetupSection component, fixed reschedule modal scrolling
+- `/app/frontend/src/pages/admin/AdminOrders.jsx` - Added MOU Document and Accounts Coordinator sections
+- `/app/frontend/src/pages/SchoolTrackingPage.jsx` - Added lms_setup icon and help queries
+
+**Testing Results (100% Pass Rate):**
+- ✅ Backend: 7/7 tests passed
+- ✅ Frontend: All features verified
+
 ## Prioritized Backlog
 
 ### P0 (Critical)
