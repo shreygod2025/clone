@@ -7677,6 +7677,16 @@ const AdminSchoolCRM = () => {
                           )}
                         </div>
                       )}
+                      
+                      {/* LMS Setup */}
+                      {key === 'lms_setup' && (
+                        <LMSSetupSection 
+                          step={step}
+                          schoolId={showOnboardingWorkflowModal.id}
+                          onUpdate={(data) => handleUpdateOnboardingStep(showOnboardingWorkflowModal.id, key, data)}
+                          authToken={token}
+                        />
+                      )}
                     </div>
                   </div>
                 ))}
