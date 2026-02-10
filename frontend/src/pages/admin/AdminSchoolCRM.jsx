@@ -3889,7 +3889,7 @@ const AdminSchoolCRM = () => {
 
       {/* Reschedule Meeting Modal */}
       <Dialog open={!!showRescheduleModal} onOpenChange={() => setShowRescheduleModal(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Reschedule Meeting - {showRescheduleModal?.school_name}</DialogTitle>
           </DialogHeader>
