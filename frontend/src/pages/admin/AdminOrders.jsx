@@ -557,12 +557,12 @@ const AdminOrders = () => {
                               {group.tranches.length === 1 && (group.tranches[0].invoice_url || group.tranches[0].receipt_url) && (
                                 <div className="flex items-center gap-1 mr-2">
                                   {group.tranches[0].invoice_url && (
-                                    <a href={group.tranches[0].invoice_url} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors" title="View Invoice">
+                                    <a href={getAbsoluteUrl(group.tranches[0].invoice_url)} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors" title="View Invoice">
                                       <FileText className="w-4 h-4 text-blue-600" />
                                     </a>
                                   )}
                                   {group.tranches[0].receipt_url && (
-                                    <a href={group.tranches[0].receipt_url} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-green-50 rounded-lg hover:bg-green-100 transition-colors" title="View Receipt">
+                                    <a href={getAbsoluteUrl(group.tranches[0].receipt_url)} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-green-50 rounded-lg hover:bg-green-100 transition-colors" title="View Receipt">
                                       <Receipt className="w-4 h-4 text-green-600" />
                                     </a>
                                   )}
@@ -637,12 +637,12 @@ const AdminOrders = () => {
                             <td className="px-6 py-4">
                               <div className="flex items-center justify-end gap-2">
                                 {payment.invoice_url && (
-                                  <a href={payment.invoice_url} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors" title="View Invoice">
+                                  <a href={getAbsoluteUrl(payment.invoice_url)} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors" title="View Invoice">
                                     <FileText className="w-4 h-4 text-blue-600" />
                                   </a>
                                 )}
                                 {payment.receipt_url && (
-                                  <a href={payment.receipt_url} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-green-50 rounded-lg hover:bg-green-100 transition-colors" title="View Receipt">
+                                  <a href={getAbsoluteUrl(payment.receipt_url)} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-green-50 rounded-lg hover:bg-green-100 transition-colors" title="View Receipt">
                                     <Receipt className="w-4 h-4 text-green-600" />
                                   </a>
                                 )}
@@ -727,12 +727,12 @@ const AdminOrders = () => {
                           {(payment.invoice_url || payment.receipt_url) && (
                             <div className="flex items-center gap-1 mr-2">
                               {payment.invoice_url && (
-                                <a href={payment.invoice_url} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors" title="View Invoice">
+                                <a href={getAbsoluteUrl(payment.invoice_url)} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors" title="View Invoice">
                                   <FileText className="w-4 h-4 text-blue-600" />
                                 </a>
                               )}
                               {payment.receipt_url && (
-                                <a href={payment.receipt_url} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-green-50 rounded-lg hover:bg-green-100 transition-colors" title="View Receipt">
+                                <a href={getAbsoluteUrl(payment.receipt_url)} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-green-50 rounded-lg hover:bg-green-100 transition-colors" title="View Receipt">
                                   <Receipt className="w-4 h-4 text-green-600" />
                                 </a>
                               )}
@@ -871,7 +871,7 @@ const AdminOrders = () => {
                       <CheckCircle2 className="w-4 h-4" /> Invoice uploaded
                     </span>
                     <a 
-                      href={paymentUpdate.invoice_url} 
+                      href={getAbsoluteUrl(paymentUpdate.invoice_url)} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="text-xs text-blue-600 underline"
@@ -910,7 +910,7 @@ const AdminOrders = () => {
                       <CheckCircle2 className="w-4 h-4" /> Receipt uploaded
                     </span>
                     <a 
-                      href={paymentUpdate.receipt_url} 
+                      href={getAbsoluteUrl(paymentUpdate.receipt_url)} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="text-xs text-blue-600 underline"
@@ -1097,7 +1097,7 @@ const AdminOrders = () => {
                           </a>
                         ) : showSchoolDetails.documents?.find(d => d.type === 'MOU') && (
                           <a 
-                            href={showSchoolDetails.documents.find(d => d.type === 'MOU').url}
+                            href={getAbsoluteUrl(showSchoolDetails.documents.find(d => d.type === 'MOU').url)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition-colors text-sm font-medium"
@@ -1215,7 +1215,7 @@ const AdminOrders = () => {
                       <p className="text-sm font-medium text-slate-700 mb-2">MOU Document</p>
                       <div className="flex items-center gap-3">
                         <a 
-                          href={showSchoolDetails.onboarding_data.mou_url} 
+                          href={getAbsoluteUrl(showSchoolDetails.onboarding_data.mou_url)} 
                           target="_blank" 
                           rel="noopener noreferrer"
                           className="text-blue-600 hover:underline flex items-center gap-1"
@@ -1224,7 +1224,7 @@ const AdminOrders = () => {
                           View MOU
                         </a>
                         <a 
-                          href={showSchoolDetails.onboarding_data.mou_url} 
+                          href={getAbsoluteUrl(showSchoolDetails.onboarding_data.mou_url)} 
                           download
                           className="text-green-600 hover:underline flex items-center gap-1"
                         >
@@ -1351,7 +1351,7 @@ const AdminOrders = () => {
                   <div className="flex items-center gap-4">
                     {showStudentDetails.invoice_url && (
                       <a 
-                        href={showStudentDetails.invoice_url} 
+                        href={getAbsoluteUrl(showStudentDetails.invoice_url)} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="text-blue-600 hover:underline flex items-center gap-1 text-sm"
@@ -1362,7 +1362,7 @@ const AdminOrders = () => {
                     )}
                     {showStudentDetails.receipt_url && (
                       <a 
-                        href={showStudentDetails.receipt_url} 
+                        href={getAbsoluteUrl(showStudentDetails.receipt_url)} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="text-green-600 hover:underline flex items-center gap-1 text-sm"
