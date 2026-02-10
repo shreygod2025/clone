@@ -4536,7 +4536,7 @@ const AdminSchoolCRM = () => {
                       MOU uploaded
                     </span>
                     <a 
-                      href={renewalConvertData.mou_url} 
+                      href={getAbsoluteUrl(renewalConvertData.mou_url)} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="text-xs text-blue-600 underline"
