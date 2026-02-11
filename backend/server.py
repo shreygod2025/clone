@@ -2344,16 +2344,15 @@ async def send_otp(data: OTPRequest):
     # Generate random 4-digit OTP
     otp = str(random.randint(1000, 9999))
     
-    # Store OTP
+    # Store OTP with 5 minute expiration
     otp_store[data.phone] = {
         "otp": otp,
         "user_type": data.user_type,
-        "expires": datetime.now(timezone.utc) + timedelta(minutes=10)
+        "expires": datetime.now(timezone.utc) + timedelta(minutes=5)
     }
     
     # AiSensy WhatsApp API Integration
     AISENSY_API_KEY = os.environ.get("AISENSY_API_KEY", "")
-    AISENSY_CAMPAIGN_NAME = os.environ.get("AISENSY_CAMPAIGN_NAME", "otpollsite")
     
     if not AISENSY_API_KEY:
         raise HTTPException(status_code=500, detail="WhatsApp OTP service not configured")
@@ -2371,9 +2370,9 @@ async def send_otp(data: OTPRequest):
         
         payload = {
             "apiKey": AISENSY_API_KEY,
-            "campaignName": AISENSY_CAMPAIGN_NAME,
+            "campaignName": "otp",
             "destination": phone_number,
-            "userName": "OLL User",
+            "userName": "Clone Futura Live Solutions Ltd",
             "templateParams": [otp],
             "source": "OLL Platform",
             "media": {},
