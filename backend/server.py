@@ -779,6 +779,7 @@ class TeamUser(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     email: EmailStr
     name: str
+    phone: str = ""  # Phone number for WhatsApp notifications
     username: str  # unique, used for /add/{username}
     password_hash: str = ""
     role: str = "team_member"
@@ -792,6 +793,7 @@ class TeamUserCreate(BaseModel):
     email: EmailStr
     password: str
     name: str
+    phone: str = ""  # Phone number for WhatsApp notifications
     username: str
     role_id: str = ""
     city: str = ""
@@ -800,6 +802,7 @@ class TeamUserCreate(BaseModel):
 class TeamUserUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
+    phone: Optional[str] = None  # Phone number for WhatsApp notifications
     password: Optional[str] = None  # Plain text password - will be hashed before storing
     is_active: Optional[bool] = None
     role_id: Optional[str] = None
