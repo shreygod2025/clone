@@ -10221,6 +10221,151 @@ async def migrate_local_files_to_mongodb(user: dict = Depends(get_current_user))
     }
 
 # ========================
+# BACKGROUND JOB ENDPOINTS - For Cron/Scheduler
+# ========================
+
+@api_router.post("/jobs/check-overdue-tickets")
+async def check_overdue_tickets_job(secret: str = None):
+    """
+    Background job to check for tickets overdue by 48 hours and send notifications.
+    Should be called by a cron job every hour.
+    """
+    # Simple security - use a secret key for cron jobs
+    JOB_SECRET = os.environ.get("JOB_SECRET", "oll_cron_secret_2024")
+    if secret != JOB_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid secret")
+    
+    # Find tickets that are open/in_progress and created more than 48 hours ago
+    threshold = datetime.now(timezone.utc) - timedelta(hours=48)
+    
+    # Find tickets that need 48h warning and haven't been notified yet
+    tickets = await db.support_tickets.find({
+        "status": {"$in": ["open", "in_progress"]},
+        "created_at": {"$lte": threshold.isoformat()},
+        "overdue_notified_at": {"$exists": False}
+    }, {"_id": 0}).to_list(100)
+    
+    notified_count = 0
+    
+    # Get admin team phones for admin notification
+    admin_users = await db.users.find(
+        {"role": "admin"},
+        {"_id": 0, "phone": 1}
+    ).to_list(10)
+    admin_phones = [u.get("phone") for u in admin_users if u.get("phone")]
+    
+    for ticket in tickets:
+        try:
+            # Get assigned team member
+            assignee = None
+            if ticket.get("assigned_to"):
+                assignee = await db.users.find_one({"id": ticket["assigned_to"]}, {"_id": 0})
+            
+            # Send notification to assignee
+            if assignee:
+                await send_ticket_overdue_notification(ticket, assignee)
+            
+            # Send notification to admin team
+            if admin_phones:
+                await send_ticket_overdue_admin_notification(ticket, admin_phones)
+            
+            # Mark as notified
+            await db.support_tickets.update_one(
+                {"id": ticket["id"]},
+                {"$set": {"overdue_notified_at": datetime.now(timezone.utc).isoformat()}}
+            )
+            notified_count += 1
+            
+        except Exception as e:
+            print(f"Failed to send overdue notification for ticket {ticket.get('id')}: {e}")
+    
+    return {
+        "success": True,
+        "checked": len(tickets),
+        "notified": notified_count,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
+
+@api_router.post("/jobs/send-meeting-reminders")
+async def send_meeting_reminders_job(secret: str = None):
+    """
+    Background job to send school meeting reminders.
+    Should be called by a cron job every hour.
+    Sends 24h reminder and 2h reminder based on meeting time.
+    """
+    JOB_SECRET = os.environ.get("JOB_SECRET", "oll_cron_secret_2024")
+    if secret != JOB_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid secret")
+    
+    now = datetime.now(timezone.utc)
+    reminders_sent = {"24h": 0, "2h": 0}
+    
+    # Find schools with upcoming meetings
+    schools = await db.school_inquiries.find({
+        "status": {"$in": ["new", "meeting_done", "converted", "active"]},
+        "meeting_date": {"$exists": True, "$ne": None, "$ne": ""}
+    }, {"_id": 0}).to_list(500)
+    
+    for school in schools:
+        try:
+            meeting_date_str = school.get("meeting_date")
+            meeting_time_str = school.get("meeting_time", "10:00")
+            
+            if not meeting_date_str:
+                continue
+            
+            # Parse meeting datetime
+            try:
+                meeting_datetime = datetime.strptime(
+                    f"{meeting_date_str} {meeting_time_str}",
+                    "%Y-%m-%d %H:%M"
+                ).replace(tzinfo=timezone.utc)
+            except:
+                continue
+            
+            # Calculate time until meeting
+            time_until = meeting_datetime - now
+            hours_until = time_until.total_seconds() / 3600
+            
+            # Get assigned sales manager
+            sales_manager = None
+            if school.get("assigned_to"):
+                sales_manager = await db.users.find_one({"id": school["assigned_to"]}, {"_id": 0})
+            
+            if not sales_manager:
+                continue
+            
+            # Check if 24h reminder should be sent (between 23-25 hours before)
+            if 23 <= hours_until <= 25 and not school.get("reminder_24h_sent"):
+                await send_school_meeting_reminder_24h(school, sales_manager)
+                await db.school_inquiries.update_one(
+                    {"id": school["id"]},
+                    {"$set": {"reminder_24h_sent": datetime.now(timezone.utc).isoformat()}}
+                )
+                reminders_sent["24h"] += 1
+            
+            # Check if 2h reminder should be sent (between 1.5-2.5 hours before)
+            elif 1.5 <= hours_until <= 2.5 and not school.get("reminder_2h_sent"):
+                await send_school_meeting_reminder_2h(school, sales_manager)
+                await db.school_inquiries.update_one(
+                    {"id": school["id"]},
+                    {"$set": {"reminder_2h_sent": datetime.now(timezone.utc).isoformat()}}
+                )
+                reminders_sent["2h"] += 1
+                
+        except Exception as e:
+            print(f"Failed to check meeting reminder for school {school.get('id')}: {e}")
+    
+    return {
+        "success": True,
+        "schools_checked": len(schools),
+        "reminders_sent": reminders_sent,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
+
+# ========================
 # ADMIN REPORTS ENDPOINTS
 # ========================
 
