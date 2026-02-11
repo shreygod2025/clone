@@ -595,17 +595,31 @@ const SchoolTrackingPage = () => {
               </div>
 
               {/* Documents Section */}
-              {((documents && documents.length > 0) || onboarding_details?.parent_circular_url || onboarding_details?.payment_link) && (
+              {((documents && documents.length > 0) || onboarding_details?.parent_circular_url || onboarding_details?.payment_link || mou_url || onboarding_details?.mou_url || (payments && payments.some(p => p.invoice_url))) && (
                 <div className="bg-white rounded-xl shadow-lg p-4">
                   <h3 className="font-semibold text-[#1E3A5F] mb-3 flex items-center gap-2">
                     <FileText className="w-5 h-5" />
                     Important Documents
                   </h3>
                   <div className="space-y-2">
+                    {/* MOU Document */}
+                    {(mou_url || onboarding_details?.mou_url) && (
+                      <a 
+                        href={getAbsoluteUrl(mou_url || onboarding_details?.mou_url)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors"
+                      >
+                        <FileText className="w-5 h-5 text-blue-600" />
+                        <span className="text-sm font-medium text-blue-800">MOU Document</span>
+                        <ExternalLink className="w-4 h-4 text-blue-600 ml-auto" />
+                      </a>
+                    )}
+                    
                     {/* Parent Circular */}
                     {onboarding_details?.parent_circular_url && (
                       <a 
-                        href={onboarding_details.parent_circular_url}
+                        href={getAbsoluteUrl(onboarding_details.parent_circular_url)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-2 p-3 bg-yellow-50 rounded-lg border border-yellow-200 hover:bg-yellow-100 transition-colors"
@@ -615,6 +629,28 @@ const SchoolTrackingPage = () => {
                         <ExternalLink className="w-4 h-4 text-yellow-600 ml-auto" />
                       </a>
                     )}
+                    
+                    {/* Invoices from payments */}
+                    {payments?.filter(p => p.invoice_url).map((payment, idx) => (
+                      <a 
+                        key={`invoice-${idx}`}
+                        href={getAbsoluteUrl(payment.invoice_url)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 p-3 bg-purple-50 rounded-lg border border-purple-200 hover:bg-purple-100 transition-colors"
+                      >
+                        <FileText className="w-5 h-5 text-purple-600" />
+                        <div className="flex-1">
+                          <span className="text-sm font-medium text-purple-800">
+                            Invoice {payment.tranche_index !== undefined ? `- Tranche ${payment.tranche_index + 1}` : ''}
+                          </span>
+                          {payment.payment_date && (
+                            <span className="text-xs text-purple-500 block">{format(new Date(payment.payment_date), 'MMM d, yyyy')}</span>
+                          )}
+                        </div>
+                        <ExternalLink className="w-4 h-4 text-purple-600" />
+                      </a>
+                    ))}
                     
                     {/* Payment Link */}
                     {onboarding_details?.payment_mode === 'from_student' && onboarding_details?.payment_link && (
