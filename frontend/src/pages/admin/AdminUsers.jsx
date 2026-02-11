@@ -454,6 +454,11 @@ const AdminUsers = () => {
                         <div>
                           <p className="font-medium text-slate-800">{user.name}</p>
                           <p className="text-sm text-slate-500">{user.email}</p>
+                          {user.phone && (
+                            <p className="text-xs text-slate-400 flex items-center gap-1">
+                              <Phone className="w-3 h-3" /> {user.phone}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </td>
