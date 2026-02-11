@@ -4344,6 +4344,7 @@ async def raise_school_ticket(
         "status": "open",
         "raised_by": user.get('email', ''),
         "raised_by_name": user.get('name', ''),
+        "user_type": data.get('user_type', 'school'),  # school, teacher, student
         "source": data.get('source', 'school_crm'),
         "attachments": data.get('attachments', []),  # [{name, url, type, is_voice_note}]
         "created_at": datetime.now(timezone.utc).isoformat(),
