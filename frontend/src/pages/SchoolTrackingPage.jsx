@@ -12,7 +12,7 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const getAbsoluteUrl = (url) => {
   if (!url) return '';
   if (url.startsWith('http://') || url.startsWith('https://')) return url;
-  if (url.startsWith('/')) {
+  if (url.startsWith('/api/files') || url.startsWith('/api/uploads') || url.startsWith('/')) {
     return `${process.env.REACT_APP_BACKEND_URL || ''}${url}`;
   }
   return url;
