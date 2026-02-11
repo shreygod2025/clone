@@ -8007,14 +8007,14 @@ const AdminSchoolCRM = () => {
 
       {/* Raise Ticket Modal */}
       <Dialog open={!!showRaiseTicketModal} onOpenChange={() => setShowRaiseTicketModal(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-orange-600" />
               Raise Ticket - {showRaiseTicketModal?.school_name}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-y-auto flex-1 pr-2">
             {/* User Type Selector - FIRST */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <label className="block text-sm font-medium text-[#1E3A5F] mb-3">Who is raising this query? *</label>
@@ -8039,6 +8039,37 @@ const AdminSchoolCRM = () => {
                     <span className="block text-sm font-medium">{type.label}</span>
                   </button>
                 ))}
+              </div>
+            </div>
+            
+            {/* Contact Info Section - Name comes after User Type */}
+            <div className="bg-slate-50 p-4 rounded-lg">
+              <p className="text-sm font-medium text-slate-700 mb-3">Contact who raised this issue</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">Contact Name</label>
+                  <Input
+                    value={ticketData.contact_name}
+                    onChange={(e) => setTicketData({ ...ticketData, contact_name: e.target.value })}
+                    placeholder="Contact name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-500 mb-1">Phone</label>
+                  <Input
+                    value={ticketData.contact_phone}
+                    onChange={(e) => setTicketData({ ...ticketData, contact_phone: e.target.value })}
+                    placeholder="Phone number"
+                  />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs text-slate-500 mb-1">Email</label>
+                  <Input
+                    value={ticketData.contact_email}
+                    onChange={(e) => setTicketData({ ...ticketData, contact_email: e.target.value })}
+                    placeholder="Email address"
+                  />
+                </div>
               </div>
             </div>
             
