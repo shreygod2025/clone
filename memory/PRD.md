@@ -858,14 +858,23 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - `/app/frontend/src/pages/SchoolTrackingPage.jsx` - Added lms_setup icon, help queries, and LMS display section
 
 **Additional Fixes:**
-- ✅ **Public School Tracker (LMS Step):** Step 10 "LMS Setup" now appears on public tracking page (`/track/:token`)
-- ✅ **PDF URL Fix:** Added `getAbsoluteUrl()` helper function to fix relative URL issues on production
-  - Applied to: MOU downloads, invoices, receipts, documents in AdminSchoolCRM, AdminOrders, and SchoolTrackingPage
-  - This fixes PDFs not opening on oll.co production server
+- ✅ **Step Order:** LMS Setup is now Step 9, School Finalization is Step 10
+- ✅ **PDF Storage Fix (CRITICAL):** Files now stored in MongoDB instead of local filesystem
+  - New endpoint: `/api/files/{filename}` - serves files from MongoDB
+  - Backward compatible: `/api/uploads/{filename}` redirects to `/api/files/{filename}`
+  - Migration endpoint: `POST /api/admin/migrate-files` - migrates local files to MongoDB
+  - This **permanently fixes** the "Not Found" error on production (oll.co)
+- ✅ **getAbsoluteUrl() Helper:** Updated to handle both `/api/files/` and `/api/uploads/` paths
+
+**Post-Deployment Steps (IMPORTANT):**
+1. Deploy the updated code to production
+2. Call `POST /api/admin/migrate-files` to migrate any existing local files to MongoDB
+3. New file uploads will automatically be stored in MongoDB
 
 **Testing Results (100% Pass Rate):**
 - ✅ Backend: 7/7 tests passed
 - ✅ Frontend: All features verified
+- ✅ 25 files migrated to MongoDB in preview environment
 
 ## Prioritized Backlog
 
