@@ -8015,6 +8015,33 @@ const AdminSchoolCRM = () => {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* User Type Selector - FIRST */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <label className="block text-sm font-medium text-[#1E3A5F] mb-3">Who is raising this query? *</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { value: 'school', label: 'School', icon: Building2 },
+                  { value: 'teacher', label: 'Teacher', icon: User },
+                  { value: 'student', label: 'Student', icon: Users }
+                ].map((type) => (
+                  <button
+                    key={type.value}
+                    type="button"
+                    onClick={() => setTicketData({ ...ticketData, user_type: type.value })}
+                    className={`p-3 rounded-lg border text-center transition-all ${
+                      ticketData.user_type === type.value
+                        ? 'border-[#1E3A5F] bg-white text-[#1E3A5F] shadow-sm'
+                        : 'border-blue-200 bg-blue-50/50 text-slate-600 hover:border-blue-300 hover:bg-white'
+                    }`}
+                    data-testid={`ticket-user-type-${type.value}`}
+                  >
+                    <type.icon className="w-5 h-5 mx-auto mb-1" />
+                    <span className="block text-sm font-medium">{type.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            
             {/* Query Type Selector with FAQs */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Query Type *</label>
