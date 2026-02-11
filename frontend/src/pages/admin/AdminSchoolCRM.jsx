@@ -8087,6 +8087,33 @@ const AdminSchoolCRM = () => {
               </select>
             </div>
             
+            {/* User Type Selector */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">User Type *</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { value: 'school', label: 'School', icon: Building2 },
+                  { value: 'teacher', label: 'Teacher', icon: User },
+                  { value: 'student', label: 'Student', icon: Users }
+                ].map((type) => (
+                  <button
+                    key={type.value}
+                    type="button"
+                    onClick={() => setTicketData({ ...ticketData, user_type: type.value })}
+                    className={`p-3 rounded-lg border text-center transition-all ${
+                      ticketData.user_type === type.value
+                        ? 'border-[#1E3A5F] bg-blue-50 text-[#1E3A5F]'
+                        : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                    }`}
+                    data-testid={`ticket-user-type-${type.value}`}
+                  >
+                    <type.icon className="w-5 h-5 mx-auto mb-1" />
+                    <span className="block text-sm font-medium">{type.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            
             <div className="bg-slate-50 p-4 rounded-lg">
               <p className="text-sm font-medium text-slate-700 mb-3">Contact who raised this issue</p>
               <div className="grid grid-cols-2 gap-3">
