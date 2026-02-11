@@ -9819,25 +9819,31 @@ async def upload_file(file: UploadFile = File(...), type: str = "general"):
         file_url = f"/api/files/{unique_filename}"
         return {"url": file_url, "filename": unique_filename, "fallback": True}
 
-# Serve uploaded files from MongoDB
+# Serve uploaded files - checks Cloudinary first, then MongoDB, then local
 @api_router.get("/files/{filename}")
 async def serve_file(filename: str):
-    """Serve uploaded files from MongoDB storage"""
+    """Serve uploaded files - redirects to Cloudinary URL if available"""
     import base64
-    from fastapi.responses import Response
+    from fastapi.responses import Response, RedirectResponse
     
-    # Try MongoDB first
+    # Try to find file in MongoDB
     file_doc = await db.uploaded_files.find_one({"filename": filename})
     
     if file_doc:
-        content = base64.b64decode(file_doc["data"])
-        return Response(
-            content=content,
-            media_type=file_doc.get("content_type", "application/octet-stream"),
-            headers={
-                "Content-Disposition": f'inline; filename="{file_doc.get("original_name", filename)}"'
-            }
-        )
+        # If file is on Cloudinary, redirect to Cloudinary URL
+        if file_doc.get("cloudinary_url"):
+            return RedirectResponse(url=file_doc["cloudinary_url"], status_code=302)
+        
+        # Otherwise serve from MongoDB base64 data
+        if file_doc.get("data"):
+            content = base64.b64decode(file_doc["data"])
+            return Response(
+                content=content,
+                media_type=file_doc.get("content_type", "application/octet-stream"),
+                headers={
+                    "Content-Disposition": f'inline; filename="{file_doc.get("original_name", filename)}"'
+                }
+            )
     
     # Fallback to local file (for backward compatibility)
     file_path = UPLOAD_DIR / filename
