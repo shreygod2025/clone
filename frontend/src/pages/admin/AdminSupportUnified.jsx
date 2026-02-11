@@ -1172,14 +1172,47 @@ const AdminSupportUnified = () => {
 
       {/* Create Ticket Modal */}
       <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
+        <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <Plus className="w-5 h-5 text-[#D63031]" />
               Create Support Ticket
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-y-auto flex-1 pr-2">
+            {/* User Type Selector - FIRST AT TOP */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <label className="block text-sm font-medium text-[#1E3A5F] mb-3">User Type *</label>
+              <div className="grid grid-cols-3 gap-2">
+                {INQUIRY_TYPES.map((type) => {
+                  const IconComponent = type.value === 'school' ? Building2 : type.value === 'teacher' ? User : GraduationCap;
+                  return (
+                    <button
+                      key={type.value}
+                      type="button"
+                      onClick={() => {
+                        const defaults = DEFAULT_RELATED_TO[type.value] || DEFAULT_RELATED_TO.student;
+                        setNewTicket({ 
+                          ...newTicket, 
+                          inquiry_type: type.value,
+                          query_type: defaults.query_type,
+                          related_to: defaults.related_to
+                        });
+                      }}
+                      className={`p-3 rounded-lg border text-center transition-all ${
+                        newTicket.inquiry_type === type.value
+                          ? 'border-[#1E3A5F] bg-white text-[#1E3A5F] shadow-sm'
+                          : 'border-blue-200 bg-blue-50/50 text-slate-600 hover:border-blue-300 hover:bg-white'
+                      }`}
+                    >
+                      <IconComponent className="w-5 h-5 mx-auto mb-1" />
+                      <span className="block text-sm font-medium">{type.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            
             {/* Auto-fill hint */}
             <div className="bg-blue-50 text-blue-700 text-xs p-2 rounded-lg">
               💡 Type 3+ characters in Name, Phone, or Email to auto-fill from existing records
@@ -1296,29 +1329,6 @@ const AdminSupportUnified = () => {
                 >
                   {(RELATED_TO_OPTIONS[newTicket.query_type] || RELATED_TO_OPTIONS.other).map(r => (
                     <option key={r.value} value={r.value}>{r.label}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium text-slate-700">User Type</label>
-                <select
-                  value={newTicket.inquiry_type}
-                  onChange={(e) => {
-                    const newInquiryType = e.target.value;
-                    const defaults = DEFAULT_RELATED_TO[newInquiryType] || DEFAULT_RELATED_TO.student;
-                    setNewTicket({ 
-                      ...newTicket, 
-                      inquiry_type: newInquiryType,
-                      query_type: defaults.query_type,
-                      related_to: defaults.related_to
-                    });
-                  }}
-                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
-                >
-                  {INQUIRY_TYPES.map(t => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
                   ))}
                 </select>
               </div>
