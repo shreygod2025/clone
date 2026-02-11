@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../componen
 import { Textarea } from '../../components/ui/textarea';
 import { Calendar as CalendarComponent } from '../../components/ui/calendar';
 import { toast } from 'sonner';
-import { format, addDays } from 'date-fns';
+import { format, addDays, startOfDay } from 'date-fns';
 import axios from 'axios';
 import PhoneInput from '../../components/PhoneInput';
 import Papa from 'papaparse';
@@ -3956,7 +3956,7 @@ const AdminSchoolCRM = () => {
                   mode="single"
                   selected={rescheduleData.date}
                   onSelect={(date) => setRescheduleData({...rescheduleData, date})}
-                  disabled={(date) => date < new Date() || date > addDays(new Date(), 30) || date.getDay() === 0}
+                  disabled={(date) => date < startOfDay(new Date()) || date > addDays(new Date(), 30) || date.getDay() === 0}
                   className="rounded-xl border border-slate-200"
                 />
               </div>
@@ -4097,7 +4097,7 @@ const AdminSchoolCRM = () => {
                       mode="single"
                       selected={meetingDoneData.followup_date}
                       onSelect={(date) => setMeetingDoneData({...meetingDoneData, followup_date: date})}
-                      disabled={(date) => date < new Date() || date > addDays(new Date(), 60) || date.getDay() === 0}
+                      disabled={(date) => date < startOfDay(new Date()) || date > addDays(new Date(), 60) || date.getDay() === 0}
                       className="rounded-xl border border-slate-200 bg-white"
                     />
                   </div>
