@@ -10754,8 +10754,8 @@ async def get_support_insights(
 # Include router and middleware
 app.include_router(api_router)
 
-# Mount static files for uploads
-app.mount("/api/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
+# Note: Static files mount removed - files are now served from MongoDB via /api/files/{filename}
+# For backward compatibility, /api/uploads/{filename} redirects to /api/files/{filename}
 
 app.add_middleware(
     CORSMiddleware,
