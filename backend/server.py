@@ -6575,17 +6575,22 @@ async def assign_support_query(query_id: str, data: dict, user: dict = Depends(g
         query_details = query.get("message", query.get("query", ""))[:100]
         deadline_str = deadline if deadline else "As soon as possible"
         
+        print(f"[ASSIGN] Attempting to notify {assignee_name} (phone: {assignee_phone}, email: {assignee_email})")
+        
         # Send WhatsApp notification
         if assignee_phone:
             try:
-                await send_whatsapp_notification(
+                result = await send_whatsapp_notification(
                     assignee_phone,
                     "ticket_assigned",
                     params=[assignee_name, query_type, query_details, deadline_str],
                     user_name=assignee_name
                 )
+                print(f"[ASSIGN] WhatsApp result: {result}")
             except Exception as e:
-                print(f"Failed to send WhatsApp: {e}")
+                print(f"[ASSIGN] Failed to send WhatsApp: {e}")
+        else:
+            print(f"[ASSIGN] No phone number for {assignee_name}, skipping WhatsApp")
         
         # Send Email notification using resend
         if assignee_email and resend.api_key:
