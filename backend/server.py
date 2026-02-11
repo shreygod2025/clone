@@ -7646,18 +7646,6 @@ DEFAULT_ONBOARDING_STEPS = {
             "notes": ""
         }
     },
-    "school_confirmation": {
-        "title": "School Confirmation",
-        "description": "Final confirmation received from school",
-        "completed": False,
-        "completed_date": None,
-        "data": {
-            "confirmation_date": None,
-            "confirmed_by": "",
-            "feedback": "",
-            "notes": ""
-        }
-    },
     "lms_setup": {
         "title": "LMS Setup",
         "description": "Student credentials uploaded to LMS",
@@ -7668,6 +7656,18 @@ DEFAULT_ONBOARDING_STEPS = {
             "upload_date": None,
             "file_url": "",
             "students_list": [],
+            "notes": ""
+        }
+    },
+    "school_confirmation": {
+        "title": "School Finalization",
+        "description": "Final confirmation received from school",
+        "completed": False,
+        "completed_date": None,
+        "data": {
+            "confirmation_date": None,
+            "confirmed_by": "",
+            "feedback": "",
             "notes": ""
         }
     }
