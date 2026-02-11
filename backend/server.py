@@ -10295,16 +10295,27 @@ async def check_overdue_tickets_job(secret: str = None):
     ).to_list(10)
     admin_phones = [u.get("phone") for u in admin_users if u.get("phone")]
     
+    # Also get phones from team_users with admin role
+    team_admins = await db.team_users.find(
+        {"role": {"$in": ["admin", "super_admin"]}},
+        {"_id": 0, "phone": 1}
+    ).to_list(10)
+    admin_phones.extend([u.get("phone") for u in team_admins if u.get("phone")])
+    admin_phones = list(set(admin_phones))  # Remove duplicates
+    
     for ticket in tickets:
         try:
-            # Get assigned team member
+            # Get assigned team member - check both collections
             assignee = None
             if ticket.get("assigned_to"):
-                assignee = await db.users.find_one({"id": ticket["assigned_to"]}, {"_id": 0})
+                assignee = await db.team_users.find_one({"id": ticket["assigned_to"]}, {"_id": 0})
+                if not assignee:
+                    assignee = await db.users.find_one({"id": ticket["assigned_to"]}, {"_id": 0})
             
             # Send notification to assignee
-            if assignee:
+            if assignee and assignee.get('phone'):
                 await send_ticket_overdue_notification(ticket, assignee)
+                print(f"Overdue notification sent to {assignee.get('name')}")
             
             # Send notification to admin team
             if admin_phones:
