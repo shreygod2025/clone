@@ -538,13 +538,13 @@ const AdminDashboard = () => {
                     onClick={async () => {
                       try {
                         const token = localStorage.getItem('token');
-                        const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/admin/migrate-files`, {
+                        const res = await fetch(API + '/admin/migrate-files', {
                           method: 'POST',
-                          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+                          headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
                         });
                         const data = await res.json();
                         if (data.success) {
-                          alert(`Migration Complete!\n\nMigrated: ${data.migrated} files\nSkipped: ${data.skipped} files\nErrors: ${data.errors?.length || 0}`);
+                          alert('Migration Complete!\n\nMigrated: ' + data.migrated + ' files\nSkipped: ' + data.skipped + ' files\nErrors: ' + (data.errors?.length || 0));
                         } else {
                           alert('Migration failed: ' + JSON.stringify(data));
                         }
@@ -564,13 +564,13 @@ const AdminDashboard = () => {
                     onClick={async () => {
                       try {
                         const token = localStorage.getItem('token');
-                        const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/admin/migrate-files-to-cloudinary`, {
+                        const res = await fetch(API + '/admin/migrate-files-to-cloudinary', {
                           method: 'POST',
-                          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+                          headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
                         });
                         const data = await res.json();
                         if (data.success) {
-                          alert(`Cloud Migration Complete!\n\nMigrated: ${data.migrated} files\nSkipped: ${data.skipped} files\nErrors: ${data.errors?.length || 0}`);
+                          alert('Cloud Migration Complete!\n\nMigrated: ' + data.migrated + ' files\nSkipped: ' + data.skipped + ' files\nErrors: ' + (data.errors?.length || 0));
                         } else {
                           alert('Migration failed: ' + JSON.stringify(data));
                         }
