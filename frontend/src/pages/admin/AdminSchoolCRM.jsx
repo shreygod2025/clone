@@ -5388,7 +5388,7 @@ const AdminSchoolCRM = () => {
                       mode="single"
                       selected={newLead.meeting_date}
                       onSelect={(date) => setNewLead({...newLead, meeting_date: date})}
-                      disabled={(date) => date < new Date()}
+                      disabled={(date) => date < startOfDay(new Date())}
                       className="rounded-md"
                     />
                   </div>
@@ -5721,7 +5721,7 @@ const AdminSchoolCRM = () => {
                   mode="single"
                   selected={followupData.date}
                   onSelect={(date) => setFollowupData(prev => ({...prev, date}))}
-                  disabled={(date) => date < new Date()}
+                  disabled={(date) => date < startOfDay(new Date())}
                   className="rounded-xl border border-slate-200"
                 />
               </div>
@@ -7301,7 +7301,7 @@ const AdminSchoolCRM = () => {
                 mode="single"
                 selected={newMeetingData.date}
                 onSelect={(date) => setNewMeetingData({ ...newMeetingData, date })}
-                disabled={(date) => date < new Date()}
+                disabled={(date) => date < startOfDay(new Date())}
                 className="rounded-lg border"
               />
             </div>
