@@ -9871,10 +9871,10 @@ async def serve_uploaded_file_legacy(filename: str):
     from fastapi.responses import RedirectResponse
     return RedirectResponse(url=f"/api/files/{filename}", status_code=307)
 
-# Admin endpoint to migrate local files to MongoDB
-@api_router.post("/admin/migrate-files")
-async def migrate_local_files_to_mongodb(user: dict = Depends(get_current_user)):
-    """Migrate all local uploaded files to MongoDB for persistence"""
+# Admin endpoint to migrate files to Cloudinary
+@api_router.post("/admin/migrate-files-to-cloudinary")
+async def migrate_files_to_cloudinary(user: dict = Depends(get_current_user)):
+    """Migrate all MongoDB-stored files to Cloudinary for better performance"""
     import base64
     
     if user.get("role") != "admin":
@@ -9884,25 +9884,80 @@ async def migrate_local_files_to_mongodb(user: dict = Depends(get_current_user))
     skipped = 0
     errors = []
     
-    content_types = {
-        '.pdf': 'application/pdf',
-        '.doc': 'application/msword',
-        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        '.png': 'image/png',
-        '.jpg': 'image/jpeg',
-        '.jpeg': 'image/jpeg',
-        '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        '.xls': 'application/vnd.ms-excel',
-        '.csv': 'text/csv'
+    # Find all files stored in MongoDB (with base64 data)
+    cursor = db.uploaded_files.find({"data": {"$exists": True}, "cloudinary_url": {"$exists": False}})
+    
+    async for file_doc in cursor:
+        try:
+            filename = file_doc.get("filename", "")
+            content = base64.b64decode(file_doc["data"])
+            
+            # Determine resource type
+            ext = Path(filename).suffix.lower()
+            image_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.webp'}
+            resource_type = "image" if ext in image_extensions else "raw"
+            
+            # Determine folder from type
+            file_type = file_doc.get("type", "general")
+            folder = f"oll_{file_type}"
+            
+            # Upload to Cloudinary
+            result = cloudinary.uploader.upload(
+                BytesIO(content),
+                public_id=Path(filename).stem,
+                folder=folder,
+                resource_type=resource_type,
+                overwrite=True
+            )
+            
+            # Update MongoDB document with Cloudinary URL
+            await db.uploaded_files.update_one(
+                {"_id": file_doc["_id"]},
+                {
+                    "$set": {
+                        "cloudinary_url": result.get("secure_url"),
+                        "cloudinary_public_id": result.get("public_id"),
+                        "migrated_to_cloudinary": True,
+                        "migrated_at": datetime.now(timezone.utc).isoformat()
+                    },
+                    "$unset": {"data": ""}  # Remove base64 data to save space
+                }
+            )
+            
+            migrated += 1
+        except Exception as e:
+            errors.append({"filename": file_doc.get("filename", "unknown"), "error": str(e)})
+    
+    return {
+        "success": True,
+        "migrated": migrated,
+        "skipped": skipped,
+        "errors": errors,
+        "message": f"Migrated {migrated} files to Cloudinary"
     }
+
+# Legacy migration endpoint (kept for backward compatibility)
+@api_router.post("/admin/migrate-files")
+async def migrate_local_files_to_mongodb(user: dict = Depends(get_current_user)):
+    """Migrate all local uploaded files to Cloudinary (updated to use Cloudinary)"""
+    
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    migrated = 0
+    skipped = 0
+    errors = []
     
     if UPLOAD_DIR.exists():
         for file_path in UPLOAD_DIR.iterdir():
             if file_path.is_file():
                 filename = file_path.name
                 
-                # Check if already in MongoDB
-                existing = await db.uploaded_files.find_one({"filename": filename})
+                # Check if already migrated
+                existing = await db.uploaded_files.find_one({
+                    "filename": filename,
+                    "cloudinary_url": {"$exists": True}
+                })
                 if existing:
                     skipped += 1
                     continue
@@ -9912,13 +9967,59 @@ async def migrate_local_files_to_mongodb(user: dict = Depends(get_current_user))
                         content = f.read()
                     
                     ext = Path(filename).suffix.lower()
-                    content_type = content_types.get(ext, 'application/octet-stream')
                     
                     # Determine type from filename prefix
                     file_type = "general"
                     for prefix in ["mou_", "invoice_", "receipt_", "resume_", "document_"]:
                         if filename.startswith(prefix):
                             file_type = prefix.rstrip("_")
+                            break
+                    
+                    # Determine resource type
+                    image_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.webp'}
+                    resource_type = "image" if ext in image_extensions else "raw"
+                    folder = f"oll_{file_type}"
+                    
+                    # Upload to Cloudinary
+                    result = cloudinary.uploader.upload(
+                        BytesIO(content),
+                        public_id=Path(filename).stem,
+                        folder=folder,
+                        resource_type=resource_type,
+                        overwrite=True
+                    )
+                    
+                    # Store reference in MongoDB
+                    file_doc = {
+                        "filename": filename,
+                        "original_name": filename,
+                        "cloudinary_public_id": result.get("public_id"),
+                        "cloudinary_url": result.get("secure_url"),
+                        "resource_type": resource_type,
+                        "size": len(content),
+                        "type": file_type,
+                        "uploaded_at": datetime.now(timezone.utc).isoformat(),
+                        "migrated": True
+                    }
+                    
+                    # Upsert to avoid duplicates
+                    await db.uploaded_files.update_one(
+                        {"filename": filename},
+                        {"$set": file_doc},
+                        upsert=True
+                    )
+                    
+                    migrated += 1
+                except Exception as e:
+                    errors.append({"filename": filename, "error": str(e)})
+    
+    return {
+        "success": True,
+        "migrated": migrated,
+        "skipped": skipped,
+        "errors": errors,
+        "message": f"Migrated {migrated} files to Cloudinary"
+    }
                             break
                     
                     file_doc = {
