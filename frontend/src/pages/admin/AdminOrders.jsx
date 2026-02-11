@@ -24,8 +24,8 @@ const getAbsoluteUrl = (url) => {
   if (url.startsWith('http://') || url.startsWith('https://')) {
     return url;
   }
-  // If relative path starting with /api/uploads, prepend the API base
-  if (url.startsWith('/api/uploads')) {
+  // If relative path starting with /api/files or /api/uploads, prepend the API base
+  if (url.startsWith('/api/files') || url.startsWith('/api/uploads')) {
     const baseUrl = process.env.REACT_APP_BACKEND_URL || '';
     return `${baseUrl}${url}`;
   }
