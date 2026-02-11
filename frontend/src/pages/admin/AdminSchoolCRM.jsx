@@ -446,7 +446,8 @@ const AdminSchoolCRM = () => {
   const [showRaiseTicketModal, setShowRaiseTicketModal] = useState(null);
   const [ticketData, setTicketData] = useState({ 
     query_type: '', related_to: '', subject: '', description: '', priority: 'medium', 
-    contact_name: '', contact_phone: '', contact_email: '', source: 'school_crm'
+    contact_name: '', contact_phone: '', contact_email: '', source: 'school_crm',
+    user_type: 'school' // school, teacher, student
   });
   
   // Ticket Attachments & Voice Note
@@ -1498,6 +1499,7 @@ const AdminSchoolCRM = () => {
         description: ticketData.description,
         priority: ticketData.priority,
         source: ticketData.source,
+        user_type: ticketData.user_type,
         contact_name: ticketData.contact_name || showRaiseTicketModal.contact_name,
         contact_phone: ticketData.contact_phone || showRaiseTicketModal.phone,
         contact_email: ticketData.contact_email || showRaiseTicketModal.email,
@@ -1505,7 +1507,7 @@ const AdminSchoolCRM = () => {
       }, { headers: getAuthHeaders() });
       toast.success('Ticket raised successfully');
       setShowRaiseTicketModal(null);
-      setTicketData({ query_type: '', related_to: '', subject: '', description: '', priority: 'medium', contact_name: '', contact_phone: '', contact_email: '', source: 'school_crm' });
+      setTicketData({ query_type: '', related_to: '', subject: '', description: '', priority: 'medium', contact_name: '', contact_phone: '', contact_email: '', source: 'school_crm', user_type: 'school' });
       setTicketAttachments([]);
       setTicketAudioBlob(null);
       setTicketAudioUrl(null);
