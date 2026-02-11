@@ -3,7 +3,7 @@ import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
 import { 
   Search, Plus, User, Mail, Key, Shield, CheckCircle, XCircle, 
-  Edit, Trash2, Copy, Users, Settings, Eye, EyeOff, Save, X
+  Edit, Trash2, Copy, Users, Settings, Eye, EyeOff, Save, X, Phone
 } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
@@ -94,6 +94,7 @@ const AdminUsers = () => {
   const [userForm, setUserForm] = useState({
     name: '',
     email: '',
+    phone: '',
     username: '',
     password: '',
     role_id: '',
@@ -227,6 +228,7 @@ const AdminUsers = () => {
     setUserForm({
       name: '',
       email: '',
+      phone: '',
       username: '',
       password: '',
       role_id: '',
@@ -489,6 +491,7 @@ const AdminUsers = () => {
                           setUserForm({
                             name: user.name,
                             email: user.email,
+                            phone: user.phone || '',
                             username: user.username,
                             password: '',
                             role_id: user.role_id || '',
