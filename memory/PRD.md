@@ -859,17 +859,20 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 **Additional Fixes:**
 - ✅ **Step Order:** LMS Setup is now Step 9, School Finalization is Step 10
-- ✅ **PDF Storage Fix (CRITICAL):** Files now stored in MongoDB instead of local filesystem
-  - New endpoint: `/api/files/{filename}` - serves files from MongoDB
-  - Backward compatible: `/api/uploads/{filename}` redirects to `/api/files/{filename}`
-  - Migration endpoint: `POST /api/admin/migrate-files` - migrates local files to MongoDB
-  - This **permanently fixes** the "Not Found" error on production (oll.co)
-- ✅ **getAbsoluteUrl() Helper:** Updated to handle both `/api/files/` and `/api/uploads/` paths
+- ✅ **Cloudinary Cloud Storage Integration (PERMANENT FIX):**
+  - All file uploads now stored on Cloudinary CDN
+  - Files get permanent URLs like `https://res.cloudinary.com/dyssfvcmw/...`
+  - 26 existing files migrated to Cloudinary
+  - Fallback to MongoDB if Cloudinary fails
+  - Migration endpoints: 
+    - `POST /api/admin/migrate-files` - migrates local files
+    - `POST /api/admin/migrate-files-to-cloudinary` - migrates MongoDB files
+- ✅ **getAbsoluteUrl() Helper:** Updated to handle Cloudinary URLs, `/api/files/`, and `/api/uploads/` paths
 
-**Post-Deployment Steps (IMPORTANT):**
-1. Deploy the updated code to production
-2. Call `POST /api/admin/migrate-files` to migrate any existing local files to MongoDB
-3. New file uploads will automatically be stored in MongoDB
+**Cloudinary Configuration:**
+- Cloud Name: dyssfvcmw
+- API Key: Configured in .env
+- All uploads stored in `oll_{type}` folders (e.g., oll_mou, oll_invoice, oll_general)
 
 **Testing Results (100% Pass Rate):**
 - ✅ Backend: 7/7 tests passed
