@@ -287,6 +287,156 @@ async def send_session_complete_notification(inquiry: dict, educator: dict = Non
             user_name=educator_name
         )
 
+
+# ========================
+# SUPPORT TICKET NOTIFICATIONS
+# ========================
+
+async def send_support_ticket_notification(ticket: dict, assignee: dict):
+    """Send notification when a support ticket is assigned to a team member"""
+    if not assignee or not assignee.get("phone"):
+        print("Support ticket notification skipped - no assignee phone")
+        return
+    
+    assignee_name = assignee.get("name", "Team Member")
+    ticket_id = ticket.get("id", "N/A")[:8]
+    subject = ticket.get("subject", "Support Request")
+    priority = ticket.get("priority", "medium").upper()
+    school_name = ticket.get("school_name", ticket.get("contact_name", "Customer"))
+    
+    await send_whatsapp_notification(
+        phone=assignee.get("phone"),
+        template_key="support_ticket_added",
+        params=[assignee_name, ticket_id, subject, priority, school_name],
+        user_name=assignee_name
+    )
+
+
+async def send_ticket_overdue_notification(ticket: dict, assignee: dict):
+    """Send 48-hour overdue warning to the assigned team member"""
+    if not assignee or not assignee.get("phone"):
+        print("Overdue notification skipped - no assignee phone")
+        return
+    
+    assignee_name = assignee.get("name", "Team Member")
+    ticket_id = ticket.get("id", "N/A")[:8]
+    subject = ticket.get("subject", "Support Request")
+    school_name = ticket.get("school_name", ticket.get("contact_name", "Customer"))
+    
+    await send_whatsapp_notification(
+        phone=assignee.get("phone"),
+        template_key="support_overdue_48hours",
+        params=[assignee_name, ticket_id, subject, school_name],
+        user_name=assignee_name
+    )
+
+
+async def send_ticket_overdue_admin_notification(ticket: dict, admin_phones: list):
+    """Send 48-hour overdue warning to admin team"""
+    ticket_id = ticket.get("id", "N/A")[:8]
+    subject = ticket.get("subject", "Support Request")
+    priority = ticket.get("priority", "medium").upper()
+    school_name = ticket.get("school_name", ticket.get("contact_name", "Customer"))
+    assigned_to = ticket.get("assigned_to_name", "Unassigned")
+    
+    for phone in admin_phones:
+        if phone:
+            await send_whatsapp_notification(
+                phone=phone,
+                template_key="support_overdue_48hours_admin",
+                params=[ticket_id, subject, priority, school_name, assigned_to],
+                user_name="Admin"
+            )
+
+
+# ========================
+# NEW LEAD NOTIFICATIONS
+# ========================
+
+async def send_student_newlead_notification(inquiry: dict, sales_team_phones: list):
+    """Send notification to B2C sales team when a new student lead is created"""
+    student_name = inquiry.get("name", "Student")
+    phone = inquiry.get("phone", "N/A")
+    skill = inquiry.get("skill", "Not specified")
+    city = inquiry.get("city", "Not specified")
+    source = inquiry.get("source", "website")
+    
+    for sales_phone in sales_team_phones:
+        if sales_phone:
+            await send_whatsapp_notification(
+                phone=sales_phone,
+                template_key="student_newlead_admin",
+                params=[student_name, phone, skill, city, source],
+                user_name="Sales Team"
+            )
+
+
+async def send_gp_newlead_notification(gp_data: dict, gp_manager_phones: list):
+    """Send notification to GP manager when a new growth partner applies"""
+    gp_name = gp_data.get("name", "Growth Partner")
+    phone = gp_data.get("phone", "N/A")
+    city = gp_data.get("city", "Not specified")
+    partnership_type = gp_data.get("partnership_type", "Not specified")
+    
+    for manager_phone in gp_manager_phones:
+        if manager_phone:
+            await send_whatsapp_notification(
+                phone=manager_phone,
+                template_key="gp_newlead_admin",
+                params=[gp_name, phone, city, partnership_type],
+                user_name="GP Manager"
+            )
+
+
+# ========================
+# SCHOOL CRM MEETING REMINDERS
+# ========================
+
+async def send_school_meeting_reminder_24h(school: dict, sales_manager: dict):
+    """Send meeting reminder 24 hours prior to sales manager"""
+    if not sales_manager or not sales_manager.get("phone"):
+        print("24h meeting reminder skipped - no sales manager phone")
+        return
+    
+    manager_name = sales_manager.get("name", "Sales Manager")
+    school_name = school.get("school_name", "School")
+    contact_name = school.get("contact_name", "Contact")
+    meeting_date = school.get("meeting_date", "TBD")
+    meeting_time = school.get("meeting_time", "TBD")
+    meeting_mode = school.get("meeting_mode", "online").title()
+    
+    await send_whatsapp_notification(
+        phone=sales_manager.get("phone"),
+        template_key="school_meeting_reminder_24hours",
+        params=[manager_name, school_name, contact_name, meeting_date, meeting_time, meeting_mode],
+        user_name=manager_name
+    )
+
+
+async def send_school_meeting_reminder_2h(school: dict, sales_manager: dict):
+    """Send meeting reminder 2 hours prior to sales manager"""
+    if not sales_manager or not sales_manager.get("phone"):
+        print("2h meeting reminder skipped - no sales manager phone")
+        return
+    
+    manager_name = sales_manager.get("name", "Sales Manager")
+    school_name = school.get("school_name", "School")
+    contact_name = school.get("contact_name", "Contact")
+    meeting_time = school.get("meeting_time", "TBD")
+    meeting_link = school.get("meeting_link", "")
+    meeting_mode = school.get("meeting_mode", "online")
+    
+    # Include meeting link for online meetings
+    location_info = meeting_link if meeting_mode == "online" else school.get("meeting_address", "As discussed")
+    
+    await send_whatsapp_notification(
+        phone=sales_manager.get("phone"),
+        template_key="school_meeting_reminder_2hours",
+        params=[manager_name, school_name, contact_name, meeting_time, location_info],
+        user_name=manager_name
+    )
+
+
 # ========================
 # EMAIL NOTIFICATION SYSTEM (Resend)
 # ========================
