@@ -6843,12 +6843,31 @@ async def create_support_query(data: dict, user: dict = Depends(get_current_user
         "source": data.get("source", "admin_created"),
         "attachments": data.get("attachments", []),  # [{name, url, type, is_voice_note}]
         "created_by": user.get("email", "admin"),
+        "created_by_name": user.get("name", "Admin"),
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "comments": [],
         "assigned_to": data.get("assigned_to"),
     }
     await db.support_queries.insert_one(doc)
+    
+    # Send notification if assigned to someone
+    if data.get("assigned_to"):
+        assignee = await db.team_users.find_one({"id": data["assigned_to"]}, {"_id": 0})
+        if not assignee:
+            assignee = await db.users.find_one({"id": data["assigned_to"]}, {"_id": 0})
+        if assignee and assignee.get('phone'):
+            # Reuse ticket notification function
+            ticket_data = {
+                "id": query_id,
+                "subject": data.get("query_type", "Support Query"),
+                "priority": data.get("priority", "normal"),
+                "school_name": data.get("name", "Customer"),
+                "contact_name": data.get("name", "")
+            }
+            await send_support_ticket_notification(ticket_data, assignee)
+            print(f"Query notification sent to {assignee.get('name')} at {assignee.get('phone')}")
+    
     return {"message": "Query created successfully", "id": query_id}
 
 # ========================
