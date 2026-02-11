@@ -10020,30 +10020,6 @@ async def migrate_local_files_to_mongodb(user: dict = Depends(get_current_user))
         "errors": errors,
         "message": f"Migrated {migrated} files to Cloudinary"
     }
-                            break
-                    
-                    file_doc = {
-                        "filename": filename,
-                        "original_name": filename,
-                        "content_type": content_type,
-                        "data": base64.b64encode(content).decode('utf-8'),
-                        "size": len(content),
-                        "type": file_type,
-                        "uploaded_at": datetime.now(timezone.utc).isoformat(),
-                        "migrated": True
-                    }
-                    
-                    await db.uploaded_files.insert_one(file_doc)
-                    migrated += 1
-                except Exception as e:
-                    errors.append({"filename": filename, "error": str(e)})
-    
-    return {
-        "success": True,
-        "migrated": migrated,
-        "skipped": skipped,
-        "errors": errors
-    }
 
 # ========================
 # ADMIN REPORTS ENDPOINTS
