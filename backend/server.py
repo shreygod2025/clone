@@ -322,14 +322,14 @@ async def send_ticket_overdue_notification(ticket: dict, assignee: dict):
         return
     
     assignee_name = assignee.get("name", "Team Member")
-    ticket_id = ticket.get("id", "N/A")[:8]
-    subject = ticket.get("subject", "Support Request")
-    school_name = ticket.get("school_name", ticket.get("contact_name", "Customer"))
+    ticket_id = ticket.get("id", "N/A")[:8].upper()
+    subject = ticket.get("subject", ticket.get("query_type", "Support Request"))
     
+    # Template expects 3 params: [Name, TicketID, Subject]
     await send_whatsapp_notification(
         phone=assignee.get("phone"),
         template_key="support_overdue_48hours",
-        params=[assignee_name, ticket_id, subject, school_name],
+        params=[assignee_name, ticket_id, subject],
         user_name=assignee_name
     )
 
