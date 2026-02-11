@@ -8136,7 +8136,7 @@ async def get_public_tracking(tracking_token: str):
     public_steps = []
     step_order = ["mou_signing", "payment_collection", "kit_delivery", "distribution_checking", 
                   "technical_check", "teacher_training", "calendar_making", 
-                  "timetable_finalization", "school_confirmation", "lms_setup"]
+                  "timetable_finalization", "lms_setup", "school_confirmation"]
     
     for key in step_order:
         step = steps.get(key, {})
