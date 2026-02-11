@@ -8156,36 +8156,6 @@ const AdminSchoolCRM = () => {
               </select>
             </div>
             
-            <div className="bg-slate-50 p-4 rounded-lg">
-              <p className="text-sm font-medium text-slate-700 mb-3">Contact who raised this issue</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-slate-500 mb-1">Contact Name</label>
-                  <Input
-                    value={ticketData.contact_name}
-                    onChange={(e) => setTicketData({ ...ticketData, contact_name: e.target.value })}
-                    placeholder="Contact name"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-500 mb-1">Phone</label>
-                  <Input
-                    value={ticketData.contact_phone}
-                    onChange={(e) => setTicketData({ ...ticketData, contact_phone: e.target.value })}
-                    placeholder="Phone number"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-xs text-slate-500 mb-1">Email</label>
-                  <Input
-                    value={ticketData.contact_email}
-                    onChange={(e) => setTicketData({ ...ticketData, contact_email: e.target.value })}
-                    placeholder="Email address"
-                  />
-                </div>
-              </div>
-            </div>
-            
             {/* Source Selector */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Source</label>
