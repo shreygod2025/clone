@@ -6806,6 +6806,18 @@ async def update_support_ticket(ticket_id: str, data: dict, user: dict = Depends
     else:
         await db.support_tickets.update_one({"id": ticket_id}, {"$set": update_data})
     
+    # Send notification if ticket is being assigned to someone
+    if "assigned_to" in data and data.get("assigned_to"):
+        # Get the updated ticket
+        ticket = await db.support_tickets.find_one({"id": ticket_id}, {"_id": 0})
+        # Get assignee from team_users or users
+        assignee = await db.team_users.find_one({"id": data["assigned_to"]}, {"_id": 0})
+        if not assignee:
+            assignee = await db.users.find_one({"id": data["assigned_to"]}, {"_id": 0})
+        if assignee and assignee.get('phone') and ticket:
+            await send_support_ticket_notification(ticket, assignee)
+            print(f"Ticket assignment notification sent to {assignee.get('name')} at {assignee.get('phone')}")
+    
     return {"message": "Updated successfully"}
 
 # ========================
