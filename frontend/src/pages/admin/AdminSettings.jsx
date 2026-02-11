@@ -824,29 +824,37 @@ const AdminSettings = () => {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Address</label>
+              <label className="block text-sm font-medium mb-1">Area / Locality *</label>
+              <Input
+                value={centerForm.area}
+                onChange={(e) => setCenterForm({ ...centerForm, area: e.target.value })}
+                placeholder="e.g., Andheri West, Bandra"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Full Address *</label>
               <Textarea
                 value={centerForm.address}
                 onChange={(e) => setCenterForm({ ...centerForm, address: e.target.value })}
-                placeholder="Full address"
+                placeholder="Complete address with landmark"
                 rows={2}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Phone</label>
+                <label className="block text-sm font-medium mb-1">Contact Phone *</label>
                 <Input
-                  value={centerForm.phone}
-                  onChange={(e) => setCenterForm({ ...centerForm, phone: e.target.value })}
+                  value={centerForm.contact_phone}
+                  onChange={(e) => setCenterForm({ ...centerForm, contact_phone: e.target.value })}
                   placeholder="Contact number"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Email</label>
+                <label className="block text-sm font-medium mb-1">Contact Email</label>
                 <Input
                   type="email"
-                  value={centerForm.email}
-                  onChange={(e) => setCenterForm({ ...centerForm, email: e.target.value })}
+                  value={centerForm.contact_email}
+                  onChange={(e) => setCenterForm({ ...centerForm, contact_email: e.target.value })}
                   placeholder="center@oll.co"
                 />
               </div>
@@ -854,8 +862,8 @@ const AdminSettings = () => {
             <div>
               <label className="block text-sm font-medium mb-1">Google Maps Link</label>
               <Input
-                value={centerForm.maps_link}
-                onChange={(e) => setCenterForm({ ...centerForm, maps_link: e.target.value })}
+                value={centerForm.google_maps_link}
+                onChange={(e) => setCenterForm({ ...centerForm, google_maps_link: e.target.value })}
                 placeholder="https://maps.google.com/..."
               />
             </div>
