@@ -6578,12 +6578,18 @@ async def assign_support_query(query_id: str, data: dict, user: dict = Depends(g
         print(f"[ASSIGN] Attempting to notify {assignee_name} (phone: {assignee_phone}, email: {assignee_email})")
         
         # Send WhatsApp notification
+        # The support_ticket_added template expects: [Name, TicketID, Subject, Priority, CustomerName]
         if assignee_phone:
             try:
+                ticket_id = query_id[:8].upper()
+                subject = query.get("query_type", "Support Request")
+                priority = query.get("priority", "normal").upper()
+                customer_name = query.get("name", "Customer")
+                
                 result = await send_whatsapp_notification(
                     assignee_phone,
                     "ticket_assigned",
-                    params=[assignee_name, query_type, query_details, deadline_str],
+                    params=[assignee_name, ticket_id, subject, priority, customer_name],
                     user_name=assignee_name
                 )
                 print(f"[ASSIGN] WhatsApp result: {result}")
