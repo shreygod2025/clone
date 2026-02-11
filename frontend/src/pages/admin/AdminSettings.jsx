@@ -39,7 +39,7 @@ const AdminSettings = () => {
   // Form states
   const [cityForm, setCityForm] = useState({ name: '', state: '', is_active: true });
   const [centerForm, setCenterForm] = useState({ 
-    name: '', city: '', address: '', phone: '', email: '', maps_link: '', is_active: true 
+    name: '', city: '', area: '', address: '', contact_phone: '', contact_email: '', google_maps_link: '', is_active: true 
   });
   const [blogForm, setBlogForm] = useState({
     title: '', slug: '', excerpt: '', content: '', image_url: '', 
@@ -124,7 +124,7 @@ const AdminSettings = () => {
       }
       setShowCenterModal(false);
       setEditingItem(null);
-      setCenterForm({ name: '', city: '', address: '', phone: '', email: '', maps_link: '', is_active: true });
+      setCenterForm({ name: '', city: '', area: '', address: '', contact_phone: '', contact_email: '', google_maps_link: '', is_active: true });
       fetchData();
     } catch (error) {
       toast.error('Failed to save center');
