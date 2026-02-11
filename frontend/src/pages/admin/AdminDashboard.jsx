@@ -589,6 +589,7 @@ const AdminDashboard = () => {
                   </button>
                 </div>
               </div>
+              </>
             ) : (
               <div className="bg-white rounded-2xl p-6 border border-slate-100">
                 <h3 className="font-semibold text-[#1E3A5F] mb-4">Add New Lead</h3>
