@@ -171,14 +171,17 @@ async def send_whatsapp_notification(
             "apiKey": AISENSY_API_KEY,
             "campaignName": campaign_name,
             "destination": phone_number,
-            "userName": user_name,
+            "userName": user_name or "Clone Futura Live Solutions Ltd",
             "templateParams": params or [],
             "source": "OLL Platform",
             "media": {},
             "buttons": [],
             "carouselCards": [],
             "location": {},
-            "attributes": {}
+            "attributes": {},
+            "paramsFallbackValue": {
+                "FirstName": "user"
+            }
         }
         
         async with httpx.AsyncClient() as http_client:
