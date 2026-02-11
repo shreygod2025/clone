@@ -9703,11 +9703,41 @@ async def delete_inquiry_query(query_id: str, user: dict = Depends(get_current_u
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
 
-# File Upload Endpoint - Stores files in MongoDB for persistence
+# Cloudinary signature endpoint for frontend uploads
+@api_router.get("/cloudinary/signature")
+async def get_cloudinary_signature(
+    resource_type: str = Query("raw", enum=["image", "video", "raw"]),
+    folder: str = Query("oll_uploads")
+):
+    """Generate signed upload parameters for Cloudinary"""
+    ALLOWED_FOLDERS = ("oll_uploads", "oll_documents", "oll_images", "oll_mou", "oll_invoices")
+    if not any(folder.startswith(f) for f in ALLOWED_FOLDERS):
+        folder = "oll_uploads"
+    
+    timestamp = int(time.time())
+    params = {
+        "timestamp": timestamp,
+        "folder": folder,
+    }
+    
+    signature = cloudinary.utils.api_sign_request(
+        params,
+        os.getenv("CLOUDINARY_API_SECRET")
+    )
+    
+    return {
+        "signature": signature,
+        "timestamp": timestamp,
+        "cloud_name": os.getenv("CLOUDINARY_CLOUD_NAME"),
+        "api_key": os.getenv("CLOUDINARY_API_KEY"),
+        "folder": folder,
+        "resource_type": resource_type
+    }
+
+# File Upload Endpoint - Uses Cloudinary for cloud storage
 @api_router.post("/upload")
 async def upload_file(file: UploadFile = File(...), type: str = "general"):
-    """Upload a file (resume, document, etc.) - Stored in MongoDB for persistence across deployments"""
-    import base64
+    """Upload a file to Cloudinary cloud storage"""
     
     allowed_extensions = {'.pdf', '.doc', '.docx', '.png', '.jpg', '.jpeg', '.xlsx', '.xls', '.csv'}
     file_ext = Path(file.filename).suffix.lower()
@@ -9720,48 +9750,74 @@ async def upload_file(file: UploadFile = File(...), type: str = "general"):
     if len(content) > 10 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="File too large (max 10MB)")
     
-    # Generate unique filename
-    unique_filename = f"{type}_{uuid.uuid4().hex}{file_ext}"
+    # Generate unique public_id
+    unique_id = f"{type}_{uuid.uuid4().hex}"
+    folder = f"oll_{type}"
     
-    # Determine content type
-    content_types = {
-        '.pdf': 'application/pdf',
-        '.doc': 'application/msword',
-        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        '.png': 'image/png',
-        '.jpg': 'image/jpeg',
-        '.jpeg': 'image/jpeg',
-        '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        '.xls': 'application/vnd.ms-excel',
-        '.csv': 'text/csv'
-    }
-    content_type = content_types.get(file_ext, 'application/octet-stream')
+    # Determine resource type for Cloudinary
+    image_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.webp'}
+    resource_type = "image" if file_ext in image_extensions else "raw"
     
-    # Store file in MongoDB
-    file_doc = {
-        "filename": unique_filename,
-        "original_name": file.filename,
-        "content_type": content_type,
-        "data": base64.b64encode(content).decode('utf-8'),
-        "size": len(content),
-        "type": type,
-        "uploaded_at": datetime.now(timezone.utc).isoformat()
-    }
-    
-    await db.uploaded_files.insert_one(file_doc)
-    
-    # Also save locally as backup (for preview environment)
     try:
-        file_path = UPLOAD_DIR / unique_filename
-        with open(file_path, "wb") as f:
-            f.write(content)
-    except Exception:
-        pass  # Local save is optional
-    
-    # Return URL to the serve endpoint
-    file_url = f"/api/files/{unique_filename}"
-    
-    return {"url": file_url, "filename": unique_filename}
+        # Upload to Cloudinary
+        result = cloudinary.uploader.upload(
+            BytesIO(content),
+            public_id=unique_id,
+            folder=folder,
+            resource_type=resource_type,
+            overwrite=True
+        )
+        
+        # Get the secure URL
+        file_url = result.get("secure_url")
+        
+        # Store reference in MongoDB for tracking
+        file_doc = {
+            "filename": f"{unique_id}{file_ext}",
+            "original_name": file.filename,
+            "cloudinary_public_id": result.get("public_id"),
+            "cloudinary_url": file_url,
+            "resource_type": resource_type,
+            "size": len(content),
+            "type": type,
+            "uploaded_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.uploaded_files.insert_one(file_doc)
+        
+        return {"url": file_url, "filename": f"{unique_id}{file_ext}", "public_id": result.get("public_id")}
+        
+    except Exception as e:
+        # Fallback to MongoDB storage if Cloudinary fails
+        import base64
+        unique_filename = f"{unique_id}{file_ext}"
+        
+        content_types = {
+            '.pdf': 'application/pdf',
+            '.doc': 'application/msword',
+            '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg',
+            '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            '.xls': 'application/vnd.ms-excel',
+            '.csv': 'text/csv'
+        }
+        content_type = content_types.get(file_ext, 'application/octet-stream')
+        
+        file_doc = {
+            "filename": unique_filename,
+            "original_name": file.filename,
+            "content_type": content_type,
+            "data": base64.b64encode(content).decode('utf-8'),
+            "size": len(content),
+            "type": type,
+            "uploaded_at": datetime.now(timezone.utc).isoformat(),
+            "storage": "mongodb_fallback"
+        }
+        await db.uploaded_files.insert_one(file_doc)
+        
+        file_url = f"/api/files/{unique_filename}"
+        return {"url": file_url, "filename": unique_filename, "fallback": True}
 
 # Serve uploaded files from MongoDB
 @api_router.get("/files/{filename}")
