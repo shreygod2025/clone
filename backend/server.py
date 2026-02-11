@@ -2206,6 +2206,7 @@ async def create_team_user(data: TeamUserCreate, user: dict = Depends(get_curren
     team_user = TeamUser(
         email=data.email,
         name=data.name,
+        phone=data.phone,
         username=data.username,
         password_hash=bcrypt.hashpw(data.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
         role_id=data.role_id,
