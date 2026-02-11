@@ -2877,6 +2877,19 @@ async def create_growth_partner(data: GrowthPartnerCreate):
     doc['created_at'] = doc['created_at'].isoformat()
     doc['updated_at'] = doc['updated_at'].isoformat()
     await db.growth_partners.insert_one(doc)
+    
+    # Send new GP lead notification to GP Manager team
+    try:
+        gp_managers = await db.users.find(
+            {"department": {"$in": ["growth_partner", "gp_manager", "sales"]}, "role": {"$in": ["admin", "team_member"]}},
+            {"_id": 0, "phone": 1}
+        ).to_list(10)
+        gp_phones = [u.get("phone") for u in gp_managers if u.get("phone")]
+        if gp_phones:
+            await send_gp_newlead_notification(doc, gp_phones)
+    except Exception as e:
+        print(f"Failed to send GP new lead notification: {e}")
+    
     return partner
 
 @api_router.get("/growth-partners")
