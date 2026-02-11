@@ -3888,6 +3888,15 @@ const AdminSchoolCRM = () => {
                                 </span>
                                 <div className="flex-1">
                                   <p className="text-slate-700">{item.description}</p>
+                                  {/* Show added by name for tickets */}
+                                  {item.type === 'ticket' && item.details?.raised_by_name && (
+                                    <p className="text-xs text-slate-500 mt-0.5">
+                                      Added by: <span className="font-medium">{item.details.raised_by_name}</span>
+                                      {item.details.user_type && (
+                                        <span className="ml-2 px-1.5 py-0.5 bg-slate-200 rounded text-xs capitalize">{item.details.user_type}</span>
+                                      )}
+                                    </p>
+                                  )}
                                   <p className="text-xs text-slate-400 mt-1">
                                     {item.date ? new Date(item.date).toLocaleString() : 'No date'}
                                   </p>
