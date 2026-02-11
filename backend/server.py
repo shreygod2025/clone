@@ -10369,12 +10369,15 @@ async def send_meeting_reminders_job(secret: str = None):
             time_until = meeting_datetime - now
             hours_until = time_until.total_seconds() / 3600
             
-            # Get assigned sales manager
+            # Get assigned sales manager - check both collections
             sales_manager = None
             if school.get("assigned_to"):
-                sales_manager = await db.users.find_one({"id": school["assigned_to"]}, {"_id": 0})
+                sales_manager = await db.team_users.find_one({"id": school["assigned_to"]}, {"_id": 0})
+                if not sales_manager:
+                    sales_manager = await db.users.find_one({"id": school["assigned_to"]}, {"_id": 0})
             
-            if not sales_manager:
+            if not sales_manager or not sales_manager.get('phone'):
+                print(f"Meeting reminder skipped for school {school.get('school_name')} - no sales manager phone")
                 continue
             
             # Check if 24h reminder should be sent (between 23-25 hours before)
