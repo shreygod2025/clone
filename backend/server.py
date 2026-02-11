@@ -4544,10 +4544,16 @@ async def raise_school_ticket(
     
     # Send WhatsApp notification to assigned team member (if school has assigned_to)
     if school.get('assigned_to'):
+        # Check both users and team_users collections
         assignee = await db.users.find_one({"id": school.get('assigned_to')}, {"_id": 0})
-        if assignee:
+        if not assignee:
+            assignee = await db.team_users.find_one({"id": school.get('assigned_to')}, {"_id": 0})
+        if assignee and assignee.get('phone'):
             ticket_data['assigned_to_name'] = assignee.get('name', '')
             await send_support_ticket_notification(ticket_data, assignee)
+            print(f"Ticket notification sent to {assignee.get('name')} at {assignee.get('phone')}")
+        else:
+            print(f"Ticket notification skipped - assignee {school.get('assigned_to')} has no phone number")
     
     return {"message": "Ticket raised successfully", "ticket_id": ticket_data['id']}
 
