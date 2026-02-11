@@ -9691,34 +9691,110 @@ async def delete_inquiry_query(query_id: str, user: dict = Depends(get_current_u
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
 
-# File Upload Endpoint
+# File Upload Endpoint - Stores files in MongoDB for persistence
 @api_router.post("/upload")
 async def upload_file(file: UploadFile = File(...), type: str = "general"):
-    """Upload a file (resume, document, etc.)"""
-    allowed_extensions = {'.pdf', '.doc', '.docx', '.png', '.jpg', '.jpeg'}
+    """Upload a file (resume, document, etc.) - Stored in MongoDB for persistence across deployments"""
+    import base64
+    
+    allowed_extensions = {'.pdf', '.doc', '.docx', '.png', '.jpg', '.jpeg', '.xlsx', '.xls', '.csv'}
     file_ext = Path(file.filename).suffix.lower()
     
     if file_ext not in allowed_extensions:
         raise HTTPException(status_code=400, detail="File type not allowed")
     
-    # Check file size (max 5MB)
+    # Check file size (max 10MB)
     content = await file.read()
-    if len(content) > 5 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File too large (max 5MB)")
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File too large (max 10MB)")
     
     # Generate unique filename
     unique_filename = f"{type}_{uuid.uuid4().hex}{file_ext}"
-    file_path = UPLOAD_DIR / unique_filename
     
-    # Save file
-    with open(file_path, "wb") as f:
-        f.write(content)
+    # Determine content type
+    content_types = {
+        '.pdf': 'application/pdf',
+        '.doc': 'application/msword',
+        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        '.xls': 'application/vnd.ms-excel',
+        '.csv': 'text/csv'
+    }
+    content_type = content_types.get(file_ext, 'application/octet-stream')
     
-    # Return URL (relative path that will be served by static files)
-    base_url = os.environ.get('BASE_URL', '')
-    file_url = f"{base_url}/api/uploads/{unique_filename}"
+    # Store file in MongoDB
+    file_doc = {
+        "filename": unique_filename,
+        "original_name": file.filename,
+        "content_type": content_type,
+        "data": base64.b64encode(content).decode('utf-8'),
+        "size": len(content),
+        "type": type,
+        "uploaded_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.uploaded_files.insert_one(file_doc)
+    
+    # Also save locally as backup (for preview environment)
+    try:
+        file_path = UPLOAD_DIR / unique_filename
+        with open(file_path, "wb") as f:
+            f.write(content)
+    except Exception:
+        pass  # Local save is optional
+    
+    # Return URL to the serve endpoint
+    file_url = f"/api/files/{unique_filename}"
     
     return {"url": file_url, "filename": unique_filename}
+
+# Serve uploaded files from MongoDB
+@api_router.get("/files/{filename}")
+async def serve_file(filename: str):
+    """Serve uploaded files from MongoDB storage"""
+    import base64
+    from fastapi.responses import Response
+    
+    # Try MongoDB first
+    file_doc = await db.uploaded_files.find_one({"filename": filename})
+    
+    if file_doc:
+        content = base64.b64decode(file_doc["data"])
+        return Response(
+            content=content,
+            media_type=file_doc.get("content_type", "application/octet-stream"),
+            headers={
+                "Content-Disposition": f'inline; filename="{file_doc.get("original_name", filename)}"'
+            }
+        )
+    
+    # Fallback to local file (for backward compatibility)
+    file_path = UPLOAD_DIR / filename
+    if file_path.exists():
+        content_types = {
+            '.pdf': 'application/pdf',
+            '.doc': 'application/msword',
+            '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            '.png': 'image/png',
+            '.jpg': 'image/jpeg',
+            '.jpeg': 'image/jpeg'
+        }
+        ext = Path(filename).suffix.lower()
+        content_type = content_types.get(ext, 'application/octet-stream')
+        
+        with open(file_path, "rb") as f:
+            content = f.read()
+        
+        return Response(
+            content=content,
+            media_type=content_type,
+            headers={"Content-Disposition": f'inline; filename="{filename}"'}
+        )
+    
+    raise HTTPException(status_code=404, detail="File not found")
 
 # ========================
 # ADMIN REPORTS ENDPOINTS
