@@ -9803,6 +9803,79 @@ async def serve_uploaded_file_legacy(filename: str):
     from fastapi.responses import RedirectResponse
     return RedirectResponse(url=f"/api/files/{filename}", status_code=307)
 
+# Admin endpoint to migrate local files to MongoDB
+@api_router.post("/admin/migrate-files")
+async def migrate_local_files_to_mongodb(user: dict = Depends(get_current_user)):
+    """Migrate all local uploaded files to MongoDB for persistence"""
+    import base64
+    
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    migrated = 0
+    skipped = 0
+    errors = []
+    
+    content_types = {
+        '.pdf': 'application/pdf',
+        '.doc': 'application/msword',
+        '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        '.png': 'image/png',
+        '.jpg': 'image/jpeg',
+        '.jpeg': 'image/jpeg',
+        '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        '.xls': 'application/vnd.ms-excel',
+        '.csv': 'text/csv'
+    }
+    
+    if UPLOAD_DIR.exists():
+        for file_path in UPLOAD_DIR.iterdir():
+            if file_path.is_file():
+                filename = file_path.name
+                
+                # Check if already in MongoDB
+                existing = await db.uploaded_files.find_one({"filename": filename})
+                if existing:
+                    skipped += 1
+                    continue
+                
+                try:
+                    with open(file_path, "rb") as f:
+                        content = f.read()
+                    
+                    ext = Path(filename).suffix.lower()
+                    content_type = content_types.get(ext, 'application/octet-stream')
+                    
+                    # Determine type from filename prefix
+                    file_type = "general"
+                    for prefix in ["mou_", "invoice_", "receipt_", "resume_", "document_"]:
+                        if filename.startswith(prefix):
+                            file_type = prefix.rstrip("_")
+                            break
+                    
+                    file_doc = {
+                        "filename": filename,
+                        "original_name": filename,
+                        "content_type": content_type,
+                        "data": base64.b64encode(content).decode('utf-8'),
+                        "size": len(content),
+                        "type": file_type,
+                        "uploaded_at": datetime.now(timezone.utc).isoformat(),
+                        "migrated": True
+                    }
+                    
+                    await db.uploaded_files.insert_one(file_doc)
+                    migrated += 1
+                except Exception as e:
+                    errors.append({"filename": filename, "error": str(e)})
+    
+    return {
+        "success": True,
+        "migrated": migrated,
+        "skipped": skipped,
+        "errors": errors
+    }
+
 # ========================
 # ADMIN REPORTS ENDPOINTS
 # ========================
