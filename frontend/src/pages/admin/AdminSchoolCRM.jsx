@@ -8278,7 +8278,7 @@ const AdminSchoolCRM = () => {
               )}
             </div>
             
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-3 pt-2 sticky bottom-0 bg-white border-t mt-4 -mx-6 px-6 pb-2">
               <Button variant="outline" onClick={() => {
                 setShowRaiseTicketModal(null);
                 setTicketAttachments([]);
