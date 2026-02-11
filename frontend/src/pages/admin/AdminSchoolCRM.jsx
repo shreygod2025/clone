@@ -2624,6 +2624,7 @@ const AdminSchoolCRM = () => {
                   description: '',
                   priority: 'medium',
                   source: 'school_crm',
+                  user_type: 'school',
                   contact_name: inquiry.contact_name,
                   contact_phone: inquiry.phone,
                   contact_email: inquiry.email
@@ -2680,6 +2681,7 @@ const AdminSchoolCRM = () => {
                   description: '',
                   priority: 'medium',
                   source: 'school_crm',
+                  user_type: 'school',
                   contact_name: inquiry.contact_name,
                   contact_phone: inquiry.phone,
                   contact_email: inquiry.email
