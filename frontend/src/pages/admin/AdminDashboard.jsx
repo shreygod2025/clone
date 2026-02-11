@@ -526,6 +526,68 @@ const AdminDashboard = () => {
                   </Link>
                 </div>
               </div>
+              
+              {/* System Tools - Admin Only */}
+              <div className="bg-white rounded-2xl p-6 border border-slate-100">
+                <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
+                  <Settings className="w-5 h-5" />
+                  System Tools
+                </h3>
+                <div className="space-y-3">
+                  <button 
+                    onClick={async () => {
+                      try {
+                        const token = localStorage.getItem('token');
+                        const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/admin/migrate-files`, {
+                          method: 'POST',
+                          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                          alert(`Migration Complete!\n\nMigrated: ${data.migrated} files\nSkipped: ${data.skipped} files\nErrors: ${data.errors?.length || 0}`);
+                        } else {
+                          alert('Migration failed: ' + JSON.stringify(data));
+                        }
+                      } catch (err) {
+                        alert('Error: ' + err.message);
+                      }
+                    }}
+                    className="w-full flex items-center justify-between p-3 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors text-left"
+                  >
+                    <div>
+                      <span className="text-blue-700 font-medium">Migrate Files to Cloud</span>
+                      <p className="text-xs text-blue-500">Upload local files to Cloudinary</p>
+                    </div>
+                    <Upload className="w-5 h-5 text-blue-500" />
+                  </button>
+                  <button 
+                    onClick={async () => {
+                      try {
+                        const token = localStorage.getItem('token');
+                        const res = await fetch(`${process.env.REACT_APP_BACKEND_URL}/api/admin/migrate-files-to-cloudinary`, {
+                          method: 'POST',
+                          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                          alert(`Cloud Migration Complete!\n\nMigrated: ${data.migrated} files\nSkipped: ${data.skipped} files\nErrors: ${data.errors?.length || 0}`);
+                        } else {
+                          alert('Migration failed: ' + JSON.stringify(data));
+                        }
+                      } catch (err) {
+                        alert('Error: ' + err.message);
+                      }
+                    }}
+                    className="w-full flex items-center justify-between p-3 bg-green-50 rounded-xl hover:bg-green-100 transition-colors text-left"
+                  >
+                    <div>
+                      <span className="text-green-700 font-medium">Sync Database Files to Cloud</span>
+                      <p className="text-xs text-green-500">Move MongoDB files to Cloudinary</p>
+                    </div>
+                    <Cloud className="w-5 h-5 text-green-500" />
+                  </button>
+                </div>
+              </div>
             ) : (
               <div className="bg-white rounded-2xl p-6 border border-slate-100">
                 <h3 className="font-semibold text-[#1E3A5F] mb-4">Add New Lead</h3>
