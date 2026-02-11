@@ -9796,6 +9796,13 @@ async def serve_file(filename: str):
     
     raise HTTPException(status_code=404, detail="File not found")
 
+# Backward compatibility: redirect old /api/uploads/ URLs to new /api/files/ endpoint
+@api_router.get("/uploads/{filename}")
+async def serve_uploaded_file_legacy(filename: str):
+    """Backward compatibility endpoint - redirects to new /api/files/ endpoint"""
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url=f"/api/files/{filename}", status_code=307)
+
 # ========================
 # ADMIN REPORTS ENDPOINTS
 # ========================
