@@ -2743,6 +2743,18 @@ async def create_student_inquiry(data: StudentInquiryCreate):
     if data.demo_date and data.demo_time:
         await send_demo_confirmation_notifications(doc, educator_data)
     
+    # Send new lead notification to B2C Sales team
+    try:
+        sales_team = await db.users.find(
+            {"department": "sales", "role": {"$in": ["admin", "team_member"]}},
+            {"_id": 0, "phone": 1}
+        ).to_list(10)
+        sales_phones = [u.get("phone") for u in sales_team if u.get("phone")]
+        if sales_phones:
+            await send_student_newlead_notification(doc, sales_phones)
+    except Exception as e:
+        print(f"Failed to send new lead notification: {e}")
+    
     return inquiry
 
 @api_router.get("/students/inquiries", response_model=List[StudentInquiry])
