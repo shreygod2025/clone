@@ -10420,6 +10420,103 @@ async def send_meeting_reminders_job(secret: str = None):
     }
 
 
+@api_router.post("/jobs/test-notification")
+async def test_notification_job(data: dict, user: dict = Depends(get_current_user)):
+    """
+    Test endpoint to send a notification to a specific user.
+    For debugging notification issues.
+    """
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    user_id = data.get("user_id")
+    notification_type = data.get("type", "ticket")  # ticket, meeting_24h, meeting_2h
+    
+    # Get user from both collections
+    target_user = await db.team_users.find_one({"id": user_id}, {"_id": 0})
+    if not target_user:
+        target_user = await db.users.find_one({"id": user_id}, {"_id": 0})
+    
+    if not target_user:
+        return {"error": "User not found", "user_id": user_id}
+    
+    if not target_user.get("phone"):
+        return {"error": "User has no phone number", "user": target_user.get("name")}
+    
+    try:
+        if notification_type == "ticket":
+            test_ticket = {
+                "id": "test-ticket-123",
+                "subject": "Test Ticket Notification",
+                "priority": "high",
+                "school_name": "Test School",
+                "contact_name": "Test Contact"
+            }
+            await send_support_ticket_notification(test_ticket, target_user)
+        elif notification_type == "meeting_24h":
+            test_school = {
+                "school_name": "Test School",
+                "contact_name": "Test Contact",
+                "meeting_date": "2024-01-01",
+                "meeting_time": "10:00",
+                "meeting_mode": "online"
+            }
+            await send_school_meeting_reminder_24h(test_school, target_user)
+        elif notification_type == "meeting_2h":
+            test_school = {
+                "school_name": "Test School",
+                "contact_name": "Test Contact",
+                "meeting_time": "10:00",
+                "meeting_mode": "online",
+                "meeting_link": "https://meet.jit.si/test"
+            }
+            await send_school_meeting_reminder_2h(test_school, target_user)
+        
+        return {
+            "success": True,
+            "message": f"Test {notification_type} notification sent to {target_user.get('name')} at {target_user.get('phone')}"
+        }
+    except Exception as e:
+        return {"error": str(e), "user": target_user.get("name")}
+
+
+@api_router.get("/jobs/check-user-phones")
+async def check_user_phones(user: dict = Depends(get_current_user)):
+    """
+    Check which users have phone numbers configured for notifications.
+    """
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    # Get all team users
+    team_users = await db.team_users.find({}, {"_id": 0, "id": 1, "name": 1, "phone": 1, "email": 1, "role": 1}).to_list(100)
+    users = await db.users.find({}, {"_id": 0, "id": 1, "name": 1, "phone": 1, "email": 1, "role": 1}).to_list(100)
+    
+    with_phone = []
+    without_phone = []
+    
+    for u in team_users + users:
+        user_info = {
+            "id": u.get("id"),
+            "name": u.get("name"),
+            "email": u.get("email"),
+            "phone": u.get("phone"),
+            "role": u.get("role")
+        }
+        if u.get("phone"):
+            with_phone.append(user_info)
+        else:
+            without_phone.append(user_info)
+    
+    return {
+        "total_users": len(team_users) + len(users),
+        "with_phone": len(with_phone),
+        "without_phone": len(without_phone),
+        "users_with_phone": with_phone,
+        "users_without_phone": without_phone
+    }
+
+
 # ========================
 # ADMIN REPORTS ENDPOINTS
 # ========================
