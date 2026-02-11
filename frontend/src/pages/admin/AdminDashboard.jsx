@@ -513,6 +513,7 @@ const AdminDashboard = () => {
             </div>
 
             {isAdmin ? (
+              <>
               <div className="bg-white rounded-2xl p-6 border border-slate-100">
                 <h3 className="font-semibold text-[#1E3A5F] mb-4">Content Management</h3>
                 <div className="space-y-3">
