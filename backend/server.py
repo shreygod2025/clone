@@ -118,7 +118,7 @@ WHATSAPP_TEMPLATES = {
     "educator_session_complete": "Educator Session completion",
     
     # Support ticket templates
-    "ticket_assigned": "Support Ticket Assignment",
+    "ticket_assigned": "support_ticket_added",
     "support_ticket_added": "support_ticket_added",
     "support_overdue_48hours": "support_overdue_48hours",
     "support_overdue_48hours_admin": "support_overdue_48hours_admin",
