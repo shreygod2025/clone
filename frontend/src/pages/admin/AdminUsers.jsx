@@ -624,6 +624,23 @@ const AdminUsers = () => {
                 />
               </div>
             </div>
+            
+            {/* Phone Number - Required for WhatsApp notifications */}
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                <Phone className="w-4 h-4 inline mr-1" />
+                Phone Number (for WhatsApp notifications)
+              </label>
+              <Input
+                type="tel"
+                value={userForm.phone}
+                onChange={(e) => setUserForm({ ...userForm, phone: e.target.value.replace(/\D/g, '') })}
+                placeholder="10-digit mobile number (e.g., 9876543210)"
+                maxLength={10}
+              />
+              <p className="text-xs text-slate-500 mt-1">Required for receiving WhatsApp notifications (tickets, meeting reminders, etc.)</p>
+            </div>
+            
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">Username *</label>
