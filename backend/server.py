@@ -119,6 +119,17 @@ WHATSAPP_TEMPLATES = {
     
     # Support ticket templates
     "ticket_assigned": "Support Ticket Assignment",
+    "support_ticket_added": "support_ticket_added",
+    "support_overdue_48hours": "support_overdue_48hours",
+    "support_overdue_48hours_admin": "support_overdue_48hours_admin",
+    
+    # New lead notifications
+    "student_newlead_admin": "student_newlead_admin",
+    "gp_newlead_admin": "gp_newlead_admin",
+    
+    # School CRM meeting reminders
+    "school_meeting_reminder_24hours": "school_meeting_reminder_24hours",
+    "school_meeting_reminder_2hours": "school_meeting_reminder_2hours",
 }
 
 async def send_whatsapp_notification(
