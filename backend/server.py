@@ -335,19 +335,19 @@ async def send_ticket_overdue_notification(ticket: dict, assignee: dict):
 
 
 async def send_ticket_overdue_admin_notification(ticket: dict, admin_phones: list):
-    """Send 48-hour overdue warning to admin team"""
-    ticket_id = ticket.get("id", "N/A")[:8]
-    subject = ticket.get("subject", "Support Request")
-    priority = ticket.get("priority", "medium").upper()
-    school_name = ticket.get("school_name", ticket.get("contact_name", "Customer"))
+    """Send 48-hour overdue warning to admin team - 4 params"""
+    ticket_id = ticket.get("id", "N/A")[:8].upper()
+    subject = ticket.get("subject", ticket.get("query_type", "Support Request"))
+    customer_name = ticket.get("school_name", ticket.get("contact_name", ticket.get("name", "Customer")))
     assigned_to = ticket.get("assigned_to_name", "Unassigned")
     
+    # Template expects 4 params: [TicketID, Subject, CustomerName, AssignedTo]
     for phone in admin_phones:
         if phone:
             await send_whatsapp_notification(
                 phone=phone,
                 template_key="support_overdue_48hours_admin",
-                params=[ticket_id, subject, priority, school_name, assigned_to],
+                params=[ticket_id, subject, customer_name, assigned_to],
                 user_name="Admin"
             )
 
@@ -357,19 +357,22 @@ async def send_ticket_overdue_admin_notification(ticket: dict, admin_phones: lis
 # ========================
 
 async def send_student_newlead_notification(inquiry: dict, sales_team_phones: list):
-    """Send notification to B2C sales team when a new student lead is created"""
+    """Send notification to B2C sales team when a new student lead is created - 7 params"""
     student_name = inquiry.get("name", "Student")
     phone = inquiry.get("phone", "N/A")
     skill = inquiry.get("skill", "Not specified")
     city = inquiry.get("city", "Not specified")
     source = inquiry.get("source", "website")
+    learning_mode = inquiry.get("learning_mode", "online")
+    created_at = inquiry.get("created_at", "")[:10] if inquiry.get("created_at") else "Today"
     
+    # Template expects 7 params: [Name, Phone, Skill, City, Source, LearningMode, Date]
     for sales_phone in sales_team_phones:
         if sales_phone:
             await send_whatsapp_notification(
                 phone=sales_phone,
                 template_key="student_newlead_admin",
-                params=[student_name, phone, skill, city, source],
+                params=[student_name, phone, skill, city, source, learning_mode, created_at],
                 user_name="Sales Team"
             )
 
@@ -396,7 +399,7 @@ async def send_gp_newlead_notification(gp_data: dict, gp_manager_phones: list):
 # ========================
 
 async def send_school_meeting_reminder_24h(school: dict, sales_manager: dict):
-    """Send meeting reminder 24 hours prior to sales manager"""
+    """Send meeting reminder 24 hours prior to sales manager - 7 params"""
     if not sales_manager or not sales_manager.get("phone"):
         print("24h meeting reminder skipped - no sales manager phone")
         return
@@ -404,20 +407,22 @@ async def send_school_meeting_reminder_24h(school: dict, sales_manager: dict):
     manager_name = sales_manager.get("name", "Sales Manager")
     school_name = school.get("school_name", "School")
     contact_name = school.get("contact_name", "Contact")
+    contact_phone = school.get("phone", "N/A")
     meeting_date = school.get("meeting_date", "TBD")
     meeting_time = school.get("meeting_time", "TBD")
     meeting_mode = school.get("meeting_mode", "online").title()
     
+    # Template expects 7 params: [ManagerName, SchoolName, ContactName, ContactPhone, Date, Time, Mode]
     await send_whatsapp_notification(
         phone=sales_manager.get("phone"),
         template_key="school_meeting_reminder_24hours",
-        params=[manager_name, school_name, contact_name, meeting_date, meeting_time, meeting_mode],
+        params=[manager_name, school_name, contact_name, contact_phone, meeting_date, meeting_time, meeting_mode],
         user_name=manager_name
     )
 
 
 async def send_school_meeting_reminder_2h(school: dict, sales_manager: dict):
-    """Send meeting reminder 2 hours prior to sales manager"""
+    """Send meeting reminder 2 hours prior to sales manager - 6 params"""
     if not sales_manager or not sales_manager.get("phone"):
         print("2h meeting reminder skipped - no sales manager phone")
         return
@@ -425,17 +430,18 @@ async def send_school_meeting_reminder_2h(school: dict, sales_manager: dict):
     manager_name = sales_manager.get("name", "Sales Manager")
     school_name = school.get("school_name", "School")
     contact_name = school.get("contact_name", "Contact")
+    contact_phone = school.get("phone", "N/A")
     meeting_time = school.get("meeting_time", "TBD")
-    meeting_link = school.get("meeting_link", "")
     meeting_mode = school.get("meeting_mode", "online")
     
-    # Include meeting link for online meetings
-    location_info = meeting_link if meeting_mode == "online" else school.get("meeting_address", "As discussed")
+    # Include meeting link for online meetings, address for offline
+    location_info = school.get("meeting_link", "") if meeting_mode == "online" else school.get("meeting_address", "As discussed")
     
+    # Template expects 6 params: [ManagerName, SchoolName, ContactName, ContactPhone, Time, Location/Link]
     await send_whatsapp_notification(
         phone=sales_manager.get("phone"),
         template_key="school_meeting_reminder_2hours",
-        params=[manager_name, school_name, contact_name, meeting_time, location_info],
+        params=[manager_name, school_name, contact_name, contact_phone, meeting_time, location_info],
         user_name=manager_name
     )
 
