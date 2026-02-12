@@ -4344,7 +4344,7 @@ const AdminSchoolCRM = () => {
                   mode="single"
                   selected={renewalMeetingData.date}
                   onSelect={(date) => setRenewalMeetingData({...renewalMeetingData, date})}
-                  disabled={(date) => date < new Date() || date > addDays(new Date(), 60) || date.getDay() === 0}
+                  disabled={(date) => date < startOfDay(new Date()) || date > addDays(new Date(), 60) || date.getDay() === 0}
                   className="rounded-xl border border-slate-200 bg-white"
                 />
               </div>
