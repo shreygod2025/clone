@@ -11117,6 +11117,19 @@ async def sync_po_expenses(school_id: str, data: dict = None, user: dict = Depen
         invoice_amount = invoice_info.get("amount", 0) or po.get("subtotal", 0) or po.get("grand_total", 0)
         logistics_cost = invoice_info.get("logistics_cost", 0)
         
+        # Get GST/Tax info
+        total_tax = po.get("total_tax", 0)
+        subtotal = po.get("subtotal", 0)
+        grand_total = po.get("grand_total", 0)
+        
+        # Determine GST type based on tax amount (18% is standard GST)
+        gst_rate = 18 if total_tax > 0 and subtotal > 0 else 0
+        if total_tax > 0 and subtotal > 0:
+            gst_rate = round((total_tax / subtotal) * 100, 2)
+        
+        # Default to IGST for inter-state, can be configured
+        gst_type = "IGST" if total_tax > 0 else "None"
+        
         # Check if expense already exists for this PO
         existing_kit = await db.school_expenses.find_one({
             "school_id": school_id,
