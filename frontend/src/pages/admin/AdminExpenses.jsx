@@ -196,28 +196,29 @@ const AdminExpenses = () => {
   });
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-[#1E3A5F] flex items-center gap-2">
-            <Wallet className="w-7 h-7" />
-            School Expenses
-          </h1>
-          <p className="text-slate-600 text-sm mt-1">Track and manage expenses for each school</p>
+    <AdminLayout title="Expenses">
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-[#1E3A5F] flex items-center gap-2">
+              <Wallet className="w-7 h-7" />
+              School Expenses
+            </h1>
+            <p className="text-slate-600 text-sm mt-1">Track and manage expenses for each school</p>
+          </div>
+          <Button 
+            onClick={() => { resetForm(); setEditingExpense(null); setShowAddModal(true); }}
+            className="bg-[#1E3A5F] hover:bg-[#2a4a6f]"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Expense
+          </Button>
         </div>
-        <Button 
-          onClick={() => { resetForm(); setEditingExpense(null); setShowAddModal(true); }}
-          className="bg-[#1E3A5F] hover:bg-[#2a4a6f]"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Expense
-        </Button>
-      </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-[#1E3A5F] to-[#2a5a8f] rounded-xl p-5 text-white">
+        {/* Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-gradient-to-br from-[#1E3A5F] to-[#2a5a8f] rounded-xl p-5 text-white">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-white/20 rounded-lg">
               <DollarSign className="w-6 h-6" />
