@@ -61,7 +61,8 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - `GET /api/schools/{school_id}/onboarding-po-info` - Get active PO info for onboarding
 - `POST /api/schools/{school_id}/sync-po-expenses` - Auto-create expenses from PO data
 
-**ProcureWay API Key:** `oll_ext_O5MVdAo6KnEslbB3jtWcDBn_fPu7DRY78vr-ZkHZ7Tg`
+**ProcureWay API Key:** `oll_ext_fgARmlTncPH3PvRFtcbzEMsRa0E033_gCsvDAPVhIDc`
+**VendorPlus URL:** `https://vendorplus-4.emergent.host/`
 
 ### 7. School Expenses Module (NEW - Feb 13, 2025)
 - Full CRUD for school-wise expense tracking
