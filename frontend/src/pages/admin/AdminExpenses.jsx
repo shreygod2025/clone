@@ -442,6 +442,7 @@ const AdminExpenses = () => {
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">Description</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">Vendor</th>
                 <th className="px-4 py-3 text-right text-sm font-semibold text-slate-600">Amount</th>
+                <th className="px-4 py-3 text-center text-sm font-semibold text-slate-600">Files</th>
                 <th className="px-4 py-3 text-center text-sm font-semibold text-slate-600">Status</th>
                 <th className="px-4 py-3 text-right text-sm font-semibold text-slate-600">Actions</th>
               </tr>
@@ -454,11 +455,17 @@ const AdminExpenses = () => {
                   </td>
                   <td className="px-4 py-3">
                     <p className="font-medium text-slate-800 text-sm">{expense.school_name}</p>
+                    {expense.po_number && (
+                      <p className="text-xs text-slate-500">PO: {expense.po_number}</p>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <span className={`text-xs px-2 py-1 rounded-full ${getCategoryColor(expense.category)}`}>
                       {expense.category_name}
                     </span>
+                    {expense.auto_synced && (
+                      <span className="ml-1 text-xs text-green-600">⚡</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-sm text-slate-600 max-w-[200px] truncate">
                     {expense.description || '-'}
@@ -468,6 +475,57 @@ const AdminExpenses = () => {
                   </td>
                   <td className="px-4 py-3 text-right font-semibold text-slate-800">
                     {formatCurrency(expense.amount)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-center gap-1 flex-wrap">
+                      {expense.po_pdf_url && (
+                        <a
+                          href={expense.po_pdf_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100"
+                          title="View PO"
+                        >
+                          PO
+                        </a>
+                      )}
+                      {expense.invoice_file_url && (
+                        <a
+                          href={expense.invoice_file_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs px-2 py-1 bg-green-50 text-green-600 rounded hover:bg-green-100"
+                          title="View Invoice"
+                        >
+                          INV
+                        </a>
+                      )}
+                      {expense.logistics_bill_url && (
+                        <a
+                          href={expense.logistics_bill_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs px-2 py-1 bg-amber-50 text-amber-600 rounded hover:bg-amber-100"
+                          title="View Logistics Bill"
+                        >
+                          LB
+                        </a>
+                      )}
+                      {expense.delivery_proof_url && (
+                        <a
+                          href={expense.delivery_proof_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs px-2 py-1 bg-purple-50 text-purple-600 rounded hover:bg-purple-100"
+                          title="View Delivery Proof"
+                        >
+                          DP
+                        </a>
+                      )}
+                      {!expense.po_pdf_url && !expense.invoice_file_url && !expense.logistics_bill_url && !expense.delivery_proof_url && (
+                        <span className="text-xs text-slate-400">-</span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-center">
                     <span className={`text-xs px-2 py-1 rounded-full ${
