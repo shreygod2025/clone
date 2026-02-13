@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { AdminLayout } from './AdminDashboard';
 import { 
   Wallet, Plus, Search, Building2, Calendar, Edit, Trash2, 
   ChevronDown, ChevronUp, FileText, Download, Filter, X,
