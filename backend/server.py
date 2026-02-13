@@ -447,12 +447,46 @@ async def send_school_meeting_reminder_2h(school: dict, sales_manager: dict):
 
 
 # ========================
-# EMAIL NOTIFICATION SYSTEM (Resend)
+# EMAIL NOTIFICATION SYSTEM (Gmail SMTP)
 # ========================
 
-# Initialize Resend
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+# Gmail SMTP Configuration
+GMAIL_EMAIL = os.environ.get("GMAIL_EMAIL", "clonefutura@gmail.com")
+GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "")  # App Password, not regular password
+SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "clonefutura@gmail.com")
+
+# Legacy Resend support (fallback)
 resend.api_key = os.environ.get("RESEND_API_KEY", "")
-SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "onboarding@resend.dev")
+
+async def send_email_gmail(to_email: str, subject: str, html_content: str):
+    """Send email using Gmail SMTP"""
+    try:
+        if not GMAIL_APP_PASSWORD:
+            logging.warning("Gmail App Password not configured, email not sent")
+            return {"success": False, "error": "Gmail not configured"}
+        
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From'] = f"OLL Team <{GMAIL_EMAIL}>"
+        msg['To'] = to_email
+        
+        html_part = MIMEText(html_content, 'html')
+        msg.attach(html_part)
+        
+        # Connect to Gmail SMTP
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(GMAIL_EMAIL, GMAIL_APP_PASSWORD)
+            server.sendmail(GMAIL_EMAIL, to_email, msg.as_string())
+        
+        logging.info(f"Email sent successfully to {to_email}")
+        return {"success": True, "message": f"Email sent to {to_email}"}
+    except Exception as e:
+        logging.error(f"Failed to send email: {str(e)}")
+        return {"success": False, "error": str(e)}
 
 # Email Templates for Educators
 EMAIL_TEMPLATES = {
