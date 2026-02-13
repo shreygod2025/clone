@@ -60,9 +60,15 @@ const AdminExpenses = () => {
       const catRes = await axios.get(`${API}/expenses/categories`, { headers });
       setCategories(Array.isArray(catRes.data) ? catRes.data : []);
       
-      // Fetch schools for dropdown
-      const schoolsRes = await axios.get(`${API}/school-inquiries?status=converted,active,renewed`, { headers });
-      setSchools(Array.isArray(schoolsRes.data) ? schoolsRes.data : []);
+      // Fetch schools for dropdown (all schools, not just converted)
+      try {
+        const schoolsRes = await axios.get(`${API}/school-inquiries`, { headers });
+        const schoolsList = schoolsRes.data?.inquiries || schoolsRes.data || [];
+        setSchools(Array.isArray(schoolsList) ? schoolsList : []);
+      } catch (err) {
+        console.error('Failed to fetch schools:', err);
+        setSchools([]);
+      }
       
       // Build query params
       const params = new URLSearchParams();
