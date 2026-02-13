@@ -5191,6 +5191,18 @@ const AdminSchoolCRM = () => {
               </div>
             </div>
 
+            {/* School Address */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">School Address</label>
+              <Textarea
+                placeholder="Enter full school address"
+                value={convertData.address}
+                onChange={(e) => setConvertData({...convertData, address: e.target.value})}
+                rows={2}
+                data-testid="convert-address"
+              />
+            </div>
+
             {/* Programs from Inquiry */}
             {convertData.programs?.length > 0 && (
               <div className="bg-slate-50 p-3 rounded-lg">
