@@ -57,6 +57,7 @@ const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminStudentCRM = lazy(() => import("./pages/admin/AdminStudentCRM"));
 const AdminSchoolCRM = lazy(() => import("./pages/admin/AdminSchoolCRM"));
 const AdminOrders = lazy(() => import("./pages/admin/AdminOrders"));
+const AdminExpenses = lazy(() => import("./pages/admin/AdminExpenses"));
 const AdminEducators = lazy(() => import("./pages/admin/AdminEducators"));
 const AdminGrowthPartners = lazy(() => import("./pages/admin/AdminGrowthPartners"));
 const AdminGPOnboarding = lazy(() => import("./pages/admin/AdminGPOnboarding"));
