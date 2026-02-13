@@ -1170,6 +1170,7 @@ const AdminSchoolCRM = () => {
       await axios.patch(`${API}/schools/inquiry/${showRenewalConvertModal.id}`, {
         status: 'renewed',
         conversion_amount: finalAmount,
+        address: renewalConvertData.address,
         onboarding_data: {
           ...(showRenewalConvertModal.onboarding_data || {}),
           offering: renewalConvertData.offering,
@@ -1236,7 +1237,8 @@ const AdminSchoolCRM = () => {
         contract_start: '', contract_end: '', mou_url: '',
         parent_circular_url: '', payment_link: '',
         school_share_type: 'none', school_share_calc: 'lumpsum', school_share_value: '', school_share_amount: 0,
-        gp_share_type: 'none', gp_share_calc: 'lumpsum', gp_share_value: '', gp_share_amount: 0
+        gp_share_type: 'none', gp_share_calc: 'lumpsum', gp_share_value: '', gp_share_amount: 0,
+        address: ''
       });
       fetchInquiries();
     } catch (error) {
