@@ -2302,6 +2302,7 @@ const AdminSchoolCRM = () => {
         email: school.email,
         location: school.location,
         board: school.board,
+        address: school.address || '',
         // Ensure share fields exist
         pricing_type: response.data.pricing_type || 'per_student',
         fixed_price: response.data.fixed_price || '',
@@ -2325,6 +2326,7 @@ const AdminSchoolCRM = () => {
         email: school.email,
         location: school.location,
         board: school.board,
+        address: school.address || '',
         offering: '',
         model: school.model || '',
         book_type: '',
