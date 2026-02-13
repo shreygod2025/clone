@@ -11062,7 +11062,7 @@ async def delete_school_expense(expense_id: str, user: dict = Depends(get_curren
 # PO API INTEGRATION (PROCUREWAY)
 # ========================
 
-PO_API_BASE_URL = "https://procureway.preview.emergentagent.com/api/external"
+PO_API_BASE_URL = os.environ.get("PO_API_BASE_URL", "https://vendorplus-4.emergent.host/api/external")
 PO_API_KEY = os.environ.get("PROCUREWAY_API_KEY", "oll_ext_O5MVdAo6KnEslbB3jtWcDBn_fPu7DRY78vr-ZkHZ7Tg")
 
 async def fetch_po_data(endpoint: str, params: dict = None):
