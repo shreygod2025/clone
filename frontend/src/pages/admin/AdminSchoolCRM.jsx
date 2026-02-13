@@ -2663,14 +2663,32 @@ const AdminSchoolCRM = () => {
               <UserPlus className="w-3 h-3" />
               {inquiry.relationship_manager_name ? 'Change RM' : 'Assign RM'}
             </button>
-            <button
-              onClick={() => openRenewalMeetingModal(inquiry)}
-              className="text-xs px-2.5 py-1.5 rounded-lg bg-teal-500 hover:bg-teal-600 text-white flex items-center gap-1 font-medium"
-              data-testid={`renewal-meeting-${inquiry.id}`}
-            >
-              <Calendar className="w-3 h-3" />
-              Renewal
-            </button>
+            <div className="relative group">
+              <button
+                className="text-xs px-2.5 py-1.5 rounded-lg bg-teal-500 hover:bg-teal-600 text-white flex items-center gap-1 font-medium"
+                data-testid={`renewal-${inquiry.id}`}
+              >
+                <Calendar className="w-3 h-3" />
+                Renewal
+                <ChevronDown className="w-3 h-3" />
+              </button>
+              <div className="absolute z-50 hidden group-hover:block top-full left-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg min-w-[160px]">
+                <button
+                  onClick={() => openRenewalMeetingModal(inquiry)}
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
+                >
+                  <Calendar className="w-4 h-4 text-teal-600" />
+                  Schedule Meeting
+                </button>
+                <button
+                  onClick={() => openRenewalConvertModal(inquiry)}
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2 border-t"
+                >
+                  <CheckCircle className="w-4 h-4 text-emerald-600" />
+                  Direct Renewal (Skip Meeting)
+                </button>
+              </div>
+            </div>
             <button
               onClick={() => {
                 setShowRaiseTicketModal(inquiry);
