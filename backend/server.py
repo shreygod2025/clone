@@ -11228,9 +11228,10 @@ async def external_get_schools(
             
             # Location
             "location": {
-                "city": school.get("city"),
+                "city": school.get("location"),  # 'location' field contains city
                 "state": school.get("state"),
                 "address": school.get("address"),
+                "area": school.get("city"),  # some schools may have 'city' as area
             },
             
             # Relationship Manager
