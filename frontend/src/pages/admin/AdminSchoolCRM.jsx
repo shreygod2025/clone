@@ -7716,6 +7716,70 @@ const AdminSchoolCRM = () => {
                       {/* Kit Delivery */}
                       {key === 'kit_delivery' && (
                         <div className="space-y-3">
+                          {/* Fetch from ProcureWay button */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => fetchSchoolPoData(showOnboardingWorkflowModal.id)}
+                              disabled={loadingPoData}
+                              className="text-xs"
+                            >
+                              {loadingPoData ? (
+                                <>
+                                  <RefreshCcw className="w-3 h-3 animate-spin mr-1" />
+                                  Fetching...
+                                </>
+                              ) : (
+                                <>
+                                  <RefreshCcw className="w-3 h-3 mr-1" />
+                                  Fetch from ProcureWay
+                                </>
+                              )}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => syncExpensesFromPO(showOnboardingWorkflowModal.id)}
+                              disabled={syncingExpenses}
+                              className="text-xs text-green-600 border-green-200 hover:bg-green-50"
+                            >
+                              {syncingExpenses ? (
+                                <>
+                                  <RefreshCcw className="w-3 h-3 animate-spin mr-1" />
+                                  Syncing...
+                                </>
+                              ) : (
+                                <>
+                                  <DollarSign className="w-3 h-3 mr-1" />
+                                  Sync Expenses
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                          
+                          {/* Show PO info if available */}
+                          {step.data?.po_number && (
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+                              <div className="flex items-center gap-2 text-blue-700 font-medium mb-2">
+                                <Package className="w-4 h-4" />
+                                PO: {step.data.po_number}
+                                {step.data.po_status && (
+                                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                    step.data.po_status === 'dispatched' ? 'bg-green-100 text-green-700' :
+                                    step.data.po_status === 'sent' ? 'bg-yellow-100 text-yellow-700' :
+                                    'bg-slate-100 text-slate-700'
+                                  }`}>
+                                    {step.data.po_status}
+                                  </span>
+                                )}
+                              </div>
+                              {step.data.vendor_name && (
+                                <p className="text-xs text-slate-600">Vendor: {step.data.vendor_name}</p>
+                              )}
+                            </div>
+                          )}
+                          
                           <div className="grid grid-cols-2 gap-3">
                             <div>
                               <label className="text-xs text-slate-500">Dispatch Date</label>
@@ -7744,15 +7808,27 @@ const AdminSchoolCRM = () => {
                           </div>
                           <div>
                             <label className="text-xs text-slate-500">Tracking Link</label>
-                            <Input
-                              value={step.data?.tracking_link || ''}
-                              onChange={(e) => handleUpdateOnboardingStep(
-                                showOnboardingWorkflowModal.id, key,
-                                { data: { tracking_link: e.target.value } }
+                            <div className="flex gap-2">
+                              <Input
+                                value={step.data?.tracking_link || ''}
+                                onChange={(e) => handleUpdateOnboardingStep(
+                                  showOnboardingWorkflowModal.id, key,
+                                  { data: { tracking_link: e.target.value } }
+                                )}
+                                placeholder="Enter tracking URL"
+                                className="h-9 flex-1"
+                              />
+                              {step.data?.tracking_link && (
+                                <a
+                                  href={step.data.tracking_link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center justify-center h-9 px-3 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"
+                                >
+                                  <ExternalLink className="w-4 h-4" />
+                                </a>
                               )}
-                              placeholder="Enter tracking URL"
-                              className="h-9"
-                            />
+                            </div>
                           </div>
                         </div>
                       )}
