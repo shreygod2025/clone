@@ -57,11 +57,11 @@ const AdminExpenses = () => {
       
       // Fetch categories
       const catRes = await axios.get(`${API}/expenses/categories`, { headers });
-      setCategories(catRes.data);
+      setCategories(Array.isArray(catRes.data) ? catRes.data : []);
       
       // Fetch schools for dropdown
       const schoolsRes = await axios.get(`${API}/school-inquiries?status=converted,active,renewed`, { headers });
-      setSchools(schoolsRes.data || []);
+      setSchools(Array.isArray(schoolsRes.data) ? schoolsRes.data : []);
       
       // Build query params
       const params = new URLSearchParams();
