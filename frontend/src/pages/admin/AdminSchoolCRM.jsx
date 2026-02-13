@@ -427,7 +427,8 @@ const AdminSchoolCRM = () => {
     gp_share_type: 'none', // 'none', 'percentage', 'amount'
     gp_share_calc: 'lumpsum', // 'per_student', 'lumpsum'
     gp_share_value: '',
-    gp_share_amount: 0
+    gp_share_amount: 0,
+    address: '' // School address
   });
   const [uploadingRenewalMOU, setUploadingRenewalMOU] = useState(false);
   const [meetingDoneData, setMeetingDoneData] = useState({ 
