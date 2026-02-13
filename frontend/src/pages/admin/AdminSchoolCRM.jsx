@@ -6656,6 +6656,18 @@ const AdminSchoolCRM = () => {
                     </select>
                   </div>
                 </div>
+                {/* School Address */}
+                <div className="mt-3">
+                  <label className="text-sm font-medium text-slate-700">School Address</label>
+                  <Textarea
+                    placeholder="Enter full school address"
+                    value={editOnboardData.address || ''}
+                    onChange={(e) => setEditOnboardData(prev => ({ ...prev, address: e.target.value }))}
+                    rows={2}
+                    className="mt-1"
+                    data-testid="edit-school-address"
+                  />
+                </div>
               </div>
 
               {/* Offering Details */}
