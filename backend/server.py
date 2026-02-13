@@ -10741,6 +10741,269 @@ async def delete_school_expense(expense_id: str, user: dict = Depends(get_curren
 
 
 # ========================
+# PO API INTEGRATION (PROCUREWAY)
+# ========================
+
+PO_API_BASE_URL = "https://procureway.preview.emergentagent.com/api/external"
+PO_API_KEY = "oll_ext_O5MVdAo6KnEslbB3jtWcDBn_fPu7DRY78vr-ZkHZ7Tg"
+
+async def fetch_po_data(endpoint: str, params: dict = None):
+    """Helper function to fetch data from PO API"""
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(
+                f"{PO_API_BASE_URL}/{endpoint}",
+                headers={"X-API-Key": PO_API_KEY},
+                params=params,
+                timeout=30.0
+            )
+            response.raise_for_status()
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logging.error(f"PO API HTTP error: {e.response.status_code} - {e.response.text}")
+            return None
+        except Exception as e:
+            logging.error(f"PO API error: {str(e)}")
+            return None
+
+
+@api_router.get("/schools/{school_id}/po-data")
+async def get_school_po_data(school_id: str, user: dict = Depends(get_current_user)):
+    """Get PO data for a school from ProcureWay - excludes delivered POs"""
+    # Get school info
+    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+    
+    school_name = school.get("school_name", "")
+    
+    # Fetch all POs for this school (by school_name match)
+    po_list_data = await fetch_po_data("po", {"school_name": school_name, "limit": 50})
+    
+    if not po_list_data or "data" not in po_list_data:
+        return {
+            "school_id": school_id,
+            "school_name": school_name,
+            "pos": [],
+            "active_po": None,
+            "message": "No POs found for this school"
+        }
+    
+    # Filter out delivered POs
+    active_pos = [
+        po for po in po_list_data.get("data", [])
+        if po.get("status", "").lower() != "delivered"
+    ]
+    
+    # Fetch detailed info for each active PO
+    detailed_pos = []
+    for po in active_pos:
+        po_number = po.get("po_number")
+        if po_number:
+            detailed = await fetch_po_data(f"po/{po_number}")
+            if detailed:
+                detailed_pos.append(detailed)
+    
+    # Get the most relevant PO (latest non-delivered one)
+    active_po = detailed_pos[0] if detailed_pos else None
+    
+    return {
+        "school_id": school_id,
+        "school_name": school_name,
+        "pos": detailed_pos,
+        "active_po": active_po,
+        "total_pos": len(detailed_pos)
+    }
+
+
+@api_router.post("/schools/{school_id}/sync-po-expenses")
+async def sync_po_expenses(school_id: str, data: dict = None, user: dict = Depends(get_current_user)):
+    """Sync expenses from PO data for a school - creates kit and logistics expenses automatically"""
+    if data is None:
+        data = {}
+    
+    # Get school info
+    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+    
+    school_name = school.get("school_name", "")
+    po_number = data.get("po_number")  # Optional - sync specific PO
+    
+    # If specific PO number provided, fetch that one
+    if po_number:
+        po_data = await fetch_po_data(f"po/{po_number}")
+        pos_to_sync = [po_data] if po_data else []
+    else:
+        # Fetch all POs for this school
+        po_list_data = await fetch_po_data("po", {"school_name": school_name, "limit": 50})
+        if not po_list_data or "data" not in po_list_data:
+            return {"message": "No POs found", "expenses_created": 0}
+        
+        # Get detailed info for each PO
+        pos_to_sync = []
+        for po in po_list_data.get("data", []):
+            po_num = po.get("po_number")
+            if po_num:
+                detailed = await fetch_po_data(f"po/{po_num}")
+                if detailed:
+                    pos_to_sync.append(detailed)
+    
+    expenses_created = []
+    
+    for po in pos_to_sync:
+        po_num = po.get("po_number", "Unknown")
+        vendor_name = po.get("vendor_name", "")
+        invoice_info = po.get("invoice_info") or {}
+        
+        # Get amounts from invoice_info if available, otherwise from PO total
+        invoice_amount = invoice_info.get("amount", 0) or po.get("subtotal", 0) or po.get("grand_total", 0)
+        logistics_cost = invoice_info.get("logistics_cost", 0)
+        
+        # Check if expense already exists for this PO
+        existing_kit = await db.school_expenses.find_one({
+            "school_id": school_id,
+            "po_number": po_num,
+            "category": "kit_cost"
+        })
+        
+        existing_logistics = await db.school_expenses.find_one({
+            "school_id": school_id,
+            "po_number": po_num,
+            "category": "logistics_cost"
+        })
+        
+        # Create Kit Cost expense if not exists and amount > 0
+        if not existing_kit and invoice_amount > 0:
+            kit_expense = {
+                "id": str(uuid.uuid4()),
+                "school_id": school_id,
+                "school_name": school_name,
+                "category": "kit_cost",
+                "category_name": "Kit Cost",
+                "amount": float(invoice_amount),
+                "description": f"Kit cost from PO {po_num}",
+                "expense_date": po.get("created_at", datetime.now(timezone.utc).isoformat())[:10],
+                "invoice_number": po_num,
+                "vendor_name": vendor_name,
+                "payment_status": invoice_info.get("payment_status", "pending"),
+                "payment_mode": "",
+                "notes": f"Auto-synced from ProcureWay PO {po_num}",
+                "po_number": po_num,
+                "attachments": [],
+                "created_by": user.get("email"),
+                "created_by_name": user.get("name"),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "auto_synced": True
+            }
+            await db.school_expenses.insert_one(kit_expense)
+            expenses_created.append({"type": "kit_cost", "po": po_num, "amount": invoice_amount})
+        
+        # Create Logistics Cost expense if not exists and amount > 0
+        if not existing_logistics and logistics_cost > 0:
+            logistics_expense = {
+                "id": str(uuid.uuid4()),
+                "school_id": school_id,
+                "school_name": school_name,
+                "category": "logistics_cost",
+                "category_name": "Logistics Cost",
+                "amount": float(logistics_cost),
+                "description": f"Logistics cost from PO {po_num}",
+                "expense_date": po.get("created_at", datetime.now(timezone.utc).isoformat())[:10],
+                "invoice_number": f"{po_num}-LOGISTICS",
+                "vendor_name": vendor_name,
+                "payment_status": "pending",
+                "payment_mode": "",
+                "notes": f"Auto-synced logistics from ProcureWay PO {po_num}",
+                "po_number": po_num,
+                "attachments": [],
+                "created_by": user.get("email"),
+                "created_by_name": user.get("name"),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "auto_synced": True
+            }
+            await db.school_expenses.insert_one(logistics_expense)
+            expenses_created.append({"type": "logistics_cost", "po": po_num, "amount": logistics_cost})
+    
+    return {
+        "message": f"Synced {len(expenses_created)} expenses from POs",
+        "expenses_created": expenses_created,
+        "pos_processed": len(pos_to_sync)
+    }
+
+
+@api_router.get("/schools/{school_id}/onboarding-po-info")
+async def get_onboarding_po_info(school_id: str, user: dict = Depends(get_current_user)):
+    """Get PO delivery info for onboarding kit_delivery step"""
+    # Get school info
+    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+    
+    school_name = school.get("school_name", "")
+    
+    # Fetch POs for this school (exclude delivered)
+    po_list_data = await fetch_po_data("po", {"school_name": school_name, "limit": 50})
+    
+    if not po_list_data or "data" not in po_list_data:
+        return {
+            "has_po": False,
+            "delivery_date": None,
+            "dispatch_date": None,
+            "tracking_link": None,
+            "message": "No active POs found"
+        }
+    
+    # Filter out delivered POs and get details
+    active_pos = []
+    for po in po_list_data.get("data", []):
+        if po.get("status", "").lower() != "delivered":
+            po_number = po.get("po_number")
+            if po_number:
+                detailed = await fetch_po_data(f"po/{po_number}")
+                if detailed:
+                    active_pos.append(detailed)
+    
+    if not active_pos:
+        return {
+            "has_po": False,
+            "delivery_date": None,
+            "dispatch_date": None,
+            "tracking_link": None,
+            "message": "All POs are delivered or no active POs"
+        }
+    
+    # Get the most recent active PO
+    primary_po = active_pos[0]
+    dispatch_info = primary_po.get("dispatch_info") or {}
+    
+    return {
+        "has_po": True,
+        "po_number": primary_po.get("po_number"),
+        "po_status": primary_po.get("status"),
+        "delivery_date": primary_po.get("delivery_date"),
+        "dispatch_date": dispatch_info.get("dispatch_date"),
+        "tracking_link": primary_po.get("tracking_link"),
+        "public_tracking_url": primary_po.get("public_tracking_url"),
+        "vendor_name": primary_po.get("vendor_name"),
+        "contact_person": primary_po.get("contact_person"),
+        "delivery_address": primary_po.get("delivery_address"),
+        "grand_total": primary_po.get("grand_total"),
+        "all_pos": [{
+            "po_number": po.get("po_number"),
+            "status": po.get("status"),
+            "delivery_date": po.get("delivery_date"),
+            "tracking_link": po.get("tracking_link"),
+            "public_tracking_url": po.get("public_tracking_url"),
+            "vendor_name": po.get("vendor_name"),
+            "grand_total": po.get("grand_total")
+        } for po in active_pos]
+    }
+
+
+# ========================
 # EXTERNAL API KEY SYSTEM
 # ========================
 
