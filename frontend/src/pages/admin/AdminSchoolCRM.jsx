@@ -2090,6 +2090,60 @@ const AdminSchoolCRM = () => {
     }
   };
 
+  // Fetch PO data from ProcureWay
+  const fetchSchoolPoData = async (schoolId) => {
+    setLoadingPoData(true);
+    try {
+      const response = await axios.get(`${API}/schools/${schoolId}/onboarding-po-info`, {
+        headers: getAuthHeaders()
+      });
+      setSchoolPoData(response.data);
+      
+      // If we got PO data, update the kit_delivery step with it
+      if (response.data?.has_po && response.data?.delivery_date) {
+        await handleUpdateOnboardingStep(schoolId, 'kit_delivery', {
+          data: {
+            delivery_date: response.data.delivery_date,
+            dispatch_date: response.data.dispatch_date || '',
+            tracking_link: response.data.tracking_link || response.data.public_tracking_url || '',
+            po_number: response.data.po_number,
+            po_status: response.data.po_status,
+            vendor_name: response.data.vendor_name
+          }
+        });
+        toast.success('PO data fetched and synced');
+      } else {
+        toast.info(response.data?.message || 'No active POs found for this school');
+      }
+    } catch (error) {
+      toast.error('Failed to fetch PO data');
+      setSchoolPoData(null);
+    } finally {
+      setLoadingPoData(false);
+    }
+  };
+
+  // Sync expenses from PO
+  const syncExpensesFromPO = async (schoolId, poNumber = null) => {
+    setSyncingExpenses(true);
+    try {
+      const payload = poNumber ? { po_number: poNumber } : {};
+      const response = await axios.post(`${API}/schools/${schoolId}/sync-po-expenses`, payload, {
+        headers: getAuthHeaders()
+      });
+      
+      if (response.data?.expenses_created?.length > 0) {
+        toast.success(`Created ${response.data.expenses_created.length} expense(s) from PO data`);
+      } else {
+        toast.info('No new expenses to sync (already exists or no amounts)');
+      }
+    } catch (error) {
+      toast.error('Failed to sync expenses');
+    } finally {
+      setSyncingExpenses(false);
+    }
+  };
+
   const handleAddFollowup = async () => {
     if (!followupData.followup_type) {
       toast.error('Please select a followup type');
