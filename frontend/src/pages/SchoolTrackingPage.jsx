@@ -373,9 +373,7 @@ const SchoolTrackingPage = () => {
                                   </div>
                                 )}
                               </div>
-                              {step.po_info.vendor_name && (
-                                <p className="text-xs text-slate-500">Vendor: {step.po_info.vendor_name}</p>
-                              )}
+                              </div>
                             </div>
                           )}
                           
