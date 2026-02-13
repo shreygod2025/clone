@@ -914,6 +914,7 @@ const AdminSchoolCRM = () => {
       await axios.patch(`${API}/schools/inquiry/${showConvertModal.id}`, {
         status: 'converted',
         conversion_amount: convertData.amount,
+        address: convertData.address,
         initial_onboard_data: {
           model: convertData.model,
           book_type: convertData.book_type,
@@ -942,7 +943,7 @@ const AdminSchoolCRM = () => {
       }
       
       setShowConvertModal(null);
-      setConvertData({ amount: '', model: '', book_type: '', kit_type: '', training_type: '', programs: [] });
+      setConvertData({ amount: '', model: '', book_type: '', kit_type: '', training_type: '', programs: [], address: '' });
       fetchInquiries();
     } catch (error) {
       toast.error('Failed to convert');
