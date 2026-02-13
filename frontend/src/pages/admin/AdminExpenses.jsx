@@ -441,7 +441,9 @@ const AdminExpenses = () => {
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">Category</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">Description</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">Vendor</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-slate-600">Amount</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold text-slate-600">Subtotal</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold text-slate-600">GST</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold text-slate-600">Total</th>
                 <th className="px-4 py-3 text-center text-sm font-semibold text-slate-600">Files</th>
                 <th className="px-4 py-3 text-center text-sm font-semibold text-slate-600">Status</th>
                 <th className="px-4 py-3 text-right text-sm font-semibold text-slate-600">Actions</th>
@@ -473,8 +475,21 @@ const AdminExpenses = () => {
                   <td className="px-4 py-3 text-sm text-slate-600">
                     {expense.vendor_name || '-'}
                   </td>
+                  <td className="px-4 py-3 text-right text-sm text-slate-700">
+                    {expense.subtotal ? formatCurrency(expense.subtotal) : formatCurrency(expense.amount)}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {expense.gst_amount > 0 ? (
+                      <div>
+                        <p className="text-sm font-medium text-slate-700">{formatCurrency(expense.gst_amount)}</p>
+                        <p className="text-xs text-slate-500">{expense.gst_type} @ {expense.gst_rate}%</p>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-slate-400">-</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-right font-semibold text-slate-800">
-                    {formatCurrency(expense.amount)}
+                    {expense.grand_total ? formatCurrency(expense.grand_total) : formatCurrency(expense.amount)}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-center gap-1 flex-wrap">
