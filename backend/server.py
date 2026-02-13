@@ -680,10 +680,6 @@ async def send_educator_email(
     Returns:
         dict with success status and message
     """
-    if not resend.api_key:
-        print("Email notification skipped - Resend API key not configured")
-        return {"success": False, "message": "API key not configured"}
-    
     template_info = EMAIL_TEMPLATES.get(template_key)
     if not template_info:
         print(f"Unknown email template: {template_key}")
@@ -697,18 +693,27 @@ async def send_educator_email(
         
         subject = template_info["subject"]
         
-        params = {
-            "from": SENDER_EMAIL,
-            "to": [recipient_email],
-            "subject": subject,
-            "html": html_content
-        }
+        # Try Gmail SMTP first (preferred)
+        if GMAIL_APP_PASSWORD:
+            result = await send_email_gmail(recipient_email, subject, html_content)
+            if result.get("success"):
+                print(f"Email [{template_key}] sent via Gmail to {recipient_email}")
+                return result
         
-        # Run sync SDK in thread to keep FastAPI non-blocking
-        email_response = await asyncio.to_thread(resend.Emails.send, params)
+        # Fallback to Resend if Gmail not configured
+        if resend.api_key:
+            params = {
+                "from": SENDER_EMAIL,
+                "to": [recipient_email],
+                "subject": subject,
+                "html": html_content
+            }
+            email_response = await asyncio.to_thread(resend.Emails.send, params)
+            print(f"Email [{template_key}] sent via Resend to {recipient_email}")
+            return {"success": True, "message": "Email sent", "email_id": email_response.get("id")}
         
-        print(f"Email [{template_key}] sent to {recipient_email}")
-        return {"success": True, "message": "Email sent", "email_id": email_response.get("id")}
+        print("Email notification skipped - No email provider configured")
+        return {"success": False, "message": "No email provider configured"}
         
     except Exception as e:
         print(f"Email notification error [{template_key}]: {str(e)}")
