@@ -11124,6 +11124,12 @@ async def sync_po_expenses(school_id: str, data: dict = None, user: dict = Depen
     
     for po in pos_to_sync:
         po_num = po.get("po_number", "Unknown")
+        po_status = po.get("status", "").lower()
+        
+        # Only create expenses for delivered POs
+        if po_status != "delivered":
+            continue
+            
         vendor_name = po.get("vendor_name", "")
         invoice_info = po.get("invoice_info") or {}
         
