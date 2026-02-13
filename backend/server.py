@@ -8396,6 +8396,37 @@ async def get_public_tracking(tracking_token: str):
     steps = workflow.get("steps", {})
     onboarding_data = school.get("onboarding_data", {})
     
+    # Fetch PO data for this school (for kit_delivery step)
+    po_info = None
+    school_name = school.get("school_name", "")
+    if school_name:
+        try:
+            po_list_data = await fetch_po_data("po", {"school_name": school_name, "limit": 50})
+            if po_list_data and "data" in po_list_data:
+                # Filter out delivered POs
+                active_pos = [
+                    po for po in po_list_data.get("data", [])
+                    if po.get("status", "").lower() != "delivered"
+                ]
+                if active_pos:
+                    # Get detailed info for the first active PO
+                    po_number = active_pos[0].get("po_number")
+                    if po_number:
+                        detailed_po = await fetch_po_data(f"po/{po_number}")
+                        if detailed_po:
+                            dispatch_info = detailed_po.get("dispatch_info") or {}
+                            po_info = {
+                                "po_number": detailed_po.get("po_number"),
+                                "status": detailed_po.get("status"),
+                                "delivery_date": detailed_po.get("delivery_date"),
+                                "dispatch_date": dispatch_info.get("dispatch_date"),
+                                "tracking_link": detailed_po.get("tracking_link"),
+                                "public_tracking_url": detailed_po.get("public_tracking_url"),
+                                "vendor_name": detailed_po.get("vendor_name"),
+                            }
+        except Exception as e:
+            logging.error(f"Error fetching PO data for tracking: {str(e)}")
+    
     # Calculate progress
     total_steps = len(steps)
     completed_steps = sum(1 for s in steps.values() if s.get("completed", False))
@@ -8419,6 +8450,21 @@ async def get_public_tracking(tracking_token: str):
                 "data": {}
             }
         step_data = step.get("data", {})
+        
+        # For kit_delivery, include PO info
+        kit_delivery_data = None
+        kit_tracking_link = step_data.get("tracking_link")
+        kit_scheduled_date = step_data.get("scheduled_date") or step_data.get("delivery_date") or step_data.get("dispatch_date") or step_data.get("distribution_date")
+        
+        if key == "kit_delivery" and po_info:
+            kit_delivery_data = po_info
+            # Use PO tracking link if not manually set
+            if not kit_tracking_link:
+                kit_tracking_link = po_info.get("tracking_link") or po_info.get("public_tracking_url")
+            # Use PO delivery date if not manually set
+            if not kit_scheduled_date:
+                kit_scheduled_date = po_info.get("delivery_date")
+        
         public_steps.append({
             "key": key,
             "title": step.get("title", key.replace("_", " ").title()),
@@ -8426,8 +8472,8 @@ async def get_public_tracking(tracking_token: str):
             "completed": step.get("completed", False),
             "completed_date": step.get("completed_date"),
             # Include scheduled dates for upcoming steps - also check for various date field names
-            "scheduled_date": step_data.get("scheduled_date") or step_data.get("delivery_date") or step_data.get("dispatch_date") or step_data.get("distribution_date"),
-            "tracking_link": step_data.get("tracking_link") if key == "kit_delivery" else None,
+            "scheduled_date": kit_scheduled_date if key == "kit_delivery" else (step_data.get("scheduled_date") or step_data.get("delivery_date") or step_data.get("dispatch_date") or step_data.get("distribution_date")),
+            "tracking_link": kit_tracking_link if key == "kit_delivery" else None,
             "training_date": step_data.get("training_date") if key == "teacher_training" else None,
             "training_time": step_data.get("training_time") if key == "teacher_training" else None,
             # Additional date fields for other steps
@@ -8435,6 +8481,8 @@ async def get_public_tracking(tracking_token: str):
             "mou_date": step_data.get("mou_date") if key == "mou_signing" else None,
             # LMS data
             "data": step_data if key == "lms_setup" else None,
+            # PO data for kit_delivery
+            "po_info": kit_delivery_data if key == "kit_delivery" else None,
         })
     
     # Public timeline (last 10 entries)
