@@ -1311,6 +1311,7 @@ class SchoolInquiry(BaseModel):
     school_size: str
     fee_range: str
     board: str = ""
+    address: str = ""  # Full school address
     programs_interested: List[str]
     support_needed: List[str]
     status: str = "new"  # new, meeting_done, converted, archived
@@ -1343,6 +1344,7 @@ class SchoolInquiryCreate(BaseModel):
     school_size: str = ""
     fee_range: str = ""
     board: str = ""
+    address: str = ""  # Full school address
     programs_interested: List[str] = []
     support_needed: List[str] = []
     selected_offerings: Optional[List[str]] = None
@@ -1366,6 +1368,7 @@ class SchoolInquiryUpdate(BaseModel):
     email: Optional[str] = None
     location: Optional[str] = None
     board: Optional[str] = None
+    address: Optional[str] = None  # Full school address
     model: Optional[str] = None
     total_students: Optional[int] = None
     school_size: Optional[str] = None
