@@ -2367,6 +2367,7 @@ const AdminSchoolCRM = () => {
         email: editOnboardData.email,
         location: editOnboardData.location,
         board: editOnboardData.board,
+        address: editOnboardData.address,
         model: editOnboardData.model,
         total_students: editOnboardData.total_students,
       }, {
