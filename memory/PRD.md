@@ -18,6 +18,7 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - Support Ticket System
 - Orders & Payments Module
 - Reports & Analytics
+- **School Expenses Module** (NEW)
 
 ### 3. WhatsApp Notifications (AiSensy Integration)
 **Templates Configured:**
@@ -39,7 +40,7 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 10-step onboarding process with public tracking page:
 1. MOU Signing
 2. Payment Collection
-3. Kit Delivery
+3. Kit Delivery (with ProcureWay PO integration)
 4. Distribution Checking
 5. Technical Check
 6. Teacher Training
@@ -48,19 +49,50 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 9. LMS Setup
 10. School Confirmation
 
+### 6. ProcureWay PO Integration (NEW - Feb 13, 2025)
+- **API Integration**: Connected to ProcureWay external API for PO data
+- **Onboarding Sync**: Fetch delivery date, dispatch date, and tracking link from POs
+- **Expense Auto-Sync**: Automatically create kit_cost and logistics_cost expenses from PO data
+- **Smart Filtering**: Excludes delivered POs, shows only active orders
+- **Public Tracking**: PO info (delivery date, dispatch date, tracking link) displayed on public school tracking page
+
+**API Endpoints:**
+- `GET /api/schools/{school_id}/po-data` - Fetch all PO data for a school
+- `GET /api/schools/{school_id}/onboarding-po-info` - Get active PO info for onboarding
+- `POST /api/schools/{school_id}/sync-po-expenses` - Auto-create expenses from PO data
+
+**ProcureWay API Key:** `oll_ext_O5MVdAo6KnEslbB3jtWcDBn_fPu7DRY78vr-ZkHZ7Tg`
+
+### 7. School Expenses Module (NEW - Feb 13, 2025)
+- Full CRUD for school-wise expense tracking
+- Categories: Kit Cost, Teacher Cost, Logistics Cost, Books Cost, GP Share, School Share, etc.
+- School dropdown filter
+- Date range filtering
+- Summary with totals by category
+- Auto-sync from ProcureWay POs
+
+**API Endpoints:**
+- `GET /api/school-expenses` - List all expenses with filters
+- `POST /api/school-expenses` - Create new expense
+- `PATCH /api/school-expenses/{id}` - Update expense
+- `DELETE /api/school-expenses/{id}` - Delete expense
+- `GET /api/school-expenses/summary` - Get expense summary
+
 ## Recent Updates (Feb 2025)
 
-### WhatsApp Notifications Enhancement
-- Added 7 new notification templates
-- Created background job endpoints for automated notifications
-- Updated OTP campaign to use "otp" template with 5-min expiration
+### Feb 13, 2025
+- **ProcureWay PO Integration**: Added external API integration to fetch PO data for schools
+- **Auto-Expense Creation**: Expenses automatically created from PO data (kit_cost, logistics_cost)
+- **School Expenses Module**: New admin section for managing school-wise expenses
+- **Address Field**: Added school address field to Convert, Renew, and Edit School modals
+- **Onboarding UI Enhancement**: "Fetch from ProcureWay" and "Sync Expenses" buttons in Kit Delivery step
+- **Public Tracker Update**: Shows PO delivery info on school tracking page
 
-### School CRM Improvements
-- Same-day follow-ups/meetings now allowed
-- User type selector (school/teacher/student) for queries
-- "Added by" name displayed in activity history
-- MOU document link fixed on public tracker
-- Invoices added to public tracker documents
+### Earlier Feb 2025
+- WhatsApp Notifications Enhancement
+- School CRM Improvements (same-day selection, skip renewal meeting)
+- External API for schools
+- Admin User phone numbers for WhatsApp
 
 ## Technical Stack
 - **Frontend**: React, Tailwind CSS, Shadcn/UI
@@ -69,6 +101,7 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - **Notifications**: AiSensy (WhatsApp), Resend (Email)
 - **Analytics**: PostHog
 - **Video**: Jitsi Meet
+- **External APIs**: ProcureWay (PO Management)
 
 ## Background Jobs
 Two cron job endpoints available:
@@ -87,7 +120,7 @@ Set `JOB_SECRET` environment variable and schedule hourly execution.
 
 ### P2 - Medium Priority
 - Refactor `server.py` into smaller route modules
-- Refactor `AdminSchoolCRM.jsx` (7000+ lines)
+- Refactor `AdminSchoolCRM.jsx` (8000+ lines)
 
 ### Future Backlog
 - Background job for AI follow-up emails
