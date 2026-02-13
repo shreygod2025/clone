@@ -10560,14 +10560,14 @@ EXPENSE_CATEGORIES = [
 ]
 
 
-@api_router.get("/expenses/categories")
-async def get_expense_categories(user: dict = Depends(get_current_user)):
+@api_router.get("/school-expenses/categories")
+async def get_school_expense_categories(user: dict = Depends(get_current_user)):
     """Get all available expense categories"""
     return EXPENSE_CATEGORIES
 
 
-@api_router.get("/expenses")
-async def get_all_expenses(
+@api_router.get("/school-expenses")
+async def get_all_school_expenses(
     school_id: Optional[str] = None,
     category: Optional[str] = None,
     start_date: Optional[str] = None,
@@ -10593,8 +10593,8 @@ async def get_all_expenses(
     return expenses
 
 
-@api_router.get("/expenses/summary")
-async def get_expenses_summary(
+@api_router.get("/school-expenses/summary")
+async def get_school_expenses_summary(
     school_id: Optional[str] = None,
     user: dict = Depends(get_current_user)
 ):
