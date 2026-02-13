@@ -10697,6 +10697,21 @@ async def sync_po_data_job(secret: str = None):
             })
             
             if not existing_kit and invoice_amount > 0:
+                # Build attachments from PO files
+                kit_attachments = []
+                if detailed_po.get("po_pdf_url"):
+                    kit_attachments.append({
+                        "name": f"PO-{po_number}.pdf",
+                        "url": detailed_po.get("po_pdf_url"),
+                        "type": "po_file"
+                    })
+                if detailed_po.get("invoice_file_url"):
+                    kit_attachments.append({
+                        "name": f"Invoice-{po_number}",
+                        "url": detailed_po.get("invoice_file_url"),
+                        "type": "invoice"
+                    })
+                
                 kit_expense = {
                     "id": str(uuid.uuid4()),
                     "school_id": school_id,
@@ -10710,6 +10725,9 @@ async def sync_po_data_job(secret: str = None):
                     "vendor_name": detailed_po.get("vendor_name", ""),
                     "payment_status": invoice_info.get("payment_status", "pending"),
                     "po_number": po_number,
+                    "po_pdf_url": detailed_po.get("po_pdf_url"),
+                    "invoice_file_url": detailed_po.get("invoice_file_url"),
+                    "attachments": kit_attachments,
                     "created_by": "system",
                     "created_by_name": "Auto-Sync Job",
                     "created_at": datetime.now(timezone.utc).isoformat(),
@@ -10727,6 +10745,21 @@ async def sync_po_data_job(secret: str = None):
             })
             
             if not existing_logistics and logistics_cost > 0:
+                # Build attachments for logistics
+                logistics_attachments = []
+                if detailed_po.get("logistics_bill_url"):
+                    logistics_attachments.append({
+                        "name": f"Logistics-Bill-{po_number}",
+                        "url": detailed_po.get("logistics_bill_url"),
+                        "type": "logistics_bill"
+                    })
+                if detailed_po.get("delivery_proof_url"):
+                    logistics_attachments.append({
+                        "name": f"Delivery-Proof-{po_number}",
+                        "url": detailed_po.get("delivery_proof_url"),
+                        "type": "delivery_proof"
+                    })
+                
                 logistics_expense = {
                     "id": str(uuid.uuid4()),
                     "school_id": school_id,
@@ -10740,6 +10773,9 @@ async def sync_po_data_job(secret: str = None):
                     "vendor_name": detailed_po.get("vendor_name", ""),
                     "payment_status": "pending",
                     "po_number": po_number,
+                    "logistics_bill_url": detailed_po.get("logistics_bill_url"),
+                    "delivery_proof_url": detailed_po.get("delivery_proof_url"),
+                    "attachments": logistics_attachments,
                     "created_by": "system",
                     "created_by_name": "Auto-Sync Job",
                     "created_at": datetime.now(timezone.utc).isoformat(),
