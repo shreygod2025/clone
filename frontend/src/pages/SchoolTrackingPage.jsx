@@ -373,7 +373,6 @@ const SchoolTrackingPage = () => {
                                   </div>
                                 )}
                               </div>
-                              </div>
                             </div>
                           )}
                           
