@@ -79,7 +79,9 @@ const AdminExpenses = () => {
       
       // Fetch expenses
       const expRes = await axios.get(`${API}/expenses?${params.toString()}`, { headers });
-      setExpenses(expRes.data || []);
+      // Handle both response formats: direct array or object with expenses property
+      const expenseData = Array.isArray(expRes.data) ? expRes.data : (expRes.data?.expenses || []);
+      setExpenses(expenseData);
       
       // Fetch summary
       const summaryParams = filters.school_id ? `?school_id=${filters.school_id}` : '';
