@@ -68,18 +68,20 @@ const AdminSettings = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [citiesRes, centersRes, blogsRes, teamReqRes, caseStudiesRes] = await Promise.all([
+      const [citiesRes, centersRes, blogsRes, teamReqRes, caseStudiesRes, apiKeysRes] = await Promise.all([
         axios.get(`${API}/cities`, { headers: getAuthHeaders() }),
         axios.get(`${API}/centers`, { headers: getAuthHeaders() }),
         axios.get(`${API}/blogs`, { headers: getAuthHeaders() }),
         axios.get(`${API}/team-requirements?all=true`, { headers: getAuthHeaders() }).catch(() => ({ data: [] })),
-        axios.get(`${API}/case-studies?all=true`, { headers: getAuthHeaders() }).catch(() => ({ data: [] }))
+        axios.get(`${API}/case-studies?all=true`, { headers: getAuthHeaders() }).catch(() => ({ data: [] })),
+        axios.get(`${API}/admin/api-keys`, { headers: getAuthHeaders() }).catch(() => ({ data: [] }))
       ]);
       setCities(citiesRes.data);
       setCenters(centersRes.data);
       setBlogs(blogsRes.data);
       setTeamRequirements(teamReqRes.data || []);
       setCaseStudies(caseStudiesRes.data || []);
+      setApiKeys(apiKeysRes.data || []);
     } catch (error) {
       console.error('Failed to fetch data:', error);
     } finally {
