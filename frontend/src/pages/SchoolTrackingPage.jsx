@@ -342,15 +342,52 @@ const SchoolTrackingPage = () => {
                         </a>
                       )}
                       
-                      {/* Kit Delivery - Show scheduled date */}
+                      {/* Kit Delivery - Show scheduled date and PO info */}
                       {step.key === 'kit_delivery' && (
                         <div className="mt-3 space-y-2">
-                          {step.scheduled_date && (
+                          {/* PO Info from ProcureWay */}
+                          {step.po_info && (
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
+                              <div className="flex items-center gap-2 text-blue-700 font-medium">
+                                <Package className="w-4 h-4" />
+                                PO: {step.po_info.po_number}
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                  step.po_info.status === 'dispatched' ? 'bg-green-100 text-green-700' :
+                                  step.po_info.status === 'sent' ? 'bg-yellow-100 text-yellow-700' :
+                                  'bg-slate-100 text-slate-700'
+                                }`}>
+                                  {step.po_info.status}
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2 text-sm">
+                                {step.po_info.delivery_date && (
+                                  <div className="flex items-center gap-1 text-slate-600">
+                                    <Calendar className="w-3 h-3" />
+                                    <span>Delivery: {format(new Date(step.po_info.delivery_date), 'MMM d, yyyy')}</span>
+                                  </div>
+                                )}
+                                {step.po_info.dispatch_date && (
+                                  <div className="flex items-center gap-1 text-slate-600">
+                                    <Truck className="w-3 h-3" />
+                                    <span>Dispatched: {format(new Date(step.po_info.dispatch_date), 'MMM d, yyyy')}</span>
+                                  </div>
+                                )}
+                              </div>
+                              {step.po_info.vendor_name && (
+                                <p className="text-xs text-slate-500">Vendor: {step.po_info.vendor_name}</p>
+                              )}
+                            </div>
+                          )}
+                          
+                          {/* Fallback to scheduled_date if no PO info */}
+                          {!step.po_info && step.scheduled_date && (
                             <p className="text-sm text-blue-600 flex items-center gap-2">
                               <Calendar className="w-4 h-4" />
                               Scheduled: {format(new Date(step.scheduled_date), 'MMMM d, yyyy')}
                             </p>
                           )}
+                          
+                          {/* Tracking Link */}
                           {step.tracking_link && (
                             <a 
                               href={step.tracking_link} 
@@ -359,6 +396,18 @@ const SchoolTrackingPage = () => {
                               className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline"
                             >
                               <Truck className="w-4 h-4" /> Track Shipment
+                            </a>
+                          )}
+                          
+                          {/* Public Tracking URL from PO */}
+                          {step.po_info?.public_tracking_url && !step.tracking_link && (
+                            <a 
+                              href={step.po_info.public_tracking_url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline"
+                            >
+                              <ExternalLink className="w-4 h-4" /> View PO Tracking
                             </a>
                           )}
                         </div>
