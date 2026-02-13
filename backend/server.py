@@ -10632,72 +10632,80 @@ async def sync_po_data_job(secret: str = None):
             if not po_list_data or "data" not in po_list_data:
                 continue
             
-            # Filter out delivered POs
+            # Filter for active POs (not delivered) - for tracking updates
             active_pos = [
                 po for po in po_list_data.get("data", [])
                 if po.get("status", "").lower() != "delivered"
             ]
             
-            if not active_pos:
-                continue
+            # Filter for delivered POs - for expense creation
+            delivered_pos = [
+                po for po in po_list_data.get("data", [])
+                if po.get("status", "").lower() == "delivered"
+            ]
             
-            # Get detailed info for the first active PO
-            po_number = active_pos[0].get("po_number")
-            if not po_number:
-                continue
+            # Update tracking info from active POs
+            if active_pos:
+                po_number = active_pos[0].get("po_number")
+                if po_number:
+                    detailed_po = await fetch_po_data(f"po/{po_number}")
+                    if detailed_po:
+                        dispatch_info = detailed_po.get("dispatch_info") or {}
+                        
+                        # Check if kit_delivery step needs updating
+                        workflow = school.get("onboarding_workflow", {})
+                        kit_step = workflow.get("steps", {}).get("kit_delivery", {})
+                        kit_data = kit_step.get("data", {})
+                        
+                        # Only update if PO number is different or not set
+                        if kit_data.get("po_number") != po_number:
+                            update_data = {
+                                "onboarding_workflow.steps.kit_delivery.data.po_number": po_number,
+                                "onboarding_workflow.steps.kit_delivery.data.po_status": detailed_po.get("status"),
+                                "onboarding_workflow.steps.kit_delivery.data.vendor_name": detailed_po.get("vendor_name"),
+                            }
+                            
+                            if not kit_data.get("delivery_date") and detailed_po.get("delivery_date"):
+                                update_data["onboarding_workflow.steps.kit_delivery.data.delivery_date"] = detailed_po.get("delivery_date")
+                            
+                            if not kit_data.get("dispatch_date") and dispatch_info.get("dispatch_date"):
+                                update_data["onboarding_workflow.steps.kit_delivery.data.dispatch_date"] = dispatch_info.get("dispatch_date")
+                            
+                            if not kit_data.get("tracking_link"):
+                                tracking = detailed_po.get("tracking_link") or detailed_po.get("public_tracking_url")
+                                if tracking:
+                                    update_data["onboarding_workflow.steps.kit_delivery.data.tracking_link"] = tracking
+                            
+                            await db.school_inquiries.update_one(
+                                {"id": school_id},
+                                {"$set": update_data}
+                            )
+                            results["po_data_synced"] += 1
             
-            detailed_po = await fetch_po_data(f"po/{po_number}")
-            if not detailed_po:
-                continue
-            
-            dispatch_info = detailed_po.get("dispatch_info") or {}
-            
-            # Check if kit_delivery step needs updating
-            workflow = school.get("onboarding_workflow", {})
-            kit_step = workflow.get("steps", {}).get("kit_delivery", {})
-            kit_data = kit_step.get("data", {})
-            
-            # Only update if PO number is different or not set
-            if kit_data.get("po_number") != po_number:
-                # Update kit_delivery step with PO data
-                update_data = {
-                    "onboarding_workflow.steps.kit_delivery.data.po_number": po_number,
-                    "onboarding_workflow.steps.kit_delivery.data.po_status": detailed_po.get("status"),
-                    "onboarding_workflow.steps.kit_delivery.data.vendor_name": detailed_po.get("vendor_name"),
-                }
+            # Create expenses ONLY from delivered POs
+            for delivered_po_summary in delivered_pos:
+                po_number = delivered_po_summary.get("po_number")
+                if not po_number:
+                    continue
+                    
+                detailed_po = await fetch_po_data(f"po/{po_number}")
+                if not detailed_po:
+                    continue
                 
-                # Only update dates/links if not already set manually
-                if not kit_data.get("delivery_date") and detailed_po.get("delivery_date"):
-                    update_data["onboarding_workflow.steps.kit_delivery.data.delivery_date"] = detailed_po.get("delivery_date")
+                # Auto-create expenses from delivered PO data
+                invoice_info = detailed_po.get("invoice_info") or {}
+                invoice_amount = invoice_info.get("amount", 0) or detailed_po.get("subtotal", 0) or detailed_po.get("grand_total", 0)
+                logistics_cost = invoice_info.get("logistics_cost", 0)
                 
-                if not kit_data.get("dispatch_date") and dispatch_info.get("dispatch_date"):
-                    update_data["onboarding_workflow.steps.kit_delivery.data.dispatch_date"] = dispatch_info.get("dispatch_date")
+                # Get GST/Tax info
+                total_tax = detailed_po.get("total_tax", 0)
+                subtotal = detailed_po.get("subtotal", 0)
+                grand_total = detailed_po.get("grand_total", 0)
+                gst_rate = 18 if total_tax > 0 and subtotal > 0 else 0
+                if total_tax > 0 and subtotal > 0:
+                    gst_rate = round((total_tax / subtotal) * 100, 2)
+                gst_type = "IGST" if total_tax > 0 else "None"
                 
-                if not kit_data.get("tracking_link"):
-                    tracking = detailed_po.get("tracking_link") or detailed_po.get("public_tracking_url")
-                    if tracking:
-                        update_data["onboarding_workflow.steps.kit_delivery.data.tracking_link"] = tracking
-                
-                await db.school_inquiries.update_one(
-                    {"id": school_id},
-                    {"$set": update_data}
-                )
-                results["po_data_synced"] += 1
-            
-            # Auto-create expenses from PO data
-            invoice_info = detailed_po.get("invoice_info") or {}
-            invoice_amount = invoice_info.get("amount", 0) or detailed_po.get("subtotal", 0) or detailed_po.get("grand_total", 0)
-            logistics_cost = invoice_info.get("logistics_cost", 0)
-            
-            # Get GST/Tax info
-            total_tax = detailed_po.get("total_tax", 0)
-            subtotal = detailed_po.get("subtotal", 0)
-            grand_total = detailed_po.get("grand_total", 0)
-            gst_rate = 18 if total_tax > 0 and subtotal > 0 else 0
-            if total_tax > 0 and subtotal > 0:
-                gst_rate = round((total_tax / subtotal) * 100, 2)
-            gst_type = "IGST" if total_tax > 0 else "None"
-            
             # Check if kit expense already exists
             existing_kit = await db.school_expenses.find_one({
                 "school_id": school_id,
