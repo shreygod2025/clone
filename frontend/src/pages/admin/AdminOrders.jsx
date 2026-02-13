@@ -693,6 +693,12 @@ const AdminOrders = () => {
                       <td className="px-6 py-5">
                         <div>
                           <p className="font-bold text-lg text-slate-800">₹{(payment.amount || 0).toLocaleString()}</p>
+                          {payment.gst_amount > 0 && (
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              GST: ₹{(payment.gst_amount || 0).toLocaleString()}
+                              {payment.gst_rate && ` @ ${payment.gst_rate}%`}
+                            </p>
+                          )}
                           {payment.tranche_info && (
                             <p className="text-xs text-slate-500 mt-1">{payment.tranche_info}</p>
                           )}
