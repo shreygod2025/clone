@@ -43,7 +43,7 @@ const AdminSettings = () => {
     setGeneratingKey(true);
     try {
       const res = await axios.post(`${API}/admin/api-keys/generate`, { name: newApiKeyName }, { headers: getAuthHeaders() });
-      setGeneratedKey(res.data.key);
+      setGeneratedKey(res.data.api_key); // Backend returns 'api_key' field
       toast.success('API Key generated successfully');
       fetchData();
     } catch (error) {
