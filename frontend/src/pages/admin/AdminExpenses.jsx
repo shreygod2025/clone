@@ -106,10 +106,10 @@ const AdminExpenses = () => {
       const headers = getAuthHeaders();
       
       if (editingExpense) {
-        await axios.patch(`${API}/expenses/${editingExpense.id}`, expenseForm, { headers });
+        await axios.patch(`${API}/school-expenses/${editingExpense.id}`, expenseForm, { headers });
         toast.success('Expense updated successfully');
       } else {
-        await axios.post(`${API}/expenses`, expenseForm, { headers });
+        await axios.post(`${API}/school-expenses`, expenseForm, { headers });
         toast.success('Expense added successfully');
       }
       
@@ -126,7 +126,7 @@ const AdminExpenses = () => {
     if (!confirm('Are you sure you want to delete this expense?')) return;
     
     try {
-      await axios.delete(`${API}/expenses/${expenseId}`, { headers: getAuthHeaders() });
+      await axios.delete(`${API}/school-expenses/${expenseId}`, { headers: getAuthHeaders() });
       toast.success('Expense deleted');
       fetchData();
     } catch (error) {
