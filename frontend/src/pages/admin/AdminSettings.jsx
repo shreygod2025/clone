@@ -1350,6 +1350,102 @@ const AdminSettings = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* API Key Generation Modal */}
+      <Dialog open={showApiKeyModal} onOpenChange={(open) => {
+        setShowApiKeyModal(open);
+        if (!open) {
+          setGeneratedKey(null);
+          setNewApiKeyName('');
+        }
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Key className="w-5 h-5 text-[#D63031]" />
+              {generatedKey ? 'API Key Generated' : 'Generate New API Key'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {!generatedKey ? (
+              <>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Key Name *</label>
+                  <Input
+                    value={newApiKeyName}
+                    onChange={(e) => setNewApiKeyName(e.target.value)}
+                    placeholder="e.g., ProcureWay Integration"
+                    data-testid="api-key-name-input"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">
+                    Give your key a descriptive name to identify its purpose.
+                  </p>
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <Button variant="outline" onClick={() => setShowApiKeyModal(false)} className="flex-1">
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleGenerateApiKey} 
+                    className="flex-1 bg-[#D63031] hover:bg-[#c0392b]"
+                    disabled={generatingKey}
+                    data-testid="confirm-generate-api-key-btn"
+                  >
+                    {generatingKey ? (
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Key className="w-4 h-4 mr-2" />
+                    )}
+                    Generate Key
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                  <p className="text-sm text-yellow-800 font-medium">
+                    Copy this key now! You won&apos;t be able to see it again.
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Your API Key</label>
+                  <div className="relative">
+                    <Input
+                      value={generatedKey}
+                      readOnly
+                      className="font-mono text-sm pr-20 bg-slate-50"
+                      data-testid="generated-api-key-value"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="absolute right-1 top-1/2 -translate-y-1/2"
+                      onClick={() => copyToClipboard(generatedKey)}
+                      data-testid="copy-generated-api-key-btn"
+                    >
+                      <Copy className="w-4 h-4 mr-1" />
+                      Copy
+                    </Button>
+                  </div>
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <Button 
+                    onClick={() => {
+                      setShowApiKeyModal(false);
+                      setGeneratedKey(null);
+                      setNewApiKeyName('');
+                    }} 
+                    className="flex-1 bg-[#1E3A5F]"
+                    data-testid="done-api-key-btn"
+                  >
+                    Done
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
