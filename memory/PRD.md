@@ -130,6 +130,9 @@ Set `JOB_SECRET` environment variable and schedule hourly execution.
 
 ## Pending Tasks
 
+### P0 - Blocking
+- **Email Notifications**: Gmail SMTP implemented but awaiting `GMAIL_APP_PASSWORD` from user
+
 ### P1 - High Priority
 - Full regression test for School CRM data consistency
 - Generate Proposal & MOU PDFs feature
