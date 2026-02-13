@@ -398,6 +398,9 @@ const AdminSchoolCRM = () => {
   const [showRenewalMeetingModal, setShowRenewalMeetingModal] = useState(null);
   const [renewalMeetingData, setRenewalMeetingData] = useState({ date: null, time: '', type: 'offline', notes: '', link: '', address: '' });
   const [showRenewalConvertModal, setShowRenewalConvertModal] = useState(null);
+  const [schoolPoData, setSchoolPoData] = useState(null);  // PO data from ProcureWay
+  const [loadingPoData, setLoadingPoData] = useState(false);
+  const [syncingExpenses, setSyncingExpenses] = useState(false);
   const [renewalConvertData, setRenewalConvertData] = useState({
     offering: '',
     model: '',
