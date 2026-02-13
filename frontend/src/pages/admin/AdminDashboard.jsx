@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, Building2, GraduationCap, FileText, 
   Briefcase, MessageSquare, LogOut, Menu, X, ChevronRight,
   MapPin, Building, Calendar, Clock, Phone, User, Settings, Shield, BarChart3, Database, PenSquare,
-  Receipt, UserPlus, Upload, Cloud
+  Receipt, UserPlus, Upload, Cloud, Wallet
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
@@ -23,6 +23,7 @@ const AdminLayout = ({ children, title }) => {
     { path: '/admin/students', icon: GraduationCap, label: 'Student CRM', permission: 'students' },
     { path: '/admin/schools', icon: Building2, label: 'School CRM', permission: 'schools' },
     { path: '/admin/orders', icon: Receipt, label: 'Orders', permission: 'orders' },
+    { path: '/admin/expenses', icon: Wallet, label: 'Expenses', permission: 'orders' },
     { path: '/admin/educators', icon: Users, label: 'Educators', permission: 'educators' },
     { path: '/admin/growth-partners', icon: Briefcase, label: 'Growth Partners', permission: 'growth_partners' },
     { path: '/admin/team-applications', icon: FileText, label: 'Team Applications', permission: 'team_applications' },
