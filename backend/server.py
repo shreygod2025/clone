@@ -10588,6 +10588,179 @@ async def check_user_phones(user: dict = Depends(get_current_user)):
     }
 
 
+
+
+@api_router.post("/jobs/sync-po-data")
+async def sync_po_data_job(secret: str = None):
+    """
+    Background job to sync PO data from ProcureWay for all active/converted schools.
+    Should be called by a cron job every 30 minutes or hourly.
+    
+    This job:
+    1. Fetches active POs from ProcureWay for schools in onboarding
+    2. Updates kit_delivery step with delivery/dispatch dates and tracking links
+    3. Auto-creates expense records from PO invoice data
+    """
+    JOB_SECRET = os.environ.get("JOB_SECRET", "oll_cron_secret_2024")
+    if secret != JOB_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid secret")
+    
+    # Find schools in onboarding stages (converted, active, renewed, renewal_meeting)
+    schools = await db.school_inquiries.find({
+        "status": {"$in": ["converted", "active", "renewed", "renewal_meeting"]},
+        "onboarding_workflow": {"$exists": True}
+    }, {"_id": 0, "id": 1, "school_name": 1, "onboarding_workflow": 1}).to_list(500)
+    
+    results = {
+        "schools_processed": 0,
+        "po_data_synced": 0,
+        "expenses_created": 0,
+        "errors": []
+    }
+    
+    for school in schools:
+        try:
+            school_id = school.get("id")
+            school_name = school.get("school_name", "")
+            
+            if not school_name:
+                continue
+            
+            # Fetch PO data from ProcureWay
+            po_list_data = await fetch_po_data("po", {"school_name": school_name, "limit": 50})
+            
+            if not po_list_data or "data" not in po_list_data:
+                continue
+            
+            # Filter out delivered POs
+            active_pos = [
+                po for po in po_list_data.get("data", [])
+                if po.get("status", "").lower() != "delivered"
+            ]
+            
+            if not active_pos:
+                continue
+            
+            # Get detailed info for the first active PO
+            po_number = active_pos[0].get("po_number")
+            if not po_number:
+                continue
+            
+            detailed_po = await fetch_po_data(f"po/{po_number}")
+            if not detailed_po:
+                continue
+            
+            dispatch_info = detailed_po.get("dispatch_info") or {}
+            
+            # Check if kit_delivery step needs updating
+            workflow = school.get("onboarding_workflow", {})
+            kit_step = workflow.get("steps", {}).get("kit_delivery", {})
+            kit_data = kit_step.get("data", {})
+            
+            # Only update if PO number is different or not set
+            if kit_data.get("po_number") != po_number:
+                # Update kit_delivery step with PO data
+                update_data = {
+                    "onboarding_workflow.steps.kit_delivery.data.po_number": po_number,
+                    "onboarding_workflow.steps.kit_delivery.data.po_status": detailed_po.get("status"),
+                    "onboarding_workflow.steps.kit_delivery.data.vendor_name": detailed_po.get("vendor_name"),
+                }
+                
+                # Only update dates/links if not already set manually
+                if not kit_data.get("delivery_date") and detailed_po.get("delivery_date"):
+                    update_data["onboarding_workflow.steps.kit_delivery.data.delivery_date"] = detailed_po.get("delivery_date")
+                
+                if not kit_data.get("dispatch_date") and dispatch_info.get("dispatch_date"):
+                    update_data["onboarding_workflow.steps.kit_delivery.data.dispatch_date"] = dispatch_info.get("dispatch_date")
+                
+                if not kit_data.get("tracking_link"):
+                    tracking = detailed_po.get("tracking_link") or detailed_po.get("public_tracking_url")
+                    if tracking:
+                        update_data["onboarding_workflow.steps.kit_delivery.data.tracking_link"] = tracking
+                
+                await db.school_inquiries.update_one(
+                    {"id": school_id},
+                    {"$set": update_data}
+                )
+                results["po_data_synced"] += 1
+            
+            # Auto-create expenses from PO data
+            invoice_info = detailed_po.get("invoice_info") or {}
+            invoice_amount = invoice_info.get("amount", 0) or detailed_po.get("subtotal", 0) or detailed_po.get("grand_total", 0)
+            logistics_cost = invoice_info.get("logistics_cost", 0)
+            
+            # Check if kit expense already exists
+            existing_kit = await db.school_expenses.find_one({
+                "school_id": school_id,
+                "po_number": po_number,
+                "category": "kit_cost"
+            })
+            
+            if not existing_kit and invoice_amount > 0:
+                kit_expense = {
+                    "id": str(uuid.uuid4()),
+                    "school_id": school_id,
+                    "school_name": school_name,
+                    "category": "kit_cost",
+                    "category_name": "Kit Cost",
+                    "amount": float(invoice_amount),
+                    "description": f"Kit cost from PO {po_number} (auto-synced)",
+                    "expense_date": detailed_po.get("created_at", datetime.now(timezone.utc).isoformat())[:10],
+                    "invoice_number": po_number,
+                    "vendor_name": detailed_po.get("vendor_name", ""),
+                    "payment_status": invoice_info.get("payment_status", "pending"),
+                    "po_number": po_number,
+                    "created_by": "system",
+                    "created_by_name": "Auto-Sync Job",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                    "auto_synced": True
+                }
+                await db.school_expenses.insert_one(kit_expense)
+                results["expenses_created"] += 1
+            
+            # Check if logistics expense already exists
+            existing_logistics = await db.school_expenses.find_one({
+                "school_id": school_id,
+                "po_number": po_number,
+                "category": "logistics_cost"
+            })
+            
+            if not existing_logistics and logistics_cost > 0:
+                logistics_expense = {
+                    "id": str(uuid.uuid4()),
+                    "school_id": school_id,
+                    "school_name": school_name,
+                    "category": "logistics_cost",
+                    "category_name": "Logistics Cost",
+                    "amount": float(logistics_cost),
+                    "description": f"Logistics from PO {po_number} (auto-synced)",
+                    "expense_date": detailed_po.get("created_at", datetime.now(timezone.utc).isoformat())[:10],
+                    "invoice_number": f"{po_number}-LOGISTICS",
+                    "vendor_name": detailed_po.get("vendor_name", ""),
+                    "payment_status": "pending",
+                    "po_number": po_number,
+                    "created_by": "system",
+                    "created_by_name": "Auto-Sync Job",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                    "auto_synced": True
+                }
+                await db.school_expenses.insert_one(logistics_expense)
+                results["expenses_created"] += 1
+            
+            results["schools_processed"] += 1
+            
+        except Exception as e:
+            results["errors"].append({"school_id": school.get("id"), "error": str(e)})
+    
+    return {
+        "success": True,
+        "results": results,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
+
 # ========================
 # SCHOOL EXPENSES MANAGEMENT
 # ========================
