@@ -496,7 +496,8 @@ const AdminSchoolCRM = () => {
     book_type: '', 
     kit_type: '', 
     training_type: '',
-    programs: []
+    programs: [],
+    address: ''
   });
   const [followupData, setFollowupData] = useState({ 
     followup_type: '', // 'message' or 'meeting'
