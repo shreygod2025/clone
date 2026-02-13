@@ -27,6 +27,11 @@ const AdminSettings = () => {
   const [blogs, setBlogs] = useState([]);
   const [teamRequirements, setTeamRequirements] = useState([]);
   const [caseStudies, setCaseStudies] = useState([]);
+  const [apiKeys, setApiKeys] = useState([]);
+  const [newApiKeyName, setNewApiKeyName] = useState('');
+  const [generatedKey, setGeneratedKey] = useState(null);
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [generatingKey, setGeneratingKey] = useState(false);
   
   // Modal states
   const [showCityModal, setShowCityModal] = useState(false);
