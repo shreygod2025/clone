@@ -10538,6 +10538,302 @@ async def check_user_phones(user: dict = Depends(get_current_user)):
 
 
 # ========================
+# EXTERNAL API KEY SYSTEM
+# ========================
+
+import secrets
+
+async def verify_external_api_key(api_key: str = Header(None, alias="X-API-Key")):
+    """Verify external API key from header"""
+    if not api_key:
+        raise HTTPException(status_code=401, detail="API key required. Use X-API-Key header.")
+    
+    # Find the API key in database
+    key_doc = await db.external_api_keys.find_one({"key": api_key, "is_active": True}, {"_id": 0})
+    if not key_doc:
+        raise HTTPException(status_code=401, detail="Invalid or inactive API key")
+    
+    # Update last used timestamp
+    await db.external_api_keys.update_one(
+        {"key": api_key},
+        {"$set": {"last_used_at": datetime.now(timezone.utc).isoformat()}, "$inc": {"usage_count": 1}}
+    )
+    
+    return key_doc
+
+
+@api_router.post("/admin/api-keys/generate")
+async def generate_external_api_key(data: dict, user: dict = Depends(get_current_user)):
+    """Generate a new external API key for accessing school data"""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    # Generate a secure API key
+    api_key = f"oll_sk_{secrets.token_urlsafe(32)}"
+    
+    key_doc = {
+        "id": str(uuid.uuid4()),
+        "key": api_key,
+        "name": data.get("name", "External API Key"),
+        "description": data.get("description", ""),
+        "permissions": data.get("permissions", ["schools:read"]),  # schools:read, schools:write
+        "created_by": user.get("email"),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "last_used_at": None,
+        "usage_count": 0,
+        "is_active": True,
+        "rate_limit": data.get("rate_limit", 1000),  # requests per day
+        "allowed_ips": data.get("allowed_ips", []),  # empty = all IPs allowed
+    }
+    
+    await db.external_api_keys.insert_one(key_doc)
+    
+    return {
+        "message": "API key generated successfully",
+        "api_key": api_key,
+        "name": key_doc["name"],
+        "id": key_doc["id"],
+        "note": "Save this key securely. It won't be shown again."
+    }
+
+
+@api_router.get("/admin/api-keys")
+async def list_external_api_keys(user: dict = Depends(get_current_user)):
+    """List all external API keys (keys are masked)"""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    keys = await db.external_api_keys.find({}, {"_id": 0}).to_list(100)
+    
+    # Mask the actual keys
+    for key in keys:
+        if key.get("key"):
+            key["key"] = key["key"][:12] + "..." + key["key"][-4:]
+    
+    return keys
+
+
+@api_router.patch("/admin/api-keys/{key_id}")
+async def update_external_api_key(key_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Update an external API key (activate/deactivate, update name, etc.)"""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    update_data = {}
+    if "is_active" in data:
+        update_data["is_active"] = data["is_active"]
+    if "name" in data:
+        update_data["name"] = data["name"]
+    if "description" in data:
+        update_data["description"] = data["description"]
+    if "rate_limit" in data:
+        update_data["rate_limit"] = data["rate_limit"]
+    
+    if update_data:
+        await db.external_api_keys.update_one({"id": key_id}, {"$set": update_data})
+    
+    return {"message": "API key updated successfully"}
+
+
+@api_router.delete("/admin/api-keys/{key_id}")
+async def delete_external_api_key(key_id: str, user: dict = Depends(get_current_user)):
+    """Delete an external API key"""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    await db.external_api_keys.delete_one({"id": key_id})
+    return {"message": "API key deleted successfully"}
+
+
+# ========================
+# EXTERNAL API ENDPOINTS (Protected by API Key)
+# ========================
+
+@api_router.get("/external/schools")
+async def external_get_schools(
+    status: Optional[str] = None,
+    city: Optional[str] = None,
+    limit: int = 100,
+    offset: int = 0,
+    api_key_data: dict = Depends(verify_external_api_key)
+):
+    """
+    External API to get school data.
+    
+    Headers required:
+        X-API-Key: your_api_key
+    
+    Query params:
+        status: Filter by status (new, contacted, meeting_scheduled, meeting_done, converted, active, renewal_meeting, renewed, lost)
+        city: Filter by city
+        limit: Number of records (default 100, max 500)
+        offset: Pagination offset
+    
+    Returns:
+        List of schools with contact details, relationship manager, and stage info
+    """
+    # Build query
+    query = {}
+    if status:
+        query["status"] = status
+    if city:
+        query["city"] = {"$regex": city, "$options": "i"}
+    
+    # Limit max results
+    limit = min(limit, 500)
+    
+    # Get schools
+    schools = await db.school_inquiries.find(query, {"_id": 0}).skip(offset).limit(limit).to_list(limit)
+    
+    # Get relationship managers info
+    rm_ids = list(set([s.get("assigned_to") or s.get("relationship_manager") for s in schools if s.get("assigned_to") or s.get("relationship_manager")]))
+    rm_map = {}
+    if rm_ids:
+        rms = await db.team_users.find({"id": {"$in": rm_ids}}, {"_id": 0, "id": 1, "name": 1, "email": 1, "phone": 1}).to_list(100)
+        rm_map = {rm["id"]: rm for rm in rms}
+    
+    # Format response
+    result = []
+    for school in schools:
+        rm_id = school.get("assigned_to") or school.get("relationship_manager")
+        rm_info = rm_map.get(rm_id, {})
+        
+        result.append({
+            "id": school.get("id"),
+            "school_name": school.get("school_name"),
+            "status": school.get("status"),
+            "stage": school.get("status"),  # alias for status
+            
+            # Contact details
+            "contact": {
+                "name": school.get("contact_name"),
+                "phone": school.get("phone"),
+                "email": school.get("email"),
+                "designation": school.get("designation"),
+            },
+            
+            # Location
+            "location": {
+                "city": school.get("city"),
+                "state": school.get("state"),
+                "address": school.get("address"),
+            },
+            
+            # Relationship Manager
+            "relationship_manager": {
+                "id": rm_id,
+                "name": rm_info.get("name") or school.get("relationship_manager_name"),
+                "email": rm_info.get("email"),
+                "phone": rm_info.get("phone"),
+            } if rm_id else None,
+            
+            # School details
+            "school_details": {
+                "board": school.get("board"),
+                "student_count": school.get("student_count"),
+                "type": school.get("school_type"),
+            },
+            
+            # Dates
+            "created_at": school.get("created_at"),
+            "updated_at": school.get("updated_at"),
+            "converted_at": school.get("converted_at"),
+        })
+    
+    # Get total count
+    total = await db.school_inquiries.count_documents(query)
+    
+    return {
+        "data": result,
+        "pagination": {
+            "total": total,
+            "limit": limit,
+            "offset": offset,
+            "has_more": offset + limit < total
+        }
+    }
+
+
+@api_router.get("/external/schools/{school_id}")
+async def external_get_school_by_id(
+    school_id: str,
+    api_key_data: dict = Depends(verify_external_api_key)
+):
+    """Get a single school by ID"""
+    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+    
+    # Get RM info
+    rm_id = school.get("assigned_to") or school.get("relationship_manager")
+    rm_info = {}
+    if rm_id:
+        rm = await db.team_users.find_one({"id": rm_id}, {"_id": 0, "id": 1, "name": 1, "email": 1, "phone": 1})
+        if rm:
+            rm_info = rm
+    
+    return {
+        "id": school.get("id"),
+        "school_name": school.get("school_name"),
+        "status": school.get("status"),
+        "stage": school.get("status"),
+        
+        "contact": {
+            "name": school.get("contact_name"),
+            "phone": school.get("phone"),
+            "email": school.get("email"),
+            "designation": school.get("designation"),
+        },
+        
+        "location": {
+            "city": school.get("city"),
+            "state": school.get("state"),
+            "address": school.get("address"),
+        },
+        
+        "relationship_manager": {
+            "id": rm_id,
+            "name": rm_info.get("name") or school.get("relationship_manager_name"),
+            "email": rm_info.get("email"),
+            "phone": rm_info.get("phone"),
+        } if rm_id else None,
+        
+        "school_details": {
+            "board": school.get("board"),
+            "student_count": school.get("student_count"),
+            "type": school.get("school_type"),
+        },
+        
+        "additional_contacts": school.get("school_contacts", []),
+        
+        "created_at": school.get("created_at"),
+        "updated_at": school.get("updated_at"),
+        "converted_at": school.get("converted_at"),
+    }
+
+
+@api_router.get("/external/schools/stats/summary")
+async def external_get_schools_stats(
+    api_key_data: dict = Depends(verify_external_api_key)
+):
+    """Get summary statistics of schools"""
+    pipeline = [
+        {"$group": {"_id": "$status", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ]
+    
+    status_counts = await db.school_inquiries.aggregate(pipeline).to_list(20)
+    
+    total = sum([s["count"] for s in status_counts])
+    
+    return {
+        "total_schools": total,
+        "by_status": {s["_id"]: s["count"] for s in status_counts if s["_id"]},
+        "generated_at": datetime.now(timezone.utc).isoformat()
+    }
+
+
+# ========================
 # ADMIN REPORTS ENDPOINTS
 # ========================
 
