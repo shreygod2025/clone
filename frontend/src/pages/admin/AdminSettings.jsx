@@ -475,6 +475,95 @@ const AdminSettings = () => {
           )}
         </div>
 
+        {/* API Keys Tab */}
+        {activeTab === 'api-keys' && (
+          <div className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800">
+                <strong>API Keys</strong> are used for external integrations (e.g., ProcureWay/VendorPlus). 
+                Keep your keys secure and never share them publicly.
+              </p>
+            </div>
+            
+            {apiKeys.length === 0 ? (
+              <div className="bg-white rounded-xl p-8 text-center text-slate-500">
+                <Key className="w-12 h-12 mx-auto text-slate-300 mb-4" />
+                <p>No API keys generated yet.</p>
+                <p className="text-sm mt-2">Click "Generate API Key" to create one for external integrations.</p>
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">Name</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">Key</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">Created</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">Last Used</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">Status</th>
+                      <th className="px-4 py-3 text-right text-sm font-semibold text-slate-600">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {apiKeys.map(apiKey => (
+                      <tr key={apiKey.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-3 font-medium" data-testid={`api-key-name-${apiKey.id}`}>
+                          {apiKey.name || 'Unnamed Key'}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <code className="bg-slate-100 px-2 py-1 rounded text-sm font-mono" data-testid={`api-key-value-${apiKey.id}`}>
+                              {maskApiKey(apiKey.key)}
+                            </code>
+                            <button
+                              onClick={() => copyToClipboard(apiKey.key)}
+                              className="p-1 hover:bg-slate-200 rounded text-slate-500"
+                              title="Copy full key"
+                              data-testid={`copy-api-key-${apiKey.id}`}
+                            >
+                              <Copy className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 text-sm">
+                          {apiKey.created_at ? new Date(apiKey.created_at).toLocaleDateString() : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 text-sm">
+                          {apiKey.last_used_at ? new Date(apiKey.last_used_at).toLocaleString() : 'Never'}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            apiKey.is_active !== false ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                          }`}>
+                            {apiKey.is_active !== false ? 'Active' : 'Revoked'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:bg-red-50"
+                            onClick={() => handleRevokeApiKey(apiKey.id)}
+                            disabled={revokingKey === apiKey.id}
+                            data-testid={`revoke-api-key-${apiKey.id}`}
+                          >
+                            {revokingKey === apiKey.id ? (
+                              <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-3 h-3 mr-1" />
+                            )}
+                            Revoke
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Case Studies Tab */}
         {activeTab === 'case-studies' && (
           <div className="grid gap-4">
