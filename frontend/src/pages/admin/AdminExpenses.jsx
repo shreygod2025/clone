@@ -493,7 +493,7 @@ const AdminExpenses = () => {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-center gap-1 flex-wrap">
-                      {expense.po_pdf_url && (
+                      {expense.po_pdf_url && expense.po_pdf_url !== 'null' && expense.po_pdf_url.startsWith('http') && (
                         <a
                           href={expense.po_pdf_url}
                           target="_blank"
@@ -504,7 +504,7 @@ const AdminExpenses = () => {
                           PO
                         </a>
                       )}
-                      {expense.invoice_file_url && (
+                      {expense.invoice_file_url && expense.invoice_file_url !== 'null' && expense.invoice_file_url.startsWith('http') && (
                         <a
                           href={expense.invoice_file_url}
                           target="_blank"
