@@ -10657,8 +10657,8 @@ async def get_school_expenses_summary(
     }
 
 
-@api_router.get("/expenses/school/{school_id}")
-async def get_school_expenses(school_id: str, user: dict = Depends(get_current_user)):
+@api_router.get("/school-expenses/school/{school_id}")
+async def get_single_school_expenses(school_id: str, user: dict = Depends(get_current_user)):
     """Get all expenses for a specific school"""
     expenses = await db.school_expenses.find(
         {"school_id": school_id}, 
