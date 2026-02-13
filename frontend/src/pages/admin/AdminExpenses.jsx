@@ -57,7 +57,7 @@ const AdminExpenses = () => {
       const headers = getAuthHeaders();
       
       // Fetch categories
-      const catRes = await axios.get(`${API}/expenses/categories`, { headers });
+      const catRes = await axios.get(`${API}/school-expenses/categories`, { headers });
       setCategories(Array.isArray(catRes.data) ? catRes.data : []);
       
       // Fetch schools for dropdown (all schools, not just converted)
@@ -78,14 +78,14 @@ const AdminExpenses = () => {
       if (filters.end_date) params.append('end_date', filters.end_date);
       
       // Fetch expenses
-      const expRes = await axios.get(`${API}/expenses?${params.toString()}`, { headers });
+      const expRes = await axios.get(`${API}/school-expenses?${params.toString()}`, { headers });
       // Handle both response formats: direct array or object with expenses property
       const expenseData = Array.isArray(expRes.data) ? expRes.data : (expRes.data?.expenses || []);
       setExpenses(expenseData);
       
       // Fetch summary
       const summaryParams = filters.school_id ? `?school_id=${filters.school_id}` : '';
-      const summaryRes = await axios.get(`${API}/expenses/summary${summaryParams}`, { headers });
+      const summaryRes = await axios.get(`${API}/school-expenses/summary${summaryParams}`, { headers });
       setSummary(summaryRes.data);
       
     } catch (error) {
