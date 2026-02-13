@@ -11096,6 +11096,21 @@ async def sync_po_expenses(school_id: str, data: dict = None, user: dict = Depen
         
         # Create Kit Cost expense if not exists and amount > 0
         if not existing_kit and invoice_amount > 0:
+            # Build attachments from PO files
+            kit_attachments = []
+            if po.get("po_pdf_url"):
+                kit_attachments.append({
+                    "name": f"PO-{po_num}.pdf",
+                    "url": po.get("po_pdf_url"),
+                    "type": "po_file"
+                })
+            if po.get("invoice_file_url"):
+                kit_attachments.append({
+                    "name": f"Invoice-{po_num}",
+                    "url": po.get("invoice_file_url"),
+                    "type": "invoice"
+                })
+            
             kit_expense = {
                 "id": str(uuid.uuid4()),
                 "school_id": school_id,
@@ -11111,7 +11126,9 @@ async def sync_po_expenses(school_id: str, data: dict = None, user: dict = Depen
                 "payment_mode": "",
                 "notes": f"Auto-synced from ProcureWay PO {po_num}",
                 "po_number": po_num,
-                "attachments": [],
+                "po_pdf_url": po.get("po_pdf_url"),
+                "invoice_file_url": po.get("invoice_file_url"),
+                "attachments": kit_attachments,
                 "created_by": user.get("email"),
                 "created_by_name": user.get("name"),
                 "created_at": datetime.now(timezone.utc).isoformat(),
@@ -11123,6 +11140,21 @@ async def sync_po_expenses(school_id: str, data: dict = None, user: dict = Depen
         
         # Create Logistics Cost expense if not exists and amount > 0
         if not existing_logistics and logistics_cost > 0:
+            # Build attachments for logistics
+            logistics_attachments = []
+            if po.get("logistics_bill_url"):
+                logistics_attachments.append({
+                    "name": f"Logistics-Bill-{po_num}",
+                    "url": po.get("logistics_bill_url"),
+                    "type": "logistics_bill"
+                })
+            if po.get("delivery_proof_url"):
+                logistics_attachments.append({
+                    "name": f"Delivery-Proof-{po_num}",
+                    "url": po.get("delivery_proof_url"),
+                    "type": "delivery_proof"
+                })
+            
             logistics_expense = {
                 "id": str(uuid.uuid4()),
                 "school_id": school_id,
@@ -11138,7 +11170,9 @@ async def sync_po_expenses(school_id: str, data: dict = None, user: dict = Depen
                 "payment_mode": "",
                 "notes": f"Auto-synced logistics from ProcureWay PO {po_num}",
                 "po_number": po_num,
-                "attachments": [],
+                "logistics_bill_url": po.get("logistics_bill_url"),
+                "delivery_proof_url": po.get("delivery_proof_url"),
+                "attachments": logistics_attachments,
                 "created_by": user.get("email"),
                 "created_by_name": user.get("name"),
                 "created_at": datetime.now(timezone.utc).isoformat(),
