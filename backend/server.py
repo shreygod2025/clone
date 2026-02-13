@@ -11089,7 +11089,7 @@ async def get_school_po_data(school_id: str, user: dict = Depends(get_current_us
 
 @api_router.post("/schools/{school_id}/sync-po-expenses")
 async def sync_po_expenses(school_id: str, data: dict = None, user: dict = Depends(get_current_user)):
-    """Sync expenses from PO data for a school - creates kit and logistics expenses automatically"""
+    """Sync expenses from PO data for a school - creates kit and logistics expenses only when delivery is confirmed"""
     if data is None:
         data = {}
     
@@ -11106,12 +11106,12 @@ async def sync_po_expenses(school_id: str, data: dict = None, user: dict = Depen
         po_data = await fetch_po_data(f"po/{po_number}")
         pos_to_sync = [po_data] if po_data else []
     else:
-        # Fetch all POs for this school
-        po_list_data = await fetch_po_data("po", {"school_name": school_name, "limit": 50})
+        # Fetch all POs for this school - ONLY delivered ones for expenses
+        po_list_data = await fetch_po_data("po", {"school_name": school_name, "status": "delivered", "limit": 50})
         if not po_list_data or "data" not in po_list_data:
-            return {"message": "No POs found", "expenses_created": 0}
+            return {"message": "No delivered POs found", "expenses_created": 0, "note": "Expenses are only created after delivery is confirmed"}
         
-        # Get detailed info for each PO
+        # Get detailed info for each delivered PO
         pos_to_sync = []
         for po in po_list_data.get("data", []):
             po_num = po.get("po_number")
