@@ -32,6 +32,50 @@ const AdminSettings = () => {
   const [generatedKey, setGeneratedKey] = useState(null);
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const [generatingKey, setGeneratingKey] = useState(false);
+  const [revokingKey, setRevokingKey] = useState(null);
+
+  // API Key handlers
+  const handleGenerateApiKey = async () => {
+    if (!newApiKeyName.trim()) {
+      toast.error('Please enter a name for the API key');
+      return;
+    }
+    setGeneratingKey(true);
+    try {
+      const res = await axios.post(`${API}/admin/api-keys/generate`, { name: newApiKeyName }, { headers: getAuthHeaders() });
+      setGeneratedKey(res.data.key);
+      toast.success('API Key generated successfully');
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to generate API key');
+    } finally {
+      setGeneratingKey(false);
+    }
+  };
+
+  const handleRevokeApiKey = async (keyId) => {
+    if (!confirm('Are you sure you want to revoke this API key? This action cannot be undone.')) return;
+    setRevokingKey(keyId);
+    try {
+      await axios.delete(`${API}/admin/api-keys/${keyId}`, { headers: getAuthHeaders() });
+      toast.success('API Key revoked successfully');
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to revoke API key');
+    } finally {
+      setRevokingKey(null);
+    }
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Copied to clipboard');
+  };
+
+  const maskApiKey = (key) => {
+    if (!key) return '';
+    return key.substring(0, 8) + '...' + key.substring(key.length - 4);
+  };
   
   // Modal states
   const [showCityModal, setShowCityModal] = useState(false);
