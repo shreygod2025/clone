@@ -10682,8 +10682,8 @@ async def get_single_school_expenses(school_id: str, user: dict = Depends(get_cu
     }
 
 
-@api_router.post("/expenses")
-async def create_expense(data: dict, user: dict = Depends(get_current_user)):
+@api_router.post("/school-expenses")
+async def create_school_expense(data: dict, user: dict = Depends(get_current_user)):
     """Create a new expense entry"""
     # Get school info
     school = await db.school_inquiries.find_one({"id": data.get("school_id")}, {"_id": 0})
@@ -10715,8 +10715,8 @@ async def create_expense(data: dict, user: dict = Depends(get_current_user)):
     return {"message": "Expense created successfully", "expense": expense}
 
 
-@api_router.patch("/expenses/{expense_id}")
-async def update_expense(expense_id: str, data: dict, user: dict = Depends(get_current_user)):
+@api_router.patch("/school-expenses/{expense_id}")
+async def update_school_expense(expense_id: str, data: dict, user: dict = Depends(get_current_user)):
     """Update an expense entry"""
     update_data = {"updated_at": datetime.now(timezone.utc).isoformat()}
     
@@ -10733,8 +10733,8 @@ async def update_expense(expense_id: str, data: dict, user: dict = Depends(get_c
     return {"message": "Expense updated successfully"}
 
 
-@api_router.delete("/expenses/{expense_id}")
-async def delete_expense(expense_id: str, user: dict = Depends(get_current_user)):
+@api_router.delete("/school-expenses/{expense_id}")
+async def delete_school_expense(expense_id: str, user: dict = Depends(get_current_user)):
     """Delete an expense entry"""
     await db.school_expenses.delete_one({"id": expense_id})
     return {"message": "Expense deleted successfully"}
