@@ -11191,7 +11191,8 @@ async def external_get_schools(
     if status:
         query["status"] = status
     if city:
-        query["city"] = {"$regex": city, "$options": "i"}
+        # Search in 'location' field (which contains city name)
+        query["location"] = {"$regex": city, "$options": "i"}
     
     # Limit max results
     limit = min(limit, 500)
