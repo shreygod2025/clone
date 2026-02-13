@@ -645,7 +645,8 @@ const AdminExpenses = () => {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </AdminLayout>
   );
 };
 
