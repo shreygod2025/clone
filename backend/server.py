@@ -10538,6 +10538,206 @@ async def check_user_phones(user: dict = Depends(get_current_user)):
 
 
 # ========================
+# SCHOOL EXPENSES MANAGEMENT
+# ========================
+
+EXPENSE_CATEGORIES = [
+    {"id": "kit_cost", "name": "Kit Cost", "description": "Learning kits and materials"},
+    {"id": "teacher_cost", "name": "Teacher Cost", "description": "Teacher salaries and fees"},
+    {"id": "logistics_cost", "name": "Logistics Cost", "description": "Delivery and transportation"},
+    {"id": "books_cost", "name": "Books Cost", "description": "Textbooks and workbooks"},
+    {"id": "gp_share", "name": "GP Share", "description": "Growth Partner commission"},
+    {"id": "school_share", "name": "School Share", "description": "School's revenue share"},
+    {"id": "printing_certification", "name": "Printing / Certification Cost", "description": "Certificates and printed materials"},
+    {"id": "renewal_commission_team", "name": "Renewal Commission (Team)", "description": "Team commission on renewals"},
+    {"id": "renewal_commission_teachers", "name": "Renewal Commission (Teachers)", "description": "Teacher commission on renewals"},
+    {"id": "marketing_cost", "name": "Marketing Cost", "description": "Marketing and promotion expenses"},
+    {"id": "technology_cost", "name": "Technology Cost", "description": "Software and platform costs"},
+    {"id": "other", "name": "Other Expenses", "description": "Miscellaneous expenses"},
+]
+
+
+@api_router.get("/expenses/categories")
+async def get_expense_categories(user: dict = Depends(get_current_user)):
+    """Get all available expense categories"""
+    return EXPENSE_CATEGORIES
+
+
+@api_router.get("/expenses")
+async def get_all_expenses(
+    school_id: Optional[str] = None,
+    category: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    """Get all expenses with optional filters"""
+    query = {}
+    
+    if school_id:
+        query["school_id"] = school_id
+    if category:
+        query["category"] = category
+    if start_date:
+        query["expense_date"] = {"$gte": start_date}
+    if end_date:
+        if "expense_date" in query:
+            query["expense_date"]["$lte"] = end_date
+        else:
+            query["expense_date"] = {"$lte": end_date}
+    
+    expenses = await db.school_expenses.find(query, {"_id": 0}).sort("expense_date", -1).to_list(1000)
+    return expenses
+
+
+@api_router.get("/expenses/summary")
+async def get_expenses_summary(
+    school_id: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    """Get expense summary by school and category"""
+    match_stage = {}
+    if school_id:
+        match_stage["school_id"] = school_id
+    
+    # Aggregate by school
+    pipeline = [
+        {"$match": match_stage} if match_stage else {"$match": {}},
+        {
+            "$group": {
+                "_id": {
+                    "school_id": "$school_id",
+                    "school_name": "$school_name",
+                    "category": "$category"
+                },
+                "total_amount": {"$sum": "$amount"},
+                "count": {"$sum": 1}
+            }
+        },
+        {"$sort": {"_id.school_name": 1, "_id.category": 1}}
+    ]
+    
+    results = await db.school_expenses.aggregate(pipeline).to_list(1000)
+    
+    # Organize by school
+    schools_summary = {}
+    for r in results:
+        school_id = r["_id"]["school_id"]
+        school_name = r["_id"]["school_name"]
+        category = r["_id"]["category"]
+        
+        if school_id not in schools_summary:
+            schools_summary[school_id] = {
+                "school_id": school_id,
+                "school_name": school_name,
+                "total_expenses": 0,
+                "by_category": {}
+            }
+        
+        schools_summary[school_id]["by_category"][category] = {
+            "amount": r["total_amount"],
+            "count": r["count"]
+        }
+        schools_summary[school_id]["total_expenses"] += r["total_amount"]
+    
+    # Get grand total
+    total_pipeline = [
+        {"$match": match_stage} if match_stage else {"$match": {}},
+        {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
+    ]
+    total_result = await db.school_expenses.aggregate(total_pipeline).to_list(1)
+    grand_total = total_result[0]["total"] if total_result else 0
+    
+    return {
+        "grand_total": grand_total,
+        "schools": list(schools_summary.values())
+    }
+
+
+@api_router.get("/expenses/school/{school_id}")
+async def get_school_expenses(school_id: str, user: dict = Depends(get_current_user)):
+    """Get all expenses for a specific school"""
+    expenses = await db.school_expenses.find(
+        {"school_id": school_id}, 
+        {"_id": 0}
+    ).sort("expense_date", -1).to_list(500)
+    
+    # Calculate totals by category
+    totals = {}
+    grand_total = 0
+    for exp in expenses:
+        cat = exp.get("category", "other")
+        if cat not in totals:
+            totals[cat] = 0
+        totals[cat] += exp.get("amount", 0)
+        grand_total += exp.get("amount", 0)
+    
+    return {
+        "expenses": expenses,
+        "totals_by_category": totals,
+        "grand_total": grand_total
+    }
+
+
+@api_router.post("/expenses")
+async def create_expense(data: dict, user: dict = Depends(get_current_user)):
+    """Create a new expense entry"""
+    # Get school info
+    school = await db.school_inquiries.find_one({"id": data.get("school_id")}, {"_id": 0})
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+    
+    expense = {
+        "id": str(uuid.uuid4()),
+        "school_id": data.get("school_id"),
+        "school_name": school.get("school_name", "Unknown School"),
+        "category": data.get("category"),
+        "category_name": next((c["name"] for c in EXPENSE_CATEGORIES if c["id"] == data.get("category")), data.get("category")),
+        "amount": float(data.get("amount", 0)),
+        "description": data.get("description", ""),
+        "expense_date": data.get("expense_date", datetime.now(timezone.utc).strftime("%Y-%m-%d")),
+        "invoice_number": data.get("invoice_number", ""),
+        "vendor_name": data.get("vendor_name", ""),
+        "payment_status": data.get("payment_status", "pending"),  # pending, paid, partial
+        "payment_mode": data.get("payment_mode", ""),  # cash, bank_transfer, upi, cheque
+        "notes": data.get("notes", ""),
+        "attachments": data.get("attachments", []),
+        "created_by": user.get("email"),
+        "created_by_name": user.get("name"),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.school_expenses.insert_one(expense)
+    return {"message": "Expense created successfully", "expense": expense}
+
+
+@api_router.patch("/expenses/{expense_id}")
+async def update_expense(expense_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Update an expense entry"""
+    update_data = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    
+    allowed_fields = ["amount", "description", "expense_date", "invoice_number", 
+                      "vendor_name", "payment_status", "payment_mode", "notes", "attachments", "category"]
+    
+    for field in allowed_fields:
+        if field in data:
+            update_data[field] = data[field]
+            if field == "category":
+                update_data["category_name"] = next((c["name"] for c in EXPENSE_CATEGORIES if c["id"] == data[field]), data[field])
+    
+    await db.school_expenses.update_one({"id": expense_id}, {"$set": update_data})
+    return {"message": "Expense updated successfully"}
+
+
+@api_router.delete("/expenses/{expense_id}")
+async def delete_expense(expense_id: str, user: dict = Depends(get_current_user)):
+    """Delete an expense entry"""
+    await db.school_expenses.delete_one({"id": expense_id})
+    return {"message": "Expense deleted successfully"}
+
+
+# ========================
 # EXTERNAL API KEY SYSTEM
 # ========================
 
