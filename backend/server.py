@@ -11301,9 +11301,10 @@ async def external_get_school_by_id(
         },
         
         "location": {
-            "city": school.get("city"),
+            "city": school.get("location"),  # 'location' field contains city
             "state": school.get("state"),
             "address": school.get("address"),
+            "area": school.get("city"),
         },
         
         "relationship_manager": {
