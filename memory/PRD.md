@@ -98,10 +98,22 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - **Frontend**: React, Tailwind CSS, Shadcn/UI
 - **Backend**: FastAPI, MongoDB
 - **File Storage**: Cloudinary
-- **Notifications**: AiSensy (WhatsApp), Resend (Email)
+- **Notifications**: AiSensy (WhatsApp), Gmail SMTP (Email - pending GMAIL_APP_PASSWORD)
 - **Analytics**: PostHog
 - **Video**: Jitsi Meet
 - **External APIs**: ProcureWay (PO Management)
+
+### 8. API Key Management (NEW - Feb 13, 2026)
+Admin Settings page now includes full API Key management:
+- **List Keys**: View all API keys with masked display, creation date, last used time, and status
+- **Generate Keys**: Create new API keys with custom names for external integrations
+- **Revoke Keys**: Delete/deactivate API keys
+- **Security**: Full key shown only once at generation time with copy-to-clipboard support
+
+**API Endpoints:**
+- `GET /api/admin/api-keys` - List all API keys
+- `POST /api/admin/api-keys/generate` - Generate new API key
+- `DELETE /api/admin/api-keys/{key_id}` - Revoke/delete an API key
 
 ## Background Jobs
 Two cron job endpoints available:
