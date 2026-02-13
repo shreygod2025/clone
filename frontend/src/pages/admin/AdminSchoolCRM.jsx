@@ -4560,6 +4560,19 @@ const AdminSchoolCRM = () => {
               </div>
             </div>
 
+            {/* School Address */}
+            <div>
+              <label className="text-sm font-medium text-slate-700">School Address</label>
+              <Textarea
+                placeholder="Enter full school address"
+                value={renewalConvertData.address || ''}
+                onChange={(e) => setRenewalConvertData(prev => ({ ...prev, address: e.target.value }))}
+                rows={2}
+                className="mt-1"
+                data-testid="renewal-address"
+              />
+            </div>
+
             {/* MOU Upload */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <label className="text-sm font-medium text-blue-800 flex items-center gap-2">
