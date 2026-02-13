@@ -637,6 +637,58 @@ const AdminSchoolCRM = () => {
     fetchSchoolHistory();
   }, [viewInquiry?.id]);
 
+  // Auto-fetch PO data when onboarding workflow modal opens
+  useEffect(() => {
+    const autoFetchPoData = async () => {
+      if (!showOnboardingWorkflowModal?.id) {
+        setSchoolPoData(null);
+        return;
+      }
+      // Auto-fetch PO data from ProcureWay
+      setLoadingPoData(true);
+      try {
+        const response = await axios.get(`${API}/schools/${showOnboardingWorkflowModal.id}/onboarding-po-info`, {
+          headers: getAuthHeaders()
+        });
+        setSchoolPoData(response.data);
+        
+        // If we have PO data with delivery info, auto-update the kit_delivery step
+        if (response.data?.has_po && (response.data?.delivery_date || response.data?.tracking_link)) {
+          const kitDeliveryStep = showOnboardingWorkflowModal?.onboarding_workflow?.steps?.kit_delivery;
+          // Only update if fields are empty (don't overwrite manual entries)
+          if (!kitDeliveryStep?.data?.po_number) {
+            await axios.patch(`${API}/schools/${showOnboardingWorkflowModal.id}/onboarding-step/kit_delivery`, {
+              data: {
+                delivery_date: response.data.delivery_date || kitDeliveryStep?.data?.delivery_date || '',
+                dispatch_date: response.data.dispatch_date || kitDeliveryStep?.data?.dispatch_date || '',
+                tracking_link: response.data.tracking_link || response.data.public_tracking_url || kitDeliveryStep?.data?.tracking_link || '',
+                po_number: response.data.po_number,
+                po_status: response.data.po_status,
+                vendor_name: response.data.vendor_name
+              }
+            }, {
+              headers: getAuthHeaders()
+            });
+            // Refresh modal data
+            const updatedResponse = await axios.get(`${API}/schools/${showOnboardingWorkflowModal.id}/onboarding`, {
+              headers: getAuthHeaders()
+            });
+            setShowOnboardingWorkflowModal(prev => ({
+              ...prev,
+              onboarding_workflow: updatedResponse.data.workflow
+            }));
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch PO data:', error);
+        setSchoolPoData(null);
+      } finally {
+        setLoadingPoData(false);
+      }
+    };
+    autoFetchPoData();
+  }, [showOnboardingWorkflowModal?.id]);
+
   // Get this week's data for dashboard
   const getThisWeekData = () => {
     const today = new Date();
