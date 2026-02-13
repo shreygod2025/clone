@@ -80,6 +80,11 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## Recent Updates (Feb 2025)
 
+### Feb 13, 2026 (continued)
+- **API Key Management UI**: Complete UI for generating, listing, and revoking API keys in Admin Settings
+  - Admin can now self-manage API keys for production integrations like ProcureWay/VendorPlus
+  - Keys are securely masked in the list view, full key shown only once at generation
+
 ### Feb 13, 2025
 - **ProcureWay PO Integration**: Added external API integration to fetch PO data for schools
 - **Auto-Expense Creation**: Expenses automatically created from PO data (kit_cost, logistics_cost)
