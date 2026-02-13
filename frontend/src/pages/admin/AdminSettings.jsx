@@ -425,39 +425,54 @@ const AdminSettings = () => {
               className="pl-10"
             />
           </div>
-          <Button
-            onClick={() => {
-              setEditingItem(null);
-              if (activeTab === 'case-studies') {
-                setCaseStudyForm({ school_name: '', video_id: '', description: '', order: 0, is_active: true });
-                setShowCaseStudyModal(true);
-              } else if (activeTab === 'team-requirements') {
-                setTeamReqForm({
-                  title: '', description: '', type: 'Full-time', city: 'Remote', 
-                  skills_required: '', responsibilities: '', qualifications: '', is_active: true
-                });
-                setShowTeamReqModal(true);
-              } else if (activeTab === 'cities') {
-                setCityForm({ name: '', state: '', is_active: true });
-                setShowCityModal(true);
-              } else if (activeTab === 'centers') {
-                setCenterForm({ name: '', city: '', address: '', phone: '', email: '', maps_link: '', is_active: true });
-                setShowCenterModal(true);
-              } else {
-                setBlogForm({
-                  title: '', slug: '', excerpt: '', content: '', image_url: '', 
-                  author: '', category: '', tags: [], is_published: false,
-                  meta_title: '', meta_description: '', keywords: ''
-                });
-                setShowBlogModal(true);
-              }
-            }}
-            className="bg-[#D63031] hover:bg-[#c0392b]"
-            data-testid="add-new-btn"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add {activeTab === 'case-studies' ? 'Case Study' : activeTab === 'team-requirements' ? 'Opening' : activeTab === 'cities' ? 'City' : activeTab === 'centers' ? 'Center' : 'Blog'}
-          </Button>
+          {activeTab !== 'api-keys' ? (
+            <Button
+              onClick={() => {
+                setEditingItem(null);
+                if (activeTab === 'case-studies') {
+                  setCaseStudyForm({ school_name: '', video_id: '', description: '', order: 0, is_active: true });
+                  setShowCaseStudyModal(true);
+                } else if (activeTab === 'team-requirements') {
+                  setTeamReqForm({
+                    title: '', description: '', type: 'Full-time', city: 'Remote', 
+                    skills_required: '', responsibilities: '', qualifications: '', is_active: true
+                  });
+                  setShowTeamReqModal(true);
+                } else if (activeTab === 'cities') {
+                  setCityForm({ name: '', state: '', is_active: true });
+                  setShowCityModal(true);
+                } else if (activeTab === 'centers') {
+                  setCenterForm({ name: '', city: '', address: '', phone: '', email: '', maps_link: '', is_active: true });
+                  setShowCenterModal(true);
+                } else {
+                  setBlogForm({
+                    title: '', slug: '', excerpt: '', content: '', image_url: '', 
+                    author: '', category: '', tags: [], is_published: false,
+                    meta_title: '', meta_description: '', keywords: ''
+                  });
+                  setShowBlogModal(true);
+                }
+              }}
+              className="bg-[#D63031] hover:bg-[#c0392b]"
+              data-testid="add-new-btn"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add {activeTab === 'case-studies' ? 'Case Study' : activeTab === 'team-requirements' ? 'Opening' : activeTab === 'cities' ? 'City' : activeTab === 'centers' ? 'Center' : 'Blog'}
+            </Button>
+          ) : (
+            <Button
+              onClick={() => {
+                setNewApiKeyName('');
+                setGeneratedKey(null);
+                setShowApiKeyModal(true);
+              }}
+              className="bg-[#D63031] hover:bg-[#c0392b]"
+              data-testid="generate-api-key-btn"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Generate API Key
+            </Button>
+          )}
         </div>
 
         {/* Case Studies Tab */}
