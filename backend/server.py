@@ -10689,6 +10689,15 @@ async def sync_po_data_job(secret: str = None):
             invoice_amount = invoice_info.get("amount", 0) or detailed_po.get("subtotal", 0) or detailed_po.get("grand_total", 0)
             logistics_cost = invoice_info.get("logistics_cost", 0)
             
+            # Get GST/Tax info
+            total_tax = detailed_po.get("total_tax", 0)
+            subtotal = detailed_po.get("subtotal", 0)
+            grand_total = detailed_po.get("grand_total", 0)
+            gst_rate = 18 if total_tax > 0 and subtotal > 0 else 0
+            if total_tax > 0 and subtotal > 0:
+                gst_rate = round((total_tax / subtotal) * 100, 2)
+            gst_type = "IGST" if total_tax > 0 else "None"
+            
             # Check if kit expense already exists
             existing_kit = await db.school_expenses.find_one({
                 "school_id": school_id,
@@ -10719,6 +10728,11 @@ async def sync_po_data_job(secret: str = None):
                     "category": "kit_cost",
                     "category_name": "Kit Cost",
                     "amount": float(invoice_amount),
+                    "subtotal": float(subtotal),
+                    "gst_amount": float(total_tax),
+                    "gst_rate": gst_rate,
+                    "gst_type": gst_type,
+                    "grand_total": float(grand_total),
                     "description": f"Kit cost from PO {po_number} (auto-synced)",
                     "expense_date": detailed_po.get("created_at", datetime.now(timezone.utc).isoformat())[:10],
                     "invoice_number": po_number,
