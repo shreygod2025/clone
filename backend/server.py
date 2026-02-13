@@ -11167,6 +11167,11 @@ async def sync_po_expenses(school_id: str, data: dict = None, user: dict = Depen
                 "category": "kit_cost",
                 "category_name": "Kit Cost",
                 "amount": float(invoice_amount),
+                "subtotal": float(subtotal),
+                "gst_amount": float(total_tax),
+                "gst_rate": gst_rate,
+                "gst_type": gst_type,
+                "grand_total": float(grand_total),
                 "description": f"Kit cost from PO {po_num}",
                 "expense_date": po.get("created_at", datetime.now(timezone.utc).isoformat())[:10],
                 "invoice_number": po_num,
@@ -11185,7 +11190,7 @@ async def sync_po_expenses(school_id: str, data: dict = None, user: dict = Depen
                 "auto_synced": True
             }
             await db.school_expenses.insert_one(kit_expense)
-            expenses_created.append({"type": "kit_cost", "po": po_num, "amount": invoice_amount})
+            expenses_created.append({"type": "kit_cost", "po": po_num, "amount": invoice_amount, "gst": total_tax})
         
         # Create Logistics Cost expense if not exists and amount > 0
         if not existing_logistics and logistics_cost > 0:
