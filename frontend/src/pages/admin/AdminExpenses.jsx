@@ -515,7 +515,7 @@ const AdminExpenses = () => {
                           INV
                         </a>
                       )}
-                      {expense.logistics_bill_url && (
+                      {expense.logistics_bill_url && expense.logistics_bill_url !== 'null' && expense.logistics_bill_url.startsWith('http') && (
                         <a
                           href={expense.logistics_bill_url}
                           target="_blank"
@@ -526,7 +526,7 @@ const AdminExpenses = () => {
                           LB
                         </a>
                       )}
-                      {expense.delivery_proof_url && (
+                      {expense.delivery_proof_url && expense.delivery_proof_url !== 'null' && expense.delivery_proof_url.startsWith('http') && (
                         <a
                           href={expense.delivery_proof_url}
                           target="_blank"
@@ -537,7 +537,10 @@ const AdminExpenses = () => {
                           DP
                         </a>
                       )}
-                      {!expense.po_pdf_url && !expense.invoice_file_url && !expense.logistics_bill_url && !expense.delivery_proof_url && (
+                      {(!expense.po_pdf_url || !expense.po_pdf_url.startsWith('http')) && 
+                       (!expense.invoice_file_url || !expense.invoice_file_url.startsWith('http')) && 
+                       (!expense.logistics_bill_url || !expense.logistics_bill_url.startsWith('http')) && 
+                       (!expense.delivery_proof_url || !expense.delivery_proof_url.startsWith('http')) && (
                         <span className="text-xs text-slate-400">-</span>
                       )}
                     </div>
