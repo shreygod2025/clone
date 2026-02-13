@@ -384,27 +384,27 @@ const SchoolTrackingPage = () => {
                             </p>
                           )}
                           
-                          {/* Tracking Link */}
+                          {/* Tracking Link - Styled like MOU button */}
                           {step.tracking_link && (
                             <a 
                               href={step.tracking_link} 
                               target="_blank" 
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline"
+                              className="inline-flex items-center gap-2 mt-2 px-4 py-2 bg-[#1E3A5F] text-white text-sm rounded-lg hover:bg-[#2d4a6f] transition-colors"
                             >
                               <Truck className="w-4 h-4" /> Track Shipment
                             </a>
                           )}
                           
-                          {/* Public Tracking URL from PO */}
+                          {/* Public Tracking URL from PO - Also styled as button */}
                           {step.po_info?.public_tracking_url && !step.tracking_link && (
                             <a 
                               href={step.po_info.public_tracking_url} 
                               target="_blank" 
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline"
+                              className="inline-flex items-center gap-2 mt-2 px-4 py-2 bg-[#1E3A5F] text-white text-sm rounded-lg hover:bg-[#2d4a6f] transition-colors"
                             >
-                              <ExternalLink className="w-4 h-4" /> View PO Tracking
+                              <Truck className="w-4 h-4" /> Track Shipment
                             </a>
                           )}
                         </div>
