@@ -48,6 +48,7 @@ const GPOnboardingTrack = lazy(() => import("./pages/GPOnboardingTrack"));
 const GPSelfOnboarding = lazy(() => import("./pages/GPSelfOnboarding"));
 const StudentPayment = lazy(() => import("./pages/StudentPayment"));
 const SchoolStudentPayment = lazy(() => import("./pages/SchoolStudentPayment"));
+const SchoolPaymentTrackerPublic = lazy(() => import("./pages/public/SchoolPaymentTrackerPublic"));
 
 // Course SEO Pages - Lazy loaded
 const CoursesListPage = lazy(() => import("./pages/courses/CoursesListPage"));
