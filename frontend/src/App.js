@@ -171,6 +171,7 @@ function App() {
               <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
               <Route path="/admin/students" element={<ProtectedRoute><AdminStudentCRM /></ProtectedRoute>} />
               <Route path="/admin/schools" element={<ProtectedRoute><AdminSchoolCRM /></ProtectedRoute>} />
+              <Route path="/admin/school-payments/:schoolId" element={<ProtectedRoute><SchoolPaymentTracker /></ProtectedRoute>} />
               <Route path="/admin/orders" element={<ProtectedRoute><AdminOrders /></ProtectedRoute>} />
               <Route path="/admin/expenses" element={<ProtectedRoute><AdminExpenses /></ProtectedRoute>} />
               <Route path="/admin/educators" element={<ProtectedRoute><AdminEducators /></ProtectedRoute>} />
