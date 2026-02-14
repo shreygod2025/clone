@@ -83,6 +83,43 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 ## Recent Updates (Feb 2025)
 
 ### Feb 14, 2026
+- **NEW FEATURE - School Student Payment System (Cashfree)**: Complete online fee collection system for schools where students pay directly
+  - **School Setup (Admin)**:
+    - In School Convert/Re-onboard popup, select "Online (Student Payment via Cashfree)" as payment mode
+    - Configure grade-wise pricing in the onboarding form
+    - Payment link auto-generated: `/school-pay/{school_id}`
+  - **Student Payment Page** (`/school-pay/{school_id}`):
+    - Shows school name and program
+    - Student selects grade → displays fee amount
+    - Enters: Name, Phone, Division
+    - Clicks "Pay" → Cashfree payment popup (UPI, Cards, Net Banking)
+    - Success screen with transaction ID after payment
+  - **Payment Tracker Page** (`/admin/school-payments/{school_id}`):
+    - Lists all student payments: Date, Name, Phone, Grade, Division, Amount, Status, Transaction ID
+    - Grade-wise filter and search
+    - Export to CSV
+    - Grade-wise count summary
+    - Progress bar showing collection %
+  - **School Tracking Page Updates**:
+    - Shows "Student Fee Payment Link" for parents
+    - Fee Collection Progress card with collected/expected amounts
+    - Grade-wise payment breakdown
+  - **Orders Section Updates**:
+    - New "School Student Payments (Online)" tab
+    - School-wise summary: Total collected, Students paid, Expected total, Collection %
+    - Link to Payment Tracker for each school
+    - Copy payment link functionality
+  - **API Endpoints:**
+    - `GET /api/school-payment/{school_id}` - Get school payment info (public)
+    - `POST /api/school-payment/create-session` - Create Cashfree session (public)
+    - `POST /api/school-payment/webhook` - Handle Cashfree webhooks
+    - `GET /api/school-payment/verify/{order_id}` - Verify payment status
+    - `GET /api/school-payment/tracker/{school_id}` - Get all payments (admin)
+    - `GET /api/school-payment/tracker-public/{school_id}` - Get payment summary (public)
+  - **New Files:**
+    - `/app/frontend/src/pages/SchoolStudentPayment.jsx` - Student payment page
+    - `/app/frontend/src/pages/admin/SchoolPaymentTracker.jsx` - Admin tracker
+
 - **ENHANCED - Student Dashboard Payment Integration**: Integrated "Pay Fees" feature directly into the student dashboard after OTP login
   - **Dashboard Flow**:
     - Student logs in via OTP
