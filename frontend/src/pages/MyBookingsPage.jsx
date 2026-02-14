@@ -335,7 +335,7 @@ const MyBookingsPage = () => {
         throw new Error('Failed to create payment session');
       }
 
-      const { payment_session_id, environment } = response.data;
+      const { payment_session_id, environment, order_id } = response.data;
       
       // Step 2: Initialize Cashfree with correct environment
       const cashfree = window.Cashfree({
@@ -363,11 +363,25 @@ const MyBookingsPage = () => {
 
       if (result.redirect) {
         console.log('Payment redirect completed');
-        // Refresh payment info after a short delay
-        setTimeout(() => {
+        // Verify payment status after redirect
+        try {
+          const verifyResponse = await axios.get(`${API}/payments/verify/${order_id}`);
+          if (verifyResponse.data.status === 'PAID') {
+            setPaymentSuccess(true);
+            setPaymentInfo(null);
+            toast.success('Payment successful! Your sessions are being scheduled.');
+            // Refresh sessions data
+            setTimeout(() => {
+              fetchSessions();
+              fetchBookings();
+            }, 1000);
+          } else {
+            fetchPaymentInfo();
+          }
+        } catch (e) {
+          console.error('Verification error:', e);
           fetchPaymentInfo();
-          fetchSessions();
-        }, 2000);
+        }
       }
 
       if (result.paymentDetails) {
@@ -375,12 +389,22 @@ const MyBookingsPage = () => {
         console.log('Payment status:', paymentStatus);
         
         if (paymentStatus === 'Payment is successful' || paymentStatus === 'SUCCESS') {
-          toast.success('Payment successful! Your batch sessions will be scheduled shortly.');
-          // Refresh data
-          setTimeout(() => {
-            fetchPaymentInfo();
-            fetchSessions();
-          }, 1500);
+          // Verify with backend
+          try {
+            const verifyResponse = await axios.get(`${API}/payments/verify/${order_id}`);
+            if (verifyResponse.data.status === 'PAID') {
+              setPaymentSuccess(true);
+              setPaymentInfo(null);
+              toast.success('Payment successful! Your sessions are being scheduled.');
+              // Refresh sessions data
+              setTimeout(() => {
+                fetchSessions();
+                fetchBookings();
+              }, 1000);
+            }
+          } catch (e) {
+            console.error('Verification error:', e);
+          }
         } else {
           // Refresh to get latest status
           setTimeout(() => {
