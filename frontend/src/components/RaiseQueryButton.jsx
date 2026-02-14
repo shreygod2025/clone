@@ -330,6 +330,61 @@ const PAGE_QUERY_CONFIG = {
     ]
   },
   
+  // School Student Payment page - Payment specific FAQs
+  'school-payment': {
+    label: 'Payment Help',
+    queries: [
+      { 
+        value: 'payment_methods', label: 'Payment Methods', icon: '💳',
+        subCategories: [
+          { value: 'accepted_cards', label: 'Cards, UPI, Net Banking, Wallets accepted' },
+          { value: 'upi', label: 'UPI Payment Help' },
+          { value: 'other', label: 'Other' },
+        ]
+      },
+      { 
+        value: 'payment_security', label: 'Payment Security', icon: '🔒',
+        subCategories: [
+          { value: 'is_secure', label: 'Is payment secure?' },
+          { value: 'data_protection', label: 'Card details protection' },
+          { value: 'other', label: 'Other' },
+        ]
+      },
+      { 
+        value: 'receipt', label: 'Receipt & Confirmation', icon: '🧾',
+        subCategories: [
+          { value: 'get_receipt', label: 'How to get receipt?' },
+          { value: 'no_receipt', label: 'Did not receive receipt' },
+          { value: 'other', label: 'Other' },
+        ]
+      },
+      { 
+        value: 'payment_failed', label: 'Payment Failed', icon: '❌',
+        subCategories: [
+          { value: 'retry_payment', label: 'How to retry payment?' },
+          { value: 'amount_deducted', label: 'Amount deducted but failed' },
+          { value: 'refund_time', label: 'Refund timeline (5-7 days)' },
+          { value: 'other', label: 'Other' },
+        ]
+      },
+      { 
+        value: 'installments', label: 'Installment Options', icon: '📅',
+        subCategories: [
+          { value: 'emi_available', label: 'Is EMI available?' },
+          { value: 'partial_payment', label: 'Can I pay in parts?' },
+          { value: 'other', label: 'Other' },
+        ]
+      },
+      { 
+        value: 'other', label: 'Other Query', icon: '❓',
+        subCategories: [
+          { value: 'contact_school', label: 'Contact School' },
+          { value: 'general', label: 'General Query' },
+        ]
+      },
+    ]
+  },
+  
   // Admin pages
   admin: {
     label: 'Admin Support',
