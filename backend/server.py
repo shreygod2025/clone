@@ -2946,7 +2946,7 @@ async def create_payment_order(data: StudentPaymentRequest, user: dict = Depends
         )
         
         # Get frontend URL for return
-        frontend_url = os.getenv("FRONTEND_URL", "https://oll-platform-dev.preview.emergentagent.com")
+        frontend_url = os.getenv("FRONTEND_URL", "https://student-fees-portal.preview.emergentagent.com")
         
         # Create order meta
         order_meta = OrderMeta(
@@ -3097,7 +3097,7 @@ async def create_payment_session(student_id: str):
         )
         
         # Get frontend URL for return
-        frontend_url = os.getenv("FRONTEND_URL", "https://oll-platform-dev.preview.emergentagent.com")
+        frontend_url = os.getenv("FRONTEND_URL", "https://student-fees-portal.preview.emergentagent.com")
         backend_url = os.getenv("REACT_APP_BACKEND_URL", frontend_url)
         
         # Create order meta
