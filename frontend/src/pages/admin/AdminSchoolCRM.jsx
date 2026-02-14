@@ -601,9 +601,10 @@ const AdminSchoolCRM = () => {
     total_amount: 0,
     school_contacts: [{ name: '', phone_number: '', country_code: '+91', email: '', role: '' }],
     // Payment details
-    payment_mode: 'from_school', // from_school, from_student
+    payment_mode: 'from_school', // from_school, from_student, online
     payment_method: '', // cheque, neft, online, cash
     payment_tranches: [{ amount: '', percentage: '', date: '', notes: '' }],
+    deadline_date: '', // Deadline for online payments
     contract_start: '',
     contract_end: '',
     mou_url: '', // MOU document upload
