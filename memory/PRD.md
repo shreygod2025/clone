@@ -18,7 +18,8 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - Support Ticket System
 - Orders & Payments Module
 - Reports & Analytics
-- **School Expenses Module** (NEW)
+- **School Expenses Module**
+- **Cashfree Payment Gateway Integration** (NEW - Feb 14, 2026)
 
 ### 3. WhatsApp Notifications (AiSensy Integration)
 **Templates Configured:**
