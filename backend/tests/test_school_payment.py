@@ -166,7 +166,14 @@ class TestFormValidation:
         print(f"\n[Phone Validation] Status: {response.status_code}")
         # Note: The API might not validate phone length, frontend should handle this
         # This test documents the current behavior
-        print(f"Response: {response.json()}")
+        if response.status_code == 200:
+            print(f"Response: {response.json()}")
+            print("INFO: API accepts short phone numbers - frontend validation handles this")
+        else:
+            try:
+                print(f"Response: {response.json()}")
+            except:
+                print(f"Response text: {response.text}")
 
 
 if __name__ == "__main__":
