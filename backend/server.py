@@ -4545,15 +4545,24 @@ async def get_school_history(school_id: str, user: dict = Depends(get_current_us
         if not date_val:
             return datetime.min.replace(tzinfo=timezone.utc)
         if isinstance(date_val, datetime):
-            return date_val if date_val.tzinfo else date_val.replace(tzinfo=timezone.utc)
+            if date_val.tzinfo is None:
+                return date_val.replace(tzinfo=timezone.utc)
+            return date_val
         if isinstance(date_val, str):
             try:
-                return datetime.fromisoformat(date_val.replace('Z', '+00:00'))
-            except:
+                parsed = datetime.fromisoformat(date_val.replace('Z', '+00:00'))
+                if parsed.tzinfo is None:
+                    return parsed.replace(tzinfo=timezone.utc)
+                return parsed
+            except Exception:
                 return datetime.min.replace(tzinfo=timezone.utc)
         return datetime.min.replace(tzinfo=timezone.utc)
     
-    history.sort(key=parse_date, reverse=True)
+    try:
+        history.sort(key=parse_date, reverse=True)
+    except Exception as e:
+        logging.error(f"Error sorting history: {e}")
+        # Don't fail if sorting fails, just return unsorted
     
     return {"school_id": school_id, "history": history}
 
