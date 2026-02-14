@@ -3759,7 +3759,7 @@ async def verify_school_student_payment(order_id: str):
             try:
                 payments_response = get_cashfree_client().PGOrderFetchPayments(
                     CASHFREE_API_VERSION,
-                    cf_order_id,
+                    order_id,  # Use our order_id
                     None
                 )
                 logging.info(f"Payments response: {payments_response.data}")
