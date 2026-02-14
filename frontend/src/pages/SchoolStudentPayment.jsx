@@ -158,20 +158,50 @@ const SchoolStudentPayment = () => {
       }
 
       if (result.redirect || result.paymentDetails) {
-        // Verify payment
-        try {
-          const verifyResponse = await axios.get(`${API}/school-payment/verify/${order_id}`);
-          if (verifyResponse.data.status === 'PAID') {
-            setPaymentSuccess(true);
-            setTransactionId(verifyResponse.data.transaction_id);
-            toast.success('Payment successful!');
-          } else {
-            setPaymentError('Payment verification pending. Please check back later.');
+        // Verify payment with retry logic (Cashfree may need time to process)
+        let attempts = 0;
+        const maxAttempts = 3;
+        const verifyPayment = async () => {
+          try {
+            const verifyResponse = await axios.get(`${API}/school-payment/verify/${order_id}`);
+            const status = verifyResponse.data.status;
+            
+            // Cashfree returns PAID for successful payments
+            if (status === 'PAID') {
+              setPaymentSuccess(true);
+              setTransactionId(verifyResponse.data.transaction_id);
+              toast.success('Payment successful!');
+              return true;
+            } 
+            // Still processing - retry after delay
+            else if ((status === 'PENDING' || status === 'ACTIVE') && attempts < maxAttempts) {
+              attempts++;
+              await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+              return verifyPayment();
+            }
+            // Failed or other status
+            else if (status === 'FAILED' || status === 'CANCELLED' || status === 'EXPIRED') {
+              setPaymentError(`Payment ${status.toLowerCase()}. Please try again.`);
+              return false;
+            }
+            else {
+              // Unknown status - show pending message
+              setPaymentError('Payment verification pending. Please check back later or contact support.');
+              return false;
+            }
+          } catch (e) {
+            console.error('Verification error:', e);
+            if (attempts < maxAttempts) {
+              attempts++;
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              return verifyPayment();
+            }
+            setPaymentError('Payment verification failed. Please contact school administrator.');
+            return false;
           }
-        } catch (e) {
-          console.error('Verification error:', e);
-          setPaymentError('Payment verification failed. Please contact school administrator.');
-        }
+        };
+        
+        await verifyPayment();
       }
 
     } catch (err) {
