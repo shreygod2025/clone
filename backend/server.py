@@ -8266,9 +8266,10 @@ async def onboard_school(data: dict, user: dict = Depends(get_current_user)):
         "total_students": data.get("total_students", 0),
         "total_amount": data.get("total_amount", 0),
         "school_contacts": data.get("school_contacts", []),  # [{name, phone, email, role}]
-        "payment_mode": data.get("payment_mode", "from_school"),  # from_school, from_student
-        "payment_method": data.get("payment_method", ""),  # cheque, neft, online, cash
+        "payment_mode": data.get("payment_mode", "from_school"),  # from_school, from_student, online
+        "payment_method": data.get("payment_method", ""),  # cheque, neft, online, cash, student
         "payment_tranches": data.get("payment_tranches", []),  # [{percentage, amount, date, notes}]
+        "deadline_date": data.get("deadline_date", ""),  # Deadline for online payments
         "contract_start": data.get("contract_start"),
         "contract_end": data.get("contract_end"),
         "mou_url": data.get("mou_url", ""),  # MOU document URL
@@ -8292,6 +8293,7 @@ async def onboard_school(data: dict, user: dict = Depends(get_current_user)):
         "payment_mode": data.get("payment_mode"),
         "payment_method": data.get("payment_method"),
         "payment_tranches": data.get("payment_tranches", []),
+        "deadline_date": data.get("deadline_date", ""),
         "contract_start": data.get("contract_start"),
         "contract_end": data.get("contract_end"),
         "mou_url": data.get("mou_url", ""),
