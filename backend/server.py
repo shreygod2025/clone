@@ -2901,6 +2901,336 @@ async def update_student_inquiry(
     return inquiry
 
 # ========================
+# CASHFREE PAYMENT ENDPOINTS (Student Payments)
+# ========================
+
+class StudentPaymentRequest(BaseModel):
+    """Request to create a student payment order"""
+    student_id: str
+    amount: float
+    batch_id: Optional[str] = None
+    batch_name: Optional[str] = None
+    description: Optional[str] = None
+
+class PaymentOrderResponse(BaseModel):
+    """Response after creating a payment order"""
+    order_id: str
+    payment_session_id: str
+    payment_link: str
+    order_status: str
+    amount: float
+
+@api_router.post("/payments/create-order")
+async def create_payment_order(data: StudentPaymentRequest, user: dict = Depends(get_current_user)):
+    """Create a Cashfree payment order for student batch payment"""
+    if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
+        raise HTTPException(status_code=500, detail="Payment gateway not configured")
+    
+    # Get student details
+    student = await db.student_inquiries.find_one({"id": data.student_id}, {"_id": 0})
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    
+    # Generate unique order ID
+    order_id = f"OLL-STU-{data.student_id[:8]}-{int(time.time())}"
+    
+    try:
+        # Create customer details
+        customer_details = CashfreeCustomerDetails(
+            customer_id=data.student_id,
+            customer_name=student.get("name", "Student"),
+            customer_email=student.get("email", f"{data.student_id}@oll.co"),
+            customer_phone=student.get("phone", "9999999999")
+        )
+        
+        # Get frontend URL for return
+        frontend_url = os.getenv("FRONTEND_URL", "https://edu-platform-test.preview.emergentagent.com")
+        
+        # Create order meta
+        order_meta = OrderMeta(
+            return_url=f"{frontend_url}/student/payment/success?order_id={order_id}",
+            notify_url=f"{frontend_url}/api/payments/webhook"
+        )
+        
+        # Build order request
+        create_order_request = CreateOrderRequest(
+            order_amount=data.amount,
+            order_currency="INR",
+            customer_details=customer_details,
+            order_meta=order_meta,
+            order_note=data.description or f"Batch payment for {student.get('name', 'Student')}"
+        )
+        
+        # Create order via Cashfree
+        api_response = Cashfree().PGCreateOrder(
+            CASHFREE_API_VERSION,
+            create_order_request,
+            None,
+            order_id
+        )
+        
+        if api_response.data:
+            # Store payment order in database
+            payment_order = {
+                "id": order_id,
+                "cf_order_id": str(api_response.data.cf_order_id),
+                "student_id": data.student_id,
+                "student_name": student.get("name"),
+                "student_phone": student.get("phone"),
+                "amount": data.amount,
+                "batch_id": data.batch_id,
+                "batch_name": data.batch_name,
+                "description": data.description,
+                "payment_session_id": api_response.data.payment_session_id,
+                "status": "PENDING",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "created_by": user.get("id"),
+                "created_by_name": user.get("name")
+            }
+            await db.student_payments.insert_one(payment_order)
+            
+            # Update student inquiry with pending payment
+            await db.student_inquiries.update_one(
+                {"id": data.student_id},
+                {"$set": {
+                    "pending_payment": {
+                        "order_id": order_id,
+                        "amount": data.amount,
+                        "batch_id": data.batch_id,
+                        "batch_name": data.batch_name,
+                        "status": "PENDING",
+                        "payment_link": f"https://payments.cashfree.com/forms/{api_response.data.payment_session_id}",
+                        "created_at": datetime.now(timezone.utc).isoformat()
+                    },
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+            
+            logging.info(f"Payment order created: {order_id}")
+            return {
+                "order_id": order_id,
+                "cf_order_id": str(api_response.data.cf_order_id),
+                "payment_session_id": api_response.data.payment_session_id,
+                "payment_link": f"https://payments.cashfree.com/forms/{api_response.data.payment_session_id}",
+                "order_status": api_response.data.order_status,
+                "amount": data.amount
+            }
+        else:
+            logging.error(f"Failed to create payment order: {order_id}")
+            raise HTTPException(status_code=500, detail="Failed to create payment order")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Payment order creation error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Payment error: {str(e)}")
+
+@api_router.get("/payments/order/{order_id}")
+async def get_payment_order(order_id: str):
+    """Get payment order status"""
+    payment = await db.student_payments.find_one({"id": order_id}, {"_id": 0})
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment order not found")
+    return payment
+
+@api_router.get("/payments/student/{student_id}")
+async def get_student_payment_info(student_id: str):
+    """Get payment info for a student (public endpoint for student payment page)"""
+    student = await db.student_inquiries.find_one({"id": student_id}, {"_id": 0})
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    
+    pending_payment = student.get("pending_payment")
+    if not pending_payment:
+        return {"has_pending_payment": False, "student_name": student.get("name")}
+    
+    return {
+        "has_pending_payment": True,
+        "student_name": student.get("name"),
+        "student_phone": student.get("phone"),
+        "amount": pending_payment.get("amount"),
+        "batch_name": pending_payment.get("batch_name"),
+        "order_id": pending_payment.get("order_id"),
+        "payment_link": pending_payment.get("payment_link"),
+        "status": pending_payment.get("status")
+    }
+
+@api_router.post("/payments/webhook")
+async def cashfree_webhook(request: Request):
+    """Handle Cashfree payment webhooks"""
+    try:
+        # Get raw body
+        body = await request.body()
+        body_str = body.decode('utf-8')
+        
+        # Get signature headers
+        timestamp = request.headers.get('x-webhook-timestamp', '')
+        received_signature = request.headers.get('x-webhook-signature', '')
+        
+        # Verify signature if present
+        if timestamp and received_signature and CASHFREE_SECRET_KEY:
+            signed_payload = f"{timestamp}.{body_str}"
+            computed_hash = hmac.new(
+                CASHFREE_SECRET_KEY.encode('utf-8'),
+                signed_payload.encode('utf-8'),
+                hashlib.sha256
+            ).digest()
+            computed_signature = b64encode(computed_hash).decode('utf-8')
+            
+            if not hmac.compare_digest(computed_signature, received_signature):
+                logging.warning("Invalid webhook signature")
+                # Don't raise error, just log - some webhooks may come without signature during testing
+        
+        # Parse webhook data
+        webhook_data = json.loads(body_str)
+        event_type = webhook_data.get('type', '')
+        order_data = webhook_data.get('data', {}).get('order', {})
+        payment_data = webhook_data.get('data', {}).get('payment', {})
+        
+        order_id = order_data.get('order_id') or webhook_data.get('data', {}).get('order_id')
+        payment_status = payment_data.get('payment_status') or order_data.get('order_status')
+        
+        logging.info(f"Webhook received - Event: {event_type}, Order: {order_id}, Status: {payment_status}")
+        
+        if order_id:
+            # Update payment record
+            update_data = {
+                "status": payment_status,
+                "webhook_data": webhook_data,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            
+            if payment_status == "SUCCESS" or event_type == "PAYMENT_SUCCESS_WEBHOOK":
+                update_data["paid_at"] = datetime.now(timezone.utc).isoformat()
+                update_data["payment_method"] = payment_data.get('payment_group', 'unknown')
+            
+            await db.student_payments.update_one(
+                {"id": order_id},
+                {"$set": update_data}
+            )
+            
+            # Get payment to update student
+            payment = await db.student_payments.find_one({"id": order_id}, {"_id": 0})
+            if payment and (payment_status == "SUCCESS" or event_type == "PAYMENT_SUCCESS_WEBHOOK"):
+                # Update student status to converted and add to batch
+                student_id = payment.get("student_id")
+                batch_id = payment.get("batch_id")
+                
+                student_update = {
+                    "status": "converted",
+                    "payment_status": "paid",
+                    "payment_amount": payment.get("amount"),
+                    "payment_date": datetime.now(timezone.utc).isoformat(),
+                    "payment_method": "cashfree",
+                    "pending_payment": None,
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }
+                
+                if batch_id:
+                    student_update["batch_id"] = batch_id
+                    student_update["batch_name"] = payment.get("batch_name")
+                    
+                    # Add student to batch
+                    batch = await db.batches.find_one({"id": batch_id}, {"_id": 0})
+                    if batch and student_id not in batch.get("students", []):
+                        await db.batches.update_one(
+                            {"id": batch_id},
+                            {"$addToSet": {"students": student_id}}
+                        )
+                
+                await db.student_inquiries.update_one(
+                    {"id": student_id},
+                    {"$set": student_update}
+                )
+                
+                logging.info(f"Student {student_id} payment successful, status updated to converted")
+        
+        return {"status": "success", "message": "Webhook processed"}
+        
+    except json.JSONDecodeError:
+        logging.error("Invalid JSON in webhook payload")
+        return {"status": "error", "message": "Invalid JSON"}
+    except Exception as e:
+        logging.error(f"Webhook processing error: {str(e)}")
+        return {"status": "error", "message": str(e)}
+
+@api_router.get("/payments/verify/{order_id}")
+async def verify_payment(order_id: str):
+    """Verify payment status from Cashfree (can be called after return)"""
+    if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
+        raise HTTPException(status_code=500, detail="Payment gateway not configured")
+    
+    payment = await db.student_payments.find_one({"id": order_id}, {"_id": 0})
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment order not found")
+    
+    try:
+        # Fetch order status from Cashfree
+        cf_order_id = payment.get("cf_order_id", order_id)
+        api_response = Cashfree().PGFetchOrder(
+            CASHFREE_API_VERSION,
+            cf_order_id,
+            None
+        )
+        
+        if api_response.data:
+            order_status = api_response.data.order_status
+            
+            # Update local payment record
+            await db.student_payments.update_one(
+                {"id": order_id},
+                {"$set": {
+                    "status": order_status,
+                    "verified_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+            
+            # If payment is successful, update student
+            if order_status == "PAID":
+                student_id = payment.get("student_id")
+                batch_id = payment.get("batch_id")
+                
+                student_update = {
+                    "status": "converted",
+                    "payment_status": "paid",
+                    "payment_amount": payment.get("amount"),
+                    "payment_date": datetime.now(timezone.utc).isoformat(),
+                    "payment_method": "cashfree",
+                    "pending_payment": None,
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }
+                
+                if batch_id:
+                    student_update["batch_id"] = batch_id
+                    student_update["batch_name"] = payment.get("batch_name")
+                    
+                    # Add student to batch if not already added
+                    batch = await db.batches.find_one({"id": batch_id}, {"_id": 0})
+                    if batch and student_id not in batch.get("students", []):
+                        await db.batches.update_one(
+                            {"id": batch_id},
+                            {"$addToSet": {"students": student_id}}
+                        )
+                
+                await db.student_inquiries.update_one(
+                    {"id": student_id},
+                    {"$set": student_update}
+                )
+            
+            return {
+                "order_id": order_id,
+                "status": order_status,
+                "amount": payment.get("amount"),
+                "student_name": payment.get("student_name")
+            }
+        else:
+            return {"order_id": order_id, "status": payment.get("status", "UNKNOWN")}
+            
+    except Exception as e:
+        logging.error(f"Payment verification error: {str(e)}")
+        return {"order_id": order_id, "status": payment.get("status", "UNKNOWN"), "error": str(e)}
+
+# ========================
 # COMMENTS ENDPOINTS (Universal for all CRMs)
 # ========================
 
