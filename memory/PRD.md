@@ -90,6 +90,8 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - [x] Individual Student Payment Flow
 - [x] School Student Payment Flow (Initial)
 - [x] Fix School Student Payment bugs (links, edit modal, convert/renew modal)
+- [x] Fix NaN fee amount on School Student Payment page
+- [x] Fix Pay Fees button to trigger Cashfree popup
 
 ### P1 - High Priority
 - [ ] Fix recurring file download issue (wrong name/type)
