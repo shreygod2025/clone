@@ -70,7 +70,7 @@
   "test_execution_details": {
     "test_type": "Backend API + Frontend UI Testing",
     "tools_used": ["pytest", "Playwright Browser Automation"],
-    "test_url": "https://oll-skill-platform.preview.emergentagent.com",
+    "test_url": "https://edu-platform-test.preview.emergentagent.com",
     "pages_tested": [
       "/admin/login",
       "/admin/team-onboarding (all 3 tabs)",
