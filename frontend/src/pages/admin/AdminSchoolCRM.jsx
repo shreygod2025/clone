@@ -6469,13 +6469,15 @@ const AdminSchoolCRM = () => {
                   <label className="text-sm font-medium text-slate-700">Payment Mode (Who pays?)</label>
                   <select
                     value={onboardData.payment_mode}
-                    onChange={(e) => setOnboardData(prev => ({ ...prev, payment_mode: e.target.value }))}
+                    onChange={(e) => setOnboardData(prev => ({ ...prev, payment_mode: e.target.value, payment_method: e.target.value === 'online' ? 'student' : prev.payment_method }))}
                     className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white"
                   >
                     <option value="from_school">From School</option>
-                    <option value="from_student">From Student</option>
+                    <option value="from_student">From Student (Offline)</option>
+                    <option value="online">Online (Student Payment via Cashfree)</option>
                   </select>
                 </div>
+                {onboardData.payment_mode !== 'online' && (
                 <div>
                   <label className="text-sm font-medium text-slate-700">Payment Method</label>
                   <select
@@ -6490,7 +6492,21 @@ const AdminSchoolCRM = () => {
                     <option value="cash">Cash</option>
                   </select>
                 </div>
+                )}
               </div>
+              
+              {/* Online Student Payment Info */}
+              {onboardData.payment_mode === 'online' && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                  <p className="text-sm font-medium text-green-800 mb-1">Online Student Fee Collection</p>
+                  <p className="text-xs text-green-700 mb-2">
+                    A payment link will be generated where students can pay their fees online via UPI, Cards, or Net Banking.
+                  </p>
+                  <p className="text-xs text-green-600">
+                    Payment link: <span className="font-mono">/school-pay/{`{school_id}`}</span>
+                  </p>
+                </div>
+              )}
               
               {/* Payment Tranches */}
               <div>
