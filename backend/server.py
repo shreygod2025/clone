@@ -9159,17 +9159,15 @@ async def update_payment(
                     </div>
                     """
                     
-                    from emergentintegrations.llm.resend import send_email
-                    
                     for email in recipient_emails:
                         try:
-                            await send_email(
-                                api_key=os.environ.get("RESEND_API_KEY", ""),
-                                from_email="OLL Accounts <accounts@oll.co>",
-                                to_email=email,
-                                subject=f"Invoice for {school_name} - Tranche {tranche_index + 1}",
-                                html_content=invoice_email_html
-                            )
+                            email_params = {
+                                "from": "OLL Accounts <accounts@oll.co>",
+                                "to": [email],
+                                "subject": f"Invoice for {school_name} - Tranche {tranche_index + 1}",
+                                "html": invoice_email_html
+                            }
+                            await asyncio.to_thread(resend.Emails.send, email_params)
                             print(f"Invoice email sent to {email}")
                         except Exception as email_err:
                             print(f"Failed to send invoice email to {email}: {email_err}")
