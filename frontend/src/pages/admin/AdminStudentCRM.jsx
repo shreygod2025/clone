@@ -92,7 +92,10 @@ const AdminStudentCRM = () => {
     payment_receipt: null,
     payment_receipt_url: '',
     amount: '', // Payment amount
+    payment_mode: 'receipt', // 'receipt' or 'online'
   });
+  const [generatingPaymentLink, setGeneratingPaymentLink] = useState(false);
+  const [paymentLinkGenerated, setPaymentLinkGenerated] = useState(null);
   const [newLead, setNewLead] = useState({
     name: '',
     phone: '',
