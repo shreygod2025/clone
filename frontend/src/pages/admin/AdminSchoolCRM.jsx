@@ -3947,14 +3947,13 @@ const AdminSchoolCRM = () => {
                               <Eye className="w-4 h-4" />
                               View MOU
                             </a>
-                            <a 
-                              href={getAbsoluteUrl(viewInquiry.onboarding_data.mou_url)} 
-                              download
+                            <button 
+                              onClick={() => downloadFile(viewInquiry.onboarding_data.mou_url, `MOU_${viewInquiry.school_name?.replace(/\s+/g, '_') || 'School'}.pdf`)}
                               className="inline-flex items-center gap-2 text-sm text-green-600 hover:text-green-800 bg-white/50 px-3 py-2 rounded border border-green-200"
                             >
                               <Download className="w-4 h-4" />
                               Download MOU
-                            </a>
+                            </button>
                           </div>
                         </div>
                       )}
