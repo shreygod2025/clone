@@ -3377,18 +3377,17 @@ async def verify_payment(order_id: str):
         }
     
     try:
-        # Fetch order status from Cashfree using globally initialized credentials
-        cf_order_id = payment.get("cf_order_id", order_id)
-        logging.info(f"Verifying student payment - Order: {cf_order_id}")
+        # Fetch order status from Cashfree using our order_id (not cf_order_id)
+        logging.info(f"Verifying student payment - Order ID: {order_id}")
         api_response = get_cashfree_client().PGFetchOrder(
             CASHFREE_API_VERSION,
-            cf_order_id,
+            order_id,  # Use our order_id
             None
         )
         
         if api_response.data:
             order_status = api_response.data.order_status
-            logging.info(f"Student payment verification - Order: {cf_order_id}, Status: {order_status}")
+            logging.info(f"Student payment verification - Order: {order_id}, Status: {order_status}")
             
             # Try to get payment details for transaction ID
             cf_payment_id = None
@@ -3396,7 +3395,7 @@ async def verify_payment(order_id: str):
             try:
                 payments_response = get_cashfree_client().PGOrderFetchPayments(
                     CASHFREE_API_VERSION,
-                    cf_order_id,
+                    order_id,  # Use our order_id
                     None
                 )
                 if payments_response.data and len(payments_response.data) > 0:
