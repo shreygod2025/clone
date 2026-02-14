@@ -7500,7 +7500,7 @@ const AdminSchoolCRM = () => {
                           <ExternalLink className="w-3 h-3" /> Payment Link
                         </a>
                         <a 
-                          href={`/admin/school-payment-tracker/${showEditOnboardingModal.id}`}
+                          href={`/admin/school-payments/${showEditOnboardingModal.id}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-1"
@@ -7901,7 +7901,7 @@ const AdminSchoolCRM = () => {
                                   <CreditCard className="w-3.5 h-3.5" /> Student Payment Link
                                 </a>
                                 <a 
-                                  href={`/admin/school-payment-tracker/${showOnboardingWorkflowModal.id}`}
+                                  href={`/admin/school-payments/${showOnboardingWorkflowModal.id}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 transition-colors"
