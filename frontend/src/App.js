@@ -144,6 +144,7 @@ function App() {
               {/* School Student Payment Page (Public) */}
               <Route path="/school-pay/:schoolId" element={<SchoolStudentPayment />} />
               <Route path="/school-payment-success/:schoolId" element={<SchoolStudentPayment />} />
+              <Route path="/school-payment-tracker-public/:schoolId" element={<SchoolPaymentTrackerPublic />} />
               
               {/* Public Team Onboarding Tracking */}
               <Route path="/team-track/:token" element={<TeamOnboardingTrack />} />
