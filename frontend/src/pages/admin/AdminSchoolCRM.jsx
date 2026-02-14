@@ -4403,6 +4403,12 @@ const AdminSchoolCRM = () => {
                           View
                         </a>
                         <button
+                          onClick={() => downloadFile(doc.url, `${doc.type}_${showDocumentsModal?.school_name?.replace(/\s+/g, '_') || 'School'}.pdf`)}
+                          className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200"
+                        >
+                          Download
+                        </button>
+                        <button
                           onClick={() => deleteDocument(idx)}
                           className="text-xs px-2 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200"
                         >
