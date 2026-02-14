@@ -160,11 +160,13 @@ const SchoolStudentPayment = () => {
       if (result.redirect || result.paymentDetails) {
         // Verify payment with retry logic (Cashfree may need time to process)
         let attempts = 0;
-        const maxAttempts = 3;
+        const maxAttempts = 5;  // More retries for slow network
         const verifyPayment = async () => {
           try {
             const verifyResponse = await axios.get(`${API}/school-payment/verify/${order_id}`);
             const status = verifyResponse.data.status;
+            
+            console.log(`Payment verification attempt ${attempts + 1}: Status = ${status}`);
             
             // Cashfree returns PAID for successful payments
             if (status === 'PAID') {
@@ -173,29 +175,38 @@ const SchoolStudentPayment = () => {
               toast.success('Payment successful!');
               return true;
             } 
-            // Still processing - retry after delay
-            else if ((status === 'PENDING' || status === 'ACTIVE') && attempts < maxAttempts) {
+            // ACTIVE means order created but payment not yet confirmed by bank
+            // Keep retrying as the bank may take time to confirm
+            else if (status === 'ACTIVE' && attempts < maxAttempts) {
               attempts++;
-              await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+              toast.loading(`Verifying payment... (${attempts}/${maxAttempts})`, { id: 'payment-verify' });
+              await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds
               return verifyPayment();
             }
-            // Failed or other status
-            else if (status === 'FAILED' || status === 'CANCELLED' || status === 'EXPIRED') {
+            // Failed or expired
+            else if (status === 'FAILED' || status === 'EXPIRED' || status === 'TERMINATED') {
+              toast.dismiss('payment-verify');
               setPaymentError(`Payment ${status.toLowerCase()}. Please try again.`);
               return false;
             }
             else {
-              // Unknown status - show pending message
-              setPaymentError('Payment verification pending. Please check back later or contact support.');
+              // Still ACTIVE after max retries or unknown status
+              toast.dismiss('payment-verify');
+              if (status === 'ACTIVE') {
+                setPaymentError('Payment is being processed. Please wait a few minutes and check the tracker page, or contact school administration.');
+              } else {
+                setPaymentError('Payment verification pending. Please check back later or contact support.');
+              }
               return false;
             }
           } catch (e) {
             console.error('Verification error:', e);
             if (attempts < maxAttempts) {
               attempts++;
-              await new Promise(resolve => setTimeout(resolve, 2000));
+              await new Promise(resolve => setTimeout(resolve, 3000));
               return verifyPayment();
             }
+            toast.dismiss('payment-verify');
             setPaymentError('Payment verification failed. Please contact school administrator.');
             return false;
           }
