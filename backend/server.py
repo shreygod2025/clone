@@ -8410,6 +8410,7 @@ async def update_school_onboarding(onboarding_id: str, data: dict, user: dict = 
                 "onboarding_data.pricing_type": data.get("pricing_type"),
                 "onboarding_data.fixed_price": data.get("fixed_price"),
                 "onboarding_data.grade_pricing": data.get("grade_pricing"),
+                "onboarding_data.deadline_date": data.get("deadline_date"),
                 "onboarding_data.school_share_type": data.get("school_share_type"),
                 "onboarding_data.school_share_calc": data.get("school_share_calc"),
                 "onboarding_data.school_share_value": data.get("school_share_value"),
