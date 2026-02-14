@@ -488,6 +488,11 @@ const getPageConfig = (path, isLoggedIn) => {
     return PAGE_QUERY_CONFIG.course;
   }
   
+  // School student payment page - specific payment FAQs
+  if (path.includes('/school-pay')) {
+    return PAGE_QUERY_CONFIG['school-payment'];
+  }
+  
   if (path.includes('/admin')) return PAGE_QUERY_CONFIG.admin;
   if (path.includes('/student')) return PAGE_QUERY_CONFIG.student;
   if (path.includes('/school')) return PAGE_QUERY_CONFIG.school;
