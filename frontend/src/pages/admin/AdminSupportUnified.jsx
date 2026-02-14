@@ -720,10 +720,19 @@ const AdminSupportUnified = () => {
   // Combine and filter all queries
   const allQueriesRaw = [...queries, ...legacyTickets];
   
-  // Team members can only see queries assigned to them
+  // Team members can see queries assigned to them OR where they are viewers OR created by them
   const isTeamMember = user?.role === 'team_member';
   const allQueries = isTeamMember 
-    ? allQueriesRaw.filter(q => q.assigned_to === user?.id || q.assigned_to === user?.email)
+    ? allQueriesRaw.filter(q => 
+        q.assigned_to === user?.id || 
+        q.assigned_to === user?.email ||
+        q.viewers?.includes(user?.id) ||
+        q.viewers?.includes(user?.email) ||
+        q.created_by === user?.id ||
+        q.created_by === user?.email ||
+        q.added_by === user?.id ||
+        q.added_by === user?.email
+      )
     : allQueriesRaw;
   
   // Calculate tab counts
