@@ -784,14 +784,14 @@ const AdminOrders = () => {
                           {(payment.invoice_url || payment.receipt_url) && (
                             <div className="flex items-center gap-1 mr-2">
                               {payment.invoice_url && (
-                                <a href={getAbsoluteUrl(payment.invoice_url)} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors" title="View Invoice">
+                                <button onClick={() => downloadFile(payment.invoice_url, `Invoice_${payment.student_name?.replace(/\s+/g, '_') || 'Student'}`)} className="p-1.5 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors" title="Download Invoice">
                                   <FileText className="w-4 h-4 text-blue-600" />
-                                </a>
+                                </button>
                               )}
                               {payment.receipt_url && (
-                                <a href={getAbsoluteUrl(payment.receipt_url)} target="_blank" rel="noopener noreferrer" className="p-1.5 bg-green-50 rounded-lg hover:bg-green-100 transition-colors" title="View Receipt">
+                                <button onClick={() => downloadFile(payment.receipt_url, `Receipt_${payment.student_name?.replace(/\s+/g, '_') || 'Student'}`)} className="p-1.5 bg-green-50 rounded-lg hover:bg-green-100 transition-colors" title="Download Receipt">
                                   <Receipt className="w-4 h-4 text-green-600" />
-                                </a>
+                                </button>
                               )}
                             </div>
                           )}
