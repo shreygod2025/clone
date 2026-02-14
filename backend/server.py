@@ -2963,13 +2963,13 @@ async def create_payment_order(data: StudentPaymentRequest, user: dict = Depends
             order_note=data.description or f"Batch payment for {student.get('name', 'Student')}"
         )
         
-        # Create order via Cashfree (SDK v5+ requires XEnvironment as positional arg)
-        cf_env = Cashfree.XProduction if CASHFREE_ENVIRONMENT == "PRODUCTION" else Cashfree.XSandbox
-        api_response = Cashfree(cf_env, CASHFREE_APP_ID, CASHFREE_SECRET_KEY).PGCreateOrder(
+        # Create order via Cashfree using globally initialized credentials
+        logging.info(f"Creating student payment - Order: {order_id}, Amount: {data.amount}")
+        api_response = Cashfree().PGCreateOrder(
             CASHFREE_API_VERSION,
             create_order_request,
             None,
-            order_id
+            None
         )
         
         if api_response.data:
