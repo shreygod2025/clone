@@ -42,6 +42,12 @@ const MyBookingsPage = () => {
   const [cancelling, setCancelling] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const hasFetched = useRef(false);
+  
+  // Payment-related state
+  const [paymentInfo, setPaymentInfo] = useState(null);
+  const [processingPayment, setProcessingPayment] = useState(false);
+  const [cashfreeReady, setCashfreeReady] = useState(false);
+  const [paymentError, setPaymentError] = useState(null);
 
   const CANCEL_REASONS = [
     { value: 'schedule_conflict', label: 'Schedule conflict' },
@@ -50,6 +56,26 @@ const MyBookingsPage = () => {
     { value: 'financial', label: 'Financial reasons' },
     { value: 'other', label: 'Other reason' }
   ];
+
+  // Load Cashfree SDK
+  useEffect(() => {
+    if (window.Cashfree) {
+      setCashfreeReady(true);
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
+    script.async = true;
+    script.onload = () => {
+      console.log('Cashfree SDK loaded');
+      setCashfreeReady(true);
+    };
+    script.onerror = () => {
+      console.error('Failed to load Cashfree SDK');
+    };
+    document.head.appendChild(script);
+  }, []);
 
   useEffect(() => {
     // Wait for auth loading to complete
@@ -66,9 +92,21 @@ const MyBookingsPage = () => {
       // Also fetch sessions for students
       if (user?.user_type === 'student' || !user?.user_type) {
         fetchSessions();
+        fetchPaymentInfo();
       }
     }
   }, [isLoggedIn, navigate, user?.phone, authLoading]);
+
+  // Fetch payment info for logged-in student
+  const fetchPaymentInfo = async () => {
+    if (!user?.phone) return;
+    try {
+      const response = await axios.get(`${API}/payments/by-phone/${user.phone}`);
+      setPaymentInfo(response.data);
+    } catch (error) {
+      console.error('Failed to fetch payment info:', error);
+    }
+  };
 
   const fetchSessions = async () => {
     if (!user?.phone) return;
