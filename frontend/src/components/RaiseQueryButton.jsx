@@ -505,6 +505,7 @@ const getPageConfig = (path, isLoggedIn) => {
 const getPageTypeKey = (path) => {
   if (path.includes('/robotics') || path.includes('/coding') || path.includes('/ai') || 
       path.includes('/course') || path.includes('/program')) return 'course';
+  if (path.includes('/school-pay')) return 'school-payment';
   if (path.includes('/admin')) return 'admin';
   if (path.includes('/student')) return 'student';
   if (path.includes('/school')) return 'school';
