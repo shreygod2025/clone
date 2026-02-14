@@ -93,6 +93,10 @@ const SchoolStudentPayment = () => {
       toast.error('Please enter student name');
       return false;
     }
+    if (studentName.trim().length < 3) {
+      toast.error('Student name must be at least 3 characters');
+      return false;
+    }
     if (!phone.trim() || phone.length !== 10) {
       toast.error('Please enter a valid 10-digit phone number');
       return false;
