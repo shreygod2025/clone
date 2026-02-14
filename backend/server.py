@@ -938,6 +938,7 @@ class StudentInquiry(BaseModel):
     assigned_educator_id: str = ""  # educator assigned to conduct demo
     assigned_educator_name: str = ""  # educator name for display
     meeting_link: str = ""  # Jitsi meeting link
+    pending_payment: Optional[dict] = None  # For online payment tracking
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
