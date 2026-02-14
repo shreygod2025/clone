@@ -8536,12 +8536,16 @@ async def get_public_tracking(tracking_token: str):
     steps = workflow.get("steps", {})
     onboarding_data = school.get("onboarding_data", {})
     
-    # Fetch PO data for this school (for kit_delivery step)
+    # Fetch PO data for this school (for kit_delivery step) - with short timeout for better UX
     po_info = None
     school_name = school.get("school_name", "")
     if school_name:
         try:
-            po_list_data = await fetch_po_data("po", {"school_name": school_name, "limit": 50})
+            # Use shorter timeout for public tracking page (5 seconds total)
+            po_list_data = await asyncio.wait_for(
+                fetch_po_data("po", {"school_name": school_name, "limit": 10}, timeout=5.0),
+                timeout=5.0
+            )
             if po_list_data and "data" in po_list_data:
                 # Filter out delivered POs
                 active_pos = [
@@ -8552,7 +8556,10 @@ async def get_public_tracking(tracking_token: str):
                     # Get detailed info for the first active PO
                     po_number = active_pos[0].get("po_number")
                     if po_number:
-                        detailed_po = await fetch_po_data(f"po/{po_number}")
+                        detailed_po = await asyncio.wait_for(
+                            fetch_po_data(f"po/{po_number}", timeout=5.0),
+                            timeout=5.0
+                        )
                         if detailed_po:
                             dispatch_info = detailed_po.get("dispatch_info") or {}
                             po_info = {
@@ -8564,6 +8571,8 @@ async def get_public_tracking(tracking_token: str):
                                 "public_tracking_url": detailed_po.get("public_tracking_url"),
                                 "vendor_name": detailed_po.get("vendor_name"),
                             }
+        except asyncio.TimeoutError:
+            logging.warning(f"PO data fetch timeout for tracking page: {school_name}")
         except Exception as e:
             logging.error(f"Error fetching PO data for tracking: {str(e)}")
     
