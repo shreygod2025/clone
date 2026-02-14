@@ -10140,6 +10140,20 @@ async def create_inquiry_query(data: dict):
     doc = query.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
     
+    # Get added_by user info and add as viewer
+    added_by = data.get('added_by', '')
+    if added_by:
+        # Initialize viewers with the creator
+        doc['viewers'] = [added_by]
+        # Fetch user name for display
+        user = await db.team_users.find_one({"id": added_by}, {"_id": 0})
+        if not user:
+            user = await db.admins.find_one({"id": added_by}, {"_id": 0})
+        if user:
+            doc['added_by_name'] = user.get('name', '')
+    else:
+        doc['viewers'] = []
+    
     # Store in inquiry_queries collection (ticketing system)
     await db.inquiry_queries.insert_one(doc)
     
