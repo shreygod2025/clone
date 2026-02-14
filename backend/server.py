@@ -3353,6 +3353,16 @@ async def verify_payment(order_id: str):
     if not payment:
         raise HTTPException(status_code=404, detail="Payment order not found")
     
+    # Check if already processed
+    if payment.get("status") == "PAID":
+        return {
+            "order_id": order_id,
+            "status": "PAID",
+            "amount": payment.get("amount"),
+            "student_name": payment.get("student_name"),
+            "transaction_id": payment.get("transaction_id")
+        }
+    
     try:
         # Fetch order status from Cashfree (SDK v5+ requires XEnvironment)
         cf_order_id = payment.get("cf_order_id", order_id)
@@ -3366,13 +3376,34 @@ async def verify_payment(order_id: str):
         if api_response.data:
             order_status = api_response.data.order_status
             
+            # Try to get payment details for transaction ID
+            cf_payment_id = None
+            payment_method = "Cashfree"
+            try:
+                payments_response = Cashfree(cf_env, CASHFREE_APP_ID, CASHFREE_SECRET_KEY).PGOrderFetchPayments(
+                    CASHFREE_API_VERSION,
+                    cf_order_id,
+                    None
+                )
+                if payments_response.data and len(payments_response.data) > 0:
+                    cf_payment_id = str(payments_response.data[0].cf_payment_id)
+                    payment_method = f"Cashfree - {payments_response.data[0].payment_group or 'unknown'}"
+            except Exception as e:
+                logging.warning(f"Could not fetch payment details: {e}")
+            
             # Update local payment record
+            update_data = {
+                "status": order_status,
+                "verified_at": datetime.now(timezone.utc).isoformat()
+            }
+            if cf_payment_id:
+                update_data["transaction_id"] = cf_payment_id
+                update_data["cf_payment_id"] = cf_payment_id
+                update_data["payment_method"] = payment_method
+            
             await db.student_payments.update_one(
                 {"id": order_id},
-                {"$set": {
-                    "status": order_status,
-                    "verified_at": datetime.now(timezone.utc).isoformat()
-                }}
+                {"$set": update_data}
             )
             
             # If payment is successful, update student
@@ -3380,12 +3411,24 @@ async def verify_payment(order_id: str):
                 student_id = payment.get("student_id")
                 batch_id = payment.get("batch_id")
                 
+                # Check if already processed
+                student = await db.student_inquiries.find_one({"id": student_id}, {"_id": 0})
+                if student and student.get("status") == "converted" and student.get("pending_payment") is None:
+                    return {
+                        "order_id": order_id,
+                        "status": order_status,
+                        "amount": payment.get("amount"),
+                        "student_name": payment.get("student_name"),
+                        "transaction_id": cf_payment_id
+                    }
+                
                 student_update = {
                     "status": "converted",
                     "payment_status": "paid",
                     "payment_amount": payment.get("amount"),
                     "payment_date": datetime.now(timezone.utc).isoformat(),
-                    "payment_method": "cashfree",
+                    "payment_method": payment_method,
+                    "payment_transaction_id": cf_payment_id,
                     "pending_payment": None,
                     "updated_at": datetime.now(timezone.utc).isoformat()
                 }
@@ -3401,6 +3444,32 @@ async def verify_payment(order_id: str):
                             {"id": batch_id},
                             {"$addToSet": {"students": student_id}}
                         )
+                        
+                        # Create sessions for the student from batch schedule
+                        if batch.get("schedule"):
+                            # Check if sessions already exist
+                            existing_sessions = await db.sessions.count_documents({"student_id": student_id, "batch_id": batch_id})
+                            if existing_sessions == 0:
+                                sessions_to_create = []
+                                for i, session_info in enumerate(batch.get("schedule", [])[:12], 1):
+                                    session = {
+                                        "id": str(uuid.uuid4()),
+                                        "student_id": student_id,
+                                        "batch_id": batch_id,
+                                        "session_number": i,
+                                        "date": session_info.get("date"),
+                                        "time": session_info.get("time", batch.get("time")),
+                                        "mode": batch.get("mode", "online"),
+                                        "skill": batch.get("skill"),
+                                        "status": "scheduled",
+                                        "created_at": datetime.now(timezone.utc).isoformat()
+                                    }
+                                    sessions_to_create.append(session)
+                                
+                                if sessions_to_create:
+                                    await db.sessions.insert_many(sessions_to_create)
+                                    student_update["sessions_total"] = len(sessions_to_create)
+                                    student_update["sessions_completed"] = 0
                 
                 await db.student_inquiries.update_one(
                     {"id": student_id},
@@ -3411,7 +3480,8 @@ async def verify_payment(order_id: str):
                 "order_id": order_id,
                 "status": order_status,
                 "amount": payment.get("amount"),
-                "student_name": payment.get("student_name")
+                "student_name": payment.get("student_name"),
+                "transaction_id": cf_payment_id
             }
         else:
             return {"order_id": order_id, "status": payment.get("status", "UNKNOWN")}
