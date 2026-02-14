@@ -145,6 +145,7 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - **Analytics**: PostHog
 - **Video**: Jitsi Meet
 - **External APIs**: ProcureWay (PO Management)
+- **Payments**: Cashfree Payment Gateway (Production)
 
 ### 8. API Key Management (NEW - Feb 13, 2026)
 Admin Settings page now includes full API Key management:
