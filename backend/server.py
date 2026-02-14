@@ -8698,6 +8698,60 @@ async def update_tracking_ticket(ticket_id: str, data: dict, user: dict = Depend
     updated_ticket = await db.support_tickets.find_one({"id": ticket_id}, {"_id": 0})
     return {"success": True, "ticket": updated_ticket}
 
+@api_router.post("/support/tracking-tickets/{ticket_id}/assign")
+async def assign_tracking_ticket(ticket_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Assign a tracking page support ticket to a user"""
+    assigned_to = data.get("assigned_to")
+    deadline = data.get("deadline")
+    
+    ticket = await db.support_tickets.find_one({"id": ticket_id, "source": "tracking_page"}, {"_id": 0})
+    if not ticket:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    
+    # Handle unassign case
+    if not assigned_to or assigned_to == "":
+        await db.support_tickets.update_one(
+            {"id": ticket_id}, 
+            {"$set": {"assigned_to": None, "deadline": None}}
+        )
+        return {"message": "Ticket unassigned"}
+    
+    # Get the user being assigned
+    assignee = await db.team_users.find_one({"id": assigned_to}, {"_id": 0})
+    if not assignee:
+        assignee = await db.center_users.find_one({"id": assigned_to}, {"_id": 0})
+    if not assignee:
+        assignee = await db.admins.find_one({"id": assigned_to}, {"_id": 0})
+    
+    assignee_name = assignee.get("name", "Team Member") if assignee else "Unknown"
+    
+    # Update the ticket with assignment
+    update_data = {
+        "assigned_to": assigned_to,
+        "assigned_to_name": assignee_name,
+        "assigned_at": datetime.now(timezone.utc).isoformat(),
+        "assigned_by": user.get("email", "admin"),
+        "deadline": deadline,
+        "status": "in_progress" if ticket.get("status") == "open" else ticket.get("status"),
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.support_tickets.update_one({"id": ticket_id}, {"$set": update_data})
+    
+    return {"message": "Ticket assigned successfully", "assigned_to": assignee_name}
+
+@api_router.delete("/support/tracking-tickets/{ticket_id}")
+async def delete_tracking_ticket(ticket_id: str, user: dict = Depends(get_current_user)):
+    """Delete a tracking page support ticket"""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Only admins can delete tickets")
+    
+    result = await db.support_tickets.delete_one({"id": ticket_id, "source": "tracking_page"})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+    
+    return {"message": "Ticket deleted successfully"}
+
 # ========================
 # ORDERS & PAYMENTS
 # ========================
