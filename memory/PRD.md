@@ -49,6 +49,27 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ### February 14, 2026
 
+#### School Student Payment Page - UI Improvements (Session 3)
+**Changes:**
+1. ✅ **Grade dropdown** - Removed amount from dropdown, now shows just "Grade 1", "Grade 2" etc.
+2. ✅ **Amount display** - Fee amount shown in a highlighted box after grade selection
+3. ✅ **Need Help button** - Moved FAQs into a modal, accessed via "Need Help?" button in header
+4. ✅ **Footer contact info** - Added info@oll.co and +91 9920188188 to footer
+5. ✅ **Program name** - Header now shows program name (e.g., "Robotics Fee Payment" instead of generic text)
+6. ✅ **Single column layout** - Cleaner layout without sidebar FAQs
+
+**XLSX Export:**
+- Added "Export Excel" button to School Payment Tracker (`/admin/school-payments/{schoolId}`)
+- Added "Export Excel" button to onboarding modal in Admin School CRM (for schools with online payment)
+
+**Modified Files:**
+- `frontend/src/pages/SchoolStudentPayment.jsx` - Complete redesign with new layout and features
+- `frontend/src/pages/admin/SchoolPaymentTracker.jsx` - Added XLSX export function
+- `frontend/src/pages/admin/AdminSchoolCRM.jsx` - Added XLSX export to onboarding modal
+
+**Dependencies:**
+- Added `xlsx` package for Excel file generation
+
 #### School Student Payments - P0 Bug Fixes (Session 2)
 **Fixed Issues:**
 1. ✅ **NaN Fee Amount Bug** - Fee amount showed "NaN" after selecting a grade. Fixed by transforming `price_per_student` to `price` in backend API response (server.py lines 3512-3524)
