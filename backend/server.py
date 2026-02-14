@@ -6843,6 +6843,78 @@ async def delete_support_query(query_id: str, user: dict = Depends(get_current_u
     
     return {"message": "Query deleted successfully"}
 
+@api_router.post("/support/queries/{query_id}/viewers")
+async def manage_query_viewers(query_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Add or remove viewers from a support query"""
+    action = data.get("action", "add")  # "add" or "remove"
+    viewer_id = data.get("viewer_id")
+    
+    if not viewer_id:
+        raise HTTPException(status_code=400, detail="viewer_id is required")
+    
+    query = await db.support_queries.find_one({"id": query_id}, {"_id": 0})
+    if not query:
+        raise HTTPException(status_code=404, detail="Query not found")
+    
+    # Get viewer name for activity log
+    viewer = await db.team_users.find_one({"id": viewer_id}, {"_id": 0})
+    if not viewer:
+        viewer = await db.admins.find_one({"id": viewer_id}, {"_id": 0})
+    viewer_name = viewer.get("name", "Unknown") if viewer else "Unknown"
+    
+    activity = {
+        "type": "viewer_added" if action == "add" else "viewer_removed",
+        "viewer_id": viewer_id,
+        "viewer_name": viewer_name,
+        "by": user.get("name", user.get("email", "admin")),
+        "date": datetime.now(timezone.utc).isoformat()
+    }
+    
+    if action == "add":
+        await db.support_queries.update_one(
+            {"id": query_id},
+            {
+                "$addToSet": {"viewers": viewer_id},
+                "$push": {"activity_history": activity},
+                "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
+            }
+        )
+        return {"message": f"Viewer {viewer_name} added successfully"}
+    else:
+        await db.support_queries.update_one(
+            {"id": query_id},
+            {
+                "$pull": {"viewers": viewer_id},
+                "$push": {"activity_history": activity},
+                "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
+            }
+        )
+        return {"message": f"Viewer {viewer_name} removed successfully"}
+
+@api_router.get("/support/queries/{query_id}/viewers")
+async def get_query_viewers(query_id: str, user: dict = Depends(get_current_user)):
+    """Get list of viewers for a support query with their details"""
+    query = await db.support_queries.find_one({"id": query_id}, {"_id": 0})
+    if not query:
+        raise HTTPException(status_code=404, detail="Query not found")
+    
+    viewer_ids = query.get("viewers", [])
+    viewers = []
+    
+    for vid in viewer_ids:
+        viewer = await db.team_users.find_one({"id": vid}, {"_id": 0, "id": 1, "name": 1, "email": 1})
+        if not viewer:
+            viewer = await db.admins.find_one({"id": vid}, {"_id": 0, "id": 1, "name": 1, "email": 1})
+        if viewer:
+            viewers.append(viewer)
+    
+    return {
+        "query_id": query_id,
+        "viewers": viewers,
+        "created_by": query.get("created_by"),
+        "created_by_name": query.get("created_by_name")
+    }
+
 @api_router.get("/support/school-queries")
 async def get_school_support_queries(user: dict = Depends(get_current_user)):
     queries = await db.school_support_queries.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
