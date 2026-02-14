@@ -186,11 +186,15 @@ const AdminSupportUnified = () => {
   const [showNotesModal, setShowNotesModal] = useState(null);
   const [showHistoryModal, setShowHistoryModal] = useState(null);
   const [showEditModal, setShowEditModal] = useState(null);
+  const [showViewersModal, setShowViewersModal] = useState(null);
   const [noteText, setNoteText] = useState('');
   const [editForm, setEditForm] = useState({});
   const [queryHistory, setQueryHistory] = useState([]);
   const [queryNotes, setQueryNotes] = useState([]);
+  const [queryViewers, setQueryViewers] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [loadingViewers, setLoadingViewers] = useState(false);
+  const [selectedViewerToAdd, setSelectedViewerToAdd] = useState('');
   
   // Attachment & Voice Note states
   const [attachments, setAttachments] = useState([]);
