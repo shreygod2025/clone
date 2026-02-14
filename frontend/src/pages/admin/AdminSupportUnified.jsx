@@ -995,6 +995,18 @@ const AdminSupportUnified = () => {
                     Source: {SOURCE_OPTIONS.find(s => s.value === query.source)?.label || query.source}
                   </span>
                 )}
+                {(query.created_by_name || query.added_by_name || query.added_by) && (
+                  <span className="text-xs px-2 py-1 rounded bg-emerald-100 text-emerald-700 flex items-center gap-1">
+                    <User className="w-3 h-3" />
+                    Created by: {query.created_by_name || query.added_by_name || getAssigneeName(query.added_by) || query.added_by}
+                  </span>
+                )}
+                {query.viewers && query.viewers.length > 0 && (
+                  <span className="text-xs px-2 py-1 rounded bg-violet-100 text-violet-700 flex items-center gap-1">
+                    <Eye className="w-3 h-3" />
+                    {query.viewers.length} viewer{query.viewers.length > 1 ? 's' : ''}
+                  </span>
+                )}
               </div>
 
               {(query.query_details || query.message) && (
