@@ -3902,10 +3902,33 @@ const AdminSchoolCRM = () => {
                             <p className="font-medium text-purple-800 capitalize">{viewInquiry.onboarding_data.payment_mode.replace(/_/g, ' ')}</p>
                           </div>
                         )}
-                        {viewInquiry.onboarding_data.payment_method && (
+                        {viewInquiry.onboarding_data.payment_method && viewInquiry.onboarding_data.payment_mode !== 'online' && (
                           <div>
                             <p className="text-xs text-purple-600">Payment Method</p>
                             <p className="font-medium text-purple-800 capitalize">{viewInquiry.onboarding_data.payment_method}</p>
+                          </div>
+                        )}
+                        {viewInquiry.onboarding_data.payment_mode === 'online' && viewInquiry.onboarding_data.payment_method === 'student' && (
+                          <div className="col-span-2">
+                            <p className="text-xs text-purple-600 mb-1">Student Payment Links</p>
+                            <div className="flex flex-col gap-1">
+                              <a 
+                                href={`/school-pay/${viewInquiry.id}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-green-700 bg-green-100 px-2 py-1 rounded inline-flex items-center gap-1 hover:bg-green-200 transition-colors w-fit"
+                              >
+                                <CreditCard className="w-3 h-3" />
+                                Fee Payment Page
+                              </a>
+                              <a 
+                                href={`/admin/school-payments/${viewInquiry.id}`}
+                                className="text-sm text-blue-700 bg-blue-100 px-2 py-1 rounded inline-flex items-center gap-1 hover:bg-blue-200 transition-colors w-fit"
+                              >
+                                <BarChart3 className="w-3 h-3" />
+                                Payment Tracker
+                              </a>
+                            </div>
                           </div>
                         )}
                         {viewInquiry.onboarding_data.contract_start && (
