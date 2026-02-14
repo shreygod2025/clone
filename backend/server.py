@@ -3568,7 +3568,8 @@ async def create_school_student_payment_session(data: dict):
     if not grade_match:
         raise HTTPException(status_code=400, detail=f"Invalid grade: {grade}")
     
-    expected_amount = grade_match.get("price", 0)
+    # Handle both 'price' and 'price_per_student' field names
+    expected_amount = grade_match.get("price") or grade_match.get("price_per_student") or 0
     if float(amount) != float(expected_amount):
         raise HTTPException(status_code=400, detail=f"Amount mismatch. Expected: {expected_amount}")
     
