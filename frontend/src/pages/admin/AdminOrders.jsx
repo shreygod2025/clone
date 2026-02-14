@@ -45,11 +45,13 @@ const downloadFile = async (url, filename) => {
     if (!response.ok) throw new Error('Download failed');
     
     const blob = await response.blob();
-    const blobUrl = window.URL.createObjectURL(blob);
+    // Ensure it's treated as PDF
+    const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+    const blobUrl = window.URL.createObjectURL(pdfBlob);
     
     const link = document.createElement('a');
     link.href = blobUrl;
-    link.download = filename;
+    link.download = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
