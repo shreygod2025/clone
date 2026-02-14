@@ -3736,18 +3736,18 @@ async def verify_school_student_payment(order_id: str):
         }
     
     try:
-        cf_order_id = payment.get("cf_order_id", order_id)
-        
-        logging.info(f"Verifying school payment - Order ID: {order_id}, CF Order ID: {cf_order_id}")
+        # Use the order_id (our ID) to fetch from Cashfree, NOT cf_order_id
+        # Cashfree PGFetchOrder expects the order_id we sent when creating the order
+        logging.info(f"Verifying school payment - Order ID: {order_id}")
         
         # Use globally initialized Cashfree - credentials already set at startup
         api_response = get_cashfree_client().PGFetchOrder(
             CASHFREE_API_VERSION,
-            cf_order_id,
+            order_id,  # Use our order_id, not cf_order_id
             None
         )
         
-        logging.info(f"School payment verification - Order: {cf_order_id}, API Response data: {api_response.data}")
+        logging.info(f"School payment verification - Order: {order_id}, API Response data: {api_response.data}")
         
         if api_response.data:
             order_status = api_response.data.order_status
