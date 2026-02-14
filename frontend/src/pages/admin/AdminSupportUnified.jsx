@@ -511,8 +511,17 @@ const AdminSupportUnified = () => {
   const handleAssignQuery = async (userId) => {
     if (!showAssignModal) return;
     try {
-      // Use the new assign endpoint with deadline and notifications
-      await axios.post(`${API}/support/queries/${showAssignModal.id}/assign`, {
+      // Use the correct endpoint based on source
+      let endpoint;
+      if (showAssignModal._source === 'inquiry') {
+        endpoint = `${API}/inquiry/queries/${showAssignModal.id}/assign`;
+      } else if (showAssignModal._source === 'tracking_page') {
+        endpoint = `${API}/support/tracking-tickets/${showAssignModal.id}/assign`;
+      } else {
+        endpoint = `${API}/support/queries/${showAssignModal.id}/assign`;
+      }
+      
+      await axios.post(endpoint, {
         assigned_to: userId,
         deadline: assignDeadline || null
       }, {
@@ -523,7 +532,8 @@ const AdminSupportUnified = () => {
       setAssignDeadline('');
       fetchAllQueries();
     } catch (error) {
-      toast.error('Failed to assign query');
+      console.error('Assign error:', error.response?.data || error);
+      toast.error(error.response?.data?.detail || 'Failed to assign query');
     }
   };
 
