@@ -2141,8 +2141,11 @@ const AdminStudentCRM = () => {
                     <div className="space-y-2">
                       <div className="flex items-center gap-2 text-green-700">
                         <CheckCircle2 className="w-4 h-4" />
-                        <span className="text-sm font-medium">Payment link generated!</span>
+                        <span className="text-sm font-medium">Payment link ready!</span>
                       </div>
+                      <p className="text-xs text-green-600 mb-2">
+                        Share this link with the student. They'll see a "Pay Fees" button and can pay securely via Cashfree.
+                      </p>
                       <div className="flex items-center gap-2">
                         <input 
                           type="text" 
@@ -2168,17 +2171,17 @@ const AdminStudentCRM = () => {
                           <ExternalLink className="w-4 h-4 text-blue-700" />
                         </a>
                       </div>
-                      <p className="text-xs text-green-600">
-                        Share this link with the student. Once they pay, their status will be automatically updated.
+                      <p className="text-xs text-slate-500 mt-2">
+                        Amount: ₹{paymentLinkGenerated.amount} • Batch: {paymentLinkGenerated.batch_name}
                       </p>
                     </div>
                   ) : (
                     <div className="text-center">
                       <p className="text-sm text-green-700 mb-2">
-                        Generate a payment link for the student to pay online via Cashfree.
+                        Setup online payment for the student via Cashfree.
                       </p>
                       <p className="text-xs text-slate-500 mb-3">
-                        First select batch details below, then generate the payment link.
+                        First select batch details below, then click "Setup Payment". The student will receive a link to pay securely.
                       </p>
                     </div>
                   )}
