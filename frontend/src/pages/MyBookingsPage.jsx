@@ -676,6 +676,23 @@ const MyBookingsPage = () => {
             </div>
           )}
 
+          {/* Payment Success Card */}
+          {paymentSuccess && (
+            <div className="mb-6 bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl p-6 text-white shadow-lg" data-testid="payment-success-section">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
+                  <CheckCircle2 className="w-10 h-10 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold">Payment Successful!</h2>
+                  <p className="text-green-100 mt-1">
+                    Thank you! Your batch sessions are being scheduled. Check your sessions below.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Tabs - Only show if user has sessions */}
           {hasActiveSessions && (
             <div className="flex gap-2 mb-6">
