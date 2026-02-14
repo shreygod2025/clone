@@ -600,6 +600,80 @@ const AdminSupportUnified = () => {
     }
   };
 
+  // Fetch Query Viewers
+  const fetchQueryViewers = async (query) => {
+    setLoadingViewers(true);
+    try {
+      let endpoint;
+      if (query._source === 'inquiry') {
+        // For inquiry queries, viewers are stored in the query itself
+        setQueryViewers(query.viewers || []);
+      } else {
+        const response = await axios.get(`${API}/support/queries/${query.id}/viewers`, {
+          headers: getAuthHeaders()
+        });
+        setQueryViewers(response.data.viewers || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch viewers:', error);
+      setQueryViewers([]);
+    } finally {
+      setLoadingViewers(false);
+    }
+  };
+
+  // Add Viewer handler
+  const handleAddViewer = async () => {
+    if (!selectedViewerToAdd || !showViewersModal) {
+      toast.error('Please select a viewer');
+      return;
+    }
+    try {
+      let endpoint;
+      if (showViewersModal._source === 'inquiry') {
+        endpoint = `${API}/inquiry/queries/${showViewersModal.id}/viewers`;
+      } else {
+        endpoint = `${API}/support/queries/${showViewersModal.id}/viewers`;
+      }
+      
+      await axios.post(endpoint, {
+        action: 'add',
+        viewer_id: selectedViewerToAdd
+      }, { headers: getAuthHeaders() });
+      
+      toast.success('Viewer added successfully');
+      setSelectedViewerToAdd('');
+      fetchQueryViewers(showViewersModal);
+      fetchAllQueries();
+    } catch (error) {
+      toast.error('Failed to add viewer');
+    }
+  };
+
+  // Remove Viewer handler
+  const handleRemoveViewer = async (viewerId) => {
+    if (!showViewersModal) return;
+    try {
+      let endpoint;
+      if (showViewersModal._source === 'inquiry') {
+        endpoint = `${API}/inquiry/queries/${showViewersModal.id}/viewers`;
+      } else {
+        endpoint = `${API}/support/queries/${showViewersModal.id}/viewers`;
+      }
+      
+      await axios.post(endpoint, {
+        action: 'remove',
+        viewer_id: viewerId
+      }, { headers: getAuthHeaders() });
+      
+      toast.success('Viewer removed successfully');
+      fetchQueryViewers(showViewersModal);
+      fetchAllQueries();
+    } catch (error) {
+      toast.error('Failed to remove viewer');
+    }
+  };
+
   // Edit Query handler
   const handleEditQuery = async () => {
     if (!showEditModal) return;
