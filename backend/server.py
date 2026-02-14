@@ -12754,6 +12754,72 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+@app.on_event("startup")
+async def startup_db_client():
+    """Create database indexes on startup for better performance"""
+    try:
+        # School Inquiries indexes
+        await db.school_inquiries.create_index("id", unique=True)
+        await db.school_inquiries.create_index("status")
+        await db.school_inquiries.create_index("assigned_to")
+        await db.school_inquiries.create_index("created_at")
+        await db.school_inquiries.create_index([("status", 1), ("created_at", -1)])
+        
+        # Student Inquiries indexes
+        await db.student_inquiries.create_index("id", unique=True)
+        await db.student_inquiries.create_index("status")
+        await db.student_inquiries.create_index("assigned_to")
+        await db.student_inquiries.create_index("demo_date")
+        await db.student_inquiries.create_index([("status", 1), ("created_at", -1)])
+        
+        # Educator Applications indexes
+        await db.educator_applications.create_index("id", unique=True)
+        await db.educator_applications.create_index("status")
+        await db.educator_applications.create_index("assigned_to")
+        await db.educator_applications.create_index([("status", 1), ("created_at", -1)])
+        
+        # Support Queries indexes
+        await db.support_queries.create_index("id", unique=True)
+        await db.support_queries.create_index("status")
+        await db.support_queries.create_index("assigned_to")
+        await db.support_queries.create_index([("status", 1), ("created_at", -1)])
+        
+        # Inquiry Queries indexes
+        await db.inquiry_queries.create_index("id", unique=True)
+        await db.inquiry_queries.create_index("status")
+        await db.inquiry_queries.create_index([("status", 1), ("created_at", -1)])
+        
+        # Support Tickets indexes
+        await db.support_tickets.create_index("id", unique=True)
+        await db.support_tickets.create_index("status")
+        await db.support_tickets.create_index("source")
+        await db.support_tickets.create_index([("status", 1), ("created_at", -1)])
+        
+        # Team Users indexes
+        await db.team_users.create_index("id", unique=True)
+        await db.team_users.create_index("email")
+        
+        # School Expenses indexes
+        await db.school_expenses.create_index("id", unique=True)
+        await db.school_expenses.create_index("school_id")
+        await db.school_expenses.create_index([("school_id", 1), ("created_at", -1)])
+        
+        # External API Keys indexes
+        await db.external_api_keys.create_index("id", unique=True)
+        await db.external_api_keys.create_index("key", unique=True)
+        
+        # GP Applications indexes
+        await db.gp_applications.create_index("id", unique=True)
+        await db.gp_applications.create_index("status")
+        
+        # Growth Partners indexes
+        await db.growth_partners.create_index("id", unique=True)
+        await db.growth_partners.create_index("status")
+        
+        print("[STARTUP] Database indexes created successfully")
+    except Exception as e:
+        print(f"[STARTUP] Warning: Could not create some indexes: {e}")
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     client.close()
