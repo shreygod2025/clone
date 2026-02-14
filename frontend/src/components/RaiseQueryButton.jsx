@@ -477,20 +477,21 @@ const PAGE_QUERY_CONFIG = {
 
 // Get page config based on URL
 const getPageConfig = (path, isLoggedIn) => {
-  // For logged-in regular users (not admin), show simplified queries
-  if (isLoggedIn && !path.includes('/admin')) {
-    return LOGGED_IN_USER_QUERIES;
+  // PRIORITY 1: School student payment page - ALWAYS show payment FAQs regardless of login
+  // This must be checked first since payment page users need payment-specific help
+  if (path.includes('/school-pay')) {
+    return PAGE_QUERY_CONFIG['school-payment'];
   }
   
-  // Course landing pages
+  // PRIORITY 2: Course landing pages (also public, need specific FAQs)
   if (path.includes('/robotics') || path.includes('/coding') || path.includes('/ai') || 
       path.includes('/course') || path.includes('/program')) {
     return PAGE_QUERY_CONFIG.course;
   }
   
-  // School student payment page - specific payment FAQs
-  if (path.includes('/school-pay')) {
-    return PAGE_QUERY_CONFIG['school-payment'];
+  // For logged-in regular users (not admin), show simplified queries
+  if (isLoggedIn && !path.includes('/admin')) {
+    return LOGGED_IN_USER_QUERIES;
   }
   
   if (path.includes('/admin')) return PAGE_QUERY_CONFIG.admin;
