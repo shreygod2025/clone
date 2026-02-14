@@ -972,6 +972,7 @@ class StudentInquiryUpdate(BaseModel):
     assigned_to: Optional[str] = None
     assigned_educator_id: Optional[str] = None
     assigned_educator_name: Optional[str] = None
+    pending_payment: Optional[dict] = None
 
 # Comment Model (shared across CRMs)
 class Comment(BaseModel):
