@@ -302,6 +302,102 @@ const MyBookingsPage = () => {
     toast.success('Logged out successfully');
   };
 
+  // Format currency for payment display
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat('en-IN', { 
+      style: 'currency', 
+      currency: 'INR',
+      maximumFractionDigits: 0
+    }).format(amount);
+  };
+
+  // Handle Pay Now button click - Cashfree Drop-in
+  const handlePayNow = useCallback(async () => {
+    if (!cashfreeReady) {
+      toast.error('Payment system is loading. Please wait a moment.');
+      return;
+    }
+
+    if (!paymentInfo?.student_id) {
+      toast.error('Missing payment information. Please refresh the page.');
+      return;
+    }
+
+    setProcessingPayment(true);
+    setPaymentError(null);
+
+    try {
+      // Step 1: Create payment session on backend
+      const response = await axios.post(`${API}/payments/create-session/${paymentInfo.student_id}`);
+      
+      if (!response.data.success || !response.data.payment_session_id) {
+        throw new Error('Failed to create payment session');
+      }
+
+      const { payment_session_id, environment } = response.data;
+      
+      // Step 2: Initialize Cashfree with correct environment
+      const cashfree = window.Cashfree({
+        mode: environment === 'sandbox' ? 'sandbox' : 'production'
+      });
+
+      // Step 3: Open Cashfree Drop-in checkout (modal)
+      const checkoutOptions = {
+        paymentSessionId: payment_session_id,
+        redirectTarget: '_modal'
+      };
+
+      const result = await cashfree.checkout(checkoutOptions);
+
+      if (result.error) {
+        console.error('Payment error:', result.error);
+        if (result.error.message) {
+          setPaymentError(`Payment failed: ${result.error.message}`);
+          toast.error(`Payment failed: ${result.error.message}`);
+        } else {
+          setPaymentError('Payment was not completed. Please try again.');
+          toast.error('Payment was not completed. Please try again.');
+        }
+      }
+
+      if (result.redirect) {
+        console.log('Payment redirect completed');
+        // Refresh payment info after a short delay
+        setTimeout(() => {
+          fetchPaymentInfo();
+          fetchSessions();
+        }, 2000);
+      }
+
+      if (result.paymentDetails) {
+        const paymentStatus = result.paymentDetails.paymentMessage;
+        console.log('Payment status:', paymentStatus);
+        
+        if (paymentStatus === 'Payment is successful' || paymentStatus === 'SUCCESS') {
+          toast.success('Payment successful! Your batch sessions will be scheduled shortly.');
+          // Refresh data
+          setTimeout(() => {
+            fetchPaymentInfo();
+            fetchSessions();
+          }, 1500);
+        } else {
+          // Refresh to get latest status
+          setTimeout(() => {
+            fetchPaymentInfo();
+          }, 1500);
+        }
+      }
+
+    } catch (err) {
+      console.error('Payment error:', err);
+      const errorMsg = err.response?.data?.detail || err.message || 'Payment failed. Please try again.';
+      setPaymentError(errorMsg);
+      toast.error(errorMsg);
+    } finally {
+      setProcessingPayment(false);
+    }
+  }, [cashfreeReady, paymentInfo]);
+
   const getStatusColor = (status) => {
     const colors = {
       'new': 'bg-blue-100 text-blue-700',
