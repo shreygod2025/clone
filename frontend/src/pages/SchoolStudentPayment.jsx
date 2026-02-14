@@ -323,7 +323,6 @@ const SchoolStudentPayment = () => {
           </div>
         </div>
         <Footer />
-        <HelpModal />
       </div>
     );
   }
