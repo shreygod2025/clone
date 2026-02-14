@@ -181,15 +181,17 @@ Set `JOB_SECRET` environment variable and schedule hourly execution.
 
 ### P0 - Blocking
 - **Email Notifications**: Gmail SMTP implemented but awaiting `GMAIL_APP_PASSWORD` from user
+- **Cashfree Domain Whitelist**: User must whitelist production domain in Cashfree Dashboard for payments to work
 
 ### P1 - High Priority
-- Full regression test for School CRM data consistency
+- **File Downloads Bug (Recurring)**: Multiple reports of files downloading with wrong names/types - needs comprehensive audit
 - Generate Proposal & MOU PDFs feature
 - CSV Export for CRM pages
 
 ### P2 - Medium Priority
 - Refactor `server.py` into smaller route modules
 - Refactor `AdminSchoolCRM.jsx` (8000+ lines)
+- Cron job setup instructions for production
 
 ### Future Backlog
 - Background job for AI follow-up emails
