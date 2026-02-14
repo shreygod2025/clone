@@ -116,6 +116,65 @@ const SchoolPaymentTracker = () => {
     toast.success('CSV exported successfully');
   };
 
+  const exportToXLSX = () => {
+    const filteredPayments = payments.filter(p => 
+      searchQuery ? 
+        p.student_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.phone?.includes(searchQuery)
+      : true
+    );
+
+    // Prepare data for Excel
+    const data = filteredPayments.map(p => ({
+      'Date': formatDate(p.paid_at || p.created_at),
+      'Student Name': p.student_name || '',
+      'Phone': p.phone || '',
+      'Grade': p.grade || '',
+      'Division': p.division || '-',
+      'Amount': p.amount || 0,
+      'Status': p.status || 'pending',
+      'Transaction ID': p.transaction_id || '-'
+    }));
+
+    // Create workbook and worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(data);
+
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 20 }, // Date
+      { wch: 25 }, // Student Name
+      { wch: 15 }, // Phone
+      { wch: 10 }, // Grade
+      { wch: 10 }, // Division
+      { wch: 12 }, // Amount
+      { wch: 10 }, // Status
+      { wch: 20 }  // Transaction ID
+    ];
+
+    // Add summary row at the top
+    const summaryData = [
+      ['School Payment Report'],
+      ['School:', schoolName || 'School'],
+      ['Generated:', new Date().toLocaleString()],
+      ['Total Collected:', formatCurrency(stats.total_collected)],
+      ['Students Paid:', stats.paid_count || 0],
+      [''],
+    ];
+
+    // Create a new worksheet with summary + data
+    const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
+    XLSX.utils.sheet_add_json(summaryWs, data, { origin: 'A7' });
+
+    summaryWs['!cols'] = ws['!cols'];
+
+    XLSX.utils.book_append_sheet(wb, summaryWs, 'Payments');
+
+    // Generate and download file
+    XLSX.writeFile(wb, `${schoolName || 'School'}_Payments_${new Date().toISOString().split('T')[0]}.xlsx`);
+    toast.success('Excel file exported successfully');
+  };
+
   // Filter payments by search
   const filteredPayments = payments.filter(p => {
     if (!searchQuery) return true;
