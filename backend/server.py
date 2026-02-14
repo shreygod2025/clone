@@ -10026,6 +10026,59 @@ async def update_inquiry_query(query_id: str, data: dict, user: dict = Depends(g
     await db.inquiry_queries.update_one({"id": query_id}, {"$set": update_data})
     return {"message": "Query updated successfully"}
 
+@api_router.post("/inquiry/queries/{query_id}/assign")
+async def assign_inquiry_query(query_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Assign an inquiry query to a user with optional deadline"""
+    assigned_to = data.get("assigned_to")
+    deadline = data.get("deadline")
+    
+    # Get the query
+    query = await db.inquiry_queries.find_one({"id": query_id}, {"_id": 0})
+    if not query:
+        raise HTTPException(status_code=404, detail="Query not found")
+    
+    # Handle unassign case
+    if not assigned_to or assigned_to == "":
+        await db.inquiry_queries.update_one(
+            {"id": query_id}, 
+            {"$set": {"assigned_to": None, "deadline": None}}
+        )
+        return {"message": "Query unassigned"}
+    
+    # Get the user being assigned
+    assignee = await db.team_users.find_one({"id": assigned_to}, {"_id": 0})
+    if not assignee:
+        assignee = await db.center_users.find_one({"id": assigned_to}, {"_id": 0})
+    if not assignee:
+        assignee = await db.admins.find_one({"id": assigned_to}, {"_id": 0})
+    
+    assignee_name = assignee.get("name", "Team Member") if assignee else "Unknown"
+    
+    # Update the query with assignment
+    update_data = {
+        "assigned_to": assigned_to,
+        "assigned_to_name": assignee_name,
+        "assigned_at": datetime.now(timezone.utc).isoformat(),
+        "assigned_by": user.get("email", "admin"),
+        "deadline": deadline,
+        "status": "in_progress" if query.get("status") == "open" else query.get("status")
+    }
+    
+    activity = {
+        "type": "assigned",
+        "assigned_to": assigned_to,
+        "assigned_to_name": assignee_name,
+        "by": user.get("name", user.get("email", "admin")),
+        "date": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.inquiry_queries.update_one(
+        {"id": query_id}, 
+        {"$set": update_data, "$push": {"activity_history": activity}}
+    )
+    
+    return {"message": "Query assigned successfully", "assigned_to": assignee_name}
+
 @api_router.delete("/inquiry/queries/{query_id}")
 async def delete_inquiry_query(query_id: str, user: dict = Depends(get_current_user)):
     """Delete an inquiry query"""
