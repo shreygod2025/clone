@@ -6915,6 +6915,11 @@ async def update_support_ticket(ticket_id: str, data: dict, user: dict = Depends
 async def create_support_query(data: dict, user: dict = Depends(get_current_user)):
     """Create a new support query from admin"""
     query_id = str(uuid.uuid4())
+    user_id = user.get("id") or user.get("email")
+    
+    # Initialize viewers with the creator
+    viewers = [user_id] if user_id else []
+    
     doc = {
         "id": query_id,
         "name": data.get("name", ""),
@@ -6929,8 +6934,9 @@ async def create_support_query(data: dict, user: dict = Depends(get_current_user
         "status": "open",
         "source": data.get("source", "admin_created"),
         "attachments": data.get("attachments", []),  # [{name, url, type, is_voice_note}]
-        "created_by": user.get("email", "admin"),
+        "created_by": user_id,
         "created_by_name": user.get("name", "Admin"),
+        "viewers": viewers,  # Array of user IDs who can view this query
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "comments": [],
