@@ -1259,14 +1259,13 @@ const AdminOrders = () => {
                           <FileText className="w-4 h-4" />
                           View MOU
                         </a>
-                        <a 
-                          href={getAbsoluteUrl(showSchoolDetails.onboarding_data.mou_url)} 
-                          download
+                        <button 
+                          onClick={() => downloadFile(showSchoolDetails.onboarding_data.mou_url, `MOU_${showSchoolDetails.school_name?.replace(/\s+/g, '_') || 'School'}.pdf`)}
                           className="text-green-600 hover:underline flex items-center gap-1"
                         >
                           <Download className="w-4 h-4" />
                           Download
-                        </a>
+                        </button>
                       </div>
                     </div>
                   )}
