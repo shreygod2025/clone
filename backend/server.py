@@ -3364,10 +3364,10 @@ async def verify_payment(order_id: str):
         }
     
     try:
-        # Fetch order status from Cashfree (SDK v5+ requires XEnvironment)
+        # Fetch order status from Cashfree using globally initialized credentials
         cf_order_id = payment.get("cf_order_id", order_id)
-        cf_env = Cashfree.XProduction if CASHFREE_ENVIRONMENT == "PRODUCTION" else Cashfree.XSandbox
-        api_response = Cashfree(cf_env, CASHFREE_APP_ID, CASHFREE_SECRET_KEY).PGFetchOrder(
+        logging.info(f"Verifying student payment - Order: {cf_order_id}")
+        api_response = Cashfree().PGFetchOrder(
             CASHFREE_API_VERSION,
             cf_order_id,
             None
@@ -3375,12 +3375,13 @@ async def verify_payment(order_id: str):
         
         if api_response.data:
             order_status = api_response.data.order_status
+            logging.info(f"Student payment verification - Order: {cf_order_id}, Status: {order_status}")
             
             # Try to get payment details for transaction ID
             cf_payment_id = None
             payment_method = "Cashfree"
             try:
-                payments_response = Cashfree(cf_env, CASHFREE_APP_ID, CASHFREE_SECRET_KEY).PGOrderFetchPayments(
+                payments_response = Cashfree().PGOrderFetchPayments(
                     CASHFREE_API_VERSION,
                     cf_order_id,
                     None
