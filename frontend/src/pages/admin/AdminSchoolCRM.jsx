@@ -7772,26 +7772,22 @@ const AdminSchoolCRM = () => {
                                     {/* Download buttons */}
                                     <div className="flex items-center gap-3 mt-2 pt-2 border-t">
                                       {tranchePayment?.invoice_url ? (
-                                        <a 
-                                          href={tranchePayment.invoice_url} 
-                                          target="_blank" 
-                                          rel="noopener noreferrer"
+                                        <button 
+                                          onClick={() => downloadFile(tranchePayment.invoice_url, `Invoice_${viewInquiry.school_name?.replace(/\s+/g, '_') || 'School'}_Tranche${idx + 1}.pdf`)}
                                           className="text-blue-600 text-xs flex items-center gap-1 hover:underline"
                                         >
                                           <Download className="w-3 h-3" /> Invoice
-                                        </a>
+                                        </button>
                                       ) : (
                                         <span className="text-slate-400 text-xs">No invoice</span>
                                       )}
                                       {tranchePayment?.receipt_url ? (
-                                        <a 
-                                          href={tranchePayment.receipt_url} 
-                                          target="_blank" 
-                                          rel="noopener noreferrer"
+                                        <button 
+                                          onClick={() => downloadFile(tranchePayment.receipt_url, `Receipt_${viewInquiry.school_name?.replace(/\s+/g, '_') || 'School'}_Tranche${idx + 1}.pdf`)}
                                           className="text-green-600 text-xs flex items-center gap-1 hover:underline"
                                         >
                                           <Download className="w-3 h-3" /> Receipt
-                                        </a>
+                                        </button>
                                       ) : (
                                         <span className="text-slate-400 text-xs">No receipt</span>
                                       )}
