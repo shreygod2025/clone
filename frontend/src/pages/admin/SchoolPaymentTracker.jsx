@@ -220,6 +220,14 @@ const SchoolPaymentTracker = () => {
               </Button>
               <Button 
                 variant="outline" 
+                onClick={exportToXLSX}
+                className="text-sm"
+              >
+                <FileSpreadsheet className="w-4 h-4 mr-2" />
+                Export Excel
+              </Button>
+              <Button 
+                variant="outline" 
                 onClick={exportToCSV}
                 className="text-sm"
               >
