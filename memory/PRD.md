@@ -83,19 +83,29 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 ## Recent Updates (Feb 2025)
 
 ### Feb 14, 2026
-- **NEW FEATURE - Cashfree Payment Gateway Integration**: Integrated Cashfree for student online payments
-  - Admin can generate payment links when onboarding students
-  - Students can access payment page via `/student/pay/{studentId}`
-  - Payment success/failure tracked automatically
-  - Student status auto-updates to "converted" upon successful payment
+- **NEW FEATURE - Cashfree Payment Gateway Integration (Drop-in Checkout)**: Fully integrated Cashfree for student online payments using embedded checkout
+  - **Admin Flow**: 
+    - "Convert & Onboard" modal has "Online Payment" option
+    - Admin enters amount and selects/creates batch
+    - Click "Setup Payment" saves pending_payment to student record
+    - Generates shareable payment link: `/student/pay/{studentId}`
+  - **Student Flow**:
+    - Student visits payment page via link shared by admin
+    - Sees their details: name, phone, batch, amount
+    - Clicks "Pay Fees" → Cashfree Drop-in modal opens (embedded checkout)
+    - Pays via UPI, Card, NetBanking, or Wallets
+    - Payment auto-verifies via webhook
   - **API Endpoints:**
-    - `POST /api/payments/create-order` - Create payment order
-    - `GET /api/payments/student/{student_id}` - Get student payment info
+    - `GET /api/payments/student/{student_id}` - Get pending payment info (public)
+    - `POST /api/payments/create-session/{student_id}` - Create Cashfree session for Drop-in checkout (public)
     - `GET /api/payments/verify/{order_id}` - Verify payment status
     - `POST /api/payments/webhook` - Cashfree webhook handler
-  - **New Files:**
-    - `/app/frontend/src/pages/StudentPayment.jsx` - Student payment page
-  - **Credentials:** Production Cashfree keys configured in `.env`
+  - **Updated Files:**
+    - `/app/frontend/src/pages/StudentPayment.jsx` - Complete rewrite for Drop-in checkout
+    - `/app/frontend/src/pages/admin/AdminStudentCRM.jsx` - Updated handleGeneratePaymentLink
+    - `/app/backend/server.py` - Added create-session endpoint, updated Cashfree SDK v5 calls
+  - **Credentials:** Production Cashfree keys in `.env` (APP_ID, SECRET_KEY)
+  - **IMPORTANT**: User must whitelist production domain in Cashfree Dashboard (merchant.cashfree.com > developers) for payments to work
 
 - **BUG FIX - File Downloads (Comprehensive)**: Fixed ALL document downloads across the platform
   - Updated download utility to detect file type from Content-Type header
