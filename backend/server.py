@@ -3579,9 +3579,7 @@ async def create_school_student_payment_session(data: dict):
     order_id = f"SCH_{school_id[:8]}_{str(uuid.uuid4())[:8]}"
     
     try:
-        # Create Cashfree order
-        cf_env = Cashfree.XProduction if CASHFREE_ENVIRONMENT == "PRODUCTION" else Cashfree.XSandbox
-        
+        # Create Cashfree order using globally initialized credentials
         customer_details = CashfreeCustomerDetails(
             customer_id=f"sch_std_{phone}",
             customer_phone=phone,
@@ -3601,9 +3599,13 @@ async def create_school_student_payment_session(data: dict):
             order_note=f"School: {school.get('school_name')} | {skill} | Grade {grade}"
         )
         
-        api_response = Cashfree(cf_env, CASHFREE_APP_ID, CASHFREE_SECRET_KEY).PGCreateOrder(
+        logging.info(f"Creating school payment - Order: {order_id}, Amount: {amount}, School: {school.get('school_name')}")
+        
+        # Use globally initialized Cashfree - credentials already set at startup
+        api_response = Cashfree().PGCreateOrder(
             CASHFREE_API_VERSION, 
             order_request, 
+            None, 
             None
         )
         
