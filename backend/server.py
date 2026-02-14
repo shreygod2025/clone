@@ -3559,6 +3559,10 @@ async def create_school_student_payment_session(data: dict):
     if not all([school_id, student_name, phone, grade, amount]):
         raise HTTPException(status_code=400, detail="Missing required fields")
     
+    # Validate student name is at least 3 characters (Cashfree requirement)
+    if len(student_name) < 3:
+        raise HTTPException(status_code=400, detail="Student name must be at least 3 characters")
+    
     # Validate school exists and has online payment enabled
     school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
     if not school:
@@ -3584,12 +3588,15 @@ async def create_school_student_payment_session(data: dict):
     # Generate unique order ID
     order_id = f"SCH_{school_id[:8]}_{str(uuid.uuid4())[:8]}"
     
+    # Ensure customer_name meets Cashfree minimum (3 chars) - pad if needed
+    cf_customer_name = student_name if len(student_name) >= 3 else student_name.ljust(3, ' ')
+    
     try:
         # Create Cashfree order using globally initialized credentials
         customer_details = CashfreeCustomerDetails(
             customer_id=f"sch_std_{phone}",
             customer_phone=phone,
-            customer_name=student_name
+            customer_name=cf_customer_name
         )
         
         order_meta = OrderMeta(
