@@ -897,6 +897,7 @@ const AdminOrders = () => {
             </div>
           )}
         </div>
+        )}
 
         {/* School Student Payments (Online) Tab */}
         {activeTab === 'school-students' && (
