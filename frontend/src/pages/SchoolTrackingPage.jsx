@@ -482,8 +482,38 @@ const SchoolTrackingPage = () => {
                         </p>
                       )}
 
+                      {/* Payment Collection - Online Student Payments */}
+                      {step.key === 'payment_collection' && onboarding_details?.payment_mode === 'online' && onboarding_details?.payment_method === 'student' && (
+                        <div className="mt-3 bg-green-50 border border-green-200 rounded-lg p-3">
+                          <p className="text-sm font-medium text-green-800 mb-2">Online Fee Collection</p>
+                          {onboarding_details?.deadline_date && (
+                            <p className="text-xs text-green-700 mb-2">
+                              Deadline: {format(new Date(onboarding_details.deadline_date), 'MMMM d, yyyy')}
+                            </p>
+                          )}
+                          <div className="flex flex-wrap gap-2">
+                            <a 
+                              href={`/school-pay/${trackingData?.school_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700 transition-colors"
+                            >
+                              <DollarSign className="w-3.5 h-3.5" /> Student Payment Link
+                            </a>
+                            <a 
+                              href={`/school-payment-tracker-public/${trackingData?.school_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 transition-colors"
+                            >
+                              <Users className="w-3.5 h-3.5" /> View Payment Tracker
+                            </a>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Payment Collection - Show scheduled payment date if available */}
-                      {step.key === 'payment_collection' && step.payment_date && !payment_tranches?.length && (
+                      {step.key === 'payment_collection' && step.payment_date && !payment_tranches?.length && onboarding_details?.payment_mode !== 'online' && (
                         <p className="text-sm text-blue-600 mt-3 flex items-center gap-2">
                           <Calendar className="w-4 h-4" />
                           Payment Date: {format(new Date(step.payment_date), 'MMMM d, yyyy')}
@@ -491,7 +521,7 @@ const SchoolTrackingPage = () => {
                       )}
 
                       {/* Payment Collection - Show Tranches */}
-                      {step.key === 'payment_collection' && payment_tranches && payment_tranches.length > 0 && (
+                      {step.key === 'payment_collection' && payment_tranches && payment_tranches.length > 0 && onboarding_details?.payment_mode !== 'online' && (
                         <div className="mt-3 space-y-2">
                           <p className="text-xs font-medium text-slate-600">Payment Schedule:</p>
                           {payment_tranches.map((tranche, tidx) => {
