@@ -896,6 +896,129 @@ const AdminOrders = () => {
             </div>
           )}
         </div>
+
+        {/* School Student Payments (Online) Tab */}
+        {activeTab === 'school-students' && (
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden mt-6">
+            {loading ? (
+              <div className="p-12 text-center">
+                <div className="animate-spin rounded-full h-10 w-10 border-3 border-green-500 border-t-transparent mx-auto"></div>
+                <p className="text-slate-500 mt-4 font-medium">Loading school student payments...</p>
+              </div>
+            ) : Object.keys(schoolStudentStats).length === 0 ? (
+              <div className="p-20 text-center">
+                <div className="w-24 h-24 bg-gradient-to-br from-green-100 to-green-50 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-inner">
+                  <CreditCard className="w-12 h-12 text-green-300" />
+                </div>
+                <p className="text-xl font-semibold text-slate-700">No online student payments yet</p>
+                <p className="text-sm text-slate-400 mt-3 max-w-md mx-auto leading-relaxed">
+                  When you convert schools with "Online (Student Payment via Cashfree)" mode, student payments will appear here.
+                </p>
+              </div>
+            ) : (
+              <div className="p-6 space-y-6">
+                {/* School-wise Summary Cards */}
+                {Object.values(schoolStudentStats).map((schoolStat) => (
+                  <div key={schoolStat.school_id} className="border border-slate-200 rounded-xl overflow-hidden">
+                    {/* School Header */}
+                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 border-b border-green-100">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                            <Building2 className="w-6 h-6 text-green-600" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-lg text-slate-800">{schoolStat.school_name}</h3>
+                            <p className="text-sm text-slate-500">
+                              {schoolStat.paid_count} / {schoolStat.total_students} students paid
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-2xl font-bold text-green-600">
+                            ₹{(schoolStat.total_collected || 0).toLocaleString()}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            of ₹{(schoolStat.total_expected || 0).toLocaleString()} ({schoolStat.collection_percentage || 0}%)
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Progress Bar */}
+                      <div className="mt-4">
+                        <div className="w-full bg-slate-200 rounded-full h-2.5">
+                          <div 
+                            className="bg-green-500 h-2.5 rounded-full transition-all duration-500"
+                            style={{ width: `${Math.min(schoolStat.collection_percentage || 0, 100)}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                      
+                      {/* Grade Stats */}
+                      {schoolStat.grade_stats && Object.keys(schoolStat.grade_stats).length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {Object.entries(schoolStat.grade_stats).map(([grade, data]) => (
+                            <span key={grade} className="bg-white text-slate-700 px-3 py-1 rounded-full text-xs border border-slate-200">
+                              Grade {grade}: <span className="text-green-600 font-medium">{data.paid}</span> paid
+                              {data.pending > 0 && <span className="text-amber-600"> ({data.pending} pending)</span>}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* Actions */}
+                      <div className="mt-4 flex gap-2">
+                        <a 
+                          href={`/admin/school-payments/${schoolStat.school_id}`}
+                          className="inline-flex items-center gap-1.5 bg-white text-green-700 px-4 py-2 rounded-lg text-sm font-medium border border-green-200 hover:bg-green-50 transition-colors"
+                        >
+                          <Eye className="w-4 h-4" />
+                          View Payment Tracker
+                        </a>
+                        <button 
+                          onClick={() => {
+                            navigator.clipboard.writeText(`${window.location.origin}/school-pay/${schoolStat.school_id}`);
+                            toast.success('Payment link copied!');
+                          }}
+                          className="inline-flex items-center gap-1.5 bg-white text-slate-700 px-4 py-2 rounded-lg text-sm font-medium border border-slate-200 hover:bg-slate-50 transition-colors"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          Copy Payment Link
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Recent Payments Preview */}
+                    {schoolStudentPayments.filter(p => p.school_id === schoolStat.school_id && p.status === 'PAID').slice(0, 5).length > 0 && (
+                      <div className="p-4">
+                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Recent Payments</p>
+                        <div className="space-y-2">
+                          {schoolStudentPayments.filter(p => p.school_id === schoolStat.school_id && p.status === 'PAID').slice(0, 5).map((payment) => (
+                            <div key={payment.id} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                                  <User className="w-4 h-4 text-green-600" />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-medium text-slate-800">{payment.student_name}</p>
+                                  <p className="text-xs text-slate-500">Grade {payment.grade} {payment.division && `| ${payment.division}`}</p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm font-semibold text-green-600">₹{(payment.amount || 0).toLocaleString()}</p>
+                                <p className="text-xs text-slate-400 font-mono">{payment.transaction_id || '-'}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Payment Update Modal */}
