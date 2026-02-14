@@ -3061,6 +3061,37 @@ async def get_student_payment_info(student_id: str):
         "status": pending_payment.get("status")
     }
 
+@api_router.get("/payments/by-phone/{phone}")
+async def get_payment_info_by_phone(phone: str):
+    """Get payment info for a student by phone (for logged-in student dashboard)"""
+    # Find student by phone - prioritize students with pending payments
+    student = await db.student_inquiries.find_one(
+        {"phone": phone, "pending_payment": {"$ne": None}}, 
+        {"_id": 0}
+    )
+    
+    if not student:
+        # No pending payment found for this phone
+        return {"has_pending_payment": False}
+    
+    pending_payment = student.get("pending_payment")
+    if not pending_payment or pending_payment.get("status") == "PAID":
+        return {"has_pending_payment": False, "student_name": student.get("name")}
+    
+    return {
+        "has_pending_payment": True,
+        "student_id": student.get("id"),
+        "student_name": student.get("name"),
+        "student_phone": student.get("phone"),
+        "student_email": student.get("email"),
+        "skill": student.get("skill"),
+        "amount": pending_payment.get("amount"),
+        "batch_name": pending_payment.get("batch_name"),
+        "batch_id": pending_payment.get("batch_id"),
+        "order_id": pending_payment.get("order_id"),
+        "status": pending_payment.get("status")
+    }
+
 @api_router.post("/payments/create-session/{student_id}")
 async def create_payment_session(student_id: str):
     """
