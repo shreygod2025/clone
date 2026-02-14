@@ -82,6 +82,19 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 ## Recent Updates (Feb 2025)
 
 ### Feb 14, 2026
+- **BUG FIX - Resend Email 403 Error**: Fixed email sending failures by replacing non-existent `emergentintegrations.llm.resend` module with direct Resend SDK calls
+  - Root Cause: Code was importing from a module that doesn't exist in the emergentintegrations library
+  - Fix: Updated `server.py` to use `resend.Emails.send` directly with `asyncio.to_thread`
+  - Affected: Welcome emails and Invoice emails now working correctly
+
+- **BUG FIX - File Download Issues**: Fixed files (MOU, Invoice, Receipt) downloading with wrong file type and random names
+  - Root Cause: HTML `download` attribute doesn't work for cross-origin URLs (Cloudinary)
+  - Fix: Added `downloadFile` utility that fetches files as blobs and triggers proper downloads
+  - Files now download as PDFs with proper names like `MOU_SchoolName.pdf`, `Invoice_SchoolName_Tranche1.pdf`
+  - Updated in: `AdminSchoolCRM.jsx` and `AdminOrders.jsx`
+
+- **Config Update**: Updated `SENDER_EMAIL` from `resend.dev` test domain to `oll.co` production domain
+
 - **CRITICAL BUG FIX - School CRM Data Persistence**: Fixed the recurring issue (7+ reports) where data appeared to not save when updating schools
   - **Root Cause**: SchoolInquiry Pydantic model was missing fields (`onboarding_data`, `onboarding_workflow`, `activity_log`, etc.). Data WAS being saved to MongoDB but stripped from API responses.
   - **Fix**: Added all missing fields to SchoolInquiry model
