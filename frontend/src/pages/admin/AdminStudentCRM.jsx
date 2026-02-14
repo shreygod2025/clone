@@ -1934,7 +1934,7 @@ const AdminStudentCRM = () => {
           </DialogHeader>
           
           <div className="space-y-4">
-            {/* Payment Amount & Receipt - MANDATORY */}
+            {/* Payment Section */}
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-3">
               {/* Amount Field */}
               <div>
@@ -1953,50 +1953,131 @@ const AdminStudentCRM = () => {
                 </div>
               </div>
               
-              {/* Receipt Upload */}
+              {/* Payment Mode Selection */}
               <div>
-                <label className="text-sm font-medium text-yellow-800 flex items-center gap-2">
-                  <Upload className="w-4 h-4" />
-                  Payment Receipt (Mandatory) *
-                </label>
-                <div className="mt-2">
-                  {onboardData.payment_receipt_url ? (
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-green-700 flex items-center gap-1">
+                <label className="text-sm font-medium text-yellow-800 mb-2 block">Payment Method *</label>
+                <div className="flex gap-2 bg-white p-1 rounded-lg border border-yellow-200">
+                  <button
+                    onClick={() => {
+                      setOnboardData(prev => ({ ...prev, payment_mode: 'receipt' }));
+                      setPaymentLinkGenerated(null);
+                    }}
+                    className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                      onboardData.payment_mode === 'receipt' ? 'bg-yellow-100 text-yellow-800 shadow-sm' : 'text-slate-600'
+                    }`}
+                  >
+                    <Upload className="w-4 h-4" />
+                    Upload Receipt
+                  </button>
+                  <button
+                    onClick={() => setOnboardData(prev => ({ ...prev, payment_mode: 'online', payment_receipt_url: '' }))}
+                    className={`flex-1 px-3 py-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                      onboardData.payment_mode === 'online' ? 'bg-green-100 text-green-800 shadow-sm' : 'text-slate-600'
+                    }`}
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    Online Payment
+                  </button>
+                </div>
+              </div>
+              
+              {/* Receipt Upload (if receipt mode) */}
+              {onboardData.payment_mode === 'receipt' && (
+                <div>
+                  <label className="text-sm font-medium text-yellow-800 flex items-center gap-2">
+                    <Upload className="w-4 h-4" />
+                    Payment Receipt *
+                  </label>
+                  <div className="mt-2">
+                    {onboardData.payment_receipt_url ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-green-700 flex items-center gap-1">
+                          <CheckCircle2 className="w-4 h-4" />
+                          Receipt uploaded
+                        </span>
+                        <a 
+                          href={onboardData.payment_receipt_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 underline"
+                        >
+                          View
+                        </a>
+                        <button 
+                          onClick={() => setOnboardData(prev => ({ ...prev, payment_receipt_url: '' }))}
+                          className="text-xs text-red-600 underline"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="file"
+                          accept="image/*,.pdf"
+                          onChange={(e) => handleReceiptUpload(e.target.files[0])}
+                          className="text-sm"
+                          disabled={uploadingReceipt}
+                        />
+                        {uploadingReceipt && (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600"></div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {/* Online Payment (if online mode) */}
+              {onboardData.payment_mode === 'online' && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                  {paymentLinkGenerated ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-green-700">
                         <CheckCircle2 className="w-4 h-4" />
-                        Receipt uploaded
-                      </span>
-                      <a 
-                        href={onboardData.payment_receipt_url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-xs text-blue-600 underline"
-                      >
-                        View
-                      </a>
-                      <button 
-                        onClick={() => setOnboardData(prev => ({ ...prev, payment_receipt_url: '' }))}
-                        className="text-xs text-red-600 underline"
-                      >
-                        Remove
-                      </button>
+                        <span className="text-sm font-medium">Payment link generated!</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input 
+                          type="text" 
+                          value={paymentLinkGenerated.payment_link} 
+                          readOnly 
+                          className="flex-1 text-xs bg-white border rounded px-2 py-1"
+                        />
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(paymentLinkGenerated.payment_link);
+                            toast.success('Payment link copied!');
+                          }}
+                          className="p-1.5 bg-green-100 rounded hover:bg-green-200"
+                        >
+                          <Copy className="w-4 h-4 text-green-700" />
+                        </button>
+                        <a
+                          href={paymentLinkGenerated.payment_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1.5 bg-blue-100 rounded hover:bg-blue-200"
+                        >
+                          <ExternalLink className="w-4 h-4 text-blue-700" />
+                        </a>
+                      </div>
+                      <p className="text-xs text-green-600">
+                        Share this link with the student. Once they pay, their status will be automatically updated.
+                      </p>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="file"
-                        accept="image/*,.pdf"
-                        onChange={(e) => handleReceiptUpload(e.target.files[0])}
-                        className="text-sm"
-                        disabled={uploadingReceipt}
-                      />
-                      {uploadingReceipt && (
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600"></div>
-                      )}
+                    <div className="text-center">
+                      <p className="text-sm text-green-700 mb-2">
+                        Generate a payment link for the student to pay online via Cashfree.
+                      </p>
+                      <p className="text-xs text-slate-500 mb-3">
+                        First select batch details below, then generate the payment link.
+                      </p>
                     </div>
                   )}
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Batch Mode Selection */}
