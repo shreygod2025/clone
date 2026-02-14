@@ -6544,10 +6544,23 @@ const AdminSchoolCRM = () => {
                   <p className="text-xs text-green-600">
                     Payment link: <span className="font-mono">/school-pay/{`{school_id}`}</span>
                   </p>
+                  
+                  {/* Deadline Date for Online Payments */}
+                  <div className="mt-3 pt-3 border-t border-green-200">
+                    <label className="text-sm font-medium text-green-800">Payment Deadline (Optional)</label>
+                    <p className="text-xs text-green-600 mb-2">Set a deadline for students to complete their payments</p>
+                    <Input
+                      type="date"
+                      value={onboardData.deadline_date || ''}
+                      onChange={(e) => setOnboardData(prev => ({ ...prev, deadline_date: e.target.value }))}
+                      className="bg-white"
+                    />
+                  </div>
                 </div>
               )}
               
-              {/* Payment Tranches */}
+              {/* Payment Tranches - Only show for non-online payment modes */}
+              {onboardData.payment_mode !== 'online' && (
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-sm font-medium text-slate-700">Payment Tranches</label>
@@ -6599,6 +6612,7 @@ const AdminSchoolCRM = () => {
                   ))}
                 </div>
               </div>
+              )}
             </div>
             
             {/* Contract Dates */}
