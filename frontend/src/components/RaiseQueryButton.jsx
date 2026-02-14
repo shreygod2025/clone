@@ -516,6 +516,7 @@ const getPageTypeKey = (path) => {
 
 const RaiseQueryButton = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -543,7 +544,8 @@ const RaiseQueryButton = () => {
   const audioRef = React.useRef(null);
   const timerRef = React.useRef(null);
 
-  const currentPath = window.location.pathname;
+  // Use location.pathname to get current path reactively
+  const currentPath = location.pathname;
   
   // Check auth state
   const checkAuth = () => {
