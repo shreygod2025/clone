@@ -49,7 +49,21 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ### February 14, 2026
 
-#### School Student Payments - Bug Fixes
+#### School Student Payments - P0 Bug Fixes (Session 2)
+**Fixed Issues:**
+1. ✅ **NaN Fee Amount Bug** - Fee amount showed "NaN" after selecting a grade. Fixed by transforming `price_per_student` to `price` in backend API response (server.py lines 3512-3524)
+2. ✅ **Pay Fees Button** - Now correctly triggers Cashfree payment popup. The "Broken Link" error is expected in preview environment (domain not whitelisted in Cashfree)
+
+**Modified Files:**
+- `backend/server.py` - GET `/api/school-payment/{school_id}` now transforms grade_pricing to use 'price' field
+- `backend/server.py` - POST `/api/school-payment/create-session` now handles both 'price' and 'price_per_student' field names
+
+**Testing:**
+- Test Report: `/app/test_reports/iteration_38.json`
+- Backend: 100% (6/6 tests passed)
+- Frontend: 100% (all features working)
+
+#### School Student Payments - Bug Fixes (Session 1)
 **Fixed Issues:**
 1. ✅ Payment links now appear on public tracking page for schools with online payment mode
 2. ✅ Edit modal retains "Online" payment mode correctly  
