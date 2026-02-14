@@ -375,6 +375,7 @@ const AdminSettings = () => {
 
   const tabs = [
     { id: 'api-keys', label: 'API Keys', icon: Key, count: apiKeys.length },
+    { id: 'system', label: 'System', icon: Database, count: null },
     { id: 'case-studies', label: 'School Case Studies', icon: Video, count: caseStudies.length },
     { id: 'team-requirements', label: 'Team Openings', icon: Briefcase, count: teamRequirements.length },
     { id: 'cities', label: 'Cities', icon: MapPin, count: cities.length },
