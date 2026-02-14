@@ -1117,6 +1117,19 @@ const AdminSupportUnified = () => {
                     size="sm"
                     variant="outline"
                     onClick={() => {
+                      setShowViewersModal(query);
+                      fetchQueryViewers(query);
+                    }}
+                    className="flex items-center gap-1 text-violet-600 border-violet-200 hover:bg-violet-50"
+                    data-testid={`viewers-${query.id}`}
+                  >
+                    <Users className="w-4 h-4" />
+                    Viewers {query.viewers?.length > 0 && `(${query.viewers.length})`}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
                       setShowEditModal(query);
                       setEditForm({
                         name: query.name || '',
