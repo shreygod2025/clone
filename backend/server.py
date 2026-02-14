@@ -57,6 +57,22 @@ cloudinary.config(
     secure=True
 )
 
+# Cashfree Payment Gateway Configuration
+CASHFREE_APP_ID = os.getenv("CASHFREE_APP_ID", "")
+CASHFREE_SECRET_KEY = os.getenv("CASHFREE_SECRET_KEY", "")
+CASHFREE_ENVIRONMENT = os.getenv("CASHFREE_ENVIRONMENT", "SANDBOX")
+CASHFREE_API_VERSION = "2023-08-01"
+
+# Initialize Cashfree
+if CASHFREE_APP_ID and CASHFREE_SECRET_KEY:
+    Cashfree.XClientId = CASHFREE_APP_ID
+    Cashfree.XClientSecret = CASHFREE_SECRET_KEY
+    if CASHFREE_ENVIRONMENT == "PRODUCTION":
+        Cashfree.XEnvironment = Cashfree.PRODUCTION
+    else:
+        Cashfree.XEnvironment = Cashfree.SANDBOX
+    logging.info(f"Cashfree initialized in {CASHFREE_ENVIRONMENT} environment")
+
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
