@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { GraduationCap, CreditCard, User, Phone, Hash, Loader2, AlertCircle, CheckCircle2, ChevronDown, School } from 'lucide-react';
+import { useParams, Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
+import { GraduationCap, CreditCard, User, Phone, Hash, Loader2, AlertCircle, CheckCircle2, School, Shield, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -10,9 +11,52 @@ import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+// Payment-related FAQs
+const paymentFAQs = [
+  {
+    question: "What payment methods are accepted?",
+    answer: "We accept all major credit/debit cards, UPI, net banking, and popular wallets through our secure Cashfree payment gateway."
+  },
+  {
+    question: "Is my payment information secure?",
+    answer: "Yes, all payments are processed through Cashfree, a PCI-DSS compliant payment gateway. We never store your card details on our servers."
+  },
+  {
+    question: "Will I receive a receipt after payment?",
+    answer: "Yes, you will receive a confirmation message on your registered phone number with the transaction details."
+  },
+  {
+    question: "What if my payment fails?",
+    answer: "If your payment fails, please retry after a few minutes. If the amount was deducted, it will be automatically refunded within 5-7 business days."
+  },
+  {
+    question: "Can I pay in installments?",
+    answer: "The fee structure is set by your school. Please contact your school administration for any installment options."
+  }
+];
+
+const FAQItem = ({ faq }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <div className="border-b border-slate-200 last:border-0">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full py-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors"
+      >
+        <span className="font-medium text-slate-700 pr-4">{faq.question}</span>
+        {isOpen ? <ChevronUp className="w-5 h-5 text-slate-400 flex-shrink-0" /> : <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0" />}
+      </button>
+      {isOpen && (
+        <div className="pb-4 text-sm text-slate-600 leading-relaxed">
+          {faq.answer}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const SchoolStudentPayment = () => {
   const { schoolId } = useParams();
-  const navigate = useNavigate();
   
   const [loading, setLoading] = useState(true);
   const [schoolInfo, setSchoolInfo] = useState(null);
@@ -180,217 +224,336 @@ const SchoolStudentPayment = () => {
     }
   }, [cashfreeReady, schoolId, studentName, phone, grade, division, selectedAmount]);
 
+  // Header component
+  const Header = () => (
+    <header className="bg-white shadow-sm sticky top-0 z-50">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6">
+        <div className="flex items-center justify-between h-16">
+          <Link to="/" className="flex items-center gap-2">
+            <img 
+              src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png" 
+              alt="OLL Logo"
+              className="h-10 w-auto"
+            />
+          </Link>
+          <div className="flex items-center gap-2 text-sm text-slate-500">
+            <Shield className="w-4 h-4 text-green-600" />
+            <span className="hidden sm:inline">Secure Payment</span>
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+
+  // Footer component
+  const Footer = () => (
+    <footer className="bg-[#1E3A5F] text-white mt-auto">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <img 
+              src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png" 
+              alt="OLL Logo"
+              className="h-8 w-auto brightness-0 invert"
+            />
+          </div>
+          <p className="text-sm text-white/70 text-center">
+            © {new Date().getFullYear()} Clonefutura Live Solutions Pvt. Ltd. All rights reserved.
+          </p>
+        </div>
+      </div>
+    </footer>
+  );
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-[#C53030]" />
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col">
+        <Header />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="w-10 h-10 animate-spin text-[#C53030] mx-auto mb-4" />
+            <p className="text-slate-500">Loading payment page...</p>
+          </div>
+        </div>
+        <Footer />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
-          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h1 className="text-xl font-bold text-slate-800 mb-2">Payment Not Available</h1>
-          <p className="text-slate-600">{error}</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col">
+        <Header />
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle className="w-8 h-8 text-red-500" />
+            </div>
+            <h1 className="text-xl font-bold text-slate-800 mb-2">Payment Not Available</h1>
+            <p className="text-slate-600 mb-6">{error}</p>
+            <Link to="/" className="text-[#C53030] hover:underline font-medium">
+              Return to Home
+            </Link>
+          </div>
         </div>
+        <Footer />
       </div>
     );
   }
 
   if (paymentSuccess) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle2 className="w-12 h-12 text-green-600" />
-          </div>
-          <h1 className="text-2xl font-bold text-slate-800 mb-2">Payment Successful!</h1>
-          <p className="text-slate-600 mb-6">
-            Thank you for your payment. Your registration is confirmed.
-          </p>
-          
-          <div className="bg-slate-50 rounded-xl p-4 mb-6 text-left space-y-2">
-            <div className="flex justify-between">
-              <span className="text-slate-500">Student</span>
-              <span className="font-medium">{studentName}</span>
+      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex flex-col">
+        <Header />
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <CheckCircle2 className="w-12 h-12 text-green-600" />
             </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">Grade</span>
-              <span className="font-medium">{grade} {division && `- ${division}`}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">Amount Paid</span>
-              <span className="font-bold text-green-600">{formatCurrency(selectedAmount)}</span>
-            </div>
-            {transactionId && (
-              <div className="flex justify-between">
-                <span className="text-slate-500">Transaction ID</span>
-                <span className="font-mono text-sm">{transactionId}</span>
+            <h1 className="text-2xl font-bold text-slate-800 mb-2">Payment Successful!</h1>
+            <p className="text-slate-600 mb-6">
+              Thank you for your payment. Your registration is confirmed.
+            </p>
+            
+            <div className="bg-slate-50 rounded-xl p-4 mb-6 text-left space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">Student</span>
+                <span className="font-medium text-slate-800">{studentName}</span>
               </div>
-            )}
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">School</span>
+                <span className="font-medium text-slate-800">{schoolInfo?.school_name}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-500">Grade</span>
+                <span className="font-medium text-slate-800">{grade} {division && `- ${division}`}</span>
+              </div>
+              <div className="flex justify-between items-center pt-2 border-t">
+                <span className="text-slate-500">Amount Paid</span>
+                <span className="font-bold text-green-600 text-lg">{formatCurrency(selectedAmount)}</span>
+              </div>
+              {transactionId && (
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500">Transaction ID</span>
+                  <span className="font-mono text-sm text-slate-600">{transactionId}</span>
+                </div>
+              )}
+            </div>
+            
+            <p className="text-sm text-slate-500">
+              A confirmation will be sent to {phone}
+            </p>
           </div>
-          
-          <p className="text-sm text-slate-500">
-            A confirmation will be sent to {phone}
-          </p>
         </div>
+        <Footer />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 py-8 px-4">
-      <div className="max-w-lg mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-[#C53030] rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <School className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-slate-800" data-testid="school-name">
-            {schoolInfo?.school_name}
-          </h1>
-          <p className="text-[#C53030] font-medium mt-1" data-testid="skill-name">
-            {schoolInfo?.skill} Fees Payment
-          </p>
-          {schoolInfo?.city && (
-            <p className="text-slate-500 text-sm">{schoolInfo.city}</p>
-          )}
-        </div>
+    <>
+      <Helmet>
+        <title>Fee Payment | {schoolInfo?.school_name || 'School'} | OLL</title>
+        <meta name="robots" content="noindex, nofollow" />
+      </Helmet>
 
-        {/* Payment Form */}
-        <div className="bg-white rounded-2xl shadow-xl p-6" data-testid="payment-form">
-          <h2 className="text-lg font-semibold text-slate-800 mb-6">Student Details</h2>
-          
-          <div className="space-y-4">
-            {/* Student Name */}
-            <div>
-              <Label className="text-slate-700 flex items-center gap-2 mb-2">
-                <User className="w-4 h-4" />
-                Student Name *
-              </Label>
-              <Input
-                value={studentName}
-                onChange={(e) => setStudentName(e.target.value)}
-                placeholder="Enter student's full name"
-                className="h-12"
-                data-testid="student-name-input"
-              />
-            </div>
-
-            {/* Phone */}
-            <div>
-              <Label className="text-slate-700 flex items-center gap-2 mb-2">
-                <Phone className="w-4 h-4" />
-                Phone Number *
-              </Label>
-              <Input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                placeholder="10-digit mobile number"
-                className="h-12"
-                data-testid="phone-input"
-              />
-            </div>
-
-            {/* Grade Selection */}
-            <div>
-              <Label className="text-slate-700 flex items-center gap-2 mb-2">
-                <GraduationCap className="w-4 h-4" />
-                Grade *
-              </Label>
-              <Select value={grade} onValueChange={setGrade}>
-                <SelectTrigger className="h-12" data-testid="grade-select">
-                  <SelectValue placeholder="Select grade" />
-                </SelectTrigger>
-                <SelectContent>
-                  {schoolInfo?.grade_pricing?.map((g) => (
-                    <SelectItem key={g.grade} value={g.grade}>
-                      Grade {g.grade} - {formatCurrency(g.price)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Division */}
-            <div>
-              <Label className="text-slate-700 flex items-center gap-2 mb-2">
-                <Hash className="w-4 h-4" />
-                Division / Section
-              </Label>
-              <Input
-                value={division}
-                onChange={(e) => setDivision(e.target.value.toUpperCase())}
-                placeholder="e.g., A, B, C"
-                className="h-12"
-                maxLength={5}
-                data-testid="division-input"
-              />
-            </div>
-          </div>
-
-          {/* Amount Display */}
-          {grade && selectedAmount > 0 && (
-            <div className="mt-6 bg-green-50 border border-green-200 rounded-xl p-4">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-green-700 font-medium">Fees for Grade {grade}</p>
-                  <p className="text-green-600 text-sm">{schoolInfo?.skill}</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col">
+        <Header />
+        
+        <main className="flex-1 py-8 px-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="grid lg:grid-cols-5 gap-8">
+              {/* Left Column - Payment Form */}
+              <div className="lg:col-span-3">
+                {/* School Header Card */}
+                <div className="bg-[#1E3A5F] text-white rounded-2xl p-6 mb-6 shadow-lg">
+                  <div className="flex items-start gap-4">
+                    <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                      <School className="w-7 h-7 text-white" />
+                    </div>
+                    <div>
+                      <h1 className="text-xl font-bold" data-testid="school-name">
+                        {schoolInfo?.school_name}
+                      </h1>
+                      <p className="text-white/80 text-sm mt-1" data-testid="skill-name">
+                        {schoolInfo?.skill} Program Fee Payment
+                      </p>
+                      {schoolInfo?.city && (
+                        <p className="text-white/60 text-sm mt-1">{schoolInfo.city}</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
-                <p className="text-2xl font-bold text-green-700" data-testid="fee-amount">
-                  {formatCurrency(selectedAmount)}
-                </p>
+
+                {/* Payment Form */}
+                <div className="bg-white rounded-2xl shadow-lg p-6" data-testid="payment-form">
+                  <h2 className="text-lg font-semibold text-slate-800 mb-6 flex items-center gap-2">
+                    <User className="w-5 h-5 text-[#C53030]" />
+                    Student Details
+                  </h2>
+                  
+                  <div className="space-y-5">
+                    {/* Student Name */}
+                    <div>
+                      <Label className="text-slate-700 flex items-center gap-2 mb-2 font-medium">
+                        Student Full Name <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        value={studentName}
+                        onChange={(e) => setStudentName(e.target.value)}
+                        placeholder="Enter student's full name as per school records"
+                        className="h-12 border-slate-200 focus:border-[#C53030] focus:ring-[#C53030]"
+                        data-testid="student-name-input"
+                      />
+                    </div>
+
+                    {/* Phone */}
+                    <div>
+                      <Label className="text-slate-700 flex items-center gap-2 mb-2 font-medium">
+                        Parent's Phone Number <span className="text-red-500">*</span>
+                      </Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-medium">+91</span>
+                        <Input
+                          type="tel"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                          placeholder="10-digit mobile number"
+                          className="h-12 pl-12 border-slate-200 focus:border-[#C53030] focus:ring-[#C53030]"
+                          data-testid="phone-input"
+                        />
+                      </div>
+                      <p className="text-xs text-slate-500 mt-1">Payment receipt will be sent to this number</p>
+                    </div>
+
+                    {/* Grade Selection */}
+                    <div>
+                      <Label className="text-slate-700 flex items-center gap-2 mb-2 font-medium">
+                        <GraduationCap className="w-4 h-4" />
+                        Grade / Class <span className="text-red-500">*</span>
+                      </Label>
+                      <Select value={grade} onValueChange={setGrade}>
+                        <SelectTrigger className="h-12 border-slate-200" data-testid="grade-select">
+                          <SelectValue placeholder="Select student's grade" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {schoolInfo?.grade_pricing?.map((g) => (
+                            <SelectItem key={g.grade} value={g.grade}>
+                              Grade {g.grade} - {formatCurrency(g.price)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Division */}
+                    <div>
+                      <Label className="text-slate-700 flex items-center gap-2 mb-2 font-medium">
+                        <Hash className="w-4 h-4" />
+                        Division / Section <span className="text-slate-400 text-sm font-normal">(Optional)</span>
+                      </Label>
+                      <Input
+                        value={division}
+                        onChange={(e) => setDivision(e.target.value.toUpperCase())}
+                        placeholder="e.g., A, B, C"
+                        className="h-12 border-slate-200 focus:border-[#C53030] focus:ring-[#C53030]"
+                        maxLength={5}
+                        data-testid="division-input"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Amount Display */}
+                  {grade && selectedAmount > 0 && (
+                    <div className="mt-6 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-5">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-green-800 font-semibold text-lg">Fee for Grade {grade}</p>
+                          <p className="text-green-600 text-sm">{schoolInfo?.skill} Program</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-3xl font-bold text-green-700" data-testid="fee-amount">
+                            {formatCurrency(selectedAmount)}
+                          </p>
+                          <p className="text-xs text-green-600">Inclusive of all taxes</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Error Display */}
+                  {paymentError && (
+                    <div className="mt-4 bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                      <p className="text-red-700 text-sm">{paymentError}</p>
+                    </div>
+                  )}
+
+                  {/* Pay Button */}
+                  <Button
+                    onClick={handlePayNow}
+                    disabled={processingPayment || !cashfreeReady || !grade}
+                    className="w-full mt-6 h-14 bg-[#C53030] hover:bg-[#9B2C2C] text-white text-lg font-semibold shadow-lg shadow-red-200 transition-all"
+                    data-testid="pay-button"
+                  >
+                    {processingPayment ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Processing Payment...
+                      </>
+                    ) : !cashfreeReady ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Loading Payment...
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="w-5 h-5 mr-2" />
+                        {grade ? `Pay ${formatCurrency(selectedAmount)}` : 'Select Grade to Pay'}
+                      </>
+                    )}
+                  </Button>
+
+                  {/* Security Note */}
+                  <div className="mt-4 flex items-center justify-center gap-2 text-slate-500 text-sm">
+                    <Shield className="w-4 h-4 text-green-600" />
+                    <span>Secure payment powered by</span>
+                    <span className="font-semibold text-slate-700">Cashfree</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column - FAQs */}
+              <div className="lg:col-span-2">
+                <div className="bg-white rounded-2xl shadow-lg p-6 sticky top-24">
+                  <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                    <HelpCircle className="w-5 h-5 text-[#1E3A5F]" />
+                    Payment FAQs
+                  </h3>
+                  <div className="divide-y divide-slate-100">
+                    {paymentFAQs.map((faq, idx) => (
+                      <FAQItem key={idx} faq={faq} />
+                    ))}
+                  </div>
+                  
+                  {/* Contact Support */}
+                  <div className="mt-6 pt-6 border-t border-slate-200">
+                    <p className="text-sm text-slate-500">
+                      Need help? Contact your school administration or email us at{' '}
+                      <a href="mailto:support@oll.co" className="text-[#C53030] hover:underline font-medium">
+                        support@oll.co
+                      </a>
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
-          )}
-
-          {/* Error Display */}
-          {paymentError && (
-            <div className="mt-4 bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-              <p className="text-red-700 text-sm">{paymentError}</p>
-            </div>
-          )}
-
-          {/* Pay Button */}
-          <Button
-            onClick={handlePayNow}
-            disabled={processingPayment || !cashfreeReady || !grade}
-            className="w-full mt-6 h-14 bg-[#C53030] hover:bg-[#9B2C2C] text-white text-lg font-semibold"
-            data-testid="pay-button"
-          >
-            {processingPayment ? (
-              <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Processing...
-              </>
-            ) : !cashfreeReady ? (
-              <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Loading...
-              </>
-            ) : (
-              <>
-                <CreditCard className="w-5 h-5 mr-2" />
-                Pay {grade ? formatCurrency(selectedAmount) : 'Fees'}
-              </>
-            )}
-          </Button>
-
-          {/* Security Note */}
-          <div className="mt-4 flex items-center justify-center gap-2 text-slate-500 text-xs">
-            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-            </svg>
-            Secure payment powered by Cashfree
           </div>
-        </div>
+        </main>
+
+        <Footer />
       </div>
-    </div>
+    </>
   );
 };
 
