@@ -747,6 +747,23 @@ const SchoolTrackingPage = () => {
                       </a>
                     )}
                     
+                    {/* School Student Payment Link (Online student payments via Cashfree) */}
+                    {onboarding_details?.payment_mode === 'online' && onboarding_details?.payment_method === 'student' && (
+                      <a 
+                        href={`${window.location.origin}/school-pay/${trackingData?.school_id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 p-3 bg-green-50 rounded-lg border border-green-200 hover:bg-green-100 transition-colors"
+                      >
+                        <DollarSign className="w-5 h-5 text-green-600" />
+                        <div className="flex-1">
+                          <span className="text-sm font-medium text-green-800">Student Fee Payment Link</span>
+                          <span className="text-xs text-green-600 block">Share with parents for online payment</span>
+                        </div>
+                        <ExternalLink className="w-4 h-4 text-green-600" />
+                      </a>
+                    )}
+                    
                     {/* Other Documents */}
                     {documents?.map((doc, idx) => (
                       <button 
