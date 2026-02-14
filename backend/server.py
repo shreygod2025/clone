@@ -1371,6 +1371,16 @@ class SchoolInquiry(BaseModel):
     assigned_to_name: str = ""  # Name of assigned team member
     relationship_manager_id: str = ""  # RM assigned to converted schools
     relationship_manager_name: str = ""
+    onboarding_data: Optional[dict] = None  # Onboarding details including offerings, pricing, contacts, payment tranches
+    onboarding_workflow: Optional[dict] = None  # Onboarding workflow status and tracking
+    activity_log: List[dict] = []  # Activity history log
+    renewal_meeting_date: Optional[str] = None
+    renewal_meeting_time: Optional[str] = None
+    renewal_meeting_type: Optional[str] = None
+    renewal_meeting_link: Optional[str] = None
+    renewal_meeting_address: Optional[str] = None
+    lost_reason: Optional[str] = None
+    documents: Optional[List[dict]] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
