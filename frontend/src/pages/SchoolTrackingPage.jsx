@@ -140,12 +140,24 @@ const SchoolTrackingPage = () => {
   const [ticketForm, setTicketForm] = useState({ query_type: '', description: '' });
   const [submitting, setSubmitting] = useState(false);
   const [ticketSuccess, setTicketSuccess] = useState(null);
+  const [paymentStats, setPaymentStats] = useState(null);
 
   useEffect(() => {
     const fetchTracking = async () => {
       try {
         const response = await axios.get(`${API}/track/${token}`);
         setTrackingData(response.data);
+        
+        // If school has online student payment, fetch payment stats
+        const onb = response.data?.onboarding_details;
+        if (onb?.payment_mode === 'online' && onb?.payment_method === 'student' && response.data?.school_id) {
+          try {
+            const statsResponse = await axios.get(`${API}/school-payment/tracker-public/${response.data.school_id}`);
+            setPaymentStats(statsResponse.data);
+          } catch (e) {
+            console.log('No payment stats available');
+          }
+        }
       } catch (err) {
         setError(err.response?.data?.detail || 'Tracking not found');
       } finally {
