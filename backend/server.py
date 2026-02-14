@@ -3281,9 +3281,10 @@ async def verify_payment(order_id: str):
         raise HTTPException(status_code=404, detail="Payment order not found")
     
     try:
-        # Fetch order status from Cashfree
+        # Fetch order status from Cashfree (SDK v5+ requires XEnvironment)
         cf_order_id = payment.get("cf_order_id", order_id)
-        api_response = Cashfree().PGFetchOrder(
+        cf_env = Cashfree.XProduction if CASHFREE_ENVIRONMENT == "PRODUCTION" else Cashfree.XSandbox
+        api_response = Cashfree(cf_env, CASHFREE_APP_ID, CASHFREE_SECRET_KEY).PGFetchOrder(
             CASHFREE_API_VERSION,
             cf_order_id,
             None
