@@ -3046,14 +3046,126 @@ async def get_student_payment_info(student_id: str):
     
     return {
         "has_pending_payment": True,
+        "student_id": student_id,
         "student_name": student.get("name"),
         "student_phone": student.get("phone"),
+        "student_email": student.get("email"),
+        "skill": student.get("skill"),
         "amount": pending_payment.get("amount"),
         "batch_name": pending_payment.get("batch_name"),
+        "batch_id": pending_payment.get("batch_id"),
         "order_id": pending_payment.get("order_id"),
-        "payment_link": pending_payment.get("payment_link"),
         "status": pending_payment.get("status")
     }
+
+@api_router.post("/payments/create-session/{student_id}")
+async def create_payment_session(student_id: str):
+    """
+    Create a Cashfree payment session on-demand when student clicks Pay Fees.
+    This is a PUBLIC endpoint - no auth required.
+    Returns payment_session_id for Drop-in checkout.
+    """
+    if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
+        raise HTTPException(status_code=500, detail="Payment gateway not configured")
+    
+    # Get student details
+    student = await db.student_inquiries.find_one({"id": student_id}, {"_id": 0})
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    
+    pending_payment = student.get("pending_payment")
+    if not pending_payment:
+        raise HTTPException(status_code=400, detail="No pending payment for this student")
+    
+    amount = pending_payment.get("amount")
+    if not amount or float(amount) <= 0:
+        raise HTTPException(status_code=400, detail="Invalid payment amount")
+    
+    # Generate unique order ID
+    order_id = f"OLL-STU-{student_id[:8]}-{int(time.time())}"
+    
+    try:
+        # Create customer details
+        customer_details = CashfreeCustomerDetails(
+            customer_id=student_id,
+            customer_name=student.get("name", "Student"),
+            customer_email=student.get("email", f"{student_id}@oll.co"),
+            customer_phone=student.get("phone", "9999999999")
+        )
+        
+        # Get frontend URL for return
+        frontend_url = os.getenv("FRONTEND_URL", "https://oll-platform-dev.preview.emergentagent.com")
+        backend_url = os.getenv("REACT_APP_BACKEND_URL", frontend_url)
+        
+        # Create order meta
+        order_meta = OrderMeta(
+            return_url=f"{frontend_url}/student/payment/success?order_id={order_id}",
+            notify_url=f"{backend_url}/api/payments/webhook"
+        )
+        
+        # Build order request
+        create_order_request = CreateOrderRequest(
+            order_amount=float(amount),
+            order_currency="INR",
+            customer_details=customer_details,
+            order_meta=order_meta,
+            order_note=f"Batch payment for {student.get('name', 'Student')} - {pending_payment.get('batch_name', 'Batch')}"
+        )
+        
+        # Create order via Cashfree
+        api_response = Cashfree().PGCreateOrder(
+            CASHFREE_API_VERSION,
+            create_order_request,
+            None,
+            order_id
+        )
+        
+        if api_response.data:
+            # Store payment order in database
+            payment_order = {
+                "id": order_id,
+                "cf_order_id": str(api_response.data.cf_order_id),
+                "student_id": student_id,
+                "student_name": student.get("name"),
+                "student_phone": student.get("phone"),
+                "student_email": student.get("email"),
+                "amount": float(amount),
+                "batch_id": pending_payment.get("batch_id"),
+                "batch_name": pending_payment.get("batch_name"),
+                "payment_session_id": api_response.data.payment_session_id,
+                "status": "PENDING",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "created_by": "student_self_checkout"
+            }
+            await db.student_payments.insert_one(payment_order)
+            
+            # Update student's pending_payment with order_id
+            await db.student_inquiries.update_one(
+                {"id": student_id},
+                {"$set": {
+                    "pending_payment.order_id": order_id,
+                    "pending_payment.status": "PENDING",
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+            
+            logging.info(f"Payment session created for student {student_id}: {order_id}")
+            return {
+                "success": True,
+                "order_id": order_id,
+                "payment_session_id": api_response.data.payment_session_id,
+                "amount": float(amount),
+                "environment": CASHFREE_ENVIRONMENT.lower()
+            }
+        else:
+            logging.error(f"Failed to create payment session for student {student_id}")
+            raise HTTPException(status_code=500, detail="Failed to create payment session")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Payment session creation error for {student_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Payment error: {str(e)}")
 
 @api_router.post("/payments/webhook")
 async def cashfree_webhook(request: Request):
