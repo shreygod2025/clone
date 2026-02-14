@@ -1796,6 +1796,111 @@ const AdminSupportUnified = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Viewers Modal */}
+      <Dialog open={!!showViewersModal} onOpenChange={() => { setShowViewersModal(null); setSelectedViewerToAdd(''); setQueryViewers([]); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-violet-600" />
+              Manage Viewers - {showViewersModal?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Created By */}
+            {(showViewersModal?.created_by_name || showViewersModal?.added_by_name || showViewersModal?.added_by) && (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                <p className="text-xs font-medium text-emerald-700 mb-1">Created By:</p>
+                <p className="text-sm text-emerald-800 flex items-center gap-2">
+                  <User className="w-4 h-4" />
+                  {showViewersModal?.created_by_name || showViewersModal?.added_by_name || getAssigneeName(showViewersModal?.added_by) || showViewersModal?.added_by}
+                </p>
+              </div>
+            )}
+            
+            {/* Add Viewer */}
+            <div>
+              <label className="text-sm font-medium text-slate-700 mb-2 block">Add Viewer</label>
+              <div className="flex gap-2">
+                <Select value={selectedViewerToAdd} onValueChange={setSelectedViewerToAdd}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Select team member" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teamUsers.filter(u => 
+                      !queryViewers.some(v => v.id === u.id || v === u.id) &&
+                      u.id !== showViewersModal?.created_by &&
+                      u.id !== showViewersModal?.added_by
+                    ).map(member => (
+                      <SelectItem key={member.id} value={member.id}>
+                        {member.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button onClick={handleAddViewer} className="bg-violet-600 hover:bg-violet-700">
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+            
+            {/* Current Viewers */}
+            <div>
+              <label className="text-sm font-medium text-slate-700 mb-2 block">
+                Current Viewers ({showViewersModal?.viewers?.length || 0})
+              </label>
+              {loadingViewers ? (
+                <div className="text-center py-4">
+                  <RefreshCw className="w-5 h-5 animate-spin mx-auto text-slate-400" />
+                </div>
+              ) : showViewersModal?.viewers?.length === 0 ? (
+                <p className="text-sm text-slate-500 text-center py-4">No viewers added yet</p>
+              ) : (
+                <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                  {showViewersModal?.viewers?.map((viewerId, idx) => {
+                    const viewer = teamUsers.find(u => u.id === viewerId) || queryViewers.find(v => v.id === viewerId);
+                    const viewerName = viewer?.name || viewerId;
+                    const isCreator = viewerId === showViewersModal?.created_by || viewerId === showViewersModal?.added_by;
+                    
+                    return (
+                      <div 
+                        key={idx} 
+                        className={`flex items-center justify-between p-2 rounded-lg ${
+                          isCreator ? 'bg-emerald-50' : 'bg-slate-50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <Eye className="w-4 h-4 text-violet-500" />
+                          <span className="text-sm">{viewerName}</span>
+                          {isCreator && (
+                            <span className="text-xs px-1.5 py-0.5 bg-emerald-200 text-emerald-700 rounded">
+                              Creator
+                            </span>
+                          )}
+                        </div>
+                        {!isCreator && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleRemoveViewer(viewerId)}
+                            className="text-red-500 hover:bg-red-50 h-7 w-7 p-0"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            
+            <p className="text-xs text-slate-500">
+              Viewers can see this query even if it's not assigned to them. The creator is automatically added as a viewer.
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };
