@@ -3236,10 +3236,18 @@ async def cashfree_webhook(request: Request):
         
         order_id = order_data.get('order_id') or webhook_data.get('data', {}).get('order_id')
         payment_status = payment_data.get('payment_status') or order_data.get('order_status')
+        cf_payment_id = payment_data.get('cf_payment_id') or payment_data.get('payment_id')
+        payment_method_details = payment_data.get('payment_group', 'unknown')
         
-        logging.info(f"Webhook received - Event: {event_type}, Order: {order_id}, Status: {payment_status}")
+        logging.info(f"Webhook received - Event: {event_type}, Order: {order_id}, Status: {payment_status}, CF Payment ID: {cf_payment_id}")
         
         if order_id:
+            # Check if already processed to prevent duplicate processing
+            existing_payment = await db.student_payments.find_one({"id": order_id}, {"_id": 0})
+            if existing_payment and existing_payment.get("status") == "PAID":
+                logging.info(f"Payment {order_id} already processed, skipping")
+                return {"status": "success", "message": "Already processed"}
+            
             # Update payment record
             update_data = {
                 "status": payment_status,
@@ -3248,8 +3256,11 @@ async def cashfree_webhook(request: Request):
             }
             
             if payment_status == "SUCCESS" or event_type == "PAYMENT_SUCCESS_WEBHOOK":
+                update_data["status"] = "PAID"
                 update_data["paid_at"] = datetime.now(timezone.utc).isoformat()
-                update_data["payment_method"] = payment_data.get('payment_group', 'unknown')
+                update_data["payment_method"] = f"Cashfree - {payment_method_details}"
+                update_data["transaction_id"] = cf_payment_id
+                update_data["cf_payment_id"] = cf_payment_id
             
             await db.student_payments.update_one(
                 {"id": order_id},
@@ -3263,12 +3274,19 @@ async def cashfree_webhook(request: Request):
                 student_id = payment.get("student_id")
                 batch_id = payment.get("batch_id")
                 
+                # Check if student is already converted (prevent duplicate processing)
+                student = await db.student_inquiries.find_one({"id": student_id}, {"_id": 0})
+                if student and student.get("status") == "converted" and student.get("pending_payment") is None:
+                    logging.info(f"Student {student_id} already converted, skipping update")
+                    return {"status": "success", "message": "Already processed"}
+                
                 student_update = {
                     "status": "converted",
                     "payment_status": "paid",
                     "payment_amount": payment.get("amount"),
                     "payment_date": datetime.now(timezone.utc).isoformat(),
-                    "payment_method": "cashfree",
+                    "payment_method": f"Cashfree - {payment_method_details}",
+                    "payment_transaction_id": cf_payment_id,
                     "pending_payment": None,
                     "updated_at": datetime.now(timezone.utc).isoformat()
                 }
@@ -3284,13 +3302,37 @@ async def cashfree_webhook(request: Request):
                             {"id": batch_id},
                             {"$addToSet": {"students": student_id}}
                         )
+                        
+                        # Create sessions for the student from batch schedule
+                        if batch.get("schedule"):
+                            sessions_to_create = []
+                            for i, session_info in enumerate(batch.get("schedule", [])[:12], 1):  # Max 12 sessions
+                                session = {
+                                    "id": str(uuid.uuid4()),
+                                    "student_id": student_id,
+                                    "batch_id": batch_id,
+                                    "session_number": i,
+                                    "date": session_info.get("date"),
+                                    "time": session_info.get("time", batch.get("time")),
+                                    "mode": batch.get("mode", "online"),
+                                    "skill": batch.get("skill"),
+                                    "status": "scheduled",
+                                    "created_at": datetime.now(timezone.utc).isoformat()
+                                }
+                                sessions_to_create.append(session)
+                            
+                            if sessions_to_create:
+                                await db.sessions.insert_many(sessions_to_create)
+                                student_update["sessions_total"] = len(sessions_to_create)
+                                student_update["sessions_completed"] = 0
+                                logging.info(f"Created {len(sessions_to_create)} sessions for student {student_id}")
                 
                 await db.student_inquiries.update_one(
                     {"id": student_id},
                     {"$set": student_update}
                 )
                 
-                logging.info(f"Student {student_id} payment successful, status updated to converted")
+                logging.info(f"Student {student_id} payment successful, status updated to converted, transaction: {cf_payment_id}")
         
         return {"status": "success", "message": "Webhook processed"}
         
