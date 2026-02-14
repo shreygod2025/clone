@@ -2391,12 +2391,12 @@ const AdminStudentCRM = () => {
                       {generatingPaymentLink ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Generating...
+                          Setting up...
                         </>
                       ) : (
                         <>
-                          <Link2 className="w-4 h-4 mr-2" />
-                          Generate Payment Link
+                          <CreditCard className="w-4 h-4 mr-2" />
+                          Setup Payment
                         </>
                       )}
                     </Button>
