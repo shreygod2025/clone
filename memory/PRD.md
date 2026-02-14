@@ -81,6 +81,12 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## Recent Updates (Feb 2025)
 
+### Feb 14, 2026
+- **CRITICAL BUG FIX - School CRM Data Persistence**: Fixed the recurring issue (7+ reports) where data appeared to not save when updating schools
+  - **Root Cause**: SchoolInquiry Pydantic model was missing fields (`onboarding_data`, `onboarding_workflow`, `activity_log`, etc.). Data WAS being saved to MongoDB but stripped from API responses.
+  - **Fix**: Added all missing fields to SchoolInquiry model
+  - **Also Fixed**: TypeError in `/api/schools/{id}/history` endpoint with timezone-aware datetime handling
+
 ### Feb 13, 2026 (continued)
 - **API Key Management UI**: Complete UI for generating, listing, and revoking API keys in Admin Settings
   - Admin can now self-manage API keys for production integrations like ProcureWay/VendorPlus
