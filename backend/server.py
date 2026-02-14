@@ -3491,6 +3491,356 @@ async def verify_payment(order_id: str):
         return {"order_id": order_id, "status": payment.get("status", "UNKNOWN"), "error": str(e)}
 
 # ========================
+# SCHOOL STUDENT PAYMENTS (Public)
+# ========================
+
+@api_router.get("/school-payment/{school_id}")
+async def get_school_payment_info(school_id: str):
+    """Get school info for student payment page (public)"""
+    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+    
+    onboarding_data = school.get("onboarding_data", {})
+    payment_mode = onboarding_data.get("payment_mode", "")
+    payment_method = onboarding_data.get("payment_method", "")
+    
+    # Check if online payment by students is enabled
+    if payment_mode != "online" or payment_method != "student":
+        raise HTTPException(status_code=400, detail="Online student payment not enabled for this school")
+    
+    grade_pricing = onboarding_data.get("grade_pricing", [])
+    if not grade_pricing:
+        raise HTTPException(status_code=400, detail="No grade pricing configured for this school")
+    
+    # Get skill/program from offerings or model
+    skill = onboarding_data.get("offering") or school.get("skill") or "Program"
+    
+    return {
+        "school_id": school_id,
+        "school_name": school.get("school_name", ""),
+        "skill": skill,
+        "city": school.get("city", ""),
+        "grade_pricing": grade_pricing,
+        "total_students": onboarding_data.get("total_students", 0),
+        "total_amount": onboarding_data.get("total_amount", 0)
+    }
+
+@api_router.post("/school-payment/create-session")
+async def create_school_student_payment_session(data: dict):
+    """Create Cashfree payment session for school student (public)"""
+    if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
+        raise HTTPException(status_code=500, detail="Payment gateway not configured")
+    
+    school_id = data.get("school_id")
+    student_name = data.get("student_name", "").strip()
+    phone = data.get("phone", "").strip()
+    grade = data.get("grade", "").strip()
+    division = data.get("division", "").strip()
+    amount = data.get("amount", 0)
+    
+    if not all([school_id, student_name, phone, grade, amount]):
+        raise HTTPException(status_code=400, detail="Missing required fields")
+    
+    # Validate school exists and has online payment enabled
+    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+    
+    onboarding_data = school.get("onboarding_data", {})
+    if onboarding_data.get("payment_mode") != "online" or onboarding_data.get("payment_method") != "student":
+        raise HTTPException(status_code=400, detail="Online student payment not enabled")
+    
+    # Validate amount matches grade pricing
+    grade_pricing = onboarding_data.get("grade_pricing", [])
+    grade_match = next((g for g in grade_pricing if g.get("grade") == grade), None)
+    if not grade_match:
+        raise HTTPException(status_code=400, detail=f"Invalid grade: {grade}")
+    
+    expected_amount = grade_match.get("price", 0)
+    if float(amount) != float(expected_amount):
+        raise HTTPException(status_code=400, detail=f"Amount mismatch. Expected: {expected_amount}")
+    
+    skill = onboarding_data.get("offering") or school.get("skill") or "Program"
+    
+    # Generate unique order ID
+    order_id = f"SCH_{school_id[:8]}_{str(uuid.uuid4())[:8]}"
+    
+    try:
+        # Create Cashfree order
+        cf_env = Cashfree.XProduction if CASHFREE_ENVIRONMENT == "PRODUCTION" else Cashfree.XSandbox
+        
+        customer_details = CustomerDetails(
+            customer_id=f"sch_std_{phone}",
+            customer_phone=phone,
+            customer_name=student_name
+        )
+        
+        order_meta = CreateOrderRequestOrderMeta(
+            return_url=f"{os.environ.get('FRONTEND_URL', 'https://oll.co')}/school-payment-success/{school_id}?order_id={order_id}"
+        )
+        
+        order_request = CreateOrderRequest(
+            order_id=order_id,
+            order_amount=float(amount),
+            order_currency="INR",
+            customer_details=customer_details,
+            order_meta=order_meta,
+            order_note=f"School: {school.get('school_name')} | {skill} | Grade {grade}"
+        )
+        
+        api_response = Cashfree(cf_env, CASHFREE_APP_ID, CASHFREE_SECRET_KEY).PGCreateOrder(
+            CASHFREE_API_VERSION, 
+            order_request, 
+            None
+        )
+        
+        if api_response.data:
+            cf_order_id = api_response.data.cf_order_id
+            payment_session_id = api_response.data.payment_session_id
+            
+            # Store payment record
+            payment_record = {
+                "id": order_id,
+                "type": "school_student",
+                "school_id": school_id,
+                "school_name": school.get("school_name", ""),
+                "student_name": student_name,
+                "phone": phone,
+                "grade": grade,
+                "division": division,
+                "skill": skill,
+                "amount": float(amount),
+                "cf_order_id": cf_order_id,
+                "payment_session_id": payment_session_id,
+                "status": "PENDING",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            
+            await db.school_student_payments.insert_one(payment_record)
+            
+            return {
+                "success": True,
+                "order_id": order_id,
+                "payment_session_id": payment_session_id,
+                "environment": CASHFREE_ENVIRONMENT.lower()
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Failed to create payment order")
+            
+    except Exception as e:
+        logging.error(f"School payment session creation error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.post("/school-payment/webhook")
+async def school_payment_webhook(request: Request):
+    """Handle Cashfree webhook for school student payments"""
+    try:
+        body = await request.body()
+        body_str = body.decode('utf-8')
+        
+        webhook_data = json.loads(body_str)
+        event_type = webhook_data.get('type', '')
+        order_data = webhook_data.get('data', {}).get('order', {})
+        payment_data = webhook_data.get('data', {}).get('payment', {})
+        
+        order_id = order_data.get('order_id') or webhook_data.get('data', {}).get('order_id')
+        payment_status = payment_data.get('payment_status') or order_data.get('order_status')
+        cf_payment_id = payment_data.get('cf_payment_id') or payment_data.get('payment_id')
+        payment_method = payment_data.get('payment_group', 'unknown')
+        
+        logging.info(f"School payment webhook - Order: {order_id}, Status: {payment_status}")
+        
+        if order_id and order_id.startswith("SCH_"):
+            # Check if already processed
+            existing = await db.school_student_payments.find_one({"id": order_id}, {"_id": 0})
+            if existing and existing.get("status") == "PAID":
+                return {"status": "success", "message": "Already processed"}
+            
+            update_data = {
+                "status": payment_status,
+                "webhook_data": webhook_data,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+            
+            if payment_status == "SUCCESS" or event_type == "PAYMENT_SUCCESS_WEBHOOK":
+                update_data["status"] = "PAID"
+                update_data["paid_at"] = datetime.now(timezone.utc).isoformat()
+                update_data["transaction_id"] = cf_payment_id
+                update_data["cf_payment_id"] = cf_payment_id
+                update_data["payment_method"] = f"Cashfree - {payment_method}"
+            
+            await db.school_student_payments.update_one(
+                {"id": order_id},
+                {"$set": update_data}
+            )
+            
+        return {"status": "success"}
+    except Exception as e:
+        logging.error(f"School payment webhook error: {str(e)}")
+        return {"status": "error", "message": str(e)}
+
+@api_router.get("/school-payment/verify/{order_id}")
+async def verify_school_student_payment(order_id: str):
+    """Verify school student payment status"""
+    if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
+        raise HTTPException(status_code=500, detail="Payment gateway not configured")
+    
+    payment = await db.school_student_payments.find_one({"id": order_id}, {"_id": 0})
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    
+    # If already paid, return status
+    if payment.get("status") == "PAID":
+        return {
+            "order_id": order_id,
+            "status": "PAID",
+            "amount": payment.get("amount"),
+            "student_name": payment.get("student_name"),
+            "transaction_id": payment.get("transaction_id")
+        }
+    
+    try:
+        cf_order_id = payment.get("cf_order_id", order_id)
+        cf_env = Cashfree.XProduction if CASHFREE_ENVIRONMENT == "PRODUCTION" else Cashfree.XSandbox
+        
+        api_response = Cashfree(cf_env, CASHFREE_APP_ID, CASHFREE_SECRET_KEY).PGFetchOrder(
+            CASHFREE_API_VERSION,
+            cf_order_id,
+            None
+        )
+        
+        if api_response.data:
+            order_status = api_response.data.order_status
+            
+            # Try to get transaction ID
+            cf_payment_id = None
+            payment_method = "Cashfree"
+            try:
+                payments_response = Cashfree(cf_env, CASHFREE_APP_ID, CASHFREE_SECRET_KEY).PGOrderFetchPayments(
+                    CASHFREE_API_VERSION,
+                    cf_order_id,
+                    None
+                )
+                if payments_response.data and len(payments_response.data) > 0:
+                    cf_payment_id = str(payments_response.data[0].cf_payment_id)
+                    payment_method = f"Cashfree - {payments_response.data[0].payment_group or 'unknown'}"
+            except Exception as e:
+                logging.warning(f"Could not fetch payment details: {e}")
+            
+            update_data = {
+                "status": order_status,
+                "verified_at": datetime.now(timezone.utc).isoformat()
+            }
+            if cf_payment_id:
+                update_data["transaction_id"] = cf_payment_id
+                update_data["cf_payment_id"] = cf_payment_id
+                update_data["payment_method"] = payment_method
+            
+            if order_status == "PAID":
+                update_data["paid_at"] = datetime.now(timezone.utc).isoformat()
+            
+            await db.school_student_payments.update_one(
+                {"id": order_id},
+                {"$set": update_data}
+            )
+            
+            return {
+                "order_id": order_id,
+                "status": order_status,
+                "amount": payment.get("amount"),
+                "student_name": payment.get("student_name"),
+                "transaction_id": cf_payment_id
+            }
+        
+        return {"order_id": order_id, "status": payment.get("status", "UNKNOWN")}
+        
+    except Exception as e:
+        logging.error(f"School payment verification error: {str(e)}")
+        return {"order_id": order_id, "status": payment.get("status", "UNKNOWN"), "error": str(e)}
+
+@api_router.get("/school-payment/tracker/{school_id}")
+async def get_school_payment_tracker(
+    school_id: str,
+    grade: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    """Get all student payments for a school (admin)"""
+    query = {"school_id": school_id}
+    if grade:
+        query["grade"] = grade
+    
+    payments = await db.school_student_payments.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    
+    # Calculate stats
+    total_collected = sum(p.get("amount", 0) for p in payments if p.get("status") == "PAID")
+    paid_count = len([p for p in payments if p.get("status") == "PAID"])
+    pending_count = len([p for p in payments if p.get("status") != "PAID"])
+    
+    # Grade-wise breakdown
+    grade_stats = {}
+    for p in payments:
+        g = p.get("grade", "Unknown")
+        if g not in grade_stats:
+            grade_stats[g] = {"paid": 0, "pending": 0, "amount": 0}
+        if p.get("status") == "PAID":
+            grade_stats[g]["paid"] += 1
+            grade_stats[g]["amount"] += p.get("amount", 0)
+        else:
+            grade_stats[g]["pending"] += 1
+    
+    # Get school info for expected totals
+    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
+    onboarding_data = school.get("onboarding_data", {}) if school else {}
+    total_students = onboarding_data.get("total_students", 0)
+    total_expected = onboarding_data.get("total_amount", 0)
+    
+    return {
+        "payments": payments,
+        "stats": {
+            "total_collected": total_collected,
+            "paid_count": paid_count,
+            "pending_count": pending_count,
+            "total_students": total_students,
+            "total_expected": total_expected,
+            "collection_percentage": round((total_collected / total_expected * 100), 1) if total_expected > 0 else 0
+        },
+        "grade_stats": grade_stats
+    }
+
+@api_router.get("/school-payment/tracker-public/{school_id}")
+async def get_school_payment_tracker_public(school_id: str):
+    """Get school payment tracker summary (public - for tracking page)"""
+    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+    
+    payments = await db.school_student_payments.find({"school_id": school_id, "status": "PAID"}, {"_id": 0}).to_list(1000)
+    
+    total_collected = sum(p.get("amount", 0) for p in payments)
+    paid_count = len(payments)
+    
+    onboarding_data = school.get("onboarding_data", {})
+    total_students = onboarding_data.get("total_students", 0)
+    total_expected = onboarding_data.get("total_amount", 0)
+    
+    # Grade-wise counts
+    grade_counts = {}
+    for p in payments:
+        g = p.get("grade", "Unknown")
+        grade_counts[g] = grade_counts.get(g, 0) + 1
+    
+    return {
+        "school_name": school.get("school_name", ""),
+        "total_collected": total_collected,
+        "paid_count": paid_count,
+        "total_students": total_students,
+        "total_expected": total_expected,
+        "collection_percentage": round((total_collected / total_expected * 100), 1) if total_expected > 0 else 0,
+        "grade_counts": grade_counts
+    }
+
+# ========================
 # COMMENTS ENDPOINTS (Universal for all CRMs)
 # ========================
 
