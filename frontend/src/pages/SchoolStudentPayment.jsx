@@ -31,9 +31,6 @@ const SchoolStudentPayment = () => {
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [paymentError, setPaymentError] = useState(null);
   const [transactionId, setTransactionId] = useState(null);
-  
-  // Help modal state
-  const [showHelpModal, setShowHelpModal] = useState(false);
 
   // Load Cashfree SDK
   useEffect(() => {
