@@ -425,6 +425,18 @@ const AdminOrders = () => {
             <GraduationCap className="w-4 h-4" />
             Student Payments
           </button>
+          <button
+            onClick={() => setActiveTab('school-students')}
+            className={`px-6 py-3 font-medium text-sm border-b-2 transition-all flex items-center gap-2 ${
+              activeTab === 'school-students'
+                ? 'border-green-500 text-green-600 bg-green-50/50'
+                : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+            }`}
+            data-testid="school-student-payments-tab"
+          >
+            <CreditCard className="w-4 h-4" />
+            School Student Payments (Online)
+          </button>
         </div>
 
         {/* Stats Cards - Redesigned */}
