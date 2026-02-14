@@ -165,6 +165,56 @@ const getAbsoluteUrl = (url) => {
   return url;
 };
 
+// Download file utility - forces download with proper filename for cross-origin URLs (Cloudinary, etc.)
+const downloadFile = async (url, filename) => {
+  try {
+    const absoluteUrl = getAbsoluteUrl(url);
+    const response = await fetch(absoluteUrl);
+    if (!response.ok) throw new Error('Download failed');
+    
+    const blob = await response.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(blobUrl);
+  } catch (error) {
+    console.error('Download error:', error);
+    // Fallback: open in new tab if download fails
+    window.open(getAbsoluteUrl(url), '_blank');
+  }
+};
+
+// Extract filename from URL or generate a proper one
+const getFilenameFromUrl = (url, prefix = 'document', extension = 'pdf') => {
+  if (!url) return `${prefix}.${extension}`;
+  
+  // Try to extract filename from URL
+  try {
+    const urlObj = new URL(url);
+    const pathname = urlObj.pathname;
+    const parts = pathname.split('/');
+    const lastPart = parts[parts.length - 1];
+    
+    // If the URL has a recognizable filename with extension, use it
+    if (lastPart && lastPart.includes('.')) {
+      // Clean up Cloudinary URLs that might have transformations
+      const cleanName = lastPart.split('?')[0];
+      return cleanName;
+    }
+  } catch (e) {
+    // URL parsing failed, use fallback
+  }
+  
+  // Generate a clean filename with timestamp
+  const timestamp = new Date().toISOString().split('T')[0];
+  return `${prefix}_${timestamp}.${extension}`;
+};
+
 // LMS Setup Section Component
 const LMSSetupSection = ({ step, schoolId, onUpdate, authToken }) => {
   const [students, setStudents] = useState(step.data?.students_list || []);
