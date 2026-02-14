@@ -134,6 +134,10 @@ function App() {
               {/* Public School Tracking */}
               <Route path="/track/:token" element={<SchoolTrackingPage />} />
               
+              {/* Student Payment Page */}
+              <Route path="/student/pay/:studentId" element={<StudentPayment />} />
+              <Route path="/student/payment/success" element={<StudentPayment />} />
+              
               {/* Public Team Onboarding Tracking */}
               <Route path="/team-track/:token" element={<TeamOnboardingTrack />} />
               
