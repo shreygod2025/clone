@@ -34,6 +34,25 @@ const AdminSettings = () => {
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const [generatingKey, setGeneratingKey] = useState(false);
   const [revokingKey, setRevokingKey] = useState(null);
+  const [optimizing, setOptimizing] = useState(false);
+  const [optimizeResult, setOptimizeResult] = useState(null);
+
+  // Database optimization handler
+  const handleOptimizeDatabase = async () => {
+    if (!confirm('This will create database indexes to improve performance. Continue?')) return;
+    setOptimizing(true);
+    setOptimizeResult(null);
+    try {
+      const res = await axios.post(`${API}/admin/optimize-db`, {}, { headers: getAuthHeaders() });
+      setOptimizeResult(res.data);
+      toast.success('Database optimized successfully!');
+    } catch (error) {
+      toast.error('Failed to optimize database');
+      setOptimizeResult({ error: error.response?.data?.detail || 'Unknown error' });
+    } finally {
+      setOptimizing(false);
+    }
+  };
 
   // API Key handlers
   const handleGenerateApiKey = async () => {
