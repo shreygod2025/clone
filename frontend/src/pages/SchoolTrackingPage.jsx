@@ -358,14 +358,12 @@ const SchoolTrackingPage = () => {
                       
                       {/* MOU Download - Step 1 */}
                       {step.key === 'mou_signing' && (mou_url || onboarding_details?.mou_url) && (
-                        <a 
-                          href={getAbsoluteUrl(mou_url || onboarding_details?.mou_url)} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
+                        <button 
+                          onClick={() => downloadFile(mou_url || onboarding_details?.mou_url, `MOU_${school_name?.replace(/\s+/g, '_') || 'School'}.pdf`)}
                           className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-[#1E3A5F] text-white text-sm rounded-lg hover:bg-[#2d4a6f] transition-colors"
                         >
                           <Download className="w-4 h-4" /> Download MOU Document
-                        </a>
+                        </button>
                       )}
                       
                       {/* Kit Delivery - Show scheduled date and PO info */}
