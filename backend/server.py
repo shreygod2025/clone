@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File, Query, Header
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File, Query, Header, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, Response
@@ -33,6 +33,16 @@ import cloudinary
 import cloudinary.uploader
 import cloudinary.utils
 import time
+import hmac
+import hashlib
+from base64 import b64encode
+import json
+
+# Cashfree Payment Gateway
+from cashfree_pg.api_client import Cashfree
+from cashfree_pg.models.create_order_request import CreateOrderRequest
+from cashfree_pg.models.customer_details import CustomerDetails as CashfreeCustomerDetails
+from cashfree_pg.models.order_meta import OrderMeta
 
 ROOT_DIR = Path(__file__).parent
 UPLOAD_DIR = ROOT_DIR / "uploads"
