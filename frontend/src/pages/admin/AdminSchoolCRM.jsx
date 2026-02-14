@@ -2493,6 +2493,7 @@ const AdminSchoolCRM = () => {
         // Ensure share fields exist
         pricing_type: response.data.pricing_type || 'per_student',
         fixed_price: response.data.fixed_price || '',
+        deadline_date: response.data.deadline_date || '',
         school_share_type: response.data.school_share_type || 'none',
         school_share_calc: response.data.school_share_calc || 'lumpsum',
         school_share_value: response.data.school_share_value || '',
@@ -2528,6 +2529,7 @@ const AdminSchoolCRM = () => {
         payment_mode: 'from_school',
         payment_method: '',
         payment_tranches: [],
+        deadline_date: '',
         contract_start: '',
         contract_end: '',
         school_share_type: 'none',
