@@ -1402,26 +1402,22 @@ const AdminOrders = () => {
                   <p className="text-sm font-medium text-slate-700 mb-2">Documents</p>
                   <div className="flex items-center gap-4">
                     {showStudentDetails.invoice_url && (
-                      <a 
-                        href={getAbsoluteUrl(showStudentDetails.invoice_url)} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
+                      <button 
+                        onClick={() => downloadFile(showStudentDetails.invoice_url, `Invoice_${showStudentDetails.student_name?.replace(/\s+/g, '_') || 'Student'}`)}
                         className="text-blue-600 hover:underline flex items-center gap-1 text-sm"
                       >
-                        <FileText className="w-4 h-4" />
-                        View Invoice
-                      </a>
+                        <Download className="w-4 h-4" />
+                        Download Invoice
+                      </button>
                     )}
                     {showStudentDetails.receipt_url && (
-                      <a 
-                        href={getAbsoluteUrl(showStudentDetails.receipt_url)} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
+                      <button 
+                        onClick={() => downloadFile(showStudentDetails.receipt_url, `Receipt_${showStudentDetails.student_name?.replace(/\s+/g, '_') || 'Student'}`)}
                         className="text-green-600 hover:underline flex items-center gap-1 text-sm"
                       >
-                        <Receipt className="w-4 h-4" />
-                        View Receipt
-                      </a>
+                        <Download className="w-4 h-4" />
+                        Download Receipt
+                      </button>
                     )}
                   </div>
                 </div>
