@@ -513,14 +513,12 @@ const SchoolTrackingPage = () => {
                                   </span>
                                 </div>
                                 {tranchePayment?.invoice_url && (
-                                  <a 
-                                    href={getAbsoluteUrl(tranchePayment.invoice_url)}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                  <button 
+                                    onClick={() => downloadFile(tranchePayment.invoice_url, `Invoice_${school_name?.replace(/\s+/g, '_') || 'School'}_Tranche${tidx + 1}`)}
                                     className="inline-flex items-center gap-1 mt-2 text-xs text-blue-600 hover:underline"
                                   >
                                     <Download className="w-3 h-3" /> Download Invoice
-                                  </a>
+                                  </button>
                                 )}
                               </div>
                             );
