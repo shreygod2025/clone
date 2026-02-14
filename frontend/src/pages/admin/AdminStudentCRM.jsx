@@ -349,10 +349,97 @@ const AdminStudentCRM = () => {
     }
   };
 
+  // Generate payment link for online payment
+  const handleGeneratePaymentLink = async () => {
+    if (!showOnboardModal) return;
+    
+    // Validate amount
+    if (!onboardData.amount || parseFloat(onboardData.amount) <= 0) {
+      toast.error('Please enter a valid amount');
+      return;
+    }
+    
+    // Validate batch details
+    let batchId = onboardData.batch_id;
+    let batchName = '';
+    
+    if (onboardData.batch_mode === 'new') {
+      if (!onboardData.start_date || onboardData.days.length === 0 || !onboardData.time_slot || !onboardData.educator_id) {
+        toast.error('Please fill all required batch fields first');
+        return;
+      }
+      batchName = onboardData.name || `${showOnboardModal.name}'s Batch`;
+    } else {
+      if (!batchId) {
+        toast.error('Please select a batch first');
+        return;
+      }
+      const selectedBatch = batches.find(b => b.id === batchId);
+      batchName = selectedBatch?.name || 'Batch';
+    }
+    
+    setGeneratingPaymentLink(true);
+    
+    try {
+      // If new batch mode, create batch first
+      if (onboardData.batch_mode === 'new') {
+        const batchResponse = await axios.post(`${API}/batches`, {
+          name: batchName,
+          skill: onboardData.skill || showOnboardModal.skill,
+          start_date: onboardData.start_date,
+          days: onboardData.days,
+          time_slot: onboardData.time_slot,
+          num_sessions: parseInt(onboardData.num_sessions) || 12,
+          educator_id: onboardData.educator_id,
+          educator_name: onboardData.educator_name,
+          mode: onboardData.mode,
+        }, { headers: getAuthHeaders() });
+        
+        batchId = batchResponse.data.id;
+        setOnboardData(prev => ({ ...prev, batch_id: batchId }));
+      }
+      
+      // Create payment order
+      const response = await axios.post(`${API}/payments/create-order`, {
+        student_id: showOnboardModal.id,
+        amount: parseFloat(onboardData.amount),
+        batch_id: batchId,
+        batch_name: batchName,
+        description: `Batch payment for ${showOnboardModal.name} - ${batchName}`
+      }, { headers: getAuthHeaders() });
+      
+      setPaymentLinkGenerated(response.data);
+      toast.success('Payment link generated successfully!');
+      fetchInquiries();
+    } catch (error) {
+      toast.error('Failed to generate payment link');
+      console.error(error);
+    } finally {
+      setGeneratingPaymentLink(false);
+    }
+  };
+
   const handleOnboardStudent = async () => {
     if (!showOnboardModal) return;
     
-    // Validate payment receipt
+    // For online payment mode, just close the modal (payment link already generated)
+    if (onboardData.payment_mode === 'online') {
+      if (!paymentLinkGenerated) {
+        toast.error('Please generate a payment link first');
+        return;
+      }
+      toast.success('Payment link shared. Student will be converted automatically after payment.');
+      setShowOnboardModal(null);
+      setOnboardData({
+        batch_mode: 'new', batch_id: '', name: '', skill: '', start_date: '',
+        days: [], time_slot: '', num_sessions: 12, educator_id: '', educator_name: '', mode: 'online',
+        payment_receipt: null, payment_receipt_url: '', amount: '', payment_mode: 'receipt'
+      });
+      setPaymentLinkGenerated(null);
+      return;
+    }
+    
+    // Validate payment receipt for receipt mode
     if (!onboardData.payment_receipt_url) {
       toast.error('Payment receipt is mandatory');
       return;
@@ -416,8 +503,9 @@ const AdminStudentCRM = () => {
       setOnboardData({
         batch_mode: 'new', batch_id: '', name: '', skill: '', start_date: '',
         days: [], time_slot: '', num_sessions: 12, educator_id: '', educator_name: '', mode: 'online',
-        payment_receipt: null, payment_receipt_url: '', amount: ''
+        payment_receipt: null, payment_receipt_url: '', amount: '', payment_mode: 'receipt'
       });
+      setPaymentLinkGenerated(null);
       fetchInquiries();
       fetchBatches();
     } catch (error) {
