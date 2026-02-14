@@ -25,7 +25,6 @@ const AdminExpenses = () => {
   const [schools, setSchools] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
-  const [expandedSchool, setExpandedSchool] = useState(null);
   const [filters, setFilters] = useState({
     school_id: '',
     category: '',
