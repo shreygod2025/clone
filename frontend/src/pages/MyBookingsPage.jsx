@@ -48,6 +48,7 @@ const MyBookingsPage = () => {
   const [processingPayment, setProcessingPayment] = useState(false);
   const [cashfreeReady, setCashfreeReady] = useState(false);
   const [paymentError, setPaymentError] = useState(null);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   const CANCEL_REASONS = [
     { value: 'schedule_conflict', label: 'Schedule conflict' },
