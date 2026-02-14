@@ -10154,6 +10154,94 @@ async def delete_inquiry_query(query_id: str, user: dict = Depends(get_current_u
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
 
+@api_router.post("/admin/optimize-db")
+async def optimize_database(user: dict = Depends(get_current_user)):
+    """Manually trigger database index creation for better performance"""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Only admins can optimize database")
+    
+    indexes_created = []
+    try:
+        # School Inquiries indexes
+        await db.school_inquiries.create_index("id", unique=True)
+        await db.school_inquiries.create_index("status")
+        await db.school_inquiries.create_index("assigned_to")
+        await db.school_inquiries.create_index("created_at")
+        await db.school_inquiries.create_index([("status", 1), ("created_at", -1)])
+        indexes_created.append("school_inquiries")
+        
+        # Student Inquiries indexes
+        await db.student_inquiries.create_index("id", unique=True)
+        await db.student_inquiries.create_index("status")
+        await db.student_inquiries.create_index("assigned_to")
+        await db.student_inquiries.create_index("demo_date")
+        await db.student_inquiries.create_index([("status", 1), ("created_at", -1)])
+        indexes_created.append("student_inquiries")
+        
+        # Educator Applications indexes
+        await db.educator_applications.create_index("id", unique=True)
+        await db.educator_applications.create_index("status")
+        await db.educator_applications.create_index("assigned_to")
+        await db.educator_applications.create_index([("status", 1), ("created_at", -1)])
+        indexes_created.append("educator_applications")
+        
+        # Support Queries indexes
+        await db.support_queries.create_index("id", unique=True)
+        await db.support_queries.create_index("status")
+        await db.support_queries.create_index("assigned_to")
+        await db.support_queries.create_index([("status", 1), ("created_at", -1)])
+        indexes_created.append("support_queries")
+        
+        # Inquiry Queries indexes
+        await db.inquiry_queries.create_index("id", unique=True)
+        await db.inquiry_queries.create_index("status")
+        await db.inquiry_queries.create_index([("status", 1), ("created_at", -1)])
+        indexes_created.append("inquiry_queries")
+        
+        # Support Tickets indexes
+        await db.support_tickets.create_index("id", unique=True)
+        await db.support_tickets.create_index("status")
+        await db.support_tickets.create_index("source")
+        await db.support_tickets.create_index([("status", 1), ("created_at", -1)])
+        indexes_created.append("support_tickets")
+        
+        # Team Users indexes
+        await db.team_users.create_index("id", unique=True)
+        await db.team_users.create_index("email")
+        indexes_created.append("team_users")
+        
+        # School Expenses indexes
+        await db.school_expenses.create_index("id", unique=True)
+        await db.school_expenses.create_index("school_id")
+        await db.school_expenses.create_index([("school_id", 1), ("created_at", -1)])
+        indexes_created.append("school_expenses")
+        
+        # External API Keys indexes
+        await db.external_api_keys.create_index("id", unique=True)
+        await db.external_api_keys.create_index("key", unique=True)
+        indexes_created.append("external_api_keys")
+        
+        # GP Applications indexes
+        await db.gp_applications.create_index("id", unique=True)
+        await db.gp_applications.create_index("status")
+        indexes_created.append("gp_applications")
+        
+        # Growth Partners indexes
+        await db.growth_partners.create_index("id", unique=True)
+        await db.growth_partners.create_index("status")
+        indexes_created.append("growth_partners")
+        
+        return {
+            "message": "Database optimization complete",
+            "indexes_created": indexes_created,
+            "collections_optimized": len(indexes_created)
+        }
+    except Exception as e:
+        return {
+            "message": f"Partial optimization - some indexes may already exist: {str(e)}",
+            "indexes_created": indexes_created
+        }
+
 # Cloudinary signature endpoint for frontend uploads
 @api_router.get("/cloudinary/signature")
 async def get_cloudinary_signature(
