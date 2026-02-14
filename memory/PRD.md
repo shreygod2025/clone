@@ -83,6 +83,28 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 ## Recent Updates (Feb 2025)
 
 ### Feb 14, 2026
+- **ENHANCED - Student Dashboard Payment Integration**: Integrated "Pay Fees" feature directly into the student dashboard after OTP login
+  - **Dashboard Flow**:
+    - Student logs in via OTP
+    - If pending_payment exists, shows prominent green "Pay Your Fees" card
+    - Displays: Batch name, Course, Amount due
+    - "Pay Now" button opens Cashfree Drop-in modal
+    - After successful payment:
+      - Shows success message card
+      - Student status changes to "converted"
+      - Sessions created from batch schedule
+      - Payment hidden from dashboard
+  - **Backend Improvements**:
+    - `GET /api/payments/by-phone/{phone}` - Fetch payment info by phone (for logged-in students)
+    - Webhook now captures transaction_id (cf_payment_id) from Cashfree
+    - Duplicate processing prevention in webhook and verify endpoints
+    - Sessions auto-created from batch schedule on payment success
+    - Student marked as "converted" with payment_transaction_id stored
+  - **Orders Display**:
+    - Transaction ID visible in Admin Orders
+    - Shows "Paid via Cashfree" with payment method details
+    - Prevents duplicate entries
+
 - **NEW FEATURE - Cashfree Payment Gateway Integration (Drop-in Checkout)**: Fully integrated Cashfree for student online payments using embedded checkout
   - **Admin Flow**: 
     - "Convert & Onboard" modal has "Online Payment" option
@@ -97,13 +119,15 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
     - Payment auto-verifies via webhook
   - **API Endpoints:**
     - `GET /api/payments/student/{student_id}` - Get pending payment info (public)
+    - `GET /api/payments/by-phone/{phone}` - Get pending payment info by phone (for dashboard)
     - `POST /api/payments/create-session/{student_id}` - Create Cashfree session for Drop-in checkout (public)
     - `GET /api/payments/verify/{order_id}` - Verify payment status
     - `POST /api/payments/webhook` - Cashfree webhook handler
   - **Updated Files:**
-    - `/app/frontend/src/pages/StudentPayment.jsx` - Complete rewrite for Drop-in checkout
+    - `/app/frontend/src/pages/MyBookingsPage.jsx` - Payment section integrated in student dashboard
+    - `/app/frontend/src/pages/StudentPayment.jsx` - Standalone payment page
     - `/app/frontend/src/pages/admin/AdminStudentCRM.jsx` - Updated handleGeneratePaymentLink
-    - `/app/backend/server.py` - Added create-session endpoint, updated Cashfree SDK v5 calls
+    - `/app/backend/server.py` - Payment endpoints with session creation, webhook, verification
   - **Credentials:** Production Cashfree keys in `.env` (APP_ID, SECRET_KEY)
   - **IMPORTANT**: User must whitelist production domain in Cashfree Dashboard (merchant.cashfree.com > developers) for payments to work
 
