@@ -2353,12 +2353,45 @@ const AdminStudentCRM = () => {
             )}
 
             <div className="flex gap-3 pt-2">
-              <Button variant="outline" onClick={() => setShowOnboardModal(null)} className="flex-1">
+              <Button variant="outline" onClick={() => {
+                setShowOnboardModal(null);
+                setPaymentLinkGenerated(null);
+              }} className="flex-1">
                 Cancel
               </Button>
-              <Button onClick={handleOnboardStudent} className="flex-1 bg-green-600 hover:bg-green-700">
-                Onboard Student
-              </Button>
+              {onboardData.payment_mode === 'online' ? (
+                <>
+                  {!paymentLinkGenerated && (
+                    <Button 
+                      onClick={handleGeneratePaymentLink} 
+                      disabled={generatingPaymentLink}
+                      className="flex-1 bg-green-600 hover:bg-green-700"
+                    >
+                      {generatingPaymentLink ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        <>
+                          <Link2 className="w-4 h-4 mr-2" />
+                          Generate Payment Link
+                        </>
+                      )}
+                    </Button>
+                  )}
+                  {paymentLinkGenerated && (
+                    <Button onClick={handleOnboardStudent} className="flex-1 bg-blue-600 hover:bg-blue-700">
+                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                      Done
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <Button onClick={handleOnboardStudent} className="flex-1 bg-green-600 hover:bg-green-700">
+                  Onboard Student
+                </Button>
+              )}
             </div>
           </div>
         </DialogContent>
