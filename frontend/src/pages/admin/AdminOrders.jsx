@@ -37,6 +37,30 @@ const getAbsoluteUrl = (url) => {
   return url;
 };
 
+// Download file utility - forces download with proper filename for cross-origin URLs (Cloudinary, etc.)
+const downloadFile = async (url, filename) => {
+  try {
+    const absoluteUrl = getAbsoluteUrl(url);
+    const response = await fetch(absoluteUrl);
+    if (!response.ok) throw new Error('Download failed');
+    
+    const blob = await response.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(blobUrl);
+  } catch (error) {
+    console.error('Download error:', error);
+    // Fallback: open in new tab if download fails
+    window.open(getAbsoluteUrl(url), '_blank');
+  }
+};
+
 const STATUS_COLORS = {
   pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
   paid: 'bg-green-100 text-green-700 border-green-200',
