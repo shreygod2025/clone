@@ -500,9 +500,6 @@ const SchoolStudentPayment = () => {
 
         <Footer />
       </div>
-
-      {/* Help Modal */}
-      <HelpModal />
     </>
   );
 };
