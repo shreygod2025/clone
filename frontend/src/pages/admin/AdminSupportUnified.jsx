@@ -619,18 +619,22 @@ const AdminSupportUnified = () => {
     }
     try {
       // Use the correct endpoint based on source
+      let endpoint;
       if (query._source === 'inquiry') {
-        await axios.delete(`${API}/inquiry/queries/${query.id}`, {
-          headers: getAuthHeaders()
-        });
+        endpoint = `${API}/inquiry/queries/${query.id}`;
+      } else if (query._source === 'tracking_page') {
+        endpoint = `${API}/support/tracking-tickets/${query.id}`;
       } else {
-        await axios.delete(`${API}/support/queries/${query.id}`, {
-          headers: getAuthHeaders()
-        });
+        endpoint = `${API}/support/queries/${query.id}`;
       }
+      
+      await axios.delete(endpoint, {
+        headers: getAuthHeaders()
+      });
       toast.success('Query deleted successfully');
       fetchAllQueries();
     } catch (error) {
+      console.error('Delete error:', error.response?.data || error);
       toast.error(error.response?.data?.detail || 'Failed to delete query');
     }
   };
