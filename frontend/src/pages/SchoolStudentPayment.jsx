@@ -238,47 +238,6 @@ const SchoolStudentPayment = () => {
     </footer>
   );
 
-  // Help Modal
-  const HelpModal = () => (
-    <Dialog open={showHelpModal} onOpenChange={setShowHelpModal}>
-      <DialogContent className="max-w-md max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <HelpCircle className="w-5 h-5 text-[#1E3A5F]" />
-            Payment FAQs
-          </DialogTitle>
-        </DialogHeader>
-        
-        <div className="divide-y divide-slate-100">
-          {paymentFAQs.map((faq, idx) => (
-            <FAQItem key={idx} faq={faq} />
-          ))}
-        </div>
-        
-        {/* Contact Support */}
-        <div className="mt-4 pt-4 border-t border-slate-200 space-y-3">
-          <p className="text-sm font-medium text-slate-700">Still need help?</p>
-          <div className="space-y-2">
-            <a 
-              href="mailto:info@oll.co" 
-              className="flex items-center gap-2 text-sm text-slate-600 hover:text-[#C53030] transition-colors"
-            >
-              <Mail className="w-4 h-4" />
-              info@oll.co
-            </a>
-            <a 
-              href="tel:+919920188188" 
-              className="flex items-center gap-2 text-sm text-slate-600 hover:text-[#C53030] transition-colors"
-            >
-              <PhoneCall className="w-4 h-4" />
-              +91 9920188188
-            </a>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col">
@@ -290,7 +249,6 @@ const SchoolStudentPayment = () => {
           </div>
         </div>
         <Footer />
-        <HelpModal />
       </div>
     );
   }
