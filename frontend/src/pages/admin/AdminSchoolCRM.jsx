@@ -487,6 +487,7 @@ const AdminSchoolCRM = () => {
     payment_mode: 'from_school',
     payment_method: '',
     payment_tranches: [{ amount: '', percentage: '', date: '', notes: '' }],
+    deadline_date: '', // Deadline for online payments
     contract_start: '',
     contract_end: '',
     mou_url: '',
