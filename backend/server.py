@@ -6544,17 +6544,23 @@ async def get_support_queries(
     my_tickets: bool = False,
     user: dict = Depends(get_current_user)
 ):
-    """Get support queries - filters by assigned_to for non-admin users"""
+    """Get support queries - filters by assigned_to OR viewers for non-admin users"""
     query = {}
     if status:
         query["status"] = status
     
-    # If my_tickets is true or user is not admin, filter by assigned_to
+    # If my_tickets is true or user is not admin, filter by assigned_to OR viewers
     user_role = user.get("role", "")
+    user_id = user.get("id") or user.get("email")
+    
     if my_tickets or (user_role not in ["admin", "super_admin"]):
-        # For center users, team users, etc. - only show their assigned tickets
-        user_id = user.get("id") or user.get("email")
-        query["assigned_to"] = user_id
+        # For center users, team users, etc. - show tickets assigned to them OR where they are viewers OR created by them
+        query["$or"] = [
+            {"assigned_to": user_id},
+            {"viewers": user_id},
+            {"created_by": user_id},
+            {"created_by": user.get("email")}
+        ]
     elif assigned_to:
         query["assigned_to"] = assigned_to
         
