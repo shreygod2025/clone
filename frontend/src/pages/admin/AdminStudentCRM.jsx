@@ -349,7 +349,8 @@ const AdminStudentCRM = () => {
     }
   };
 
-  // Generate payment link for online payment
+  // Setup online payment - saves batch details and amount to student record
+  // Student can then pay via their payment page using Cashfree Drop-in checkout
   const handleGeneratePaymentLink = async () => {
     if (!showOnboardModal) return;
     
@@ -399,20 +400,37 @@ const AdminStudentCRM = () => {
         setOnboardData(prev => ({ ...prev, batch_id: batchId }));
       }
       
-      // Create payment order
-      const response = await axios.post(`${API}/payments/create-order`, {
-        student_id: showOnboardModal.id,
-        amount: parseFloat(onboardData.amount),
-        batch_id: batchId,
-        batch_name: batchName,
-        description: `Batch payment for ${showOnboardModal.name} - ${batchName}`
+      // Save pending payment info to student record (NO Cashfree API call here)
+      // The student will create the payment session when they click "Pay Fees"
+      await axios.patch(`${API}/students/inquiry/${showOnboardModal.id}`, {
+        status: 'demo_completed', // Keep as demo_completed until payment is made
+        pending_payment: {
+          amount: parseFloat(onboardData.amount),
+          batch_id: batchId,
+          batch_name: batchName,
+          status: 'AWAITING_PAYMENT',
+          created_at: new Date().toISOString()
+        },
+        notes: showOnboardModal.notes 
+          ? `${showOnboardModal.notes}\n\nOnline payment setup - ₹${onboardData.amount} for ${batchName}` 
+          : `Online payment setup - ₹${onboardData.amount} for ${batchName}`
       }, { headers: getAuthHeaders() });
       
-      setPaymentLinkGenerated(response.data);
-      toast.success('Payment link generated successfully!');
+      // Generate the payment page URL (NOT a Cashfree link)
+      const frontendUrl = window.location.origin;
+      const paymentPageUrl = `${frontendUrl}/student/pay/${showOnboardModal.id}`;
+      
+      setPaymentLinkGenerated({
+        payment_link: paymentPageUrl,
+        amount: parseFloat(onboardData.amount),
+        student_id: showOnboardModal.id,
+        batch_name: batchName
+      });
+      
+      toast.success('Payment setup complete! Share the link with the student.');
       fetchInquiries();
     } catch (error) {
-      toast.error('Failed to generate payment link');
+      toast.error('Failed to setup payment');
       console.error(error);
     } finally {
       setGeneratingPaymentLink(false);
