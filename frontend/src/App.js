@@ -73,6 +73,7 @@ const AdminReports = lazy(() => import("./pages/admin/AdminReports"));
 const AdminDataCenter = lazy(() => import("./pages/admin/AdminDataCenter"));
 const AdminBlogs = lazy(() => import("./pages/admin/AdminBlogs"));
 const CenterDashboard = lazy(() => import("./pages/admin/CenterDashboard"));
+const SchoolPaymentTracker = lazy(() => import("./pages/admin/SchoolPaymentTracker"));
 
 // Auth Context
 import { AuthProvider, useAuth } from "./context/AuthContext";
