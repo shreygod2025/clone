@@ -7880,8 +7880,48 @@ const AdminSchoolCRM = () => {
                       {/* Payment Collection */}
                       {key === 'payment_collection' && (
                         <div className="space-y-3">
+                          {/* Online Student Payment Links - Show if payment_mode is online */}
+                          {showOnboardingWorkflowModal?.onboarding_data?.payment_mode === 'online' && showOnboardingWorkflowModal?.onboarding_data?.payment_method === 'student' && (
+                            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                              <p className="text-sm font-medium text-green-800 mb-2">Online Student Fee Collection</p>
+                              <div className="flex flex-wrap gap-2">
+                                <a 
+                                  href={`/school-pay/${showOnboardingWorkflowModal.id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700 transition-colors"
+                                >
+                                  <CreditCard className="w-3.5 h-3.5" /> Student Payment Link
+                                </a>
+                                <a 
+                                  href={`/admin/school-payment-tracker/${showOnboardingWorkflowModal.id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700 transition-colors"
+                                >
+                                  <BarChart3 className="w-3.5 h-3.5" /> Payment Tracker
+                                </a>
+                                <button
+                                  onClick={() => {
+                                    const url = `${window.location.origin}/school-pay/${showOnboardingWorkflowModal.id}`;
+                                    navigator.clipboard.writeText(url);
+                                    toast.success('Payment link copied!');
+                                  }}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-600 text-white text-xs rounded-lg hover:bg-slate-700 transition-colors"
+                                >
+                                  <ExternalLink className="w-3.5 h-3.5" /> Copy Link
+                                </button>
+                              </div>
+                              {showOnboardingWorkflowModal?.onboarding_data?.deadline_date && (
+                                <p className="text-xs text-green-700 mt-2">
+                                  Deadline: {format(new Date(showOnboardingWorkflowModal.onboarding_data.deadline_date), 'MMM d, yyyy')}
+                                </p>
+                              )}
+                            </div>
+                          )}
+                          
                           {/* Show Payment Tranches from onboarding_data */}
-                          {showOnboardingWorkflowModal?.onboarding_data?.payment_tranches?.length > 0 ? (
+                          {showOnboardingWorkflowModal?.onboarding_data?.payment_mode !== 'online' && showOnboardingWorkflowModal?.onboarding_data?.payment_tranches?.length > 0 ? (
                             <div className="space-y-2">
                               <label className="text-xs text-slate-500 font-medium">Payment Tranches</label>
                               {showOnboardingWorkflowModal.onboarding_data.payment_tranches.map((tranche, idx) => {
@@ -7920,7 +7960,7 @@ const AdminSchoolCRM = () => {
                                     <div className="flex items-center gap-3 mt-2 pt-2 border-t">
                                       {tranchePayment?.invoice_url ? (
                                         <button 
-                                          onClick={() => downloadFile(tranchePayment.invoice_url, `Invoice_${viewInquiry.school_name?.replace(/\s+/g, '_') || 'School'}_Tranche${idx + 1}.pdf`)}
+                                          onClick={() => downloadFile(tranchePayment.invoice_url, `Invoice_${showOnboardingWorkflowModal.school_name?.replace(/\s+/g, '_') || 'School'}_Tranche${idx + 1}.pdf`)}
                                           className="text-blue-600 text-xs flex items-center gap-1 hover:underline"
                                         >
                                           <Download className="w-3 h-3" /> Invoice
@@ -7930,7 +7970,7 @@ const AdminSchoolCRM = () => {
                                       )}
                                       {tranchePayment?.receipt_url ? (
                                         <button 
-                                          onClick={() => downloadFile(tranchePayment.receipt_url, `Receipt_${viewInquiry.school_name?.replace(/\s+/g, '_') || 'School'}_Tranche${idx + 1}.pdf`)}
+                                          onClick={() => downloadFile(tranchePayment.receipt_url, `Receipt_${showOnboardingWorkflowModal.school_name?.replace(/\s+/g, '_') || 'School'}_Tranche${idx + 1}.pdf`)}
                                           className="text-green-600 text-xs flex items-center gap-1 hover:underline"
                                         >
                                           <Download className="w-3 h-3" /> Receipt
@@ -7943,7 +7983,7 @@ const AdminSchoolCRM = () => {
                                 );
                               })}
                             </div>
-                          ) : (
+                          ) : showOnboardingWorkflowModal?.onboarding_data?.payment_mode !== 'online' && (
                             <div className="text-sm text-slate-500 bg-slate-50 p-3 rounded-lg">
                               No payment tranches defined. Set up tranches when converting the school.
                             </div>
