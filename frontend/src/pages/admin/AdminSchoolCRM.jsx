@@ -7537,6 +7537,8 @@ const AdminSchoolCRM = () => {
               </div>
 
               {/* Payment Tranches */}
+              {/* Payment Tranches - Only show for non-online payment modes */}
+              {editOnboardData.payment_mode !== 'online' && (
               <div className="bg-purple-50 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="font-medium text-purple-800">Payment Tranches</h4>
@@ -7626,6 +7628,21 @@ const AdminSchoolCRM = () => {
                   )}
                 </div>
               </div>
+              )}
+
+              {/* Deadline Date - Only show for online payment mode */}
+              {editOnboardData.payment_mode === 'online' && (
+                <div className="bg-green-50 rounded-lg p-4">
+                  <h4 className="font-medium text-green-800 mb-3">Payment Deadline (Optional)</h4>
+                  <p className="text-xs text-green-600 mb-2">Set a deadline for students to complete their payments</p>
+                  <Input
+                    type="date"
+                    value={editOnboardData.deadline_date || ''}
+                    onChange={(e) => setEditOnboardData(prev => ({ ...prev, deadline_date: e.target.value }))}
+                    className="bg-white"
+                  />
+                </div>
+              )}
 
               <div className="flex gap-3 pt-2">
                 <Button 
