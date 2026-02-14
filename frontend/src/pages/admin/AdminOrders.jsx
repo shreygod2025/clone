@@ -524,7 +524,8 @@ const AdminOrders = () => {
           </select>
         </div>
 
-        {/* Payments Table */}
+        {/* Payments Table - Only for school and student tabs */}
+        {(activeTab === 'school' || activeTab === 'student') && (
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
           {loading ? (
             <div className="p-12 text-center">
