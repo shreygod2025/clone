@@ -10024,6 +10024,8 @@ class InquiryQuery(BaseModel):
     status: str = "open"  # open, in_progress, resolved, closed
     attachments: List[dict] = []  # [{name, url, type, is_voice_note}]
     added_by: str = ""
+    added_by_name: str = ""
+    viewers: List[str] = []  # Array of user IDs who can view this query
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 @api_router.post("/inquiry/lead")
