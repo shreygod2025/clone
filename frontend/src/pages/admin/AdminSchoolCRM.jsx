@@ -7417,13 +7417,19 @@ const AdminSchoolCRM = () => {
                     <label className="text-sm font-medium text-slate-700">Payment Mode</label>
                     <select
                       value={editOnboardData.payment_mode || ''}
-                      onChange={(e) => setEditOnboardData(prev => ({ ...prev, payment_mode: e.target.value }))}
+                      onChange={(e) => setEditOnboardData(prev => ({ 
+                        ...prev, 
+                        payment_mode: e.target.value,
+                        payment_method: e.target.value === 'online' ? 'student' : prev.payment_method
+                      }))}
                       className="w-full h-10 px-4 border border-slate-200 rounded-lg bg-white"
                     >
                       <option value="from_school">From School</option>
-                      <option value="from_student">From Student</option>
+                      <option value="from_student">From Student (Offline)</option>
+                      <option value="online">Online (Student Payment via Cashfree)</option>
                     </select>
                   </div>
+                  {editOnboardData.payment_mode !== 'online' && (
                   <div>
                     <label className="text-sm font-medium text-slate-700">Payment Method</label>
                     <select
@@ -7438,7 +7444,38 @@ const AdminSchoolCRM = () => {
                       <option value="cash">Cash</option>
                     </select>
                   </div>
+                  )}
                 </div>
+                
+                {/* Online Student Payment Info */}
+                {editOnboardData.payment_mode === 'online' && (
+                  <div className="bg-green-100 border border-green-300 rounded-lg p-3 mt-3">
+                    <p className="text-sm font-medium text-green-800 mb-1">Online Student Fee Collection</p>
+                    <p className="text-xs text-green-700">
+                      Students will pay their fees online via UPI, Cards, or Net Banking.
+                    </p>
+                    {showEditOnboardingModal?.id && (
+                      <div className="mt-2 flex gap-2">
+                        <a 
+                          href={`/school-pay/${showEditOnboardingModal.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 flex items-center gap-1"
+                        >
+                          <ExternalLink className="w-3 h-3" /> Payment Link
+                        </a>
+                        <a 
+                          href={`/admin/school-payment-tracker/${showEditOnboardingModal.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-1"
+                        >
+                          <BarChart3 className="w-3 h-3" /> Payment Tracker
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Contract Dates */}
