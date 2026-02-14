@@ -10268,6 +10268,45 @@ async def delete_inquiry_query(query_id: str, user: dict = Depends(get_current_u
     
     return {"message": "Query deleted successfully"}
 
+@api_router.post("/inquiry/queries/{query_id}/viewers")
+async def manage_inquiry_query_viewers(query_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Add or remove viewers from an inquiry query"""
+    action = data.get("action", "add")
+    viewer_id = data.get("viewer_id")
+    
+    if not viewer_id:
+        raise HTTPException(status_code=400, detail="viewer_id is required")
+    
+    query = await db.inquiry_queries.find_one({"id": query_id}, {"_id": 0})
+    if not query:
+        raise HTTPException(status_code=404, detail="Query not found")
+    
+    viewer = await db.team_users.find_one({"id": viewer_id}, {"_id": 0})
+    if not viewer:
+        viewer = await db.admins.find_one({"id": viewer_id}, {"_id": 0})
+    viewer_name = viewer.get("name", "Unknown") if viewer else "Unknown"
+    
+    activity = {
+        "type": "viewer_added" if action == "add" else "viewer_removed",
+        "viewer_id": viewer_id,
+        "viewer_name": viewer_name,
+        "by": user.get("name", user.get("email", "admin")),
+        "date": datetime.now(timezone.utc).isoformat()
+    }
+    
+    if action == "add":
+        await db.inquiry_queries.update_one(
+            {"id": query_id},
+            {"$addToSet": {"viewers": viewer_id}, "$push": {"activity_history": activity}}
+        )
+        return {"message": f"Viewer {viewer_name} added successfully"}
+    else:
+        await db.inquiry_queries.update_one(
+            {"id": query_id},
+            {"$pull": {"viewers": viewer_id}, "$push": {"activity_history": activity}}
+        )
+        return {"message": f"Viewer {viewer_name} removed successfully"}
+
 # ========================
 # HEALTH CHECK
 # ========================
