@@ -7840,18 +7840,86 @@ const AdminSchoolCRM = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <span>Onboarding Workflow - {showOnboardingWorkflowModal?.school_name}</span>
-              {showOnboardingWorkflowModal?.onboarding_workflow?.tracking_token && (
-                <button
-                  onClick={() => {
-                    const url = `${window.location.origin}/track/${showOnboardingWorkflowModal.onboarding_workflow.tracking_token}`;
-                    navigator.clipboard.writeText(url);
-                    toast.success('Tracking link copied!');
-                  }}
-                  className="text-xs px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
-                >
-                  Copy Tracking Link
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                {/* Export to Excel button for online payment mode */}
+                {showOnboardingWorkflowModal?.onboarding_data?.payment_mode === 'online' && showOnboardingWorkflowModal?.onboarding_data?.payment_method === 'student' && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        const token = localStorage.getItem('adminToken');
+                        const response = await axios.get(`${API}/school-payment/tracker/${showOnboardingWorkflowModal.id}`, {
+                          headers: { Authorization: `Bearer ${token}` }
+                        });
+                        
+                        const payments = response.data.payments || [];
+                        const stats = response.data.stats || {};
+                        
+                        if (payments.length === 0) {
+                          toast.error('No payment data to export');
+                          return;
+                        }
+                        
+                        // Prepare data for Excel
+                        const data = payments.map(p => ({
+                          'Date': p.paid_at ? format(new Date(p.paid_at), 'MMM d, yyyy h:mm a') : '-',
+                          'Student Name': p.student_name || '',
+                          'Phone': p.phone || '',
+                          'Grade': p.grade || '',
+                          'Division': p.division || '-',
+                          'Amount': p.amount || 0,
+                          'Status': p.status || 'pending',
+                          'Transaction ID': p.transaction_id || '-'
+                        }));
+
+                        // Create workbook
+                        const wb = XLSX.utils.book_new();
+                        
+                        // Summary data
+                        const summaryData = [
+                          ['School Payment Report'],
+                          ['School:', showOnboardingWorkflowModal?.school_name || 'School'],
+                          ['Generated:', new Date().toLocaleString()],
+                          ['Total Collected:', `₹${(stats.total_collected || 0).toLocaleString('en-IN')}`],
+                          ['Students Paid:', stats.paid_count || 0],
+                          ['Collection %:', `${stats.collection_percentage || 0}%`],
+                          [''],
+                        ];
+
+                        const ws = XLSX.utils.aoa_to_sheet(summaryData);
+                        XLSX.utils.sheet_add_json(ws, data, { origin: 'A8' });
+
+                        ws['!cols'] = [
+                          { wch: 20 }, { wch: 25 }, { wch: 15 }, { wch: 10 },
+                          { wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 20 }
+                        ];
+
+                        XLSX.utils.book_append_sheet(wb, ws, 'Payments');
+                        XLSX.writeFile(wb, `${showOnboardingWorkflowModal?.school_name || 'School'}_Payments_${new Date().toISOString().split('T')[0]}.xlsx`);
+                        toast.success('Excel file exported!');
+                      } catch (err) {
+                        console.error('Export error:', err);
+                        toast.error('Failed to export data');
+                      }
+                    }}
+                    className="text-xs px-3 py-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 flex items-center gap-1.5"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5" />
+                    Export Excel
+                  </button>
+                )}
+                {showOnboardingWorkflowModal?.onboarding_workflow?.tracking_token && (
+                  <button
+                    onClick={() => {
+                      const url = `${window.location.origin}/track/${showOnboardingWorkflowModal.onboarding_workflow.tracking_token}`;
+                      navigator.clipboard.writeText(url);
+                      toast.success('Tracking link copied!');
+                    }}
+                    className="text-xs px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
+                  >
+                    Copy Tracking Link
+                  </button>
+                )}
+              </div>
             </DialogTitle>
           </DialogHeader>
           
