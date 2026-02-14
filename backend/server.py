@@ -8291,18 +8291,16 @@ async def init_school_onboarding(school_id: str, data: dict = None, user: dict =
             </div>
             """
             
-            # Send email using Resend
-            from emergentintegrations.llm.resend import send_email
-            
+            # Send email using Resend SDK directly
             for email in school_emails:
                 try:
-                    await send_email(
-                        api_key=os.environ.get("RESEND_API_KEY", ""),
-                        from_email="OLL Team <welcome@oll.co>",
-                        to_email=email,
-                        subject=email_subject,
-                        html_content=email_html
-                    )
+                    email_params = {
+                        "from": "OLL Team <welcome@oll.co>",
+                        "to": [email],
+                        "subject": email_subject,
+                        "html": email_html
+                    }
+                    await asyncio.to_thread(resend.Emails.send, email_params)
                     print(f"Welcome email sent to {email}")
                 except Exception as email_err:
                     print(f"Failed to send welcome email to {email}: {email_err}")
