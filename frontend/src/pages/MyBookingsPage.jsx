@@ -579,6 +579,78 @@ const MyBookingsPage = () => {
             </Button>
           </div>
 
+          {/* Pay Fees Section - Prominent card for pending payments */}
+          {paymentInfo?.has_pending_payment && (
+            <div className="mb-6 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-6 text-white shadow-lg" data-testid="pay-fees-section">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <CreditCard className="w-6 h-6" />
+                    <h2 className="text-xl font-bold">Pay Your Fees</h2>
+                  </div>
+                  <p className="text-green-100 text-sm mb-2">
+                    Complete your payment to start your batch sessions
+                  </p>
+                  <div className="space-y-1 text-sm">
+                    <p className="text-green-100">
+                      <span className="text-white font-medium">Batch:</span> {paymentInfo.batch_name || 'Course Batch'}
+                    </p>
+                    {paymentInfo.skill && (
+                      <p className="text-green-100">
+                        <span className="text-white font-medium">Course:</span> {paymentInfo.skill}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="text-center md:text-right">
+                  <p className="text-green-100 text-sm mb-1">Amount Due</p>
+                  <p className="text-3xl font-bold mb-3" data-testid="payment-amount">
+                    {formatCurrency(paymentInfo.amount)}
+                  </p>
+                  <Button
+                    onClick={handlePayNow}
+                    disabled={processingPayment || !cashfreeReady}
+                    className="bg-white text-green-600 hover:bg-green-50 font-semibold px-8 py-3 text-base shadow-md"
+                    data-testid="pay-now-btn"
+                  >
+                    {processingPayment ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Processing...
+                      </>
+                    ) : !cashfreeReady ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <CreditCard className="w-5 h-5 mr-2" />
+                        Pay Now
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+              
+              {/* Payment Error */}
+              {paymentError && (
+                <div className="mt-4 bg-red-500/20 rounded-lg p-3 flex items-start gap-2">
+                  <AlertCircle className="w-5 h-5 text-white flex-shrink-0 mt-0.5" />
+                  <p className="text-white text-sm">{paymentError}</p>
+                </div>
+              )}
+              
+              {/* Security Note */}
+              <div className="mt-4 pt-4 border-t border-green-400/30 flex items-center justify-center gap-2 text-green-100 text-xs">
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                </svg>
+                Secure payment powered by Cashfree | UPI, Cards, Net Banking accepted
+              </div>
+            </div>
+          )}
+
           {/* Tabs - Only show if user has sessions */}
           {hasActiveSessions && (
             <div className="flex gap-2 mb-6">
