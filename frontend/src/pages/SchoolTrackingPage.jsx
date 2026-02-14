@@ -693,6 +693,58 @@ const SchoolTrackingPage = () => {
                 )}
               </div>
 
+              {/* Payment Collection Progress (for online student payments) */}
+              {paymentStats && (
+                <div className="bg-white rounded-xl shadow-lg p-4">
+                  <h3 className="font-semibold text-[#1E3A5F] mb-3 flex items-center gap-2">
+                    <DollarSign className="w-5 h-5" />
+                    Fee Collection Progress
+                  </h3>
+                  
+                  {/* Progress Bar */}
+                  <div className="mb-4">
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-slate-600">Collected</span>
+                      <span className="font-semibold text-green-600">{paymentStats.collection_percentage}%</span>
+                    </div>
+                    <div className="w-full bg-slate-200 rounded-full h-3">
+                      <div 
+                        className="bg-green-500 h-3 rounded-full transition-all duration-500"
+                        style={{ width: `${Math.min(paymentStats.collection_percentage, 100)}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                  
+                  {/* Stats */}
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div className="bg-green-50 rounded-lg p-3 text-center">
+                      <p className="text-2xl font-bold text-green-600">
+                        {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(paymentStats.total_collected)}
+                      </p>
+                      <p className="text-xs text-green-700">Collected</p>
+                    </div>
+                    <div className="bg-blue-50 rounded-lg p-3 text-center">
+                      <p className="text-2xl font-bold text-blue-600">{paymentStats.paid_count}</p>
+                      <p className="text-xs text-blue-700">Students Paid</p>
+                    </div>
+                  </div>
+                  
+                  {/* Grade-wise breakdown */}
+                  {paymentStats.grade_counts && Object.keys(paymentStats.grade_counts).length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-slate-100">
+                      <p className="text-xs text-slate-500 mb-2">Grade-wise Payments</p>
+                      <div className="flex flex-wrap gap-2">
+                        {Object.entries(paymentStats.grade_counts).map(([grade, count]) => (
+                          <span key={grade} className="bg-slate-100 text-slate-700 px-2 py-1 rounded-full text-xs">
+                            Grade {grade}: {count}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Documents Section */}
               {((documents && documents.length > 0) || onboarding_details?.parent_circular_url || onboarding_details?.payment_link || mou_url || onboarding_details?.mou_url || (payments && payments.some(p => p.invoice_url))) && (
                 <div className="bg-white rounded-xl shadow-lg p-4">
