@@ -94,6 +94,8 @@ const AdminOrders = () => {
   const { getAuthHeaders } = useAuth();
   const [activeTab, setActiveTab] = useState('school');
   const [payments, setPayments] = useState([]);
+  const [schoolStudentPayments, setSchoolStudentPayments] = useState([]);
+  const [schoolStudentStats, setSchoolStudentStats] = useState({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -118,7 +120,11 @@ const AdminOrders = () => {
   });
 
   useEffect(() => {
-    fetchPayments();
+    if (activeTab === 'school-students') {
+      fetchSchoolStudentPayments();
+    } else {
+      fetchPayments();
+    }
   }, [activeTab]);
 
   const fetchPayments = async () => {
@@ -132,6 +138,59 @@ const AdminOrders = () => {
       console.error('Error fetching payments:', error);
       // Initialize with empty array if endpoint doesn't exist yet
       setPayments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSchoolStudentPayments = async () => {
+    setLoading(true);
+    try {
+      // Fetch all schools with online student payments and aggregate their data
+      const schoolsResponse = await axios.get(`${API}/schools/inquiries?status=active,renewed`, {
+        headers: getAuthHeaders()
+      });
+      
+      const schools = schoolsResponse.data.filter(s => 
+        s.onboarding_data?.payment_mode === 'online' && 
+        s.onboarding_data?.payment_method === 'student'
+      );
+      
+      const allPayments = [];
+      const stats = {};
+      
+      for (const school of schools) {
+        try {
+          const trackerResponse = await axios.get(`${API}/school-payment/tracker/${school.id}`, {
+            headers: getAuthHeaders()
+          });
+          
+          const schoolPayments = (trackerResponse.data.payments || []).map(p => ({
+            ...p,
+            school_name: school.school_name,
+            total_students: school.onboarding_data?.total_students || 0,
+            total_expected: school.onboarding_data?.total_amount || 0
+          }));
+          
+          allPayments.push(...schoolPayments);
+          
+          stats[school.id] = {
+            school_name: school.school_name,
+            school_id: school.id,
+            ...trackerResponse.data.stats,
+            grade_stats: trackerResponse.data.grade_stats
+          };
+        } catch (e) {
+          console.log(`No payments for school ${school.id}`);
+        }
+      }
+      
+      setSchoolStudentPayments(allPayments);
+      setSchoolStudentStats(stats);
+    } catch (error) {
+      console.error('Error fetching school student payments:', error);
+      setSchoolStudentPayments([]);
+      setSchoolStudentStats({});
     } finally {
       setLoading(false);
     }
