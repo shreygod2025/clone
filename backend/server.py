@@ -3714,13 +3714,15 @@ async def verify_school_student_payment(order_id: str):
     
     try:
         cf_order_id = payment.get("cf_order_id", order_id)
-        cf_env = Cashfree.XProduction if CASHFREE_ENVIRONMENT == "PRODUCTION" else Cashfree.XSandbox
         
-        api_response = Cashfree(cf_env, CASHFREE_APP_ID, CASHFREE_SECRET_KEY).PGFetchOrder(
+        # Use globally initialized Cashfree - credentials already set at startup
+        api_response = Cashfree().PGFetchOrder(
             CASHFREE_API_VERSION,
             cf_order_id,
             None
         )
+        
+        logging.info(f"School payment verification - Order: {cf_order_id}, Response: {api_response.data}")
         
         if api_response.data:
             order_status = api_response.data.order_status
@@ -3729,7 +3731,7 @@ async def verify_school_student_payment(order_id: str):
             cf_payment_id = None
             payment_method = "Cashfree"
             try:
-                payments_response = Cashfree(cf_env, CASHFREE_APP_ID, CASHFREE_SECRET_KEY).PGOrderFetchPayments(
+                payments_response = Cashfree().PGOrderFetchPayments(
                     CASHFREE_API_VERSION,
                     cf_order_id,
                     None
@@ -3737,6 +3739,7 @@ async def verify_school_student_payment(order_id: str):
                 if payments_response.data and len(payments_response.data) > 0:
                     cf_payment_id = str(payments_response.data[0].cf_payment_id)
                     payment_method = f"Cashfree - {payments_response.data[0].payment_group or 'unknown'}"
+                    logging.info(f"Payment details fetched - CF Payment ID: {cf_payment_id}, Method: {payment_method}")
             except Exception as e:
                 logging.warning(f"Could not fetch payment details: {e}")
             
