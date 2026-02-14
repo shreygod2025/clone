@@ -83,16 +83,33 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 ## Recent Updates (Feb 2025)
 
 ### Feb 14, 2026
+- **NEW FEATURE - Cashfree Payment Gateway Integration**: Integrated Cashfree for student online payments
+  - Admin can generate payment links when onboarding students
+  - Students can access payment page via `/student/pay/{studentId}`
+  - Payment success/failure tracked automatically
+  - Student status auto-updates to "converted" upon successful payment
+  - **API Endpoints:**
+    - `POST /api/payments/create-order` - Create payment order
+    - `GET /api/payments/student/{student_id}` - Get student payment info
+    - `GET /api/payments/verify/{order_id}` - Verify payment status
+    - `POST /api/payments/webhook` - Cashfree webhook handler
+  - **New Files:**
+    - `/app/frontend/src/pages/StudentPayment.jsx` - Student payment page
+  - **Credentials:** Production Cashfree keys configured in `.env`
+
+- **BUG FIX - File Downloads (Comprehensive)**: Fixed ALL document downloads across the platform
+  - Updated download utility to detect file type from Content-Type header
+  - Files now download with proper names (e.g., `Invoice_SchoolName_Tranche1.pdf`)
+  - Fixed downloads in: AdminSchoolCRM, AdminOrders, SchoolTrackingPage
+
 - **BUG FIX - Resend Email 403 Error**: Fixed email sending failures by replacing non-existent `emergentintegrations.llm.resend` module with direct Resend SDK calls
   - Root Cause: Code was importing from a module that doesn't exist in the emergentintegrations library
   - Fix: Updated `server.py` to use `resend.Emails.send` directly with `asyncio.to_thread`
   - Affected: Welcome emails and Invoice emails now working correctly
 
-- **BUG FIX - File Download Issues**: Fixed files (MOU, Invoice, Receipt) downloading with wrong file type and random names
-  - Root Cause: HTML `download` attribute doesn't work for cross-origin URLs (Cloudinary)
-  - Fix: Added `downloadFile` utility that fetches files as blobs and triggers proper downloads
-  - Files now download as PDFs with proper names like `MOU_SchoolName.pdf`, `Invoice_SchoolName_Tranche1.pdf`
-  - Updated in: `AdminSchoolCRM.jsx` and `AdminOrders.jsx`
+- **PERFORMANCE - Tracking Page Speed**: Reduced PO API timeout from 30s to 5s for faster tracking page loads
+
+- **UI - Removed Expenses Summary**: Removed "School-wise Expenses Summary" section from AdminExpenses.jsx per user request
 
 - **Config Update**: Updated `SENDER_EMAIL` from `resend.dev` test domain to `oll.co` production domain
 
