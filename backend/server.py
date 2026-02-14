@@ -3513,6 +3513,17 @@ async def get_school_payment_info(school_id: str):
     if not grade_pricing:
         raise HTTPException(status_code=400, detail="No grade pricing configured for this school")
     
+    # Transform grade_pricing to use 'price' key for frontend compatibility
+    # The data may have 'price_per_student' from the admin form
+    transformed_pricing = []
+    for gp in grade_pricing:
+        price = gp.get("price") or gp.get("price_per_student") or 0
+        transformed_pricing.append({
+            "grade": gp.get("grade", ""),
+            "price": float(price) if price else 0,
+            "students": gp.get("students", 0)
+        })
+    
     # Get skill/program from offerings or model
     skill = onboarding_data.get("offering") or school.get("skill") or "Program"
     
@@ -3521,7 +3532,7 @@ async def get_school_payment_info(school_id: str):
         "school_name": school.get("school_name", ""),
         "skill": skill,
         "city": school.get("city", ""),
-        "grade_pricing": grade_pricing,
+        "grade_pricing": transformed_pricing,
         "total_students": onboarding_data.get("total_students", 0),
         "total_amount": onboarding_data.get("total_amount", 0)
     }
