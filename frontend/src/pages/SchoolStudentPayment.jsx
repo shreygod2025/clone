@@ -1,60 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { GraduationCap, CreditCard, User, Phone, Hash, Loader2, AlertCircle, CheckCircle2, School, Shield, HelpCircle, ChevronDown, ChevronUp, X, Mail, PhoneCall } from 'lucide-react';
+import { GraduationCap, CreditCard, User, Hash, Loader2, AlertCircle, CheckCircle2, School, Shield, Mail, PhoneCall } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { toast } from 'sonner';
 import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
-
-// Payment-related FAQs
-const paymentFAQs = [
-  {
-    question: "What payment methods are accepted?",
-    answer: "We accept all major credit/debit cards, UPI, net banking, and popular wallets through our secure Cashfree payment gateway."
-  },
-  {
-    question: "Is my payment information secure?",
-    answer: "Yes, all payments are processed through Cashfree, a PCI-DSS compliant payment gateway. We never store your card details on our servers."
-  },
-  {
-    question: "Will I receive a receipt after payment?",
-    answer: "Yes, you will receive a confirmation message on your registered phone number with the transaction details."
-  },
-  {
-    question: "What if my payment fails?",
-    answer: "If your payment fails, please retry after a few minutes. If the amount was deducted, it will be automatically refunded within 5-7 business days."
-  },
-  {
-    question: "Can I pay in installments?",
-    answer: "The fee structure is set by your school. Please contact your school administration for any installment options."
-  }
-];
-
-const FAQItem = ({ faq }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  return (
-    <div className="border-b border-slate-200 last:border-0">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full py-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors px-2 rounded-lg"
-      >
-        <span className="font-medium text-slate-700 pr-4 text-sm">{faq.question}</span>
-        {isOpen ? <ChevronUp className="w-4 h-4 text-slate-400 flex-shrink-0" /> : <ChevronDown className="w-4 h-4 text-slate-400 flex-shrink-0" />}
-      </button>
-      {isOpen && (
-        <div className="pb-4 px-2 text-sm text-slate-600 leading-relaxed">
-          {faq.answer}
-        </div>
-      )}
-    </div>
-  );
-};
 
 const SchoolStudentPayment = () => {
   const { schoolId } = useParams();
