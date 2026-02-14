@@ -9591,12 +9591,43 @@ async def get_student_payments(
         }
         payments.append(payment)
     
-    # Also get payments from dedicated student_payments collection
+    # Also get payments from dedicated student_payments collection (Cashfree payments)
     direct_payments = await db.student_payments.find({}).to_list(length=None)
-    for payment in direct_payments:
-        payment["id"] = payment.get("id", str(payment.get("_id", "")))
-        payment.pop("_id", None)
-        payments.append(payment)
+    direct_payment_student_ids = set()
+    
+    for dp in direct_payments:
+        dp_id = dp.get("id", str(dp.get("_id", "")))
+        student_id = dp.get("student_id")
+        direct_payment_student_ids.add(student_id)
+        
+        # Format for display
+        formatted_payment = {
+            "id": dp_id,
+            "student_id": student_id,
+            "student_name": dp.get("student_name", ""),
+            "phone": dp.get("student_phone", ""),
+            "email": dp.get("student_email", ""),
+            "description": f"{dp.get('batch_name', 'Batch')} - Paid via Cashfree",
+            "amount": dp.get("amount", 0),
+            "status": "paid" if dp.get("status") == "PAID" else dp.get("status", "pending"),
+            "payment_date": dp.get("paid_at") or dp.get("created_at"),
+            "transaction_id": dp.get("transaction_id") or dp.get("cf_payment_id"),
+            "payment_method": dp.get("payment_method", "Cashfree"),
+            "order_id": dp_id,
+            "cf_order_id": dp.get("cf_order_id"),
+            "notes": f"Online payment via Cashfree" if dp.get("status") == "PAID" else "",
+            "created_at": dp.get("created_at"),
+            "conversion_details": {
+                "skill": dp.get("skill", ""),
+                "batch_name": dp.get("batch_name", ""),
+                "batch_id": dp.get("batch_id", ""),
+            }
+        }
+        dp.pop("_id", None)
+        payments.append(formatted_payment)
+    
+    # Filter out students that already have direct payments to avoid duplicates
+    payments = [p for p in payments if p.get("student_id") not in direct_payment_student_ids or p.get("payment_method")]
     
     return payments
 
