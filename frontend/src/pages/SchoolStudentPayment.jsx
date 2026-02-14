@@ -243,21 +243,9 @@ const SchoolStudentPayment = () => {
               className="h-10 w-auto"
             />
           </Link>
-          <div className="flex items-center gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowHelpModal(true)}
-              className="text-slate-600 border-slate-300 hover:bg-slate-50"
-              data-testid="need-help-btn"
-            >
-              <HelpCircle className="w-4 h-4 mr-1.5" />
-              Need Help?
-            </Button>
-            <div className="flex items-center gap-2 text-sm text-slate-500">
-              <Shield className="w-4 h-4 text-green-600" />
-              <span className="hidden sm:inline">Secure Payment</span>
-            </div>
+          <div className="flex items-center gap-2 text-sm text-slate-500">
+            <Shield className="w-4 h-4 text-green-600" />
+            <span className="hidden sm:inline">Secure Payment</span>
           </div>
         </div>
       </div>
