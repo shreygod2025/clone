@@ -2970,7 +2970,7 @@ async def create_payment_order(data: StudentPaymentRequest, user: dict = Depends
         
         # Create order via Cashfree using globally initialized credentials
         logging.info(f"Creating student payment - Order: {order_id}, Amount: {data.amount}")
-        api_response = Cashfree().PGCreateOrder(
+        api_response = get_cashfree_client().PGCreateOrder(
             CASHFREE_API_VERSION,
             create_order_request,
             None,
@@ -3153,7 +3153,7 @@ async def create_payment_session(student_id: str):
         
         # Create order via Cashfree using globally initialized credentials
         logging.info(f"Creating public student payment - Order: {order_id}, Amount: {amount}")
-        api_response = Cashfree().PGCreateOrder(
+        api_response = get_cashfree_client().PGCreateOrder(
             CASHFREE_API_VERSION,
             create_order_request,
             None,
@@ -3372,7 +3372,7 @@ async def verify_payment(order_id: str):
         # Fetch order status from Cashfree using globally initialized credentials
         cf_order_id = payment.get("cf_order_id", order_id)
         logging.info(f"Verifying student payment - Order: {cf_order_id}")
-        api_response = Cashfree().PGFetchOrder(
+        api_response = get_cashfree_client().PGFetchOrder(
             CASHFREE_API_VERSION,
             cf_order_id,
             None
@@ -3386,7 +3386,7 @@ async def verify_payment(order_id: str):
             cf_payment_id = None
             payment_method = "Cashfree"
             try:
-                payments_response = Cashfree().PGOrderFetchPayments(
+                payments_response = get_cashfree_client().PGOrderFetchPayments(
                     CASHFREE_API_VERSION,
                     cf_order_id,
                     None
@@ -3608,7 +3608,7 @@ async def create_school_student_payment_session(data: dict):
         logging.info(f"Creating school payment - Order: {order_id}, Amount: {amount}, School: {school.get('school_name')}")
         
         # Use globally initialized Cashfree - credentials already set at startup
-        api_response = Cashfree().PGCreateOrder(
+        api_response = get_cashfree_client().PGCreateOrder(
             CASHFREE_API_VERSION, 
             order_request, 
             None, 
@@ -3724,7 +3724,7 @@ async def verify_school_student_payment(order_id: str):
         cf_order_id = payment.get("cf_order_id", order_id)
         
         # Use globally initialized Cashfree - credentials already set at startup
-        api_response = Cashfree().PGFetchOrder(
+        api_response = get_cashfree_client().PGFetchOrder(
             CASHFREE_API_VERSION,
             cf_order_id,
             None
@@ -3739,7 +3739,7 @@ async def verify_school_student_payment(order_id: str):
             cf_payment_id = None
             payment_method = "Cashfree"
             try:
-                payments_response = Cashfree().PGOrderFetchPayments(
+                payments_response = get_cashfree_client().PGOrderFetchPayments(
                     CASHFREE_API_VERSION,
                     cf_order_id,
                     None
