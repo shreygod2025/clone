@@ -498,6 +498,87 @@ const AdminSettings = () => {
             </Button>
           )}
         </div>
+        )}
+
+        {/* System Tab */}
+        {activeTab === 'system' && (
+          <div className="space-y-6">
+            {/* Database Optimization */}
+            <div className="bg-white rounded-xl p-6 shadow-sm">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-blue-100 rounded-lg">
+                  <Database className="w-6 h-6 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-lg text-[#1E3A5F]">Database Optimization</h3>
+                  <p className="text-slate-600 text-sm mt-1">
+                    Create database indexes to improve query performance. This is recommended after adding large amounts of data or if the admin panel feels slow.
+                  </p>
+                  
+                  {optimizeResult && !optimizeResult.error && (
+                    <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center gap-2 text-green-700 font-medium">
+                        <CheckCircle className="w-5 h-5" />
+                        {optimizeResult.message}
+                      </div>
+                      <p className="text-sm text-green-600 mt-2">
+                        Optimized {optimizeResult.collections_optimized} collections: {optimizeResult.indexes_created?.join(', ')}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {optimizeResult?.error && (
+                    <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-red-700">{optimizeResult.error}</p>
+                    </div>
+                  )}
+                  
+                  <Button
+                    onClick={handleOptimizeDatabase}
+                    disabled={optimizing}
+                    className="mt-4 bg-blue-600 hover:bg-blue-700"
+                    data-testid="optimize-db-btn"
+                  >
+                    {optimizing ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        Optimizing...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-4 h-4 mr-2" />
+                        Optimize Database
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+            
+            {/* System Info */}
+            <div className="bg-white rounded-xl p-6 shadow-sm">
+              <h3 className="font-semibold text-lg text-[#1E3A5F] mb-4">System Information</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="p-4 bg-slate-50 rounded-lg">
+                  <p className="text-xs text-slate-500 uppercase">API Keys</p>
+                  <p className="text-2xl font-bold text-[#1E3A5F]">{apiKeys.length}</p>
+                </div>
+                <div className="p-4 bg-slate-50 rounded-lg">
+                  <p className="text-xs text-slate-500 uppercase">Cities</p>
+                  <p className="text-2xl font-bold text-[#1E3A5F]">{cities.length}</p>
+                </div>
+                <div className="p-4 bg-slate-50 rounded-lg">
+                  <p className="text-xs text-slate-500 uppercase">Centers</p>
+                  <p className="text-2xl font-bold text-[#1E3A5F]">{centers.length}</p>
+                </div>
+                <div className="p-4 bg-slate-50 rounded-lg">
+                  <p className="text-xs text-slate-500 uppercase">Blogs</p>
+                  <p className="text-2xl font-bold text-[#1E3A5F]">{blogs.length}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* API Keys Tab */}
         {activeTab === 'api-keys' && (
