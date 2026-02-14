@@ -1,0 +1,71 @@
+{
+  "summary": "CRITICAL Bug Fix Complete - School CRM Pipeline Data Persistence Issue (7+ reports). Fixed 2 bugs: (1) onboarding_data field missing from SchoolInquiry response model causing data to appear lost in API responses, (2) TypeError in /api/schools/{id}/history endpoint causing 500 errors. All 11 backend tests pass. UI tests pass.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [],
+    "fixed": [
+      {
+        "endpoint": "PATCH /api/schools/inquiry/{id}",
+        "issue": "onboarding_data was not returned in API response despite being saved to DB. SchoolInquiry Pydantic model was missing the field.",
+        "fix": "Added onboarding_data, onboarding_workflow, activity_log, renewal fields, and other missing fields to SchoolInquiry model",
+        "file": "/app/backend/server.py",
+        "lines": "1372-1385"
+      },
+      {
+        "endpoint": "GET /api/schools/{id}/history",
+        "issue": "TypeError: can't compare offset-naive and offset-aware datetimes - causing 500 errors",
+        "fix": "Enhanced parse_date function with proper timezone handling and added try-catch around history.sort()",
+        "file": "/app/backend/server.py",
+        "lines": "4543-4566"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Add Lead Modal",
+        "issues": ["Console warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent} - minor accessibility improvement"]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_school_crm_pipeline_persistence.py",
+    "/app/test_reports/pytest/pytest_results_iter35.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "ROOT CAUSE IDENTIFIED: The SchoolInquiry Pydantic model was missing critical fields (onboarding_data, onboarding_workflow, activity_log, renewal_meeting_date/time/type/link/address, lost_reason, documents). When the PATCH endpoint returned the response using response_model=SchoolInquiry, these fields were stripped even though they were saved to MongoDB. This caused the appearance of 'data not persisting' when in reality the data WAS saved but not returned in the API response."
+  ],
+  "updated_files": [
+    "/app/backend/server.py",
+    "/app/backend/tests/test_school_crm_pipeline_persistence.py"
+  ],
+  "success_rate": {
+    "backend": "100% (11/11 tests passed)",
+    "frontend": "100% (Lead creation, search, display all working)"
+  },
+  "seed_data_creation": "Multiple TEST_* prefixed school records created and archived during testing",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "The School CRM pipeline data persistence bug has been fixed. The issue was in the Pydantic response model, not in MongoDB persistence. Key fields added to SchoolInquiry model: onboarding_data, onboarding_workflow, activity_log, renewal_meeting_date/time/type/link/address, lost_reason, documents. Test file test_school_crm_pipeline_persistence.py covers the full pipeline: new → contacted → meeting_done → converted → active → renewal_meeting → renewed.",
+  "rca_of_the_issue": {
+    "root_cause": "SchoolInquiry Pydantic model (response_model for PATCH endpoint) was missing onboarding_data and other critical fields. When FastAPI serialized the response using this model, fields not defined in the model were excluded, making it appear that data wasn't being saved.",
+    "reproduction_steps": [
+      "1. Create a school lead via POST /api/schools/inquiry",
+      "2. Update with onboarding_data via PATCH /api/schools/inquiry/{id}",
+      "3. Observe that response shows onboarding_data as null/None",
+      "4. Check MongoDB directly - data IS saved but not returned in API"
+    ],
+    "mitigation_steps": [
+      "1. Added onboarding_data: Optional[dict] = None to SchoolInquiry model",
+      "2. Added onboarding_workflow: Optional[dict] = None to SchoolInquiry model", 
+      "3. Added activity_log: List[dict] = [] to SchoolInquiry model",
+      "4. Added renewal_meeting_date/time/type/link/address fields",
+      "5. Added lost_reason and documents fields",
+      "6. Fixed parse_date function in history endpoint with proper timezone handling"
+    ],
+    "prevention": "When adding new fields to MongoDB documents, ensure corresponding Pydantic response models are updated to include those fields, especially when response_model parameter is used in endpoint decorators."
+  }
+}
