@@ -18,6 +18,32 @@ const getAbsoluteUrl = (url) => {
   return url;
 };
 
+// Download file utility - forces download with proper filename for cross-origin URLs (Cloudinary, etc.)
+const downloadFile = async (url, filename) => {
+  try {
+    const absoluteUrl = getAbsoluteUrl(url);
+    const response = await fetch(absoluteUrl);
+    if (!response.ok) throw new Error('Download failed');
+    
+    const blob = await response.blob();
+    // Ensure it's treated as PDF
+    const pdfBlob = new Blob([blob], { type: 'application/pdf' });
+    const blobUrl = window.URL.createObjectURL(pdfBlob);
+    
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(blobUrl);
+  } catch (error) {
+    console.error('Download error:', error);
+    // Fallback: open in new tab if download fails
+    window.open(getAbsoluteUrl(url), '_blank');
+  }
+};
+
 const STEP_ICONS = {
   mou_signing: <FileText className="w-5 h-5" />,
   payment_collection: <DollarSign className="w-5 h-5" />,
