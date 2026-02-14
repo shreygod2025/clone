@@ -1143,25 +1143,21 @@ const AdminOrders = () => {
                       </h4>
                       <div className="flex items-center gap-3">
                         {showSchoolDetails.onboarding_workflow?.steps?.mou_signing?.data?.document_link ? (
-                          <a 
-                            href={showSchoolDetails.onboarding_workflow.steps.mou_signing.data.document_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button 
+                            onClick={() => downloadFile(showSchoolDetails.onboarding_workflow.steps.mou_signing.data.document_link, `MOU_${showSchoolDetails.school_name?.replace(/\s+/g, '_') || 'School'}`)}
                             className="inline-flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition-colors text-sm font-medium"
                           >
-                            <FileText className="w-4 h-4" />
-                            View MOU
-                          </a>
+                            <Download className="w-4 h-4" />
+                            Download MOU
+                          </button>
                         ) : showSchoolDetails.documents?.find(d => d.type === 'MOU') && (
-                          <a 
-                            href={getAbsoluteUrl(showSchoolDetails.documents.find(d => d.type === 'MOU').url)}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button 
+                            onClick={() => downloadFile(showSchoolDetails.documents.find(d => d.type === 'MOU').url, `MOU_${showSchoolDetails.school_name?.replace(/\s+/g, '_') || 'School'}`)}
                             className="inline-flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition-colors text-sm font-medium"
                           >
-                            <FileText className="w-4 h-4" />
-                            View MOU
-                          </a>
+                            <Download className="w-4 h-4" />
+                            Download MOU
+                          </button>
                         )}
                         {showSchoolDetails.onboarding_workflow?.steps?.mou_signing?.completed && (
                           <span className="text-xs text-green-600 flex items-center gap-1">
