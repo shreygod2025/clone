@@ -3570,13 +3570,13 @@ async def create_school_student_payment_session(data: dict):
         # Create Cashfree order
         cf_env = Cashfree.XProduction if CASHFREE_ENVIRONMENT == "PRODUCTION" else Cashfree.XSandbox
         
-        customer_details = CustomerDetails(
+        customer_details = CashfreeCustomerDetails(
             customer_id=f"sch_std_{phone}",
             customer_phone=phone,
             customer_name=student_name
         )
         
-        order_meta = CreateOrderRequestOrderMeta(
+        order_meta = OrderMeta(
             return_url=f"{os.environ.get('FRONTEND_URL', 'https://oll.co')}/school-payment-success/{school_id}?order_id={order_id}"
         )
         
