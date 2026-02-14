@@ -3127,11 +3127,15 @@ async def create_payment_session(student_id: str):
     # Generate unique order ID
     order_id = f"OLL-STU-{student_id[:8]}-{int(time.time())}"
     
+    # Ensure customer_name meets Cashfree minimum (3 chars)
+    student_name = student.get("name", "Student")
+    cf_customer_name = student_name if len(student_name) >= 3 else student_name.ljust(3, ' ')
+    
     try:
         # Create customer details
         customer_details = CashfreeCustomerDetails(
             customer_id=student_id,
-            customer_name=student.get("name", "Student"),
+            customer_name=cf_customer_name,
             customer_email=student.get("email", f"{student_id}@oll.co"),
             customer_phone=student.get("phone", "9999999999")
         )
