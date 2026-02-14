@@ -691,40 +691,34 @@ const SchoolTrackingPage = () => {
                   <div className="space-y-2">
                     {/* MOU Document */}
                     {(mou_url || onboarding_details?.mou_url) && (
-                      <a 
-                        href={getAbsoluteUrl(mou_url || onboarding_details?.mou_url)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors"
+                      <button 
+                        onClick={() => downloadFile(mou_url || onboarding_details?.mou_url, `MOU_${school_name?.replace(/\s+/g, '_') || 'School'}`)}
+                        className="w-full flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors text-left"
                       >
                         <FileText className="w-5 h-5 text-blue-600" />
                         <span className="text-sm font-medium text-blue-800">MOU Document</span>
-                        <ExternalLink className="w-4 h-4 text-blue-600 ml-auto" />
-                      </a>
+                        <Download className="w-4 h-4 text-blue-600 ml-auto" />
+                      </button>
                     )}
                     
                     {/* Parent Circular */}
                     {onboarding_details?.parent_circular_url && (
-                      <a 
-                        href={getAbsoluteUrl(onboarding_details.parent_circular_url)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 p-3 bg-yellow-50 rounded-lg border border-yellow-200 hover:bg-yellow-100 transition-colors"
+                      <button 
+                        onClick={() => downloadFile(onboarding_details.parent_circular_url, `Parent_Circular_${school_name?.replace(/\s+/g, '_') || 'School'}`)}
+                        className="w-full flex items-center gap-2 p-3 bg-yellow-50 rounded-lg border border-yellow-200 hover:bg-yellow-100 transition-colors text-left"
                       >
                         <FileText className="w-5 h-5 text-yellow-600" />
                         <span className="text-sm font-medium text-yellow-800">Parent Circular</span>
-                        <ExternalLink className="w-4 h-4 text-yellow-600 ml-auto" />
-                      </a>
+                        <Download className="w-4 h-4 text-yellow-600 ml-auto" />
+                      </button>
                     )}
                     
                     {/* Invoices from payments */}
                     {payments?.filter(p => p.invoice_url).map((payment, idx) => (
-                      <a 
+                      <button 
                         key={`invoice-${idx}`}
-                        href={getAbsoluteUrl(payment.invoice_url)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 p-3 bg-purple-50 rounded-lg border border-purple-200 hover:bg-purple-100 transition-colors"
+                        onClick={() => downloadFile(payment.invoice_url, `Invoice_${school_name?.replace(/\s+/g, '_') || 'School'}_Tranche${(payment.tranche_index || 0) + 1}`)}
+                        className="w-full flex items-center gap-2 p-3 bg-purple-50 rounded-lg border border-purple-200 hover:bg-purple-100 transition-colors text-left"
                       >
                         <FileText className="w-5 h-5 text-purple-600" />
                         <div className="flex-1">
@@ -735,8 +729,8 @@ const SchoolTrackingPage = () => {
                             <span className="text-xs text-purple-500 block">{format(new Date(payment.payment_date), 'MMM d, yyyy')}</span>
                           )}
                         </div>
-                        <ExternalLink className="w-4 h-4 text-purple-600" />
-                      </a>
+                        <Download className="w-4 h-4 text-purple-600" />
+                      </button>
                     ))}
                     
                     {/* Payment Link */}
@@ -755,20 +749,18 @@ const SchoolTrackingPage = () => {
                     
                     {/* Other Documents */}
                     {documents?.map((doc, idx) => (
-                      <a 
+                      <button 
                         key={idx}
-                        href={getAbsoluteUrl(doc.url)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-slate-100 transition-colors"
+                        onClick={() => downloadFile(doc.url, `${doc.type}_${school_name?.replace(/\s+/g, '_') || 'School'}`)}
+                        className="w-full flex items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-200 hover:bg-slate-100 transition-colors text-left"
                       >
                         <FileText className="w-5 h-5 text-slate-600" />
                         <div className="flex-1">
                           <span className="text-sm font-medium text-slate-800">{doc.type}</span>
                           <span className="text-xs text-slate-500 block truncate">{doc.name}</span>
                         </div>
-                        <ExternalLink className="w-4 h-4 text-slate-500" />
-                      </a>
+                        <Download className="w-4 h-4 text-slate-500" />
+                      </button>
                     ))}
                   </div>
                 </div>
