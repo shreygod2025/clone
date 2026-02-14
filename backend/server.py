@@ -10168,6 +10168,25 @@ async def get_inquiry_queries(
         query["inquiry_type"] = inquiry_type
     if status:
         query["status"] = status
+    
+    # Non-admin users can only see queries assigned to them, where they are viewers, or created by them
+    user_role = user.get("role", "")
+    user_id = user.get("id") or user.get("email")
+    
+    if user_role not in ["admin", "super_admin"]:
+        user_filter = {
+            "$or": [
+                {"assigned_to": user_id},
+                {"viewers": user_id},
+                {"added_by": user_id},
+                {"added_by": user.get("email")}
+            ]
+        }
+        if query:
+            query = {"$and": [query, user_filter]}
+        else:
+            query = user_filter
+    
     queries = await db.inquiry_queries.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
     return queries
 
