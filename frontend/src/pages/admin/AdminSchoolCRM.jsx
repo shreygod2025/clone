@@ -1775,7 +1775,8 @@ const AdminSchoolCRM = () => {
         }));
       
       // Format payment tranches - ensure all values are strings/numbers
-      const formattedTranches = onboardData.payment_tranches
+      // For online payments, tranches are not used
+      const formattedTranches = onboardData.payment_mode === 'online' ? [] : onboardData.payment_tranches
         .filter(t => t.amount || t.percentage)
         .map(t => ({
           percentage: String(t.percentage || ''),
@@ -1798,8 +1799,9 @@ const AdminSchoolCRM = () => {
         total_amount: totalAmount,
         school_contacts: formattedContacts,
         payment_mode: String(onboardData.payment_mode || ''),
-        payment_method: String(onboardData.payment_method || ''),
+        payment_method: onboardData.payment_mode === 'online' ? 'student' : String(onboardData.payment_method || ''),
         payment_tranches: formattedTranches,
+        deadline_date: String(onboardData.deadline_date || ''),
         contract_start: contractStart,
         contract_end: contractEnd,
         mou_url: String(onboardData.mou_url || ''),
@@ -1837,6 +1839,7 @@ const AdminSchoolCRM = () => {
         grade_pricing: [{ grade: '', students: '', price_per_student: '' }],
         total_students: 0, total_amount: 0, school_contacts: [{ name: '', phone_number: '', country_code: '+91', email: '', role: '' }],
         payment_mode: 'from_school', payment_method: '', payment_tranches: [{ amount: '', percentage: '', date: '', notes: '' }],
+        deadline_date: '',
         contract_start: '', contract_end: '', mou_url: '', is_draft: false
       });
       fetchInquiries();
