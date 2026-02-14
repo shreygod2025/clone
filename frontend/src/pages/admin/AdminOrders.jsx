@@ -45,13 +45,32 @@ const downloadFile = async (url, filename) => {
     if (!response.ok) throw new Error('Download failed');
     
     const blob = await response.blob();
-    // Ensure it's treated as PDF
-    const pdfBlob = new Blob([blob], { type: 'application/pdf' });
-    const blobUrl = window.URL.createObjectURL(pdfBlob);
+    
+    // Determine file extension from content-type or URL
+    const contentType = response.headers.get('content-type') || '';
+    let extension = '';
+    if (contentType.includes('pdf')) extension = '.pdf';
+    else if (contentType.includes('png')) extension = '.png';
+    else if (contentType.includes('jpeg') || contentType.includes('jpg')) extension = '.jpg';
+    else if (contentType.includes('webp')) extension = '.webp';
+    else if (contentType.includes('doc')) extension = '.docx';
+    else if (contentType.includes('excel') || contentType.includes('spreadsheet')) extension = '.xlsx';
+    else {
+      // Try to get extension from URL
+      const urlPath = absoluteUrl.split('?')[0];
+      const urlExt = urlPath.match(/\.([a-zA-Z0-9]+)$/);
+      extension = urlExt ? `.${urlExt[1]}` : '.pdf';
+    }
+    
+    // Clean filename and ensure it has the right extension
+    let cleanFilename = filename.replace(/\.[^/.]+$/, ''); // Remove any existing extension
+    cleanFilename = `${cleanFilename}${extension}`;
+    
+    const blobUrl = window.URL.createObjectURL(blob);
     
     const link = document.createElement('a');
     link.href = blobUrl;
-    link.download = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
+    link.download = cleanFilename;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
