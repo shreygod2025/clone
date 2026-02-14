@@ -9624,6 +9624,7 @@ async def get_public_tracking(tracking_token: str):
             }
     
     return {
+        "school_id": school.get("id"),  # Include school_id for payment links
         "school_name": school.get("school_name"),
         "contact_name": school.get("contact_name"),
         "programs": school.get("programs_interested", []),
@@ -9660,6 +9661,7 @@ async def get_public_tracking(tracking_token: str):
             "payment_link": onboarding_data.get("payment_link"),
             "payment_mode": onboarding_data.get("payment_mode"),
             "payment_method": onboarding_data.get("payment_method"),
+            "deadline_date": onboarding_data.get("deadline_date"),
         },
         # Include documents
         "documents": school.get("documents", []),
