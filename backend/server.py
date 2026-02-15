@@ -3984,6 +3984,146 @@ async def get_school_payment_tracker_public(school_id: str):
         "available_divisions": sorted(all_divisions)
     }
 
+@api_router.get("/orders/school-student-payments")
+async def get_all_school_student_payments(user: dict = Depends(get_current_user)):
+    """Get aggregated school student payments (online) for Orders page - school-wise summary"""
+    
+    # Get all schools with online student payment mode
+    schools = await db.school_inquiries.find({
+        "status": {"$in": ["converted", "active", "renewed"]},
+        "onboarding_data.payment_mode": "online",
+        "onboarding_data.payment_method": "student"
+    }, {"_id": 0}).to_list(1000)
+    
+    school_summaries = []
+    
+    for school in schools:
+        school_id = school.get("id")
+        school_name = school.get("school_name", "Unknown School")
+        onboarding_data = school.get("onboarding_data", {})
+        
+        # Get all payments for this school
+        payments = await db.school_student_payments.find(
+            {"school_id": school_id}, 
+            {"_id": 0}
+        ).to_list(5000)
+        
+        paid_payments = [p for p in payments if p.get("status") == "PAID"]
+        pending_payments = [p for p in payments if p.get("status") in ["PENDING", "ACTIVE"]]
+        
+        total_collected = sum(p.get("amount", 0) for p in paid_payments)
+        paid_count = len(paid_payments)
+        pending_count = len(pending_payments)
+        
+        total_students = onboarding_data.get("total_students", 0) or 0
+        total_expected = onboarding_data.get("total_amount", 0) or 0
+        
+        # Grade-wise breakdown
+        grade_stats = {}
+        for p in payments:
+            g = p.get("grade", "Unknown")
+            if g not in grade_stats:
+                grade_stats[g] = {"paid": 0, "pending": 0, "amount": 0}
+            if p.get("status") == "PAID":
+                grade_stats[g]["paid"] += 1
+                grade_stats[g]["amount"] += p.get("amount", 0)
+            else:
+                grade_stats[g]["pending"] += 1
+        
+        # Get recent paid students (last 5)
+        recent_payments = sorted(
+            paid_payments, 
+            key=lambda x: x.get("paid_at", x.get("created_at", "")), 
+            reverse=True
+        )[:5]
+        
+        school_summaries.append({
+            "school_id": school_id,
+            "school_name": school_name,
+            "city": school.get("city", ""),
+            "contact_name": school.get("contact_name", ""),
+            "contact_phone": school.get("phone", ""),
+            "skill": onboarding_data.get("offering", school.get("skill", "")),
+            "total_collected": total_collected,
+            "total_expected": total_expected,
+            "paid_count": paid_count,
+            "pending_count": pending_count,
+            "total_students": total_students,
+            "collection_percentage": round((total_collected / total_expected * 100), 1) if total_expected > 0 else 0,
+            "grade_stats": grade_stats,
+            "recent_payments": [
+                {
+                    "student_name": p.get("student_name", ""),
+                    "grade": p.get("grade", ""),
+                    "division": p.get("division", ""),
+                    "amount": p.get("amount", 0),
+                    "paid_at": p.get("paid_at", p.get("created_at", "")),
+                    "transaction_id": p.get("transaction_id", "")
+                } for p in recent_payments
+            ],
+            "payment_link": f"/school-pay/{school_id}",
+            "tracker_link": f"/admin/school-payments/{school_id}",
+            "public_tracker_link": f"/school-payment-tracker/{school_id}",
+            "deadline_date": onboarding_data.get("deadline_date", ""),
+            "status": school.get("status", "")
+        })
+    
+    # Sort by collection amount (highest first)
+    school_summaries.sort(key=lambda x: x["total_collected"], reverse=True)
+    
+    # Overall aggregates
+    overall_stats = {
+        "total_schools": len(school_summaries),
+        "total_collected": sum(s["total_collected"] for s in school_summaries),
+        "total_expected": sum(s["total_expected"] for s in school_summaries),
+        "total_paid_students": sum(s["paid_count"] for s in school_summaries),
+        "total_pending_students": sum(s["pending_count"] for s in school_summaries),
+        "total_students": sum(s["total_students"] for s in school_summaries)
+    }
+    overall_stats["collection_percentage"] = round(
+        (overall_stats["total_collected"] / overall_stats["total_expected"] * 100), 1
+    ) if overall_stats["total_expected"] > 0 else 0
+    
+    return {
+        "schools": school_summaries,
+        "overall_stats": overall_stats
+    }
+
+@api_router.get("/orders/school-student-payments/{school_id}/export")
+async def export_school_student_payments(school_id: str, user: dict = Depends(get_current_user)):
+    """Export all payments for a specific school as JSON (for Excel export on frontend)"""
+    
+    # Get school info
+    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+    
+    # Get all payments for this school
+    payments = await db.school_student_payments.find(
+        {"school_id": school_id}, 
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(5000)
+    
+    # Format for export
+    export_data = []
+    for p in payments:
+        export_data.append({
+            "Student Name": p.get("student_name", ""),
+            "Phone": p.get("phone", ""),
+            "Grade": p.get("grade", ""),
+            "Division": p.get("division", ""),
+            "Amount": p.get("amount", 0),
+            "Status": p.get("status", ""),
+            "Payment Date": p.get("paid_at", p.get("created_at", "")).split("T")[0] if p.get("paid_at") or p.get("created_at") else "",
+            "Transaction ID": p.get("transaction_id", ""),
+            "Order ID": p.get("id", "")
+        })
+    
+    return {
+        "school_name": school.get("school_name", ""),
+        "export_data": export_data
+    }
+
 # ========================
 # COMMENTS ENDPOINTS (Universal for all CRMs)
 # ========================
