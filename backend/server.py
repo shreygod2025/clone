@@ -3128,16 +3128,22 @@ async def create_payment_session(student_id: str):
     order_id = f"OLL-STU-{student_id[:8]}-{int(time.time())}"
     
     # Ensure customer_name meets Cashfree minimum (3 chars)
-    student_name = student.get("name", "Student")
+    # Use "Student" if name is empty/None
+    student_name = student.get("name") or "Student"
+    student_name = student_name.strip() if student_name else "Student"
+    if not student_name or len(student_name) < 1:
+        student_name = "Student"
     cf_customer_name = student_name if len(student_name) >= 3 else student_name.ljust(3, ' ')
+    
+    logging.info(f"Creating payment for student: {student_id}, name: '{student_name}', cf_name: '{cf_customer_name}'")
     
     try:
         # Create customer details
         customer_details = CashfreeCustomerDetails(
             customer_id=student_id,
             customer_name=cf_customer_name,
-            customer_email=student.get("email", f"{student_id}@oll.co"),
-            customer_phone=student.get("phone", "9999999999")
+            customer_email=student.get("email") or f"{student_id}@oll.co",
+            customer_phone=student.get("phone") or "9999999999"
         )
         
         # Get frontend URL for return
