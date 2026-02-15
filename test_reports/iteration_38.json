@@ -59,7 +59,7 @@
     }
   },
   "expected_cashfree_error_explanation": {
-    "error_message": "Broken Link! https://oll-student-pay.preview.emergentagent.com/ is not enabled or approved",
+    "error_message": "Broken Link! https://skill-education-hub.preview.emergentagent.com/ is not enabled or approved",
     "reason": "Preview domain not whitelisted in Cashfree merchant dashboard",
     "is_code_bug": false,
     "solution": "Whitelist production domain in Cashfree merchant dashboard > developers section"
