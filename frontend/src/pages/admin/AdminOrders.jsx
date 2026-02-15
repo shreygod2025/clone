@@ -940,12 +940,44 @@ const AdminOrders = () => {
               </div>
             ) : (
               <div className="p-6 space-y-6">
+                {/* Overall Stats Banner */}
+                <div className="bg-gradient-to-r from-emerald-600 to-green-600 rounded-xl p-5 text-white">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <p className="text-emerald-100 text-xs uppercase tracking-wide">Total Schools</p>
+                      <p className="text-2xl font-bold">{Object.keys(schoolStudentStats).length}</p>
+                    </div>
+                    <div>
+                      <p className="text-emerald-100 text-xs uppercase tracking-wide">Total Collected</p>
+                      <p className="text-2xl font-bold">
+                        ₹{Object.values(schoolStudentStats).reduce((sum, s) => sum + (s.total_collected || 0), 0).toLocaleString()}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-emerald-100 text-xs uppercase tracking-wide">Students Paid</p>
+                      <p className="text-2xl font-bold">
+                        {Object.values(schoolStudentStats).reduce((sum, s) => sum + (s.paid_count || 0), 0)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-emerald-100 text-xs uppercase tracking-wide">Collection Rate</p>
+                      <p className="text-2xl font-bold">
+                        {(() => {
+                          const totalCollected = Object.values(schoolStudentStats).reduce((sum, s) => sum + (s.total_collected || 0), 0);
+                          const totalExpected = Object.values(schoolStudentStats).reduce((sum, s) => sum + (s.total_expected || 0), 0);
+                          return totalExpected > 0 ? Math.round((totalCollected / totalExpected) * 100) : 0;
+                        })()}%
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
                 {/* School-wise Summary Cards */}
                 {Object.values(schoolStudentStats).map((schoolStat) => (
-                  <div key={schoolStat.school_id} className="border border-slate-200 rounded-xl overflow-hidden">
+                  <div key={schoolStat.school_id} className="border border-slate-200 rounded-xl overflow-hidden" data-testid={`school-row-${schoolStat.school_id}`}>
                     {/* School Header */}
                     <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 border-b border-green-100">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between flex-wrap gap-4">
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
                             <Building2 className="w-6 h-6 text-green-600" />
@@ -953,7 +985,9 @@ const AdminOrders = () => {
                           <div>
                             <h3 className="font-semibold text-lg text-slate-800">{schoolStat.school_name}</h3>
                             <p className="text-sm text-slate-500">
-                              {schoolStat.paid_count} / {schoolStat.total_students} students paid
+                              {schoolStat.city && `${schoolStat.city} • `}
+                              {schoolStat.paid_count || 0} / {schoolStat.total_students || 0} students paid
+                              {schoolStat.pending_count > 0 && <span className="text-amber-600"> • {schoolStat.pending_count} pending</span>}
                             </p>
                           </div>
                         </div>
@@ -990,14 +1024,23 @@ const AdminOrders = () => {
                       )}
                       
                       {/* Actions */}
-                      <div className="mt-4 flex gap-2">
+                      <div className="mt-4 flex flex-wrap gap-2">
                         <a 
                           href={`/admin/school-payments/${schoolStat.school_id}`}
                           className="inline-flex items-center gap-1.5 bg-white text-green-700 px-4 py-2 rounded-lg text-sm font-medium border border-green-200 hover:bg-green-50 transition-colors"
+                          data-testid={`view-tracker-${schoolStat.school_id}`}
                         >
                           <Eye className="w-4 h-4" />
-                          View Payment Tracker
+                          View Tracker
                         </a>
+                        <button 
+                          onClick={() => handleExportSchoolPayments(schoolStat.school_id, schoolStat.school_name)}
+                          className="inline-flex items-center gap-1.5 bg-white text-blue-700 px-4 py-2 rounded-lg text-sm font-medium border border-blue-200 hover:bg-blue-50 transition-colors"
+                          data-testid={`export-${schoolStat.school_id}`}
+                        >
+                          <Download className="w-4 h-4" />
+                          Export Excel
+                        </button>
                         <button 
                           onClick={() => {
                             navigator.clipboard.writeText(`${window.location.origin}/school-pay/${schoolStat.school_id}`);
@@ -1008,15 +1051,25 @@ const AdminOrders = () => {
                           <ExternalLink className="w-4 h-4" />
                           Copy Payment Link
                         </button>
+                        <button 
+                          onClick={() => {
+                            navigator.clipboard.writeText(`${window.location.origin}/school-payment-tracker/${schoolStat.school_id}`);
+                            toast.success('Public tracker link copied!');
+                          }}
+                          className="inline-flex items-center gap-1.5 bg-white text-slate-700 px-4 py-2 rounded-lg text-sm font-medium border border-slate-200 hover:bg-slate-50 transition-colors"
+                        >
+                          <Eye className="w-4 h-4" />
+                          Copy Tracker Link
+                        </button>
                       </div>
                     </div>
                     
                     {/* Recent Payments Preview */}
-                    {schoolStudentPayments.filter(p => p.school_id === schoolStat.school_id && p.status === 'PAID').slice(0, 5).length > 0 && (
+                    {schoolStat.recent_payments && schoolStat.recent_payments.length > 0 && (
                       <div className="p-4">
                         <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Recent Payments</p>
                         <div className="space-y-2">
-                          {schoolStudentPayments.filter(p => p.school_id === schoolStat.school_id && p.status === 'PAID').slice(0, 5).map((payment) => (
+                          {schoolStat.recent_payments.map((payment, idx) => (
                             <div key={payment.id} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2">
                               <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
