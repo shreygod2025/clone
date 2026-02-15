@@ -3851,34 +3851,64 @@ async def get_school_payment_tracker(
 
 @api_router.get("/school-payment/tracker-public/{school_id}")
 async def get_school_payment_tracker_public(school_id: str):
-    """Get school payment tracker summary (public - for tracking page)"""
+    """Get school payment tracker summary with student list (public - for tracking page)"""
     school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
     if not school:
         raise HTTPException(status_code=404, detail="School not found")
     
-    payments = await db.school_student_payments.find({"school_id": school_id, "status": "PAID"}, {"_id": 0}).to_list(1000)
+    # Get ALL payments for this school (both PAID and PENDING/ACTIVE)
+    all_payments = await db.school_student_payments.find(
+        {"school_id": school_id}, 
+        {"_id": 0}
+    ).to_list(5000)
     
-    total_collected = sum(p.get("amount", 0) for p in payments)
-    paid_count = len(payments)
+    paid_payments = [p for p in all_payments if p.get("status") == "PAID"]
+    pending_payments = [p for p in all_payments if p.get("status") in ["PENDING", "ACTIVE"]]
+    
+    total_collected = sum(p.get("amount", 0) for p in paid_payments)
+    paid_count = len(paid_payments)
+    pending_count = len(pending_payments)
     
     onboarding_data = school.get("onboarding_data", {})
     total_students = onboarding_data.get("total_students", 0)
     total_expected = onboarding_data.get("total_amount", 0)
     
-    # Grade-wise counts
+    # Grade-wise counts (paid only)
     grade_counts = {}
-    for p in payments:
+    for p in paid_payments:
         g = p.get("grade", "Unknown")
         grade_counts[g] = grade_counts.get(g, 0) + 1
+    
+    # Get unique grades and divisions for filters
+    all_grades = list(set(p.get("grade", "") for p in paid_payments if p.get("grade")))
+    all_divisions = list(set(p.get("division", "") for p in paid_payments if p.get("division")))
+    
+    # Student list (paid students only - with essential info for display)
+    student_list = []
+    for p in paid_payments:
+        student_list.append({
+            "name": p.get("student_name", ""),
+            "phone": p.get("phone", "")[-4:] if p.get("phone") else "****",  # Only show last 4 digits for privacy
+            "grade": p.get("grade", ""),
+            "division": p.get("division", ""),
+            "paid_at": p.get("verified_at") or p.get("created_at", "")
+        })
+    
+    # Sort by paid date (most recent first)
+    student_list.sort(key=lambda x: x.get("paid_at", ""), reverse=True)
     
     return {
         "school_name": school.get("school_name", ""),
         "total_collected": total_collected,
         "paid_count": paid_count,
+        "pending_count": pending_count,
         "total_students": total_students,
         "total_expected": total_expected,
-        "collection_percentage": round((total_collected / total_expected * 100), 1) if total_expected > 0 else 0,
-        "grade_counts": grade_counts
+        "collection_percentage": round((paid_count / total_students * 100), 1) if total_students > 0 else 0,
+        "grade_counts": grade_counts,
+        "student_list": student_list,
+        "available_grades": sorted(all_grades),
+        "available_divisions": sorted(all_divisions)
     }
 
 # ========================
