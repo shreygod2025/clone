@@ -361,38 +361,18 @@ const MyBookingsPage = () => {
         }
       }
 
-      if (result.redirect) {
-        console.log('Payment redirect completed');
-        // Verify payment status after redirect
-        try {
-          const verifyResponse = await axios.get(`${API}/payments/verify/${order_id}`);
-          if (verifyResponse.data.status === 'PAID') {
-            setPaymentSuccess(true);
-            setPaymentInfo(null);
-            toast.success('Payment successful! Your sessions are being scheduled.');
-            // Refresh sessions data
-            setTimeout(() => {
-              fetchSessions();
-              fetchBookings();
-            }, 1000);
-          } else {
-            fetchPaymentInfo();
-          }
-        } catch (e) {
-          console.error('Verification error:', e);
-          fetchPaymentInfo();
-        }
-      }
-
-      if (result.paymentDetails) {
-        const paymentStatus = result.paymentDetails.paymentMessage;
-        console.log('Payment status:', paymentStatus);
+      // Helper function to verify payment with retries
+      const verifyPaymentWithRetry = async (orderId, maxAttempts = 5) => {
+        let attempts = 0;
         
-        if (paymentStatus === 'Payment is successful' || paymentStatus === 'SUCCESS') {
-          // Verify with backend
+        const verify = async () => {
           try {
-            const verifyResponse = await axios.get(`${API}/payments/verify/${order_id}`);
-            if (verifyResponse.data.status === 'PAID') {
+            const verifyResponse = await axios.get(`${API}/payments/verify/${orderId}`);
+            const status = verifyResponse.data.status;
+            
+            console.log(`Payment verification attempt ${attempts + 1}: Status = ${status}`);
+            
+            if (status === 'PAID') {
               setPaymentSuccess(true);
               setPaymentInfo(null);
               toast.success('Payment successful! Your sessions are being scheduled.');
@@ -401,10 +381,52 @@ const MyBookingsPage = () => {
                 fetchSessions();
                 fetchBookings();
               }, 1000);
+              return true;
+            } else if (status === 'ACTIVE' && attempts < maxAttempts) {
+              // Payment still being processed, retry
+              attempts++;
+              toast.loading(`Verifying payment... (${attempts}/${maxAttempts})`, { id: 'payment-verify' });
+              await new Promise(resolve => setTimeout(resolve, 3000));
+              return verify();
+            } else if (status === 'FAILED' || status === 'EXPIRED' || status === 'TERMINATED') {
+              toast.dismiss('payment-verify');
+              setPaymentError(`Payment ${status.toLowerCase()}. Please try again.`);
+              return false;
+            } else {
+              toast.dismiss('payment-verify');
+              if (status === 'ACTIVE') {
+                setPaymentError('Payment is being processed. Please wait a few minutes and refresh the page.');
+              }
+              fetchPaymentInfo();
+              return false;
             }
           } catch (e) {
             console.error('Verification error:', e);
+            if (attempts < maxAttempts) {
+              attempts++;
+              await new Promise(resolve => setTimeout(resolve, 3000));
+              return verify();
+            }
+            toast.dismiss('payment-verify');
+            fetchPaymentInfo();
+            return false;
           }
+        };
+        
+        return verify();
+      };
+
+      if (result.redirect) {
+        console.log('Payment redirect completed');
+        await verifyPaymentWithRetry(order_id);
+      }
+
+      if (result.paymentDetails) {
+        const paymentStatus = result.paymentDetails.paymentMessage;
+        console.log('Payment status:', paymentStatus);
+        
+        if (paymentStatus === 'Payment is successful' || paymentStatus === 'SUCCESS') {
+          await verifyPaymentWithRetry(order_id);
         } else {
           // Refresh to get latest status
           setTimeout(() => {
