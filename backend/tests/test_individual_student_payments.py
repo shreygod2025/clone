@@ -139,13 +139,9 @@ class TestVerifyPaymentEndpoint:
     
     def test_verify_existing_order(self):
         """Test verifying an existing order returns correct status"""
-        # First create a new session to get a valid order_id
-        create_response = requests.post(f"{BASE_URL}/api/payments/create-session/{TEST_STUDENT_ID}")
-        assert create_response.status_code == 200
-        order_id = create_response.json().get("order_id")
-        
-        # Wait a bit for Cashfree to process
-        time.sleep(1)
+        # Use the test order_id directly instead of creating a new one
+        # This avoids rate limiting issues
+        order_id = TEST_ORDER_ID
         
         # Verify the order
         response = requests.get(f"{BASE_URL}/api/payments/verify/{order_id}")
