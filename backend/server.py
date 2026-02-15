@@ -3420,7 +3420,7 @@ async def verify_payment(order_id: str):
             try:
                 payments_response = get_cashfree_client().PGOrderFetchPayments(
                     CASHFREE_API_VERSION,
-                    cf_order_id,  # Use Cashfree's order ID
+                    fetch_order_id,  # Use the same order ID we used for fetch
                     None
                 )
                 if payments_response.data and len(payments_response.data) > 0:
