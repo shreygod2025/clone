@@ -47,6 +47,37 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+### February 15, 2026
+
+#### Individual Student Payment - P0 Bug Fix (Session 1)
+**Issue:**
+- Individual student payment verification was failing with 404 error from Cashfree
+- Student status was not updating to "converted" after successful payment
+- No success screen displayed after payment completion
+
+**Root Cause:**
+- `order_id` was NOT being passed to `CreateOrderRequest` when creating Cashfree orders
+- Cashfree assigned its own internal `cf_order_id`
+- When verifying, we were trying to use our `order_id` which Cashfree didn't recognize
+
+**Fix Applied:**
+- Added `order_id=order_id` to `CreateOrderRequest` in the `/api/payments/create-session/{student_id}` endpoint
+- Now Cashfree tracks orders by our ID, making verification work correctly
+- Verification endpoint returns "ACTIVE" for unpaid orders, "PAID" for completed
+
+**Testing:**
+- Test Report: `/app/test_reports/iteration_39.json`
+- Backend: 100% (10/10 tests passed)
+- Frontend: 100% (Login, payment card, Pay Now button all working)
+
+**Modified Files:**
+- `backend/server.py` - Lines 3163-3170: Added order_id to CreateOrderRequest
+- `backend/server.py` - Lines 3369-3577: Enhanced logging in verify endpoint
+
+**Note:** "Broken Link" error in Cashfree modal is expected - preview domain not whitelisted in Cashfree merchant dashboard. Code is working correctly.
+
+---
+
 ### February 14, 2026
 
 #### School Student Payment Page - UI Improvements (Session 3)
