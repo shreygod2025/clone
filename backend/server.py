@@ -3160,8 +3160,9 @@ async def create_payment_session(student_id: str):
             notify_url=f"{backend_url}/api/payments/webhook"
         )
         
-        # Build order request
+        # Build order request with our order_id for reference
         create_order_request = CreateOrderRequest(
+            order_id=order_id,  # Set our order ID so we can reference it later
             order_amount=float(amount),
             order_currency="INR",
             customer_details=customer_details,
