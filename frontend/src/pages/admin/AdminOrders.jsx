@@ -146,53 +146,74 @@ const AdminOrders = () => {
   const fetchSchoolStudentPayments = async () => {
     setLoading(true);
     try {
-      // Fetch all schools with online student payments and aggregate their data
-      const schoolsResponse = await axios.get(`${API}/schools/inquiries?status=active,renewed`, {
+      // Use new aggregated endpoint
+      const response = await axios.get(`${API}/orders/school-student-payments`, {
         headers: getAuthHeaders()
       });
       
-      const schools = schoolsResponse.data.filter(s => 
-        s.onboarding_data?.payment_mode === 'online' && 
-        s.onboarding_data?.payment_method === 'student'
-      );
+      const { schools, overall_stats } = response.data;
       
-      const allPayments = [];
+      // Set school summaries as stats
       const stats = {};
+      schools.forEach(s => {
+        stats[s.school_id] = s;
+      });
       
-      for (const school of schools) {
-        try {
-          const trackerResponse = await axios.get(`${API}/school-payment/tracker/${school.id}`, {
-            headers: getAuthHeaders()
-          });
-          
-          const schoolPayments = (trackerResponse.data.payments || []).map(p => ({
-            ...p,
-            school_name: school.school_name,
-            total_students: school.onboarding_data?.total_students || 0,
-            total_expected: school.onboarding_data?.total_amount || 0
-          }));
-          
-          allPayments.push(...schoolPayments);
-          
-          stats[school.id] = {
-            school_name: school.school_name,
-            school_id: school.id,
-            ...trackerResponse.data.stats,
-            grade_stats: trackerResponse.data.grade_stats
-          };
-        } catch (e) {
-          console.log(`No payments for school ${school.id}`);
-        }
-      }
-      
-      setSchoolStudentPayments(allPayments);
       setSchoolStudentStats(stats);
+      setSchoolStudentPayments(schools); // Use schools array directly for display
+      
+      // Store overall stats in a ref or separate state if needed
+      console.log('Overall stats:', overall_stats);
     } catch (error) {
       console.error('Error fetching school student payments:', error);
       setSchoolStudentPayments([]);
       setSchoolStudentStats({});
     } finally {
       setLoading(false);
+    }
+  };
+  
+  // Export school payments to Excel
+  const handleExportSchoolPayments = async (schoolId, schoolName) => {
+    try {
+      toast.loading(`Exporting ${schoolName}...`, { id: 'export' });
+      
+      const response = await axios.get(`${API}/orders/school-student-payments/${schoolId}/export`, {
+        headers: getAuthHeaders()
+      });
+      
+      const { export_data, school_name } = response.data;
+      
+      if (!export_data || export_data.length === 0) {
+        toast.dismiss('export');
+        toast.error('No payment data to export');
+        return;
+      }
+      
+      // Create Excel file using xlsx
+      const XLSX = await import('xlsx');
+      const worksheet = XLSX.utils.json_to_sheet(export_data);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Payments');
+      
+      // Auto-fit columns
+      const maxWidth = 20;
+      const colWidths = Object.keys(export_data[0] || {}).map(key => ({
+        wch: Math.min(maxWidth, Math.max(key.length, ...export_data.map(row => String(row[key] || '').length)))
+      }));
+      worksheet['!cols'] = colWidths;
+      
+      // Generate filename
+      const sanitizedName = school_name.replace(/[^a-zA-Z0-9]/g, '_');
+      const filename = `${sanitizedName}_Payments_${format(new Date(), 'yyyy-MM-dd')}.xlsx`;
+      
+      XLSX.writeFile(workbook, filename);
+      toast.dismiss('export');
+      toast.success(`Exported ${export_data.length} records`);
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.dismiss('export');
+      toast.error('Failed to export data');
     }
   };
 
