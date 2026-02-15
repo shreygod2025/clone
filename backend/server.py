@@ -3394,11 +3394,17 @@ async def verify_payment(order_id: str):
         }
     
     try:
-        # Fetch order status from Cashfree using our order_id (not cf_order_id)
-        logging.info(f"[PAYMENT_VERIFY] Calling Cashfree PGFetchOrder for: {order_id}")
+        # Get the cf_order_id (Cashfree's internal order ID) which is required for API calls
+        cf_order_id = payment.get("cf_order_id")
+        if not cf_order_id:
+            logging.error(f"[PAYMENT_VERIFY] No cf_order_id found in payment record for {order_id}")
+            return {"order_id": order_id, "status": "UNKNOWN", "error": "Missing Cashfree order ID"}
+        
+        # Fetch order status from Cashfree using cf_order_id
+        logging.info(f"[PAYMENT_VERIFY] Calling Cashfree PGFetchOrder for cf_order_id: {cf_order_id}")
         api_response = get_cashfree_client().PGFetchOrder(
             CASHFREE_API_VERSION,
-            order_id,
+            cf_order_id,  # Use Cashfree's order ID
             None
         )
         
