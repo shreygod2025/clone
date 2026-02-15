@@ -3369,15 +3369,22 @@ async def cashfree_webhook(request: Request):
 @api_router.get("/payments/verify/{order_id}")
 async def verify_payment(order_id: str):
     """Verify payment status from Cashfree (can be called after return)"""
+    logging.info(f"[PAYMENT_VERIFY] Starting verification for order: {order_id}")
+    
     if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
+        logging.error("[PAYMENT_VERIFY] Cashfree credentials missing")
         raise HTTPException(status_code=500, detail="Payment gateway not configured")
     
     payment = await db.student_payments.find_one({"id": order_id}, {"_id": 0})
     if not payment:
+        logging.error(f"[PAYMENT_VERIFY] Order not found in student_payments: {order_id}")
         raise HTTPException(status_code=404, detail="Payment order not found")
+    
+    logging.info(f"[PAYMENT_VERIFY] Found payment record: student_id={payment.get('student_id')}, batch_id={payment.get('batch_id')}, status={payment.get('status')}")
     
     # Check if already processed
     if payment.get("status") == "PAID":
+        logging.info(f"[PAYMENT_VERIFY] Payment already marked as PAID, returning cached result")
         return {
             "order_id": order_id,
             "status": "PAID",
@@ -3388,16 +3395,16 @@ async def verify_payment(order_id: str):
     
     try:
         # Fetch order status from Cashfree using our order_id (not cf_order_id)
-        logging.info(f"Verifying student payment - Order ID: {order_id}")
+        logging.info(f"[PAYMENT_VERIFY] Calling Cashfree PGFetchOrder for: {order_id}")
         api_response = get_cashfree_client().PGFetchOrder(
             CASHFREE_API_VERSION,
-            order_id,  # Use our order_id
+            order_id,
             None
         )
         
         if api_response.data:
             order_status = api_response.data.order_status
-            logging.info(f"Student payment verification - Order: {order_id}, Status: {order_status}")
+            logging.info(f"[PAYMENT_VERIFY] Cashfree returned status: {order_status}")
             
             # Try to get payment details for transaction ID
             cf_payment_id = None
@@ -3405,14 +3412,15 @@ async def verify_payment(order_id: str):
             try:
                 payments_response = get_cashfree_client().PGOrderFetchPayments(
                     CASHFREE_API_VERSION,
-                    order_id,  # Use our order_id
+                    order_id,
                     None
                 )
                 if payments_response.data and len(payments_response.data) > 0:
                     cf_payment_id = str(payments_response.data[0].cf_payment_id)
                     payment_method = f"Cashfree - {payments_response.data[0].payment_group or 'unknown'}"
+                    logging.info(f"[PAYMENT_VERIFY] Got transaction ID: {cf_payment_id}")
             except Exception as e:
-                logging.warning(f"Could not fetch payment details: {e}")
+                logging.warning(f"[PAYMENT_VERIFY] Could not fetch payment details: {e}")
             
             # Update local payment record
             update_data = {
@@ -3424,6 +3432,7 @@ async def verify_payment(order_id: str):
                 update_data["cf_payment_id"] = cf_payment_id
                 update_data["payment_method"] = payment_method
             
+            logging.info(f"[PAYMENT_VERIFY] Updating student_payments collection with: {update_data}")
             await db.student_payments.update_one(
                 {"id": order_id},
                 {"$set": update_data}
@@ -3433,16 +3442,32 @@ async def verify_payment(order_id: str):
             if order_status == "PAID":
                 student_id = payment.get("student_id")
                 batch_id = payment.get("batch_id")
+                logging.info(f"[PAYMENT_VERIFY] Payment PAID - Processing student update for student_id={student_id}, batch_id={batch_id}")
                 
                 # Check if already processed
                 student = await db.student_inquiries.find_one({"id": student_id}, {"_id": 0})
+                logging.info(f"[PAYMENT_VERIFY] Student lookup result: found={student is not None}, current_status={student.get('status') if student else 'N/A'}, pending_payment={student.get('pending_payment') if student else 'N/A'}")
+                
                 if student and student.get("status") == "converted" and student.get("pending_payment") is None:
+                    logging.info(f"[PAYMENT_VERIFY] Student already converted with no pending payment - returning early")
                     return {
                         "order_id": order_id,
                         "status": order_status,
                         "amount": payment.get("amount"),
                         "student_name": payment.get("student_name"),
                         "transaction_id": cf_payment_id
+                    }
+                
+                if not student:
+                    logging.error(f"[PAYMENT_VERIFY] CRITICAL: Student not found in student_inquiries: {student_id}")
+                    # Return success but note the issue
+                    return {
+                        "order_id": order_id,
+                        "status": order_status,
+                        "amount": payment.get("amount"),
+                        "student_name": payment.get("student_name"),
+                        "transaction_id": cf_payment_id,
+                        "warning": "Student record not found for session creation"
                     }
                 
                 student_update = {
@@ -3455,6 +3480,7 @@ async def verify_payment(order_id: str):
                     "pending_payment": None,
                     "updated_at": datetime.now(timezone.utc).isoformat()
                 }
+                logging.info(f"[PAYMENT_VERIFY] Preparing student update: {student_update}")
                 
                 if batch_id:
                     student_update["batch_id"] = batch_id
@@ -3462,42 +3488,70 @@ async def verify_payment(order_id: str):
                     
                     # Add student to batch if not already added
                     batch = await db.batches.find_one({"id": batch_id}, {"_id": 0})
-                    if batch and student_id not in batch.get("students", []):
-                        await db.batches.update_one(
-                            {"id": batch_id},
-                            {"$addToSet": {"students": student_id}}
-                        )
-                        
-                        # Create sessions for the student from batch schedule
-                        if batch.get("schedule"):
-                            # Check if sessions already exist
-                            existing_sessions = await db.sessions.count_documents({"student_id": student_id, "batch_id": batch_id})
-                            if existing_sessions == 0:
-                                sessions_to_create = []
-                                for i, session_info in enumerate(batch.get("schedule", [])[:12], 1):
-                                    session = {
-                                        "id": str(uuid.uuid4()),
-                                        "student_id": student_id,
-                                        "batch_id": batch_id,
-                                        "session_number": i,
-                                        "date": session_info.get("date"),
-                                        "time": session_info.get("time", batch.get("time")),
-                                        "mode": batch.get("mode", "online"),
-                                        "skill": batch.get("skill"),
-                                        "status": "scheduled",
-                                        "created_at": datetime.now(timezone.utc).isoformat()
-                                    }
-                                    sessions_to_create.append(session)
+                    logging.info(f"[PAYMENT_VERIFY] Batch lookup: found={batch is not None}, batch_name={batch.get('name') if batch else 'N/A'}")
+                    
+                    if batch:
+                        current_students = batch.get("students", [])
+                        if student_id not in current_students:
+                            logging.info(f"[PAYMENT_VERIFY] Adding student to batch")
+                            await db.batches.update_one(
+                                {"id": batch_id},
+                                {"$addToSet": {"students": student_id}}
+                            )
+                            
+                            # Create sessions for the student from batch schedule
+                            schedule = batch.get("schedule", [])
+                            logging.info(f"[PAYMENT_VERIFY] Batch schedule has {len(schedule)} entries")
+                            
+                            if schedule:
+                                # Check if sessions already exist
+                                existing_sessions = await db.sessions.count_documents({"student_id": student_id, "batch_id": batch_id})
+                                logging.info(f"[PAYMENT_VERIFY] Existing sessions count: {existing_sessions}")
                                 
-                                if sessions_to_create:
-                                    await db.sessions.insert_many(sessions_to_create)
-                                    student_update["sessions_total"] = len(sessions_to_create)
-                                    student_update["sessions_completed"] = 0
+                                if existing_sessions == 0:
+                                    sessions_to_create = []
+                                    for i, session_info in enumerate(schedule[:12], 1):
+                                        session = {
+                                            "id": str(uuid.uuid4()),
+                                            "student_id": student_id,
+                                            "batch_id": batch_id,
+                                            "session_number": i,
+                                            "date": session_info.get("date"),
+                                            "time": session_info.get("time", batch.get("time")),
+                                            "mode": batch.get("mode", "online"),
+                                            "skill": batch.get("skill"),
+                                            "status": "scheduled",
+                                            "created_at": datetime.now(timezone.utc).isoformat()
+                                        }
+                                        sessions_to_create.append(session)
+                                    
+                                    if sessions_to_create:
+                                        logging.info(f"[PAYMENT_VERIFY] Creating {len(sessions_to_create)} sessions")
+                                        await db.sessions.insert_many(sessions_to_create)
+                                        student_update["sessions_total"] = len(sessions_to_create)
+                                        student_update["sessions_completed"] = 0
+                                else:
+                                    logging.info(f"[PAYMENT_VERIFY] Sessions already exist, skipping creation")
+                        else:
+                            logging.info(f"[PAYMENT_VERIFY] Student already in batch")
+                    else:
+                        logging.warning(f"[PAYMENT_VERIFY] Batch not found: {batch_id}")
+                else:
+                    logging.warning(f"[PAYMENT_VERIFY] No batch_id in payment record")
                 
-                await db.student_inquiries.update_one(
+                # Perform the student update
+                logging.info(f"[PAYMENT_VERIFY] Executing student_inquiries update for {student_id}")
+                update_result = await db.student_inquiries.update_one(
                     {"id": student_id},
                     {"$set": student_update}
                 )
+                logging.info(f"[PAYMENT_VERIFY] Update result: matched={update_result.matched_count}, modified={update_result.modified_count}")
+                
+                # Verify the update worked
+                updated_student = await db.student_inquiries.find_one({"id": student_id}, {"_id": 0, "status": 1, "payment_status": 1})
+                logging.info(f"[PAYMENT_VERIFY] Post-update verification: status={updated_student.get('status') if updated_student else 'N/A'}, payment_status={updated_student.get('payment_status') if updated_student else 'N/A'}")
+            else:
+                logging.info(f"[PAYMENT_VERIFY] Order status is {order_status}, not PAID - skipping student update")
             
             return {
                 "order_id": order_id,
@@ -3507,10 +3561,11 @@ async def verify_payment(order_id: str):
                 "transaction_id": cf_payment_id
             }
         else:
+            logging.warning(f"[PAYMENT_VERIFY] No data in Cashfree response")
             return {"order_id": order_id, "status": payment.get("status", "UNKNOWN")}
             
     except Exception as e:
-        logging.error(f"Payment verification error: {str(e)}")
+        logging.error(f"[PAYMENT_VERIFY] Exception during verification: {str(e)}", exc_info=True)
         return {"order_id": order_id, "status": payment.get("status", "UNKNOWN"), "error": str(e)}
 
 # ========================
