@@ -1070,7 +1070,7 @@ const AdminOrders = () => {
                         <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Recent Payments</p>
                         <div className="space-y-2">
                           {schoolStat.recent_payments.map((payment, idx) => (
-                            <div key={payment.id} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2">
+                            <div key={idx} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2">
                               <div className="flex items-center gap-3">
                                 <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
                                   <User className="w-4 h-4 text-green-600" />
