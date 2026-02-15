@@ -123,8 +123,6 @@ class TestCreateSessionEndpoint:
         print(f"  Order ID: {order_id}")
         print(f"  Amount: ₹{data['amount']}")
         print(f"  Environment: {data['environment']}")
-        
-        return order_id
     
     def test_create_session_for_nonexistent_student(self):
         """Test creating session for non-existent student returns 404"""
