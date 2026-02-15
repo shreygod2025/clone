@@ -49,6 +49,35 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ### February 15, 2026
 
+#### Orders Page - School Student Payments Enhancement (Session 2)
+**Feature Request:**
+- Display school student online payments in the Orders page
+- Show school-wise rows with progress and payment counts
+- Add total amount collected / total amount required
+- Add export option for each school
+
+**Implementation:**
+1. **New Backend Endpoint** `/api/orders/school-student-payments`:
+   - Aggregates all school student payments by school
+   - Returns overall stats (total schools, total collected, students paid, collection rate)
+   - Returns per-school summary with grade breakdown, recent payments
+
+2. **New Backend Endpoint** `/api/orders/school-student-payments/{school_id}/export`:
+   - Exports all payments for a school as JSON for Excel generation
+
+3. **Frontend Updates** (`AdminOrders.jsx`):
+   - Added overall stats banner (Total Schools, Total Collected, Students Paid, Collection Rate)
+   - School-wise cards with progress bar and amount stats
+   - Grade breakdown showing paid/pending counts
+   - Export Excel button for each school
+   - Links: View Tracker, Copy Payment Link, Copy Tracker Link
+
+**Modified Files:**
+- `backend/server.py` - Added 2 new endpoints after line 3985
+- `frontend/src/pages/admin/AdminOrders.jsx` - Updated school-students tab
+
+---
+
 #### Individual Student Payment - P0 Bug Fix (Session 1)
 **Issue:**
 - Individual student payment verification was failing with 404 error from Cashfree
