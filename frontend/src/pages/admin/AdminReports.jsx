@@ -1033,7 +1033,7 @@ const AdminReports = () => {
                     <td className="py-3 text-sm font-medium">{expense.title}</td>
                     <td className="py-3">
                       <span className="text-xs px-2 py-1 bg-slate-100 rounded-full capitalize">
-                        {expense.category?.replace(/_/g, ' ')}
+                        {String(expense.category || '').replace(/_/g, ' ')}
                       </span>
                     </td>
                     <td className="py-3 text-sm font-medium text-red-600">₹{expense.amount?.toLocaleString()}</td>
