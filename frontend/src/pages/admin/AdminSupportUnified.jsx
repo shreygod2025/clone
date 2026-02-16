@@ -1175,33 +1175,103 @@ const AdminSupportUnified = () => {
         </div>
       )}
 
-      {/* Reply Modal */}
-      <Dialog open={!!showReplyModal} onOpenChange={() => setShowReplyModal(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Reply to Query</DialogTitle>
+      {/* Reply Modal - Chat Style */}
+      <Dialog open={!!showReplyModal} onOpenChange={() => { setShowReplyModal(null); setQueryReplies([]); }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col" preventClose>
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-[#D63031]" />
+              Query Conversation
+            </DialogTitle>
           </DialogHeader>
           {showReplyModal && (
-            <div className="space-y-4">
-              <div className="bg-slate-50 rounded-lg p-3">
-                <p className="text-sm text-slate-600 font-medium">{showReplyModal.name}</p>
-                <p className="text-xs text-slate-500">{showReplyModal.phone}</p>
+            <div className="flex flex-col flex-1 min-h-0">
+              {/* Query Info Header */}
+              <div className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg p-4 mb-4 flex-shrink-0">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <p className="font-medium text-slate-800">{showReplyModal.name}</p>
+                    <p className="text-xs text-slate-500">{showReplyModal.phone} • {showReplyModal.email || 'No email'}</p>
+                  </div>
+                  <span className={`text-xs px-2 py-1 rounded-full ${
+                    showReplyModal.status === 'resolved' ? 'bg-green-100 text-green-700' :
+                    showReplyModal.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                    'bg-amber-100 text-amber-700'
+                  }`}>
+                    {showReplyModal.status?.replace('_', ' ')}
+                  </span>
+                </div>
+                {/* Original Message - Always Visible */}
+                <div className="bg-white rounded-lg p-3 border border-slate-200 mt-3">
+                  <p className="text-xs font-medium text-slate-500 mb-1">Original Message</p>
+                  <p className="text-sm text-slate-700">{showReplyModal.message || showReplyModal.details || 'No details provided'}</p>
+                  <p className="text-xs text-slate-400 mt-2">
+                    Created {showReplyModal.created_at ? format(new Date(showReplyModal.created_at), 'MMM d, yyyy h:mm a') : ''}
+                  </p>
+                </div>
               </div>
-              <Textarea
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                placeholder="Type your reply..."
-                className="min-h-[120px]"
-                data-testid="reply-input"
-              />
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setShowReplyModal(null)} className="flex-1">
-                  Cancel
-                </Button>
-                <Button onClick={handleReply} className="flex-1 bg-[#D63031] hover:bg-[#b52828]" data-testid="submit-reply">
-                  <Send className="w-4 h-4 mr-2" />
-                  Send Reply
-                </Button>
+              
+              {/* Chat Messages Area */}
+              <div className="flex-1 overflow-y-auto mb-4 space-y-3 min-h-[200px] max-h-[300px] pr-2">
+                {loadingHistory ? (
+                  <div className="flex items-center justify-center py-8">
+                    <RefreshCw className="w-5 h-5 animate-spin text-slate-400" />
+                  </div>
+                ) : queryReplies.length === 0 ? (
+                  <div className="text-center py-8">
+                    <MessageSquare className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                    <p className="text-sm text-slate-500">No replies yet. Start the conversation!</p>
+                  </div>
+                ) : (
+                  queryReplies.map((reply, idx) => (
+                    <div 
+                      key={reply.id || idx}
+                      className={`flex ${reply.role === 'customer' ? 'justify-start' : 'justify-end'}`}
+                    >
+                      <div className={`max-w-[80%] rounded-lg p-3 ${
+                        reply.role === 'customer' 
+                          ? 'bg-slate-100 text-slate-800' 
+                          : 'bg-[#D63031] text-white'
+                      }`}>
+                        <p className="text-sm">{reply.text}</p>
+                        <div className={`flex items-center gap-2 mt-2 text-xs ${
+                          reply.role === 'customer' ? 'text-slate-500' : 'text-red-100'
+                        }`}>
+                          <span className="font-medium">{reply.by || 'Admin'}</span>
+                          <span>•</span>
+                          <span>{reply.created_at ? format(new Date(reply.created_at), 'MMM d, h:mm a') : ''}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+              
+              {/* Reply Input */}
+              <div className="flex-shrink-0 border-t pt-4">
+                <div className="flex gap-3">
+                  <Textarea
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    placeholder="Type your reply..."
+                    className="flex-1 min-h-[80px] resize-none"
+                    data-testid="reply-input"
+                  />
+                </div>
+                <div className="flex gap-3 mt-3">
+                  <Button variant="outline" onClick={() => { setShowReplyModal(null); setQueryReplies([]); }} className="flex-1">
+                    Close
+                  </Button>
+                  <Button 
+                    onClick={handleReply} 
+                    disabled={!replyText.trim()}
+                    className="flex-1 bg-[#D63031] hover:bg-[#b52828]" 
+                    data-testid="submit-reply"
+                  >
+                    <Send className="w-4 h-4 mr-2" />
+                    Send Reply
+                  </Button>
+                </div>
               </div>
             </div>
           )}
