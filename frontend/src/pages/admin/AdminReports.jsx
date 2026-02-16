@@ -994,7 +994,7 @@ const AdminReports = () => {
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {Object.entries(expensesByCategory).sort((a, b) => b[1] - a[1]).map(([category, amount]) => (
               <div key={category} className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
-                <span className="text-slate-600 capitalize">{category.replace(/_/g, ' ')}</span>
+                <span className="text-slate-600 capitalize">{String(category || '').replace(/_/g, ' ')}</span>
                 <span className="font-medium text-slate-800">₹{amount.toLocaleString()}</span>
               </div>
             ))}
