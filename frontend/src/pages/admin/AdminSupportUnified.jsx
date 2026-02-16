@@ -2003,7 +2003,7 @@ const AdminSupportUnified = () => {
                 <p className="text-xs font-medium text-emerald-700 mb-1">Created By:</p>
                 <p className="text-sm text-emerald-800 flex items-center gap-2">
                   <User className="w-4 h-4" />
-                  {showViewersModal?.created_by_name || showViewersModal?.added_by_name || getAssigneeName(showViewersModal?.added_by) || showViewersModal?.added_by}
+                  {showViewersModal?.created_by_name || showViewersModal?.added_by_name || getAssignedUserName(showViewersModal?.added_by) || showViewersModal?.added_by}
                 </p>
               </div>
             )}
