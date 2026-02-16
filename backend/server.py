@@ -1462,7 +1462,7 @@ class SchoolInquiryUpdate(BaseModel):
     meeting_type: Optional[str] = None
     followup_date: Optional[str] = None
     followup_comment: Optional[str] = None
-    conversion_amount: Optional[str] = None
+    conversion_amount: Optional[Union[str, int, float]] = None
     quoted_price: Optional[str] = None  # Price quoted during meeting
     assigned_to: Optional[str] = None
     onboarding_data: Optional[dict] = None
