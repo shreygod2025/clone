@@ -1820,7 +1820,7 @@ const AdminSupportUnified = () => {
 
       {/* Edit Query Modal */}
       <Dialog open={!!showEditModal} onOpenChange={() => { setShowEditModal(null); setEditForm({}); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" preventClose>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit className="w-5 h-5 text-blue-600" />
@@ -1828,6 +1828,31 @@ const AdminSupportUnified = () => {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* User Type Selector */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <label className="block text-sm font-medium text-[#1E3A5F] mb-2">User Type</label>
+              <div className="grid grid-cols-3 gap-2">
+                {INQUIRY_TYPES.map((type) => {
+                  const IconComponent = type.value === 'school' ? Building2 : type.value === 'teacher' ? User : GraduationCap;
+                  return (
+                    <button
+                      key={type.value}
+                      type="button"
+                      onClick={() => setEditForm({ ...editForm, inquiry_type: type.value })}
+                      className={`p-2 rounded-lg border text-center transition-all ${
+                        editForm.inquiry_type === type.value
+                          ? 'border-[#1E3A5F] bg-white text-[#1E3A5F] shadow-sm'
+                          : 'border-blue-200 bg-blue-50/50 text-slate-600 hover:border-blue-300'
+                      }`}
+                    >
+                      <IconComponent className="w-4 h-4 mx-auto mb-1" />
+                      <span className="block text-xs font-medium">{type.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-sm font-medium text-slate-700">Name</label>
@@ -1854,10 +1879,18 @@ const AdminSupportUnified = () => {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-sm font-medium text-slate-700">Query Type</label>
+                <label className="text-sm font-medium text-slate-700">Query Type (Category)</label>
                 <select
                   value={editForm.query_type || ''}
-                  onChange={(e) => setEditForm({ ...editForm, query_type: e.target.value })}
+                  onChange={(e) => {
+                    const newQueryType = e.target.value;
+                    const relatedOptions = RELATED_TO_OPTIONS[newQueryType] || RELATED_TO_OPTIONS.other;
+                    setEditForm({ 
+                      ...editForm, 
+                      query_type: newQueryType,
+                      related_to: relatedOptions[0]?.value || 'other'
+                    });
+                  }}
                   className="w-full h-10 px-3 border border-slate-200 rounded-lg"
                 >
                   {QUERY_TYPES.map(t => (
@@ -1866,19 +1899,19 @@ const AdminSupportUnified = () => {
                 </select>
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-700">User Type</label>
+                <label className="text-sm font-medium text-slate-700">Related To (Sub-category)</label>
                 <select
-                  value={editForm.inquiry_type || ''}
-                  onChange={(e) => setEditForm({ ...editForm, inquiry_type: e.target.value })}
+                  value={editForm.related_to || ''}
+                  onChange={(e) => setEditForm({ ...editForm, related_to: e.target.value })}
                   className="w-full h-10 px-3 border border-slate-200 rounded-lg"
                 >
-                  {INQUIRY_TYPES.map(t => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
+                  {(RELATED_TO_OPTIONS[editForm.query_type] || RELATED_TO_OPTIONS.other).map(r => (
+                    <option key={r.value} value={r.value}>{r.label}</option>
                   ))}
                 </select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="text-sm font-medium text-slate-700">Priority</label>
                 <select
@@ -1902,6 +1935,19 @@ const AdminSupportUnified = () => {
                   {SOURCE_OPTIONS.map(s => (
                     <option key={s.value} value={s.value}>{s.label}</option>
                   ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Status</label>
+                <select
+                  value={editForm.status || 'new'}
+                  onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                >
+                  <option value="new">New</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="resolved">Resolved</option>
+                  <option value="closed">Closed</option>
                 </select>
               </div>
             </div>
