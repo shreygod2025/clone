@@ -1046,7 +1046,7 @@ const AdminSupportUnified = () => {
                 {(query.created_by_name || query.added_by_name || query.added_by) && (
                   <span className="text-xs px-2 py-1 rounded bg-emerald-100 text-emerald-700 flex items-center gap-1">
                     <User className="w-3 h-3" />
-                    Created by: {query.created_by_name || query.added_by_name || getAssigneeName(query.added_by) || query.added_by}
+                    Created by: {query.created_by_name || query.added_by_name || getAssignedUserName(query.added_by) || query.added_by}
                   </span>
                 )}
                 {query.viewers && query.viewers.length > 0 && (
