@@ -1125,7 +1125,10 @@ const AdminSupportUnified = () => {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => setShowReplyModal(query)}
+                    onClick={() => {
+                      setShowReplyModal(query);
+                      setQueryReplies(query.replies || []);
+                    }}
                     className="flex items-center gap-1"
                     data-testid={`reply-${query.id}`}
                   >
