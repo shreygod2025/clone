@@ -601,6 +601,25 @@ const AdminSupportUnified = () => {
       toast.error('Failed to add note');
     }
   };
+  
+  // Delete Note handler
+  const handleDeleteNote = async (noteId) => {
+    if (!showNotesModal || !noteId) return;
+    
+    if (!window.confirm('Are you sure you want to delete this note?')) return;
+    
+    try {
+      await axios.delete(`${API}/support/queries/${showNotesModal.id}/notes/${noteId}`, {
+        headers: getAuthHeaders()
+      });
+      toast.success('Note deleted');
+      fetchAllQueries();
+      // Refresh notes
+      fetchQueryHistory(showNotesModal.id);
+    } catch (error) {
+      toast.error('Failed to delete note');
+    }
+  };
 
   // Fetch Query History
   const fetchQueryHistory = async (queryId) => {
