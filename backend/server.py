@@ -12445,7 +12445,7 @@ async def sync_po_data_job(secret: str = None):
                                 update_data["onboarding_workflow.steps.kit_delivery.data.dispatch_date"] = dispatch_info.get("dispatch_date")
                             
                             if not kit_data.get("tracking_link"):
-                                tracking = detailed_po.get("tracking_link") or detailed_po.get("public_tracking_url")
+                                tracking = transform_tracking_url(detailed_po.get("tracking_link") or detailed_po.get("public_tracking_url"))
                                 if tracking:
                                     update_data["onboarding_workflow.steps.kit_delivery.data.tracking_link"] = tracking
                             
