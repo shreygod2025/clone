@@ -7994,6 +7994,65 @@ async def add_query_note(query_id: str, data: dict, user: dict = Depends(get_cur
     )
     return {"message": "Note added successfully", "note": note}
 
+@api_router.delete("/support/queries/{query_id}/notes/{note_id}")
+async def delete_query_note(query_id: str, note_id: str, user: dict = Depends(get_current_user)):
+    """Delete a note from a support query"""
+    query = await db.support_queries.find_one({"id": query_id}, {"_id": 0})
+    if not query:
+        raise HTTPException(status_code=404, detail="Query not found")
+    
+    # Add activity history entry
+    activity = {
+        "type": "note_deleted",
+        "note_id": note_id,
+        "by": user.get("name", user.get("email", "admin")),
+        "date": datetime.now(timezone.utc).isoformat()
+    }
+    
+    await db.support_queries.update_one(
+        {"id": query_id},
+        {
+            "$pull": {"notes": {"id": note_id}},
+            "$push": {"activity_history": activity},
+            "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
+        }
+    )
+    return {"message": "Note deleted successfully"}
+
+@api_router.post("/support/queries/{query_id}/replies")
+async def add_query_reply(query_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Add a reply to a support query (chat-style)"""
+    reply = {
+        "id": str(uuid.uuid4()),
+        "text": data.get("text", ""),
+        "by": user.get("name", user.get("email", "admin")),
+        "by_id": user.get("id", user.get("email")),
+        "role": user.get("role", "admin"),
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Add reply and activity history entry
+    activity = {
+        "type": "reply_added",
+        "reply_id": reply["id"],
+        "reply_preview": reply["text"][:100] if reply["text"] else "",
+        "by": reply["by"],
+        "date": datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Update query - also set status to in_progress if currently new
+    update = {
+        "$push": {"replies": reply, "activity_history": activity},
+        "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}
+    }
+    
+    query = await db.support_queries.find_one({"id": query_id}, {"_id": 0})
+    if query and query.get("status") == "new":
+        update["$set"]["status"] = "in_progress"
+    
+    await db.support_queries.update_one({"id": query_id}, update)
+    return {"message": "Reply added successfully", "reply": reply}
+
 @api_router.get("/support/queries/{query_id}/history")
 async def get_query_history(query_id: str, user: dict = Depends(get_current_user)):
     """Get activity history for a support query"""
