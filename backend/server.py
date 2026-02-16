@@ -12798,6 +12798,26 @@ async def delete_school_expense(expense_id: str, user: dict = Depends(get_curren
 
 PO_API_BASE_URL = os.environ.get("PO_API_BASE_URL", "https://vendorplus-4.emergent.host/api/external")
 PO_API_KEY = os.environ.get("PROCUREWAY_API_KEY", "oll_ext_O5MVdAo6KnEslbB3jtWcDBn_fPu7DRY78vr-ZkHZ7Tg")
+# Production tracking URL domain (replace preview URLs with production)
+PO_TRACKING_PROD_URL = os.environ.get("PO_TRACKING_URL", "https://vendorplus-4.emergent.host")
+
+def transform_tracking_url(url: str) -> str:
+    """Transform preview tracking URLs to production URLs"""
+    if not url:
+        return url
+    # Replace preview domain with production domain
+    preview_patterns = [
+        "procureway.preview.emergentagent.com",
+        "vendorplus.preview.emergentagent.com",
+        "procureway.stage-preview.emergentagent.com",
+        "vendorplus.stage-preview.emergentagent.com"
+    ]
+    for pattern in preview_patterns:
+        if pattern in url:
+            # Extract the path after the domain
+            url = url.replace(f"https://{pattern}", PO_TRACKING_PROD_URL)
+            url = url.replace(f"http://{pattern}", PO_TRACKING_PROD_URL)
+    return url
 
 async def fetch_po_data(endpoint: str, params: dict = None, timeout: float = 10.0):
     """Helper function to fetch data from PO API"""
