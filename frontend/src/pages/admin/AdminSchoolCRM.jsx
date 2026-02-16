@@ -1298,7 +1298,7 @@ const AdminSchoolCRM = () => {
       // Update school with renewal data
       await axios.patch(`${API}/schools/inquiry/${showRenewalConvertModal.id}`, {
         status: 'renewed',
-        conversion_amount: finalAmount,
+        conversion_amount: String(finalAmount),
         address: renewalConvertData.address,
         onboarding_data: {
           ...(showRenewalConvertModal.onboarding_data || {}),
