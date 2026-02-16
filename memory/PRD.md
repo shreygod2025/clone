@@ -49,6 +49,37 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ### February 16, 2026
 
+#### Support Center - Query System Enhancements (Session 2)
+**Features Implemented:**
+
+1. **Chat-Style Replies System**
+   - New `/api/support/queries/{query_id}/replies` endpoint for adding replies
+   - Reply modal redesigned as a conversation view
+   - Shows all replies in chat bubbles with sender info and timestamps
+   - Original message always visible at the top
+   - Replies preview on query cards showing count and latest message
+
+2. **Delete Notes Feature**
+   - New `DELETE /api/support/queries/{query_id}/notes/{note_id}` endpoint
+   - Delete button (trash icon) appears on hover in Notes modal
+   - Confirmation dialog before deletion
+
+3. **Enhanced Edit Modal**
+   - Added User Type selector (visual buttons like Create modal)
+   - Added "Related To" sub-category field
+   - Added Status dropdown (New, In Progress, Resolved, Closed)
+   - All fields from Create modal now available in Edit
+
+4. **Original Message Always Visible**
+   - Query cards now show "Original Message:" label
+   - Message/details visible across all stages even after replies
+
+**Modified Files:**
+- `backend/server.py` - Lines 7968-8067: Added delete note and add reply endpoints
+- `frontend/src/pages/admin/AdminSupportUnified.jsx` - Chat-style reply modal, delete notes, enhanced edit modal
+
+---
+
 #### School CRM Access Control + Renewal Bug Fix (Session 1)
 **Issues Fixed:**
 
