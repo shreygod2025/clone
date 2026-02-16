@@ -1059,7 +1059,23 @@ const AdminSupportUnified = () => {
 
               {(query.query_details || query.message) && (
                 <div className="bg-slate-50 rounded-xl p-4 mb-4">
+                  <p className="text-xs font-medium text-slate-500 mb-1">Original Message:</p>
                   <p className="text-slate-600 whitespace-pre-wrap">{query.query_details || query.message}</p>
+                </div>
+              )}
+              
+              {/* Replies Preview */}
+              {query.replies && query.replies.length > 0 && (
+                <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-xs font-medium text-blue-700 mb-1 flex items-center gap-1">
+                    <MessageSquare className="w-3 h-3" />
+                    {query.replies.length} {query.replies.length === 1 ? 'Reply' : 'Replies'}
+                  </p>
+                  {query.replies.length > 0 && (
+                    <p className="text-sm text-blue-800 truncate">
+                      Latest: {query.replies[query.replies.length - 1]?.text?.substring(0, 80)}...
+                    </p>
+                  )}
                 </div>
               )}
 
