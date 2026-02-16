@@ -13115,8 +13115,8 @@ async def get_onboarding_po_info(school_id: str, user: dict = Depends(get_curren
         "po_status": primary_po.get("status"),
         "delivery_date": primary_po.get("delivery_date"),
         "dispatch_date": dispatch_info.get("dispatch_date"),
-        "tracking_link": primary_po.get("tracking_link"),
-        "public_tracking_url": primary_po.get("public_tracking_url"),
+        "tracking_link": transform_tracking_url(primary_po.get("tracking_link")),
+        "public_tracking_url": transform_tracking_url(primary_po.get("public_tracking_url")),
         "vendor_name": primary_po.get("vendor_name"),
         "contact_person": primary_po.get("contact_person"),
         "delivery_address": primary_po.get("delivery_address"),
@@ -13125,8 +13125,8 @@ async def get_onboarding_po_info(school_id: str, user: dict = Depends(get_curren
             "po_number": po.get("po_number"),
             "status": po.get("status"),
             "delivery_date": po.get("delivery_date"),
-            "tracking_link": po.get("tracking_link"),
-            "public_tracking_url": po.get("public_tracking_url"),
+            "tracking_link": transform_tracking_url(po.get("tracking_link")),
+            "public_tracking_url": transform_tracking_url(po.get("public_tracking_url")),
             "vendor_name": po.get("vendor_name"),
             "grand_total": po.get("grand_total")
         } for po in active_pos]
