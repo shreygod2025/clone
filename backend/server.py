@@ -1394,8 +1394,8 @@ class SchoolInquiry(BaseModel):
     meeting_type: str = "offline"  # offline, online
     followup_date: Optional[str] = None
     followup_comment: str = ""
-    conversion_amount: Optional[str] = None
-    quoted_price: Optional[str] = None  # Price quoted during meeting
+    conversion_amount: Optional[Union[str, int, float]] = None
+    quoted_price: Optional[Union[str, int, float]] = None  # Price quoted during meeting
     selected_offerings: Optional[List[str]] = None  # Offerings selected during meeting
     source: str = "website"
     referred_by: str = ""  # Name of person who referred (when source is referral)
