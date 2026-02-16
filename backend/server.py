@@ -5476,19 +5476,31 @@ async def get_school_inquiries(
 ):
     query = {}
     if status:
-        query["status"] = status
+        # Handle comma-separated status values
+        if "," in status:
+            query["status"] = {"$in": status.split(",")}
+        else:
+            query["status"] = status
     
-    # For team members, show all leads but mark which ones they own
-    # If view_all is False, only show their leads
     user_role = user.get("role", "")
     user_id = user.get("user_id", user.get("id", ""))
     
-    # Always return all leads - frontend will handle display
-    # Team members see all but with ownership info
+    # Check if user is admin - admins see all leads
+    is_admin = user_role == "admin" or user.get("email") == "admin@oll.co"
+    
+    # Non-admin users only see leads assigned to them
+    # Unless view_all is explicitly True (for managers with special permission)
+    if not is_admin and not view_all:
+        # Show leads where user is assigned OR added by them
+        query["$or"] = [
+            {"assigned_to": user_id},
+            {"added_by": user_id},
+            {"relationship_manager_id": user_id}
+        ]
     
     inquiries = await db.school_inquiries.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
     
-    # Add ownership flag for team members
+    # Add ownership flag for display purposes
     for inq in inquiries:
         if isinstance(inq.get('created_at'), str):
             inq['created_at'] = datetime.fromisoformat(inq['created_at'])
