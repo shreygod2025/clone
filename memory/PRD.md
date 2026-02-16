@@ -47,6 +47,37 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+### February 16, 2026
+
+#### School CRM Access Control + Renewal Bug Fix (Session 1)
+**Issues Fixed:**
+
+1. **User-based Lead Filtering (Security)**
+   - Team members now only see leads assigned to them (`assigned_to`, `added_by`, or `relationship_manager_id`)
+   - Admin users continue to see all leads
+   - Modified `/api/schools/inquiries` endpoint to filter based on user role
+
+2. **School Renewal "Failed" Error**
+   - Root cause: `conversion_amount` type mismatch - backend model expected `str` but received `int/float`
+   - Fixed: Updated `SchoolInquiry` and `SchoolInquiryUpdate` models to accept `Union[str, int, float]`
+   - Added better error logging in frontend to show actual error message
+
+3. **Modal Closes on Outside Click (UX)**
+   - Added `preventClose` prop to Dialog component
+   - Applied to Convert and Renewal modals to prevent accidental closure
+
+**Modified Files:**
+- `backend/server.py` - Lines 5471-5510: User-based filtering for school inquiries
+- `backend/server.py` - Lines 1397, 1465: Changed `conversion_amount` type to `Union[str, int, float]`
+- `frontend/src/components/ui/dialog.jsx` - Added `preventClose` prop with `onInteractOutside` and `onEscapeKeyDown` handlers
+- `frontend/src/pages/admin/AdminSchoolCRM.jsx` - Added `preventClose` to Convert and Renewal modals, improved error logging
+
+**Testing:**
+- Backend verified: Admin sees 80 leads, team member sees 71 leads
+- Renewal endpoint tested: Now accepts numeric `conversion_amount`
+
+---
+
 ### February 15, 2026
 
 #### Orders Page - School Student Payments Enhancement (Session 2)
