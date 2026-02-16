@@ -1743,8 +1743,15 @@ const AdminSupportUnified = () => {
               ) : (
                 <div className="space-y-3 max-h-[300px] overflow-y-auto">
                   {queryNotes.map((note, idx) => (
-                    <div key={idx} className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                      <p className="text-sm text-slate-700">{note.text}</p>
+                    <div key={note.id || idx} className="bg-amber-50 border border-amber-200 rounded-lg p-3 group relative">
+                      <button
+                        onClick={() => handleDeleteNote(note.id)}
+                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-100 rounded text-red-500"
+                        title="Delete note"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                      <p className="text-sm text-slate-700 pr-8">{note.text}</p>
                       <p className="text-xs text-slate-500 mt-2">
                         By {note.by} • {note.created_at ? format(new Date(note.created_at), 'MMM d, yyyy h:mm a') : ''}
                       </p>
