@@ -1169,7 +1169,7 @@ const AdminReports = () => {
                 >
                   <option value="">Select category</option>
                   {expenseCategories.categories?.map(cat => (
-                    <option key={cat} value={cat}>{cat.replace(/_/g, ' ')}</option>
+                    <option key={cat} value={cat}>{String(cat || '').replace(/_/g, ' ')}</option>
                   ))}
                 </select>
               </div>
@@ -1183,7 +1183,7 @@ const AdminReports = () => {
                 >
                   <option value="">Select subcategory</option>
                   {(expenseCategories.subcategories?.[expenseForm.category] || []).map(sub => (
-                    <option key={sub} value={sub}>{sub.replace(/_/g, ' ')}</option>
+                    <option key={sub} value={sub}>{String(sub || '').replace(/_/g, ' ')}</option>
                   ))}
                 </select>
               </div>
