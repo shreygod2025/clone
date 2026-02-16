@@ -9934,9 +9934,15 @@ async def get_public_tracking(tracking_token: str):
             # Use PO tracking link if not manually set
             if not kit_tracking_link:
                 kit_tracking_link = po_info.get("tracking_link") or po_info.get("public_tracking_url")
+            else:
+                # Transform any preview URL in the stored tracking link
+                kit_tracking_link = transform_tracking_url(kit_tracking_link)
             # Use PO delivery date if not manually set
             if not kit_scheduled_date:
                 kit_scheduled_date = po_info.get("delivery_date")
+        elif key == "kit_delivery" and kit_tracking_link:
+            # Transform tracking link even if no PO info
+            kit_tracking_link = transform_tracking_url(kit_tracking_link)
         
         public_steps.append({
             "key": key,
