@@ -9891,8 +9891,8 @@ async def get_public_tracking(tracking_token: str):
                                 "status": detailed_po.get("status"),
                                 "delivery_date": detailed_po.get("delivery_date"),
                                 "dispatch_date": dispatch_info.get("dispatch_date"),
-                                "tracking_link": detailed_po.get("tracking_link"),
-                                "public_tracking_url": detailed_po.get("public_tracking_url"),
+                                "tracking_link": transform_tracking_url(detailed_po.get("tracking_link")),
+                                "public_tracking_url": transform_tracking_url(detailed_po.get("public_tracking_url")),
                                 "vendor_name": detailed_po.get("vendor_name"),
                             }
         except asyncio.TimeoutError:
