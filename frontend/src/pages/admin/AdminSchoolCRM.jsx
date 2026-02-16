@@ -4676,7 +4676,7 @@ const AdminSchoolCRM = () => {
 
       {/* Renewal Convert Modal */}
       <Dialog open={!!showRenewalConvertModal} onOpenChange={() => setShowRenewalConvertModal(null)}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" preventClose>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <RefreshCw className="w-5 h-5 text-emerald-600" />
