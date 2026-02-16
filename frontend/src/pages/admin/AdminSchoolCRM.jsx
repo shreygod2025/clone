@@ -1373,7 +1373,8 @@ const AdminSchoolCRM = () => {
       });
       fetchInquiries();
     } catch (error) {
-      toast.error('Failed to renew school');
+      console.error('Renewal error:', error.response?.data || error.message);
+      toast.error(error.response?.data?.detail || 'Failed to renew school');
     }
   };
 
