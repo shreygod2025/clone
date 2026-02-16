@@ -445,7 +445,7 @@ const AdminSupportUnified = () => {
       return;
     }
     try {
-      // Add reply as a note/comment
+      // Add reply using the new replies endpoint (chat-style)
       if (showReplyModal._source === 'inquiry') {
         await axios.patch(`${API}/inquiry/queries/${showReplyModal.id}`, { 
           status: 'in_progress',
@@ -453,20 +453,39 @@ const AdminSupportUnified = () => {
         }, {
           headers: getAuthHeaders()
         });
+        toast.success('Reply sent');
+        setShowReplyModal(null);
+        setReplyText('');
       } else if (showReplyModal._source === 'user_support') {
-        await axios.patch(`${API}/support/queries/${showReplyModal.id}`, { 
-          status: 'in_progress',
-          details: `${showReplyModal.query_details}\n\n--- Admin Reply (${format(new Date(), 'MMM d, yyyy h:mm a')}) ---\n${replyText}`
+        // Use new replies endpoint for chat-style conversation
+        await axios.post(`${API}/support/queries/${showReplyModal.id}/replies`, { 
+          text: replyText
         }, {
           headers: getAuthHeaders()
         });
+        toast.success('Reply sent');
+        setReplyText('');
+        // Refresh replies list
+        fetchQueryReplies(showReplyModal.id);
       }
-      toast.success('Reply sent');
-      setShowReplyModal(null);
-      setReplyText('');
       fetchAllQueries();
     } catch (error) {
+      console.error('Reply error:', error);
       toast.error('Failed to send reply');
+    }
+  };
+  
+  // Fetch replies for a query
+  const fetchQueryReplies = async (queryId) => {
+    try {
+      setLoadingHistory(true);
+      const query = allQueries.find(q => q.id === queryId) || showReplyModal;
+      setQueryReplies(query?.replies || []);
+    } catch (error) {
+      console.error('Error fetching replies:', error);
+      setQueryReplies([]);
+    } finally {
+      setLoadingHistory(false);
     }
   };
 
