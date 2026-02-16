@@ -191,6 +191,7 @@ const AdminSupportUnified = () => {
   const [editForm, setEditForm] = useState({});
   const [queryHistory, setQueryHistory] = useState([]);
   const [queryNotes, setQueryNotes] = useState([]);
+  const [queryReplies, setQueryReplies] = useState([]);
   const [queryViewers, setQueryViewers] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [loadingViewers, setLoadingViewers] = useState(false);
