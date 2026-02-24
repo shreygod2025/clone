@@ -417,6 +417,24 @@ const AdminOrders = () => {
     paid: payments.filter(p => p.status === 'paid').length,
     totalAmount: payments.reduce((sum, p) => sum + (p.amount || 0), 0),
     collectedAmount: payments.filter(p => p.status === 'paid').reduce((sum, p) => sum + (p.amount || 0), 0),
+    receivablesAmount: payments.filter(p => p.status !== 'paid').reduce((sum, p) => sum + (p.amount || 0), 0),
+  };
+  
+  // Delete payment handler
+  const handleDeletePayment = async (payment) => {
+    try {
+      const endpoint = activeTab === 'school' 
+        ? `${API}/orders/school-payments/${payment.id}`
+        : `${API}/orders/student-payments/${payment.id}`;
+      
+      await axios.delete(endpoint, { headers: getAuthHeaders() });
+      toast.success('Payment record deleted');
+      setDeleteConfirm(null);
+      fetchPayments();
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error(error.response?.data?.detail || 'Failed to delete payment');
+    }
   };
 
   return (
