@@ -480,75 +480,136 @@ const AdminOrders = () => {
           </button>
         </div>
 
-        {/* Stats Cards - Redesigned */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <div className="bg-gradient-to-br from-slate-50 to-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Total Orders</p>
-                <p className="text-3xl font-bold text-slate-800 mt-1">{stats.total}</p>
+        {/* Stats Cards - Show different stats based on active tab */}
+        {activeTab !== 'school-students' ? (
+          /* Stats for School Payments and Student Payments tabs */
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="bg-gradient-to-br from-slate-50 to-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Total Orders</p>
+                  <p className="text-3xl font-bold text-slate-800 mt-1">{stats.total}</p>
+                </div>
+                <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center">
+                  <Receipt className="w-6 h-6 text-slate-500" />
+                </div>
               </div>
-              <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center">
-                <Receipt className="w-6 h-6 text-slate-500" />
+            </div>
+            <div className="bg-gradient-to-br from-amber-50 to-white rounded-2xl p-5 border border-amber-200 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-amber-500 uppercase tracking-wide">Pending</p>
+                  <p className="text-3xl font-bold text-amber-600 mt-1">{stats.pending}</p>
+                </div>
+                <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
+                  <Clock className="w-6 h-6 text-amber-500" />
+                </div>
+              </div>
+            </div>
+            <div className="bg-gradient-to-br from-red-50 to-white rounded-2xl p-5 border border-red-200 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-red-500 uppercase tracking-wide">Overdue</p>
+                  <p className="text-3xl font-bold text-red-600 mt-1">{stats.overdue}</p>
+                </div>
+                <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                  <AlertCircle className="w-6 h-6 text-red-500" />
+                </div>
+              </div>
+            </div>
+            <div className="bg-gradient-to-br from-emerald-50 to-white rounded-2xl p-5 border border-emerald-200 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-emerald-500 uppercase tracking-wide">Paid</p>
+                  <p className="text-3xl font-bold text-emerald-600 mt-1">{stats.paid}</p>
+                </div>
+                <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
+                  <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+                </div>
+              </div>
+            </div>
+            <div className="bg-gradient-to-br from-blue-50 to-white rounded-2xl p-5 border border-blue-200 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-blue-500 uppercase tracking-wide">Collected</p>
+                  <p className="text-2xl font-bold text-blue-600 mt-1">₹{stats.collectedAmount.toLocaleString()}</p>
+                </div>
+                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                  <DollarSign className="w-6 h-6 text-blue-500" />
+                </div>
+              </div>
+            </div>
+            <div className="bg-gradient-to-br from-purple-50 to-white rounded-2xl p-5 border border-purple-200 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-purple-500 uppercase tracking-wide">Receivables</p>
+                  <p className="text-2xl font-bold text-purple-600 mt-1">₹{stats.receivablesAmount?.toLocaleString() || 0}</p>
+                </div>
+                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                  <Wallet className="w-6 h-6 text-purple-500" />
+                </div>
               </div>
             </div>
           </div>
-          <div className="bg-gradient-to-br from-amber-50 to-white rounded-2xl p-5 border border-amber-200 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-amber-500 uppercase tracking-wide">Pending</p>
-                <p className="text-3xl font-bold text-amber-600 mt-1">{stats.pending}</p>
+        ) : (
+          /* Stats for School Student Payments (Online) tab - computed from schoolStudentStats */
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-gradient-to-br from-slate-50 to-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">Total Schools</p>
+                  <p className="text-3xl font-bold text-slate-800 mt-1">{Object.keys(schoolStudentStats).length}</p>
+                </div>
+                <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center">
+                  <Building2 className="w-6 h-6 text-slate-500" />
+                </div>
               </div>
-              <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
-                <Clock className="w-6 h-6 text-amber-500" />
+            </div>
+            <div className="bg-gradient-to-br from-emerald-50 to-white rounded-2xl p-5 border border-emerald-200 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-emerald-500 uppercase tracking-wide">Total Collected</p>
+                  <p className="text-2xl font-bold text-emerald-600 mt-1">
+                    ₹{Object.values(schoolStudentStats).reduce((sum, s) => sum + (s.total_collected || 0), 0).toLocaleString()}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
+                  <DollarSign className="w-6 h-6 text-emerald-500" />
+                </div>
+              </div>
+            </div>
+            <div className="bg-gradient-to-br from-blue-50 to-white rounded-2xl p-5 border border-blue-200 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-blue-500 uppercase tracking-wide">Students Paid</p>
+                  <p className="text-3xl font-bold text-blue-600 mt-1">
+                    {Object.values(schoolStudentStats).reduce((sum, s) => sum + (s.paid_count || 0), 0)}
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                  <GraduationCap className="w-6 h-6 text-blue-500" />
+                </div>
+              </div>
+            </div>
+            <div className="bg-gradient-to-br from-purple-50 to-white rounded-2xl p-5 border border-purple-200 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-purple-500 uppercase tracking-wide">Collection Rate</p>
+                  <p className="text-3xl font-bold text-purple-600 mt-1">
+                    {(() => {
+                      const totalCollected = Object.values(schoolStudentStats).reduce((sum, s) => sum + (s.total_collected || 0), 0);
+                      const totalExpected = Object.values(schoolStudentStats).reduce((sum, s) => sum + (s.total_expected || 0), 0);
+                      return totalExpected > 0 ? Math.round((totalCollected / totalExpected) * 100) : 0;
+                    })()}%
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                  <CheckCircle2 className="w-6 h-6 text-purple-500" />
+                </div>
               </div>
             </div>
           </div>
-          <div className="bg-gradient-to-br from-red-50 to-white rounded-2xl p-5 border border-red-200 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-red-500 uppercase tracking-wide">Overdue</p>
-                <p className="text-3xl font-bold text-red-600 mt-1">{stats.overdue}</p>
-              </div>
-              <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-                <AlertCircle className="w-6 h-6 text-red-500" />
-              </div>
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-emerald-50 to-white rounded-2xl p-5 border border-emerald-200 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-emerald-500 uppercase tracking-wide">Paid</p>
-                <p className="text-3xl font-bold text-emerald-600 mt-1">{stats.paid}</p>
-              </div>
-              <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
-                <CheckCircle2 className="w-6 h-6 text-emerald-500" />
-              </div>
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-blue-50 to-white rounded-2xl p-5 border border-blue-200 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-blue-500 uppercase tracking-wide">Collected</p>
-                <p className="text-2xl font-bold text-blue-600 mt-1">₹{stats.collectedAmount.toLocaleString()}</p>
-              </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                <DollarSign className="w-6 h-6 text-blue-500" />
-              </div>
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-purple-50 to-white rounded-2xl p-5 border border-purple-200 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-purple-500 uppercase tracking-wide">Receivables</p>
-                <p className="text-2xl font-bold text-purple-600 mt-1">₹{stats.receivablesAmount?.toLocaleString() || 0}</p>
-              </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                <Wallet className="w-6 h-6 text-purple-500" />
-              </div>
-            </div>
-          </div>
-        </div>
+        )}
 
         {/* Filters */}
         <div className="flex flex-wrap gap-4 items-center">
