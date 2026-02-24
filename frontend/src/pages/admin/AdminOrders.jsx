@@ -860,7 +860,8 @@ const AdminOrders = () => {
                               {payment.student_name}
                             </p>
                             <p className="text-sm text-slate-500">
-                              {payment.description || payment.parent_name || 'Student enrollment'}
+                              {payment.phone && <span className="mr-2">{payment.phone}</span>}
+                              {payment.batch_name && <span className="text-blue-600">• {payment.batch_name}</span>}
                             </p>
                           </div>
                         </div>
@@ -868,15 +869,6 @@ const AdminOrders = () => {
                       <td className="px-6 py-5">
                         <div>
                           <p className="font-bold text-lg text-slate-800">₹{(payment.amount || 0).toLocaleString()}</p>
-                          {payment.gst_amount > 0 && (
-                            <p className="text-xs text-slate-500 mt-0.5">
-                              GST: ₹{(payment.gst_amount || 0).toLocaleString()}
-                              {payment.gst_rate && ` @ ${payment.gst_rate}%`}
-                            </p>
-                          )}
-                          {payment.tranche_info && (
-                            <p className="text-xs text-slate-500 mt-1">{payment.tranche_info}</p>
-                          )}
                           {payment.gst_type && (
                             <span className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full font-medium ${
                               payment.gst_type === 'book_gst' ? 'bg-blue-100 text-blue-700' :
@@ -888,6 +880,39 @@ const AdminOrders = () => {
                             </span>
                           )}
                         </div>
+                      </td>
+                      {/* Payment From */}
+                      <td className="px-6 py-5">
+                        <div className="flex items-center gap-2">
+                          {payment.payment_from === 'school' ? (
+                            <Building2 className="w-4 h-4 text-orange-500" />
+                          ) : (
+                            <User className="w-4 h-4 text-blue-500" />
+                          )}
+                          <span className={`text-sm font-medium capitalize ${
+                            payment.payment_from === 'school' ? 'text-orange-700' : 'text-blue-700'
+                          }`}>
+                            {payment.payment_from || 'Individual'}
+                          </span>
+                        </div>
+                      </td>
+                      {/* Payment Mode */}
+                      <td className="px-6 py-5">
+                        <div className="flex items-center gap-2">
+                          {payment.payment_mode === 'online' ? (
+                            <CreditCard className="w-4 h-4 text-green-500" />
+                          ) : payment.payment_mode === 'cash' ? (
+                            <BanknoteIcon className="w-4 h-4 text-amber-500" />
+                          ) : (
+                            <Wallet className="w-4 h-4 text-slate-400" />
+                          )}
+                          <span className="text-sm font-medium text-slate-700 capitalize">
+                            {payment.payment_mode || payment.payment_method || 'N/A'}
+                          </span>
+                        </div>
+                        {payment.transaction_id && (
+                          <p className="text-xs text-slate-400 mt-1 font-mono">{payment.transaction_id}</p>
+                        )}
                       </td>
                       <td className="px-6 py-5">
                         {payment.due_date ? (
@@ -901,6 +926,13 @@ const AdminOrders = () => {
                               {format(parseISO(payment.due_date), 'MMM d, yyyy')}
                             </p>
                           </div>
+                        ) : payment.payment_date ? (
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-green-500" />
+                            <p className="text-sm font-medium text-green-700">
+                              {format(parseISO(payment.payment_date), 'MMM d, yyyy')}
+                            </p>
+                          </div>
                         ) : (
                           <span className="text-slate-400 text-sm">Not set</span>
                         )}
@@ -910,32 +942,28 @@ const AdminOrders = () => {
                       </td>
                       <td className="px-6 py-5">
                         <div className="flex items-center justify-end gap-2">
-                          {/* Document indicators */}
-                          {(payment.invoice_url || payment.receipt_url) && (
-                            <div className="flex items-center gap-1 mr-2">
-                              {payment.invoice_url && (
-                                <button onClick={() => downloadFile(payment.invoice_url, `Invoice_${payment.student_name?.replace(/\s+/g, '_') || 'Student'}`)} className="p-1.5 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors" title="Download Invoice">
-                                  <FileText className="w-4 h-4 text-blue-600" />
-                                </button>
-                              )}
-                              {payment.receipt_url && (
-                                <button onClick={() => downloadFile(payment.receipt_url, `Receipt_${payment.student_name?.replace(/\s+/g, '_') || 'Student'}`)} className="p-1.5 bg-green-50 rounded-lg hover:bg-green-100 transition-colors" title="Download Receipt">
-                                  <Receipt className="w-4 h-4 text-green-600" />
-                                </button>
-                              )}
-                            </div>
+                          {/* Document buttons */}
+                          {payment.invoice_url && (
+                            <button onClick={() => downloadFile(payment.invoice_url, `Invoice_${payment.student_name?.replace(/\s+/g, '_') || 'Student'}`)} className="p-1.5 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors" title="Download Invoice">
+                              <FileText className="w-4 h-4 text-blue-600" />
+                            </button>
                           )}
-                          {payment.conversion_details && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setShowStudentDetails(payment)}
-                              className="text-slate-600 hover:text-blue-600 hover:bg-blue-50"
-                              data-testid={`view-student-details-${payment.id}`}
-                            >
-                              <ExternalLink className="w-4 h-4" />
-                            </Button>
+                          {payment.receipt_url && (
+                            <button onClick={() => downloadFile(payment.receipt_url, `Receipt_${payment.student_name?.replace(/\s+/g, '_') || 'Student'}`)} className="p-1.5 bg-green-50 rounded-lg hover:bg-green-100 transition-colors" title="Download Receipt">
+                              <Receipt className="w-4 h-4 text-green-600" />
+                            </button>
                           )}
+                          {/* View Button */}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowViewModal(payment)}
+                            className="text-slate-600 hover:text-blue-600 hover:bg-blue-50"
+                            data-testid={`view-student-${payment.id}`}
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          {/* Update Button */}
                           <Button
                             variant="outline"
                             size="sm"
@@ -944,6 +972,16 @@ const AdminOrders = () => {
                             data-testid={`update-payment-${payment.id}`}
                           >
                             Update
+                          </Button>
+                          {/* Delete Button */}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDeleteConfirm(payment)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                            data-testid={`delete-payment-${payment.id}`}
+                          >
+                            <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
                       </td>
