@@ -47,6 +47,55 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+### February 24, 2026
+
+#### Orders Page - Student Payments Tab Enhancements
+**Features Implemented:**
+
+1. **Receivables Summary Card**
+   - Shows total pending amount (payments with status !== 'paid')
+   - Displays ₹55,013 in pending receivables
+   - Purple gradient styling with Wallet icon
+
+2. **Payment From Column**
+   - Shows "Individual" or "School" with appropriate icons
+   - User icon (blue) for individual payments
+   - Building2 icon (orange) for school-routed payments
+   - Backend returns `payment_from` field in student payments response
+
+3. **Payment Mode Column**
+   - Shows "Online", "Cash", or "N/A" with icons
+   - CreditCard icon (green) for online payments
+   - BanknoteIcon icon (amber) for cash payments
+   - Wallet icon (slate) for unspecified
+   - Transaction ID displayed below payment mode when available
+
+4. **View Payment Modal**
+   - Opens via eye icon in Actions column
+   - Displays: Student name, Parent/Guardian, Phone, Email, Batch
+   - Shows: Amount, Status, Payment From, Payment Mode
+   - Shows: Transaction ID, Due Date, Payment Date
+   - GST information section (when applicable)
+   - Notes section and document download buttons
+
+5. **Delete Payment Functionality**
+   - Delete button (trash icon) in Actions column
+   - Confirmation modal with payment details
+   - Warning message about permanent deletion
+   - Backend `DELETE /api/orders/student-payments/{payment_id}` endpoint
+   - Handles both `student_payments` collection and embedded `student_inquiries` payments
+
+**Modified Files:**
+- `backend/server.py` - Added DELETE endpoint (lines 10658-10747), updated GET endpoint with payment_from/payment_mode fields
+- `frontend/src/pages/admin/AdminOrders.jsx` - Added View modal (lines 1647-1813), Delete modal (lines 1815-1862), updated table columns
+
+**Testing:**
+- Test Report: `/app/test_reports/iteration_41.json`
+- Backend: 100% (10/10 tests passed)
+- Frontend: 100% (All Student Payments tab features working)
+
+---
+
 ### February 16, 2026
 
 #### Support Center - Query System Enhancements (Session 2)
