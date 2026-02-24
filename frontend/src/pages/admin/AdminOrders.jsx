@@ -605,6 +605,12 @@ const AdminOrders = () => {
                       {activeTab === 'school' ? 'School' : 'Student'}
                     </th>
                     <th className="text-left px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider">Amount</th>
+                    {activeTab === 'student' && (
+                      <>
+                        <th className="text-left px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider">Payment From</th>
+                        <th className="text-left px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider">Payment Mode</th>
+                      </>
+                    )}
                     <th className="text-left px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider">Due Date</th>
                     <th className="text-left px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider">Status</th>
                     <th className="text-right px-6 py-4 text-xs font-semibold text-white uppercase tracking-wider">Actions</th>
