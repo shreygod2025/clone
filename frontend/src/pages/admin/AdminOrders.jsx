@@ -519,6 +519,17 @@ const AdminOrders = () => {
               </div>
             </div>
           </div>
+          <div className="bg-gradient-to-br from-purple-50 to-white rounded-2xl p-5 border border-purple-200 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-purple-500 uppercase tracking-wide">Receivables</p>
+                <p className="text-2xl font-bold text-purple-600 mt-1">₹{stats.receivablesAmount?.toLocaleString() || 0}</p>
+              </div>
+              <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                <Wallet className="w-6 h-6 text-purple-500" />
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Filters */}
