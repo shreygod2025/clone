@@ -10294,6 +10294,12 @@ async def get_student_payments(
             "payment_link": existing_payment.get("payment_link") if existing_payment else onboarding_data.get("payment_link"),
             "notes": existing_payment.get("notes") if existing_payment else "",
             "created_at": student.get("created_at"),
+            # Payment source fields
+            "payment_from": existing_payment.get("payment_from", "individual") if existing_payment else "individual",
+            "payment_mode": existing_payment.get("payment_mode") if existing_payment else onboarding_data.get("payment_mode"),
+            "gst_type": existing_payment.get("gst_type") if existing_payment else onboarding_data.get("gst_type"),
+            "gst_amount": existing_payment.get("gst_amount") if existing_payment else onboarding_data.get("gst_amount"),
+            "batch_name": student.get("batch_name", ""),
             # Additional conversion details
             "conversion_details": {
                 "skill": student.get("skill", ""),
