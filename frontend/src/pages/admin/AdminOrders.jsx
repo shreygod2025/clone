@@ -1076,38 +1076,6 @@ const AdminOrders = () => {
               </div>
             ) : (
               <div className="p-6 space-y-6">
-                {/* Overall Stats Banner */}
-                <div className="bg-gradient-to-r from-emerald-600 to-green-600 rounded-xl p-5 text-white">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div>
-                      <p className="text-emerald-100 text-xs uppercase tracking-wide">Total Schools</p>
-                      <p className="text-2xl font-bold">{Object.keys(schoolStudentStats).length}</p>
-                    </div>
-                    <div>
-                      <p className="text-emerald-100 text-xs uppercase tracking-wide">Total Collected</p>
-                      <p className="text-2xl font-bold">
-                        ₹{Object.values(schoolStudentStats).reduce((sum, s) => sum + (s.total_collected || 0), 0).toLocaleString()}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-emerald-100 text-xs uppercase tracking-wide">Students Paid</p>
-                      <p className="text-2xl font-bold">
-                        {Object.values(schoolStudentStats).reduce((sum, s) => sum + (s.paid_count || 0), 0)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-emerald-100 text-xs uppercase tracking-wide">Collection Rate</p>
-                      <p className="text-2xl font-bold">
-                        {(() => {
-                          const totalCollected = Object.values(schoolStudentStats).reduce((sum, s) => sum + (s.total_collected || 0), 0);
-                          const totalExpected = Object.values(schoolStudentStats).reduce((sum, s) => sum + (s.total_expected || 0), 0);
-                          return totalExpected > 0 ? Math.round((totalCollected / totalExpected) * 100) : 0;
-                        })()}%
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                
                 {/* School-wise Summary Cards */}
                 {Object.values(schoolStudentStats).map((schoolStat) => (
                   <div key={schoolStat.school_id} className="border border-slate-200 rounded-xl overflow-hidden" data-testid={`school-row-${schoolStat.school_id}`}>
