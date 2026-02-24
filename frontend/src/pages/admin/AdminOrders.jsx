@@ -5,7 +5,7 @@ import {
   DollarSign, Building2, GraduationCap, Upload, Download, Eye, 
   CheckCircle2, Clock, AlertCircle, Calendar, Search, Filter,
   FileText, Receipt, CreditCard, X, ExternalLink, ChevronDown, ChevronRight,
-  Phone, Mail, User
+  Phone, Mail, User, Trash2, Wallet, BanknoteIcon
 } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
