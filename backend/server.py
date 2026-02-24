@@ -10339,6 +10339,10 @@ async def get_student_payments(
             "cf_order_id": dp.get("cf_order_id"),
             "notes": f"Online payment via Cashfree" if dp.get("status") == "PAID" else "",
             "created_at": dp.get("created_at"),
+            # Payment source fields
+            "payment_from": dp.get("payment_from", "individual"),
+            "payment_mode": "online",
+            "batch_name": dp.get("batch_name", ""),
             "conversion_details": {
                 "skill": dp.get("skill", ""),
                 "batch_name": dp.get("batch_name", ""),
