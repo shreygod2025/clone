@@ -1644,6 +1644,219 @@ const AdminOrders = () => {
         </DialogContent>
       </Dialog>
 
+      {/* View Payment Modal (for Student Payments) */}
+      <Dialog open={!!showViewModal} onOpenChange={() => setShowViewModal(null)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="w-5 h-5 text-blue-600" />
+              Payment Details
+            </DialogTitle>
+          </DialogHeader>
+
+          {showViewModal && (
+            <div className="space-y-4">
+              {/* Student Info */}
+              <div className="bg-slate-50 rounded-lg p-4">
+                <h4 className="text-sm font-semibold text-slate-700 mb-3">Student Information</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-xs text-slate-500">Student Name</p>
+                    <p className="font-medium text-slate-800">{showViewModal.student_name}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Parent/Guardian</p>
+                    <p className="font-medium text-slate-800">{showViewModal.parent_name || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Phone</p>
+                    <p className="font-medium text-slate-800">{showViewModal.phone || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Email</p>
+                    <p className="font-medium text-slate-800">{showViewModal.email || '-'}</p>
+                  </div>
+                  {showViewModal.batch_name && (
+                    <div className="col-span-2">
+                      <p className="text-xs text-slate-500">Batch</p>
+                      <p className="font-medium text-slate-800">{showViewModal.batch_name}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Payment Details */}
+              <div className="bg-green-50 rounded-lg p-4">
+                <h4 className="text-sm font-semibold text-green-700 mb-3">Payment Details</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-xs text-slate-500">Amount</p>
+                    <p className="font-bold text-lg text-green-600">₹{(showViewModal.amount || 0).toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Status</p>
+                    {getStatusBadge(showViewModal)}
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Payment From</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      {showViewModal.payment_from === 'school' ? (
+                        <Building2 className="w-4 h-4 text-orange-500" />
+                      ) : (
+                        <User className="w-4 h-4 text-blue-500" />
+                      )}
+                      <span className="font-medium capitalize">{showViewModal.payment_from || 'Individual'}</span>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">Payment Mode</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      {showViewModal.payment_mode === 'online' ? (
+                        <CreditCard className="w-4 h-4 text-green-500" />
+                      ) : showViewModal.payment_mode === 'cash' ? (
+                        <BanknoteIcon className="w-4 h-4 text-amber-500" />
+                      ) : (
+                        <Wallet className="w-4 h-4 text-slate-400" />
+                      )}
+                      <span className="font-medium capitalize">{showViewModal.payment_mode || showViewModal.payment_method || 'N/A'}</span>
+                    </div>
+                  </div>
+                  {showViewModal.transaction_id && (
+                    <div className="col-span-2">
+                      <p className="text-xs text-slate-500">Transaction ID</p>
+                      <p className="font-mono text-sm text-slate-700 bg-white px-2 py-1 rounded">{showViewModal.transaction_id}</p>
+                    </div>
+                  )}
+                  {showViewModal.due_date && (
+                    <div>
+                      <p className="text-xs text-slate-500">Due Date</p>
+                      <p className="font-medium">{format(parseISO(showViewModal.due_date), 'MMM d, yyyy')}</p>
+                    </div>
+                  )}
+                  {showViewModal.payment_date && (
+                    <div>
+                      <p className="text-xs text-slate-500">Payment Date</p>
+                      <p className="font-medium text-green-700">{format(parseISO(showViewModal.payment_date), 'MMM d, yyyy')}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* GST Info */}
+              {showViewModal.gst_type && (
+                <div className="bg-blue-50 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-blue-700 mb-3">GST Information</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-xs text-slate-500">GST Type</p>
+                      <span className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full font-medium ${
+                        showViewModal.gst_type === 'book_gst' ? 'bg-blue-100 text-blue-700' :
+                        showViewModal.gst_type === 'inclusive' ? 'bg-emerald-100 text-emerald-700' :
+                        'bg-amber-100 text-amber-700'
+                      }`}>
+                        {showViewModal.gst_type === 'book_gst' ? 'Book GST' : 
+                         showViewModal.gst_type === 'inclusive' ? 'Inclusive' : 'Exclusive'}
+                      </span>
+                    </div>
+                    {showViewModal.gst_amount > 0 && (
+                      <div>
+                        <p className="text-xs text-slate-500">GST Amount</p>
+                        <p className="font-medium">₹{(showViewModal.gst_amount || 0).toLocaleString()}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Notes */}
+              {showViewModal.notes && (
+                <div className="bg-amber-50 rounded-lg p-4">
+                  <h4 className="text-sm font-semibold text-amber-700 mb-2">Notes</h4>
+                  <p className="text-sm text-slate-700">{showViewModal.notes}</p>
+                </div>
+              )}
+
+              {/* Documents */}
+              {(showViewModal.invoice_url || showViewModal.receipt_url) && (
+                <div className="border-t pt-4">
+                  <p className="text-sm font-medium text-slate-700 mb-3">Documents</p>
+                  <div className="flex items-center gap-3">
+                    {showViewModal.invoice_url && (
+                      <button 
+                        onClick={() => downloadFile(showViewModal.invoice_url, `Invoice_${showViewModal.student_name?.replace(/\s+/g, '_') || 'Student'}`)}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+                      >
+                        <FileText className="w-4 h-4" />
+                        Download Invoice
+                      </button>
+                    )}
+                    {showViewModal.receipt_url && (
+                      <button 
+                        onClick={() => downloadFile(showViewModal.receipt_url, `Receipt_${showViewModal.student_name?.replace(/\s+/g, '_') || 'Student'}`)}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium"
+                      >
+                        <Receipt className="w-4 h-4" />
+                        Download Receipt
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Close button */}
+              <div className="flex justify-end pt-4 border-t">
+                <Button variant="outline" onClick={() => setShowViewModal(null)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <Trash2 className="w-5 h-5" />
+              Delete Payment Record
+            </DialogTitle>
+          </DialogHeader>
+
+          {deleteConfirm && (
+            <div className="space-y-4">
+              <div className="bg-red-50 rounded-lg p-4 border border-red-100">
+                <p className="text-sm text-red-800">
+                  Are you sure you want to delete this payment record?
+                </p>
+                <div className="mt-3 space-y-1 text-sm">
+                  <p><span className="text-slate-500">Student:</span> <span className="font-medium">{deleteConfirm.student_name}</span></p>
+                  <p><span className="text-slate-500">Amount:</span> <span className="font-medium">₹{(deleteConfirm.amount || 0).toLocaleString()}</span></p>
+                  <p><span className="text-slate-500">Status:</span> <span className="font-medium capitalize">{deleteConfirm.status || 'pending'}</span></p>
+                </div>
+              </div>
+              <p className="text-xs text-slate-500">
+                This action cannot be undone. The payment record will be permanently removed.
+              </p>
+              <div className="flex gap-3 pt-2">
+                <Button variant="outline" onClick={() => setDeleteConfirm(null)} className="flex-1">
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={() => handleDeletePayment(deleteConfirm)} 
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                  data-testid="confirm-delete-btn"
+                >
+                  <Trash2 className="w-4 h-4 mr-1" />
+                  Delete
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Student Details Modal */}
       <Dialog open={!!showStudentDetails} onOpenChange={() => setShowStudentDetails(null)}>
         <DialogContent className="max-w-lg">
