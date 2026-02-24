@@ -280,17 +280,14 @@ const AdminOrders = () => {
   const fetchSchoolDetails = async (schoolId) => {
     setLoadingSchoolDetails(true);
     try {
-      const response = await axios.get(`${API}/schools/inquiries`, {
+      // Use dedicated endpoint that doesn't have role-based filtering
+      const response = await axios.get(`${API}/orders/school-details/${schoolId}`, {
         headers: getAuthHeaders()
       });
-      const school = response.data.find(s => s.id === schoolId);
-      if (school) {
-        setShowSchoolDetails(school);
-      } else {
-        toast.error('School details not found');
-      }
+      setShowSchoolDetails(response.data);
     } catch (error) {
-      toast.error('Failed to fetch school details');
+      console.error('Failed to fetch school details:', error);
+      toast.error(error.response?.data?.detail || 'Failed to fetch school details');
     } finally {
       setLoadingSchoolDetails(false);
     }
