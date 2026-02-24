@@ -105,6 +105,8 @@ const AdminOrders = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(null);
   const [showSchoolDetails, setShowSchoolDetails] = useState(null);
   const [showStudentDetails, setShowStudentDetails] = useState(null);
+  const [showViewModal, setShowViewModal] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [loadingSchoolDetails, setLoadingSchoolDetails] = useState(false);
   const [uploadingInvoice, setUploadingInvoice] = useState(false);
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
