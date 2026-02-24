@@ -10655,6 +10655,105 @@ async def update_payment(
         
         return {"success": True, "payment_id": payment_id, "status": data.get("status")}
 
+
+@api_router.delete("/orders/student-payments/{payment_id}")
+async def delete_student_payment(
+    payment_id: str,
+    user: dict = Depends(get_current_user)
+):
+    """Delete a student payment record"""
+    # Check if it's a direct payment from student_payments collection (Cashfree)
+    if not payment_id.startswith("stu-"):
+        # This is a Cashfree payment - delete from student_payments collection
+        result = await db.student_payments.delete_one({"id": payment_id})
+        if result.deleted_count == 0:
+            # Try with _id as string fallback
+            result = await db.student_payments.delete_one({"order_id": payment_id})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Payment record not found")
+        
+        return {"success": True, "message": "Payment record deleted successfully"}
+    
+    # It's a student inquiry payment - ID format: stu-{student_id}
+    student_id = payment_id.replace("stu-", "")
+    
+    # Find the student
+    student = await db.student_inquiries.find_one({"id": student_id})
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+    
+    # Get payments array
+    payments = student.get("payments", [])
+    
+    # Find and remove the payment
+    payment_idx = next(
+        (i for i, p in enumerate(payments) if p.get("id") == payment_id),
+        None
+    )
+    
+    if payment_idx is not None:
+        payments.pop(payment_idx)
+        
+        # Update student record
+        await db.student_inquiries.update_one(
+            {"id": student_id},
+            {"$set": {
+                "payments": payments,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+    
+    return {"success": True, "message": "Payment record deleted successfully"}
+
+
+@api_router.delete("/orders/school-payments/{payment_id}")
+async def delete_school_payment(
+    payment_id: str,
+    user: dict = Depends(get_current_user)
+):
+    """Delete a school payment record (tranche payment)"""
+    # Parse school_id and tranche_index from payment_id
+    # Format: sch-{school_id}-t{tranche_index}
+    parts = payment_id.split("-t")
+    if len(parts) != 2:
+        raise HTTPException(status_code=400, detail="Invalid payment ID format")
+    
+    school_id = parts[0].replace("sch-", "")
+    try:
+        tranche_index = int(parts[1])
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid tranche index")
+    
+    # Find the school
+    school = await db.school_inquiries.find_one({"id": school_id})
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+    
+    # Get payments array
+    payments = school.get("payments", [])
+    
+    # Find and remove the payment
+    payment_idx = next(
+        (i for i, p in enumerate(payments) if p.get("id") == payment_id),
+        None
+    )
+    
+    if payment_idx is not None:
+        payments.pop(payment_idx)
+        
+        # Update school record
+        await db.school_inquiries.update_one(
+            {"id": school_id},
+            {"$set": {
+                "payments": payments,
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }}
+        )
+    
+    return {"success": True, "message": "Payment record deleted successfully"}
+
+
 # ========================
 # DATA CENTER - UNIFIED DATABASE
 # ========================
