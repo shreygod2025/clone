@@ -42,6 +42,11 @@ const SchoolPaymentTracker = () => {
   const fetchPayments = async () => {
     try {
       const token = localStorage.getItem('oll_token');
+      if (!token) {
+        // User not logged in, redirect to login
+        navigate('/admin/login');
+        return;
+      }
       const params = {};
       if (gradeFilter && gradeFilter !== 'all') {
         params.grade = gradeFilter;
