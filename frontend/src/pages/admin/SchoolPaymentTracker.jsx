@@ -33,7 +33,7 @@ const SchoolPaymentTracker = () => {
 
   const fetchPayments = async () => {
     try {
-      const token = localStorage.getItem('adminToken');
+      const token = localStorage.getItem('oll_token');
       const params = {};
       if (gradeFilter && gradeFilter !== 'all') {
         params.grade = gradeFilter;
