@@ -1234,7 +1234,7 @@ const AdminSupportUnified = () => {
 
       {/* Reply Modal - Chat Style */}
       <Dialog open={!!showReplyModal} onOpenChange={() => { setShowReplyModal(null); setQueryReplies([]); }}>
-        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col" preventClose>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col" preventClose>
           <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <MessageSquare className="w-5 h-5 text-[#D63031]" />
@@ -1242,7 +1242,7 @@ const AdminSupportUnified = () => {
             </DialogTitle>
           </DialogHeader>
           {showReplyModal && (
-            <div className="flex flex-col flex-1 min-h-0">
+            <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
               {/* Query Info Header */}
               <div className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg p-4 mb-4 flex-shrink-0">
                 <div className="flex items-center justify-between mb-2">
@@ -1269,7 +1269,7 @@ const AdminSupportUnified = () => {
               </div>
               
               {/* Chat Messages Area */}
-              <div className="flex-1 overflow-y-auto mb-4 space-y-3 min-h-[200px] max-h-[300px] pr-2">
+              <div className="flex-1 overflow-y-auto mb-4 space-y-3 min-h-[150px] max-h-[250px] pr-2">
                 {loadingHistory ? (
                   <div className="flex items-center justify-center py-8">
                     <RefreshCw className="w-5 h-5 animate-spin text-slate-400" />
