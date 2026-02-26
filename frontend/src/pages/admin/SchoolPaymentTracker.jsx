@@ -29,7 +29,15 @@ const SchoolPaymentTracker = () => {
 
   useEffect(() => {
     fetchPayments();
-  }, [schoolId, gradeFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [schoolId]);
+  
+  useEffect(() => {
+    if (gradeFilter !== 'all') {
+      fetchPayments();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gradeFilter]);
 
   const fetchPayments = async () => {
     try {
