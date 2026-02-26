@@ -28,18 +28,14 @@ const SchoolPaymentTracker = () => {
   const grades = [...new Set(payments.map(p => p.grade))].sort();
 
   useEffect(() => {
-    fetchPayments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schoolId]);
-  
-  useEffect(() => {
-    if (gradeFilter !== 'all') {
+    if (schoolId) {
       fetchPayments();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gradeFilter]);
+  }, [schoolId, gradeFilter]);
 
   const fetchPayments = async () => {
+    setLoading(true);
     try {
       const token = localStorage.getItem('oll_token');
       if (!token) {
@@ -67,7 +63,10 @@ const SchoolPaymentTracker = () => {
       }
     } catch (error) {
       console.error('Failed to fetch payments:', error);
-      toast.error('Failed to load payment data');
+      // Only show error if it's a real error (not 401 which means not authenticated)
+      if (error.response?.status !== 401) {
+        toast.error('Failed to load payment data');
+      }
     } finally {
       setLoading(false);
     }
