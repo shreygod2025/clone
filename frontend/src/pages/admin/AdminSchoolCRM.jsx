@@ -2478,6 +2478,56 @@ const AdminSchoolCRM = () => {
 
   // Fetch onboarding data for editing
   const handleEditOnboarding = async (school) => {
+    // First check if school has onboarding_data directly (for renewed/converted schools)
+    const existingOnboardData = school.onboarding_data;
+    
+    if (existingOnboardData && Object.keys(existingOnboardData).length > 0) {
+      // Use the onboarding_data from the school record directly
+      setEditOnboardData({
+        school_id: school.id,
+        school_name: school.school_name,
+        contact_name: school.contact_name,
+        phone: school.phone,
+        email: school.email,
+        location: school.location,
+        board: school.board,
+        address: school.address || '',
+        // Spread the existing onboarding data
+        offering: existingOnboardData.offering || '',
+        model: existingOnboardData.model || school.model || '',
+        book_type: existingOnboardData.book_type || '',
+        kit_type: existingOnboardData.kit_type || '',
+        training_type: existingOnboardData.training_type || '',
+        pricing_type: existingOnboardData.pricing_type || 'per_student',
+        fixed_price: existingOnboardData.fixed_price || '',
+        grade_pricing: existingOnboardData.grade_pricing || [],
+        total_students: existingOnboardData.total_students || school.total_students || 0,
+        total_amount: existingOnboardData.total_amount || 0,
+        school_contacts: existingOnboardData.school_contacts || [{ name: school.contact_name || '', phone: school.phone || '', email: school.email || '', role: 'Primary Contact' }],
+        payment_mode: existingOnboardData.payment_mode || 'from_school',
+        payment_method: existingOnboardData.payment_method || '',
+        payment_tranches: existingOnboardData.payment_tranches || [],
+        deadline_date: existingOnboardData.deadline_date || '',
+        contract_start: existingOnboardData.contract_start || '',
+        contract_end: existingOnboardData.contract_end || '',
+        mou_url: existingOnboardData.mou_url || '',
+        parent_circular_url: existingOnboardData.parent_circular_url || '',
+        payment_link: existingOnboardData.payment_link || '',
+        // Share fields
+        school_share_type: existingOnboardData.school_share_type || 'none',
+        school_share_calc: existingOnboardData.school_share_calc || 'lumpsum',
+        school_share_value: existingOnboardData.school_share_value || '',
+        school_share_amount: existingOnboardData.school_share_amount || 0,
+        gp_share_type: existingOnboardData.gp_share_type || 'none',
+        gp_share_calc: existingOnboardData.gp_share_calc || 'lumpsum',
+        gp_share_value: existingOnboardData.gp_share_value || '',
+        gp_share_amount: existingOnboardData.gp_share_amount || 0,
+      });
+      setShowEditOnboardingModal(school);
+      return;
+    }
+    
+    // Fallback: try to fetch from separate onboarding endpoint
     try {
       const response = await axios.get(`${API}/schools/onboarding/${school.id}`, {
         headers: getAuthHeaders()
