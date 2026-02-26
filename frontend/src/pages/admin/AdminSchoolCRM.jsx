@@ -7898,7 +7898,7 @@ const AdminSchoolCRM = () => {
                     onClick={async () => {
                       try {
                         const token = localStorage.getItem('oll_token');
-                        const response = await axios.get(`${API}/school-payment/tracker/${showOnboardingWorkflowModal.id}`, {
+                        const response = await axios.get(`${API}/api/school-payment/tracker/${showOnboardingWorkflowModal.id}`, {
                           headers: { Authorization: `Bearer ${token}` }
                         });
                         
