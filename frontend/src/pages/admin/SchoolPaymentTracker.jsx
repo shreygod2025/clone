@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Download, Filter, Search, Users, CreditCard, TrendingUp, Check, Clock, Copy, ExternalLink, FileSpreadsheet } from 'lucide-react';
 import { Button } from '../../components/ui/button';
@@ -13,6 +13,7 @@ const API = process.env.REACT_APP_BACKEND_URL;
 const SchoolPaymentTracker = () => {
   const { schoolId } = useParams();
   const navigate = useNavigate();
+  const hasFetched = useRef(false);
   
   const [loading, setLoading] = useState(true);
   const [payments, setPayments] = useState([]);
@@ -28,11 +29,21 @@ const SchoolPaymentTracker = () => {
   const grades = [...new Set(payments.map(p => p.grade))].sort();
 
   useEffect(() => {
-    if (schoolId) {
+    // Prevent double fetch in Strict Mode on initial mount
+    if (schoolId && !hasFetched.current) {
+      hasFetched.current = true;
       fetchPayments();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schoolId, gradeFilter]);
+  }, [schoolId]);
+  
+  // Separate effect for grade filter changes
+  useEffect(() => {
+    if (hasFetched.current && gradeFilter !== 'all') {
+      fetchPayments();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gradeFilter]);
 
   const fetchPayments = async () => {
     setLoading(true);
