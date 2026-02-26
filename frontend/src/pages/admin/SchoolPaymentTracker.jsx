@@ -59,7 +59,7 @@ const SchoolPaymentTracker = () => {
         params.grade = gradeFilter;
       }
       
-      const response = await axios.get(`${API}/school-payment/tracker/${schoolId}`, {
+      const response = await axios.get(`${API}/api/school-payment/tracker/${schoolId}`, {
         headers: { Authorization: `Bearer ${token}` },
         params
       });
