@@ -13,26 +13,24 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const SchoolStudentPayment = () => {
   const { schoolId } = useParams();
-  const searchParams = new URLSearchParams(window.location.search);
-  const isPreviewMode = searchParams.get('preview') === 'success';
   
   const [loading, setLoading] = useState(true);
   const [schoolInfo, setSchoolInfo] = useState(null);
   const [error, setError] = useState(null);
   
   // Form state
-  const [studentName, setStudentName] = useState(isPreviewMode ? 'Rahul Sharma' : '');
-  const [phone, setPhone] = useState(isPreviewMode ? '9876543210' : '');
-  const [grade, setGrade] = useState(isPreviewMode ? '5th' : '');
-  const [division, setDivision] = useState(isPreviewMode ? 'A' : '');
-  const [selectedAmount, setSelectedAmount] = useState(isPreviewMode ? 2500 : 0);
+  const [studentName, setStudentName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [grade, setGrade] = useState('');
+  const [division, setDivision] = useState('');
+  const [selectedAmount, setSelectedAmount] = useState(0);
   
   // Payment state
   const [processingPayment, setProcessingPayment] = useState(false);
   const [cashfreeReady, setCashfreeReady] = useState(false);
-  const [paymentSuccess, setPaymentSuccess] = useState(isPreviewMode);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [paymentError, setPaymentError] = useState(null);
-  const [transactionId, setTransactionId] = useState(isPreviewMode ? 'TXN123456789' : null);
+  const [transactionId, setTransactionId] = useState(null);
 
   // Load Cashfree SDK
   useEffect(() => {
