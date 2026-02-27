@@ -2662,7 +2662,39 @@ const AdminSchoolCRM = () => {
     if (!editOnboardData) return;
     
     try {
-      // Update school inquiry basic info
+      // Build the onboarding data object
+      const onboardingData = {
+        offering: editOnboardData.offering,
+        model: editOnboardData.model,
+        book_type: editOnboardData.book_type,
+        kit_type: editOnboardData.kit_type,
+        training_type: editOnboardData.training_type,
+        pricing_type: editOnboardData.pricing_type,
+        fixed_price: editOnboardData.fixed_price,
+        grade_pricing: editOnboardData.grade_pricing,
+        total_students: editOnboardData.total_students,
+        total_amount: editOnboardData.total_amount,
+        school_contacts: editOnboardData.school_contacts,
+        payment_mode: editOnboardData.payment_mode,
+        payment_method: editOnboardData.payment_mode === 'online' ? 'student' : editOnboardData.payment_method,
+        payment_tranches: editOnboardData.payment_mode === 'online' ? [] : editOnboardData.payment_tranches,
+        deadline_date: editOnboardData.deadline_date,
+        contract_start: editOnboardData.contract_start,
+        contract_end: editOnboardData.contract_end,
+        mou_url: editOnboardData.mou_url,
+        parent_circular_url: editOnboardData.parent_circular_url,
+        payment_link: editOnboardData.payment_link,
+        school_share_type: editOnboardData.school_share_type,
+        school_share_calc: editOnboardData.school_share_calc,
+        school_share_value: editOnboardData.school_share_value,
+        school_share_amount: editOnboardData.school_share_amount,
+        gp_share_type: editOnboardData.gp_share_type,
+        gp_share_calc: editOnboardData.gp_share_calc,
+        gp_share_value: editOnboardData.gp_share_value,
+        gp_share_amount: editOnboardData.gp_share_amount,
+      };
+
+      // Update school inquiry basic info AND onboarding_data for renewed/converted schools
       await axios.patch(`${API}/schools/inquiry/${editOnboardData.school_id}`, {
         school_name: editOnboardData.school_name,
         contact_name: editOnboardData.contact_name,
@@ -2673,73 +2705,15 @@ const AdminSchoolCRM = () => {
         address: editOnboardData.address,
         model: editOnboardData.model,
         total_students: editOnboardData.total_students,
+        // Always update onboarding_data on the school record for renewed/converted schools
+        onboarding_data: onboardingData,
       }, {
         headers: getAuthHeaders()
       });
       
-      // Update onboarding record if exists
-      if (editOnboardData.id) {
-        await axios.put(`${API}/schools/onboarding/${editOnboardData.id}`, {
-          offering: editOnboardData.offering,
-          model: editOnboardData.model,
-          book_type: editOnboardData.book_type,
-          kit_type: editOnboardData.kit_type,
-          training_type: editOnboardData.training_type,
-          pricing_type: editOnboardData.pricing_type,
-          fixed_price: editOnboardData.fixed_price,
-          grade_pricing: editOnboardData.grade_pricing,
-          total_students: editOnboardData.total_students,
-          total_amount: editOnboardData.total_amount,
-          school_contacts: editOnboardData.school_contacts,
-          payment_mode: editOnboardData.payment_mode,
-          payment_method: editOnboardData.payment_mode === 'online' ? 'student' : editOnboardData.payment_method,
-          payment_tranches: editOnboardData.payment_mode === 'online' ? [] : editOnboardData.payment_tranches,
-          deadline_date: editOnboardData.deadline_date,
-          contract_start: editOnboardData.contract_start,
-          contract_end: editOnboardData.contract_end,
-          mou_url: editOnboardData.mou_url,
-          school_share_type: editOnboardData.school_share_type,
-          school_share_calc: editOnboardData.school_share_calc,
-          school_share_value: editOnboardData.school_share_value,
-          school_share_amount: editOnboardData.school_share_amount,
-          gp_share_type: editOnboardData.gp_share_type,
-          gp_share_calc: editOnboardData.gp_share_calc,
-          gp_share_value: editOnboardData.gp_share_value,
-          gp_share_amount: editOnboardData.gp_share_amount,
-        }, {
-          headers: getAuthHeaders()
-        });
-      } else {
-        // Create onboarding record if it doesn't exist
-        await axios.post(`${API}/schools/onboarding`, {
-          school_id: editOnboardData.school_id,
-          offering: editOnboardData.offering,
-          model: editOnboardData.model,
-          book_type: editOnboardData.book_type,
-          kit_type: editOnboardData.kit_type,
-          training_type: editOnboardData.training_type,
-          pricing_type: editOnboardData.pricing_type,
-          fixed_price: editOnboardData.fixed_price,
-          grade_pricing: editOnboardData.grade_pricing,
-          total_students: editOnboardData.total_students,
-          total_amount: editOnboardData.total_amount,
-          school_contacts: editOnboardData.school_contacts,
-          payment_mode: editOnboardData.payment_mode,
-          payment_method: editOnboardData.payment_mode === 'online' ? 'student' : editOnboardData.payment_method,
-          payment_tranches: editOnboardData.payment_mode === 'online' ? [] : editOnboardData.payment_tranches,
-          deadline_date: editOnboardData.deadline_date,
-          contract_start: editOnboardData.contract_start,
-          contract_end: editOnboardData.contract_end,
-          mou_url: editOnboardData.mou_url,
-          school_share_type: editOnboardData.school_share_type,
-          school_share_calc: editOnboardData.school_share_calc,
-          school_share_value: editOnboardData.school_share_value,
-          school_share_amount: editOnboardData.school_share_amount,
-          gp_share_type: editOnboardData.gp_share_type,
-          gp_share_calc: editOnboardData.gp_share_calc,
-          gp_share_value: editOnboardData.gp_share_value,
-          gp_share_amount: editOnboardData.gp_share_amount,
-        }, {
+      // Also update separate onboarding record if it exists (for backward compatibility)
+      if (editOnboardData.id && !editOnboardData.is_direct_onboarding_data) {
+        await axios.put(`${API}/schools/onboarding/${editOnboardData.id}`, onboardingData, {
           headers: getAuthHeaders()
         });
       }
