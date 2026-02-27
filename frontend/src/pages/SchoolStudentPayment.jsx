@@ -323,48 +323,135 @@ const SchoolStudentPayment = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex flex-col">
         <Header />
-        <div className="flex-1 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle2 className="w-12 h-12 text-green-600" />
+        <div className="flex-1 flex items-center justify-center p-4 py-8">
+          <div className="w-full max-w-lg">
+            {/* Success Animation */}
+            <div className="text-center mb-6">
+              <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg animate-bounce">
+                <CheckCircle2 className="w-14 h-14 text-green-600" />
+              </div>
+              <h1 className="text-3xl font-bold text-slate-800 mb-2">Payment Successful!</h1>
+              <p className="text-slate-600">
+                Thank you for your payment. Your registration is confirmed.
+              </p>
             </div>
-            <h1 className="text-2xl font-bold text-slate-800 mb-2">Payment Successful!</h1>
-            <p className="text-slate-600 mb-6">
-              Thank you for your payment. Your registration is confirmed.
-            </p>
-            
-            <div className="bg-slate-50 rounded-xl p-4 mb-6 text-left space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-slate-500">Student</span>
-                <span className="font-medium text-slate-800">{studentName}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-500">School</span>
-                <span className="font-medium text-slate-800">{schoolInfo?.school_name}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-500">Program</span>
-                <span className="font-medium text-slate-800">{programName}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-500">Grade</span>
-                <span className="font-medium text-slate-800">{grade} {division && `- ${division}`}</span>
-              </div>
-              <div className="flex justify-between items-center pt-2 border-t">
-                <span className="text-slate-500">Amount Paid</span>
-                <span className="font-bold text-green-600 text-lg">{formatCurrency(selectedAmount)}</span>
-              </div>
-              {transactionId && (
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500">Transaction ID</span>
-                  <span className="font-mono text-sm text-slate-600">{transactionId}</span>
+
+            {/* Receipt Card */}
+            <div className="bg-white rounded-2xl shadow-xl overflow-hidden mb-6">
+              {/* Receipt Header */}
+              <div className="bg-gradient-to-r from-[#1E3A5F] to-[#2d4a6f] text-white p-5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <img 
+                      src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png" 
+                      alt="OLL Logo"
+                      className="h-8 w-auto brightness-0 invert"
+                    />
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-white/70 uppercase tracking-wide">Payment Receipt</p>
+                    <p className="text-sm font-medium">{new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                  </div>
                 </div>
-              )}
+              </div>
+
+              {/* Receipt Body */}
+              <div className="p-6 space-y-4">
+                {/* Student Details */}
+                <div className="grid grid-cols-2 gap-4 pb-4 border-b border-dashed border-slate-200">
+                  <div>
+                    <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Student Name</p>
+                    <p className="font-semibold text-slate-800">{studentName}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Phone</p>
+                    <p className="font-medium text-slate-700">{phone}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">Grade & Division</p>
+                    <p className="font-medium text-slate-700">{grade} {division && `- ${division}`}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-400 uppercase tracking-wide mb-1">School</p>
+                    <p className="font-medium text-slate-700">{schoolInfo?.school_name}</p>
+                  </div>
+                </div>
+
+                {/* Program Details */}
+                <div className="bg-blue-50 rounded-xl p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-blue-500 uppercase tracking-wide mb-1">Program Enrolled</p>
+                      <p className="font-semibold text-slate-800 text-lg">{programName}</p>
+                    </div>
+                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                      <GraduationCap className="w-6 h-6 text-blue-600" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment Details */}
+                <div className="bg-green-50 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm text-slate-600">Amount Paid</p>
+                    <p className="text-2xl font-bold text-green-600">{formatCurrency(selectedAmount)}</p>
+                  </div>
+                  {transactionId && (
+                    <div className="flex items-center justify-between pt-3 border-t border-green-200">
+                      <p className="text-xs text-slate-500">Transaction ID</p>
+                      <p className="font-mono text-xs text-slate-600 bg-white px-2 py-1 rounded">{transactionId}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Status Badge */}
+                <div className="flex items-center justify-center gap-2 py-2">
+                  <div className="flex items-center gap-2 bg-green-100 text-green-700 px-4 py-2 rounded-full text-sm font-medium">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Payment Confirmed
+                  </div>
+                </div>
+              </div>
+
+              {/* Receipt Footer */}
+              <div className="bg-slate-50 px-6 py-4">
+                <p className="text-xs text-slate-500 text-center">
+                  A confirmation message will be sent to <span className="font-medium">{phone}</span>
+                </p>
+              </div>
             </div>
-            
-            <p className="text-sm text-slate-500">
-              A confirmation will be sent to {phone}
-            </p>
+
+            {/* CTA Buttons */}
+            <div className="bg-white rounded-2xl shadow-lg p-6">
+              <h3 className="text-lg font-semibold text-slate-800 mb-4 text-center">Explore More from OLL</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Link 
+                  to="/offerings" 
+                  className="flex items-center justify-center gap-2 bg-gradient-to-r from-[#C53030] to-[#D63031] text-white px-5 py-3 rounded-xl font-medium hover:shadow-lg transition-all hover:scale-[1.02] text-center"
+                >
+                  <GraduationCap className="w-5 h-5" />
+                  Explore Our Offerings
+                </Link>
+                <Link 
+                  to="/about" 
+                  className="flex items-center justify-center gap-2 bg-gradient-to-r from-[#1E3A5F] to-[#2d4a6f] text-white px-5 py-3 rounded-xl font-medium hover:shadow-lg transition-all hover:scale-[1.02] text-center"
+                >
+                  <School className="w-5 h-5" />
+                  Learn About OLL
+                </Link>
+              </div>
+              
+              {/* Additional Links */}
+              <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-center gap-4 text-sm">
+                <Link to="/" className="text-slate-500 hover:text-[#C53030] transition-colors">
+                  Back to Home
+                </Link>
+                <span className="text-slate-300">|</span>
+                <Link to="/student" className="text-slate-500 hover:text-[#C53030] transition-colors">
+                  Student Portal
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
         <Footer />
