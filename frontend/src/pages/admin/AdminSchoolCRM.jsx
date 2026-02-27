@@ -2695,6 +2695,7 @@ const AdminSchoolCRM = () => {
       };
 
       // Update school inquiry basic info AND onboarding_data for renewed/converted schools
+      // Also update conversion_amount to keep it in sync with total_amount
       await axios.patch(`${API}/schools/inquiry/${editOnboardData.school_id}`, {
         school_name: editOnboardData.school_name,
         contact_name: editOnboardData.contact_name,
@@ -2705,6 +2706,8 @@ const AdminSchoolCRM = () => {
         address: editOnboardData.address,
         model: editOnboardData.model,
         total_students: editOnboardData.total_students,
+        // Keep conversion_amount in sync with total_amount for display purposes
+        conversion_amount: editOnboardData.total_amount ? String(editOnboardData.total_amount) : undefined,
         // Always update onboarding_data on the school record for renewed/converted schools
         onboarding_data: onboardingData,
       }, {
