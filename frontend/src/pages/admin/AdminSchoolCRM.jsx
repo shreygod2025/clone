@@ -2541,8 +2541,10 @@ const AdminSchoolCRM = () => {
     
     if (existingOnboardData && Object.keys(existingOnboardData).length > 0) {
       // Use the onboarding_data from the school record directly
+      // Mark this as a direct onboarding_data edit (not a separate onboarding record)
       setEditOnboardData({
         school_id: school.id,
+        is_direct_onboarding_data: true, // Flag to indicate this is embedded in school record
         school_name: school.school_name,
         contact_name: school.contact_name,
         phone: school.phone,
