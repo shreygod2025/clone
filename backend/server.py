@@ -12934,10 +12934,12 @@ def transform_tracking_url(url: str) -> str:
         return url
     # Replace preview domain with production domain
     preview_patterns = [
+        "oll-procure.preview.emergentagent.com",
         "procureway.preview.emergentagent.com",
         "vendorplus.preview.emergentagent.com",
         "procureway.stage-preview.emergentagent.com",
-        "vendorplus.stage-preview.emergentagent.com"
+        "vendorplus.stage-preview.emergentagent.com",
+        "oll-procure.stage-preview.emergentagent.com"
     ]
     for pattern in preview_patterns:
         if pattern in url:
