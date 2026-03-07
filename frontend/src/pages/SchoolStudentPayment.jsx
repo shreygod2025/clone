@@ -105,6 +105,10 @@ const SchoolStudentPayment = () => {
       toast.error('Please select grade');
       return false;
     }
+    if (!division.trim()) {
+      toast.error('Please enter division/section');
+      return false;
+    }
     if (!selectedAmount || selectedAmount <= 0) {
       toast.error('Invalid fee amount');
       return false;
@@ -556,7 +560,7 @@ const SchoolStudentPayment = () => {
                 <div>
                   <Label className="text-slate-700 flex items-center gap-2 mb-2 font-medium">
                     <Hash className="w-4 h-4" />
-                    Division / Section <span className="text-slate-400 text-sm font-normal">(Optional)</span>
+                    Division / Section <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     value={division}
@@ -564,6 +568,7 @@ const SchoolStudentPayment = () => {
                     placeholder="e.g., A, B, C"
                     className="h-12 border-slate-200 focus:border-[#C53030] focus:ring-[#C53030]"
                     maxLength={5}
+                    required
                     data-testid="division-input"
                   />
                 </div>
@@ -598,7 +603,7 @@ const SchoolStudentPayment = () => {
               {/* Pay Button */}
               <Button
                 onClick={handlePayNow}
-                disabled={processingPayment || !cashfreeReady || !grade}
+                disabled={processingPayment || !cashfreeReady || !grade || !division.trim()}
                 className="w-full mt-6 h-14 bg-[#C53030] hover:bg-[#9B2C2C] text-white text-lg font-semibold shadow-lg shadow-red-200 transition-all"
                 data-testid="pay-button"
               >
