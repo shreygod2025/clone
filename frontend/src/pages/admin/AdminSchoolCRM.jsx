@@ -671,6 +671,15 @@ const AdminSchoolCRM = () => {
     parent_circular_url: '', // Parent circular URL (for from_student payment mode)
     payment_link: '', // Payment link (for online payment method)
     is_draft: false,
+    // School Share and GP Share fields
+    school_share_type: 'none', // 'none', 'percentage', 'amount'
+    school_share_calc: 'lumpsum', // 'per_student', 'lumpsum'
+    school_share_value: '',
+    school_share_amount: 0,
+    gp_share_type: 'none', // 'none', 'percentage', 'amount'
+    gp_share_calc: 'lumpsum', // 'per_student', 'lumpsum'
+    gp_share_value: '',
+    gp_share_amount: 0,
   });
   const [editOnboardData, setEditOnboardData] = useState(null);
   const [offerings, setOfferings] = useState([]);
@@ -1491,7 +1500,14 @@ const AdminSchoolCRM = () => {
   };
 
   const updateRenewalPaymentTranche = (index, field, value) => {
-    const totalAmount = renewalConvertData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
+    // Calculate total based on pricing_type (include fixed_price when applicable)
+    let totalAmount = 0;
+    if (renewalConvertData.pricing_type === 'per_student' || renewalConvertData.pricing_type === 'both') {
+      totalAmount += renewalConvertData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
+    }
+    if (renewalConvertData.pricing_type === 'fixed' || renewalConvertData.pricing_type === 'both') {
+      totalAmount += parseFloat(renewalConvertData.fixed_price) || 0;
+    }
     
     setRenewalConvertData(prev => {
       const newTranches = prev.payment_tranches.map((t, i) => {
@@ -1866,6 +1882,37 @@ const AdminSchoolCRM = () => {
         contract_end: contractEnd,
         mou_url: String(onboardData.mou_url || ''),
         is_draft: saveAsDraft,
+        // School Share and GP Share
+        school_share_type: String(onboardData.school_share_type || 'none'),
+        school_share_calc: String(onboardData.school_share_calc || 'lumpsum'),
+        school_share_value: String(onboardData.school_share_value || ''),
+        school_share_amount: (() => {
+          if (onboardData.school_share_type === 'none' || !onboardData.school_share_value) return 0;
+          const shareValue = parseFloat(onboardData.school_share_value) || 0;
+          if (onboardData.school_share_type === 'percentage') {
+            return (shareValue / 100) * totalAmount;
+          } else {
+            if (onboardData.school_share_calc === 'per_student') {
+              return shareValue * totalStudents;
+            }
+            return shareValue;
+          }
+        })(),
+        gp_share_type: String(onboardData.gp_share_type || 'none'),
+        gp_share_calc: String(onboardData.gp_share_calc || 'lumpsum'),
+        gp_share_value: String(onboardData.gp_share_value || ''),
+        gp_share_amount: (() => {
+          if (onboardData.gp_share_type === 'none' || !onboardData.gp_share_value) return 0;
+          const shareValue = parseFloat(onboardData.gp_share_value) || 0;
+          if (onboardData.gp_share_type === 'percentage') {
+            return (shareValue / 100) * totalAmount;
+          } else {
+            if (onboardData.gp_share_calc === 'per_student') {
+              return shareValue * totalStudents;
+            }
+            return shareValue;
+          }
+        })(),
       }, { headers: getAuthHeaders() });
       
       // Update school status based on save mode
@@ -1900,7 +1947,9 @@ const AdminSchoolCRM = () => {
         total_students: 0, total_amount: 0, school_contacts: [{ name: '', phone_number: '', country_code: '+91', email: '', role: '' }],
         payment_mode: 'from_school', payment_method: '', payment_tranches: [{ amount: '', percentage: '', date: '', notes: '' }],
         deadline_date: '',
-        contract_start: '', contract_end: '', mou_url: '', is_draft: false
+        contract_start: '', contract_end: '', mou_url: '', is_draft: false,
+        school_share_type: 'none', school_share_calc: 'lumpsum', school_share_value: '', school_share_amount: 0,
+        gp_share_type: 'none', gp_share_calc: 'lumpsum', gp_share_value: '', gp_share_amount: 0,
       });
       fetchInquiries();
     } catch (error) {
@@ -1946,7 +1995,14 @@ const AdminSchoolCRM = () => {
   };
 
   const updatePaymentTranche = (index, field, value) => {
-    const totalAmount = onboardData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
+    // Calculate total based on pricing_type (include fixed_price when applicable)
+    let totalAmount = 0;
+    if (onboardData.pricing_type === 'per_student' || onboardData.pricing_type === 'both') {
+      totalAmount += onboardData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
+    }
+    if (onboardData.pricing_type === 'fixed' || onboardData.pricing_type === 'both') {
+      totalAmount += parseFloat(onboardData.fixed_price) || 0;
+    }
     
     setOnboardData(prev => {
       const newTranches = prev.payment_tranches.map((t, i) => {
@@ -4797,37 +4853,19 @@ const AdminSchoolCRM = () => {
             )}
 
             {/* Offering Selection */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium text-slate-700">Select Offering *</label>
-                <select
-                  value={renewalConvertData.offering}
-                  onChange={(e) => setRenewalConvertData(prev => ({ ...prev, offering: e.target.value }))}
-                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
-                  data-testid="renewal-offering"
-                >
-                  <option value="">Select from offerings</option>
-                  {offerings.map(o => (
-                    <option key={o.id} value={o.id}>{o.title || o.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-slate-700">Model/Type *</label>
-                <select
-                  value={renewalConvertData.model}
-                  onChange={(e) => setRenewalConvertData(prev => ({ ...prev, model: e.target.value }))}
-                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
-                  data-testid="renewal-model"
-                >
-                  <option value="">Select model</option>
-                  <option value="robotics_lab">Robotics Lab Setup</option>
-                  <option value="stem_curriculum">STEM Curriculum Integration</option>
-                  <option value="after_school">After School Program</option>
-                  <option value="teacher_training">Teacher Training</option>
-                  <option value="full_partnership">Full School Partnership</option>
-                </select>
-              </div>
+            <div>
+              <label className="text-sm font-medium text-slate-700">Select Offering *</label>
+              <select
+                value={renewalConvertData.offering}
+                onChange={(e) => setRenewalConvertData(prev => ({ ...prev, offering: e.target.value }))}
+                className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                data-testid="renewal-offering"
+              >
+                <option value="">Select from offerings</option>
+                {offerings.map(o => (
+                  <option key={o.id} value={o.id}>{o.title || o.name}</option>
+                ))}
+              </select>
             </div>
             
             {/* Book Type, Kit Type, Training Type */}
@@ -6317,35 +6355,18 @@ const AdminSchoolCRM = () => {
             )}
 
             {/* Offering Selection */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium text-slate-700">Select Offering *</label>
-                <select
-                  value={onboardData.offering}
-                  onChange={(e) => setOnboardData(prev => ({ ...prev, offering: e.target.value }))}
-                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
-                >
-                  <option value="">Select from offerings</option>
-                  {offerings.map(o => (
-                    <option key={o.id} value={o.id}>{o.title || o.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-slate-700">Model/Type *</label>
-                <select
-                  value={onboardData.model}
-                  onChange={(e) => setOnboardData(prev => ({ ...prev, model: e.target.value }))}
-                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
-                >
-                  <option value="">Select model</option>
-                  <option value="robotics_lab">Robotics Lab Setup</option>
-                  <option value="stem_curriculum">STEM Curriculum Integration</option>
-                  <option value="after_school">After School Program</option>
-                  <option value="teacher_training">Teacher Training</option>
-                  <option value="full_partnership">Full School Partnership</option>
-                </select>
-              </div>
+            <div>
+              <label className="text-sm font-medium text-slate-700">Select Offering *</label>
+              <select
+                value={onboardData.offering}
+                onChange={(e) => setOnboardData(prev => ({ ...prev, offering: e.target.value }))}
+                className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+              >
+                <option value="">Select from offerings</option>
+                {offerings.map(o => (
+                  <option key={o.id} value={o.id}>{o.title || o.name}</option>
+                ))}
+              </select>
             </div>
             
             {/* New Fields: Book Type, Kit Type, Training Type */}
@@ -6552,6 +6573,150 @@ const AdminSchoolCRM = () => {
                   })()}
                 </span>
               </div>
+            </div>
+
+            {/* School Share */}
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+              <label className="text-sm font-medium text-purple-800 mb-2 block">School Share (Revenue Sharing)</label>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs text-slate-500">Type</label>
+                  <select
+                    value={onboardData.school_share_type}
+                    onChange={(e) => setOnboardData(prev => ({ ...prev, school_share_type: e.target.value }))}
+                    className="w-full h-9 px-2 border border-slate-200 rounded-lg text-sm"
+                  >
+                    <option value="none">None</option>
+                    <option value="percentage">Percentage (%)</option>
+                    <option value="amount">Fixed Amount (₹)</option>
+                  </select>
+                </div>
+                {onboardData.school_share_type !== 'none' && (
+                  <>
+                    <div>
+                      <label className="text-xs text-slate-500">Calculation</label>
+                      <select
+                        value={onboardData.school_share_calc}
+                        onChange={(e) => setOnboardData(prev => ({ ...prev, school_share_calc: e.target.value }))}
+                        className="w-full h-9 px-2 border border-slate-200 rounded-lg text-sm"
+                      >
+                        <option value="lumpsum">Lumpsum</option>
+                        <option value="per_student">Per Student</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-500">
+                        {onboardData.school_share_type === 'percentage' ? 'Percentage' : 'Amount'}
+                      </label>
+                      <Input
+                        type="number"
+                        placeholder={onboardData.school_share_type === 'percentage' ? '10' : '5000'}
+                        value={onboardData.school_share_value}
+                        onChange={(e) => setOnboardData(prev => ({ ...prev, school_share_value: e.target.value }))}
+                        className="h-9"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+              {onboardData.school_share_type !== 'none' && onboardData.school_share_value && (
+                <div className="mt-2 p-2 bg-purple-100 rounded text-sm">
+                  <span className="font-medium text-purple-800">Calculated School Share: ₹</span>
+                  <span className="font-bold text-purple-900">
+                    {(() => {
+                      const totalStudents = onboardData.grade_pricing.reduce((sum, g) => sum + (parseInt(g.students) || 0), 0);
+                      let grandTotal = 0;
+                      if (onboardData.pricing_type === 'per_student' || onboardData.pricing_type === 'both') {
+                        grandTotal += onboardData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
+                      }
+                      if (onboardData.pricing_type === 'fixed' || onboardData.pricing_type === 'both') {
+                        grandTotal += parseFloat(onboardData.fixed_price) || 0;
+                      }
+                      const shareValue = parseFloat(onboardData.school_share_value) || 0;
+                      if (onboardData.school_share_type === 'percentage') {
+                        return ((shareValue / 100) * grandTotal).toLocaleString();
+                      } else {
+                        if (onboardData.school_share_calc === 'per_student') {
+                          return (shareValue * totalStudents).toLocaleString();
+                        }
+                        return shareValue.toLocaleString();
+                      }
+                    })()}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* GP Share */}
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+              <label className="text-sm font-medium text-orange-800 mb-2 block">Growth Partner (GP) Share</label>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="text-xs text-slate-500">Type</label>
+                  <select
+                    value={onboardData.gp_share_type}
+                    onChange={(e) => setOnboardData(prev => ({ ...prev, gp_share_type: e.target.value }))}
+                    className="w-full h-9 px-2 border border-slate-200 rounded-lg text-sm"
+                  >
+                    <option value="none">None</option>
+                    <option value="percentage">Percentage (%)</option>
+                    <option value="amount">Fixed Amount (₹)</option>
+                  </select>
+                </div>
+                {onboardData.gp_share_type !== 'none' && (
+                  <>
+                    <div>
+                      <label className="text-xs text-slate-500">Calculation</label>
+                      <select
+                        value={onboardData.gp_share_calc}
+                        onChange={(e) => setOnboardData(prev => ({ ...prev, gp_share_calc: e.target.value }))}
+                        className="w-full h-9 px-2 border border-slate-200 rounded-lg text-sm"
+                      >
+                        <option value="lumpsum">Lumpsum</option>
+                        <option value="per_student">Per Student</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-500">
+                        {onboardData.gp_share_type === 'percentage' ? 'Percentage' : 'Amount'}
+                      </label>
+                      <Input
+                        type="number"
+                        placeholder={onboardData.gp_share_type === 'percentage' ? '5' : '2000'}
+                        value={onboardData.gp_share_value}
+                        onChange={(e) => setOnboardData(prev => ({ ...prev, gp_share_value: e.target.value }))}
+                        className="h-9"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+              {onboardData.gp_share_type !== 'none' && onboardData.gp_share_value && (
+                <div className="mt-2 p-2 bg-orange-100 rounded text-sm">
+                  <span className="font-medium text-orange-800">Calculated GP Share: ₹</span>
+                  <span className="font-bold text-orange-900">
+                    {(() => {
+                      const totalStudents = onboardData.grade_pricing.reduce((sum, g) => sum + (parseInt(g.students) || 0), 0);
+                      let grandTotal = 0;
+                      if (onboardData.pricing_type === 'per_student' || onboardData.pricing_type === 'both') {
+                        grandTotal += onboardData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
+                      }
+                      if (onboardData.pricing_type === 'fixed' || onboardData.pricing_type === 'both') {
+                        grandTotal += parseFloat(onboardData.fixed_price) || 0;
+                      }
+                      const shareValue = parseFloat(onboardData.gp_share_value) || 0;
+                      if (onboardData.gp_share_type === 'percentage') {
+                        return ((shareValue / 100) * grandTotal).toLocaleString();
+                      } else {
+                        if (onboardData.gp_share_calc === 'per_student') {
+                          return (shareValue * totalStudents).toLocaleString();
+                        }
+                        return shareValue.toLocaleString();
+                      }
+                    })()}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* School Contacts */}

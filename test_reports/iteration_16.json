@@ -69,7 +69,7 @@
   "test_execution_details": {
     "test_type": "Frontend UI Testing",
     "tool_used": "Playwright Browser Automation",
-    "test_url": "https://oll-admin-preview.preview.emergentagent.com",
+    "test_url": "https://oll-academy-sync.preview.emergentagent.com",
     "pages_tested": [
       "/admin/login",
       "School CRM - Leads & Schools tab",

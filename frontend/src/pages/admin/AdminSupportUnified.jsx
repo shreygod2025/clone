@@ -181,6 +181,7 @@ const AdminSupportUnified = () => {
   const [newTicket, setNewTicket] = useState({
     name: '', phone: '', email: '', query_type: 'course_info', related_to: 'course_content', inquiry_type: 'student', message: '', priority: 'normal', source: 'admin_created'
   });
+  const [multipleUsers, setMultipleUsers] = useState([]); // For creating tickets for multiple users
   
   // Notes, History, Edit, Delete states
   const [showNotesModal, setShowNotesModal] = useState(null);
@@ -492,10 +493,23 @@ const AdminSupportUnified = () => {
   const [assignDeadline, setAssignDeadline] = useState('');
 
   const handleCreateTicket = async () => {
-    if (!newTicket.name || !newTicket.phone) {
-      toast.error('Name and phone are required');
+    // Determine the list of users to create tickets for
+    const usersToCreate = multipleUsers.length > 0 
+      ? multipleUsers 
+      : (newTicket.name && newTicket.phone ? [{ name: newTicket.name, phone: newTicket.phone, email: newTicket.email }] : []);
+    
+    if (usersToCreate.length === 0) {
+      toast.error('Please add at least one user (Name and Phone required)');
       return;
     }
+    
+    // Validate all users have name and phone
+    const invalidUsers = usersToCreate.filter(u => !u.name || !u.phone);
+    if (invalidUsers.length > 0) {
+      toast.error('All users must have Name and Phone');
+      return;
+    }
+    
     try {
       // Upload voice note if exists
       let allAttachments = [...attachments];
@@ -513,15 +527,37 @@ const AdminSupportUnified = () => {
         });
       }
       
-      await axios.post(`${API}/support/queries/create`, {
-        ...newTicket,
-        attachments: allAttachments
-      }, {
-        headers: getAuthHeaders()
-      });
-      toast.success('Ticket created successfully');
+      // Create tickets for each user
+      let successCount = 0;
+      let failCount = 0;
+      
+      for (const user of usersToCreate) {
+        try {
+          await axios.post(`${API}/support/queries/create`, {
+            ...newTicket,
+            name: user.name,
+            phone: user.phone,
+            email: user.email || '',
+            attachments: allAttachments
+          }, {
+            headers: getAuthHeaders()
+          });
+          successCount++;
+        } catch (err) {
+          failCount++;
+          console.error(`Failed to create ticket for ${user.name}:`, err);
+        }
+      }
+      
+      if (successCount > 0) {
+        toast.success(`${successCount} ticket${successCount > 1 ? 's' : ''} created successfully${failCount > 0 ? `, ${failCount} failed` : ''}`);
+      } else {
+        toast.error('Failed to create tickets');
+      }
+      
       setShowCreateModal(false);
       setNewTicket({ name: '', phone: '', email: '', query_type: 'course_info', related_to: 'course_content', inquiry_type: 'student', message: '', priority: 'normal', source: 'admin_created' });
+      setMultipleUsers([]);
       setAttachments([]);
       setAudioBlob(null);
       setAudioUrl(null);
@@ -1553,6 +1589,70 @@ const AdminSupportUnified = () => {
                 </div>
               )}
             </div>
+            
+            {/* Add User Button */}
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (!newTicket.name || !newTicket.phone) {
+                    toast.error('Enter Name and Phone to add user');
+                    return;
+                  }
+                  // Check for duplicate
+                  const isDuplicate = multipleUsers.some(u => u.phone === newTicket.phone);
+                  if (isDuplicate) {
+                    toast.error('User with this phone already added');
+                    return;
+                  }
+                  setMultipleUsers([...multipleUsers, { 
+                    name: newTicket.name, 
+                    phone: newTicket.phone, 
+                    email: newTicket.email 
+                  }]);
+                  setNewTicket({ ...newTicket, name: '', phone: '', email: '' });
+                  toast.success('User added to list');
+                }}
+                className="flex items-center gap-1 text-green-700 border-green-300 hover:bg-green-50"
+              >
+                <UserPlus className="w-4 h-4" />
+                Add User to List
+              </Button>
+              {multipleUsers.length > 0 && (
+                <span className="text-sm text-slate-500">
+                  {multipleUsers.length} user{multipleUsers.length > 1 ? 's' : ''} added
+                </span>
+              )}
+            </div>
+            
+            {/* List of Added Users */}
+            {multipleUsers.length > 0 && (
+              <div className="bg-slate-50 rounded-lg p-3 space-y-2">
+                <p className="text-xs font-medium text-slate-600 mb-2">Users to create tickets for:</p>
+                {multipleUsers.map((user, idx) => (
+                  <div key={idx} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-slate-200">
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-slate-400" />
+                      <span className="text-sm font-medium">{user.name}</span>
+                      <span className="text-xs text-slate-500">{user.phone}</span>
+                      {user.email && <span className="text-xs text-slate-400">• {user.email}</span>}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMultipleUsers(multipleUsers.filter((_, i) => i !== idx));
+                      }}
+                      className="text-red-500 hover:text-red-700 p-1"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-sm font-medium text-slate-700">Query Type (Category)</label>
@@ -1708,6 +1808,7 @@ const AdminSupportUnified = () => {
             <div className="flex gap-3 pt-2">
               <Button variant="outline" onClick={() => {
                 setShowCreateModal(false);
+                setMultipleUsers([]);
                 setAttachments([]);
                 setAudioBlob(null);
                 setAudioUrl(null);
@@ -1715,7 +1816,10 @@ const AdminSupportUnified = () => {
                 Cancel
               </Button>
               <Button onClick={handleCreateTicket} className="flex-1 bg-[#D63031] hover:bg-red-600">
-                Create Ticket
+                {multipleUsers.length > 0 
+                  ? `Create ${multipleUsers.length} Ticket${multipleUsers.length > 1 ? 's' : ''}`
+                  : 'Create Ticket'
+                }
               </Button>
             </div>
           </div>
