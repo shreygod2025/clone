@@ -3066,6 +3066,7 @@ const AdminSchoolCRM = () => {
               <X className="w-3 h-3" />
               Lost
             </button>
+            {documentsButton}
             {baseButtons}
           </div>
         );
@@ -3081,12 +3082,13 @@ const AdminSchoolCRM = () => {
               <RefreshCw className="w-3 h-3" />
               Reactivate
             </button>
+            {documentsButton}
             {baseButtons}
           </div>
         );
       
       case 'archived':
-        return <div className="flex gap-1.5 flex-wrap items-center">{followupButton}{baseButtons}</div>;
+        return <div className="flex gap-1.5 flex-wrap items-center">{followupButton}{documentsButton}{baseButtons}</div>;
       
       default:
         return null;
