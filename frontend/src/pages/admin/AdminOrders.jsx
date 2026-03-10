@@ -5,7 +5,7 @@ import {
   DollarSign, Building2, GraduationCap, Upload, Download, Eye, 
   CheckCircle2, Clock, AlertCircle, Calendar, Search, Filter,
   FileText, Receipt, CreditCard, X, ExternalLink, ChevronDown, ChevronRight,
-  Phone, Mail, User, Trash2, Wallet, BanknoteIcon
+  Phone, Mail, User, Trash2, Wallet, BanknoteIcon, RefreshCw, BarChart3
 } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
@@ -492,6 +492,98 @@ const AdminOrders = () => {
     }
   };
 
+  // Payment sync state and handlers
+  const [syncingPayment, setSyncingPayment] = useState(null);
+  const [syncingAll, setSyncingAll] = useState(false);
+  const [syncReport, setSyncReport] = useState(null);
+  const [showSyncReport, setShowSyncReport] = useState(false);
+
+  // Sync single payment with Cashfree
+  const handleSyncPayment = async (orderId) => {
+    setSyncingPayment(orderId);
+    try {
+      const response = await axios.post(`${API}/payments/sync-single/${orderId}`, {}, {
+        headers: getAuthHeaders()
+      });
+      
+      const { old_status, new_status, synced, status_changed, transaction_id, error } = response.data;
+      
+      if (error) {
+        toast.error(`Sync failed: ${error}`);
+      } else if (status_changed) {
+        toast.success(`Payment synced: ${old_status} → ${new_status}`);
+        // Refresh data
+        if (activeTab === 'school-students') {
+          fetchSchoolStudentPayments();
+        } else {
+          fetchPayments();
+        }
+      } else {
+        toast.info(`Status unchanged: ${new_status}`);
+      }
+    } catch (error) {
+      console.error('Sync error:', error);
+      toast.error(error.response?.data?.detail || 'Failed to sync payment');
+    } finally {
+      setSyncingPayment(null);
+    }
+  };
+
+  // Sync all pending payments with Cashfree
+  const handleSyncAllPayments = async (paymentType = 'all') => {
+    setSyncingAll(true);
+    const loadingToast = toast.loading('Syncing all pending payments with Cashfree...', { duration: 60000 });
+    
+    try {
+      const response = await axios.post(`${API}/payments/sync-all?payment_type=${paymentType}`, {}, {
+        headers: getAuthHeaders()
+      });
+      
+      const { summary, results } = response.data;
+      
+      toast.dismiss(loadingToast);
+      
+      if (summary.total_updated > 0) {
+        toast.success(`Synced ${summary.total_updated} payments. Checked: ${summary.total_checked}, Errors: ${summary.total_errors}`);
+        // Refresh data
+        if (activeTab === 'school-students') {
+          fetchSchoolStudentPayments();
+        } else {
+          fetchPayments();
+        }
+      } else if (summary.total_errors > 0) {
+        toast.warning(`No updates found. ${summary.total_errors} errors occurred.`);
+      } else {
+        toast.info(`All ${summary.total_checked} payments are already in sync.`);
+      }
+      
+      // Store detailed report
+      setSyncReport(response.data);
+      setShowSyncReport(true);
+      
+    } catch (error) {
+      console.error('Bulk sync error:', error);
+      toast.dismiss(loadingToast);
+      toast.error(error.response?.data?.detail || 'Failed to sync payments');
+    } finally {
+      setSyncingAll(false);
+    }
+  };
+
+  // Get payment status report
+  const handleGetStatusReport = async () => {
+    try {
+      const response = await axios.get(`${API}/payments/status-report`, {
+        headers: getAuthHeaders()
+      });
+      setSyncReport(response.data);
+      setShowSyncReport(true);
+    } catch (error) {
+      console.error('Status report error:', error);
+      toast.error('Failed to get status report');
+    }
+  };
+
   return (
     <AdminLayout title="Orders & Payments">
       <div className="space-y-6">
@@ -533,6 +625,64 @@ const AdminOrders = () => {
             <CreditCard className="w-4 h-4" />
             School Student Payments (Online)
           </button>
+        </div>
+
+        {/* Payment Sync Panel - For managing Cashfree payment status sync */}
+        <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-indigo-50 rounded-xl p-4 border border-indigo-200">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+                <RefreshCw className="w-5 h-5 text-indigo-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-indigo-900">Cashfree Payment Sync</h3>
+                <p className="text-xs text-indigo-600">Sync payment statuses with Cashfree gateway</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleGetStatusReport}
+                className="border-indigo-300 text-indigo-700 hover:bg-indigo-100"
+                data-testid="payment-status-report-btn"
+              >
+                <BarChart3 className="w-4 h-4 mr-1" />
+                Status Report
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleSyncAllPayments('student')}
+                disabled={syncingAll}
+                className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                data-testid="sync-student-payments-btn"
+              >
+                <RefreshCw className={`w-4 h-4 mr-1 ${syncingAll ? 'animate-spin' : ''}`} />
+                Sync Student Payments
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleSyncAllPayments('school')}
+                disabled={syncingAll}
+                className="border-green-300 text-green-700 hover:bg-green-100"
+                data-testid="sync-school-payments-btn"
+              >
+                <RefreshCw className={`w-4 h-4 mr-1 ${syncingAll ? 'animate-spin' : ''}`} />
+                Sync School Payments
+              </Button>
+              <Button
+                onClick={() => handleSyncAllPayments('all')}
+                disabled={syncingAll}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                data-testid="sync-all-payments-btn"
+              >
+                <RefreshCw className={`w-4 h-4 mr-1 ${syncingAll ? 'animate-spin' : ''}`} />
+                {syncingAll ? 'Syncing...' : 'Sync All Payments'}
+              </Button>
+            </div>
+          </div>
         </div>
 
         {/* Stats Cards - Show different stats based on active tab */}
@@ -1068,6 +1218,20 @@ const AdminOrders = () => {
                             <button onClick={() => downloadFile(payment.receipt_url, `Receipt_${payment.student_name?.replace(/\s+/g, '_') || 'Student'}`)} className="p-1.5 bg-green-50 rounded-lg hover:bg-green-100 transition-colors" title="Download Receipt">
                               <Receipt className="w-4 h-4 text-green-600" />
                             </button>
+                          )}
+                          {/* Sync Button - Only show for non-PAID payments */}
+                          {payment.status !== 'paid' && payment.status !== 'PAID' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleSyncPayment(payment.id)}
+                              disabled={syncingPayment === payment.id}
+                              className="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50"
+                              title="Sync with Cashfree"
+                              data-testid={`sync-payment-${payment.id}`}
+                            >
+                              <RefreshCw className={`w-4 h-4 ${syncingPayment === payment.id ? 'animate-spin' : ''}`} />
+                            </Button>
                           )}
                           {/* View Button */}
                           <Button
@@ -2062,6 +2226,177 @@ const AdminOrders = () => {
                       </button>
                     )}
                   </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Sync Report Modal */}
+      <Dialog open={showSyncReport} onOpenChange={setShowSyncReport}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-indigo-600" />
+              Payment Status Report
+            </DialogTitle>
+          </DialogHeader>
+          {syncReport && (
+            <div className="space-y-6 text-sm">
+              {/* Summary if available */}
+              {syncReport.summary && (
+                <div className="bg-indigo-50 rounded-lg p-4">
+                  <h4 className="font-semibold text-indigo-800 mb-3">Sync Summary</h4>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-white rounded-lg p-3 text-center">
+                      <p className="text-2xl font-bold text-slate-800">{syncReport.summary.total_checked}</p>
+                      <p className="text-xs text-slate-500">Checked</p>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 text-center">
+                      <p className="text-2xl font-bold text-green-600">{syncReport.summary.total_updated}</p>
+                      <p className="text-xs text-slate-500">Updated</p>
+                    </div>
+                    <div className="bg-white rounded-lg p-3 text-center">
+                      <p className="text-2xl font-bold text-red-600">{syncReport.summary.total_errors}</p>
+                      <p className="text-xs text-slate-500">Errors</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Status Report */}
+              {syncReport.student_payments && (
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                    <GraduationCap className="w-4 h-4" />
+                    Student Payments
+                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                      {syncReport.student_payments.total} total
+                    </span>
+                  </h4>
+                  <div className="grid grid-cols-4 gap-2 mb-3">
+                    {Object.entries(syncReport.student_payments.by_status || {}).map(([status, count]) => (
+                      <div key={status} className={`rounded-lg p-2 text-center ${
+                        status === 'PAID' ? 'bg-green-100 text-green-800' :
+                        status === 'PENDING' || status === 'ACTIVE' ? 'bg-amber-100 text-amber-800' :
+                        'bg-slate-100 text-slate-800'
+                      }`}>
+                        <p className="font-bold">{count}</p>
+                        <p className="text-xs">{status}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {syncReport.student_payments.pending_list?.length > 0 && (
+                    <div className="mt-3">
+                      <p className="text-xs text-slate-500 mb-2">Pending Payments ({syncReport.student_payments.pending_list.length}):</p>
+                      <div className="max-h-40 overflow-y-auto space-y-1">
+                        {syncReport.student_payments.pending_list.map((p, i) => (
+                          <div key={i} className="flex items-center justify-between bg-amber-50 rounded px-3 py-2">
+                            <div>
+                              <span className="font-medium">{p.student_name}</span>
+                              <span className="text-xs text-slate-500 ml-2">₹{p.amount?.toLocaleString()}</span>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                handleSyncPayment(p.order_id);
+                                setShowSyncReport(false);
+                              }}
+                              className="text-indigo-600 hover:bg-indigo-100"
+                            >
+                              <RefreshCw className="w-3 h-3 mr-1" />
+                              Sync
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {syncReport.school_payments && (
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
+                    <Building2 className="w-4 h-4" />
+                    School Student Payments
+                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">
+                      {syncReport.school_payments.total} total
+                    </span>
+                  </h4>
+                  <div className="grid grid-cols-4 gap-2 mb-3">
+                    {Object.entries(syncReport.school_payments.by_status || {}).map(([status, count]) => (
+                      <div key={status} className={`rounded-lg p-2 text-center ${
+                        status === 'PAID' ? 'bg-green-100 text-green-800' :
+                        status === 'PENDING' || status === 'ACTIVE' ? 'bg-amber-100 text-amber-800' :
+                        'bg-slate-100 text-slate-800'
+                      }`}>
+                        <p className="font-bold">{count}</p>
+                        <p className="text-xs">{status}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {syncReport.school_payments.pending_list?.length > 0 && (
+                    <div className="mt-3">
+                      <p className="text-xs text-slate-500 mb-2">Pending Payments ({syncReport.school_payments.pending_list.length}):</p>
+                      <div className="max-h-40 overflow-y-auto space-y-1">
+                        {syncReport.school_payments.pending_list.map((p, i) => (
+                          <div key={i} className="flex items-center justify-between bg-amber-50 rounded px-3 py-2">
+                            <div>
+                              <span className="font-medium">{p.student_name}</span>
+                              <span className="text-xs text-slate-500 ml-2">₹{p.amount?.toLocaleString()}</span>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                handleSyncPayment(p.order_id);
+                                setShowSyncReport(false);
+                              }}
+                              className="text-indigo-600 hover:bg-indigo-100"
+                            >
+                              <RefreshCw className="w-3 h-3 mr-1" />
+                              Sync
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Sync Results Details */}
+              {syncReport.results && (
+                <div className="space-y-4">
+                  {syncReport.results.student_payments?.details?.length > 0 && (
+                    <div className="border rounded-lg p-4">
+                      <h4 className="font-semibold text-green-800 mb-2">Updated Student Payments</h4>
+                      <div className="space-y-2">
+                        {syncReport.results.student_payments.details.map((d, i) => (
+                          <div key={i} className="flex items-center justify-between bg-green-50 rounded px-3 py-2 text-sm">
+                            <span className="font-medium">{d.student_name}</span>
+                            <span className="text-slate-600">{d.old_status} → <span className="text-green-700 font-semibold">{d.new_status}</span></span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {syncReport.results.school_payments?.details?.length > 0 && (
+                    <div className="border rounded-lg p-4">
+                      <h4 className="font-semibold text-green-800 mb-2">Updated School Payments</h4>
+                      <div className="space-y-2">
+                        {syncReport.results.school_payments.details.map((d, i) => (
+                          <div key={i} className="flex items-center justify-between bg-green-50 rounded px-3 py-2 text-sm">
+                            <span className="font-medium">{d.student_name}</span>
+                            <span className="text-slate-600">{d.old_status} → <span className="text-green-700 font-semibold">{d.new_status}</span></span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

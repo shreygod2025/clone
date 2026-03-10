@@ -47,6 +47,65 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+### March 10, 2026
+
+#### Cashfree Payment Sync System
+**Features Implemented:**
+
+1. **Payment Sync Panel on Orders Page**
+   - Added "Cashfree Payment Sync" panel with sync buttons
+   - "Status Report" button - Opens modal showing all payment statuses with breakdown
+   - "Sync Student Payments" button - Syncs all pending student payments with Cashfree
+   - "Sync School Payments" button - Syncs all pending school student payments
+   - "Sync All Payments" button - Syncs both student and school payments in one action
+
+2. **Individual Payment Sync Button**
+   - Added sync (🔄) icon to each pending payment row in Student Payments tab
+   - Only appears for non-PAID payments
+   - Clicking syncs that specific payment with Cashfree API
+   - Shows spinner animation while syncing
+
+3. **Payment Status Report Modal**
+   - Shows total counts by status (PENDING, ACTIVE, PAID, etc.)
+   - Lists all pending payments with individual sync buttons
+   - Separates Student Payments and School Student Payments
+   - Allows one-click sync from the report modal
+
+4. **Backend Sync Endpoints**
+   - `POST /api/payments/sync-single/{order_id}` - Sync single payment with Cashfree
+   - `POST /api/payments/sync-all?payment_type=` - Bulk sync all pending payments
+   - `GET /api/payments/status-report` - Get payment status breakdown report
+   - All endpoints handle both `student_payments` and `school_student_payments` collections
+   - Updates student status to "converted" when payment is confirmed as PAID
+
+**Modified Files:**
+- `backend/server.py` - Added 3 new endpoints for payment sync (lines 3987-4310)
+- `frontend/src/pages/admin/AdminOrders.jsx` - Added sync panel, buttons, and modal
+
+---
+
+#### School Conversion/Renewal Modal Updates
+**Features Implemented:**
+
+1. **Removed Model/Type Field**
+   - Removed from both Conversion Modal and Renewal Modal
+   - Offering selection now takes full width
+
+2. **Added School Share & GP Share to Conversion Modal**
+   - Previously only available in Renewal Modal
+   - Type options: None, Percentage (%), Fixed Amount (₹)
+   - Calculation options: Lumpsum, Per Student
+   - Auto-calculated share amount display
+
+3. **Fixed Payment Tranche Auto-calculation**
+   - Now includes fixed_price when pricing_type is "fixed" or "both"
+   - Previously only calculated from per-student pricing
+
+**Modified Files:**
+- `frontend/src/pages/admin/AdminSchoolCRM.jsx` - Modal updates and calculation fixes
+
+---
+
 ### February 24, 2026
 
 #### Orders Page - Student Payments Tab Enhancements

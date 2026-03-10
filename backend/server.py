@@ -3984,6 +3984,370 @@ async def get_school_payment_tracker_public(school_id: str):
         "available_divisions": sorted(all_divisions)
     }
 
+# ========================
+# PAYMENT SYNC ENDPOINTS (Admin)
+# ========================
+
+@api_router.post("/payments/sync-single/{order_id}")
+async def sync_single_payment_status(order_id: str, user: dict = Depends(get_current_user)):
+    """Manually sync a single payment status from Cashfree"""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
+        raise HTTPException(status_code=500, detail="Payment gateway not configured")
+    
+    # Determine which collection to check
+    payment = None
+    collection_name = None
+    
+    # Check student_payments first
+    payment = await db.student_payments.find_one({"id": order_id}, {"_id": 0})
+    if payment:
+        collection_name = "student_payments"
+    else:
+        # Check school_student_payments
+        payment = await db.school_student_payments.find_one({"id": order_id}, {"_id": 0})
+        if payment:
+            collection_name = "school_student_payments"
+    
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found in any collection")
+    
+    old_status = payment.get("status")
+    
+    try:
+        logging.info(f"[SYNC] Syncing payment {order_id} from {collection_name}, current status: {old_status}")
+        
+        # Fetch from Cashfree
+        api_response = get_cashfree_client().PGFetchOrder(
+            CASHFREE_API_VERSION,
+            order_id,
+            None
+        )
+        
+        if not api_response.data:
+            return {
+                "order_id": order_id,
+                "collection": collection_name,
+                "old_status": old_status,
+                "new_status": old_status,
+                "synced": False,
+                "message": "No data returned from Cashfree"
+            }
+        
+        cashfree_status = api_response.data.order_status
+        logging.info(f"[SYNC] Cashfree returned status: {cashfree_status}")
+        
+        # Get payment details for transaction ID
+        cf_payment_id = None
+        payment_method = "Cashfree"
+        try:
+            payments_response = get_cashfree_client().PGOrderFetchPayments(
+                CASHFREE_API_VERSION,
+                order_id,
+                None
+            )
+            if payments_response.data and len(payments_response.data) > 0:
+                cf_payment_id = str(payments_response.data[0].cf_payment_id)
+                payment_method = f"Cashfree - {payments_response.data[0].payment_group or 'unknown'}"
+        except Exception as e:
+            logging.warning(f"[SYNC] Could not fetch payment details: {e}")
+        
+        # Build update data
+        update_data = {
+            "status": cashfree_status,
+            "synced_at": datetime.now(timezone.utc).isoformat(),
+            "sync_source": "manual"
+        }
+        
+        if cf_payment_id:
+            update_data["transaction_id"] = cf_payment_id
+            update_data["cf_payment_id"] = cf_payment_id
+            update_data["payment_method"] = payment_method
+        
+        if cashfree_status == "PAID" and old_status != "PAID":
+            update_data["paid_at"] = datetime.now(timezone.utc).isoformat()
+        
+        # Update the payment record
+        collection = db.student_payments if collection_name == "student_payments" else db.school_student_payments
+        await collection.update_one({"id": order_id}, {"$set": update_data})
+        
+        # If student_payments and status changed to PAID, update student record
+        if collection_name == "student_payments" and cashfree_status == "PAID" and old_status != "PAID":
+            student_id = payment.get("student_id")
+            batch_id = payment.get("batch_id")
+            
+            if student_id:
+                student_update = {
+                    "status": "converted",
+                    "payment_status": "paid",
+                    "payment_amount": payment.get("amount"),
+                    "payment_date": datetime.now(timezone.utc).isoformat(),
+                    "payment_method": payment_method,
+                    "payment_transaction_id": cf_payment_id,
+                    "pending_payment": None,
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }
+                
+                if batch_id:
+                    student_update["batch_id"] = batch_id
+                    student_update["batch_name"] = payment.get("batch_name")
+                    
+                    # Add to batch if not already
+                    batch = await db.batches.find_one({"id": batch_id}, {"_id": 0})
+                    if batch and student_id not in batch.get("students", []):
+                        await db.batches.update_one({"id": batch_id}, {"$addToSet": {"students": student_id}})
+                
+                await db.student_inquiries.update_one({"id": student_id}, {"$set": student_update})
+                logging.info(f"[SYNC] Updated student {student_id} to converted")
+        
+        return {
+            "order_id": order_id,
+            "collection": collection_name,
+            "old_status": old_status,
+            "new_status": cashfree_status,
+            "transaction_id": cf_payment_id,
+            "synced": True,
+            "status_changed": old_status != cashfree_status
+        }
+        
+    except Exception as e:
+        logging.error(f"[SYNC] Error syncing payment {order_id}: {str(e)}")
+        return {
+            "order_id": order_id,
+            "collection": collection_name,
+            "old_status": old_status,
+            "synced": False,
+            "error": str(e)
+        }
+
+
+@api_router.post("/payments/sync-all")
+async def sync_all_pending_payments(
+    payment_type: Optional[str] = Query(None, description="student, school, or all"),
+    user: dict = Depends(get_current_user)
+):
+    """Sync all pending/non-PAID payments with Cashfree - checks every payment status"""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
+        raise HTTPException(status_code=500, detail="Payment gateway not configured")
+    
+    results = {
+        "student_payments": {"checked": 0, "updated": 0, "errors": 0, "details": []},
+        "school_payments": {"checked": 0, "updated": 0, "errors": 0, "details": []}
+    }
+    
+    # Sync student payments
+    if payment_type in [None, "all", "student"]:
+        # Get all non-PAID student payments
+        pending_payments = await db.student_payments.find(
+            {"status": {"$nin": ["PAID", "CANCELLED", "EXPIRED"]}},
+            {"_id": 0}
+        ).to_list(1000)
+        
+        for payment in pending_payments:
+            order_id = payment.get("id")
+            old_status = payment.get("status")
+            results["student_payments"]["checked"] += 1
+            
+            try:
+                api_response = get_cashfree_client().PGFetchOrder(
+                    CASHFREE_API_VERSION,
+                    order_id,
+                    None
+                )
+                
+                if api_response.data:
+                    new_status = api_response.data.order_status
+                    
+                    if new_status != old_status:
+                        # Get transaction details
+                        cf_payment_id = None
+                        payment_method = "Cashfree"
+                        try:
+                            payments_response = get_cashfree_client().PGOrderFetchPayments(
+                                CASHFREE_API_VERSION, order_id, None
+                            )
+                            if payments_response.data and len(payments_response.data) > 0:
+                                cf_payment_id = str(payments_response.data[0].cf_payment_id)
+                                payment_method = f"Cashfree - {payments_response.data[0].payment_group or 'unknown'}"
+                        except Exception:
+                            pass
+                        
+                        update_data = {
+                            "status": new_status,
+                            "synced_at": datetime.now(timezone.utc).isoformat(),
+                            "sync_source": "bulk"
+                        }
+                        if cf_payment_id:
+                            update_data["transaction_id"] = cf_payment_id
+                            update_data["cf_payment_id"] = cf_payment_id
+                            update_data["payment_method"] = payment_method
+                        if new_status == "PAID":
+                            update_data["paid_at"] = datetime.now(timezone.utc).isoformat()
+                        
+                        await db.student_payments.update_one({"id": order_id}, {"$set": update_data})
+                        
+                        # Update student if PAID
+                        if new_status == "PAID":
+                            student_id = payment.get("student_id")
+                            if student_id:
+                                student_update = {
+                                    "status": "converted",
+                                    "payment_status": "paid",
+                                    "payment_amount": payment.get("amount"),
+                                    "payment_date": datetime.now(timezone.utc).isoformat(),
+                                    "pending_payment": None,
+                                    "updated_at": datetime.now(timezone.utc).isoformat()
+                                }
+                                if cf_payment_id:
+                                    student_update["payment_transaction_id"] = cf_payment_id
+                                    student_update["payment_method"] = payment_method
+                                await db.student_inquiries.update_one({"id": student_id}, {"$set": student_update})
+                        
+                        results["student_payments"]["updated"] += 1
+                        results["student_payments"]["details"].append({
+                            "order_id": order_id,
+                            "old_status": old_status,
+                            "new_status": new_status,
+                            "student_name": payment.get("student_name")
+                        })
+                        
+            except Exception as e:
+                results["student_payments"]["errors"] += 1
+                logging.error(f"[BULK_SYNC] Error syncing student payment {order_id}: {e}")
+    
+    # Sync school student payments
+    if payment_type in [None, "all", "school"]:
+        pending_school_payments = await db.school_student_payments.find(
+            {"status": {"$nin": ["PAID", "CANCELLED", "EXPIRED"]}},
+            {"_id": 0}
+        ).to_list(5000)
+        
+        for payment in pending_school_payments:
+            order_id = payment.get("id")
+            old_status = payment.get("status")
+            results["school_payments"]["checked"] += 1
+            
+            try:
+                api_response = get_cashfree_client().PGFetchOrder(
+                    CASHFREE_API_VERSION,
+                    order_id,
+                    None
+                )
+                
+                if api_response.data:
+                    new_status = api_response.data.order_status
+                    
+                    if new_status != old_status:
+                        cf_payment_id = None
+                        payment_method = "Cashfree"
+                        try:
+                            payments_response = get_cashfree_client().PGOrderFetchPayments(
+                                CASHFREE_API_VERSION, order_id, None
+                            )
+                            if payments_response.data and len(payments_response.data) > 0:
+                                cf_payment_id = str(payments_response.data[0].cf_payment_id)
+                                payment_method = f"Cashfree - {payments_response.data[0].payment_group or 'unknown'}"
+                        except Exception:
+                            pass
+                        
+                        update_data = {
+                            "status": new_status,
+                            "synced_at": datetime.now(timezone.utc).isoformat(),
+                            "sync_source": "bulk"
+                        }
+                        if cf_payment_id:
+                            update_data["transaction_id"] = cf_payment_id
+                            update_data["cf_payment_id"] = cf_payment_id
+                            update_data["payment_method"] = payment_method
+                        if new_status == "PAID":
+                            update_data["paid_at"] = datetime.now(timezone.utc).isoformat()
+                        
+                        await db.school_student_payments.update_one({"id": order_id}, {"$set": update_data})
+                        
+                        results["school_payments"]["updated"] += 1
+                        results["school_payments"]["details"].append({
+                            "order_id": order_id,
+                            "old_status": old_status,
+                            "new_status": new_status,
+                            "student_name": payment.get("student_name"),
+                            "school_id": payment.get("school_id")
+                        })
+                        
+            except Exception as e:
+                results["school_payments"]["errors"] += 1
+                logging.error(f"[BULK_SYNC] Error syncing school payment {order_id}: {e}")
+    
+    # Summary
+    total_checked = results["student_payments"]["checked"] + results["school_payments"]["checked"]
+    total_updated = results["student_payments"]["updated"] + results["school_payments"]["updated"]
+    total_errors = results["student_payments"]["errors"] + results["school_payments"]["errors"]
+    
+    logging.info(f"[BULK_SYNC] Complete - Checked: {total_checked}, Updated: {total_updated}, Errors: {total_errors}")
+    
+    return {
+        "summary": {
+            "total_checked": total_checked,
+            "total_updated": total_updated,
+            "total_errors": total_errors
+        },
+        "results": results
+    }
+
+
+@api_router.get("/payments/status-report")
+async def get_payment_status_report(user: dict = Depends(get_current_user)):
+    """Get a report of all payments and their statuses for diagnostics"""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Student payments stats
+    student_payments = await db.student_payments.find({}, {"_id": 0, "id": 1, "status": 1, "student_name": 1, "amount": 1, "created_at": 1}).to_list(1000)
+    student_by_status = {}
+    for p in student_payments:
+        status = p.get("status", "UNKNOWN")
+        if status not in student_by_status:
+            student_by_status[status] = []
+        student_by_status[status].append({
+            "order_id": p.get("id"),
+            "student_name": p.get("student_name"),
+            "amount": p.get("amount"),
+            "created_at": p.get("created_at")
+        })
+    
+    # School student payments stats
+    school_payments = await db.school_student_payments.find({}, {"_id": 0, "id": 1, "status": 1, "student_name": 1, "school_id": 1, "amount": 1, "created_at": 1}).to_list(5000)
+    school_by_status = {}
+    for p in school_payments:
+        status = p.get("status", "UNKNOWN")
+        if status not in school_by_status:
+            school_by_status[status] = []
+        school_by_status[status].append({
+            "order_id": p.get("id"),
+            "student_name": p.get("student_name"),
+            "school_id": p.get("school_id"),
+            "amount": p.get("amount"),
+            "created_at": p.get("created_at")
+        })
+    
+    return {
+        "student_payments": {
+            "total": len(student_payments),
+            "by_status": {status: len(payments) for status, payments in student_by_status.items()},
+            "pending_list": student_by_status.get("PENDING", []) + student_by_status.get("ACTIVE", [])
+        },
+        "school_payments": {
+            "total": len(school_payments),
+            "by_status": {status: len(payments) for status, payments in school_by_status.items()},
+            "pending_list": school_by_status.get("PENDING", []) + school_by_status.get("ACTIVE", [])
+        }
+    }
+
+
 @api_router.get("/orders/school-student-payments")
 async def get_all_school_student_payments(user: dict = Depends(get_current_user)):
     """Get aggregated school student payments (online) for Orders page - school-wise summary"""
