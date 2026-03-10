@@ -8423,6 +8423,15 @@ async def delete_query_note(query_id: str, note_id: str, user: dict = Depends(ge
     )
     return {"message": "Note deleted successfully"}
 
+@api_router.get("/support/queries/{query_id}")
+async def get_query_by_id(query_id: str, user: dict = Depends(get_current_user)):
+    """Get a single support query with all its data including replies"""
+    query = await db.support_queries.find_one({"id": query_id}, {"_id": 0})
+    if not query:
+        raise HTTPException(status_code=404, detail="Query not found")
+    return query
+
+
 @api_router.post("/support/queries/{query_id}/replies")
 async def add_query_reply(query_id: str, data: dict, user: dict = Depends(get_current_user)):
     """Add a reply to a support query (chat-style)"""

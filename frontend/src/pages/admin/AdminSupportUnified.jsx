@@ -476,15 +476,25 @@ const AdminSupportUnified = () => {
     }
   };
   
-  // Fetch replies for a query
+  // Fetch replies for a query from the backend
   const fetchQueryReplies = async (queryId) => {
     try {
       setLoadingHistory(true);
-      const query = allQueries.find(q => q.id === queryId) || showReplyModal;
+      const response = await axios.get(`${API}/support/queries/${queryId}`, {
+        headers: getAuthHeaders()
+      });
+      const query = response.data;
       setQueryReplies(query?.replies || []);
+      
+      // Also update the showReplyModal with fresh data
+      if (showReplyModal && showReplyModal.id === queryId) {
+        setShowReplyModal(prev => ({ ...prev, ...query, replies: query.replies || [] }));
+      }
     } catch (error) {
       console.error('Error fetching replies:', error);
-      setQueryReplies([]);
+      // Fallback to local data if API fails
+      const query = allQueries.find(q => q.id === queryId) || showReplyModal;
+      setQueryReplies(query?.replies || []);
     } finally {
       setLoadingHistory(false);
     }
@@ -1198,7 +1208,7 @@ const AdminSupportUnified = () => {
                     variant="outline"
                     onClick={() => {
                       setShowReplyModal(query);
-                      setQueryReplies(query.replies || []);
+                      fetchQueryReplies(query.id);
                     }}
                     className="flex items-center gap-1"
                     data-testid={`reply-${query.id}`}
