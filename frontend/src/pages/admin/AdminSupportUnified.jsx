@@ -1270,15 +1270,15 @@ const AdminSupportUnified = () => {
 
       {/* Reply Modal - Chat Style */}
       <Dialog open={!!showReplyModal} onOpenChange={() => { setShowReplyModal(null); setQueryReplies([]); }}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col" preventClose>
-          <DialogHeader className="flex-shrink-0">
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0" preventClose>
+          <DialogHeader className="flex-shrink-0 p-6 pb-0">
             <DialogTitle className="flex items-center gap-2">
               <MessageSquare className="w-5 h-5 text-[#D63031]" />
               Query Conversation
             </DialogTitle>
           </DialogHeader>
           {showReplyModal && (
-            <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+            <div className="flex flex-col flex-1 min-h-0 p-6 pt-4">
               {/* Query Info Header */}
               <div className="bg-gradient-to-r from-slate-50 to-slate-100 rounded-lg p-4 mb-4 flex-shrink-0">
                 <div className="flex items-center justify-between mb-2">
@@ -1305,14 +1305,14 @@ const AdminSupportUnified = () => {
               </div>
               
               {/* Chat Messages Area */}
-              <div className="flex-1 overflow-y-auto mb-4 space-y-3 min-h-[150px] max-h-[250px] pr-2">
+              <div className="flex-1 overflow-y-auto mb-4 space-y-3 min-h-[100px] max-h-[200px] pr-2">
                 {loadingHistory ? (
                   <div className="flex items-center justify-center py-8">
                     <RefreshCw className="w-5 h-5 animate-spin text-slate-400" />
                   </div>
                 ) : queryReplies.length === 0 ? (
-                  <div className="text-center py-8">
-                    <MessageSquare className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                  <div className="text-center py-6">
+                    <MessageSquare className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                     <p className="text-sm text-slate-500">No replies yet. Start the conversation!</p>
                   </div>
                 ) : (
@@ -1340,18 +1340,16 @@ const AdminSupportUnified = () => {
                 )}
               </div>
               
-              {/* Reply Input */}
-              <div className="flex-shrink-0 border-t pt-4">
+              {/* Reply Input - Fixed at bottom */}
+              <div className="flex-shrink-0 border-t pt-4 bg-white">
+                <Textarea
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  placeholder="Type your reply..."
+                  className="w-full min-h-[60px] max-h-[100px] resize-none mb-3"
+                  data-testid="reply-input"
+                />
                 <div className="flex gap-3">
-                  <Textarea
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    placeholder="Type your reply..."
-                    className="flex-1 min-h-[80px] resize-none"
-                    data-testid="reply-input"
-                  />
-                </div>
-                <div className="flex gap-3 mt-3">
                   <Button variant="outline" onClick={() => { setShowReplyModal(null); setQueryReplies([]); }} className="flex-1">
                     Close
                   </Button>
