@@ -372,11 +372,11 @@ const AdminSupportUnified = () => {
       const supportQueries = (supportQueriesResponse.data || []).map(q => ({ 
         ...q, 
         _source: q.type === 'educator_query' ? 'educator' : 'user_support',
-        query_type: q.type === 'educator_query' ? q.category : (q.category || q.main_category || 'other'),
+        query_type: q.type === 'educator_query' ? q.category : (q.category || q.main_category || q.query_type || 'other'),
         query_details: q.type === 'educator_query' 
           ? `[${q.category_label || ''}] ${q.subcategory_label || ''}: ${q.query || ''}`
-          : (q.details || q.reason || ''),
-        inquiry_type: q.type === 'educator_query' ? 'educator' : 'student',
+          : (q.details || q.reason || q.query_details || q.message || ''),
+        inquiry_type: q.inquiry_type || (q.type === 'educator_query' ? 'educator' : 'student'),
         name: q.educator_name || q.contact_name || q.name || 'User',
         phone: q.educator_phone || q.phone || '',
         email: q.educator_email || q.email || '',
