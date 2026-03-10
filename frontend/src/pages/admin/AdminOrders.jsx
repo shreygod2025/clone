@@ -1409,7 +1409,7 @@ const AdminOrders = () => {
                         </button>
                         <button 
                           onClick={() => {
-                            navigator.clipboard.writeText(`${window.location.origin}/school-payment-tracker/${schoolStat.school_id}`);
+                            navigator.clipboard.writeText(`${window.location.origin}/school-payment-tracker-public/${schoolStat.school_id}`);
                             toast.success('Public tracker link copied!');
                           }}
                           className="inline-flex items-center gap-1.5 bg-white text-slate-700 px-4 py-2 rounded-lg text-sm font-medium border border-slate-200 hover:bg-slate-50 transition-colors"

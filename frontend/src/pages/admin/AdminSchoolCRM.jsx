@@ -2718,7 +2718,19 @@ const AdminSchoolCRM = () => {
     if (!editOnboardData) return;
     
     try {
-      // Build the onboarding data object
+      // Recalculate total_students and total_amount from grade_pricing
+      const gradePricing = editOnboardData.grade_pricing || [];
+      const calculatedTotalStudents = gradePricing.reduce((sum, g) => sum + (parseInt(g.students) || 0), 0);
+      let calculatedTotalAmount = 0;
+      
+      if (editOnboardData.pricing_type === 'per_student' || editOnboardData.pricing_type === 'both') {
+        calculatedTotalAmount += gradePricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
+      }
+      if (editOnboardData.pricing_type === 'fixed' || editOnboardData.pricing_type === 'both') {
+        calculatedTotalAmount += parseFloat(editOnboardData.fixed_price) || 0;
+      }
+      
+      // Build the onboarding data object with recalculated values
       const onboardingData = {
         offering: editOnboardData.offering,
         model: editOnboardData.model,
@@ -2727,9 +2739,9 @@ const AdminSchoolCRM = () => {
         training_type: editOnboardData.training_type,
         pricing_type: editOnboardData.pricing_type,
         fixed_price: editOnboardData.fixed_price,
-        grade_pricing: editOnboardData.grade_pricing,
-        total_students: editOnboardData.total_students,
-        total_amount: editOnboardData.total_amount,
+        grade_pricing: gradePricing,
+        total_students: calculatedTotalStudents,
+        total_amount: calculatedTotalAmount,
         school_contacts: editOnboardData.school_contacts,
         payment_mode: editOnboardData.payment_mode,
         payment_method: editOnboardData.payment_mode === 'online' ? 'student' : editOnboardData.payment_method,
@@ -2761,9 +2773,9 @@ const AdminSchoolCRM = () => {
         board: editOnboardData.board,
         address: editOnboardData.address,
         model: editOnboardData.model,
-        total_students: editOnboardData.total_students,
+        total_students: calculatedTotalStudents,
         // Keep conversion_amount in sync with total_amount for display purposes
-        conversion_amount: editOnboardData.total_amount ? String(editOnboardData.total_amount) : undefined,
+        conversion_amount: calculatedTotalAmount ? String(calculatedTotalAmount) : undefined,
         // Always update onboarding_data on the school record for renewed/converted schools
         onboarding_data: onboardingData,
       }, {
