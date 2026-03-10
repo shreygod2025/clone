@@ -6082,6 +6082,92 @@ async def update_school_inquiry(
         )
     
     await db.school_inquiries.update_one({"id": inquiry_id}, {"$set": update_data})
+    
+    # Auto-create GP Share and School Share expenses if present in onboarding_data
+    onboarding_data = update_data.get('onboarding_data', {})
+    if onboarding_data:
+        school_name = current_inquiry.get('school_name', '')
+        
+        # Check for GP Share expense - create or update
+        gp_share_amount = onboarding_data.get('gp_share_amount', 0)
+        if gp_share_amount and float(gp_share_amount) > 0:
+            existing_gp = await db.school_expenses.find_one({
+                "school_id": inquiry_id,
+                "category": "gp_share",
+                "source": {"$in": ["conversion", "renewal"]}
+            })
+            if not existing_gp:
+                gp_expense = {
+                    "id": str(uuid.uuid4()),
+                    "school_id": inquiry_id,
+                    "school_name": school_name,
+                    "category": "gp_share",
+                    "category_name": "GP Share",
+                    "amount": float(gp_share_amount),
+                    "description": f"Growth Partner share ({onboarding_data.get('gp_share_type', 'amount')} - {onboarding_data.get('gp_share_calc', 'lumpsum')})",
+                    "expense_date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+                    "payment_status": "pending",
+                    "gp_share_type": onboarding_data.get("gp_share_type"),
+                    "gp_share_calc": onboarding_data.get("gp_share_calc"),
+                    "gp_share_value": onboarding_data.get("gp_share_value"),
+                    "created_by": user.get("id"),
+                    "created_by_name": user.get("name", user.get("email", "Admin")),
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                    "auto_created": True,
+                    "source": "renewal"
+                }
+                await db.school_expenses.insert_one(gp_expense)
+            else:
+                # Update existing GP share expense amount
+                await db.school_expenses.update_one(
+                    {"id": existing_gp["id"]},
+                    {"$set": {
+                        "amount": float(gp_share_amount),
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+        
+        # Check for School Share expense - create or update
+        school_share_amount = onboarding_data.get('school_share_amount', 0)
+        if school_share_amount and float(school_share_amount) > 0:
+            existing_school_share = await db.school_expenses.find_one({
+                "school_id": inquiry_id,
+                "category": "school_share",
+                "source": {"$in": ["conversion", "renewal"]}
+            })
+            if not existing_school_share:
+                school_share_expense = {
+                    "id": str(uuid.uuid4()),
+                    "school_id": inquiry_id,
+                    "school_name": school_name,
+                    "category": "school_share",
+                    "category_name": "School Share",
+                    "amount": float(school_share_amount),
+                    "description": f"School revenue share ({onboarding_data.get('school_share_type', 'amount')} - {onboarding_data.get('school_share_calc', 'lumpsum')})",
+                    "expense_date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+                    "payment_status": "pending",
+                    "school_share_type": onboarding_data.get("school_share_type"),
+                    "school_share_calc": onboarding_data.get("school_share_calc"),
+                    "school_share_value": onboarding_data.get("school_share_value"),
+                    "created_by": user.get("id"),
+                    "created_by_name": user.get("name", user.get("email", "Admin")),
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                    "auto_created": True,
+                    "source": "renewal"
+                }
+                await db.school_expenses.insert_one(school_share_expense)
+            else:
+                # Update existing school share expense amount
+                await db.school_expenses.update_one(
+                    {"id": existing_school_share["id"]},
+                    {"$set": {
+                        "amount": float(school_share_amount),
+                        "updated_at": datetime.now(timezone.utc).isoformat()
+                    }}
+                )
+    
     inquiry = await db.school_inquiries.find_one({"id": inquiry_id}, {"_id": 0})
     if isinstance(inquiry.get('created_at'), str):
         inquiry['created_at'] = datetime.fromisoformat(inquiry['created_at'])
@@ -9082,6 +9168,61 @@ async def onboard_school(data: dict, user: dict = Depends(get_current_user)):
         {"id": school_id},
         {"$set": update_fields}
     )
+    
+    # Auto-create GP Share and School Share expenses if they exist
+    if not is_draft:
+        school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0, "school_name": 1})
+        school_name = school.get("school_name", "") if school else ""
+        
+        # Create GP Share expense if configured
+        gp_share_amount = data.get("gp_share_amount", 0)
+        if gp_share_amount and float(gp_share_amount) > 0:
+            gp_expense = {
+                "id": str(uuid.uuid4()),
+                "school_id": school_id,
+                "school_name": school_name,
+                "category": "gp_share",
+                "category_name": "GP Share",
+                "amount": float(gp_share_amount),
+                "description": f"Growth Partner share for conversion ({data.get('gp_share_type', 'amount')} - {data.get('gp_share_calc', 'lumpsum')})",
+                "expense_date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+                "payment_status": "pending",
+                "gp_share_type": data.get("gp_share_type"),
+                "gp_share_calc": data.get("gp_share_calc"),
+                "gp_share_value": data.get("gp_share_value"),
+                "created_by": user.get("id"),
+                "created_by_name": user.get("name", user.get("email", "Admin")),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "auto_created": True,
+                "source": "conversion"
+            }
+            await db.school_expenses.insert_one(gp_expense)
+        
+        # Create School Share expense if configured
+        school_share_amount = data.get("school_share_amount", 0)
+        if school_share_amount and float(school_share_amount) > 0:
+            school_share_expense = {
+                "id": str(uuid.uuid4()),
+                "school_id": school_id,
+                "school_name": school_name,
+                "category": "school_share",
+                "category_name": "School Share",
+                "amount": float(school_share_amount),
+                "description": f"School revenue share for conversion ({data.get('school_share_type', 'amount')} - {data.get('school_share_calc', 'lumpsum')})",
+                "expense_date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+                "payment_status": "pending",
+                "school_share_type": data.get("school_share_type"),
+                "school_share_calc": data.get("school_share_calc"),
+                "school_share_value": data.get("school_share_value"),
+                "created_by": user.get("id"),
+                "created_by_name": user.get("name", user.get("email", "Admin")),
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "auto_created": True,
+                "source": "conversion"
+            }
+            await db.school_expenses.insert_one(school_share_expense)
     
     return {"message": "School onboarded successfully" if not is_draft else "Draft saved successfully", "id": onboarding_id}
 
@@ -13019,106 +13160,106 @@ async def sync_po_data_job(secret: str = None):
                     gst_rate = round((total_tax / subtotal) * 100, 2)
                 gst_type = "IGST" if total_tax > 0 else "None"
                 
-            # Check if kit expense already exists
-            existing_kit = await db.school_expenses.find_one({
-                "school_id": school_id,
-                "po_number": po_number,
-                "category": "kit_cost"
-            })
-            
-            if not existing_kit and invoice_amount > 0:
-                # Build attachments from PO files
-                kit_attachments = []
-                if detailed_po.get("po_pdf_url"):
-                    kit_attachments.append({
-                        "name": f"PO-{po_number}.pdf",
-                        "url": detailed_po.get("po_pdf_url"),
-                        "type": "po_file"
-                    })
-                if detailed_po.get("invoice_file_url"):
-                    kit_attachments.append({
-                        "name": f"Invoice-{po_number}",
-                        "url": detailed_po.get("invoice_file_url"),
-                        "type": "invoice"
-                    })
-                
-                kit_expense = {
-                    "id": str(uuid.uuid4()),
+                # Check if kit expense already exists
+                existing_kit = await db.school_expenses.find_one({
                     "school_id": school_id,
-                    "school_name": school_name,
-                    "category": "kit_cost",
-                    "category_name": "Kit Cost",
-                    "amount": float(invoice_amount),
-                    "subtotal": float(subtotal),
-                    "gst_amount": float(total_tax),
-                    "gst_rate": gst_rate,
-                    "gst_type": gst_type,
-                    "grand_total": float(grand_total),
-                    "description": f"Kit cost from PO {po_number} (auto-synced)",
-                    "expense_date": detailed_po.get("created_at", datetime.now(timezone.utc).isoformat())[:10],
-                    "invoice_number": po_number,
-                    "vendor_name": detailed_po.get("vendor_name", ""),
-                    "payment_status": invoice_info.get("payment_status", "pending"),
                     "po_number": po_number,
-                    "po_pdf_url": detailed_po.get("po_pdf_url"),
-                    "invoice_file_url": detailed_po.get("invoice_file_url"),
-                    "attachments": kit_attachments,
-                    "created_by": "system",
-                    "created_by_name": "Auto-Sync Job",
-                    "created_at": datetime.now(timezone.utc).isoformat(),
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
-                    "auto_synced": True
-                }
-                await db.school_expenses.insert_one(kit_expense)
-                results["expenses_created"] += 1
-            
-            # Check if logistics expense already exists
-            existing_logistics = await db.school_expenses.find_one({
-                "school_id": school_id,
-                "po_number": po_number,
-                "category": "logistics_cost"
-            })
-            
-            if not existing_logistics and logistics_cost > 0:
-                # Build attachments for logistics
-                logistics_attachments = []
-                if detailed_po.get("logistics_bill_url"):
-                    logistics_attachments.append({
-                        "name": f"Logistics-Bill-{po_number}",
-                        "url": detailed_po.get("logistics_bill_url"),
-                        "type": "logistics_bill"
-                    })
-                if detailed_po.get("delivery_proof_url"):
-                    logistics_attachments.append({
-                        "name": f"Delivery-Proof-{po_number}",
-                        "url": detailed_po.get("delivery_proof_url"),
-                        "type": "delivery_proof"
-                    })
+                    "category": "kit_cost"
+                })
                 
-                logistics_expense = {
-                    "id": str(uuid.uuid4()),
+                if not existing_kit and invoice_amount > 0:
+                    # Build attachments from PO files
+                    kit_attachments = []
+                    if detailed_po.get("po_pdf_url"):
+                        kit_attachments.append({
+                            "name": f"PO-{po_number}.pdf",
+                            "url": detailed_po.get("po_pdf_url"),
+                            "type": "po_file"
+                        })
+                    if detailed_po.get("invoice_file_url"):
+                        kit_attachments.append({
+                            "name": f"Invoice-{po_number}",
+                            "url": detailed_po.get("invoice_file_url"),
+                            "type": "invoice"
+                        })
+                    
+                    kit_expense = {
+                        "id": str(uuid.uuid4()),
+                        "school_id": school_id,
+                        "school_name": school_name,
+                        "category": "kit_cost",
+                        "category_name": "Kit Cost",
+                        "amount": float(invoice_amount),
+                        "subtotal": float(subtotal),
+                        "gst_amount": float(total_tax),
+                        "gst_rate": gst_rate,
+                        "gst_type": gst_type,
+                        "grand_total": float(grand_total),
+                        "description": f"Kit cost from PO {po_number} (auto-synced)",
+                        "expense_date": detailed_po.get("created_at", datetime.now(timezone.utc).isoformat())[:10],
+                        "invoice_number": po_number,
+                        "vendor_name": detailed_po.get("vendor_name", ""),
+                        "payment_status": invoice_info.get("payment_status", "pending"),
+                        "po_number": po_number,
+                        "po_pdf_url": detailed_po.get("po_pdf_url"),
+                        "invoice_file_url": detailed_po.get("invoice_file_url"),
+                        "attachments": kit_attachments,
+                        "created_by": "system",
+                        "created_by_name": "Auto-Sync Job",
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                        "auto_synced": True
+                    }
+                    await db.school_expenses.insert_one(kit_expense)
+                    results["expenses_created"] += 1
+                
+                # Check if logistics expense already exists
+                existing_logistics = await db.school_expenses.find_one({
                     "school_id": school_id,
-                    "school_name": school_name,
-                    "category": "logistics_cost",
-                    "category_name": "Logistics Cost",
-                    "amount": float(logistics_cost),
-                    "description": f"Logistics from PO {po_number} (auto-synced)",
-                    "expense_date": detailed_po.get("created_at", datetime.now(timezone.utc).isoformat())[:10],
-                    "invoice_number": f"{po_number}-LOGISTICS",
-                    "vendor_name": detailed_po.get("vendor_name", ""),
-                    "payment_status": "pending",
                     "po_number": po_number,
-                    "logistics_bill_url": detailed_po.get("logistics_bill_url"),
-                    "delivery_proof_url": detailed_po.get("delivery_proof_url"),
-                    "attachments": logistics_attachments,
-                    "created_by": "system",
-                    "created_by_name": "Auto-Sync Job",
-                    "created_at": datetime.now(timezone.utc).isoformat(),
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
-                    "auto_synced": True
-                }
-                await db.school_expenses.insert_one(logistics_expense)
-                results["expenses_created"] += 1
+                    "category": "logistics_cost"
+                })
+                
+                if not existing_logistics and logistics_cost > 0:
+                    # Build attachments for logistics
+                    logistics_attachments = []
+                    if detailed_po.get("logistics_bill_url"):
+                        logistics_attachments.append({
+                            "name": f"Logistics-Bill-{po_number}",
+                            "url": detailed_po.get("logistics_bill_url"),
+                            "type": "logistics_bill"
+                        })
+                    if detailed_po.get("delivery_proof_url"):
+                        logistics_attachments.append({
+                            "name": f"Delivery-Proof-{po_number}",
+                            "url": detailed_po.get("delivery_proof_url"),
+                            "type": "delivery_proof"
+                        })
+                    
+                    logistics_expense = {
+                        "id": str(uuid.uuid4()),
+                        "school_id": school_id,
+                        "school_name": school_name,
+                        "category": "logistics_cost",
+                        "category_name": "Logistics Cost",
+                        "amount": float(logistics_cost),
+                        "description": f"Logistics from PO {po_number} (auto-synced)",
+                        "expense_date": detailed_po.get("created_at", datetime.now(timezone.utc).isoformat())[:10],
+                        "invoice_number": f"{po_number}-LOGISTICS",
+                        "vendor_name": detailed_po.get("vendor_name", ""),
+                        "payment_status": "pending",
+                        "po_number": po_number,
+                        "logistics_bill_url": detailed_po.get("logistics_bill_url"),
+                        "delivery_proof_url": detailed_po.get("delivery_proof_url"),
+                        "attachments": logistics_attachments,
+                        "created_by": "system",
+                        "created_by_name": "Auto-Sync Job",
+                        "created_at": datetime.now(timezone.utc).isoformat(),
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                        "auto_synced": True
+                    }
+                    await db.school_expenses.insert_one(logistics_expense)
+                    results["expenses_created"] += 1
             
             results["schools_processed"] += 1
             
