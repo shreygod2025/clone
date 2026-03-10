@@ -71,16 +71,30 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
    - Separates Student Payments and School Student Payments
    - Allows one-click sync from the report modal
 
-4. **Backend Sync Endpoints**
+4. **Automated Background Sync Scheduler (APScheduler)**
+   - Runs automatically every 60 minutes (configurable via `PAYMENT_SYNC_INTERVAL_MINUTES`)
+   - Can be enabled/disabled via `PAYMENT_SYNC_ENABLED` environment variable
+   - Shows live status in UI with green pulsing dot and next run time
+   - Logs all sync activity for debugging
+   - Gracefully shuts down when server stops
+
+5. **Backend Sync Endpoints**
    - `POST /api/payments/sync-single/{order_id}` - Sync single payment with Cashfree
    - `POST /api/payments/sync-all?payment_type=` - Bulk sync all pending payments
    - `GET /api/payments/status-report` - Get payment status breakdown report
+   - `GET /api/payments/scheduler-status` - Get scheduler status (running, interval, next_run)
+   - `POST /api/payments/trigger-sync` - Manually trigger a sync
    - All endpoints handle both `student_payments` and `school_student_payments` collections
    - Updates student status to "converted" when payment is confirmed as PAID
 
+**Environment Variables:**
+- `PAYMENT_SYNC_ENABLED` - Enable/disable auto-sync (default: true)
+- `PAYMENT_SYNC_INTERVAL_MINUTES` - Sync interval in minutes (default: 60)
+
 **Modified Files:**
-- `backend/server.py` - Added 3 new endpoints for payment sync (lines 3987-4310)
-- `frontend/src/pages/admin/AdminOrders.jsx` - Added sync panel, buttons, and modal
+- `backend/server.py` - Added scheduler, sync endpoints, and background task
+- `backend/requirements.txt` - Added APScheduler dependency
+- `frontend/src/pages/admin/AdminOrders.jsx` - Added sync panel, buttons, status display, and modal
 
 ---
 

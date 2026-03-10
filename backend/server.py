@@ -44,6 +44,10 @@ from cashfree_pg.models.create_order_request import CreateOrderRequest
 from cashfree_pg.models.customer_details import CustomerDetails as CashfreeCustomerDetails
 from cashfree_pg.models.order_meta import OrderMeta
 
+# Background Scheduler for automated tasks
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+
 ROOT_DIR = Path(__file__).parent
 UPLOAD_DIR = ROOT_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -62,6 +66,10 @@ CASHFREE_APP_ID = os.getenv("CASHFREE_APP_ID", "")
 CASHFREE_SECRET_KEY = os.getenv("CASHFREE_SECRET_KEY", "")
 CASHFREE_ENVIRONMENT = os.getenv("CASHFREE_ENVIRONMENT", "SANDBOX")
 CASHFREE_API_VERSION = "2023-08-01"
+
+# Payment Sync Scheduler Configuration
+PAYMENT_SYNC_ENABLED = os.getenv("PAYMENT_SYNC_ENABLED", "true").lower() == "true"
+PAYMENT_SYNC_INTERVAL_MINUTES = int(os.getenv("PAYMENT_SYNC_INTERVAL_MINUTES", "60"))  # Default: every hour
 
 # Initialize Cashfree credentials globally
 if CASHFREE_APP_ID and CASHFREE_SECRET_KEY:
@@ -4346,6 +4354,38 @@ async def get_payment_status_report(user: dict = Depends(get_current_user)):
             "pending_list": school_by_status.get("PENDING", []) + school_by_status.get("ACTIVE", [])
         }
     }
+
+
+@api_router.get("/payments/scheduler-status")
+async def get_scheduler_status(user: dict = Depends(get_current_user)):
+    """Get the payment sync scheduler status"""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    job = scheduler.get_job("payment_sync_job")
+    
+    return {
+        "enabled": PAYMENT_SYNC_ENABLED,
+        "running": scheduler.running,
+        "interval_minutes": PAYMENT_SYNC_INTERVAL_MINUTES,
+        "next_run": job.next_run_time.isoformat() if job and job.next_run_time else None,
+        "cashfree_configured": bool(CASHFREE_APP_ID and CASHFREE_SECRET_KEY)
+    }
+
+
+@api_router.post("/payments/trigger-sync")
+async def trigger_manual_sync(user: dict = Depends(get_current_user)):
+    """Manually trigger a payment sync (runs immediately)"""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
+        raise HTTPException(status_code=500, detail="Cashfree credentials not configured")
+    
+    # Run the sync immediately in the background
+    asyncio.create_task(scheduled_payment_sync())
+    
+    return {"message": "Payment sync triggered", "status": "running"}
 
 
 @api_router.get("/orders/school-student-payments")
@@ -14894,9 +14934,167 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# ========================
+# PAYMENT SYNC SCHEDULER
+# ========================
+
+scheduler = AsyncIOScheduler()
+
+async def scheduled_payment_sync():
+    """Background task to sync all pending payments with Cashfree"""
+    if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
+        logging.warning("[SCHEDULER] Payment sync skipped - Cashfree credentials not configured")
+        return
+    
+    logging.info("[SCHEDULER] Starting automated payment sync...")
+    
+    results = {
+        "student_payments": {"checked": 0, "updated": 0, "errors": 0},
+        "school_payments": {"checked": 0, "updated": 0, "errors": 0}
+    }
+    
+    try:
+        # Sync student payments
+        pending_student_payments = await db.student_payments.find(
+            {"status": {"$nin": ["PAID", "CANCELLED", "EXPIRED"]}},
+            {"_id": 0}
+        ).to_list(500)
+        
+        for payment in pending_student_payments:
+            order_id = payment.get("id")
+            old_status = payment.get("status")
+            results["student_payments"]["checked"] += 1
+            
+            try:
+                api_response = get_cashfree_client().PGFetchOrder(
+                    CASHFREE_API_VERSION,
+                    order_id,
+                    None
+                )
+                
+                if api_response.data:
+                    new_status = api_response.data.order_status
+                    
+                    if new_status != old_status:
+                        cf_payment_id = None
+                        payment_method = "Cashfree"
+                        try:
+                            payments_response = get_cashfree_client().PGOrderFetchPayments(
+                                CASHFREE_API_VERSION, order_id, None
+                            )
+                            if payments_response.data and len(payments_response.data) > 0:
+                                cf_payment_id = str(payments_response.data[0].cf_payment_id)
+                                payment_method = f"Cashfree - {payments_response.data[0].payment_group or 'unknown'}"
+                        except Exception:
+                            pass
+                        
+                        update_data = {
+                            "status": new_status,
+                            "synced_at": datetime.now(timezone.utc).isoformat(),
+                            "sync_source": "scheduler"
+                        }
+                        if cf_payment_id:
+                            update_data["transaction_id"] = cf_payment_id
+                            update_data["cf_payment_id"] = cf_payment_id
+                            update_data["payment_method"] = payment_method
+                        if new_status == "PAID":
+                            update_data["paid_at"] = datetime.now(timezone.utc).isoformat()
+                        
+                        await db.student_payments.update_one({"id": order_id}, {"$set": update_data})
+                        
+                        # Update student if PAID
+                        if new_status == "PAID":
+                            student_id = payment.get("student_id")
+                            if student_id:
+                                student_update = {
+                                    "status": "converted",
+                                    "payment_status": "paid",
+                                    "payment_amount": payment.get("amount"),
+                                    "payment_date": datetime.now(timezone.utc).isoformat(),
+                                    "pending_payment": None,
+                                    "updated_at": datetime.now(timezone.utc).isoformat()
+                                }
+                                if cf_payment_id:
+                                    student_update["payment_transaction_id"] = cf_payment_id
+                                    student_update["payment_method"] = payment_method
+                                await db.student_inquiries.update_one({"id": student_id}, {"$set": student_update})
+                        
+                        results["student_payments"]["updated"] += 1
+                        logging.info(f"[SCHEDULER] Student payment {order_id}: {old_status} -> {new_status}")
+                        
+            except Exception as e:
+                results["student_payments"]["errors"] += 1
+                logging.error(f"[SCHEDULER] Error syncing student payment {order_id}: {e}")
+        
+        # Sync school student payments
+        pending_school_payments = await db.school_student_payments.find(
+            {"status": {"$nin": ["PAID", "CANCELLED", "EXPIRED"]}},
+            {"_id": 0}
+        ).to_list(1000)
+        
+        for payment in pending_school_payments:
+            order_id = payment.get("id")
+            old_status = payment.get("status")
+            results["school_payments"]["checked"] += 1
+            
+            try:
+                api_response = get_cashfree_client().PGFetchOrder(
+                    CASHFREE_API_VERSION,
+                    order_id,
+                    None
+                )
+                
+                if api_response.data:
+                    new_status = api_response.data.order_status
+                    
+                    if new_status != old_status:
+                        cf_payment_id = None
+                        payment_method = "Cashfree"
+                        try:
+                            payments_response = get_cashfree_client().PGOrderFetchPayments(
+                                CASHFREE_API_VERSION, order_id, None
+                            )
+                            if payments_response.data and len(payments_response.data) > 0:
+                                cf_payment_id = str(payments_response.data[0].cf_payment_id)
+                                payment_method = f"Cashfree - {payments_response.data[0].payment_group or 'unknown'}"
+                        except Exception:
+                            pass
+                        
+                        update_data = {
+                            "status": new_status,
+                            "synced_at": datetime.now(timezone.utc).isoformat(),
+                            "sync_source": "scheduler"
+                        }
+                        if cf_payment_id:
+                            update_data["transaction_id"] = cf_payment_id
+                            update_data["cf_payment_id"] = cf_payment_id
+                            update_data["payment_method"] = payment_method
+                        if new_status == "PAID":
+                            update_data["paid_at"] = datetime.now(timezone.utc).isoformat()
+                        
+                        await db.school_student_payments.update_one({"id": order_id}, {"$set": update_data})
+                        
+                        results["school_payments"]["updated"] += 1
+                        logging.info(f"[SCHEDULER] School payment {order_id}: {old_status} -> {new_status}")
+                        
+            except Exception as e:
+                results["school_payments"]["errors"] += 1
+                logging.error(f"[SCHEDULER] Error syncing school payment {order_id}: {e}")
+        
+        # Log summary
+        total_checked = results["student_payments"]["checked"] + results["school_payments"]["checked"]
+        total_updated = results["student_payments"]["updated"] + results["school_payments"]["updated"]
+        total_errors = results["student_payments"]["errors"] + results["school_payments"]["errors"]
+        
+        logging.info(f"[SCHEDULER] Payment sync complete - Checked: {total_checked}, Updated: {total_updated}, Errors: {total_errors}")
+        
+    except Exception as e:
+        logging.error(f"[SCHEDULER] Payment sync failed: {e}")
+
+
 @app.on_event("startup")
 async def startup_db_client():
-    """Create database indexes on startup for better performance"""
+    """Create database indexes on startup and start background scheduler"""
     try:
         # School Inquiries indexes
         await db.school_inquiries.create_index("id", unique=True)
@@ -14959,7 +15157,28 @@ async def startup_db_client():
         print("[STARTUP] Database indexes created successfully")
     except Exception as e:
         print(f"[STARTUP] Warning: Could not create some indexes: {e}")
+    
+    # Start the payment sync scheduler
+    if PAYMENT_SYNC_ENABLED and CASHFREE_APP_ID and CASHFREE_SECRET_KEY:
+        scheduler.add_job(
+            scheduled_payment_sync,
+            trigger=IntervalTrigger(minutes=PAYMENT_SYNC_INTERVAL_MINUTES),
+            id="payment_sync_job",
+            name="Automated Payment Sync",
+            replace_existing=True
+        )
+        scheduler.start()
+        print(f"[STARTUP] Payment sync scheduler started - runs every {PAYMENT_SYNC_INTERVAL_MINUTES} minutes")
+    else:
+        if not PAYMENT_SYNC_ENABLED:
+            print("[STARTUP] Payment sync scheduler disabled via PAYMENT_SYNC_ENABLED=false")
+        else:
+            print("[STARTUP] Payment sync scheduler not started - Cashfree credentials missing")
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
+    # Stop the scheduler if running
+    if scheduler.running:
+        scheduler.shutdown(wait=False)
+        print("[SHUTDOWN] Payment sync scheduler stopped")
     client.close()

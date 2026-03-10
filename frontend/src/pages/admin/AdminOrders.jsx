@@ -497,6 +497,22 @@ const AdminOrders = () => {
   const [syncingAll, setSyncingAll] = useState(false);
   const [syncReport, setSyncReport] = useState(null);
   const [showSyncReport, setShowSyncReport] = useState(false);
+  const [schedulerStatus, setSchedulerStatus] = useState(null);
+
+  // Fetch scheduler status on mount
+  useEffect(() => {
+    const fetchSchedulerStatus = async () => {
+      try {
+        const response = await axios.get(`${API}/payments/scheduler-status`, {
+          headers: getAuthHeaders()
+        });
+        setSchedulerStatus(response.data);
+      } catch (error) {
+        console.error('Failed to fetch scheduler status:', error);
+      }
+    };
+    fetchSchedulerStatus();
+  }, []);
 
   // Sync single payment with Cashfree
   const handleSyncPayment = async (orderId) => {
@@ -636,7 +652,24 @@ const AdminOrders = () => {
               </div>
               <div>
                 <h3 className="font-semibold text-indigo-900">Cashfree Payment Sync</h3>
-                <p className="text-xs text-indigo-600">Sync payment statuses with Cashfree gateway</p>
+                <p className="text-xs text-indigo-600">
+                  {schedulerStatus?.running ? (
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                      Auto-sync active (every {schedulerStatus.interval_minutes} min)
+                      {schedulerStatus.next_run && (
+                        <span className="text-slate-500 ml-1">
+                          • Next: {new Date(schedulerStatus.next_run).toLocaleTimeString()}
+                        </span>
+                      )}
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 bg-slate-400 rounded-full"></span>
+                      Auto-sync disabled
+                    </span>
+                  )}
+                </p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
