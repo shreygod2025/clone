@@ -13141,9 +13141,20 @@ async def sync_po_data_job(secret: str = None):
                 po_number = delivered_po_summary.get("po_number")
                 if not po_number:
                     continue
+                
+                # IMPORTANT: Verify this PO actually belongs to this school by checking school_name match
+                po_school_name = delivered_po_summary.get("school_name", "")
+                if po_school_name and po_school_name.lower().strip() != school_name.lower().strip():
+                    # PO belongs to a different school, skip it
+                    continue
                     
                 detailed_po = await fetch_po_data(f"po/{po_number}")
                 if not detailed_po:
+                    continue
+                
+                # Double-check school name from detailed PO
+                detailed_school_name = detailed_po.get("school_name", "")
+                if detailed_school_name and detailed_school_name.lower().strip() != school_name.lower().strip():
                     continue
                 
                 # Auto-create expenses from delivered PO data
@@ -13473,6 +13484,54 @@ async def delete_school_expense(expense_id: str, user: dict = Depends(get_curren
     return {"message": "Expense deleted successfully"}
 
 
+@api_router.post("/expenses/cleanup-duplicates")
+async def cleanup_duplicate_expenses(user: dict = Depends(get_current_user)):
+    """Remove duplicate expenses - keeps only the first expense per school/PO/category combination"""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    # Find all auto-synced expenses with PO numbers
+    expenses = await db.school_expenses.find(
+        {"po_number": {"$exists": True, "$ne": None}},
+        {"_id": 0}
+    ).to_list(10000)
+    
+    # Group by school_id + po_number + category
+    seen = {}
+    duplicates_to_delete = []
+    
+    for exp in expenses:
+        key = f"{exp.get('school_id')}_{exp.get('po_number')}_{exp.get('category')}"
+        if key in seen:
+            # This is a duplicate
+            duplicates_to_delete.append(exp.get('id'))
+        else:
+            seen[key] = exp.get('id')
+    
+    # Delete duplicates
+    if duplicates_to_delete:
+        await db.school_expenses.delete_many({"id": {"$in": duplicates_to_delete}})
+    
+    return {
+        "message": f"Cleanup complete. Removed {len(duplicates_to_delete)} duplicate expenses.",
+        "duplicates_removed": len(duplicates_to_delete)
+    }
+
+
+@api_router.post("/expenses/clear-auto-synced")
+async def clear_auto_synced_expenses(user: dict = Depends(get_current_user)):
+    """Clear all auto-synced expenses to allow fresh sync. Manual expenses are preserved."""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    result = await db.school_expenses.delete_many({"auto_synced": True})
+    
+    return {
+        "message": f"Cleared {result.deleted_count} auto-synced expenses. Manual expenses preserved.",
+        "deleted_count": result.deleted_count
+    }
+
+
 # ========================
 # PO API INTEGRATION (PROCUREWAY)
 # ========================
@@ -13612,6 +13671,11 @@ async def sync_po_expenses(school_id: str, data: dict = None, user: dict = Depen
         
         # Only create expenses for delivered POs
         if po_status != "delivered":
+            continue
+        
+        # Verify PO belongs to this school
+        po_school_name = po.get("school_name", "")
+        if po_school_name and po_school_name.lower().strip() != school_name.lower().strip():
             continue
             
         vendor_name = po.get("vendor_name", "")

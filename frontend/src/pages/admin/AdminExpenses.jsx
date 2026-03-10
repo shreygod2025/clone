@@ -380,7 +380,7 @@ const AdminExpenses = () => {
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs px-2 py-1 rounded-full ${getCategoryColor(expense.category)}`}>
+                    <span className={`text-xs px-2 py-1 rounded-full whitespace-nowrap ${getCategoryColor(expense.category)}`}>
                       {expense.category_name}
                     </span>
                     {expense.auto_synced && (
