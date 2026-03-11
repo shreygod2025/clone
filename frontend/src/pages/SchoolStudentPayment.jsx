@@ -547,8 +547,8 @@ const SchoolStudentPayment = () => {
                       <SelectValue placeholder="Select student's grade" />
                     </SelectTrigger>
                     <SelectContent>
-                      {schoolInfo?.grade_pricing?.map((g) => (
-                        <SelectItem key={g.grade} value={g.grade}>
+                      {schoolInfo?.grade_pricing?.filter(g => g.grade && g.grade.toString().trim() !== '').map((g) => (
+                        <SelectItem key={g.grade} value={g.grade.toString()}>
                           Grade {g.grade}
                         </SelectItem>
                       ))}
