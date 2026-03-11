@@ -3250,7 +3250,7 @@ async def create_payment_order(data: StudentPaymentRequest, user: dict = Depends
         )
         
         # Get frontend URL for return
-        frontend_url = os.getenv("FRONTEND_URL", "https://oll-academy-sync.preview.emergentagent.com")
+        frontend_url = os.getenv("FRONTEND_URL", "https://oll-school-manage.preview.emergentagent.com")
         
         # Create order meta
         order_meta = OrderMeta(
@@ -3442,7 +3442,7 @@ async def create_payment_session(student_id: str):
         )
         
         # Get frontend URL for return
-        frontend_url = os.getenv("FRONTEND_URL", "https://oll-academy-sync.preview.emergentagent.com")
+        frontend_url = os.getenv("FRONTEND_URL", "https://oll-school-manage.preview.emergentagent.com")
         backend_url = os.getenv("REACT_APP_BACKEND_URL", frontend_url)
         
         # Create order meta
@@ -6617,35 +6617,45 @@ async def raise_school_ticket(
     data: dict,
     user: dict = Depends(get_current_user)
 ):
-    """Raise a support ticket on behalf of a school"""
+    """Raise a support ticket on behalf of a school - saves to support_queries for unified Support Center"""
     school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
     if not school:
         raise HTTPException(status_code=404, detail="School not found")
     
-    ticket_data = {
-        "id": str(uuid.uuid4()),
-        "school_id": school_id,
-        "school_name": school.get('school_name', ''),
-        "contact_name": data.get('contact_name', school.get('contact_name', '')),
-        "contact_phone": data.get('contact_phone', school.get('phone', '')),
-        "contact_email": data.get('contact_email', school.get('email', '')),
+    query_id = str(uuid.uuid4())
+    user_id = user.get("id", "")
+    
+    # Build query document matching support_queries schema
+    query_doc = {
+        "id": query_id,
+        "name": data.get('contact_name', school.get('contact_name', school.get('school_name', ''))),
+        "phone": data.get('contact_phone', school.get('phone', '')),
+        "email": data.get('contact_email', school.get('email', '')),
         "query_type": data.get('query_type', 'general'),
         "related_to": data.get('related_to', ''),  # Sub-category
-        "subject": data.get('subject', ''),
-        "description": data.get('description', ''),
+        "inquiry_type": "school",  # Mark as school query
+        "message": data.get('description', ''),
         "query_details": data.get('description', ''),  # Also store as query_details for consistency
         "priority": data.get('priority', 'medium'),
         "status": "open",
-        "raised_by": user.get('email', ''),
-        "raised_by_name": user.get('name', ''),
-        "user_type": data.get('user_type', 'school'),  # school, teacher, student
-        "source": data.get('source', 'school_crm'),
+        "source": "school_crm",
         "attachments": data.get('attachments', []),  # [{name, url, type, is_voice_note}]
+        "created_by": user_id,
+        "created_by_name": user.get('name', ''),
+        "viewers": [],  # Initialize empty viewers array
         "created_at": datetime.now(timezone.utc).isoformat(),
-        "updated_at": datetime.now(timezone.utc).isoformat()
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "comments": [],  # Initialize empty comments array for replies
+        "assigned_to": school.get('assigned_to'),  # Auto-assign to school's assigned team member
+        # Additional school-specific fields
+        "school_id": school_id,
+        "school_name": school.get('school_name', ''),
+        "subject": data.get('subject', ''),
+        "user_type": data.get('user_type', 'school'),  # school, teacher, student
     }
     
-    await db.support_tickets.insert_one(ticket_data)
+    # Insert into support_queries collection (used by Support Center UI)
+    await db.support_queries.insert_one(query_doc)
     
     # Send WhatsApp notification to assigned team member (if school has assigned_to)
     if school.get('assigned_to'):
@@ -6654,13 +6664,21 @@ async def raise_school_ticket(
         if not assignee:
             assignee = await db.team_users.find_one({"id": school.get('assigned_to')}, {"_id": 0})
         if assignee and assignee.get('phone'):
-            ticket_data['assigned_to_name'] = assignee.get('name', '')
+            # Build ticket_data for notification
+            ticket_data = {
+                "id": query_id,
+                "subject": data.get('subject', data.get('query_type', 'Support Query')),
+                "priority": data.get('priority', 'medium'),
+                "school_name": school.get('school_name', ''),
+                "contact_name": data.get('contact_name', school.get('contact_name', '')),
+                "assigned_to_name": assignee.get('name', '')
+            }
             await send_support_ticket_notification(ticket_data, assignee)
-            print(f"Ticket notification sent to {assignee.get('name')} at {assignee.get('phone')}")
+            print(f"Query notification sent to {assignee.get('name')} at {assignee.get('phone')}")
         else:
-            print(f"Ticket notification skipped - assignee {school.get('assigned_to')} has no phone number")
+            print(f"Query notification skipped - assignee {school.get('assigned_to')} has no phone number")
     
-    return {"message": "Ticket raised successfully", "ticket_id": ticket_data['id']}
+    return {"message": "Ticket raised successfully", "ticket_id": query_id}
 
 # ========================
 # EDUCATOR ENDPOINTS

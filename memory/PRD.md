@@ -47,6 +47,37 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+
+### March 11, 2026
+
+#### School CRM → Support Center Ticket Integration Fix
+**Bug Fixed:**
+
+Tickets created from the School CRM page (via "Raise Query" button) were appearing in the Support Center but were non-interactive - couldn't be opened, replied to, or deleted.
+
+**Root Cause:**
+The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `support_tickets` collection, but the Support Center UI reads from the `support_queries` collection.
+
+**Fix Applied:**
+- Modified the `raise_school_ticket` endpoint in `server.py`
+- Changed target collection from `support_tickets` to `support_queries`
+- Adjusted field mapping to match the `support_queries` schema:
+  - Added `inquiry_type: "school"` to identify school queries
+  - Added `comments: []` array for reply support
+  - Added `viewers: []` array for viewer feature
+  - Preserved school-specific fields (`school_id`, `school_name`, `subject`, `user_type`)
+
+**Modified Files:**
+- `backend/server.py` - Lines 6614-6681: Updated raise-ticket endpoint
+
+**Result:**
+- ✅ School tickets now appear in Support Center
+- ✅ Full interactivity restored (Reply, Notes, History, Edit, Delete, Assign, Viewers)
+- ✅ Reply conversation modal works correctly
+- ✅ Ticket source correctly shows "school_crm"
+
+---
+
 ### March 10, 2026
 
 #### Cashfree Payment Sync System
