@@ -2392,6 +2392,49 @@ async def team_user_login(data: AdminLogin):
         }
     }
 
+
+# ========================
+# EMAIL TEST ENDPOINTS
+# ========================
+
+@api_router.post("/email/test-all-templates")
+async def test_all_email_templates(
+    email: str = Query(..., description="Email address to send test emails to"),
+    user: dict = Depends(get_current_user)
+):
+    """Send all email templates to specified email for testing"""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    test_data = {
+        "name": "Test User",
+        "skills": "Robotics, STEM, Python",
+        "experience": "5 years in education",
+        "city": "Mumbai",
+        "demo_date": "March 15, 2026",
+        "demo_time": "10:00 AM IST",
+        "meeting_link": "https://meet.jit.si/oll-test-demo",
+        "onboarding_date": "March 20, 2026"
+    }
+    
+    results = []
+    for template_key in EMAIL_TEMPLATES.keys():
+        result = await send_educator_email(email, template_key, test_data)
+        results.append({
+            "template": template_key,
+            "subject": EMAIL_TEMPLATES[template_key]["subject"],
+            "success": result.get("success", False),
+            "message": result.get("message", "")
+        })
+        # Small delay between emails to avoid rate limiting
+        await asyncio.sleep(1)
+    
+    successful = sum(1 for r in results if r["success"])
+    return {
+        "message": f"Sent {successful}/{len(results)} test emails to {email}",
+        "results": results
+    }
+
 # ========================
 # ROLES MANAGEMENT ENDPOINTS
 # ========================
