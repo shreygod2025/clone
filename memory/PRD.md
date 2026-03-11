@@ -50,6 +50,44 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ### March 11, 2026
 
+#### MOU PDF Generation Feature
+**Feature Implemented:**
+
+Added "Generate MOU" button to the School CRM Conversion (Onboarding) modal. The PDF is fully structured to match the official OLL MOU template.
+
+**Template Sections:**
+1. Header - OLL logo (white on navy #1E3A5F) on every page
+2. Party details - OLL (Clonefutura Live Solutions) + School name/address
+3. Section 1: Program Details - Course Name, Type, Model, Kit, Mode, Training, Timeline
+4. Section 2: Count & Payment - Full grade pricing table, requirements, payment collection, payment terms
+5. Section 3: Program Execution & Deliverables
+6. Section 4: Kit & Book Management
+7. Section 5: Educator Confirmation & Training Schedule
+8. Section 6: Reports
+9. Section 7: Assessment & Audit
+10. Section 8: Display
+11. Section 9: Certification
+12. Section 10: Term of Agreement
+13. Section 11: Contact Details (Program Coordinator, Accounts Coordinator, Principal)
+14. Authorized Signatories - OLL (Vidushi Daga, Chairman) + School Rep
+15. Footer - OLL contact details + page numbers on every page
+
+**Key Features:**
+- Auto-downloads PDF on click
+- Uploads to Cloudinary and saves in school's Documents section
+- Loading state with spinner during generation
+- Leaves fields blank when data not available
+- Supports multiple school contacts by role (principal, coordinator, accounts)
+
+**Modified Files:**
+- `frontend/src/pages/admin/AdminSchoolCRM.jsx` - generateMOUPDF function + imports
+
+**Dependencies Added:**
+- `jspdf` (v4.x)
+- `jspdf-autotable` (v5.x)
+
+---
+
 #### School CRM - New Fields: Course Type & Lab Kit Count
 **Feature Added:**
 

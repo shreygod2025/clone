@@ -1817,315 +1817,570 @@ const AdminSchoolCRM = () => {
     if (!showOnboardModal) return;
     setGeneratingMOU(true);
     try {
-      const pageWidth = 210;
-      const pageHeight = 297;
-      const margin = 15;
+      const PW = 210, PH = 297, M = 15;
+      const CW = PW - M * 2;
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-      // ── HEADER ─────────────────────────────────────────────────
-      doc.setFillColor(30, 58, 95);
-      doc.rect(0, 0, pageWidth, 38, 'F');
-
-      // Load OLL logo
-      const logoUrl = 'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/rugags0w_OLL-horizontal-logo-white.png';
+      // ── LOAD OLL LOGO ──────────────────────────────────────────
+      let logoDataUrl = null;
       try {
-        const response = await fetch(logoUrl);
-        const blob = await response.blob();
-        const logoDataUrl = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
+        const logoUrl = 'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/rugags0w_OLL-horizontal-logo-white.png';
+        const r = await fetch(logoUrl);
+        const b = await r.blob();
+        logoDataUrl = await new Promise((res, rej) => {
+          const rd = new FileReader();
+          rd.onload = () => res(rd.result);
+          rd.onerror = rej;
+          rd.readAsDataURL(b);
         });
-        doc.addImage(logoDataUrl, 'PNG', margin, 6, 55, 22);
-      } catch {
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(22);
+      } catch {}
+
+      // ── HELPERS ────────────────────────────────────────────────
+      let y = 0;
+
+      const drawPageHeader = () => {
+        doc.setFillColor(30, 58, 95);
+        doc.rect(0, 0, PW, 22, 'F');
+        if (logoDataUrl) {
+          doc.addImage(logoDataUrl, 'PNG', M, 2, 40, 17);
+        } else {
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(16);
+          doc.setFont('helvetica', 'bold');
+          doc.text('OLL', M, 15);
+        }
+      };
+
+      const drawFooter = (pageNum, total) => {
+        doc.setFillColor(30, 58, 95);
+        doc.rect(0, PH - 10, PW, 10, 'F');
+        doc.setTextColor(180, 200, 235);
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Clonefutura Live Solutions Pvt Ltd  |  info@oll.co  |  +91 9920188188  |  www.oll.co', M, PH - 4);
+        doc.text(`Page ${pageNum} of ${total}`, PW - M, PH - 4, { align: 'right' });
+      };
+
+      const ensureSpace = (needed) => {
+        if (y + needed > PH - 15) {
+          doc.addPage();
+          drawPageHeader();
+          y = 27;
+        }
+      };
+
+      const sectionTitle = (text) => {
+        ensureSpace(12);
+        doc.setFontSize(10.5);
         doc.setFont('helvetica', 'bold');
-        doc.text('OLL', margin, 24);
-      }
+        doc.setTextColor(30, 58, 95);
+        doc.text(text, M, y);
+        y += 7;
+      };
 
-      // Title on right
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(12);
+      const bullet = (text, indent = 4) => {
+        const lines = doc.splitTextToSize('• ' + text, CW - indent);
+        ensureSpace(lines.length * 5 + 2);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(50, 50, 50);
+        doc.text(lines, M + indent, y);
+        y += lines.length * 5 + 1;
+      };
+
+      const inlineField = (label, value, indent = 4) => {
+        ensureSpace(7);
+        doc.setFontSize(9.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 58, 95);
+        doc.text(`${label}: `, M + indent, y);
+        const lw = doc.getTextWidth(`${label}: `);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(50, 50, 50);
+        doc.text(value || '________________________________________', M + indent + lw, y);
+        y += 6;
+      };
+
+      // ── DATA ───────────────────────────────────────────────────
+      const school = showOnboardModal;
+      const data = onboardData;
+      const schoolName = school?.school_name || '';
+      const schoolAddress = school?.location || '';
+      const contacts = data.school_contacts || [];
+      const principal = contacts.find(c => c.role === 'principal') || contacts[0] || {};
+      const coordinator = contacts.find(c => ['coordinator', 'program_coordinator', 'teacher'].includes(c.role)) || contacts[1] || {};
+      const accountsCoord = contacts.find(c => ['accounts', 'accountant', 'admin'].includes(c.role)) || contacts[2] || {};
+
+      const courseTypeLabel = { only_robotics: 'Only Robotics', robotics_coding_ai: 'Robotics, Coding & AI' };
+      const kitTypeLabel = { lab_setup: 'Lab Setup', individual: 'Individual', no_kit: 'No Kit' };
+      const trainingLabel = { student_training: 'Student Training', teacher_training: 'Teacher Training', both: 'Teacher & Student Training' };
+      const modelLabel = { robotics_lab: 'Compulsory', stem_curriculum: 'Optional', after_school: 'Optional', teacher_training: 'Optional', full_partnership: 'Compulsory' };
+      const paymentCollectionLabel = { from_school: 'School Collects & Pays OLL', from_student: 'OLL Collects Online', online: 'OLL Collects Online' };
+      const paymentMethodLabel = { cheque: 'Cheque', neft: 'Netbanking', online: 'Online Payments', cash: 'Cash' };
+
+      const todayStr = format(new Date(), 'dd MMMM yyyy');
+
+      // ── PAGE 1 HEADER ──────────────────────────────────────────
+      drawPageHeader();
+      y = 28;
+
+      // MOU Title
+      doc.setFontSize(15);
       doc.setFont('helvetica', 'bold');
-      doc.text('MEMORANDUM OF UNDERSTANDING', pageWidth - margin, 17, { align: 'right' });
-      doc.setFontSize(8.5);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Date: ${format(new Date(), 'dd MMMM yyyy')}`, pageWidth - margin, 25, { align: 'right' });
-
-      let y = 48;
-
-      // Title centred
       doc.setTextColor(30, 58, 95);
-      doc.setFontSize(13);
-      doc.setFont('helvetica', 'bold');
-      doc.text('MEMORANDUM OF UNDERSTANDING', pageWidth / 2, y, { align: 'center' });
-      y += 6;
+      doc.text('MEMORANDUM OF UNDERSTANDING', PW / 2, y, { align: 'center' });
+      y += 5;
+      doc.setDrawColor(30, 58, 95);
+      doc.setLineWidth(0.6);
+      doc.line(M, y, PW - M, y);
+      y += 8;
+
+      // Introduction
       doc.setFontSize(9.5);
       doc.setFont('helvetica', 'normal');
-      doc.setTextColor(100, 100, 100);
-      doc.text('(School Partnership Agreement)', pageWidth / 2, y, { align: 'center' });
-      y += 9;
-
-      doc.setDrawColor(30, 58, 95);
-      doc.setLineWidth(0.5);
-      doc.line(margin, y, pageWidth - margin, y);
+      doc.setTextColor(50, 50, 50);
+      const introText = `This Memorandum of Understanding (MOU) is entered into on ${todayStr} by and between`;
+      doc.text(introText, M, y);
       y += 7;
 
-      // ── PARTIES ────────────────────────────────────────────────
-      const schoolName = showOnboardModal?.school_name || '________________________';
-      const contactName = onboardData.school_contacts?.[0]?.name || showOnboardModal?.contact_name || '________________________';
-      const contactPhone = onboardData.school_contacts?.[0]?.phone_number || showOnboardModal?.phone || '________________________';
-      const contactEmail = onboardData.school_contacts?.[0]?.email || showOnboardModal?.email || '________________________';
-      const schoolLocation = showOnboardModal?.location || '';
-
-      doc.setFontSize(10.5);
+      // Party 1
+      doc.setFillColor(240, 245, 252);
+      doc.roundedRect(M, y, CW, 22, 2, 2, 'F');
+      doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(30, 58, 95);
-      doc.text('PARTIES TO THIS AGREEMENT', margin, y);
-      y += 6;
+      doc.text('PARTY 1 (Service Provider):', M + 4, y + 6);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(50, 50, 50);
+      doc.text('Clonefutura Live Solutions Pvt Ltd, referred to as "OLL"', M + 4, y + 13);
+      const ollAddr = doc.splitTextToSize('Daga Villa, Bungalow No. 9 Magnum Towers, 2nd X lane, Lokhandwala Complex, Andheri(W), 400053', CW - 8);
+      doc.text(ollAddr, M + 4, y + 19);
+      y += 27;
 
-      // Party 1 box
+      // Party 2
+      const p2Lines = schoolAddress ? doc.splitTextToSize(`Address: ${schoolAddress}`, CW - 8) : [];
+      const p2H = 22 + (p2Lines.length > 1 ? (p2Lines.length - 1) * 5 : 0);
       doc.setFillColor(240, 245, 252);
-      doc.rect(margin, y, pageWidth - margin * 2, 22, 'F');
+      doc.roundedRect(M, y, CW, p2H, 2, 2, 'F');
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('PARTY 2 (School):', M + 4, y + 6);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(50, 50, 50);
+      doc.text(`School Name: ${schoolName || '________________________________________'}`, M + 4, y + 13);
+      if (p2Lines.length > 0) doc.text(p2Lines, M + 4, y + 19);
+      y += p2H + 6;
+
+      // Terms & Conditions Banner
+      ensureSpace(12);
+      doc.setFillColor(30, 58, 95);
+      doc.rect(M, y, CW, 8, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('TERMS AND CONDITIONS', M + 4, y + 5.5);
+      y += 12;
+
+      // ── SECTION 1: PROGRAM DETAILS ─────────────────────────────
+      sectionTitle('1. PROGRAM DETAILS');
+
+      const progFields = [
+        ['Course Name', data.offering],
+        ['Course Type', courseTypeLabel[data.course_type] || data.course_type],
+        ['Model', modelLabel[data.model] || data.model || 'Compulsory / Optional'],
+        ['Kit', kitTypeLabel[data.kit_type] || data.kit_type || 'Individual / Lab Setup'],
+        ...(data.kit_type === 'lab_setup' ? [['No. of Lab Kits', String(data.lab_kit_count || '')]] : []),
+        ['Mode', 'Offline'],
+        ['Type of Training', trainingLabel[data.training_type] || 'Teacher Training / Student Training'],
+        ['Assistant Educator Required', 'Yes / No'],
+      ];
+      progFields.forEach(([lbl, val]) => inlineField(lbl, val));
+      y += 3;
+
+      // Timeline
+      ensureSpace(35);
       doc.setFontSize(9.5);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(30, 58, 95);
-      doc.text('Party 1 — Service Provider:', margin + 3, y + 6);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(50, 50, 50);
-      doc.text('OLL (Online Learning Labs)', margin + 3, y + 12);
-      doc.text('Email: info@oll.co | Phone: +91 9920188188', margin + 3, y + 18);
-      y += 26;
-
-      // Party 2 box
-      doc.setFillColor(240, 245, 252);
-      const party2H = schoolLocation ? 34 : 28;
-      doc.rect(margin, y, pageWidth - margin * 2, party2H, 'F');
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      doc.text('Party 2 — School:', margin + 3, y + 6);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(50, 50, 50);
-      doc.text(`School Name: ${schoolName}`, margin + 3, y + 12);
-      doc.text(`Contact: ${contactName} | Phone: ${contactPhone}`, margin + 3, y + 18);
-      doc.text(`Email: ${contactEmail}`, margin + 3, y + 24);
-      if (schoolLocation) doc.text(`Address: ${schoolLocation}`, margin + 3, y + 30);
-      y += party2H + 8;
-
-      // ── PROGRAM DETAILS ─────────────────────────────────────────
-      doc.setDrawColor(220, 225, 235);
-      doc.setLineWidth(0.2);
-      doc.line(margin, y, pageWidth - margin, y);
+      doc.text('Timeline of Program:', M + 4, y);
       y += 6;
 
-      doc.setFontSize(10.5);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      doc.text('PROGRAM DETAILS', margin, y);
-      y += 5;
-
-      const courseTypeLabels = { only_robotics: 'Only Robotics', robotics_coding_ai: 'Robotics, Coding & AI' };
-      const kitTypeLabels = { lab_setup: 'Lab Kit', individual: 'Individual Kit', no_kit: 'No Kit' };
-      const trainingLabels = { student_training: 'Student Training', teacher_training: 'Teacher Training', both: 'Student & Teacher Training' };
-      const modelLabels = { robotics_lab: 'Robotics Lab Setup', stem_curriculum: 'STEM Curriculum Integration', after_school: 'After School Program', teacher_training: 'Teacher Training Only', full_partnership: 'Full School Partnership' };
-
-      const programRows = [
-        ['Offering / Program', onboardData.offering || '—'],
-        ['Partnership Model', modelLabels[onboardData.model] || onboardData.model || '—'],
-        ['Course Type', courseTypeLabels[onboardData.course_type] || onboardData.course_type || '—'],
-        ['Kit Type', kitTypeLabels[onboardData.kit_type] || onboardData.kit_type || '—'],
-        ...(onboardData.kit_type === 'lab_setup' ? [['No. of Lab Kits', String(onboardData.lab_kit_count || '—')]] : []),
-        ['Training', trainingLabels[onboardData.training_type] || onboardData.training_type || '—'],
-        ['Total Students', String(onboardData.total_students || '—')],
-      ];
-
-      autoTable(doc, {
-        startY: y,
-        body: programRows,
-        theme: 'plain',
-        styles: { fontSize: 9.5, cellPadding: 3, textColor: [50, 50, 50] },
-        columnStyles: { 0: { fontStyle: 'bold', textColor: [30, 58, 95], cellWidth: 65 } },
-        margin: { left: margin, right: margin },
-        tableLineColor: [220, 225, 235],
-        tableLineWidth: 0.2,
-        alternateRowStyles: { fillColor: [245, 249, 255] },
-      });
-      y = doc.lastAutoTable.finalY + 8;
-
-      // ── FINANCIAL TERMS ─────────────────────────────────────────
-      if (y > pageHeight - 80) { doc.addPage(); y = 20; }
-
-      doc.setDrawColor(220, 225, 235);
-      doc.line(margin, y, pageWidth - margin, y);
-      y += 6;
-      doc.setFontSize(10.5);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      doc.text('FINANCIAL TERMS', margin, y);
-      y += 5;
-
-      const totalAmt = onboardData.total_amount;
-      const paymentModeLabel = { from_school: 'From School', from_student: 'From Students', online: 'Online Payment' };
-      const paymentMethodLabel = onboardData.payment_method ? onboardData.payment_method.toUpperCase() : '—';
-
-      const financialRows = [
-        ['Total Contract Value', totalAmt ? `Rs. ${Number(totalAmt).toLocaleString('en-IN')}` : '—'],
-        ['Payment Mode', paymentModeLabel[onboardData.payment_mode] || '—'],
-        ['Payment Method', paymentMethodLabel],
-      ];
-
-      const validTranches = (onboardData.payment_tranches || []).filter(t => t.amount);
-      validTranches.forEach((t, i) => {
-        const dateStr = t.date ? format(new Date(t.date), 'dd MMM yyyy') : '';
-        financialRows.push([
-          `Tranche ${i + 1}`,
-          `Rs. ${Number(t.amount).toLocaleString('en-IN')}${dateStr ? ` — Due: ${dateStr}` : ''}${t.notes ? ` (${t.notes})` : ''}`,
-        ]);
+      const trainingStart = data.contract_start ? format(new Date(data.contract_start), 'dd / MM / yyyy') : '_____ / _____ / _____';
+      [
+        ['Teacher Training Start Date (if teacher training)', trainingStart],
+        ['Kit Delivery Date', '_____ / _____ / _____'],
+        ['Kit Distribution Date', '_____ / _____ / _____'],
+      ].forEach(([lbl, val]) => {
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(50, 50, 50);
+        doc.text(`• ${lbl}: ${val}`, M + 4, y);
+        y += 6;
       });
 
-      autoTable(doc, {
-        startY: y,
-        body: financialRows,
-        theme: 'plain',
-        styles: { fontSize: 9.5, cellPadding: 3, textColor: [50, 50, 50] },
-        columnStyles: { 0: { fontStyle: 'bold', textColor: [30, 58, 95], cellWidth: 65 } },
-        margin: { left: margin, right: margin },
-        tableLineColor: [220, 225, 235],
-        tableLineWidth: 0.2,
-        alternateRowStyles: { fillColor: [245, 249, 255] },
-      });
-      y = doc.lastAutoTable.finalY + 8;
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(120, 120, 120);
+      doc.text('* NOTE: The kits will only be delivered 15 days after we receive payment', M + 4, y);
+      y += 8;
 
-      // ── CONTRACT PERIOD ─────────────────────────────────────────
-      if (y > pageHeight - 60) { doc.addPage(); y = 20; }
-
-      doc.setDrawColor(220, 225, 235);
-      doc.line(margin, y, pageWidth - margin, y);
-      y += 6;
-      doc.setFontSize(10.5);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      doc.text('CONTRACT PERIOD', margin, y);
-      y += 5;
-
-      const cStart = onboardData.contract_start ? format(new Date(onboardData.contract_start), 'dd MMMM yyyy') : '—';
-      const cEnd = onboardData.contract_end ? format(new Date(onboardData.contract_end), 'dd MMMM yyyy') : '—';
-
-      autoTable(doc, {
-        startY: y,
-        body: [['Contract Start', cStart], ['Contract End', cEnd]],
-        theme: 'plain',
-        styles: { fontSize: 9.5, cellPadding: 3, textColor: [50, 50, 50] },
-        columnStyles: { 0: { fontStyle: 'bold', textColor: [30, 58, 95], cellWidth: 65 } },
-        margin: { left: margin, right: margin },
-        tableLineColor: [220, 225, 235],
-        tableLineWidth: 0.2,
-        alternateRowStyles: { fillColor: [245, 249, 255] },
-      });
-      y = doc.lastAutoTable.finalY + 8;
-
-      // ── TERMS & CONDITIONS ──────────────────────────────────────
-      if (y > pageHeight - 110) { doc.addPage(); y = 20; }
-
-      doc.setDrawColor(220, 225, 235);
-      doc.line(margin, y, pageWidth - margin, y);
-      y += 6;
-      doc.setFontSize(10.5);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      doc.text('TERMS & CONDITIONS', margin, y);
-      y += 6;
-
-      const terms = [
-        '1. OLL shall provide quality robotics/STEM education programs as mutually agreed upon by both parties.',
-        '2. The School shall provide necessary infrastructure, space, and support for program delivery.',
-        '3. OLL shall ensure trained educators and all required learning materials are provided on time.',
-        '4. Payment shall be made as per the agreed schedule. Late payments may attract applicable charges.',
-        '5. Either party may terminate this agreement with 30 days written notice to the other party.',
-        '6. Any disputes shall be resolved through mutual discussion, failing which through arbitration under applicable Indian law.',
-        '7. This agreement is valid for the contract period stated above and may be renewed by mutual written consent.',
-        '8. OLL retains all intellectual property rights to its curriculum, content, and learning materials.',
-      ];
-
+      // ── SECTION 2: COUNT AND PAYMENT ───────────────────────────
+      ensureSpace(15);
+      sectionTitle('2. COUNT AND PAYMENT');
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
-      doc.setTextColor(60, 60, 60);
-      for (const term of terms) {
-        const lines = doc.splitTextToSize(term, pageWidth - margin * 2);
-        if (y + lines.length * 5 > pageHeight - 20) { doc.addPage(); y = 20; }
-        doc.text(lines, margin, y);
-        y += lines.length * 5 + 2;
-      }
+      doc.setTextColor(50, 50, 50);
+      doc.text('Below is the table outlining the count and program pricing per student:', M, y);
       y += 5;
 
-      // ── SIGNATURES ──────────────────────────────────────────────
-      if (y > pageHeight - 55) { doc.addPage(); y = 20; }
+      const gradeOrder = ['Jr. Kg', 'Sr. Kg', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
+      const gradeMap = {};
+      (data.grade_pricing || []).forEach(gp => { if (gp.grade) gradeMap[gp.grade] = gp; });
 
-      doc.setDrawColor(220, 225, 235);
-      doc.line(margin, y, pageWidth - margin, y);
-      y += 8;
+      let tableTotal = 0;
+      const gradeTableBody = gradeOrder.map(grade => {
+        const gp = gradeMap[grade];
+        if (gp && gp.students && gp.price_per_student) {
+          const tot = Number(gp.students) * Number(gp.price_per_student);
+          tableTotal += tot;
+          return [grade, String(gp.students), `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}`, `Rs. ${tot.toLocaleString('en-IN')}`];
+        }
+        return [grade, '', '', ''];
+      });
+
+      if (data.training_type === 'teacher_training' || data.training_type === 'both') {
+        gradeTableBody.push(['No. of Teachers', '', '', '']);
+      }
+      const totalAmtDisp = tableTotal > 0
+        ? `Rs. ${tableTotal.toLocaleString('en-IN')}`
+        : (data.total_amount ? `Rs. ${Number(data.total_amount).toLocaleString('en-IN')}` : '');
+      gradeTableBody.push([
+        { content: 'Total', styles: { fontStyle: 'bold', textColor: [30, 58, 95] } },
+        { content: String(data.total_students || ''), styles: { fontStyle: 'bold' } },
+        '',
+        { content: totalAmtDisp, styles: { fontStyle: 'bold', textColor: [30, 58, 95] } },
+      ]);
+
+      autoTable(doc, {
+        startY: y,
+        head: [['Grade', 'No. of Students', 'Price / Student', 'Total Amount']],
+        body: gradeTableBody,
+        theme: 'grid',
+        headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold', halign: 'center' },
+        styles: { fontSize: 8.5, cellPadding: 2.5, textColor: [50, 50, 50] },
+        columnStyles: {
+          0: { cellWidth: 28 },
+          1: { cellWidth: 38, halign: 'center' },
+          2: { cellWidth: 57, halign: 'right' },
+          3: { cellWidth: 57, halign: 'right' },
+        },
+        margin: { left: M, right: M },
+        alternateRowStyles: { fillColor: [245, 249, 255] },
+      });
+      y = doc.lastAutoTable.finalY + 5;
+
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(120, 120, 120);
+      doc.text('* NOTE: In case of change in count it will take us additional 15 days to deliver the material', M, y);
+      y += 7;
+
+      // Requirements
+      ensureSpace(25);
+      doc.setFontSize(9.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('Requirements:', M, y);
+      y += 5;
+      ['Room with basic infrastructure provided with table & chairs and storage space for the Robotic kits',
+        'WiFi / internet stability',
+        'Projector / Smart Board',
+      ].forEach(r => bullet(r));
+      y += 3;
+
+      // Additional Services Table
+      ensureSpace(38);
+      doc.setFontSize(9.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('Additional Services / Components:', M, y);
+      y += 4;
+      autoTable(doc, {
+        startY: y,
+        head: [['Item', 'Qty', 'Price']],
+        body: [['', '', ''], ['', '', ''], ['', '', '']],
+        theme: 'grid',
+        headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontSize: 9 },
+        styles: { fontSize: 9, cellPadding: 4 },
+        columnStyles: { 0: { cellWidth: 110 }, 1: { cellWidth: 35, halign: 'center' }, 2: { cellWidth: 35, halign: 'right' } },
+        margin: { left: M, right: M },
+      });
+      y = doc.lastAutoTable.finalY + 6;
+
+      // Payment Collection
+      ensureSpace(35);
+      doc.setFontSize(9.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('Payment Collection:', M, y);
+      y += 5;
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(50, 50, 50);
+      doc.text('Payment Collection From:  a. School Collects & Pays OLL   OR   b. OLL collects online', M + 4, y);
+      y += 5;
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('Selected: ', M + 4, y);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(50, 50, 50);
+      doc.text(paymentCollectionLabel[data.payment_mode] || '________________________', M + 4 + doc.getTextWidth('Selected: '), y);
+      y += 6;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(50, 50, 50);
+      doc.text('Payment Mode:  a. Cheque   OR   b. Netbanking   OR   c. Online Payments', M + 4, y);
+      y += 5;
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('Selected: ', M + 4, y);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(50, 50, 50);
+      doc.text(paymentMethodLabel[data.payment_method] || '________________________', M + 4 + doc.getTextWidth('Selected: '), y);
+      y += 7;
+
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('Notes for Payment: ', M + 4, y);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(50, 50, 50);
+      doc.text('Program Fees to be paid 100% in advance.', M + 4 + doc.getTextWidth('Notes for Payment: '), y);
+      y += 7;
+
+      // Payment Terms Table
+      ensureSpace(30);
+      doc.setFontSize(9.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('Payment Terms:', M, y);
+      y += 4;
+
+      const validTranches = (data.payment_tranches || []).filter(t => t.amount);
+      const trancheRows = validTranches.length > 0
+        ? validTranches.map(t => [
+            `Rs. ${Number(t.amount).toLocaleString('en-IN')}`,
+            t.percentage ? `${t.percentage}%` : '100%',
+            t.date ? format(new Date(t.date), 'dd/MM/yyyy') : '________________________',
+          ])
+        : [['________________________', '100%', '________________________']];
+
+      autoTable(doc, {
+        startY: y,
+        head: [['Amount', 'Payment %', 'Due Date']],
+        body: trancheRows,
+        theme: 'grid',
+        headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold' },
+        styles: { fontSize: 9, cellPadding: 3 },
+        columnStyles: { 0: { cellWidth: 75 }, 1: { cellWidth: 35, halign: 'center' }, 2: { cellWidth: 70 } },
+        margin: { left: M, right: M },
+      });
+      y = doc.lastAutoTable.finalY + 8;
+
+      // ── SECTION 3 ──────────────────────────────────────────────
+      ensureSpace(12);
+      sectionTitle('3. PROGRAM EXECUTION & DELIVERABLES');
+      const kitCountStr = data.kit_type === 'lab_setup' && data.lab_kit_count
+        ? `${data.lab_kit_count} Master Robotics Kits`
+        : '40 Master Robotics Kits';
+      [
+        'OLL will require a dedicated coordinator who will be the point of contact for the program\'s execution at the school level.',
+        'Grade-specific individual textbooks will be provided.',
+        `${kitCountStr} will be supplied.`,
+        '16 projects-based curriculum will be delivered.',
+        'Teacher training will be provided.',
+        'STEM certificates will be awarded to each participating child.',
+      ].forEach(item => bullet(item));
+      y += 3;
+
+      // ── SECTION 4 ──────────────────────────────────────────────
+      ensureSpace(12);
+      sectionTitle('4. KIT & BOOK MANAGEMENT');
+      [
+        'OLL will deliver the required kits and books to the school within 15 days of receiving full payment.',
+        'The school is responsible for informing security and arranging proper storage for the kits and books upon arrival.',
+        'The school is also required to verify the count of kits and books as per the delivery provided by OLL to ensure accuracy.',
+        'Free Replacement for Damaged Components: In the event that any kit components are found to be damaged or defective, OLL will provide a free replacement for such components for the full duration of the program.',
+        'Replacement for Lost Components & Books: If students misplace or lose components, they are required to purchase replacements either from the OLL website or directly from the educator. Misplaced components are not covered under the free replacement policy.',
+      ].forEach(item => bullet(item));
+      y += 3;
+
+      // ── SECTION 5 ──────────────────────────────────────────────
+      ensureSpace(12);
+      sectionTitle('5. EDUCATOR CONFIRMATION & TRAINING SCHEDULE');
+      [
+        'The school will provide OLL with the final timetable and holiday calendar of the school.',
+        'OLL will take 15 days from receiving the timetable and calendar to allocate a certified educator for the program.',
+        'Once allocated, the school will have the opportunity to approve the educator and provide feedback. If satisfied, OLL will move forward with the training sessions.',
+        'In case the school wishes to request a change of the educator for valid reasons, OLL will evaluate the request and, if accepted, will take 15 days to allocate a new educator.',
+      ].forEach(item => bullet(item));
+      y += 3;
+
+      // ── SECTION 6 ──────────────────────────────────────────────
+      ensureSpace(12);
+      sectionTitle('6. REPORTS');
+      bullet('OLL will collect physical/digital feedback forms from students and teachers once every three months. OLL will analyze these and share the report with the school.');
+      y += 3;
+
+      // ── SECTION 7 ──────────────────────────────────────────────
+      ensureSpace(12);
+      sectionTitle('7. ASSESSMENT & AUDIT');
+      [
+        'OLL will conduct periodic on-site audits of educators to ensure quality and consistency in the delivery of the program.',
+        'Students will undergo assessments at the end of the year that will include both theoretical and practical components to gauge their understanding and progress.',
+      ].forEach(item => bullet(item));
+      y += 3;
+
+      // ── SECTION 8 ──────────────────────────────────────────────
+      ensureSpace(12);
+      sectionTitle('8. DISPLAY');
+      [
+        'School is requested to inform the OLL team about all parent orientations and Parent Teacher Meetings. OLL will have representatives and projects showcased on a table.',
+        'Students will prepare projects to showcase during a final exhibition, where parents will be invited to observe the students\' work.',
+        'One final video will be professionally shot by OLL; school to give permission to shoot on a mutually agreed upon date.',
+        'All videos and photos clicked by OLL/School team are permissible to be uploaded on social media platforms.',
+        'For Competitions: In certain cases, students may need to arrange additional components for their projects. Our team will guide where to purchase from and even support students, including offering components for rent with a minimal deposit.',
+      ].forEach(item => bullet(item));
+      y += 3;
+
+      // ── SECTION 9 ──────────────────────────────────────────────
+      ensureSpace(12);
+      sectionTitle('9. CERTIFICATION');
+      [
+        'Upon completion of the program, a graduation ceremony will be held where students will receive OLL certifications.',
+        'Students list of First Name, Last Name, Grade and Division will be shared with OLL to make the certificates.',
+        'A final compilation report summarizing each student\'s performance will also be provided to the school.',
+      ].forEach(item => bullet(item));
+      y += 3;
+
+      // ── SECTION 10 ─────────────────────────────────────────────
+      ensureSpace(12);
+      sectionTitle('10. TERM OF AGREEMENT');
+      [
+        'This MoU will remain in effect for one academic year, starting from the MOU sign date.',
+        'Either party may terminate the agreement with 30 days\' written notice if either party fails to meet their obligations.',
+        'Renewal of the agreement for the following year will be based on mutual consent and performance evaluation.',
+      ].forEach(item => bullet(item));
+      y += 3;
+
+      // ── SECTION 11: CONTACT DETAILS ────────────────────────────
+      ensureSpace(12);
+      sectionTitle('11. CONTACT DETAILS');
+
+      const renderContact = (title, c, fallbackName, fallbackPhone, fallbackEmail) => {
+        ensureSpace(30);
+        doc.setFontSize(9.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 58, 95);
+        doc.text(title, M, y);
+        y += 6;
+        [
+          ['Name', c?.name || fallbackName || ''],
+          ['Mobile', c?.phone_number || fallbackPhone || ''],
+          ['E-mail', c?.email || fallbackEmail || ''],
+        ].forEach(([lbl, val]) => {
+          doc.setFontSize(9);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(50, 50, 50);
+          doc.text(`${lbl}: ${val || '________________________________________________________'}`, M + 4, y);
+          y += 6;
+        });
+        y += 3;
+      };
+
+      renderContact(
+        'Program Coordinator Details (From School):',
+        coordinator.name ? coordinator : principal,
+        school?.contact_name, school?.phone, school?.email
+      );
+      renderContact('Accounts Coordinator Details (From School):', accountsCoord);
+      renderContact(
+        'School Principal Details (From School):',
+        principal,
+        school?.contact_name, school?.phone, school?.email
+      );
+
+      // ── AUTHORIZED SIGNATORIES ─────────────────────────────────
+      ensureSpace(65);
+      doc.setDrawColor(200, 215, 235);
+      doc.setLineWidth(0.3);
+      doc.line(M, y, PW - M, y);
+      y += 7;
 
       doc.setFontSize(10.5);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(30, 58, 95);
-      doc.text('SIGNATURES', margin, y);
+      doc.text('AUTHORIZED SIGNATORIES', M, y);
       y += 8;
 
-      const sigW = (pageWidth - margin * 2 - 10) / 2;
+      const sigW = (CW - 10) / 2;
+      const sigH = 55;
 
-      // School signature box
-      doc.setFillColor(245, 249, 255);
-      doc.rect(margin, y, sigW, 42, 'F');
-      doc.setDrawColor(180, 195, 215);
+      // OLL sig box
+      doc.setFillColor(240, 245, 252);
+      doc.roundedRect(M, y, sigW, sigH, 2, 2, 'F');
+      doc.setDrawColor(160, 185, 215);
       doc.setLineWidth(0.3);
-      doc.rect(margin, y, sigW, 42);
+      doc.roundedRect(M, y, sigW, sigH, 2, 2);
       doc.setFontSize(9.5);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(30, 58, 95);
-      doc.text('For School', margin + 4, y + 7);
+      doc.text('OLL Representative', M + 4, y + 7);
       doc.setFont('helvetica', 'normal');
-      doc.setTextColor(80, 80, 80);
-      doc.text('Signature: _____________________', margin + 4, y + 17);
-      doc.text(`Name: ${contactName}`, margin + 4, y + 25);
-      doc.text(`School: ${schoolName}`, margin + 4, y + 32);
-      doc.text('Date: ___________________', margin + 4, y + 39);
+      doc.setTextColor(50, 50, 50);
+      doc.text('Name: Vidushi Daga', M + 4, y + 15);
+      doc.text('Designation: Chairman', M + 4, y + 21);
+      doc.text('Signature:', M + 4, y + 32);
+      doc.setDrawColor(120, 140, 170);
+      doc.line(M + 32, y + 32, M + sigW - 4, y + 32);
+      doc.setFontSize(8.5);
+      doc.setTextColor(100, 100, 100);
+      doc.text('Date: _______________________', M + 4, y + 48);
 
-      // OLL signature box
-      const rx = margin + sigW + 10;
-      doc.setFillColor(245, 249, 255);
-      doc.rect(rx, y, sigW, 42, 'F');
-      doc.rect(rx, y, sigW, 42);
+      // School sig box
+      const rx = M + sigW + 10;
+      doc.setFillColor(240, 245, 252);
+      doc.roundedRect(rx, y, sigW, sigH, 2, 2, 'F');
+      doc.roundedRect(rx, y, sigW, sigH, 2, 2);
+      doc.setFontSize(9.5);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(30, 58, 95);
-      doc.text('For OLL', rx + 4, y + 7);
+      doc.text('School Representative', rx + 4, y + 7);
       doc.setFont('helvetica', 'normal');
-      doc.setTextColor(80, 80, 80);
-      doc.text('Signature: _____________________', rx + 4, y + 17);
-      doc.text('Name: ________________________', rx + 4, y + 25);
-      doc.text('Designation: __________________', rx + 4, y + 32);
-      doc.text('Date: ___________________', rx + 4, y + 39);
+      doc.setTextColor(50, 50, 50);
+      doc.text(`Name: ${principal?.name || school?.contact_name || '________________________'}`, rx + 4, y + 15);
+      doc.text(`Designation: ${principal?.role || '________________________'}`, rx + 4, y + 21);
+      doc.text('Signature:', rx + 4, y + 32);
+      doc.setDrawColor(120, 140, 170);
+      doc.line(rx + 32, y + 32, rx + sigW - 4, y + 32);
+      doc.setFontSize(8.5);
+      doc.setTextColor(100, 100, 100);
+      doc.text('Date: _______________________', rx + 4, y + 48);
 
-      // ── FOOTER on every page ─────────────────────────────────────
+      y += sigH + 5;
+
+      // ── FOOTER ON ALL PAGES ────────────────────────────────────
       const totalPages = doc.internal.getNumberOfPages();
-      for (let i = 1; i <= totalPages; i++) {
-        doc.setPage(i);
-        doc.setFillColor(30, 58, 95);
-        doc.rect(0, pageHeight - 11, pageWidth, 11, 'F');
-        doc.setTextColor(190, 210, 235);
-        doc.setFontSize(7.5);
-        doc.setFont('helvetica', 'normal');
-        doc.text('OLL — Empowering Schools with Future-Ready Education', margin, pageHeight - 4);
-        doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 4, { align: 'right' });
-        doc.text('info@oll.co | +91 9920188188 | www.oll.co', pageWidth / 2, pageHeight - 4, { align: 'center' });
+      for (let p = 1; p <= totalPages; p++) {
+        doc.setPage(p);
+        drawFooter(p, totalPages);
       }
 
-      // Download
-      const fileName = `MOU_${(showOnboardModal?.school_name || 'School').replace(/\s+/g, '_')}_${format(new Date(), 'ddMMMyyyy')}.pdf`;
+      // ── DOWNLOAD ───────────────────────────────────────────────
+      const fileName = `MOU_${(schoolName || 'School').replace(/\s+/g, '_')}_${format(new Date(), 'ddMMMyyyy')}.pdf`;
       doc.save(fileName);
 
-      // Upload to Cloudinary and store in documents
+      // ── UPLOAD & STORE IN DOCUMENTS ───────────────────────────
       try {
         const pdfBlob = doc.output('blob');
         const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
@@ -2148,9 +2403,9 @@ const AdminSchoolCRM = () => {
         }, { headers: getAuthHeaders() });
         setOnboardData(prev => ({ ...prev, mou_url: fileUrl }));
         fetchInquiries();
-        toast.success('MOU generated, downloaded & saved to documents');
+        toast.success('MOU generated, downloaded & saved to documents!');
       } catch {
-        toast.success('MOU downloaded (save to documents failed — check upload service)');
+        toast.success('MOU downloaded! (Save to documents failed — check upload service)');
       }
     } catch (err) {
       console.error('MOU generation error:', err);
@@ -2159,7 +2414,6 @@ const AdminSchoolCRM = () => {
       setGeneratingMOU(false);
     }
   };
-
   const handleOnboardSchool = async (saveAsDraft = false) => {
     if (!showOnboardModal) return;
     
