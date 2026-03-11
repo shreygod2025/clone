@@ -957,6 +957,7 @@ const AdminSchoolCRM = () => {
       additional_services: existingOnboardData.additional_services?.length > 0
         ? existingOnboardData.additional_services
         : [{ item: '', qty: '', price: '' }],
+      gst_type: existingOnboardData.gst_type || '',
       payment_mode: existingOnboardData.payment_mode || 'from_school',
       payment_method: existingOnboardData.payment_method || '',
       payment_tranches: existingOnboardData.payment_tranches?.length > 0 
@@ -1272,6 +1273,7 @@ const AdminSchoolCRM = () => {
       kit_type: existingData.kit_type || '',
       lab_kit_count: existingData.lab_kit_count || '',
       course_type: existingData.course_type || '',
+      gst_type: existingData.gst_type || '',
       training_type: existingData.training_type || '',
       pricing_type: existingData.pricing_type || 'per_student',
       fixed_price: existingData.fixed_price || '',
@@ -1429,6 +1431,7 @@ const AdminSchoolCRM = () => {
           payment_mode: renewalConvertData.payment_mode,
           payment_method: renewalConvertData.payment_mode === 'online' ? 'student' : renewalConvertData.payment_method,
           payment_tranches: renewalConvertData.payment_mode === 'online' ? [] : formattedTranches,
+          gst_type: renewalConvertData.gst_type || '',
           deadline_date: renewalConvertData.deadline_date,
           parent_circular_url: renewalConvertData.parent_circular_url,
           payment_link: renewalConvertData.payment_link,
@@ -1859,8 +1862,9 @@ const AdminSchoolCRM = () => {
 
       const drawPageHeader = () => {
         doc.setFillColor(30, 58, 95);
-        doc.rect(0, 0, PW, 22, 'F');
-        doc.addImage(logoDataUrl, 'PNG', M, 2, 40, 17);
+        doc.rect(0, 0, PW, 26, 'F');
+        // 1920x1080 = 1.78:1 ratio → at height 20mm: width = 20*1.78 = 35.5mm
+        doc.addImage(logoDataUrl, 'PNG', M, 3, 36, 20);
       };
 
       const drawFooter = (pageNum, total) => {
@@ -1869,7 +1873,7 @@ const AdminSchoolCRM = () => {
         doc.setTextColor(180, 200, 235);
         doc.setFontSize(7);
         doc.setFont('helvetica', 'normal');
-        doc.text('Clonefutura Live Solutions Pvt Ltd  |  info@oll.co  |  +91 9920188188  |  www.oll.co', M, PH - 4);
+        doc.text('Clonefutura Live Solutions Pvt Ltd  |  info@oll.co  |  +91 9699188188  |  www.oll.co', M, PH - 4);
         doc.text(`Page ${pageNum} of ${total}`, PW - M, PH - 4, { align: 'right' });
       };
 
@@ -1877,7 +1881,7 @@ const AdminSchoolCRM = () => {
         if (y + needed > PH - 15) {
           doc.addPage();
           drawPageHeader();
-          y = 27;
+          y = 31;
         }
       };
 
@@ -1933,7 +1937,7 @@ const AdminSchoolCRM = () => {
 
       // ── PAGE 1 HEADER ──────────────────────────────────────────
       drawPageHeader();
-      y = 28;
+      y = 32;
 
       // MOU Title
       doc.setFontSize(15);
@@ -1956,17 +1960,18 @@ const AdminSchoolCRM = () => {
 
       // Party 1
       doc.setFillColor(240, 245, 252);
-      doc.roundedRect(M, y, CW, 22, 2, 2, 'F');
+      doc.roundedRect(M, y, CW, 30, 2, 2, 'F');
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(30, 58, 95);
       doc.text('PARTY 1 (Service Provider):', M + 4, y + 6);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(50, 50, 50);
-      doc.text('Clonefutura Live Solutions Pvt Ltd, referred to as "OLL"', M + 4, y + 13);
-      const ollAddr = doc.splitTextToSize('Daga Villa, Bungalow No. 9 Magnum Towers, 2nd X lane, Lokhandwala Complex, Andheri(W), 400053', CW - 8);
+      doc.text('Clonefutura Live Solutions Pvt Ltd, also referred to as "OLL"', M + 4, y + 13);
+      const ollAddr = doc.splitTextToSize('103, 1st Floor - Kshitij Building, Veera Desai Rd, Dattaguru Nagar, Azad Nagar, Andheri West, Mumbai, Maharashtra 400053', CW - 8);
       doc.text(ollAddr, M + 4, y + 19);
-      y += 27;
+      doc.text('Phone: +91 9699188188  |  GST No: 27AAKCC1113B1ZC', M + 4, y + 25);
+      y += 35;
 
       // Party 2
       const p2Lines = schoolAddress ? doc.splitTextToSize(`Address: ${schoolAddress}`, CW - 8) : [];
@@ -2222,7 +2227,40 @@ const AdminSchoolCRM = () => {
         columnStyles: { 0: { cellWidth: 75 }, 1: { cellWidth: 35, halign: 'center' }, 2: { cellWidth: 70 } },
         margin: { left: M, right: M },
       });
-      y = doc.lastAutoTable.finalY + 8;
+      y = doc.lastAutoTable.finalY + 6;
+
+      // GST info
+      const gstLabels = { inclusive_18: 'GST Inclusive @ 18%', exclusive_18: 'GST Exclusive @ 18%', book_gst_0: 'Book GST = 0%' };
+      if (data.gst_type) {
+        ensureSpace(8);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 58, 95);
+        doc.text('GST: ', M, y);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(50, 50, 50);
+        doc.text(gstLabels[data.gst_type] || data.gst_type, M + doc.getTextWidth('GST: '), y);
+        y += 6;
+      }
+
+      // Bank Details
+      ensureSpace(30);
+      doc.setFontSize(9.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('Bank Details for Payment:', M, y);
+      y += 5;
+      doc.setFillColor(240, 245, 252);
+      doc.roundedRect(M, y, CW, 24, 2, 2, 'F');
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(50, 50, 50);
+      doc.text('Account No: 50200063789133', M + 4, y + 6);
+      doc.text('IFSC Code: HDFC0000240', M + 4, y + 12);
+      doc.text('Bank: HDFC Bank  |  Branch: Sandoz House Worli', M + 4, y + 18);
+      doc.text('Account Holder: Clonefutura Live Solutions Pvt Ltd', M + CW/2, y + 6);
+      doc.text('GST No: 27AAKCC1113B1ZC', M + CW/2, y + 12);
+      y += 30;
 
       // ── SECTION 3 ──────────────────────────────────────────────
       ensureSpace(12);
@@ -2536,6 +2574,9 @@ const AdminSchoolCRM = () => {
         payment_mode: String(onboardData.payment_mode || ''),
         payment_method: onboardData.payment_mode === 'online' ? 'student' : String(onboardData.payment_method || ''),
         payment_tranches: formattedTranches,
+        gst_type: String(onboardData.gst_type || ''),
+        school_address: String(onboardData.school_address || ''),
+        additional_services: onboardData.additional_services || [],
         deadline_date: String(onboardData.deadline_date || ''),
         contract_start: contractStart,
         contract_end: contractEnd,
@@ -6051,7 +6092,23 @@ const AdminSchoolCRM = () => {
                 </div>
                 )}
               </div>
-              
+
+              {/* GST Type */}
+              <div>
+                <label className="text-sm font-medium text-slate-700">GST Type</label>
+                <select
+                  value={renewalConvertData.gst_type || ''}
+                  onChange={(e) => setRenewalConvertData(prev => ({ ...prev, gst_type: e.target.value }))}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white"
+                  data-testid="renewal-gst-type"
+                >
+                  <option value="">Select GST type</option>
+                  <option value="inclusive_18">GST Inclusive @ 18%</option>
+                  <option value="exclusive_18">GST Exclusive @ 18%</option>
+                  <option value="book_gst_0">Book GST = 0%</option>
+                </select>
+              </div>
+
               {/* Online Student Payment Info */}
               {renewalConvertData.payment_mode === 'online' && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3">
@@ -7674,6 +7731,22 @@ const AdminSchoolCRM = () => {
                 )}
               </div>
               
+              {/* GST Type */}
+              <div>
+                <label className="text-sm font-medium text-slate-700">GST Type</label>
+                <select
+                  value={onboardData.gst_type || ''}
+                  onChange={(e) => setOnboardData(prev => ({ ...prev, gst_type: e.target.value }))}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white"
+                  data-testid="onboard-gst-type"
+                >
+                  <option value="">Select GST type</option>
+                  <option value="inclusive_18">GST Inclusive @ 18%</option>
+                  <option value="exclusive_18">GST Exclusive @ 18%</option>
+                  <option value="book_gst_0">Book GST = 0%</option>
+                </select>
+              </div>
+
               {/* Online Student Payment Info */}
               {onboardData.payment_mode === 'online' && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3">
