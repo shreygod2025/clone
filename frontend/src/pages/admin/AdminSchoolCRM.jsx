@@ -1873,7 +1873,7 @@ const AdminSchoolCRM = () => {
         doc.setTextColor(180, 200, 235);
         doc.setFontSize(7);
         doc.setFont('helvetica', 'normal');
-        doc.text('Clonefutura Live Solutions Pvt Ltd  |  info@oll.co  |  +91 9699188188  |  www.oll.co', M, PH - 4);
+        doc.text('Clonefutura Live Solutions Pvt Ltd  |  info@oll.co  |  +91 9920188188  |  www.oll.co', M, PH - 4);
         doc.text(`Page ${pageNum} of ${total}`, PW - M, PH - 4, { align: 'right' });
       };
 
@@ -1958,9 +1958,12 @@ const AdminSchoolCRM = () => {
       doc.text(introText, M, y);
       y += 7;
 
-      // Party 1
+      // Party 1 — dynamic height based on address line count
+      const ollAddrText = '103, 1st Floor - Kshitij Building, Veera Desai Rd, Dattaguru Nagar, Azad Nagar, Andheri West, Mumbai, Maharashtra 400053';
+      const ollAddrLines = doc.splitTextToSize(ollAddrText, CW - 8);
+      const p1H = 6 + 7 + (ollAddrLines.length * 5) + 6 + 4; // padding + name + addr + phone line + bottom
       doc.setFillColor(240, 245, 252);
-      doc.roundedRect(M, y, CW, 30, 2, 2, 'F');
+      doc.roundedRect(M, y, CW, p1H, 2, 2, 'F');
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(30, 58, 95);
@@ -1968,10 +1971,9 @@ const AdminSchoolCRM = () => {
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(50, 50, 50);
       doc.text('Clonefutura Live Solutions Pvt Ltd, also referred to as "OLL"', M + 4, y + 13);
-      const ollAddr = doc.splitTextToSize('103, 1st Floor - Kshitij Building, Veera Desai Rd, Dattaguru Nagar, Azad Nagar, Andheri West, Mumbai, Maharashtra 400053', CW - 8);
-      doc.text(ollAddr, M + 4, y + 19);
-      doc.text('Phone: +91 9699188188  |  GST No: 27AAKCC1113B1ZC', M + 4, y + 25);
-      y += 35;
+      doc.text(ollAddrLines, M + 4, y + 19);
+      doc.text('Phone: +91 9920188188  |  GST No: 27AAKCC1113B1ZC', M + 4, y + 19 + ollAddrLines.length * 5 + 2);
+      y += p1H + 4;
 
       // Party 2
       const p2Lines = schoolAddress ? doc.splitTextToSize(`Address: ${schoolAddress}`, CW - 8) : [];
@@ -2086,15 +2088,30 @@ const AdminSchoolCRM = () => {
       if (data.training_type === 'teacher_training' || data.training_type === 'both') {
         gradeTableBody.push(['No. of Teachers', '', '', '']);
       }
-      const totalAmtDisp = tableTotal > 0
-        ? `Rs. ${tableTotal.toLocaleString('en-IN')}`
-        : (data.total_amount ? `Rs. ${Number(data.total_amount).toLocaleString('en-IN')}` : '');
+      const baseAmt = tableTotal > 0 ? tableTotal : Number(data.total_amount || data.fixed_price || 0);
+      const isExclusiveGST = data.gst_type === 'exclusive_18';
+      const gstAmount = isExclusiveGST ? Math.round(baseAmt * 0.18) : 0;
+      const grandTotal = baseAmt + gstAmount;
+
+      const baseAmtDisp = baseAmt ? `Rs. ${baseAmt.toLocaleString('en-IN')}` : '';
       gradeTableBody.push([
-        { content: 'Total', styles: { fontStyle: 'bold', textColor: [30, 58, 95] } },
+        { content: isExclusiveGST ? 'Subtotal (before GST)' : 'Total', styles: { fontStyle: 'bold', textColor: [30, 58, 95] } },
         { content: String(data.total_students || ''), styles: { fontStyle: 'bold' } },
         '',
-        { content: totalAmtDisp, styles: { fontStyle: 'bold', textColor: [30, 58, 95] } },
+        { content: baseAmtDisp, styles: { fontStyle: 'bold', textColor: [30, 58, 95] } },
       ]);
+      if (isExclusiveGST && gstAmount > 0) {
+        gradeTableBody.push([
+          { content: 'GST @ 18%', styles: { fontStyle: 'italic', textColor: [80, 80, 80] } },
+          '', '',
+          { content: `Rs. ${gstAmount.toLocaleString('en-IN')}`, styles: { fontStyle: 'italic', textColor: [80, 80, 80] } },
+        ]);
+        gradeTableBody.push([
+          { content: 'Grand Total (incl. GST)', styles: { fontStyle: 'bold', textColor: [30, 58, 95] } },
+          '', '',
+          { content: `Rs. ${grandTotal.toLocaleString('en-IN')}`, styles: { fontStyle: 'bold', textColor: [30, 58, 95] } },
+        ]);
+      }
 
       autoTable(doc, {
         startY: y,
@@ -2133,35 +2150,35 @@ const AdminSchoolCRM = () => {
       ].forEach(r => bullet(r));
       y += 3;
 
-      // Additional Services Table
-      ensureSpace(38);
-      doc.setFontSize(9.5);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      doc.text('Additional Services / Components:', M, y);
-      y += 4;
+      // Additional Services Table — only show if entries exist
       const validServices = (data.additional_services || []).filter(s => s.item || s.qty || s.price);
-      const servicesBody = validServices.length > 0
-        ? validServices.map(s => [
-            s.item || '',
-            String(s.qty || ''),
-            s.price ? `Rs. ${Number(s.price).toLocaleString('en-IN')}` : '',
-          ])
-        : [['', '', ''], ['', '', ''], ['', '', '']];
-      autoTable(doc, {
-        startY: y,
-        head: [['Item', 'Qty', 'Price']],
-        body: servicesBody,
-        theme: 'grid',
-        headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontSize: 9 },
-        styles: { fontSize: 9, cellPadding: 4 },
-        columnStyles: { 0: { cellWidth: 110 }, 1: { cellWidth: 35, halign: 'center' }, 2: { cellWidth: 35, halign: 'right' } },
-        margin: { left: M, right: M },
-      });
-      y = doc.lastAutoTable.finalY + 6;
+      if (validServices.length > 0) {
+        ensureSpace(38);
+        doc.setFontSize(9.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 58, 95);
+        doc.text('Additional Services / Components:', M, y);
+        y += 4;
+        const servicesBody = validServices.map(s => [
+          s.item || '',
+          String(s.qty || ''),
+          s.price ? `Rs. ${Number(s.price).toLocaleString('en-IN')}` : '',
+        ]);
+        autoTable(doc, {
+          startY: y,
+          head: [['Item', 'Qty', 'Price']],
+          body: servicesBody,
+          theme: 'grid',
+          headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontSize: 9 },
+          styles: { fontSize: 9, cellPadding: 4 },
+          columnStyles: { 0: { cellWidth: 110 }, 1: { cellWidth: 35, halign: 'center' }, 2: { cellWidth: 35, halign: 'right' } },
+          margin: { left: M, right: M },
+        });
+        y = doc.lastAutoTable.finalY + 6;
+      }
 
       // Payment Collection
-      ensureSpace(35);
+      ensureSpace(22);
       doc.setFontSize(9.5);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(30, 58, 95);
@@ -2170,26 +2187,9 @@ const AdminSchoolCRM = () => {
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(50, 50, 50);
-      doc.text('Payment Collection From:  a. School Collects & Pays OLL   OR   b. OLL collects online', M + 4, y);
-      y += 5;
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      doc.text('Selected: ', M + 4, y);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(50, 50, 50);
-      doc.text(paymentCollectionLabel[data.payment_mode] || '________________________', M + 4 + doc.getTextWidth('Selected: '), y);
+      doc.text(`Collection From: ${paymentCollectionLabel[data.payment_mode] || '________________________'}`, M + 4, y);
       y += 6;
-
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(50, 50, 50);
-      doc.text('Payment Mode:  a. Cheque   OR   b. Netbanking   OR   c. Online Payments', M + 4, y);
-      y += 5;
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      doc.text('Selected: ', M + 4, y);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(50, 50, 50);
-      doc.text(paymentMethodLabel[data.payment_method] || '________________________', M + 4 + doc.getTextWidth('Selected: '), y);
+      doc.text(`Payment Mode: ${paymentMethodLabel[data.payment_method] || '________________________'}`, M + 4, y);
       y += 7;
 
       doc.setFont('helvetica', 'bold');
@@ -2232,7 +2232,7 @@ const AdminSchoolCRM = () => {
       // GST info
       const gstLabels = { inclusive_18: 'GST Inclusive @ 18%', exclusive_18: 'GST Exclusive @ 18%', book_gst_0: 'Book GST = 0%' };
       if (data.gst_type) {
-        ensureSpace(8);
+        ensureSpace(isExclusiveGST && grandTotal > baseAmt ? 18 : 8);
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(30, 58, 95);
@@ -2241,6 +2241,12 @@ const AdminSchoolCRM = () => {
         doc.setTextColor(50, 50, 50);
         doc.text(gstLabels[data.gst_type] || data.gst_type, M + doc.getTextWidth('GST: '), y);
         y += 6;
+        if (isExclusiveGST && grandTotal > baseAmt) {
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(30, 58, 95);
+          doc.text(`Grand Total (incl. 18% GST): Rs. ${grandTotal.toLocaleString('en-IN')}`, M, y);
+          y += 6;
+        }
       }
 
       // Bank Details
@@ -7412,21 +7418,37 @@ const AdminSchoolCRM = () => {
 
             {/* Grand Total */}
             <div className="bg-green-100 border border-green-300 rounded-lg p-3">
-              <div className="flex justify-between items-center">
-                <span className="font-semibold text-green-800">Grand Total:</span>
-                <span className="font-bold text-lg text-green-800">
-                  ₹{(() => {
-                    let total = 0;
-                    if (onboardData.pricing_type === 'per_student' || onboardData.pricing_type === 'both') {
-                      total += onboardData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
-                    }
-                    if (onboardData.pricing_type === 'fixed' || onboardData.pricing_type === 'both') {
-                      total += parseFloat(onboardData.fixed_price) || 0;
-                    }
-                    return total.toLocaleString();
-                  })()}
-                </span>
-              </div>
+              {(() => {
+                let base = 0;
+                if (onboardData.pricing_type === 'per_student' || onboardData.pricing_type === 'both') {
+                  base += onboardData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
+                }
+                if (onboardData.pricing_type === 'fixed' || onboardData.pricing_type === 'both') {
+                  base += parseFloat(onboardData.fixed_price) || 0;
+                }
+                const gst = onboardData.gst_type === 'exclusive_18' ? Math.round(base * 0.18) : 0;
+                const grand = base + gst;
+                return (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-green-800">{gst > 0 ? 'Subtotal:' : 'Grand Total:'}</span>
+                      <span className="font-bold text-lg text-green-800">₹{base.toLocaleString()}</span>
+                    </div>
+                    {gst > 0 && (
+                      <>
+                        <div className="flex justify-between items-center text-sm text-green-700 mt-1">
+                          <span>+ GST @ 18% (Exclusive):</span>
+                          <span>₹{gst.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between items-center border-t border-green-300 mt-1 pt-1">
+                          <span className="font-bold text-green-800">Grand Total (incl. GST):</span>
+                          <span className="font-bold text-lg text-green-800">₹{grand.toLocaleString()}</span>
+                        </div>
+                      </>
+                    )}
+                  </>
+                );
+              })()}
             </div>
 
             {/* School Share */}
