@@ -14,7 +14,7 @@ import PhoneInput from '../../components/PhoneInput';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
-import { autoTable } from 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
