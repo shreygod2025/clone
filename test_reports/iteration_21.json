@@ -51,7 +51,7 @@
   "test_execution_details": {
     "test_type": "Frontend UI Testing",
     "tools_used": ["Playwright Browser Automation"],
-    "test_url": "https://oll-school-manage.preview.emergentagent.com",
+    "test_url": "https://educator-connect-2.preview.emergentagent.com",
     "pages_tested": [
       "/admin/login",
       "/admin/school-crm (Dashboard tab)",

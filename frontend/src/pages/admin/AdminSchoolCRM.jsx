@@ -13,6 +13,8 @@ import axios from 'axios';
 import PhoneInput from '../../components/PhoneInput';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
+import { jsPDF } from 'jspdf';
+import { autoTable } from 'jspdf-autotable';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -690,6 +692,7 @@ const AdminSchoolCRM = () => {
   const [editOnboardData, setEditOnboardData] = useState(null);
   const [offerings, setOfferings] = useState([]);
   const [uploadingMOU, setUploadingMOU] = useState(false);
+  const [generatingMOU, setGeneratingMOU] = useState(false);
   const [newLead, setNewLead] = useState({
     school_name: '',
     contact_name: '',
@@ -1807,6 +1810,353 @@ const AdminSchoolCRM = () => {
       }));
     } catch (error) {
       toast.error('Failed to remove document');
+    }
+  };
+
+  const generateMOUPDF = async () => {
+    if (!showOnboardModal) return;
+    setGeneratingMOU(true);
+    try {
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const margin = 15;
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+      // ── HEADER ─────────────────────────────────────────────────
+      doc.setFillColor(30, 58, 95);
+      doc.rect(0, 0, pageWidth, 38, 'F');
+
+      // Load OLL logo
+      const logoUrl = 'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/rugags0w_OLL-horizontal-logo-white.png';
+      try {
+        const response = await fetch(logoUrl);
+        const blob = await response.blob();
+        const logoDataUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+        doc.addImage(logoDataUrl, 'PNG', margin, 6, 55, 22);
+      } catch {
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(22);
+        doc.setFont('helvetica', 'bold');
+        doc.text('OLL', margin, 24);
+      }
+
+      // Title on right
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.text('MEMORANDUM OF UNDERSTANDING', pageWidth - margin, 17, { align: 'right' });
+      doc.setFontSize(8.5);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Date: ${format(new Date(), 'dd MMMM yyyy')}`, pageWidth - margin, 25, { align: 'right' });
+
+      let y = 48;
+
+      // Title centred
+      doc.setTextColor(30, 58, 95);
+      doc.setFontSize(13);
+      doc.setFont('helvetica', 'bold');
+      doc.text('MEMORANDUM OF UNDERSTANDING', pageWidth / 2, y, { align: 'center' });
+      y += 6;
+      doc.setFontSize(9.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 100, 100);
+      doc.text('(School Partnership Agreement)', pageWidth / 2, y, { align: 'center' });
+      y += 9;
+
+      doc.setDrawColor(30, 58, 95);
+      doc.setLineWidth(0.5);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 7;
+
+      // ── PARTIES ────────────────────────────────────────────────
+      const schoolName = showOnboardModal?.school_name || '________________________';
+      const contactName = onboardData.school_contacts?.[0]?.name || showOnboardModal?.contact_name || '________________________';
+      const contactPhone = onboardData.school_contacts?.[0]?.phone_number || showOnboardModal?.phone || '________________________';
+      const contactEmail = onboardData.school_contacts?.[0]?.email || showOnboardModal?.email || '________________________';
+      const schoolLocation = showOnboardModal?.location || '';
+
+      doc.setFontSize(10.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('PARTIES TO THIS AGREEMENT', margin, y);
+      y += 6;
+
+      // Party 1 box
+      doc.setFillColor(240, 245, 252);
+      doc.rect(margin, y, pageWidth - margin * 2, 22, 'F');
+      doc.setFontSize(9.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('Party 1 — Service Provider:', margin + 3, y + 6);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(50, 50, 50);
+      doc.text('OLL (Online Learning Labs)', margin + 3, y + 12);
+      doc.text('Email: info@oll.co | Phone: +91 9920188188', margin + 3, y + 18);
+      y += 26;
+
+      // Party 2 box
+      doc.setFillColor(240, 245, 252);
+      const party2H = schoolLocation ? 34 : 28;
+      doc.rect(margin, y, pageWidth - margin * 2, party2H, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('Party 2 — School:', margin + 3, y + 6);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(50, 50, 50);
+      doc.text(`School Name: ${schoolName}`, margin + 3, y + 12);
+      doc.text(`Contact: ${contactName} | Phone: ${contactPhone}`, margin + 3, y + 18);
+      doc.text(`Email: ${contactEmail}`, margin + 3, y + 24);
+      if (schoolLocation) doc.text(`Address: ${schoolLocation}`, margin + 3, y + 30);
+      y += party2H + 8;
+
+      // ── PROGRAM DETAILS ─────────────────────────────────────────
+      doc.setDrawColor(220, 225, 235);
+      doc.setLineWidth(0.2);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 6;
+
+      doc.setFontSize(10.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('PROGRAM DETAILS', margin, y);
+      y += 5;
+
+      const courseTypeLabels = { only_robotics: 'Only Robotics', robotics_coding_ai: 'Robotics, Coding & AI' };
+      const kitTypeLabels = { lab_setup: 'Lab Kit', individual: 'Individual Kit', no_kit: 'No Kit' };
+      const trainingLabels = { student_training: 'Student Training', teacher_training: 'Teacher Training', both: 'Student & Teacher Training' };
+      const modelLabels = { robotics_lab: 'Robotics Lab Setup', stem_curriculum: 'STEM Curriculum Integration', after_school: 'After School Program', teacher_training: 'Teacher Training Only', full_partnership: 'Full School Partnership' };
+
+      const programRows = [
+        ['Offering / Program', onboardData.offering || '—'],
+        ['Partnership Model', modelLabels[onboardData.model] || onboardData.model || '—'],
+        ['Course Type', courseTypeLabels[onboardData.course_type] || onboardData.course_type || '—'],
+        ['Kit Type', kitTypeLabels[onboardData.kit_type] || onboardData.kit_type || '—'],
+        ...(onboardData.kit_type === 'lab_setup' ? [['No. of Lab Kits', String(onboardData.lab_kit_count || '—')]] : []),
+        ['Training', trainingLabels[onboardData.training_type] || onboardData.training_type || '—'],
+        ['Total Students', String(onboardData.total_students || '—')],
+      ];
+
+      autoTable(doc, {
+        startY: y,
+        body: programRows,
+        theme: 'plain',
+        styles: { fontSize: 9.5, cellPadding: 3, textColor: [50, 50, 50] },
+        columnStyles: { 0: { fontStyle: 'bold', textColor: [30, 58, 95], cellWidth: 65 } },
+        margin: { left: margin, right: margin },
+        tableLineColor: [220, 225, 235],
+        tableLineWidth: 0.2,
+        alternateRowStyles: { fillColor: [245, 249, 255] },
+      });
+      y = doc.lastAutoTable.finalY + 8;
+
+      // ── FINANCIAL TERMS ─────────────────────────────────────────
+      if (y > pageHeight - 80) { doc.addPage(); y = 20; }
+
+      doc.setDrawColor(220, 225, 235);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 6;
+      doc.setFontSize(10.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('FINANCIAL TERMS', margin, y);
+      y += 5;
+
+      const totalAmt = onboardData.total_amount;
+      const paymentModeLabel = { from_school: 'From School', from_student: 'From Students', online: 'Online Payment' };
+      const paymentMethodLabel = onboardData.payment_method ? onboardData.payment_method.toUpperCase() : '—';
+
+      const financialRows = [
+        ['Total Contract Value', totalAmt ? `Rs. ${Number(totalAmt).toLocaleString('en-IN')}` : '—'],
+        ['Payment Mode', paymentModeLabel[onboardData.payment_mode] || '—'],
+        ['Payment Method', paymentMethodLabel],
+      ];
+
+      const validTranches = (onboardData.payment_tranches || []).filter(t => t.amount);
+      validTranches.forEach((t, i) => {
+        const dateStr = t.date ? format(new Date(t.date), 'dd MMM yyyy') : '';
+        financialRows.push([
+          `Tranche ${i + 1}`,
+          `Rs. ${Number(t.amount).toLocaleString('en-IN')}${dateStr ? ` — Due: ${dateStr}` : ''}${t.notes ? ` (${t.notes})` : ''}`,
+        ]);
+      });
+
+      autoTable(doc, {
+        startY: y,
+        body: financialRows,
+        theme: 'plain',
+        styles: { fontSize: 9.5, cellPadding: 3, textColor: [50, 50, 50] },
+        columnStyles: { 0: { fontStyle: 'bold', textColor: [30, 58, 95], cellWidth: 65 } },
+        margin: { left: margin, right: margin },
+        tableLineColor: [220, 225, 235],
+        tableLineWidth: 0.2,
+        alternateRowStyles: { fillColor: [245, 249, 255] },
+      });
+      y = doc.lastAutoTable.finalY + 8;
+
+      // ── CONTRACT PERIOD ─────────────────────────────────────────
+      if (y > pageHeight - 60) { doc.addPage(); y = 20; }
+
+      doc.setDrawColor(220, 225, 235);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 6;
+      doc.setFontSize(10.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('CONTRACT PERIOD', margin, y);
+      y += 5;
+
+      const cStart = onboardData.contract_start ? format(new Date(onboardData.contract_start), 'dd MMMM yyyy') : '—';
+      const cEnd = onboardData.contract_end ? format(new Date(onboardData.contract_end), 'dd MMMM yyyy') : '—';
+
+      autoTable(doc, {
+        startY: y,
+        body: [['Contract Start', cStart], ['Contract End', cEnd]],
+        theme: 'plain',
+        styles: { fontSize: 9.5, cellPadding: 3, textColor: [50, 50, 50] },
+        columnStyles: { 0: { fontStyle: 'bold', textColor: [30, 58, 95], cellWidth: 65 } },
+        margin: { left: margin, right: margin },
+        tableLineColor: [220, 225, 235],
+        tableLineWidth: 0.2,
+        alternateRowStyles: { fillColor: [245, 249, 255] },
+      });
+      y = doc.lastAutoTable.finalY + 8;
+
+      // ── TERMS & CONDITIONS ──────────────────────────────────────
+      if (y > pageHeight - 110) { doc.addPage(); y = 20; }
+
+      doc.setDrawColor(220, 225, 235);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 6;
+      doc.setFontSize(10.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('TERMS & CONDITIONS', margin, y);
+      y += 6;
+
+      const terms = [
+        '1. OLL shall provide quality robotics/STEM education programs as mutually agreed upon by both parties.',
+        '2. The School shall provide necessary infrastructure, space, and support for program delivery.',
+        '3. OLL shall ensure trained educators and all required learning materials are provided on time.',
+        '4. Payment shall be made as per the agreed schedule. Late payments may attract applicable charges.',
+        '5. Either party may terminate this agreement with 30 days written notice to the other party.',
+        '6. Any disputes shall be resolved through mutual discussion, failing which through arbitration under applicable Indian law.',
+        '7. This agreement is valid for the contract period stated above and may be renewed by mutual written consent.',
+        '8. OLL retains all intellectual property rights to its curriculum, content, and learning materials.',
+      ];
+
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(60, 60, 60);
+      for (const term of terms) {
+        const lines = doc.splitTextToSize(term, pageWidth - margin * 2);
+        if (y + lines.length * 5 > pageHeight - 20) { doc.addPage(); y = 20; }
+        doc.text(lines, margin, y);
+        y += lines.length * 5 + 2;
+      }
+      y += 5;
+
+      // ── SIGNATURES ──────────────────────────────────────────────
+      if (y > pageHeight - 55) { doc.addPage(); y = 20; }
+
+      doc.setDrawColor(220, 225, 235);
+      doc.line(margin, y, pageWidth - margin, y);
+      y += 8;
+
+      doc.setFontSize(10.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('SIGNATURES', margin, y);
+      y += 8;
+
+      const sigW = (pageWidth - margin * 2 - 10) / 2;
+
+      // School signature box
+      doc.setFillColor(245, 249, 255);
+      doc.rect(margin, y, sigW, 42, 'F');
+      doc.setDrawColor(180, 195, 215);
+      doc.setLineWidth(0.3);
+      doc.rect(margin, y, sigW, 42);
+      doc.setFontSize(9.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('For School', margin + 4, y + 7);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(80, 80, 80);
+      doc.text('Signature: _____________________', margin + 4, y + 17);
+      doc.text(`Name: ${contactName}`, margin + 4, y + 25);
+      doc.text(`School: ${schoolName}`, margin + 4, y + 32);
+      doc.text('Date: ___________________', margin + 4, y + 39);
+
+      // OLL signature box
+      const rx = margin + sigW + 10;
+      doc.setFillColor(245, 249, 255);
+      doc.rect(rx, y, sigW, 42, 'F');
+      doc.rect(rx, y, sigW, 42);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('For OLL', rx + 4, y + 7);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(80, 80, 80);
+      doc.text('Signature: _____________________', rx + 4, y + 17);
+      doc.text('Name: ________________________', rx + 4, y + 25);
+      doc.text('Designation: __________________', rx + 4, y + 32);
+      doc.text('Date: ___________________', rx + 4, y + 39);
+
+      // ── FOOTER on every page ─────────────────────────────────────
+      const totalPages = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFillColor(30, 58, 95);
+        doc.rect(0, pageHeight - 11, pageWidth, 11, 'F');
+        doc.setTextColor(190, 210, 235);
+        doc.setFontSize(7.5);
+        doc.setFont('helvetica', 'normal');
+        doc.text('OLL — Empowering Schools with Future-Ready Education', margin, pageHeight - 4);
+        doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 4, { align: 'right' });
+        doc.text('info@oll.co | +91 9920188188 | www.oll.co', pageWidth / 2, pageHeight - 4, { align: 'center' });
+      }
+
+      // Download
+      const fileName = `MOU_${(showOnboardModal?.school_name || 'School').replace(/\s+/g, '_')}_${format(new Date(), 'ddMMMyyyy')}.pdf`;
+      doc.save(fileName);
+
+      // Upload to Cloudinary and store in documents
+      try {
+        const pdfBlob = doc.output('blob');
+        const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+        const formData = new FormData();
+        formData.append('file', pdfFile);
+        const uploadRes = await axios.post(`${API}/upload`, formData, {
+          headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' },
+        });
+        const fileUrl = uploadRes.data.url;
+        const existingDocs = showOnboardModal?.documents || [];
+        const newDoc = {
+          type: 'MOU',
+          url: fileUrl,
+          name: fileName,
+          uploaded_at: new Date().toISOString(),
+          uploaded_by: user?.name || user?.email || 'Admin',
+        };
+        await axios.patch(`${API}/schools/inquiry/${showOnboardModal.id}`, {
+          documents: [...existingDocs, newDoc],
+        }, { headers: getAuthHeaders() });
+        setOnboardData(prev => ({ ...prev, mou_url: fileUrl }));
+        fetchInquiries();
+        toast.success('MOU generated, downloaded & saved to documents');
+      } catch {
+        toast.success('MOU downloaded (save to documents failed — check upload service)');
+      }
+    } catch (err) {
+      console.error('MOU generation error:', err);
+      toast.error('Failed to generate MOU: ' + (err.message || 'Unknown error'));
+    } finally {
+      setGeneratingMOU(false);
     }
   };
 
@@ -7096,6 +7446,19 @@ const AdminSchoolCRM = () => {
             <div className="flex gap-3 pt-2">
               <Button variant="outline" onClick={() => setShowOnboardModal(null)} className="flex-1">
                 Cancel
+              </Button>
+              <Button
+                variant="outline"
+                onClick={generateMOUPDF}
+                disabled={generatingMOU}
+                className="flex-1 border-[#1E3A5F] text-[#1E3A5F] hover:bg-[#1E3A5F]/10"
+                data-testid="generate-mou-btn"
+              >
+                {generatingMOU ? (
+                  <><RefreshCw className="w-4 h-4 mr-1 animate-spin" /> Generating...</>
+                ) : (
+                  <><FileText className="w-4 h-4 mr-1" /> Generate MOU</>
+                )}
               </Button>
               <Button variant="outline" onClick={() => handleOnboardSchool(true)} className="flex-1 border-blue-500 text-blue-600 hover:bg-blue-50">
                 Save as Draft
