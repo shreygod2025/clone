@@ -535,7 +535,7 @@ EMAIL_TEMPLATES = {
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="background: linear-gradient(135deg, #1E3A5F 0%, #2d5a87 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
                 <h1 style="color: white; margin: 0; font-size: 28px;">OLL</h1>
-                <p style="color: #e0e0e0; margin: 10px 0 0 0;">One Life Learning</p>
+                <p style="color: #e0e0e0; margin: 10px 0 0 0;">OLL</p>
             </div>
             <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
                 <h2 style="color: #1E3A5F; margin-top: 0;">Hello {name}! 👋</h2>
@@ -550,7 +550,7 @@ EMAIL_TEMPLATES = {
                 <p style="color: #444; line-height: 1.6;">Best regards,<br><strong>The OLL Team</strong></p>
             </div>
             <div style="text-align: center; padding: 20px; color: #888; font-size: 12px;">
-                <p>© 2026 OLL - One Life Learning. All rights reserved.</p>
+                <p>© 2026 OLL. All rights reserved.</p>
             </div>
         </div>
         """
@@ -561,7 +561,7 @@ EMAIL_TEMPLATES = {
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="background: linear-gradient(135deg, #1E3A5F 0%, #2d5a87 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
                 <h1 style="color: white; margin: 0; font-size: 28px;">OLL</h1>
-                <p style="color: #e0e0e0; margin: 10px 0 0 0;">One Life Learning</p>
+                <p style="color: #e0e0e0; margin: 10px 0 0 0;">OLL</p>
             </div>
             <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
                 <h2 style="color: #1E3A5F; margin-top: 0;">Great News, {name}! 🎉</h2>
@@ -585,7 +585,7 @@ EMAIL_TEMPLATES = {
                 <p style="color: #444; line-height: 1.6;">Best of luck!<br><strong>The OLL Team</strong></p>
             </div>
             <div style="text-align: center; padding: 20px; color: #888; font-size: 12px;">
-                <p>© 2026 OLL - One Life Learning. All rights reserved.</p>
+                <p>© 2026 OLL. All rights reserved.</p>
             </div>
         </div>
         """
@@ -596,7 +596,7 @@ EMAIL_TEMPLATES = {
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="background: linear-gradient(135deg, #1E3A5F 0%, #2d5a87 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
                 <h1 style="color: white; margin: 0; font-size: 28px;">OLL</h1>
-                <p style="color: #e0e0e0; margin: 10px 0 0 0;">One Life Learning</p>
+                <p style="color: #e0e0e0; margin: 10px 0 0 0;">OLL</p>
             </div>
             <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
                 <h2 style="color: #1E3A5F; margin-top: 0;">Reminder: Demo Tomorrow! ⏰</h2>
@@ -611,7 +611,7 @@ EMAIL_TEMPLATES = {
                 <p style="color: #444; line-height: 1.6;">Best regards,<br><strong>The OLL Team</strong></p>
             </div>
             <div style="text-align: center; padding: 20px; color: #888; font-size: 12px;">
-                <p>© 2026 OLL - One Life Learning. All rights reserved.</p>
+                <p>© 2026 OLL. All rights reserved.</p>
             </div>
         </div>
         """
@@ -622,7 +622,7 @@ EMAIL_TEMPLATES = {
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="background: linear-gradient(135deg, #1E3A5F 0%, #2d5a87 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
                 <h1 style="color: white; margin: 0; font-size: 28px;">OLL</h1>
-                <p style="color: #e0e0e0; margin: 10px 0 0 0;">One Life Learning</p>
+                <p style="color: #e0e0e0; margin: 10px 0 0 0;">OLL</p>
             </div>
             <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
                 <h2 style="color: #1E3A5F; margin-top: 0;">Thank You, {name}! 🙏</h2>
@@ -635,7 +635,7 @@ EMAIL_TEMPLATES = {
                 <p style="color: #444; line-height: 1.6;">Best regards,<br><strong>The OLL Team</strong></p>
             </div>
             <div style="text-align: center; padding: 20px; color: #888; font-size: 12px;">
-                <p>© 2026 OLL - One Life Learning. All rights reserved.</p>
+                <p>© 2026 OLL. All rights reserved.</p>
             </div>
         </div>
         """
@@ -646,7 +646,7 @@ EMAIL_TEMPLATES = {
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="background: linear-gradient(135deg, #1E3A5F 0%, #2d5a87 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
                 <h1 style="color: white; margin: 0; font-size: 28px;">🎉 OLL</h1>
-                <p style="color: #e0e0e0; margin: 10px 0 0 0;">One Life Learning</p>
+                <p style="color: #e0e0e0; margin: 10px 0 0 0;">OLL</p>
             </div>
             <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
                 <h2 style="color: #1E3A5F; margin-top: 0;">Congratulations, {name}! 🎊</h2>
@@ -672,7 +672,7 @@ EMAIL_TEMPLATES = {
                 <p style="color: #444; line-height: 1.6;">Welcome to OLL! 🌟<br><strong>The OLL Team</strong></p>
             </div>
             <div style="text-align: center; padding: 20px; color: #888; font-size: 12px;">
-                <p>© 2026 OLL - One Life Learning. All rights reserved.</p>
+                <p>© 2026 OLL. All rights reserved.</p>
             </div>
         </div>
         """
@@ -683,7 +683,7 @@ EMAIL_TEMPLATES = {
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <div style="background: linear-gradient(135deg, #1E3A5F 0%, #2d5a87 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
                 <h1 style="color: white; margin: 0; font-size: 28px;">OLL</h1>
-                <p style="color: #e0e0e0; margin: 10px 0 0 0;">One Life Learning</p>
+                <p style="color: #e0e0e0; margin: 10px 0 0 0;">OLL</p>
             </div>
             <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
                 <h2 style="color: #1E3A5F; margin-top: 0;">Dear {name},</h2>
@@ -696,7 +696,7 @@ EMAIL_TEMPLATES = {
                 <p style="color: #444; line-height: 1.6;">Warm regards,<br><strong>The OLL Team</strong></p>
             </div>
             <div style="text-align: center; padding: 20px; color: #888; font-size: 12px;">
-                <p>© 2026 OLL - One Life Learning. All rights reserved.</p>
+                <p>© 2026 OLL. All rights reserved.</p>
             </div>
         </div>
         """
@@ -2432,6 +2432,246 @@ async def test_all_email_templates(
     successful = sum(1 for r in results if r["success"])
     return {
         "message": f"Sent {successful}/{len(results)} test emails to {email}",
+        "results": results
+    }
+
+
+@api_router.post("/email/test-school-templates")
+async def test_school_email_templates(
+    email: str = Query(..., description="Email address to send test emails to"),
+    user: dict = Depends(get_current_user)
+):
+    """Send all school-related email templates to specified email for testing"""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    
+    results = []
+    
+    # 1. School Personalized Email (with offerings)
+    try:
+        school_email_data = {
+            "school_name": "Test Academy School",
+            "contact_name": "Principal Test",
+            "email": email,
+            "programs_interested": ["Robotics", "STEM", "Coding"],
+            "selected_offerings": [],
+            "meeting_date": "March 20, 2026",
+            "meeting_time": "11:00 AM IST"
+        }
+        
+        # Build the email inline
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"></head>
+        <body style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f5f5f5; margin: 0; padding: 20px;">
+            <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <div style="background: linear-gradient(135deg, #1E3A5F 0%, #2d4a6f 100%); padding: 32px; text-align: center;">
+                    <h1 style="color: white; margin: 0; font-size: 28px;">OLL</h1>
+                    <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0;">Empowering Future Skills</p>
+                </div>
+                <div style="padding: 32px;">
+                    <h2 style="color: #1E3A5F; margin-top: 0;">Dear {school_email_data['contact_name']},</h2>
+                    <p style="color: #333; line-height: 1.6;">
+                        Thank you for your interest in OLL's skill education programs for <strong>{school_email_data['school_name']}</strong>!
+                    </p>
+                    <p style="color: #333; line-height: 1.6;">
+                        We're excited about the opportunity to partner with your institution to bring cutting-edge 
+                        <strong>Robotics, STEM, Coding</strong> education to your students.
+                    </p>
+                    <h3 style="color: #1E3A5F; margin-top: 24px;">Why Partner with OLL?</h3>
+                    <ul style="color: #333; line-height: 1.8;">
+                        <li>Industry-aligned curriculum designed by experts</li>
+                        <li>Hands-on learning with modern equipment and kits</li>
+                        <li>Trained educators and comprehensive teacher support</li>
+                        <li>Flexible implementation models</li>
+                        <li>50,000+ students impacted across India</li>
+                    </ul>
+                    <div style='background: #f0f9ff; padding: 16px; border-radius: 8px; margin-top: 24px;'>
+                        <h3 style='color: #1E3A5F; margin: 0 0 12px 0;'>Meeting Scheduled</h3>
+                        <p style='margin: 4px 0;'><strong>Date:</strong> {school_email_data['meeting_date']}</p>
+                        <p style='margin: 4px 0;'><strong>Time:</strong> {school_email_data['meeting_time']}</p>
+                    </div>
+                    <p style="color: #333; margin-top: 24px;">
+                        Warm regards,<br><strong>OLL Team</strong><br><span style="color: #666;">www.oll.co</span>
+                    </p>
+                </div>
+                <div style="background: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #eee;">
+                    <p style="color: #666; margin: 0; font-size: 14px;">OLL<br>Transforming Education Through Innovation</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        email_response = await asyncio.to_thread(resend.Emails.send, {
+            "from": SENDER_EMAIL,
+            "to": [email],
+            "subject": "Welcome to OLL - Robotics, STEM, Coding Programs for Test Academy School",
+            "html": html_content
+        })
+        results.append({"template": "school_welcome", "subject": "School Welcome/Partnership Email", "success": True, "message": "Email sent"})
+    except Exception as e:
+        results.append({"template": "school_welcome", "subject": "School Welcome/Partnership Email", "success": False, "message": str(e)})
+    
+    await asyncio.sleep(1)
+    
+    # 2. School Payment Reminder Email
+    try:
+        payment_html = """
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"></head>
+        <body style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f5f5f5; margin: 0; padding: 20px;">
+            <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <div style="background: linear-gradient(135deg, #D63031 0%, #e84343 100%); padding: 32px; text-align: center;">
+                    <h1 style="color: white; margin: 0; font-size: 28px;">OLL</h1>
+                    <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0;">Payment Reminder</p>
+                </div>
+                <div style="padding: 32px;">
+                    <h2 style="color: #1E3A5F; margin-top: 0;">Dear Parent/Guardian,</h2>
+                    <p style="color: #333; line-height: 1.6;">
+                        This is a friendly reminder regarding the pending payment for your child's enrollment in the OLL program at <strong>Test Academy School</strong>.
+                    </p>
+                    <div style="background: #fff3cd; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107;">
+                        <p style="margin: 0; color: #856404;"><strong>Payment Details:</strong></p>
+                        <p style="margin: 8px 0 0 0; color: #856404;">Amount: ₹5,000</p>
+                        <p style="margin: 4px 0 0 0; color: #856404;">Due Date: March 25, 2026</p>
+                        <p style="margin: 4px 0 0 0; color: #856404;">Student: Test Student (Grade 5)</p>
+                    </div>
+                    <div style="text-align: center; margin: 24px 0;">
+                        <a href="https://oll.co/school-pay/test" style="background: #D63031; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Pay Now</a>
+                    </div>
+                    <p style="color: #666; font-size: 14px; line-height: 1.6;">
+                        If you have already made the payment, please ignore this reminder. For any queries, contact us at support@oll.co
+                    </p>
+                </div>
+                <div style="background: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #eee;">
+                    <p style="color: #666; margin: 0; font-size: 14px;">OLL<br>Transforming Education Through Innovation</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        await asyncio.to_thread(resend.Emails.send, {
+            "from": SENDER_EMAIL,
+            "to": [email],
+            "subject": "Payment Reminder - OLL Program at Test Academy School",
+            "html": payment_html
+        })
+        results.append({"template": "school_payment_reminder", "subject": "School Payment Reminder", "success": True, "message": "Email sent"})
+    except Exception as e:
+        results.append({"template": "school_payment_reminder", "subject": "School Payment Reminder", "success": False, "message": str(e)})
+    
+    await asyncio.sleep(1)
+    
+    # 3. School Onboarding Complete Email
+    try:
+        onboard_html = """
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"></head>
+        <body style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f5f5f5; margin: 0; padding: 20px;">
+            <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <div style="background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%); padding: 32px; text-align: center;">
+                    <h1 style="color: white; margin: 0; font-size: 28px;">🎉 Welcome to OLL!</h1>
+                    <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0;">Partnership Confirmed</p>
+                </div>
+                <div style="padding: 32px;">
+                    <h2 style="color: #1E3A5F; margin-top: 0;">Dear Test Academy School Team,</h2>
+                    <p style="color: #333; line-height: 1.6;">
+                        Congratulations! Your school's partnership with OLL is now officially confirmed. We're thrilled to have you join our mission of transforming education.
+                    </p>
+                    <div style="background: #d4edda; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #28a745;">
+                        <p style="margin: 0; color: #155724;"><strong>Partnership Details:</strong></p>
+                        <p style="margin: 8px 0 0 0; color: #155724;">Program: Robotics & STEM Lab Setup</p>
+                        <p style="margin: 4px 0 0 0; color: #155724;">Students Enrolled: 150</p>
+                        <p style="margin: 4px 0 0 0; color: #155724;">Start Date: April 1, 2026</p>
+                    </div>
+                    <h3 style="color: #1E3A5F;">Next Steps:</h3>
+                    <ol style="color: #333; line-height: 1.8;">
+                        <li>Kit delivery will be scheduled within 7 working days</li>
+                        <li>Teacher training session will be arranged</li>
+                        <li>You'll receive access to the OLL Partner Dashboard</li>
+                        <li>Dedicated support contact will be assigned</li>
+                    </ol>
+                    <p style="color: #333; margin-top: 24px;">
+                        Warm regards,<br><strong>OLL Partnership Team</strong><br><span style="color: #666;">www.oll.co</span>
+                    </p>
+                </div>
+                <div style="background: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #eee;">
+                    <p style="color: #666; margin: 0; font-size: 14px;">OLL<br>Transforming Education Through Innovation</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        await asyncio.to_thread(resend.Emails.send, {
+            "from": SENDER_EMAIL,
+            "to": [email],
+            "subject": "🎉 Partnership Confirmed - Welcome to OLL Family!",
+            "html": onboard_html
+        })
+        results.append({"template": "school_onboarding_complete", "subject": "School Onboarding Complete", "success": True, "message": "Email sent"})
+    except Exception as e:
+        results.append({"template": "school_onboarding_complete", "subject": "School Onboarding Complete", "success": False, "message": str(e)})
+    
+    await asyncio.sleep(1)
+    
+    # 4. School Kit Delivery Update
+    try:
+        delivery_html = """
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"></head>
+        <body style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f5f5f5; margin: 0; padding: 20px;">
+            <div style="max-width: 600px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                <div style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); padding: 32px; text-align: center;">
+                    <h1 style="color: white; margin: 0; font-size: 28px;">📦 Kit Delivery Update</h1>
+                    <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0;">OLL Robotics Kits</p>
+                </div>
+                <div style="padding: 32px;">
+                    <h2 style="color: #1E3A5F; margin-top: 0;">Dear Test Academy School,</h2>
+                    <p style="color: #333; line-height: 1.6;">
+                        Great news! Your OLL Robotics kits have been dispatched and are on the way.
+                    </p>
+                    <div style="background: #cce5ff; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #004085;">
+                        <p style="margin: 0; color: #004085;"><strong>Shipment Details:</strong></p>
+                        <p style="margin: 8px 0 0 0; color: #004085;">PO Number: PO-2026-001</p>
+                        <p style="margin: 4px 0 0 0; color: #004085;">Items: 50 Robotics Kits + Lab Equipment</p>
+                        <p style="margin: 4px 0 0 0; color: #004085;">Tracking ID: DLV123456789</p>
+                        <p style="margin: 4px 0 0 0; color: #004085;">Expected Delivery: March 18, 2026</p>
+                    </div>
+                    <div style="text-align: center; margin: 24px 0;">
+                        <a href="https://oll.co/track/test" style="background: #3498db; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Track Shipment</a>
+                    </div>
+                    <p style="color: #666; font-size: 14px;">
+                        Please ensure someone is available to receive the delivery. Contact us if you need to reschedule.
+                    </p>
+                </div>
+                <div style="background: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #eee;">
+                    <p style="color: #666; margin: 0; font-size: 14px;">OLL<br>Transforming Education Through Innovation</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+        
+        await asyncio.to_thread(resend.Emails.send, {
+            "from": SENDER_EMAIL,
+            "to": [email],
+            "subject": "📦 Your OLL Kits Have Been Dispatched!",
+            "html": delivery_html
+        })
+        results.append({"template": "school_kit_delivery", "subject": "School Kit Delivery Update", "success": True, "message": "Email sent"})
+    except Exception as e:
+        results.append({"template": "school_kit_delivery", "subject": "School Kit Delivery Update", "success": False, "message": str(e)})
+    
+    successful = sum(1 for r in results if r["success"])
+    return {
+        "message": f"Sent {successful}/{len(results)} school test emails to {email}",
         "results": results
     }
 
