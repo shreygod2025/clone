@@ -18,6 +18,9 @@ import autoTable from 'jspdf-autotable';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+// OLL Logo embedded as base64 (white version for dark header backgrounds)
+const OLL_LOGO_B64 = 'data:image/png;base64,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CrDVEWDgTYDdRQG2OwIMCLAAC7AFAwTYfRRguyPAwJsAO4sCbHkEGBBgARZgCwZEBNhVFGDbI8CAAAuwAFswQIDdRwG2PQIMvAmwoyjA1keAAQEWYAG2YIAAu48CbH0EGHgTYDdRgAVYgAEBFmABtmCAALuPAmx/BBh4E2AnUYAFWIABARZgAbZggAC7jwJsgQQYEGABFmALBpwJsIsowAIswIAAC7AAWzBAgN1HAbZB+gu8CbCLKMACLMCAAAvwwh9maQQYBNjxFGABtl/AigA7iAKswAIMCLAAu/wAAizAAgyAAAuwAAOcCbDeCjAAAizAAgwgwAIswAC8CbDcCjAAAizAAgwgwAIswAAIsAALMMCZAKutAAMgwAIswAACLMACDIAAC7AAA5wJsNgKMAACLMACDCDAAizAAAiwAAswwJkAa60AAyDAAizAAAIswAIMgAALsAADnAmw1AowAAIswAIMIMACLMAACLAACzCAAAuwAAPw5wFWWgEGQIAFWIABBFiABRgAARZgAQY4E2ChFWAABFiABRhAgAVYgAEQYAEWYAABFmABBuDPA6yzAgyAAAuwAAMIsAALMAACLMACDCDAAizAAAiwAAswwKoAy2xggBUYQIAFWIABBBgBBkCABViAAQRYgAUYgF8LsMoKMAACLMACDCDAAizAAAiwAAswgAALsAADIMACLMAAAizAAgwgwPorwAIMIMACLMAAAizAAgyAAAuwAAMIMAIMgAALsAADHAqwxgowAAIswAIMIMAIMAACLMACDCDAAizAAAiwAAswgAALsAADCLAAC7AAA4wLsMQKMAACLMACDCDACDAAAizAAgwgwAIswAAIsAALMIAAC7AAAwiwAAuwAAMIsAALMIAAC7AAA9ASYIUVYAAEWIAFGECAEWAABFiABRhAgAVYgAEQYAEWYAABFmABBhBgARZg/O0CCLBb61NYCkCAXX0BRoABARZgLAUgwAgwAgwIsAAjwMClALulAowAAwIswFgKQIARYAQYEGABRoABAXZrBdhSAAiwACPAgAC7tQJsKQABdvQFGAEGBNit9S0sBSDAjr4AI8CAAAswlgIQYAQYAQYEWIARYECA3VoBthQAAizACDAgwG6tAFsKQIAdfQFGgAEBdmt9C0sBCLCjL8AIMCDAbq1vYSkAAUaAEWBAgAUYAQYE2K0VYEsBIMACjAADAuzWCrClAATY0RdgBBgQYLfWt7AUgAA7+gKMAAMC7Nb6FpYCEGAEGAEGBFiAEWBAgN1aAUaAAQEWYAQYEGC3VoAtBYAACzACDAiwW+tbWApAgB19AUaAAQF2a30LS7HptBgPCLAAI8Czl9MhRoAdfQFGgBu30kFGgB19AUZP2vbRWUaAHX0BRkm6NtFtRoAdfQFGRLq20IFGgB19AUY/mjbQkUaAEWC048cgQYAFGEsREV8NRoARYJKjYZ4gwG6tWVuKxPpqMAKMAJNVC1OdOSxrdGAyAizAOATLts28BFiAEWAuB9hsZcZkBNit9S0shfpumK7tMhkBFmAkImDLZMZGCTACzKUAG7HMmMykALv6AkxIgA1ZZkxGgJ0Bn8JSyO+uOdsukxFgAUYYkpZLZqyWALu1biSLA2zWMmMyAuz9+xSWQn43Ttt2mYwACzCSkLdWMmPBBNitdSlZdghMXGZMRoC9fJ/CUsjv3pnbLpMRYAFGDFIXSmYEWIDdWvfSUriLaWO3XSYjwAKMAAcvk8wIsAC7tW6mpXAUo0Zvu0xGgAUYAc7eJJkR4EMBdvYFmFuHwPRlxmQE2Gt3Ny2F/N6Yv+0yGQEWYATYEpXMCLAAe+pup6XQ34hPYLtMRoAFGAG2QQ3fwHaZjAALMAJsgRq+gsyYjAALMAJsfxo+g8yYjAALMAJsexq+g8yYjAALMAJseRq+hMyYjAALMAJsdRo+hcyYzJMAu/sCzO5D4FvIjAALsPftjFoK/T35NWTGZARYgBFge9PwOWTGZARYgBFgW9PwPWTGZARYgBFgS9PwQWTGZARYgBFgO9PwSWTGZARYgBFgK9PwTWTGZARYgBFgG9PwUWTGZN4E2DMWYBYeAp/hy68iMyYjwAKMAFuXhs8iMyYjwAKMANuWhu8iMyYjwAKMAFuWhg8jMyYjwAKMANuVhi8jMyYjwAKMAFuVhk8jMyYjwAKMANuUhm8jMybzKMDeswCz6BCYf8PHkRmTEWABJj7Axt/xdWTGZARYgEkPsOm3fB6ZMRkBFmDCA2z4Pd9HZkxGgAWY7ACbfdMHkhmTEWABJjrARt/1hWTGZF4F2LMWYDYcApNv+0QyYzICLMAEB9jg+76RzJiMAAswAkzDR5IZkxHg27fWsC2F/Rj6lWTGZARYgIkNsLF3fiaZMRkBFmBSA2zqrd9JZkzmWYA97hnf3LQthd0QYAEWYDq+uXHbCZsx8kvJjMkIcMCxNXErYSvmfSuZMRkBzri24IEOe79OjskIsACjvzQ8YCfHZARYgNFfBFiATwXYExdgXDgvWGZMRoAFGDzOSU/YyTEZARZg9JeGN+zkmIwACzD6iwALsAB7vKC/GY/YyTGZhwH2zgUYAfaKZcZkBFiAwbsc9IydHJMRYAFGfxFgARZgLxcEOOMdOzkm8zLAnroAo78essyYjAALMHh9AmxLBdi7BQGOfslOjskIsACjvwiwAAuwZwv6m/GUnRyTeRpg712AEWBvWWZMRoAFGP1FgC2qAHu0IMDJj9nJMRkBFmD0l4bX7OSYzNsAe/ICjP56zTJjMgIswAgwU56zk2MyAizA6C8CLMAC7MWCAGe8ZyfHZB4H2KsXYPTXe5YZkxFgAUaAl72Luw/ayTEZARZg9Hf8gxBgARZgARZgBLjrMRx70U6OybwOsAILMPr7aw9BgAVYgAVYgHHRml7BlR/j5JiMAAsw+rvsCQiwAAuwAAswDlrPAzjwk5wck3keYAUWYPT3wfYLsAALsAALMO5Zy+77fygTYAEWYAHGOWvZfAEWYAEWYAHGOWtZ/MU/zskxmfcBVmABRn/frb0AC7AAC7AAI8AdS7/1WTs5JiPAAoz+Lt95ARZgAVZgAUaAOzZegAVYgAVYgBHgloVf+DOdHJMRYAFGfw+suwALsAArsAAjwB3bvu5hOzkmI8ACjP7eWHYBFmABFmABRoA7dn3Xr3VyTEaABRgBvrLqAizAAqzAAoz+lh8sMwIswAKMAIfs+aKn7eSYjAALMAJ8aM0FWIAFWIEFGP31o2VGgAVYgBHglCXf8radHJMRYAFGgG8tuQALsAArsACjv1k/XGYEWIAFGLZ0KPaXOzkmI8ACjACf23ABFmABVmABRoT8dpkRYAEWYAQ4ZL8XvG4nx2QEWIAR4IP7LcACLMAKLMAoUNDvlxkBFmABRoCzt3v883ZyTEaABRgBPrncAizAAqzAAoz8+BNEZkxGgAUYAQ7ZbQEWYAEWYAFGfcxAZkymMcAKLMAcj48hCLAAC7AAo782W4AFWIAFWICRnpgxyIwATwywAgswyuPvEJkxGQEWYAT4/GILsAALsAILMLpjEDJjMgIswAhwyF4LsAALsAALMLLjTxGZMZm2ACuwACPARiEzJiPAAowAn99qARZgARZgAUZ0/DEiMybTFmAFFmD8A9gwZMZkBFiAEeD7Sz10Gr6OyXwdYAUWYATYNGTGZARYgBHg8zstwNZXgAVYgPEPYH+PyIzJtAVYgQUYARZgmTEZARZgBPj8Sguw/RVgBRZgBNhAZMZkBFiBEWABFmABFmABhrW9MRABFuAlAVZgeHsIBHjDRHwgkxFguBZg/0lHgAVYgBUYAgLspAuwAAsw6K8AC7AAC7ACgwCHFlhmBFiAQYAdsaEz8YVMRoDhWH9/Vv+PF2ABNpm3AVZgEGAB9olMRoDhUn8FeMdQfCKTaQqwAoMAC7BPZDICDP4LtAALsACHBFiBwT+ABdg3MhkBBgEWYAEW4JAAKzC8uQECLMACLMACDAKcWWCZEeDRAVZgEGAB9o1MRoDhSH8FWIAFWIAFGATY/xFYZgR4YIAVGF5cAP0VYAEWYAEGARZgmRHggQFWYPgRYAH2kUxGgEGABViABTgjwAqM/gqwAPtIJiPAIMACLMACHBJgBUaABViAfSSTEWA40F8BFmABFmAFBgFOLbDMCLAAQ1p/BViABViAFRgEWIBlRoAFGDL6K8ACLMACrMAgwAIsMwIswJDRXwEecWlkRoA3BFiBEWABFmAfyWQEGLY/fQEWYAEWYAUGARZgmRFgAYaI/gqwAAuwACswCLAAy4wAjw6wAqO/AizAPpLJCDAI8L0TJsACLMAKDG/fvQALsAALsACDAGcGWGYEeE+AFRj9FWABlhmTEWAQYAEWYAEOCbACo78CHDUV38hkBBhu9VeABViABViBQYAFWGYEeH6AFRj9XfmSHHUBFmABBgH2T2ABFmABVmBoevICvOI/C/hEJiPAIMACLMACHB5gBUZ/BViABdhkBBgE+MwRE2ABFmAFRn8F2P8PlsyYzLwAKzD6K8AhI/GFTEaAQYAFWIAFWIAVGP3d94qcdAEWYAEGAfZPYAEWYAFWYOh57QK84b8J+EAmMy7ACoz++m/QAizAJiPAIMAC/GQevo/JzAuwAqO/AhwwD9/HZAQYBPj4HRNgARZgBUZ//RNYgGXGZAYHWIHRXwE+/x8EfB6TEWAQ4NuHTIAFWIAVGP0VYP2VGZOZHWAFRn+XPSDnXIAFWIBBgAVYgAVYgBUYOp65AM//Y8THMZmpAVZgBNg/gQVYgE1GgGHXKxfg+ZPwbUxmbIAVGP3d9XwEWIAF+EqAFRgB9k/gw3+JyIzJCDBcfOP+CSzAAizACoz+Ck9SfwVYgC8EWIER4Ivl8XeIzJiMAMPdF67A04cgMyYzOsAKjP4K8LYDIjMCfCPACowAn4yPGciMyQgwHH3fAjx9BDJjMsMDrMDorwKvOh4yI8BnAqzA6O/N/giwzJiMAIMAH7xo43+/zJjM+AArMPq76uVk91eABfhUgBUY/VVgARZgAVZgEOAFR23Bj5cZkxFgOPq0kwO84bfLjMlsCLACo78KvONkyIwAXwuwAqO/VzN07GDIjAALMAjwT+zP3/G7ZcZkdgRYgdFfBT72s2XGZJYEWIHR313Pxq+WGQG+EmAFRn93vRr9lRkBFmBIDXBigff8ZJkxmTUBVmD0d9mr0V+ZEeAjAVZg9HfZo/EXh8wI8JEAKzD6q8B3fq7MmMymACswArzszfixMiPAAgyZLzpoHNs+vcyYzKoAKzD6u+7N+KUyYzInAqzA6O+6J6O/MmMyJwKswOivAs88DDIjwAIMAjztyeivzJjMgQArMPqrwBOPgswI8P0AKzD6u/HF6K/MmMz+ACsw+qvA4+6BzAhwRIAVGP1d+WBOHwOZEeCMACswArzzvfhlMmMyAgxBL/nomLZ/fstpMisDrMDo79r34kfJjMmsDrACo7+L34tfJDMmszjACoz+bn4ufo7MmMzeACsw+rv7uVx6+TIjwFkBVmD0d/trif0dMmMyAgwpj/jA8M4tgGdiMv9nMuWkwM4/oneP8OYCeCcmszjACoz+XnstB/5HO2ACHBFgBUZ/PZa1G2BOJrM6wI4K+uuxCLAAC7CjguOrwFbABxHglAA7Kuivt7JzBUzKZLYH2FVBf70VARZgAXZU8G4E2A74HgIcEmBXBQH2VgRYgAXYVcGzEWA74HMIcEqAnRX011PZtwOGZTIXAuysoL+eigALsAA7K3gzXool8DEEOCXA7gr666UIsAALsLuCF+Ol2AKfQoBTAuyuoL8eyqotMC+TORNghwX99VAEWIAF2GHBIfFQrIEPIcApAXZY0F/vZM8amJjJXAqwy4L+eicCLMAC7LLg7non9sBnEOCUALss6K9nsmQPzMxkjgXYaUF/PZMde2BoJnMtwE4L+uuZCLAAC7DTgrPrmVgE30CAUwLstKC/XsmCRTA2kzkYYLcF/fVK5i+CuZnMxQC7LeivVyLAAizAbguurldiE3wAk0kJsNuC/nolwzfB5EzmaIDdFvTXI5m9CUZnMlcD7Ligvx7J6E0wO5M5G2DHBf31SCZvguGZzN0AOy7or0ciwAIswI4Ljq5HYhVkxmRSAuy4IL8eydhdMD6TOR1gxwX99Uim7oL5mcztADsu6K9HMnQXDNBkjgfYcUF/PZKZu2CCJnM9wK4L+uuJjNwFIzSZ+wF2XtBfT2TgLpihyQQE2HlBfz2RebtgiCaTEGDnBf31RMbtgimaTESAnRfk1xOZtgzGaDIZAXZe0F9PZNgymKPJhATYeUF/vZFZy2CQJpMSYOcF/fVERi2DSZpMToCdF/TXExm0DEZpMkEBdl7QX09kzjKYpckkBdh5QX49kTHbYJgmExVg5wX99USmLINxmkxWgJ0X9NcTGbIM5mkyYQF2X9BfL2TGMhioycQF2H1Bfj2RCdtgoiaTF2DnBf31RAZsg5GaTGCAnRf01xPpXwZDNZnEALsv6K8X0r4MpmoymQFWYOTXE2neBmM1mdAAKzD664n0boO5mkxqgBUY/fVEWpfBZE0mNsASjP56Ip3LYLQmExxgBUZ+PZG+ZTBck0kOsAKjv95I2zJ4aiYTHWAJRmI9ka5l8NZMJjzACiy/eCM9y+C1mUx6gBVYf/FGWpbBczOZ+ABLsPzijZiqAAuw64L+eiMhu+DFmYwAS7D+kv1GjFSABdh1QX69kZxd8OhMRoAVWH/JfSTmKcAC7Logvx5J1i54dyYjwAps2wl9JWYpwALsuKC/XkncJnh5JiPACmzVCXwlBinAAuy4oL9eSeQieHwmI8AKbM8JeyaGKMAC7Lagv55J7B54fyYjwL6+JSfooZifAAuwy4L+eijRa+AJmowAWwAbTsZLMTsBFmCHBfn1UmyBZ2gyAmwHrDf334qxCbAAOyu4vN6KHZAZkxFga2C3uf5aTEyABdhRwfH1XGyAzJiMAFsFe83592JWAizALgrOrxfj88uMyQiwd2KpOf5kTEmABdg9wQX2aHx7Z0WABdhTsdEcfzbGI8AC7JYgv3z8cIxGgAXYJUF++fjtmDHnX5Ezgvwy7PUYLQLshqC/fPuEzBMBdj+QX758RkaIALsdyC8fviYTQ4AdDeSXL16WoYAAS7D8AgiwAiO/gABLMPILIMASLL8AAizB6C+AAEuw/AIIsAQjvwACLMHqCyDAEoz8AgiwBMsvgABrsPwCCDASLL8AAizB8gsgwBKM/AIIsASrL4AAazDyCyDAEiy/AAIswagvgABrsPwCCLAEqy+AAKPB8gsgwBKsvgACjAbLL4AAS7D6AgiwBiO/AAKsweoLIMAarL4ACLAEqy+AAGuw+gIIMBqsvgACLMLqCyDAaLD6AgiwBosvgACjweoLIMAirL4AAqzB4guAAIuw+AIIsAiLL4AAI8LiCyDAIiy+AAKMCosvgACLsPYCCDABFfalAARYhbUXQIA5nGHfBECAZVh6AQSYsx02eQAB5sMQmzSAAPNdic0VQID5KMbmByDAvGqzSQAIMAAgwAAgwAAgwACAAAOAAAMAAgwAAgwACDAACDAAIMAAIMAAIMAAgAADgAADAAIMAAIMAAgwAAgwACDAACDAACDAAIAAA4AAAwACDAACDAAIMAAIMAAgwAAgwAAgwACAAAOAAAMAAgwAAgwACDAACDAAIMAAIMAAgAADgAADgAADAAIMAAIMAAgwAAgwACDAACDAAIAAA4AAA4AAAwACDAACDAAIMAAIMAAgwAAgwACAAAOAAAOAAAMAAgwAAgwACDAACDAAIMAAIMAAgAADgAADgAADAAIMAAIMAAgwAAgwACDAACDAAIAAA4AAA4AAAwACDAACDAAIMAAIMAAgwAAgwACAAAOAAAOAAAMAAgwAAgwACDAACDAAIMAAIMAAgAADgAADgAADAAIMAAIMAAgwAAgwACDAACDAAIAAA8AY/wgwAC9PTVyXpN0LAAAAAElFTkSuQmCC';
+
 const TICKET_SOURCE_OPTIONS = [
   { value: 'school_crm', label: 'School CRM' },
   { value: 'phone_call', label: 'Phone Call' },
@@ -950,6 +953,10 @@ const AdminSchoolCRM = () => {
       school_contacts: existingOnboardData.school_contacts?.length > 0 
         ? existingOnboardData.school_contacts 
         : [{ name: inquiry.contact_name || '', phone_number: inquiry.phone || '', country_code: '+91', email: inquiry.email || '', role: 'principal' }],
+      school_address: existingOnboardData.school_address || inquiry.location || '',
+      additional_services: existingOnboardData.additional_services?.length > 0
+        ? existingOnboardData.additional_services
+        : [{ item: '', qty: '', price: '' }],
       payment_mode: existingOnboardData.payment_mode || 'from_school',
       payment_method: existingOnboardData.payment_method || '',
       payment_tranches: existingOnboardData.payment_tranches?.length > 0 
@@ -1844,19 +1851,8 @@ const AdminSchoolCRM = () => {
       const CW = PW - M * 2;
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-      // ── LOAD OLL LOGO ──────────────────────────────────────────
-      let logoDataUrl = null;
-      try {
-        const logoUrl = 'https://customer-assets.emergentagent.com/job_0add39d8-6ba8-4c9a-b97e-1c8e22260bae/artifacts/bnp5i3h5_OLL-horizontal-logo-white.png';
-        const r = await fetch(logoUrl);
-        const b = await r.blob();
-        logoDataUrl = await new Promise((res, rej) => {
-          const rd = new FileReader();
-          rd.onload = () => res(rd.result);
-          rd.onerror = rej;
-          rd.readAsDataURL(b);
-        });
-      } catch {}
+      // ── USE EMBEDDED OLL LOGO (no CORS issues) ─────────────────
+      const logoDataUrl = OLL_LOGO_B64;
 
       // ── HELPERS ────────────────────────────────────────────────
       let y = 0;
@@ -1864,14 +1860,7 @@ const AdminSchoolCRM = () => {
       const drawPageHeader = () => {
         doc.setFillColor(30, 58, 95);
         doc.rect(0, 0, PW, 22, 'F');
-        if (logoDataUrl) {
-          doc.addImage(logoDataUrl, 'PNG', M, 2, 40, 17);
-        } else {
-          doc.setTextColor(255, 255, 255);
-          doc.setFontSize(16);
-          doc.setFont('helvetica', 'bold');
-          doc.text('OLL', M, 15);
-        }
+        doc.addImage(logoDataUrl, 'PNG', M, 2, 40, 17);
       };
 
       const drawFooter = (pageNum, total) => {
@@ -1928,7 +1917,7 @@ const AdminSchoolCRM = () => {
       const school = showOnboardModal;
       const data = onboardData;
       const schoolName = school?.school_name || '';
-      const schoolAddress = school?.location || '';
+      const schoolAddress = data.school_address || school?.location || '';
       const contacts = data.school_contacts || [];
       const principal = contacts.find(c => c.role === 'principal') || contacts[0] || {};
       const coordinator = contacts.find(c => ['coordinator', 'program_coordinator', 'teacher'].includes(c.role)) || contacts[1] || {};
@@ -2063,16 +2052,31 @@ const AdminSchoolCRM = () => {
       let tableTotal = 0;
       // Show all grades that have been entered, not just the predefined order
       const enteredGrades = (data.grade_pricing || []).filter(gp => gp.grade && (gp.students || gp.price_per_student));
-      const gradeTableBody = enteredGrades.length > 0
-        ? enteredGrades.map(gp => {
-            if (gp.students && gp.price_per_student) {
-              const tot = Number(gp.students) * Number(gp.price_per_student);
-              tableTotal += tot;
-              return [gp.grade, String(gp.students), `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}`, `Rs. ${tot.toLocaleString('en-IN')}`];
-            }
-            return [gp.grade, String(gp.students || ''), gp.price_per_student ? `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}` : '', ''];
-          })
-        : gradeOrder.map(grade => [grade, '', '', '']);
+      let gradeTableBody;
+      if (data.pricing_type === 'fixed' || (data.pricing_type !== 'per_student' && !enteredGrades.length)) {
+        // Fixed price: show a single row
+        const fixedAmt = Number(data.fixed_price || data.total_amount || 0);
+        tableTotal = fixedAmt;
+        gradeTableBody = [
+          [
+            { content: 'Fixed Price Package', styles: { fontStyle: 'bold' } },
+            { content: String(data.total_students || ''), styles: { halign: 'center' } },
+            '',
+            { content: fixedAmt ? `Rs. ${fixedAmt.toLocaleString('en-IN')}` : '', styles: { halign: 'right', fontStyle: 'bold' } },
+          ],
+        ];
+      } else {
+        gradeTableBody = enteredGrades.length > 0
+          ? enteredGrades.map(gp => {
+              if (gp.students && gp.price_per_student) {
+                const tot = Number(gp.students) * Number(gp.price_per_student);
+                tableTotal += tot;
+                return [gp.grade, String(gp.students), `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}`, `Rs. ${tot.toLocaleString('en-IN')}`];
+              }
+              return [gp.grade, String(gp.students || ''), gp.price_per_student ? `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}` : '', ''];
+            })
+          : gradeOrder.map(grade => [grade, '', '', '']);
+      }
 
       if (data.training_type === 'teacher_training' || data.training_type === 'both') {
         gradeTableBody.push(['No. of Teachers', '', '', '']);
@@ -2131,10 +2135,18 @@ const AdminSchoolCRM = () => {
       doc.setTextColor(30, 58, 95);
       doc.text('Additional Services / Components:', M, y);
       y += 4;
+      const validServices = (data.additional_services || []).filter(s => s.item || s.qty || s.price);
+      const servicesBody = validServices.length > 0
+        ? validServices.map(s => [
+            s.item || '',
+            String(s.qty || ''),
+            s.price ? `Rs. ${Number(s.price).toLocaleString('en-IN')}` : '',
+          ])
+        : [['', '', ''], ['', '', ''], ['', '', '']];
       autoTable(doc, {
         startY: y,
         head: [['Item', 'Qty', 'Price']],
-        body: [['', '', ''], ['', '', ''], ['', '', '']],
+        body: servicesBody,
         theme: 'grid',
         headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontSize: 9 },
         styles: { fontSize: 9, cellPadding: 4 },
@@ -2215,13 +2227,15 @@ const AdminSchoolCRM = () => {
       // ── SECTION 3 ──────────────────────────────────────────────
       ensureSpace(12);
       sectionTitle('3. PROGRAM EXECUTION & DELIVERABLES');
-      const kitCountStr = data.kit_type === 'lab_setup' && data.lab_kit_count
-        ? `${data.lab_kit_count} Master Robotics Kits`
-        : '40 Master Robotics Kits';
+      const kitDeliverableLine = data.kit_type === 'lab_setup'
+        ? `${data.lab_kit_count ? data.lab_kit_count + ' Lab Kit(s)' : 'Lab Kits'} will be supplied.`
+        : data.kit_type === 'individual'
+        ? 'Individual kits will be provided to each student.'
+        : null;
       [
         'OLL will require a dedicated coordinator who will be the point of contact for the program\'s execution at the school level.',
         'Grade-specific individual textbooks will be provided.',
-        `${kitCountStr} will be supplied.`,
+        ...(kitDeliverableLine ? [kitDeliverableLine] : []),
         '16 projects-based curriculum will be delivered.',
         'Teacher training will be provided.',
         'STEM certificates will be awarded to each participating child.',
@@ -7557,6 +7571,68 @@ const AdminSchoolCRM = () => {
                       >
                         Remove Contact
                       </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+
+            {/* School Address */}
+            <div>
+              <label className="text-sm font-medium text-slate-700">School Address</label>
+              <Input
+                placeholder="Enter school full address"
+                value={onboardData.school_address || ''}
+                onChange={(e) => setOnboardData(prev => ({ ...prev, school_address: e.target.value }))}
+                className="h-10"
+                data-testid="onboard-school-address"
+              />
+            </div>
+
+            {/* Additional Services / Components */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium text-slate-700">Additional Services / Components</label>
+                <Button
+                  variant="ghost" size="sm"
+                  onClick={() => setOnboardData(prev => ({ ...prev, additional_services: [...(prev.additional_services || []), { item: '', qty: '', price: '' }] }))}
+                  className="text-blue-600"
+                  data-testid="add-additional-service"
+                >
+                  <Plus className="w-4 h-4 mr-1" /> Add Row
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {(onboardData.additional_services || [{ item: '', qty: '', price: '' }]).map((svc, idx) => (
+                  <div key={idx} className="grid grid-cols-12 gap-2 items-center">
+                    <Input
+                      placeholder="Item / Service"
+                      value={svc.item || ''}
+                      onChange={(e) => setOnboardData(prev => ({ ...prev, additional_services: (prev.additional_services || []).map((s, i) => i === idx ? { ...s, item: e.target.value } : s) }))}
+                      className="col-span-6 h-9 text-sm"
+                    />
+                    <Input
+                      placeholder="Qty"
+                      type="number"
+                      min="0"
+                      value={svc.qty || ''}
+                      onChange={(e) => setOnboardData(prev => ({ ...prev, additional_services: (prev.additional_services || []).map((s, i) => i === idx ? { ...s, qty: e.target.value } : s) }))}
+                      className="col-span-2 h-9 text-sm"
+                    />
+                    <Input
+                      placeholder="Price (₹)"
+                      type="number"
+                      min="0"
+                      value={svc.price || ''}
+                      onChange={(e) => setOnboardData(prev => ({ ...prev, additional_services: (prev.additional_services || []).map((s, i) => i === idx ? { ...s, price: e.target.value } : s) }))}
+                      className="col-span-3 h-9 text-sm"
+                    />
+                    {(onboardData.additional_services || []).length > 1 && (
+                      <button
+                        onClick={() => setOnboardData(prev => ({ ...prev, additional_services: prev.additional_services.filter((_, i) => i !== idx) }))}
+                        className="col-span-1 text-red-400 hover:text-red-600 text-xs"
+                      >✕</button>
                     )}
                   </div>
                 ))}
