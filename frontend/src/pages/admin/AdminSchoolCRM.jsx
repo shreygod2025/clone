@@ -693,7 +693,7 @@ const AdminSchoolCRM = () => {
   const [offerings, setOfferings] = useState([]);
   const [uploadingMOU, setUploadingMOU] = useState(false);
   const [generatingMOU, setGeneratingMOU] = useState(false);
-  const lastOnboardInquiryId = React.useRef(null);
+  const lastOnboardInquiryId = useRef(null);
   const [newLead, setNewLead] = useState({
     school_name: '',
     contact_name: '',
