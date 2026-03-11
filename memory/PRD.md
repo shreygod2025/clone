@@ -50,6 +50,36 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ### March 11, 2026
 
+#### School CRM - New Fields: Course Type & Lab Kit Count
+**Feature Added:**
+
+Added two new fields to the School CRM conversion, renewal, and edit modals:
+
+1. **Course Type** - New dropdown field with options:
+   - "Only Robotics"
+   - "Robotics, Coding & AI"
+
+2. **No. of Lab Kits** - Conditional input field that appears only when Kit Type is set to "Lab Kit"
+   - Number input with min value of 1
+   - Shows dynamically based on kit_type selection
+
+**Modals Updated:**
+- Quick Conversion Modal (Meeting Done → Convert)
+- Onboarding Modal (full conversion process)
+- Renewal/Reconversion Modal
+- Edit Onboarding Modal (for Active/Renewed schools)
+
+**Modified Files:**
+- `frontend/src/pages/admin/AdminSchoolCRM.jsx` - Added new fields to state definitions, UI components, and API submission logic
+
+**State Changes:**
+- `convertData`: Added `lab_kit_count`, `course_type`
+- `renewalConvertData`: Added `lab_kit_count`, `course_type`
+- `onboardData`: Added `lab_kit_count`, `course_type`
+- `editOnboardData`: Now includes `lab_kit_count`, `course_type` from existing data
+
+---
+
 #### School CRM → Support Center Ticket Integration Fix
 **Bug Fixed:**
 

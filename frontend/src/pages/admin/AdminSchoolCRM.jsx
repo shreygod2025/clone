@@ -536,6 +536,8 @@ const AdminSchoolCRM = () => {
     model: '',
     book_type: '',
     kit_type: '',
+    lab_kit_count: '', // Number of lab kits (when kit_type is lab_setup)
+    course_type: '', // only_robotics, robotics_coding_ai
     training_type: '',
     pricing_type: 'per_student', // 'per_student', 'fixed', 'both'
     fixed_price: '',
@@ -630,6 +632,8 @@ const AdminSchoolCRM = () => {
     model: '', 
     book_type: '', 
     kit_type: '', 
+    lab_kit_count: '', // Number of lab kits (when kit_type is lab_setup)
+    course_type: '', // only_robotics, robotics_coding_ai
     training_type: '',
     programs: [],
     address: ''
@@ -653,6 +657,8 @@ const AdminSchoolCRM = () => {
     model: '',
     book_type: '', // individual_books, no_books
     kit_type: '', // lab_setup, individual, no_kit
+    lab_kit_count: '', // Number of lab kits (when kit_type is lab_setup)
+    course_type: '', // only_robotics, robotics_coding_ai
     training_type: '', // student_training, teacher_training
     pricing_type: 'per_student', // 'per_student', 'fixed', 'both'
     fixed_price: '',
@@ -1115,6 +1121,8 @@ const AdminSchoolCRM = () => {
           model: convertData.model,
           book_type: convertData.book_type,
           kit_type: convertData.kit_type,
+          lab_kit_count: convertData.kit_type === 'lab_setup' ? convertData.lab_kit_count : '',
+          course_type: convertData.course_type,
           training_type: convertData.training_type,
           programs: convertData.programs
         },
@@ -1139,7 +1147,7 @@ const AdminSchoolCRM = () => {
       }
       
       setShowConvertModal(null);
-      setConvertData({ amount: '', model: '', book_type: '', kit_type: '', training_type: '', programs: [], address: '' });
+      setConvertData({ amount: '', model: '', book_type: '', kit_type: '', lab_kit_count: '', course_type: '', training_type: '', programs: [], address: '' });
       fetchInquiries();
     } catch (error) {
       toast.error('Failed to convert');
@@ -1372,6 +1380,8 @@ const AdminSchoolCRM = () => {
           offering: renewalConvertData.offering,
           model: renewalConvertData.model,
           kit_type: renewalConvertData.kit_type,
+          lab_kit_count: renewalConvertData.kit_type === 'lab_setup' ? renewalConvertData.lab_kit_count : '',
+          course_type: renewalConvertData.course_type,
           book_type: renewalConvertData.book_type,
           training_type: renewalConvertData.training_type,
           pricing_type: renewalConvertData.pricing_type,
@@ -1424,7 +1434,7 @@ const AdminSchoolCRM = () => {
       
       setShowRenewalConvertModal(null);
       setRenewalConvertData({
-        offering: '', model: '', book_type: '', kit_type: '', training_type: '',
+        offering: '', model: '', book_type: '', kit_type: '', lab_kit_count: '', course_type: '', training_type: '',
         pricing_type: 'per_student', fixed_price: '',
         grade_pricing: [{ grade: '', students: '', price_per_student: '' }],
         total_students: 0, total_amount: 0,
@@ -1867,6 +1877,8 @@ const AdminSchoolCRM = () => {
         model: String(onboardData.model || ''),
         book_type: String(onboardData.book_type || ''),
         kit_type: String(onboardData.kit_type || ''),
+        lab_kit_count: onboardData.kit_type === 'lab_setup' ? String(onboardData.lab_kit_count || '') : '',
+        course_type: String(onboardData.course_type || ''),
         training_type: String(onboardData.training_type || ''),
         pricing_type: String(onboardData.pricing_type || 'per_student'),
         fixed_price: String(onboardData.fixed_price || ''),
@@ -1941,7 +1953,7 @@ const AdminSchoolCRM = () => {
       
       setShowOnboardModal(null);
       setOnboardData({
-        offering: '', model: '', book_type: '', kit_type: '', training_type: '',
+        offering: '', model: '', book_type: '', kit_type: '', lab_kit_count: '', course_type: '', training_type: '',
         pricing_type: 'per_student', fixed_price: '',
         grade_pricing: [{ grade: '', students: '', price_per_student: '' }],
         total_students: 0, total_amount: 0, school_contacts: [{ name: '', phone_number: '', country_code: '+91', email: '', role: '' }],
@@ -2613,6 +2625,8 @@ const AdminSchoolCRM = () => {
         model: existingOnboardData.model || school.model || '',
         book_type: existingOnboardData.book_type || '',
         kit_type: existingOnboardData.kit_type || '',
+        lab_kit_count: existingOnboardData.lab_kit_count || '',
+        course_type: existingOnboardData.course_type || '',
         training_type: existingOnboardData.training_type || '',
         pricing_type: existingOnboardData.pricing_type || 'per_student',
         fixed_price: existingOnboardData.fixed_price || '',
@@ -2687,6 +2701,8 @@ const AdminSchoolCRM = () => {
         model: school.model || '',
         book_type: '',
         kit_type: '',
+        lab_kit_count: '',
+        course_type: '',
         training_type: '',
         pricing_type: 'per_student',
         fixed_price: '',
@@ -2736,6 +2752,8 @@ const AdminSchoolCRM = () => {
         model: editOnboardData.model,
         book_type: editOnboardData.book_type,
         kit_type: editOnboardData.kit_type,
+        lab_kit_count: editOnboardData.kit_type === 'lab_setup' ? editOnboardData.lab_kit_count : '',
+        course_type: editOnboardData.course_type,
         training_type: editOnboardData.training_type,
         pricing_type: editOnboardData.pricing_type,
         fixed_price: editOnboardData.fixed_price,
@@ -4899,12 +4917,12 @@ const AdminSchoolCRM = () => {
                 <label className="text-sm font-medium text-slate-700">Kit Type *</label>
                 <select
                   value={renewalConvertData.kit_type}
-                  onChange={(e) => setRenewalConvertData(prev => ({ ...prev, kit_type: e.target.value }))}
+                  onChange={(e) => setRenewalConvertData(prev => ({ ...prev, kit_type: e.target.value, lab_kit_count: e.target.value !== 'lab_setup' ? '' : prev.lab_kit_count }))}
                   className="w-full h-10 px-3 border border-slate-200 rounded-lg"
                   data-testid="renewal-kit-type"
                 >
                   <option value="">Select kit type</option>
-                  <option value="lab_setup">Lab Setup</option>
+                  <option value="lab_setup">Lab Kit</option>
                   <option value="individual">Individual Kit</option>
                   <option value="no_kit">No Kit</option>
                 </select>
@@ -4923,6 +4941,37 @@ const AdminSchoolCRM = () => {
                   <option value="both">Both (Student & Teacher)</option>
                 </select>
               </div>
+            </div>
+
+            {/* Course Type & Lab Kit Count */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-slate-700">Course Type</label>
+                <select
+                  value={renewalConvertData.course_type || ''}
+                  onChange={(e) => setRenewalConvertData(prev => ({ ...prev, course_type: e.target.value }))}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                  data-testid="renewal-course-type"
+                >
+                  <option value="">Select course type</option>
+                  <option value="only_robotics">Only Robotics</option>
+                  <option value="robotics_coding_ai">Robotics, Coding & AI</option>
+                </select>
+              </div>
+              {renewalConvertData.kit_type === 'lab_setup' && (
+                <div>
+                  <label className="text-sm font-medium text-slate-700">No. of Lab Kits *</label>
+                  <Input
+                    type="number"
+                    min="1"
+                    placeholder="Enter number of lab kits"
+                    value={renewalConvertData.lab_kit_count || ''}
+                    onChange={(e) => setRenewalConvertData(prev => ({ ...prev, lab_kit_count: e.target.value }))}
+                    className="h-10"
+                    data-testid="renewal-lab-kit-count"
+                  />
+                </div>
+              )}
             </div>
 
             {/* School Address */}
@@ -5564,11 +5613,11 @@ const AdminSchoolCRM = () => {
                 <label className="block text-sm font-medium text-slate-700 mb-2">Kit Type</label>
                 <select
                   value={convertData.kit_type}
-                  onChange={(e) => setConvertData({...convertData, kit_type: e.target.value})}
+                  onChange={(e) => setConvertData({...convertData, kit_type: e.target.value, lab_kit_count: e.target.value !== 'lab_setup' ? '' : convertData.lab_kit_count})}
                   className="w-full h-9 px-2 text-sm border border-slate-200 rounded-lg"
                 >
                   <option value="">Select</option>
-                  <option value="lab_setup">Lab Setup</option>
+                  <option value="lab_setup">Lab Kit</option>
                   <option value="individual">Individual Kit</option>
                   <option value="no_kit">No Kit</option>
                 </select>
@@ -5598,6 +5647,37 @@ const AdminSchoolCRM = () => {
                   <option value="both">Both</option>
                 </select>
               </div>
+            </div>
+
+            {/* Course Type & Lab Kit Count */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Course Type</label>
+                <select
+                  value={convertData.course_type}
+                  onChange={(e) => setConvertData({...convertData, course_type: e.target.value})}
+                  className="w-full h-9 px-2 text-sm border border-slate-200 rounded-lg"
+                  data-testid="convert-course-type"
+                >
+                  <option value="">Select</option>
+                  <option value="only_robotics">Only Robotics</option>
+                  <option value="robotics_coding_ai">Robotics, Coding & AI</option>
+                </select>
+              </div>
+              {convertData.kit_type === 'lab_setup' && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">No. of Lab Kits *</label>
+                  <Input
+                    type="number"
+                    min="1"
+                    placeholder="Enter number of lab kits"
+                    value={convertData.lab_kit_count}
+                    onChange={(e) => setConvertData({...convertData, lab_kit_count: e.target.value})}
+                    className="h-9"
+                    data-testid="convert-lab-kit-count"
+                  />
+                </div>
+              )}
             </div>
 
             {/* School Address */}
@@ -6399,11 +6479,11 @@ const AdminSchoolCRM = () => {
                 <label className="text-sm font-medium text-slate-700">Kit Type *</label>
                 <select
                   value={onboardData.kit_type}
-                  onChange={(e) => setOnboardData(prev => ({ ...prev, kit_type: e.target.value }))}
+                  onChange={(e) => setOnboardData(prev => ({ ...prev, kit_type: e.target.value, lab_kit_count: e.target.value !== 'lab_setup' ? '' : prev.lab_kit_count }))}
                   className="w-full h-10 px-3 border border-slate-200 rounded-lg"
                 >
                   <option value="">Select kit type</option>
-                  <option value="lab_setup">Lab Setup</option>
+                  <option value="lab_setup">Lab Kit</option>
                   <option value="individual">Individual Kit</option>
                   <option value="no_kit">No Kit</option>
                 </select>
@@ -6421,6 +6501,37 @@ const AdminSchoolCRM = () => {
                   <option value="both">Both (Student & Teacher)</option>
                 </select>
               </div>
+            </div>
+
+            {/* Course Type & Lab Kit Count */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-slate-700">Course Type</label>
+                <select
+                  value={onboardData.course_type || ''}
+                  onChange={(e) => setOnboardData(prev => ({ ...prev, course_type: e.target.value }))}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                  data-testid="onboard-course-type"
+                >
+                  <option value="">Select course type</option>
+                  <option value="only_robotics">Only Robotics</option>
+                  <option value="robotics_coding_ai">Robotics, Coding & AI</option>
+                </select>
+              </div>
+              {onboardData.kit_type === 'lab_setup' && (
+                <div>
+                  <label className="text-sm font-medium text-slate-700">No. of Lab Kits *</label>
+                  <Input
+                    type="number"
+                    min="1"
+                    placeholder="Enter number of lab kits"
+                    value={onboardData.lab_kit_count || ''}
+                    onChange={(e) => setOnboardData(prev => ({ ...prev, lab_kit_count: e.target.value }))}
+                    className="h-10"
+                    data-testid="onboard-lab-kit-count"
+                  />
+                </div>
+              )}
             </div>
 
             {/* MOU Upload */}
@@ -7267,11 +7378,11 @@ const AdminSchoolCRM = () => {
                     <label className="text-sm font-medium text-slate-700">Kit Type</label>
                     <select
                       value={editOnboardData.kit_type || ''}
-                      onChange={(e) => setEditOnboardData(prev => ({ ...prev, kit_type: e.target.value }))}
+                      onChange={(e) => setEditOnboardData(prev => ({ ...prev, kit_type: e.target.value, lab_kit_count: e.target.value !== 'lab_setup' ? '' : prev.lab_kit_count }))}
                       className="w-full h-10 px-4 border border-slate-200 rounded-lg bg-white"
                     >
                       <option value="">Select Kit Type</option>
-                      <option value="lab_setup">Lab Setup</option>
+                      <option value="lab_setup">Lab Kit</option>
                       <option value="individual">Individual Kit</option>
                       <option value="no_kit">No Kit</option>
                     </select>
@@ -7289,6 +7400,32 @@ const AdminSchoolCRM = () => {
                       <option value="both">Both</option>
                     </select>
                   </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Course Type</label>
+                    <select
+                      value={editOnboardData.course_type || ''}
+                      onChange={(e) => setEditOnboardData(prev => ({ ...prev, course_type: e.target.value }))}
+                      className="w-full h-10 px-4 border border-slate-200 rounded-lg bg-white"
+                      data-testid="edit-course-type"
+                    >
+                      <option value="">Select Course Type</option>
+                      <option value="only_robotics">Only Robotics</option>
+                      <option value="robotics_coding_ai">Robotics, Coding & AI</option>
+                    </select>
+                  </div>
+                  {editOnboardData.kit_type === 'lab_setup' && (
+                    <div>
+                      <label className="text-sm font-medium text-slate-700">No. of Lab Kits</label>
+                      <Input
+                        type="number"
+                        min="1"
+                        placeholder="Enter number of lab kits"
+                        value={editOnboardData.lab_kit_count || ''}
+                        onChange={(e) => setEditOnboardData(prev => ({ ...prev, lab_kit_count: e.target.value }))}
+                        data-testid="edit-lab-kit-count"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 
