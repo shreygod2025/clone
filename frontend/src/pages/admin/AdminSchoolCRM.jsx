@@ -693,6 +693,7 @@ const AdminSchoolCRM = () => {
   const [offerings, setOfferings] = useState([]);
   const [uploadingMOU, setUploadingMOU] = useState(false);
   const [generatingMOU, setGeneratingMOU] = useState(false);
+  const lastOnboardInquiryId = React.useRef(null);
   const [newLead, setNewLead] = useState({
     school_name: '',
     contact_name: '',
@@ -923,6 +924,12 @@ const AdminSchoolCRM = () => {
 
   // Helper to open conversion modal with pre-populated data from inquiry
   const openConversionModal = (inquiry) => {
+    // If reopening the same inquiry (e.g. user closed without saving), keep in-memory state
+    if (lastOnboardInquiryId.current === inquiry.id && showOnboardModal === null) {
+      setShowOnboardModal(inquiry);
+      return;
+    }
+    lastOnboardInquiryId.current = inquiry.id;
     // Pre-populate onboardData with existing inquiry data
     const existingOnboardData = inquiry.onboarding_data || {};
     setOnboardData({
@@ -930,7 +937,11 @@ const AdminSchoolCRM = () => {
       model: existingOnboardData.model || '',
       book_type: existingOnboardData.book_type || '',
       kit_type: existingOnboardData.kit_type || '',
+      lab_kit_count: existingOnboardData.lab_kit_count || '',
+      course_type: existingOnboardData.course_type || '',
       training_type: existingOnboardData.training_type || '',
+      pricing_type: existingOnboardData.pricing_type || 'per_student',
+      fixed_price: existingOnboardData.fixed_price || '',
       grade_pricing: existingOnboardData.grade_pricing?.length > 0 
         ? existingOnboardData.grade_pricing 
         : [{ grade: '', students: '', price_per_student: '' }],
@@ -944,12 +955,21 @@ const AdminSchoolCRM = () => {
       payment_tranches: existingOnboardData.payment_tranches?.length > 0 
         ? existingOnboardData.payment_tranches 
         : [{ amount: '', percentage: '', date: '', notes: '' }],
+      deadline_date: existingOnboardData.deadline_date || '',
       contract_start: existingOnboardData.contract_start || '',
       contract_end: existingOnboardData.contract_end || '',
       mou_url: existingOnboardData.mou_url || '',
       parent_circular_url: existingOnboardData.parent_circular_url || '',
       payment_link: existingOnboardData.payment_link || '',
       is_draft: false,
+      school_share_type: existingOnboardData.school_share_type || 'none',
+      school_share_calc: existingOnboardData.school_share_calc || 'lumpsum',
+      school_share_value: existingOnboardData.school_share_value || '',
+      school_share_amount: existingOnboardData.school_share_amount || 0,
+      gp_share_type: existingOnboardData.gp_share_type || 'none',
+      gp_share_calc: existingOnboardData.gp_share_calc || 'lumpsum',
+      gp_share_value: existingOnboardData.gp_share_value || '',
+      gp_share_amount: existingOnboardData.gp_share_amount || 0,
     });
     setShowOnboardModal(inquiry);
   };
@@ -1243,6 +1263,8 @@ const AdminSchoolCRM = () => {
       model: existingData.model || '',
       book_type: existingData.book_type || '',
       kit_type: existingData.kit_type || '',
+      lab_kit_count: existingData.lab_kit_count || '',
+      course_type: existingData.course_type || '',
       training_type: existingData.training_type || '',
       pricing_type: existingData.pricing_type || 'per_student',
       fixed_price: existingData.fixed_price || '',
@@ -1265,11 +1287,12 @@ const AdminSchoolCRM = () => {
       payment_tranches: existingData.payment_tranches?.length > 0
         ? existingData.payment_tranches
         : [{ amount: '', percentage: '', date: '', notes: '' }],
+      deadline_date: existingData.deadline_date || '',
       contract_start: '',
       contract_end: '',
       mou_url: '',
-      parent_circular_url: '',
-      payment_link: '',
+      parent_circular_url: existingData.parent_circular_url || '',
+      payment_link: existingData.payment_link || '',
       school_share_type: existingData.school_share_type || 'none',
       school_share_calc: existingData.school_share_calc || 'lumpsum',
       school_share_value: existingData.school_share_value || '',
@@ -1824,7 +1847,7 @@ const AdminSchoolCRM = () => {
       // ── LOAD OLL LOGO ──────────────────────────────────────────
       let logoDataUrl = null;
       try {
-        const logoUrl = 'https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/rugags0w_OLL-horizontal-logo-white.png';
+        const logoUrl = 'https://customer-assets.emergentagent.com/job_0add39d8-6ba8-4c9a-b97e-1c8e22260bae/artifacts/bnp5i3h5_OLL-horizontal-logo-white.png';
         const r = await fetch(logoUrl);
         const b = await r.blob();
         logoDataUrl = await new Promise((res, rej) => {
@@ -1914,7 +1937,6 @@ const AdminSchoolCRM = () => {
       const courseTypeLabel = { only_robotics: 'Only Robotics', robotics_coding_ai: 'Robotics, Coding & AI' };
       const kitTypeLabel = { lab_setup: 'Lab Setup', individual: 'Individual', no_kit: 'No Kit' };
       const trainingLabel = { student_training: 'Student Training', teacher_training: 'Teacher Training', both: 'Teacher & Student Training' };
-      const modelLabel = { robotics_lab: 'Compulsory', stem_curriculum: 'Optional', after_school: 'Optional', teacher_training: 'Optional', full_partnership: 'Compulsory' };
       const paymentCollectionLabel = { from_school: 'School Collects & Pays OLL', from_student: 'OLL Collects Online', online: 'OLL Collects Online' };
       const paymentMethodLabel = { cheque: 'Cheque', neft: 'Netbanking', online: 'Online Payments', cash: 'Cash' };
 
@@ -1988,7 +2010,7 @@ const AdminSchoolCRM = () => {
       const progFields = [
         ['Course Name', data.offering],
         ['Course Type', courseTypeLabel[data.course_type] || data.course_type],
-        ['Model', modelLabel[data.model] || data.model || 'Compulsory / Optional'],
+        ['Model', data.model || 'Compulsory / Optional'],
         ['Kit', kitTypeLabel[data.kit_type] || data.kit_type || 'Individual / Lab Setup'],
         ...(data.kit_type === 'lab_setup' ? [['No. of Lab Kits', String(data.lab_kit_count || '')]] : []),
         ['Mode', 'Offline'],
@@ -2006,7 +2028,7 @@ const AdminSchoolCRM = () => {
       doc.text('Timeline of Program:', M + 4, y);
       y += 6;
 
-      const trainingStart = data.contract_start ? format(new Date(data.contract_start), 'dd / MM / yyyy') : '_____ / _____ / _____';
+      const trainingStart = '_____ / _____ / _____';
       [
         ['Teacher Training Start Date (if teacher training)', trainingStart],
         ['Kit Delivery Date', '_____ / _____ / _____'],
@@ -2039,15 +2061,18 @@ const AdminSchoolCRM = () => {
       (data.grade_pricing || []).forEach(gp => { if (gp.grade) gradeMap[gp.grade] = gp; });
 
       let tableTotal = 0;
-      const gradeTableBody = gradeOrder.map(grade => {
-        const gp = gradeMap[grade];
-        if (gp && gp.students && gp.price_per_student) {
-          const tot = Number(gp.students) * Number(gp.price_per_student);
-          tableTotal += tot;
-          return [grade, String(gp.students), `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}`, `Rs. ${tot.toLocaleString('en-IN')}`];
-        }
-        return [grade, '', '', ''];
-      });
+      // Show all grades that have been entered, not just the predefined order
+      const enteredGrades = (data.grade_pricing || []).filter(gp => gp.grade && (gp.students || gp.price_per_student));
+      const gradeTableBody = enteredGrades.length > 0
+        ? enteredGrades.map(gp => {
+            if (gp.students && gp.price_per_student) {
+              const tot = Number(gp.students) * Number(gp.price_per_student);
+              tableTotal += tot;
+              return [gp.grade, String(gp.students), `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}`, `Rs. ${tot.toLocaleString('en-IN')}`];
+            }
+            return [gp.grade, String(gp.students || ''), gp.price_per_student ? `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}` : '', ''];
+          })
+        : gradeOrder.map(grade => [grade, '', '', '']);
 
       if (data.training_type === 'teacher_training' || data.training_type === 'both') {
         gradeTableBody.push(['No. of Teachers', '', '', '']);
@@ -2266,8 +2291,12 @@ const AdminSchoolCRM = () => {
       // ── SECTION 10 ─────────────────────────────────────────────
       ensureSpace(12);
       sectionTitle('10. TERM OF AGREEMENT');
+
+      const cStartDisplay = data.contract_start ? format(new Date(data.contract_start), 'dd MMMM yyyy') : '________________________';
+      const cEndDisplay = data.contract_end ? format(new Date(data.contract_end), 'dd MMMM yyyy') : '________________________';
+
       [
-        'This MoU will remain in effect for one academic year, starting from the MOU sign date.',
+        `This MoU will remain in effect from ${cStartDisplay} to ${cEndDisplay} (one academic year).`,
         'Either party may terminate the agreement with 30 days\' written notice if either party fails to meet their obligations.',
         'Renewal of the agreement for the following year will be based on mutual consent and performance evaluation.',
       ].forEach(item => bullet(item));
@@ -2556,6 +2585,7 @@ const AdminSchoolCRM = () => {
       }
       
       setShowOnboardModal(null);
+      lastOnboardInquiryId.current = null;
       setOnboardData({
         offering: '', model: '', book_type: '', kit_type: '', lab_kit_count: '', course_type: '', training_type: '',
         pricing_type: 'per_student', fixed_price: '',
@@ -5547,8 +5577,8 @@ const AdminSchoolCRM = () => {
               </div>
             </div>
 
-            {/* Course Type & Lab Kit Count */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Course Type, Model & Lab Kit Count */}
+            <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="text-sm font-medium text-slate-700">Course Type</label>
                 <select
@@ -5560,6 +5590,19 @@ const AdminSchoolCRM = () => {
                   <option value="">Select course type</option>
                   <option value="only_robotics">Only Robotics</option>
                   <option value="robotics_coding_ai">Robotics, Coding & AI</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Model</label>
+                <select
+                  value={renewalConvertData.model || ''}
+                  onChange={(e) => setRenewalConvertData(prev => ({ ...prev, model: e.target.value }))}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                  data-testid="renewal-model"
+                >
+                  <option value="">Select model</option>
+                  <option value="Compulsory">Compulsory</option>
+                  <option value="Optional">Optional</option>
                 </select>
               </div>
               {renewalConvertData.kit_type === 'lab_setup' && (
@@ -7107,8 +7150,8 @@ const AdminSchoolCRM = () => {
               </div>
             </div>
 
-            {/* Course Type & Lab Kit Count */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Course Type, Model & Lab Kit Count */}
+            <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="text-sm font-medium text-slate-700">Course Type</label>
                 <select
@@ -7120,6 +7163,19 @@ const AdminSchoolCRM = () => {
                   <option value="">Select course type</option>
                   <option value="only_robotics">Only Robotics</option>
                   <option value="robotics_coding_ai">Robotics, Coding & AI</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700">Model</label>
+                <select
+                  value={onboardData.model || ''}
+                  onChange={(e) => setOnboardData(prev => ({ ...prev, model: e.target.value }))}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                  data-testid="onboard-model"
+                >
+                  <option value="">Select model</option>
+                  <option value="Compulsory">Compulsory</option>
+                  <option value="Optional">Optional</option>
                 </select>
               </div>
               {onboardData.kit_type === 'lab_setup' && (
