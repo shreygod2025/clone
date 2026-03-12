@@ -696,6 +696,7 @@ const AdminSchoolCRM = () => {
   const [offerings, setOfferings] = useState([]);
   const [uploadingMOU, setUploadingMOU] = useState(false);
   const [generatingMOU, setGeneratingMOU] = useState(false);
+  const [generatingParentCircular, setGeneratingParentCircular] = useState(false);
   const lastOnboardInquiryId = useRef(null);
   const [newLead, setNewLead] = useState({
     school_name: '',
@@ -2049,87 +2050,217 @@ const AdminSchoolCRM = () => {
       doc.setFontSize(9);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(50, 50, 50);
-      doc.text('Below is the table outlining the count and program pricing per student:', M, y);
-      y += 5;
 
       const gradeOrder = ['Jr. Kg', 'Sr. Kg', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
-      const gradeMap = {};
-      (data.grade_pricing || []).forEach(gp => { if (gp.grade) gradeMap[gp.grade] = gp; });
-
-      let tableTotal = 0;
-      // Show all grades that have been entered, not just the predefined order
       const enteredGrades = (data.grade_pricing || []).filter(gp => gp.grade && (gp.students || gp.price_per_student));
-      let gradeTableBody;
-      if (data.pricing_type === 'fixed' || (data.pricing_type !== 'per_student' && !enteredGrades.length)) {
-        // Fixed price: show a single row
-        const fixedAmt = Number(data.fixed_price || data.total_amount || 0);
-        tableTotal = fixedAmt;
-        gradeTableBody = [
-          [
-            { content: 'Fixed Price Package', styles: { fontStyle: 'bold' } },
-            { content: String(data.total_students || ''), styles: { halign: 'center' } },
-            '',
-            { content: fixedAmt ? `Rs. ${fixedAmt.toLocaleString('en-IN')}` : '', styles: { halign: 'right', fontStyle: 'bold' } },
-          ],
-        ];
-      } else {
-        gradeTableBody = enteredGrades.length > 0
-          ? enteredGrades.map(gp => {
-              if (gp.students && gp.price_per_student) {
-                const tot = Number(gp.students) * Number(gp.price_per_student);
-                tableTotal += tot;
-                return [gp.grade, String(gp.students), `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}`, `Rs. ${tot.toLocaleString('en-IN')}`];
-              }
-              return [gp.grade, String(gp.students || ''), gp.price_per_student ? `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}` : '', ''];
-            })
-          : gradeOrder.map(grade => [grade, '', '', '']);
-      }
-
-      if (data.training_type === 'teacher_training' || data.training_type === 'both') {
-        gradeTableBody.push(['No. of Teachers', '', '', '']);
-      }
-      const baseAmt = tableTotal > 0 ? tableTotal : Number(data.total_amount || data.fixed_price || 0);
       const isExclusiveGST = data.gst_type === 'exclusive_18';
-      const gstAmount = isExclusiveGST ? Math.round(baseAmt * 0.18) : 0;
-      const grandTotal = baseAmt + gstAmount;
+      
+      // Helper to add GST rows to table body
+      const addGstRows = (body, baseAmt, cols) => {
+        if (isExclusiveGST && baseAmt > 0) {
+          const gstAmt = Math.round(baseAmt * 0.18);
+          const grandTot = baseAmt + gstAmt;
+          // GST row
+          const gstRow = cols === 2 
+            ? [{ content: 'GST @ 18%', styles: { fontStyle: 'italic', textColor: [80, 80, 80] } }, { content: `Rs. ${gstAmt.toLocaleString('en-IN')}`, styles: { fontStyle: 'italic', textColor: [80, 80, 80], halign: 'right' } }]
+            : [{ content: 'GST @ 18%', styles: { fontStyle: 'italic', textColor: [80, 80, 80] } }, '', '', { content: `Rs. ${gstAmt.toLocaleString('en-IN')}`, styles: { fontStyle: 'italic', textColor: [80, 80, 80], halign: 'right' } }];
+          body.push(gstRow);
+          // Grand Total row
+          const grandRow = cols === 2
+            ? [{ content: 'Grand Total (incl. GST)', styles: { fontStyle: 'bold', textColor: [30, 58, 95] } }, { content: `Rs. ${grandTot.toLocaleString('en-IN')}`, styles: { fontStyle: 'bold', textColor: [30, 58, 95], halign: 'right' } }]
+            : [{ content: 'Grand Total (incl. GST)', styles: { fontStyle: 'bold', textColor: [30, 58, 95] } }, '', '', { content: `Rs. ${grandTot.toLocaleString('en-IN')}`, styles: { fontStyle: 'bold', textColor: [30, 58, 95], halign: 'right' } }];
+          body.push(grandRow);
+        }
+      };
 
-      const baseAmtDisp = baseAmt ? `Rs. ${baseAmt.toLocaleString('en-IN')}` : '';
-      gradeTableBody.push([
-        { content: isExclusiveGST ? 'Subtotal (before GST)' : 'Total', styles: { fontStyle: 'bold', textColor: [30, 58, 95] } },
-        { content: String(data.total_students || ''), styles: { fontStyle: 'bold' } },
-        '',
-        { content: baseAmtDisp, styles: { fontStyle: 'bold', textColor: [30, 58, 95] } },
-      ]);
-      if (isExclusiveGST && gstAmount > 0) {
-        gradeTableBody.push([
-          { content: 'GST @ 18%', styles: { fontStyle: 'italic', textColor: [80, 80, 80] } },
-          '', '',
-          { content: `Rs. ${gstAmount.toLocaleString('en-IN')}`, styles: { fontStyle: 'italic', textColor: [80, 80, 80] } },
+      // ═══ CASE 1: FIXED PRICING - Hide "Student Count" and "Amount per Student" columns ═══
+      if (data.pricing_type === 'fixed') {
+        doc.text('Below is the fixed program pricing:', M, y);
+        y += 5;
+        
+        const fixedAmt = Number(data.fixed_price || data.total_amount || 0);
+        const fixedTableBody = [
+          [{ content: 'Fixed Price Package', styles: { fontStyle: 'bold' } }, { content: fixedAmt ? `Rs. ${fixedAmt.toLocaleString('en-IN')}` : '', styles: { halign: 'right', fontStyle: 'bold' } }],
+        ];
+        // Add Subtotal row for GST exclusive
+        if (isExclusiveGST) {
+          fixedTableBody.push([
+            { content: 'Subtotal (before GST)', styles: { fontStyle: 'bold', textColor: [30, 58, 95] } },
+            { content: fixedAmt ? `Rs. ${fixedAmt.toLocaleString('en-IN')}` : '', styles: { fontStyle: 'bold', textColor: [30, 58, 95], halign: 'right' } },
+          ]);
+        } else {
+          fixedTableBody.push([
+            { content: 'Total', styles: { fontStyle: 'bold', textColor: [30, 58, 95] } },
+            { content: fixedAmt ? `Rs. ${fixedAmt.toLocaleString('en-IN')}` : '', styles: { fontStyle: 'bold', textColor: [30, 58, 95], halign: 'right' } },
+          ]);
+        }
+        addGstRows(fixedTableBody, fixedAmt, 2);
+
+        autoTable(doc, {
+          startY: y,
+          head: [['Description', 'Total Amount']],
+          body: fixedTableBody,
+          theme: 'grid',
+          headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold', halign: 'center' },
+          styles: { fontSize: 8.5, cellPadding: 2.5, textColor: [50, 50, 50] },
+          columnStyles: { 0: { cellWidth: 100 }, 1: { cellWidth: 80, halign: 'right' } },
+          margin: { left: M, right: M },
+          alternateRowStyles: { fillColor: [245, 249, 255] },
+        });
+        y = doc.lastAutoTable.finalY + 5;
+
+      // ═══ CASE 2: BOTH PRICING - Two separate tables ═══
+      } else if (data.pricing_type === 'both') {
+        // ── Fixed Price Table ──
+        doc.text('Fixed Program Fee:', M, y);
+        y += 5;
+        
+        const fixedAmt = Number(data.fixed_price || 0);
+        const fixedTableBody = [
+          [{ content: 'Fixed Price Component', styles: { fontStyle: 'bold' } }, { content: fixedAmt ? `Rs. ${fixedAmt.toLocaleString('en-IN')}` : '', styles: { halign: 'right', fontStyle: 'bold' } }],
+          [{ content: 'Subtotal (Fixed)', styles: { fontStyle: 'bold', textColor: [30, 58, 95] } }, { content: fixedAmt ? `Rs. ${fixedAmt.toLocaleString('en-IN')}` : '', styles: { fontStyle: 'bold', textColor: [30, 58, 95], halign: 'right' } }],
+        ];
+
+        autoTable(doc, {
+          startY: y,
+          head: [['Description', 'Amount']],
+          body: fixedTableBody,
+          theme: 'grid',
+          headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold', halign: 'center' },
+          styles: { fontSize: 8.5, cellPadding: 2.5, textColor: [50, 50, 50] },
+          columnStyles: { 0: { cellWidth: 100 }, 1: { cellWidth: 80, halign: 'right' } },
+          margin: { left: M, right: M },
+          alternateRowStyles: { fillColor: [245, 249, 255] },
+        });
+        y = doc.lastAutoTable.finalY + 6;
+
+        // ── Per-Student Pricing Table ──
+        ensureSpace(15);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(50, 50, 50);
+        doc.text('Per-Student Program Fee:', M, y);
+        y += 5;
+
+        let perStudentTotal = 0;
+        let perStudentTableBody;
+        if (enteredGrades.length > 0) {
+          perStudentTableBody = enteredGrades.map(gp => {
+            if (gp.students && gp.price_per_student) {
+              const tot = Number(gp.students) * Number(gp.price_per_student);
+              perStudentTotal += tot;
+              return [gp.grade, String(gp.students), `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}`, `Rs. ${tot.toLocaleString('en-IN')}`];
+            }
+            return [gp.grade, String(gp.students || ''), gp.price_per_student ? `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}` : '', ''];
+          });
+        } else {
+          // Empty grade_pricing: show blank table Jr. KG to 10th
+          perStudentTableBody = gradeOrder.map(grade => [grade, '', '', '']);
+        }
+        
+        if (data.training_type === 'teacher_training' || data.training_type === 'both') {
+          perStudentTableBody.push(['No. of Teachers', '', '', '']);
+        }
+        perStudentTableBody.push([
+          { content: 'Subtotal (Per-Student)', styles: { fontStyle: 'bold', textColor: [30, 58, 95] } },
+          { content: String(data.total_students || ''), styles: { fontStyle: 'bold' } },
+          '',
+          { content: perStudentTotal ? `Rs. ${perStudentTotal.toLocaleString('en-IN')}` : '', styles: { fontStyle: 'bold', textColor: [30, 58, 95] } },
         ]);
+
+        autoTable(doc, {
+          startY: y,
+          head: [['Grade', 'No. of Students', 'Price / Student', 'Total Amount']],
+          body: perStudentTableBody,
+          theme: 'grid',
+          headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold', halign: 'center' },
+          styles: { fontSize: 8.5, cellPadding: 2.5, textColor: [50, 50, 50] },
+          columnStyles: { 0: { cellWidth: 28 }, 1: { cellWidth: 38, halign: 'center' }, 2: { cellWidth: 57, halign: 'right' }, 3: { cellWidth: 57, halign: 'right' } },
+          margin: { left: M, right: M },
+          alternateRowStyles: { fillColor: [245, 249, 255] },
+        });
+        y = doc.lastAutoTable.finalY + 6;
+
+        // ── Combined Total Table ──
+        ensureSpace(15);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 58, 95);
+        doc.text('Combined Total:', M, y);
+        y += 5;
+        
+        const combinedBase = fixedAmt + perStudentTotal;
+        const combinedTableBody = [
+          ['Fixed Component', fixedAmt ? `Rs. ${fixedAmt.toLocaleString('en-IN')}` : ''],
+          ['Per-Student Component', perStudentTotal ? `Rs. ${perStudentTotal.toLocaleString('en-IN')}` : ''],
+          [{ content: isExclusiveGST ? 'Subtotal (before GST)' : 'Grand Total', styles: { fontStyle: 'bold', textColor: [30, 58, 95] } }, { content: combinedBase ? `Rs. ${combinedBase.toLocaleString('en-IN')}` : '', styles: { fontStyle: 'bold', textColor: [30, 58, 95], halign: 'right' } }],
+        ];
+        addGstRows(combinedTableBody, combinedBase, 2);
+
+        autoTable(doc, {
+          startY: y,
+          head: [['Component', 'Amount']],
+          body: combinedTableBody,
+          theme: 'grid',
+          headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold', halign: 'center' },
+          styles: { fontSize: 8.5, cellPadding: 2.5, textColor: [50, 50, 50] },
+          columnStyles: { 0: { cellWidth: 100 }, 1: { cellWidth: 80, halign: 'right' } },
+          margin: { left: M, right: M },
+          alternateRowStyles: { fillColor: [245, 249, 255] },
+        });
+        y = doc.lastAutoTable.finalY + 5;
+
+      // ═══ CASE 3: PER-STUDENT PRICING (default) ═══
+      } else {
+        doc.text('Below is the table outlining the count and program pricing per student:', M, y);
+        y += 5;
+
+        let tableTotal = 0;
+        let gradeTableBody;
+        
+        if (enteredGrades.length > 0) {
+          // Show entered grades with their data
+          gradeTableBody = enteredGrades.map(gp => {
+            if (gp.students && gp.price_per_student) {
+              const tot = Number(gp.students) * Number(gp.price_per_student);
+              tableTotal += tot;
+              return [gp.grade, String(gp.students), `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}`, `Rs. ${tot.toLocaleString('en-IN')}`];
+            }
+            return [gp.grade, String(gp.students || ''), gp.price_per_student ? `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}` : '', ''];
+          });
+        } else {
+          // Empty grade_pricing: render blank table from Jr. KG to 10th
+          gradeTableBody = gradeOrder.map(grade => [grade, '', '', '']);
+        }
+
+        if (data.training_type === 'teacher_training' || data.training_type === 'both') {
+          gradeTableBody.push(['No. of Teachers', '', '', '']);
+        }
+        
+        const baseAmt = tableTotal > 0 ? tableTotal : Number(data.total_amount || 0);
+        const baseAmtDisp = baseAmt ? `Rs. ${baseAmt.toLocaleString('en-IN')}` : '';
+        
         gradeTableBody.push([
-          { content: 'Grand Total (incl. GST)', styles: { fontStyle: 'bold', textColor: [30, 58, 95] } },
-          '', '',
-          { content: `Rs. ${grandTotal.toLocaleString('en-IN')}`, styles: { fontStyle: 'bold', textColor: [30, 58, 95] } },
+          { content: isExclusiveGST ? 'Subtotal (before GST)' : 'Total', styles: { fontStyle: 'bold', textColor: [30, 58, 95] } },
+          { content: String(data.total_students || ''), styles: { fontStyle: 'bold' } },
+          '',
+          { content: baseAmtDisp, styles: { fontStyle: 'bold', textColor: [30, 58, 95] } },
         ]);
+        addGstRows(gradeTableBody, baseAmt, 4);
+
+        autoTable(doc, {
+          startY: y,
+          head: [['Grade', 'No. of Students', 'Price / Student', 'Total Amount']],
+          body: gradeTableBody,
+          theme: 'grid',
+          headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold', halign: 'center' },
+          styles: { fontSize: 8.5, cellPadding: 2.5, textColor: [50, 50, 50] },
+          columnStyles: { 0: { cellWidth: 28 }, 1: { cellWidth: 38, halign: 'center' }, 2: { cellWidth: 57, halign: 'right' }, 3: { cellWidth: 57, halign: 'right' } },
+          margin: { left: M, right: M },
+          alternateRowStyles: { fillColor: [245, 249, 255] },
+        });
+        y = doc.lastAutoTable.finalY + 5;
       }
-
-      autoTable(doc, {
-        startY: y,
-        head: [['Grade', 'No. of Students', 'Price / Student', 'Total Amount']],
-        body: gradeTableBody,
-        theme: 'grid',
-        headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold', halign: 'center' },
-        styles: { fontSize: 8.5, cellPadding: 2.5, textColor: [50, 50, 50] },
-        columnStyles: {
-          0: { cellWidth: 28 },
-          1: { cellWidth: 38, halign: 'center' },
-          2: { cellWidth: 57, halign: 'right' },
-          3: { cellWidth: 57, halign: 'right' },
-        },
-        margin: { left: M, right: M },
-        alternateRowStyles: { fillColor: [245, 249, 255] },
-      });
-      y = doc.lastAutoTable.finalY + 5;
 
       doc.setFontSize(8);
       doc.setFont('helvetica', 'italic');
@@ -2229,10 +2360,10 @@ const AdminSchoolCRM = () => {
       });
       y = doc.lastAutoTable.finalY + 6;
 
-      // GST info
+      // GST info - just show the GST type (calculations are in tables)
       const gstLabels = { inclusive_18: 'GST Inclusive @ 18%', exclusive_18: 'GST Exclusive @ 18%', book_gst_0: 'Book GST = 0%' };
       if (data.gst_type) {
-        ensureSpace(isExclusiveGST && grandTotal > baseAmt ? 18 : 8);
+        ensureSpace(8);
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(30, 58, 95);
@@ -2241,12 +2372,6 @@ const AdminSchoolCRM = () => {
         doc.setTextColor(50, 50, 50);
         doc.text(gstLabels[data.gst_type] || data.gst_type, M + doc.getTextWidth('GST: '), y);
         y += 6;
-        if (isExclusiveGST && grandTotal > baseAmt) {
-          doc.setFont('helvetica', 'bold');
-          doc.setTextColor(30, 58, 95);
-          doc.text(`Grand Total (incl. 18% GST): Rs. ${grandTotal.toLocaleString('en-IN')}`, M, y);
-          y += 6;
-        }
       }
 
       // Bank Details
@@ -2501,6 +2626,264 @@ const AdminSchoolCRM = () => {
       setGeneratingMOU(false);
     }
   };
+
+  // ═══ GENERATE PARENT CIRCULAR PDF ═══════════════════════════════════════════
+  const generateParentCircularPDF = async (schoolOverride = null, dataOverride = null, setDataFunc = null) => {
+    const school = schoolOverride || showOnboardModal;
+    const data = dataOverride || onboardData;
+    const setData = setDataFunc || setOnboardData;
+    
+    if (!school) return;
+    setGeneratingParentCircular(true);
+    try {
+      const PW = 210, PH = 297, M = 15;
+      const CW = PW - M * 2;
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+      const logoDataUrl = OLL_LOGO_B64;
+      const schoolName = school?.school_name || 'School';
+      const offering = offerings.find(o => o.id === data.offering)?.title || data.offering || 'Robotics Program';
+      const todayStr = format(new Date(), 'dd MMMM yyyy');
+      const deadlineStr = data.deadline_date ? format(new Date(data.deadline_date), 'dd MMMM yyyy') : '________________________';
+
+      // Get grade pricing for the table
+      const enteredGrades = (data.grade_pricing || []).filter(gp => gp.grade && gp.price_per_student);
+      const gradeOrder = ['Jr. Kg', 'Sr. Kg', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
+
+      // ── PAGE HEADER ─────────────────────────────────────────────
+      doc.setFillColor(30, 58, 95);
+      doc.rect(0, 0, PW, 30, 'F');
+      doc.addImage(logoDataUrl, 'PNG', M, 5, 40, 22);
+      
+      // School name on header right
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(255, 255, 255);
+      const schoolNameLines = doc.splitTextToSize(schoolName, 100);
+      doc.text(schoolNameLines, PW - M, 15, { align: 'right' });
+
+      let y = 40;
+
+      // ── TITLE ───────────────────────────────────────────────────
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('PARENT CIRCULAR', PW / 2, y, { align: 'center' });
+      y += 4;
+      doc.setDrawColor(30, 58, 95);
+      doc.setLineWidth(0.8);
+      doc.line(PW / 2 - 35, y, PW / 2 + 35, y);
+      y += 10;
+
+      // ── INTRODUCTION ────────────────────────────────────────────
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(50, 50, 50);
+      
+      const introText = `Dear Parents/Guardians,
+
+We are pleased to announce that ${schoolName} has partnered with OLL (Clonefutura Live Solutions Pvt Ltd) to introduce an exciting ${offering} program for your children.
+
+This program is designed to develop critical thinking, creativity, and problem-solving skills through hands-on learning experiences with robotics, coding, and STEM activities.`;
+
+      const introLines = doc.splitTextToSize(introText, CW);
+      doc.text(introLines, M, y);
+      y += introLines.length * 5 + 8;
+
+      // ── PROGRAM DETAILS ─────────────────────────────────────────
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('Program Details:', M, y);
+      y += 7;
+
+      doc.setFontSize(9.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(50, 50, 50);
+
+      const courseTypeLabel = { only_robotics: 'Only Robotics', robotics_coding_ai: 'Robotics, Coding & AI' };
+      const programDetails = [
+        ['Program Name', offering],
+        ['Course Type', courseTypeLabel[data.course_type] || data.course_type || 'Robotics & STEM'],
+        ['Duration', data.contract_start && data.contract_end ? `${format(new Date(data.contract_start), 'MMM yyyy')} - ${format(new Date(data.contract_end), 'MMM yyyy')}` : 'Full Academic Year'],
+      ];
+
+      programDetails.forEach(([label, value]) => {
+        doc.setFont('helvetica', 'bold');
+        doc.text(`${label}: `, M + 4, y);
+        const lw = doc.getTextWidth(`${label}: `);
+        doc.setFont('helvetica', 'normal');
+        doc.text(value || '', M + 4 + lw, y);
+        y += 6;
+      });
+      y += 5;
+
+      // ── FEE STRUCTURE TABLE ─────────────────────────────────────
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('Fee Structure:', M, y);
+      y += 5;
+
+      let feeTableBody;
+      if (enteredGrades.length > 0) {
+        feeTableBody = enteredGrades.map(gp => [
+          gp.grade,
+          `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}`,
+        ]);
+      } else if (data.pricing_type === 'fixed' && data.fixed_price) {
+        feeTableBody = [['All Grades', `Rs. ${Number(data.fixed_price).toLocaleString('en-IN')}`]];
+      } else {
+        // Show blank structure
+        feeTableBody = gradeOrder.slice(0, 6).map(grade => [grade, 'Rs. ________']);
+      }
+
+      autoTable(doc, {
+        startY: y,
+        head: [['Grade', 'Fee per Student']],
+        body: feeTableBody,
+        theme: 'grid',
+        headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontSize: 10, fontStyle: 'bold', halign: 'center' },
+        styles: { fontSize: 9.5, cellPadding: 3, textColor: [50, 50, 50] },
+        columnStyles: { 0: { cellWidth: 60, halign: 'center' }, 1: { cellWidth: 60, halign: 'center' } },
+        margin: { left: M + 25, right: M + 25 },
+        alternateRowStyles: { fillColor: [245, 249, 255] },
+      });
+      y = doc.lastAutoTable.finalY + 8;
+
+      // ── PAYMENT INSTRUCTIONS ────────────────────────────────────
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('Payment Instructions:', M, y);
+      y += 7;
+
+      doc.setFontSize(9.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(50, 50, 50);
+
+      const paymentInstructions = [
+        `Payment Deadline: ${deadlineStr}`,
+        'Payment Mode: Online via secure payment link',
+        'A unique payment link will be shared with you separately',
+        'Please ensure payment is made before the deadline to confirm your child\'s enrollment',
+      ];
+
+      paymentInstructions.forEach((item, idx) => {
+        const bullet = idx === 0 || idx === 1 ? '•' : '•';
+        const lines = doc.splitTextToSize(`${bullet} ${item}`, CW - 8);
+        doc.text(lines, M + 4, y);
+        y += lines.length * 5 + 1;
+      });
+      y += 5;
+
+      // ── IMPORTANT NOTE BOX ──────────────────────────────────────
+      doc.setFillColor(255, 248, 225);
+      doc.setDrawColor(255, 193, 7);
+      doc.setLineWidth(0.5);
+      doc.roundedRect(M, y, CW, 22, 2, 2, 'FD');
+      
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(180, 130, 0);
+      doc.text('Important:', M + 4, y + 6);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 80, 0);
+      const noteText = 'Kits and materials will be provided to students only after successful payment. Late payments may result in delayed kit distribution.';
+      const noteLines = doc.splitTextToSize(noteText, CW - 10);
+      doc.text(noteLines, M + 4, y + 12);
+      y += 28;
+
+      // ── CONTACT INFORMATION ─────────────────────────────────────
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('For Queries:', M, y);
+      y += 7;
+
+      doc.setFontSize(9.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(50, 50, 50);
+
+      const contacts = data.school_contacts || [];
+      const coordinator = contacts.find(c => ['coordinator', 'program_coordinator', 'teacher'].includes(c.role)) || contacts[0];
+      
+      if (coordinator?.name) {
+        doc.text(`School Coordinator: ${coordinator.name}`, M + 4, y);
+        y += 5;
+        if (coordinator.phone_number) {
+          doc.text(`Phone: ${coordinator.country_code || '+91'}${coordinator.phone_number}`, M + 4, y);
+          y += 5;
+        }
+      }
+      
+      doc.text('OLL Support: info@oll.co | +91 9920188188', M + 4, y);
+      y += 10;
+
+      // ── CLOSING ─────────────────────────────────────────────────
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(50, 50, 50);
+      doc.text('We look forward to your child\'s participation in this enriching program!', M, y);
+      y += 10;
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('Warm Regards,', M, y);
+      y += 6;
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${schoolName}`, M, y);
+      y += 5;
+      doc.text('In partnership with OLL', M, y);
+
+      // ── PAGE FOOTER ─────────────────────────────────────────────
+      doc.setFillColor(30, 58, 95);
+      doc.rect(0, PH - 12, PW, 12, 'F');
+      doc.setTextColor(180, 200, 235);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Clonefutura Live Solutions Pvt Ltd  |  info@oll.co  |  +91 9920188188  |  www.oll.co', PW / 2, PH - 5, { align: 'center' });
+
+      // ── DOWNLOAD ────────────────────────────────────────────────
+      const fileName = `ParentCircular_${(schoolName).replace(/\s+/g, '_')}_${format(new Date(), 'ddMMMyyyy')}.pdf`;
+      doc.save(fileName);
+
+      // ── UPLOAD & STORE ──────────────────────────────────────────
+      try {
+        const pdfBlob = doc.output('blob');
+        const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+        const formData = new FormData();
+        formData.append('file', pdfFile);
+        const uploadRes = await axios.post(`${API}/upload`, formData, {
+          headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' },
+        });
+        const fileUrl = uploadRes.data.url;
+        setData(prev => ({ ...prev, parent_circular_url: fileUrl }));
+        
+        // Also save to documents
+        const existingDocs = school?.documents || [];
+        const newDoc = {
+          type: 'Parent Circular',
+          url: fileUrl,
+          name: fileName,
+          uploaded_at: new Date().toISOString(),
+          uploaded_by: user?.name || user?.email || 'Admin',
+        };
+        await axios.patch(`${API}/schools/inquiry/${school.id}`, {
+          documents: [...existingDocs, newDoc],
+        }, { headers: getAuthHeaders() });
+        fetchInquiries();
+        toast.success('Parent Circular generated, downloaded & saved!');
+      } catch {
+        toast.success('Parent Circular downloaded! (Save to documents failed)');
+      }
+    } catch (err) {
+      console.error('Parent Circular generation error:', err);
+      toast.error('Failed to generate Parent Circular: ' + (err.message || 'Unknown error'));
+    } finally {
+      setGeneratingParentCircular(false);
+    }
+  };
+
   const handleOnboardSchool = async (saveAsDraft = false) => {
     if (!showOnboardModal) return;
     
@@ -6218,11 +6601,11 @@ const AdminSchoolCRM = () => {
               </div>
             </div>
 
-            {/* Parent Circular (shown when payment_mode is from_student) */}
-            {renewalConvertData.payment_mode === 'from_student' && (
+            {/* Parent Circular (shown when payment_mode is 'online' - OLL Collects Online via Cashfree) */}
+            {renewalConvertData.payment_mode === 'online' && (
               <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
                 <label className="text-sm font-medium text-yellow-800 mb-2 block">Parent Circular</label>
-                <p className="text-xs text-yellow-600 mb-2">Upload circular to be shared with parents for fee collection</p>
+                <p className="text-xs text-yellow-600 mb-3">Generate or upload a circular to be shared with parents for online fee collection</p>
                 {renewalConvertData.parent_circular_url ? (
                   <div className="flex items-center gap-2 p-2 bg-white rounded border border-yellow-200">
                     <FileText className="w-4 h-4 text-yellow-600" />
@@ -6234,27 +6617,45 @@ const AdminSchoolCRM = () => {
                     </Button>
                   </div>
                 ) : (
-                  <Input
-                    type="file"
-                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const formData = new FormData();
-                        formData.append('file', file);
-                        try {
-                          const res = await axios.post(`${API}/upload`, formData, {
-                            headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
-                          });
-                          setRenewalConvertData(prev => ({ ...prev, parent_circular_url: res.data.url }));
-                          toast.success('Parent circular uploaded');
-                        } catch {
-                          toast.error('Failed to upload');
-                        }
-                      }
-                    }}
-                    data-testid="renewal-parent-circular"
-                  />
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => generateParentCircularPDF(showRenewalConvertModal, renewalConvertData, setRenewalConvertData)}
+                      disabled={generatingParentCircular}
+                      className="flex-1 border-yellow-500 text-yellow-700 hover:bg-yellow-100"
+                      data-testid="renewal-generate-parent-circular-btn"
+                    >
+                      {generatingParentCircular ? (
+                        <><RefreshCw className="w-4 h-4 mr-1 animate-spin" /> Generating...</>
+                      ) : (
+                        <><FileText className="w-4 h-4 mr-1" /> Generate Circular</>
+                      )}
+                    </Button>
+                    <div className="flex-1 relative">
+                      <Input
+                        type="file"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        className="cursor-pointer"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            try {
+                              const res = await axios.post(`${API}/upload`, formData, {
+                                headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
+                              });
+                              setRenewalConvertData(prev => ({ ...prev, parent_circular_url: res.data.url }));
+                              toast.success('Parent circular uploaded');
+                            } catch {
+                              toast.error('Failed to upload');
+                            }
+                          }
+                        }}
+                        data-testid="renewal-parent-circular"
+                      />
+                    </div>
+                  </div>
                 )}
               </div>
             )}
@@ -7870,11 +8271,11 @@ const AdminSchoolCRM = () => {
               </div>
             </div>
 
-            {/* Parent Circular (shown when payment_mode is from_student) */}
-            {onboardData.payment_mode === 'from_student' && (
+            {/* Parent Circular (shown when payment_mode is 'online' - OLL Collects Online via Cashfree) */}
+            {onboardData.payment_mode === 'online' && (
               <div className="bg-yellow-50 rounded-lg p-4 border border-yellow-200">
                 <label className="text-sm font-medium text-yellow-800 mb-2 block">Parent Circular</label>
-                <p className="text-xs text-yellow-600 mb-2">Upload circular to be shared with parents for fee collection</p>
+                <p className="text-xs text-yellow-600 mb-3">Generate or upload a circular to be shared with parents for online fee collection</p>
                 {onboardData.parent_circular_url ? (
                   <div className="flex items-center gap-2 p-2 bg-white rounded border border-yellow-200">
                     <FileText className="w-4 h-4 text-yellow-600" />
@@ -7886,26 +8287,44 @@ const AdminSchoolCRM = () => {
                     </Button>
                   </div>
                 ) : (
-                  <Input
-                    type="file"
-                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const formData = new FormData();
-                        formData.append('file', file);
-                        try {
-                          const res = await axios.post(`${API}/upload`, formData, {
-                            headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
-                          });
-                          setOnboardData(prev => ({ ...prev, parent_circular_url: res.data.url }));
-                          toast.success('Parent circular uploaded');
-                        } catch {
-                          toast.error('Failed to upload');
-                        }
-                      }
-                    }}
-                  />
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={generateParentCircularPDF}
+                      disabled={generatingParentCircular}
+                      className="flex-1 border-yellow-500 text-yellow-700 hover:bg-yellow-100"
+                      data-testid="generate-parent-circular-btn"
+                    >
+                      {generatingParentCircular ? (
+                        <><RefreshCw className="w-4 h-4 mr-1 animate-spin" /> Generating...</>
+                      ) : (
+                        <><FileText className="w-4 h-4 mr-1" /> Generate Circular</>
+                      )}
+                    </Button>
+                    <div className="flex-1 relative">
+                      <Input
+                        type="file"
+                        accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                        className="cursor-pointer"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            try {
+                              const res = await axios.post(`${API}/upload`, formData, {
+                                headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
+                              });
+                              setOnboardData(prev => ({ ...prev, parent_circular_url: res.data.url }));
+                              toast.success('Parent circular uploaded');
+                            } catch {
+                              toast.error('Failed to upload');
+                            }
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
                 )}
               </div>
             )}
