@@ -547,12 +547,13 @@ const AdminSchoolCRM = () => {
     program_type: 'lab_setup', // lab_setup or per_student
     lab_kit_count: 30,
     kit_ratio: '1:2', // 1 kit per 2 students
-    price_per_student: 690,
     min_students: 800,
     grade_pricing: [{ grade: '', price_per_student: '' }],
     book_type: 'individual', // individual or shared
     course_type: 'only_robotics', // only_robotics or robotics_coding_ai
-    model: 'in_school', // in_school or hybrid
+    model: 'compulsory', // compulsory or optional
+    pricing_type: 'per_student', // per_student, fixed, both
+    fixed_price: '',
     notes: '',
   });
   const [showRenewalMeetingModal, setShowRenewalMeetingModal] = useState(null);
@@ -1027,12 +1028,13 @@ const AdminSchoolCRM = () => {
       program_type: existingData.program_type || 'lab_setup',
       lab_kit_count: existingData.lab_kit_count || 30,
       kit_ratio: existingData.kit_ratio || '1:2',
-      price_per_student: existingData.price_per_student || 690,
       min_students: existingData.min_students || 800,
       grade_pricing: gradePricing,
       book_type: existingData.book_type || 'individual',
       course_type: existingData.course_type || 'only_robotics',
       model: existingData.model || 'compulsory',
+      pricing_type: existingData.pricing_type || 'per_student',
+      fixed_price: existingData.fixed_price || '',
       notes: existingData.notes || '',
     });
     setShowEditLeadModal(inquiry);
@@ -1205,16 +1207,36 @@ const AdminSchoolCRM = () => {
       doc.text('Fees Structure', M, y);
       y += 6;
 
-      // Build fees table from grade_pricing
-      const gradePricing = data.grade_pricing || [];
-      const feeRows = gradePricing.filter(gp => gp.grade && gp.price_per_student).map(gp => [
-        gp.grade,
-        `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}/student/year`
-      ]);
+      // Build fees table based on pricing_type
+      const pricingType = data.pricing_type || 'per_student';
+      let feeRows = [];
       
-      // If no grade pricing, show default
-      if (feeRows.length === 0) {
-        feeRows.push(['Robotics & AI Program Fees', `Rs. ${(data.price_per_student || 690).toLocaleString('en-IN')}/student/year`]);
+      if (pricingType === 'fixed') {
+        // Fixed price only
+        const fixedPrice = data.fixed_price || '0';
+        feeRows.push(['Robotics & AI Program (Annual Fee)', `Rs. ${Number(fixedPrice).toLocaleString('en-IN')}`]);
+      } else if (pricingType === 'both') {
+        // Show both fixed and per-student pricing
+        const fixedPrice = data.fixed_price || '0';
+        feeRows.push(['Fixed Annual Program Fee', `Rs. ${Number(fixedPrice).toLocaleString('en-IN')}`]);
+        
+        // Add grade-wise pricing
+        const gradePricing = data.grade_pricing || [];
+        gradePricing.filter(gp => gp.grade && gp.price_per_student).forEach(gp => {
+          feeRows.push([`Grade ${gp.grade} (Per Student)`, `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}/student/year`]);
+        });
+      } else {
+        // Per student pricing (default)
+        const gradePricing = data.grade_pricing || [];
+        feeRows = gradePricing.filter(gp => gp.grade && gp.price_per_student).map(gp => [
+          `Grade ${gp.grade}`,
+          `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}/student/year`
+        ]);
+        
+        // If no grade pricing, show default
+        if (feeRows.length === 0) {
+          feeRows.push(['Robotics & AI Program Fees', 'Per student pricing (to be discussed)']);
+        }
       }
 
       autoTable(doc, {
@@ -1351,7 +1373,8 @@ const AdminSchoolCRM = () => {
         updateData.onboarding_data = {
           offering: editLeadData.offering,
           training_type: editLeadData.training_type,
-          pricing_type: 'per_student',
+          pricing_type: editLeadData.pricing_type,
+          fixed_price: editLeadData.fixed_price,
           grade_pricing: editLeadData.grade_pricing.filter(gp => gp.grade),
           lab_kit_count: editLeadData.lab_kit_count || 30,
           kit_type: editLeadData.program_type === 'lab_setup' ? 'lab_setup' : 'student_kit',
@@ -1360,8 +1383,9 @@ const AdminSchoolCRM = () => {
           model: editLeadData.model,
           grades_from: editLeadData.grades_from,
           grades_to: editLeadData.grades_to,
-          price_per_student: editLeadData.price_per_student,
           min_students: editLeadData.min_students,
+          kit_ratio: editLeadData.kit_ratio,
+          program_type: editLeadData.program_type,
         };
         updateData.status = 'meeting_done';
       }
@@ -6296,18 +6320,65 @@ const AdminSchoolCRM = () => {
                 <DollarSign className="w-4 h-4" /> Fees Structure
               </h3>
               
-              {/* Default Price & Min Students Row */}
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-xs font-medium text-green-700 mb-1">Default Price per Student (₹/year)</label>
+              {/* Pricing Type Selection */}
+              <div className="mb-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                <label className="block text-sm font-medium text-amber-800 mb-2 flex items-center gap-2">
+                  <DollarSign className="w-4 h-4" /> Pricing Type*
+                </label>
+                <div className="flex gap-6">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="pricing_type"
+                      value="per_student"
+                      checked={editLeadData.pricing_type === 'per_student'}
+                      onChange={(e) => setEditLeadData(prev => ({ ...prev, pricing_type: e.target.value }))}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="text-sm text-slate-700">Per Student</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="pricing_type"
+                      value="fixed"
+                      checked={editLeadData.pricing_type === 'fixed'}
+                      onChange={(e) => setEditLeadData(prev => ({ ...prev, pricing_type: e.target.value }))}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="text-sm text-slate-700">Fixed Price</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="pricing_type"
+                      value="both"
+                      checked={editLeadData.pricing_type === 'both'}
+                      onChange={(e) => setEditLeadData(prev => ({ ...prev, pricing_type: e.target.value }))}
+                      className="w-4 h-4 text-blue-600"
+                    />
+                    <span className="text-sm text-slate-700">Both</span>
+                  </label>
+                </div>
+              </div>
+              
+              {/* Fixed Price Input - shown for fixed or both */}
+              {(editLeadData.pricing_type === 'fixed' || editLeadData.pricing_type === 'both') && (
+                <div className="mb-4">
+                  <label className="block text-xs font-medium text-green-700 mb-1">Fixed Price (₹/year)</label>
                   <Input
                     type="number"
-                    value={editLeadData.price_per_student}
-                    onChange={(e) => setEditLeadData(prev => ({ ...prev, price_per_student: parseInt(e.target.value) || 690 }))}
+                    value={editLeadData.fixed_price}
+                    onChange={(e) => setEditLeadData(prev => ({ ...prev, fixed_price: e.target.value }))}
+                    placeholder="Enter fixed total price"
                     className="h-9 text-sm"
                   />
                 </div>
-                <div>
+              )}
+
+              {/* Minimum Students - only show for per_student or both */}
+              {(editLeadData.pricing_type === 'per_student' || editLeadData.pricing_type === 'both') && (
+                <div className="mb-4">
                   <label className="block text-xs font-medium text-green-700 mb-1">Minimum Students Required</label>
                   <Input
                     type="number"
@@ -6316,9 +6387,10 @@ const AdminSchoolCRM = () => {
                     className="h-9 text-sm"
                   />
                 </div>
-              </div>
+              )}
 
-              {/* Grade-wise Pricing Table */}
+              {/* Grade-wise Pricing Table - only show for per_student or both */}
+              {(editLeadData.pricing_type === 'per_student' || editLeadData.pricing_type === 'both') && (
               <div className="bg-white rounded-lg border border-green-200 overflow-hidden">
                 <div className="grid grid-cols-12 gap-2 p-2 bg-green-100 text-xs font-semibold text-green-800">
                   <div className="col-span-6">Grade (e.g. 1-5)</div>
@@ -6343,7 +6415,7 @@ const AdminSchoolCRM = () => {
                     <div className="col-span-5">
                       <Input
                         type="number"
-                        placeholder={editLeadData.price_per_student.toString()}
+                        placeholder="Price per student"
                         value={gp.price_per_student}
                         onChange={(e) => {
                           const newGrades = [...editLeadData.grade_pricing];
@@ -6382,6 +6454,7 @@ const AdminSchoolCRM = () => {
                   </Button>
                 </div>
               </div>
+              )}
             </div>
 
             {/* Notes Section */}
