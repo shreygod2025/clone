@@ -3061,7 +3061,7 @@ const AdminSchoolCRM = () => {
     try {
       // Dynamic import of docx library to avoid webpack initialization issues
       const docx = await import('docx');
-      const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, ImageRun, ExternalHyperlink } = docx;
+      const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, ImageRun, ExternalHyperlink, TableLayoutType } = docx;
 
       const schoolName = school?.school_name || 'School';
       const academicYear = data.contract_start ? format(new Date(data.contract_start), 'yyyy') + '-' + (parseInt(format(new Date(data.contract_start), 'yy')) + 1).toString().padStart(2, '0') : '2026-27';
@@ -3100,11 +3100,9 @@ const AdminSchoolCRM = () => {
             children: [
               new TableCell({
                 children: [new Paragraph({ children: [new TextRun({ text: gp.grade, size: 22 })], alignment: AlignmentType.CENTER })],
-                width: { size: 4500, type: WidthType.DXA },
               }),
               new TableCell({
                 children: [new Paragraph({ children: [new TextRun({ text: `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}`, size: 22 })], alignment: AlignmentType.CENTER })],
-                width: { size: 4500, type: WidthType.DXA },
               }),
             ],
           })
@@ -3113,8 +3111,8 @@ const AdminSchoolCRM = () => {
         feeTableRows = [
           new TableRow({
             children: [
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'All Grades', size: 22 })], alignment: AlignmentType.CENTER })], width: { size: 4500, type: WidthType.DXA } }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: `Rs. ${Number(data.fixed_price).toLocaleString('en-IN')}`, size: 22 })], alignment: AlignmentType.CENTER })], width: { size: 4500, type: WidthType.DXA } }),
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'All Grades', size: 22 })], alignment: AlignmentType.CENTER })] }),
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: `Rs. ${Number(data.fixed_price).toLocaleString('en-IN')}`, size: 22 })], alignment: AlignmentType.CENTER })] }),
             ],
           }),
         ];
@@ -3122,14 +3120,14 @@ const AdminSchoolCRM = () => {
         feeTableRows = [
           new TableRow({
             children: [
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: '1st to 4th', size: 22 })], alignment: AlignmentType.CENTER })], width: { size: 4500, type: WidthType.DXA } }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Rs. ________', size: 22 })], alignment: AlignmentType.CENTER })], width: { size: 4500, type: WidthType.DXA } }),
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: '1st to 4th', size: 22 })], alignment: AlignmentType.CENTER })] }),
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Rs. ________', size: 22 })], alignment: AlignmentType.CENTER })] }),
             ],
           }),
           new TableRow({
             children: [
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: '5th to 8th', size: 22 })], alignment: AlignmentType.CENTER })], width: { size: 4500, type: WidthType.DXA } }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Rs. ________', size: 22 })], alignment: AlignmentType.CENTER })], width: { size: 4500, type: WidthType.DXA } }),
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: '5th to 8th', size: 22 })], alignment: AlignmentType.CENTER })] }),
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Rs. ________', size: 22 })], alignment: AlignmentType.CENTER })] }),
             ],
           }),
         ];
@@ -3180,19 +3178,21 @@ const AdminSchoolCRM = () => {
         }),
         // Fee Table
         new Table({
-          width: { size: 9000, type: WidthType.DXA },
+          layout: TableLayoutType.FIXED,
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          columnWidths: [4000, 4000],
           rows: [
             new TableRow({
               children: [
                 new TableCell({
                   children: [new Paragraph({ children: [new TextRun({ text: 'Grade', bold: true, size: 22, color: 'FFFFFF' })], alignment: AlignmentType.CENTER })],
-                  width: { size: 4500, type: WidthType.DXA },
                   shading: { fill: '1E3A5F' },
+                  verticalAlign: 'center',
                 }),
                 new TableCell({
                   children: [new Paragraph({ children: [new TextRun({ text: 'Fee per Student', bold: true, size: 22, color: 'FFFFFF' })], alignment: AlignmentType.CENTER })],
-                  width: { size: 4500, type: WidthType.DXA },
                   shading: { fill: '1E3A5F' },
+                  verticalAlign: 'center',
                 }),
               ],
             }),
