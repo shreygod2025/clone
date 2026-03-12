@@ -16,7 +16,6 @@ import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import QRCode from 'qrcode';
-import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, BorderStyle, ImageRun, HeadingLevel, ExternalHyperlink } from 'docx';
 import { saveAs } from 'file-saver';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -2639,6 +2638,10 @@ const AdminSchoolCRM = () => {
     if (!school) return;
     setGeneratingParentCircular(true);
     try {
+      // Dynamic import of docx library to avoid webpack initialization issues
+      const docx = await import('docx');
+      const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, ImageRun, ExternalHyperlink } = docx;
+
       const schoolName = school?.school_name || 'School';
       const academicYear = data.contract_start ? format(new Date(data.contract_start), 'yyyy') + '-' + (parseInt(format(new Date(data.contract_start), 'yy')) + 1).toString().padStart(2, '0') : '2026-27';
       
@@ -2802,7 +2805,7 @@ const AdminSchoolCRM = () => {
           new Paragraph({
             children: [
               new ImageRun({
-                data: Buffer.from(qrImageData, 'base64'),
+                data: Uint8Array.from(atob(qrImageData), c => c.charCodeAt(0)),
                 transformation: { width: 100, height: 100 },
                 type: 'png',
               }),
