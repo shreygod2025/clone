@@ -47,6 +47,30 @@ from cashfree_pg.models.order_meta import OrderMeta
 # Background Scheduler for automated tasks
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+from functools import lru_cache
+from cachetools import TTLCache
+
+# ═══ SIMPLE IN-MEMORY CACHE ═══════════════════════════════════════════
+# For frequently accessed data to reduce DB load
+_cache = TTLCache(maxsize=1000, ttl=300)  # 5 minute TTL, max 1000 items
+
+def get_cached(key: str):
+    """Get item from cache"""
+    return _cache.get(key)
+
+def set_cached(key: str, value, ttl: int = 300):
+    """Set item in cache with optional custom TTL"""
+    _cache[key] = value
+    return value
+
+def clear_cache(prefix: str = None):
+    """Clear cache, optionally only keys with given prefix"""
+    if prefix:
+        keys_to_delete = [k for k in _cache.keys() if k.startswith(prefix)]
+        for k in keys_to_delete:
+            _cache.pop(k, None)
+    else:
+        _cache.clear()
 
 ROOT_DIR = Path(__file__).parent
 UPLOAD_DIR = ROOT_DIR / "uploads"
@@ -3876,6 +3900,12 @@ async def verify_payment(order_id: str):
 @api_router.get("/school-payment/{school_id}")
 async def get_school_payment_info(school_id: str):
     """Get school info for student payment page (public)"""
+    # Check cache first
+    cache_key = f"school_payment_{school_id}"
+    cached = get_cached(cache_key)
+    if cached:
+        return cached
+    
     school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
     if not school:
         raise HTTPException(status_code=404, detail="School not found")
@@ -3906,7 +3936,7 @@ async def get_school_payment_info(school_id: str):
     # Get skill/program from offerings or model
     skill = onboarding_data.get("offering") or school.get("skill") or "Program"
     
-    return {
+    result = {
         "school_id": school_id,
         "school_name": school.get("school_name", ""),
         "skill": skill,
@@ -3915,6 +3945,10 @@ async def get_school_payment_info(school_id: str):
         "total_students": onboarding_data.get("total_students", 0),
         "total_amount": onboarding_data.get("total_amount", 0)
     }
+    
+    # Cache for 5 minutes
+    set_cached(cache_key, result, 300)
+    return result
 
 @api_router.post("/school-payment/create-session")
 async def create_school_student_payment_session(data: dict):
@@ -6458,6 +6492,10 @@ async def update_school_inquiry(
         inquiry['created_at'] = datetime.fromisoformat(inquiry['created_at'])
     if isinstance(inquiry.get('updated_at'), str):
         inquiry['updated_at'] = datetime.fromisoformat(inquiry['updated_at'])
+    
+    # Clear school payment cache for this school
+    clear_cache(f"school_payment_{inquiry_id}")
+    
     return inquiry
 
 @api_router.get("/schools/relationship-managers")
@@ -8494,6 +8532,13 @@ async def delete_faq(faq_id: str, user: dict = Depends(get_current_user)):
 
 @api_router.get("/blogs", response_model=List[Blog])
 async def get_blogs(category: Optional[str] = None, published_only: bool = True, blog_type: Optional[str] = None):
+    # Check cache for published blogs list
+    if published_only and not category and not blog_type:
+        cache_key = "blogs_published_all"
+        cached = get_cached(cache_key)
+        if cached:
+            return cached
+    
     query = {}
     if published_only:
         query["is_published"] = True
@@ -8507,10 +8552,21 @@ async def get_blogs(category: Optional[str] = None, published_only: bool = True,
             blog['created_at'] = datetime.fromisoformat(blog['created_at'])
         if isinstance(blog.get('updated_at'), str):
             blog['updated_at'] = datetime.fromisoformat(blog['updated_at'])
+    
+    # Cache if it's the common case (all published blogs)
+    if published_only and not category and not blog_type:
+        set_cached("blogs_published_all", blogs, 300)  # 5 min cache
+    
     return blogs
 
 @api_router.get("/blogs/{slug}", response_model=Blog)
 async def get_blog(slug: str):
+    # Check cache first
+    cache_key = f"blog_{slug}"
+    cached = get_cached(cache_key)
+    if cached:
+        return cached
+    
     blog = await db.blogs.find_one({"slug": slug}, {"_id": 0})
     if not blog:
         raise HTTPException(status_code=404, detail="Blog not found")
@@ -8518,6 +8574,9 @@ async def get_blog(slug: str):
         blog['created_at'] = datetime.fromisoformat(blog['created_at'])
     if isinstance(blog.get('updated_at'), str):
         blog['updated_at'] = datetime.fromisoformat(blog['updated_at'])
+    
+    # Cache for 5 minutes
+    set_cached(cache_key, blog, 300)
     return blog
 
 @api_router.post("/blogs", response_model=Blog)
@@ -8534,6 +8593,9 @@ async def update_blog(blog_id: str, data: BlogUpdate, user: dict = Depends(get_c
     update_data = {k: v for k, v in data.model_dump().items() if v is not None}
     update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
     await db.blogs.update_one({"id": blog_id}, {"$set": update_data})
+    # Clear blog cache
+    clear_cache("blog_")
+    clear_cache("blogs_")
     blog = await db.blogs.find_one({"id": blog_id}, {"_id": 0})
     if isinstance(blog.get('created_at'), str):
         blog['created_at'] = datetime.fromisoformat(blog['created_at'])
@@ -12755,6 +12817,45 @@ async def optimize_database(user: dict = Depends(get_current_user)):
         await db.growth_partners.create_index("id", unique=True)
         await db.growth_partners.create_index("status")
         indexes_created.append("growth_partners")
+        
+        # ═══ PAYMENT & HIGH-TRAFFIC INDEXES ═══════════════════════════════
+        # Student Payments - Critical for payment lookups
+        await db.student_payments.create_index("id", unique=True)
+        await db.student_payments.create_index("school_id")
+        await db.student_payments.create_index("student_id")
+        await db.student_payments.create_index("order_id")
+        await db.student_payments.create_index("payment_status")
+        await db.student_payments.create_index([("school_id", 1), ("payment_status", 1)])
+        await db.student_payments.create_index([("school_id", 1), ("created_at", -1)])
+        indexes_created.append("student_payments")
+        
+        # School Payments - For school-level payment tracking
+        await db.school_payments.create_index("id", unique=True)
+        await db.school_payments.create_index("school_id")
+        await db.school_payments.create_index("order_id")
+        await db.school_payments.create_index([("school_id", 1), ("created_at", -1)])
+        indexes_created.append("school_payments")
+        
+        # Students - For student lookups during payments
+        await db.students.create_index("id", unique=True)
+        await db.students.create_index("school_id")
+        await db.students.create_index("phone")
+        await db.students.create_index("email")
+        await db.students.create_index([("school_id", 1), ("status", 1)])
+        indexes_created.append("students")
+        
+        # Blogs - For public-facing blog queries
+        await db.blogs.create_index("id", unique=True)
+        await db.blogs.create_index("slug", unique=True)
+        await db.blogs.create_index("status")
+        await db.blogs.create_index([("status", 1), ("published_at", -1)])
+        indexes_created.append("blogs")
+        
+        # Sessions - For auth lookups
+        await db.sessions.create_index("token", unique=True)
+        await db.sessions.create_index("user_id")
+        await db.sessions.create_index("expires_at")
+        indexes_created.append("sessions")
         
         return {
             "message": "Database optimization complete",

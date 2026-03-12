@@ -75,3 +75,4 @@ uvicorn==0.25.0
 watchfiles==1.1.1
 emergentintegrations==0.1.1
 APScheduler==3.11.2
+cachetools==7.0.5
