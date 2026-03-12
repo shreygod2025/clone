@@ -532,6 +532,22 @@ const AdminSchoolCRM = () => {
   const [showMeetingDoneModal, setShowMeetingDoneModal] = useState(null);
   const [showLostReasonModal, setShowLostReasonModal] = useState(null);
   const [lostReason, setLostReason] = useState('');
+  const [showEditLeadModal, setShowEditLeadModal] = useState(null);
+  const [generatingProposal, setGeneratingProposal] = useState(false);
+  const [editLeadData, setEditLeadData] = useState({
+    offering: '',
+    training_type: '', // teacher_training, student_training, both
+    grades_from: '',
+    grades_to: '',
+    program_type: 'lab_setup', // lab_setup or per_student
+    lab_kit_count: 30,
+    kit_ratio: '1:2', // 1 kit per 2 students
+    price_per_student: 690,
+    min_students: 800,
+    total_students: 0,
+    total_amount: 0,
+    notes: '',
+  });
   const [showRenewalMeetingModal, setShowRenewalMeetingModal] = useState(null);
   const [renewalMeetingData, setRenewalMeetingData] = useState({ date: null, time: '', type: 'offline', notes: '', link: '', address: '' });
   const [showRenewalConvertModal, setShowRenewalConvertModal] = useState(null);
@@ -983,6 +999,280 @@ const AdminSchoolCRM = () => {
       gp_share_amount: existingOnboardData.gp_share_amount || 0,
     });
     setShowOnboardModal(inquiry);
+  };
+
+  // Helper to open Edit Lead modal with pre-populated data
+  const openEditLeadModal = (inquiry) => {
+    const existingData = inquiry.proposal_data || inquiry.onboarding_data || {};
+    setEditLeadData({
+      offering: existingData.offering || inquiry.selected_offerings?.[0] || '',
+      training_type: existingData.training_type || 'teacher_training',
+      grades_from: existingData.grades_from || '1st',
+      grades_to: existingData.grades_to || '8th',
+      program_type: existingData.program_type || 'lab_setup',
+      lab_kit_count: existingData.lab_kit_count || 30,
+      kit_ratio: existingData.kit_ratio || '1:2',
+      price_per_student: existingData.price_per_student || 690,
+      min_students: existingData.min_students || 800,
+      total_students: existingData.total_students || 0,
+      total_amount: existingData.total_amount || inquiry.quoted_price || 0,
+      notes: existingData.notes || '',
+    });
+    setShowEditLeadModal(inquiry);
+  };
+
+  // Generate Proposal PDF using jsPDF
+  const generateProposalPDF = async () => {
+    if (!showEditLeadModal) return;
+    setGeneratingProposal(true);
+    try {
+      const PW = 210, PH = 297, M = 15;
+      const CW = PW - M * 2;
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      
+      const logoDataUrl = OLL_LOGO_B64;
+      const school = showEditLeadModal;
+      const data = editLeadData;
+      const schoolName = school?.school_name || 'School';
+
+      let y = 10;
+
+      // ── OLL LOGO ────────────────────────────────────────────────
+      doc.addImage(logoDataUrl, 'PNG', M, y, 45, 25);
+      y += 30;
+
+      // ── TITLE ───────────────────────────────────────────────────
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text("OLL's Robotics & AI Lab Set-up Program Proposal", PW / 2, y, { align: 'center' });
+      y += 12;
+
+      // ── GREETING ────────────────────────────────────────────────
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(50, 50, 50);
+      doc.text(`For ${schoolName} Team,`, M, y);
+      y += 6;
+      doc.text('Greetings from Team OLL', M, y);
+      y += 10;
+
+      // ── INTRODUCTION ────────────────────────────────────────────
+      const introText = `We are delighted to share our OLL's Robotics & AI Lab Setup for the upcoming academic year for your school. Designed for students from Grades 1 to 10th, this program has already been successfully implemented in 400+ schools across India, with remarkable achievements.`;
+      const introLines = doc.splitTextToSize(introText, CW);
+      doc.text(introLines, M, y);
+      y += introLines.length * 5 + 8;
+
+      // ── PROGRAM DETAILS BOX ─────────────────────────────────────
+      doc.setFillColor(240, 245, 250);
+      doc.roundedRect(M, y, CW, 24, 2, 2, 'F');
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('• Program: Robotics & AI', M + 5, y + 7);
+      doc.text(`• Type of Training: ${data.training_type === 'teacher_training' ? 'Teacher Training' : data.training_type === 'student_training' ? 'Student Training' : 'Both'}`, M + 5, y + 14);
+      doc.text(`• Grades: ${data.grades_from || '1st'} to ${data.grades_to || '8th'}`, M + 5, y + 21);
+      y += 30;
+
+      // ── SECTION TITLE ───────────────────────────────────────────
+      doc.setFontSize(13);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('Robotics & AI Lab Set-up', M, y);
+      y += 8;
+
+      // ── PROGRAM DELIVERABLES ────────────────────────────────────
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('Program Deliverables', M, y);
+      y += 7;
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(50, 50, 50);
+
+      const deliverables = [
+        `${data.lab_kit_count || 30} Master Robotics & AI - Lab Kits will be provided to the school in total for the Lab Setup. Kit to Child ratio → ${data.kit_ratio || '1:2'}`,
+        'Lab Wallpapers & Decoration material will be provided',
+        '28 Projects Based Curriculum covering: Robotics, Coding, 3D design, AI, Science',
+        'Year Long Teacher Training will be provided to the School Teachers.',
+        'One Hardcopy Robotics Manual / Grade will be provided to the Teachers.',
+        'LMS Access to Each child - Tracking program progress, Monitoring Assessment & Soft copy STEM Certificate for each child.',
+        'Robotics Competition & Robotics Exhibition conducted at the School.',
+        'Hardcopy Robotics Take home Book per child'
+      ];
+
+      deliverables.forEach((item, idx) => {
+        const bullet = '•';
+        const lines = doc.splitTextToSize(`${bullet} ${item}`, CW - 5);
+        doc.text(lines, M + 3, y);
+        y += lines.length * 5 + 2;
+      });
+      y += 5;
+
+      // ── FEES STRUCTURE ──────────────────────────────────────────
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('Fees Structure', M, y);
+      y += 6;
+
+      autoTable(doc, {
+        startY: y,
+        head: [['Structure', 'Fees for Program']],
+        body: [
+          ['Robotics & AI Program Fees', `Rs. ${(data.price_per_student || 690).toLocaleString('en-IN')}/student/year`],
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontSize: 10, fontStyle: 'bold' },
+        styles: { fontSize: 10, cellPadding: 4, textColor: [50, 50, 50] },
+        columnStyles: { 0: { cellWidth: 100 }, 1: { cellWidth: 80 } },
+        margin: { left: M, right: M },
+      });
+      y = doc.lastAutoTable.finalY + 10;
+
+      // ── PAGE 2 ──────────────────────────────────────────────────
+      doc.addPage();
+      y = 15;
+
+      // Logo on page 2
+      doc.addImage(logoDataUrl, 'PNG', M, y, 40, 22);
+      y += 28;
+
+      // ── REQUIREMENTS FROM SCHOOL ────────────────────────────────
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('Requirements from School', M, y);
+      y += 7;
+
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(50, 50, 50);
+
+      const requirements = [
+        'Schools need to provide a list of enrolled students (Name, STD & Division), Schedule, school holidays & exam in a specific format for program related communication & Certification purposes.',
+        `The program should be opted for a minimum ${data.min_students || 800} students for the altogether chosen grades, as selected by the school for this pricing.`,
+        'OLL collects 100% advance Program Fees which can be submitted via NEFT/Cheque to Clone Futura Live Solutions Private Limited.'
+      ];
+
+      requirements.forEach((item, idx) => {
+        const bullet = '•';
+        const lines = doc.splitTextToSize(`${bullet} ${item}`, CW - 5);
+        doc.text(lines, M + 3, y);
+        y += lines.length * 5 + 3;
+      });
+      y += 8;
+
+      // ── NEXT STEPS ──────────────────────────────────────────────
+      const nextStepsText = `Upon finalizing the proposal, we will proceed with signing the Memorandum of Understanding (MoU), which will be shared by OLL.
+
+After signing the MoU and completion of the payment process, a minimum of 15 days will be required to commence the teacher training program to ensure proper allocation and verification of resource personnel for quality execution.`;
+      const nextStepsLines = doc.splitTextToSize(nextStepsText, CW);
+      doc.text(nextStepsLines, M, y);
+      y += nextStepsLines.length * 5 + 10;
+
+      // ── CLOSING ─────────────────────────────────────────────────
+      doc.setFont('helvetica', 'bold');
+      doc.text('We look forward to your positive response and a fruitful collaboration ahead!', M, y);
+      y += 12;
+
+      // ── CONTACT INFO ────────────────────────────────────────────
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      doc.text('For any queries or assistance, feel free to contact our Business Development Team at', M, y);
+      y += 8;
+
+      doc.setFillColor(30, 58, 95);
+      doc.roundedRect(M, y, CW, 10, 2, 2, 'F');
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(255, 255, 255);
+      doc.text('+91 9699188188 - Team OLL    www.oll.co', PW / 2, y + 6.5, { align: 'center' });
+
+      // ── DOWNLOAD ────────────────────────────────────────────────
+      const fileName = `Proposal_${(schoolName).replace(/\s+/g, '_')}_${format(new Date(), 'ddMMMyyyy')}.pdf`;
+      doc.save(fileName);
+
+      // ── UPLOAD & STORE ──────────────────────────────────────────
+      try {
+        const pdfBlob = doc.output('blob');
+        const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+        const formData = new FormData();
+        formData.append('file', pdfFile);
+        const uploadRes = await axios.post(`${API}/upload`, formData, {
+          headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' },
+        });
+        const fileUrl = uploadRes.data.url;
+        
+        // Save to documents
+        const existingDocs = school?.documents || [];
+        const newDoc = {
+          type: 'Proposal',
+          url: fileUrl,
+          name: fileName,
+          uploaded_at: new Date().toISOString(),
+          uploaded_by: user?.name || user?.email || 'Admin',
+        };
+        await axios.patch(`${API}/schools/inquiry/${school.id}`, {
+          documents: [...existingDocs, newDoc],
+        }, { headers: getAuthHeaders() });
+        fetchInquiries();
+        toast.success('Proposal generated, downloaded & saved!');
+      } catch {
+        toast.success('Proposal downloaded! (Save to documents failed)');
+      }
+    } catch (err) {
+      console.error('Proposal generation error:', err);
+      toast.error('Failed to generate Proposal: ' + (err.message || 'Unknown error'));
+    } finally {
+      setGeneratingProposal(false);
+    }
+  };
+
+  // Save Edit Lead data and optionally continue to Meeting Done
+  const handleSaveEditLead = async (moveToMeetingDone = false) => {
+    if (!showEditLeadModal) return;
+    
+    try {
+      // Save proposal data to inquiry
+      const updateData = {
+        proposal_data: { ...editLeadData },
+        quoted_price: editLeadData.total_amount || (editLeadData.total_students * editLeadData.price_per_student) || 0,
+      };
+      
+      // Also prepare onboarding_data for continuity when moving to Meeting Done
+      if (moveToMeetingDone) {
+        updateData.onboarding_data = {
+          offering: editLeadData.offering,
+          training_type: editLeadData.training_type,
+          pricing_type: 'per_student',
+          grade_pricing: [{
+            grade: `${editLeadData.grades_from || '1st'} to ${editLeadData.grades_to || '8th'}`,
+            students: editLeadData.total_students || '',
+            price_per_student: editLeadData.price_per_student || 690,
+          }],
+          total_students: editLeadData.total_students || 0,
+          total_amount: editLeadData.total_amount || 0,
+          lab_kit_count: editLeadData.lab_kit_count || 30,
+          kit_type: editLeadData.program_type === 'lab_setup' ? 'lab_setup' : 'student_kit',
+        };
+        updateData.status = 'meeting_done';
+      }
+      
+      await axios.patch(`${API}/schools/inquiry/${showEditLeadModal.id}`, updateData, {
+        headers: getAuthHeaders()
+      });
+      
+      toast.success(moveToMeetingDone ? 'Lead updated & moved to Meeting Done!' : 'Lead details saved!');
+      setShowEditLeadModal(null);
+      fetchInquiries();
+    } catch (error) {
+      console.error('Failed to save lead:', error);
+      toast.error('Failed to save lead details');
+    }
   };
 
   // Autocomplete search for existing records
@@ -4005,6 +4295,14 @@ const AdminSchoolCRM = () => {
         return (
           <div className="flex gap-1.5 flex-wrap items-center">
             <button
+              onClick={() => openEditLeadModal(inquiry)}
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white flex items-center gap-1 font-medium"
+              data-testid={`edit-lead-${inquiry.id}`}
+            >
+              <Edit className="w-3 h-3" />
+              Edit / Proposal
+            </button>
+            <button
               onClick={() => handleMeetingDone(inquiry)}
               className="text-xs px-2.5 py-1.5 rounded-lg bg-purple-500 hover:bg-purple-600 text-white flex items-center gap-1 font-medium"
               data-testid={`meeting-done-${inquiry.id}`}
@@ -5746,6 +6044,209 @@ const AdminSchoolCRM = () => {
               ) : (
                 <p className="text-sm text-slate-400 text-center py-4">No documents uploaded yet</p>
               )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Lead / Generate Proposal Modal */}
+      <Dialog open={!!showEditLeadModal} onOpenChange={() => setShowEditLeadModal(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="w-5 h-5 text-amber-600" />
+              Edit Lead / Generate Proposal - {showEditLeadModal?.school_name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6">
+            {/* Program Details Section */}
+            <div className="bg-slate-50 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                <Layers className="w-4 h-4" /> Program Details
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Offering</label>
+                  <select
+                    value={editLeadData.offering}
+                    onChange={(e) => setEditLeadData(prev => ({ ...prev, offering: e.target.value }))}
+                    className="w-full h-9 text-sm border border-slate-200 rounded-lg px-3"
+                  >
+                    <option value="">Select Offering</option>
+                    {offerings.map(o => (
+                      <option key={o.id} value={o.id}>{o.title}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Training Type</label>
+                  <select
+                    value={editLeadData.training_type}
+                    onChange={(e) => setEditLeadData(prev => ({ ...prev, training_type: e.target.value }))}
+                    className="w-full h-9 text-sm border border-slate-200 rounded-lg px-3"
+                  >
+                    <option value="teacher_training">Teacher Training</option>
+                    <option value="student_training">Student Training</option>
+                    <option value="both">Both</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Grades From</label>
+                  <select
+                    value={editLeadData.grades_from}
+                    onChange={(e) => setEditLeadData(prev => ({ ...prev, grades_from: e.target.value }))}
+                    className="w-full h-9 text-sm border border-slate-200 rounded-lg px-3"
+                  >
+                    {['Jr. Kg', 'Sr. Kg', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'].map(g => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Grades To</label>
+                  <select
+                    value={editLeadData.grades_to}
+                    onChange={(e) => setEditLeadData(prev => ({ ...prev, grades_to: e.target.value }))}
+                    className="w-full h-9 text-sm border border-slate-200 rounded-lg px-3"
+                  >
+                    {['Jr. Kg', 'Sr. Kg', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'].map(g => (
+                      <option key={g} value={g}>{g}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Program Type</label>
+                  <select
+                    value={editLeadData.program_type}
+                    onChange={(e) => setEditLeadData(prev => ({ ...prev, program_type: e.target.value }))}
+                    className="w-full h-9 text-sm border border-slate-200 rounded-lg px-3"
+                  >
+                    <option value="lab_setup">Lab Setup</option>
+                    <option value="per_student">Per Student Kit</option>
+                  </select>
+                </div>
+                {editLeadData.program_type === 'lab_setup' && (
+                  <>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">No. of Lab Kits</label>
+                      <Input
+                        type="number"
+                        value={editLeadData.lab_kit_count}
+                        onChange={(e) => setEditLeadData(prev => ({ ...prev, lab_kit_count: parseInt(e.target.value) || 30 }))}
+                        className="h-9 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-600 mb-1">Kit Ratio (Kit:Students)</label>
+                      <select
+                        value={editLeadData.kit_ratio}
+                        onChange={(e) => setEditLeadData(prev => ({ ...prev, kit_ratio: e.target.value }))}
+                        className="w-full h-9 text-sm border border-slate-200 rounded-lg px-3"
+                      >
+                        <option value="1:1">1:1 (1 Kit per Student)</option>
+                        <option value="1:2">1:2 (1 Kit per 2 Students)</option>
+                        <option value="1:3">1:3 (1 Kit per 3 Students)</option>
+                      </select>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Pricing Section */}
+            <div className="bg-green-50 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-green-800 mb-3 flex items-center gap-2">
+                <DollarSign className="w-4 h-4" /> Pricing Details
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-green-700 mb-1">Price per Student (₹/year)</label>
+                  <Input
+                    type="number"
+                    value={editLeadData.price_per_student}
+                    onChange={(e) => {
+                      const price = parseInt(e.target.value) || 0;
+                      setEditLeadData(prev => ({ 
+                        ...prev, 
+                        price_per_student: price,
+                        total_amount: prev.total_students * price
+                      }));
+                    }}
+                    className="h-9 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-green-700 mb-1">Minimum Students Required</label>
+                  <Input
+                    type="number"
+                    value={editLeadData.min_students}
+                    onChange={(e) => setEditLeadData(prev => ({ ...prev, min_students: parseInt(e.target.value) || 800 }))}
+                    className="h-9 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-green-700 mb-1">Expected Students</label>
+                  <Input
+                    type="number"
+                    value={editLeadData.total_students}
+                    onChange={(e) => {
+                      const students = parseInt(e.target.value) || 0;
+                      setEditLeadData(prev => ({ 
+                        ...prev, 
+                        total_students: students,
+                        total_amount: students * prev.price_per_student
+                      }));
+                    }}
+                    className="h-9 text-sm"
+                    placeholder="Enter expected student count"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-green-700 mb-1">Total Amount (₹)</label>
+                  <div className="h-9 text-sm bg-white border border-green-200 rounded-lg px-3 flex items-center font-semibold text-green-800">
+                    ₹{(editLeadData.total_amount || 0).toLocaleString('en-IN')}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Notes Section */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Notes</label>
+              <Textarea
+                value={editLeadData.notes}
+                onChange={(e) => setEditLeadData(prev => ({ ...prev, notes: e.target.value }))}
+                placeholder="Add any notes about this lead..."
+                className="h-20"
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => handleSaveEditLead(false)}
+                className="flex-1"
+              >
+                <Save className="w-4 h-4 mr-1" /> Save Details
+              </Button>
+              <Button
+                onClick={generateProposalPDF}
+                disabled={generatingProposal}
+                className="flex-1 bg-amber-500 hover:bg-amber-600 text-white"
+              >
+                {generatingProposal ? (
+                  <><RefreshCw className="w-4 h-4 mr-1 animate-spin" /> Generating...</>
+                ) : (
+                  <><FileText className="w-4 h-4 mr-1" /> Generate Proposal</>
+                )}
+              </Button>
+              <Button
+                onClick={() => handleSaveEditLead(true)}
+                className="flex-1 bg-purple-500 hover:bg-purple-600 text-white"
+              >
+                <CheckCircle2 className="w-4 h-4 mr-1" /> Save & Move to Meeting Done
+              </Button>
             </div>
           </div>
         </DialogContent>

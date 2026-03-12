@@ -1413,6 +1413,7 @@ class SchoolInquiry(BaseModel):
     relationship_manager_id: str = ""  # RM assigned to converted schools
     relationship_manager_name: str = ""
     onboarding_data: Optional[dict] = None  # Onboarding details including offerings, pricing, contacts, payment tranches
+    proposal_data: Optional[dict] = None  # Edit Lead / Generate Proposal data
     onboarding_workflow: Optional[dict] = None  # Onboarding workflow status and tracking
     activity_log: List[dict] = []  # Activity history log
     renewal_meeting_date: Optional[str] = None
@@ -1471,9 +1472,10 @@ class SchoolInquiryUpdate(BaseModel):
     followup_date: Optional[str] = None
     followup_comment: Optional[str] = None
     conversion_amount: Optional[Union[str, int, float]] = None
-    quoted_price: Optional[str] = None  # Price quoted during meeting
+    quoted_price: Optional[Union[str, int, float]] = None  # Price quoted during meeting
     assigned_to: Optional[str] = None
     onboarding_data: Optional[dict] = None
+    proposal_data: Optional[dict] = None  # Edit Lead / Generate Proposal data
     selected_offerings: Optional[list] = None
     programs_interested: Optional[list] = None
     # Lost reason
