@@ -15,6 +15,7 @@ import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import QRCode from 'qrcode';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -2642,89 +2643,105 @@ const AdminSchoolCRM = () => {
 
       const logoDataUrl = OLL_LOGO_B64;
       const schoolName = school?.school_name || 'School';
-      const offering = offerings.find(o => o.id === data.offering)?.title || data.offering || 'Robotics Program';
-      const todayStr = format(new Date(), 'dd MMMM yyyy');
-      const deadlineStr = data.deadline_date ? format(new Date(data.deadline_date), 'dd MMMM yyyy') : '________________________';
-
-      // Get grade pricing for the table
+      const academicYear = data.contract_start ? format(new Date(data.contract_start), 'yyyy') + '-' + (parseInt(format(new Date(data.contract_start), 'yy')) + 1).toString().padStart(2, '0') : '2026-27';
+      
+      // Get grade range from grade_pricing
       const enteredGrades = (data.grade_pricing || []).filter(gp => gp.grade && gp.price_per_student);
       const gradeOrder = ['Jr. Kg', 'Sr. Kg', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
-
-      // ── PAGE HEADER ─────────────────────────────────────────────
-      doc.setFillColor(30, 58, 95);
-      doc.rect(0, 0, PW, 30, 'F');
-      doc.addImage(logoDataUrl, 'PNG', M, 5, 40, 22);
+      let gradeRangeText = '';
+      if (enteredGrades.length > 0) {
+        const sortedGrades = enteredGrades.map(g => g.grade).sort((a, b) => gradeOrder.indexOf(a) - gradeOrder.indexOf(b));
+        gradeRangeText = sortedGrades.length > 1 ? `${sortedGrades[0]} to ${sortedGrades[sortedGrades.length - 1]}` : sortedGrades[0];
+      }
       
-      // School name on header right
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(255, 255, 255);
-      const schoolNameLines = doc.splitTextToSize(schoolName, 100);
-      doc.text(schoolNameLines, PW - M, 15, { align: 'right' });
+      // Payment link (use the school's payment link or generate one)
+      const paymentLink = data.payment_link || school?.payment_link || `https://oll.co/school-pay/${school?.id || 'demo'}`;
 
-      let y = 40;
+      let y = 10;
+
+      // ── SCHOOL NAME AT TOP ──────────────────────────────────────
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      const schoolNameLines = doc.splitTextToSize(schoolName, CW);
+      doc.text(schoolNameLines, PW / 2, y, { align: 'center' });
+      y += schoolNameLines.length * 8 + 5;
+
+      // ── OLL LOGO ────────────────────────────────────────────────
+      doc.addImage(logoDataUrl, 'PNG', PW / 2 - 25, y, 50, 28);
+      y += 32;
 
       // ── TITLE ───────────────────────────────────────────────────
       doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(30, 58, 95);
-      doc.text('PARENT CIRCULAR', PW / 2, y, { align: 'center' });
-      y += 4;
-      doc.setDrawColor(30, 58, 95);
-      doc.setLineWidth(0.8);
-      doc.line(PW / 2 - 35, y, PW / 2 + 35, y);
-      y += 10;
+      doc.text(`Robotics & A.I. for Academic Year ${academicYear}`, PW / 2, y, { align: 'center' });
+      y += 12;
 
-      // ── INTRODUCTION ────────────────────────────────────────────
-      doc.setFontSize(10);
+      // ── DEAR PARENTS ────────────────────────────────────────────
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(40, 40, 40);
+      doc.text('Dear Parents,', M, y);
+      y += 8;
+
+      // ── INTRODUCTION PARAGRAPH ──────────────────────────────────
+      doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(50, 50, 50);
       
-      const introText = `Dear Parents/Guardians,
-
-We are pleased to announce that ${schoolName} has partnered with OLL (Clonefutura Live Solutions Pvt Ltd) to introduce an exciting ${offering} program for your children.
-
-This program is designed to develop critical thinking, creativity, and problem-solving skills through hands-on learning experiences with robotics, coding, and STEM activities.`;
+      const introText = `As per the release of NEP 2020, Our school will introduce the Robotics & A.I. Program as a subject from next academic year. We are thrilled to announce our partnership with OLL, to train all our students of Classes from ${gradeRangeText || '_____ to _____'} grade in the field of Robotics & AI so that our children will have an upper hand in the future work industry. OLL is a skill partner with over 400+ Schools across India.`;
 
       const introLines = doc.splitTextToSize(introText, CW);
       doc.text(introLines, M, y);
-      y += introLines.length * 5 + 8;
+      y += introLines.length * 5.5 + 8;
 
-      // ── PROGRAM DETAILS ─────────────────────────────────────────
-      doc.setFontSize(11);
+      // ── PROGRAM DELIVERABLES ────────────────────────────────────
+      doc.setFontSize(13);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(30, 58, 95);
-      doc.text('Program Details:', M, y);
-      y += 7;
+      doc.text('Program Deliverables', M, y);
+      y += 8;
 
-      doc.setFontSize(9.5);
-      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(11);
       doc.setTextColor(50, 50, 50);
 
-      const courseTypeLabel = { only_robotics: 'Only Robotics', robotics_coding_ai: 'Robotics, Coding & AI' };
-      const programDetails = [
-        ['Program Name', offering],
-        ['Course Type', courseTypeLabel[data.course_type] || data.course_type || 'Robotics & STEM'],
-        ['Duration', data.contract_start && data.contract_end ? `${format(new Date(data.contract_start), 'MMM yyyy')} - ${format(new Date(data.contract_end), 'MMM yyyy')}` : 'Full Academic Year'],
+      const deliverables = [
+        { title: 'Take home Robotic Kit:', desc: 'Every child gets their own Robotics Kit' },
+        { title: 'Duration:', desc: 'Year long - Once a Week, Offline in the school during school hours.' },
+        { title: 'Assessment & Certification:', desc: 'will be conducted by the expert from OLL. International Accredited Certificates by STEM.org will be provided after assessment' },
+        { title: 'Tech Exhibition:', desc: 'Parents will be invited to an exhibition where our students will proudly showcase their innovative robotics projects.' },
+        { title: '16 Projects:', desc: 'will be made from that kit' },
+        { title: 'Hard Copy Robotics & AI Books:', desc: 'will be provided (Step by Step manual + videos, and PDFs)' },
       ];
 
-      programDetails.forEach(([label, value]) => {
+      deliverables.forEach((item, idx) => {
         doc.setFont('helvetica', 'bold');
-        doc.text(`${label}: `, M + 4, y);
-        const lw = doc.getTextWidth(`${label}: `);
+        const numText = `${idx + 1}. ${item.title} `;
+        doc.text(numText, M, y);
+        const numWidth = doc.getTextWidth(numText);
         doc.setFont('helvetica', 'normal');
-        doc.text(value || '', M + 4 + lw, y);
-        y += 6;
+        const descLines = doc.splitTextToSize(item.desc, CW - numWidth - 5);
+        doc.text(descLines[0], M + numWidth, y);
+        y += 5.5;
+        if (descLines.length > 1) {
+          for (let i = 1; i < descLines.length; i++) {
+            doc.text(descLines[i], M + 8, y);
+            y += 5.5;
+          }
+        }
+        y += 1;
       });
-      y += 5;
+      y += 6;
 
-      // ── FEE STRUCTURE TABLE ─────────────────────────────────────
-      doc.setFontSize(11);
+      // ── FEES SECTION ────────────────────────────────────────────
+      doc.setFontSize(13);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(30, 58, 95);
-      doc.text('Fee Structure:', M, y);
-      y += 5;
+      doc.text('Following are the Fees for the Robotics Program', M, y);
+      y += 8;
 
+      // ── FEE TABLE ───────────────────────────────────────────────
       let feeTableBody;
       if (enteredGrades.length > 0) {
         feeTableBody = enteredGrades.map(gp => [
@@ -2734,8 +2751,10 @@ This program is designed to develop critical thinking, creativity, and problem-s
       } else if (data.pricing_type === 'fixed' && data.fixed_price) {
         feeTableBody = [['All Grades', `Rs. ${Number(data.fixed_price).toLocaleString('en-IN')}`]];
       } else {
-        // Show blank structure
-        feeTableBody = gradeOrder.slice(0, 6).map(grade => [grade, 'Rs. ________']);
+        feeTableBody = [
+          ['1st to 4th', 'Rs. ________'],
+          ['5th to 8th', 'Rs. ________'],
+        ];
       }
 
       autoTable(doc, {
@@ -2743,105 +2762,92 @@ This program is designed to develop critical thinking, creativity, and problem-s
         head: [['Grade', 'Fee per Student']],
         body: feeTableBody,
         theme: 'grid',
-        headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontSize: 10, fontStyle: 'bold', halign: 'center' },
-        styles: { fontSize: 9.5, cellPadding: 3, textColor: [50, 50, 50] },
-        columnStyles: { 0: { cellWidth: 60, halign: 'center' }, 1: { cellWidth: 60, halign: 'center' } },
-        margin: { left: M + 25, right: M + 25 },
+        headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontSize: 11, fontStyle: 'bold', halign: 'center' },
+        styles: { fontSize: 10.5, cellPadding: 3.5, textColor: [50, 50, 50] },
+        columnStyles: { 0: { cellWidth: 70, halign: 'center' }, 1: { cellWidth: 70, halign: 'center' } },
+        margin: { left: M + 20, right: M + 20 },
         alternateRowStyles: { fillColor: [245, 249, 255] },
       });
       y = doc.lastAutoTable.finalY + 8;
 
-      // ── PAYMENT INSTRUCTIONS ────────────────────────────────────
-      doc.setFontSize(11);
+      // ── PAYMENT LINK WITH QR CODE ───────────────────────────────
+      doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(30, 58, 95);
-      doc.text('Payment Instructions:', M, y);
-      y += 7;
+      const gradeRangeForLink = gradeRangeText || '1st to 8th';
+      doc.text(`For Grades ${gradeRangeForLink} Payment Link:`, M, y);
+      y += 6;
 
-      doc.setFontSize(9.5);
+      // Add clickable link
+      doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.setTextColor(50, 50, 50);
+      doc.setTextColor(0, 102, 204);
+      doc.textWithLink(paymentLink, M, y, { url: paymentLink });
+      y += 8;
 
-      const paymentInstructions = [
-        `Payment Deadline: ${deadlineStr}`,
-        'Payment Mode: Online via secure payment link',
-        'A unique payment link will be shared with you separately',
-        'Please ensure payment is made before the deadline to confirm your child\'s enrollment',
-      ];
+      // Generate QR code for payment link
+      try {
+        const qrDataUrl = await QRCode.toDataURL(paymentLink, {
+          width: 200,
+          margin: 1,
+          color: { dark: '#1e3a5f', light: '#ffffff' },
+        });
+        
+        // Add QR code to PDF
+        doc.setFontSize(10);
+        doc.setTextColor(50, 50, 50);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Scan QR Code to Pay:', M, y);
+        y += 3;
+        doc.addImage(qrDataUrl, 'PNG', M, y, 35, 35);
+        y += 40;
+      } catch (qrErr) {
+        console.error('QR Code generation failed:', qrErr);
+        y += 5;
+      }
 
-      paymentInstructions.forEach((item, idx) => {
-        const bullet = idx === 0 || idx === 1 ? '•' : '•';
-        const lines = doc.splitTextToSize(`${bullet} ${item}`, CW - 8);
-        doc.text(lines, M + 4, y);
-        y += lines.length * 5 + 1;
-      });
-      y += 5;
-
-      // ── IMPORTANT NOTE BOX ──────────────────────────────────────
+      // ── PLEASE NOTE BOX ─────────────────────────────────────────
       doc.setFillColor(255, 248, 225);
       doc.setDrawColor(255, 193, 7);
       doc.setLineWidth(0.5);
-      doc.roundedRect(M, y, CW, 22, 2, 2, 'FD');
+      doc.roundedRect(M, y, CW, 18, 2, 2, 'FD');
       
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(180, 130, 0);
-      doc.text('Important:', M + 4, y + 6);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(100, 80, 0);
-      const noteText = 'Kits and materials will be provided to students only after successful payment. Late payments may result in delayed kit distribution.';
-      const noteLines = doc.splitTextToSize(noteText, CW - 10);
-      doc.text(noteLines, M + 4, y + 12);
-      y += 28;
-
-      // ── CONTACT INFORMATION ─────────────────────────────────────
       doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      doc.text('For Queries:', M, y);
-      y += 7;
-
-      doc.setFontSize(9.5);
+      doc.setTextColor(180, 130, 0);
+      doc.text('Please Note:', M + 4, y + 6);
       doc.setFont('helvetica', 'normal');
-      doc.setTextColor(50, 50, 50);
-
-      const contacts = data.school_contacts || [];
-      const coordinator = contacts.find(c => ['coordinator', 'program_coordinator', 'teacher'].includes(c.role)) || contacts[0];
-      
-      if (coordinator?.name) {
-        doc.text(`School Coordinator: ${coordinator.name}`, M + 4, y);
-        y += 5;
-        if (coordinator.phone_number) {
-          doc.text(`Phone: ${coordinator.country_code || '+91'}${coordinator.phone_number}`, M + 4, y);
-          y += 5;
-        }
-      }
-      
-      doc.text('OLL Support: info@oll.co | +91 9920188188', M + 4, y);
-      y += 10;
-
-      // ── CLOSING ─────────────────────────────────────────────────
+      doc.setTextColor(100, 80, 0);
       doc.setFontSize(10);
+      const noteText = 'Students will receive their kits and books once the Robotics Classes commence in School.';
+      doc.text(noteText, M + 4, y + 12);
+      y += 24;
+
+      // ── CLOSING PARAGRAPH ───────────────────────────────────────
+      doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(50, 50, 50);
-      doc.text('We look forward to your child\'s participation in this enriching program!', M, y);
+      const closingText = `We look forward to a progressive & dynamic year ${academicYear} on the Journey of Upskilling our students!`;
+      const closingLines = doc.splitTextToSize(closingText, CW);
+      doc.text(closingLines, M, y);
+      y += closingLines.length * 5.5 + 8;
+
+      // ── REGARDS ─────────────────────────────────────────────────
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(50, 50, 50);
+      doc.text('Regards,', M, y);
+      y += 6;
+      doc.text('Principal', M, y);
       y += 10;
 
-      doc.setFont('helvetica', 'bold');
-      doc.text('Warm Regards,', M, y);
-      y += 6;
-      doc.setFont('helvetica', 'normal');
-      doc.text(`${schoolName}`, M, y);
-      y += 5;
-      doc.text('In partnership with OLL', M, y);
-
-      // ── PAGE FOOTER ─────────────────────────────────────────────
+      // ── HELPLINE ────────────────────────────────────────────────
       doc.setFillColor(30, 58, 95);
-      doc.rect(0, PH - 12, PW, 12, 'F');
-      doc.setTextColor(180, 200, 235);
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'normal');
-      doc.text('Clonefutura Live Solutions Pvt Ltd  |  info@oll.co  |  +91 9920188188  |  www.oll.co', PW / 2, PH - 5, { align: 'center' });
+      doc.roundedRect(M, y, CW, 10, 2, 2, 'F');
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(255, 255, 255);
+      doc.text('For Queries – Call the OLL Helpline Number - 99201 88188', PW / 2, y + 6.5, { align: 'center' });
 
       // ── DOWNLOAD ────────────────────────────────────────────────
       const fileName = `ParentCircular_${(schoolName).replace(/\s+/g, '_')}_${format(new Date(), 'ddMMMyyyy')}.pdf`;
