@@ -1059,17 +1059,22 @@ const AdminSchoolCRM = () => {
 
       let y = 12;
 
-      // ── HEADER WITH HORIZONTAL OLL LOGO ────────────────────────
+      // ── BLUE HEADER BAND WITH WHITE LOGO ────────────────────────
+      const HEADER_HEIGHT = 32;
+      doc.setFillColor(30, 58, 95); // OLL Blue #1e3a5f
+      doc.rect(0, 0, PW, HEADER_HEIGHT, 'F');
+      
       try {
-        doc.addImage(OLL_LOGO_HORIZONTAL, 'PNG', M, y, 50, 12);
+        // Add white logo on blue background
+        doc.addImage(OLL_LOGO_B64, 'PNG', M, 4, 45, 24);
       } catch {
-        // Fallback: just add text if logo fails
-        doc.setFontSize(16);
+        // Fallback: just add white text if logo fails
+        doc.setFontSize(18);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(0, 0, 0);
-        doc.text('OLL', M, y + 8);
+        doc.setTextColor(255, 255, 255);
+        doc.text('OLL', M + 10, 20);
       }
-      y += 20;
+      y = HEADER_HEIGHT + 10;
 
       // ── TITLE (OLL Blue) ────────────────────────────────────────────
       doc.setFontSize(16);
