@@ -549,7 +549,7 @@ const AdminSchoolCRM = () => {
     kit_ratio: '1:2', // 1 kit per 2 students
     price_per_student: 690,
     min_students: 800,
-    grade_pricing: [{ grade: '', students: '', price_per_student: '' }],
+    grade_pricing: [{ grade: '', price_per_student: '' }],
     book_type: 'individual', // individual or shared
     course_type: 'only_robotics', // only_robotics or robotics_coding_ai
     model: 'in_school', // in_school or hybrid
@@ -571,7 +571,7 @@ const AdminSchoolCRM = () => {
     training_type: '',
     pricing_type: 'per_student', // 'per_student', 'fixed', 'both'
     fixed_price: '',
-    grade_pricing: [{ grade: '', students: '', price_per_student: '' }],
+    grade_pricing: [{ grade: '', price_per_student: '' }],
     total_students: 0,
     total_amount: 0,
     school_contacts: [{ name: '', phone_number: '', country_code: '+91', email: '', role: '' }],
@@ -692,7 +692,7 @@ const AdminSchoolCRM = () => {
     training_type: '', // student_training, teacher_training
     pricing_type: 'per_student', // 'per_student', 'fixed', 'both'
     fixed_price: '',
-    grade_pricing: [{ grade: '', students: '', price_per_student: '' }],
+    grade_pricing: [{ grade: '', price_per_student: '' }],
     total_students: 0,
     total_amount: 0,
     school_contacts: [{ name: '', phone_number: '', country_code: '+91', email: '', role: '' }],
@@ -1010,7 +1010,15 @@ const AdminSchoolCRM = () => {
 
   // Helper to open Edit Lead modal with pre-populated data
   const openEditLeadModal = (inquiry) => {
+    // Check both proposal_data and onboarding_data for saved values
     const existingData = inquiry.proposal_data || inquiry.onboarding_data || {};
+    
+    // Ensure grade_pricing has proper structure
+    let gradePricing = existingData.grade_pricing;
+    if (!gradePricing || !Array.isArray(gradePricing) || gradePricing.length === 0) {
+      gradePricing = [{ grade: '', price_per_student: '' }];
+    }
+    
     setEditLeadData({
       offering: existingData.offering || inquiry.selected_offerings?.[0] || '',
       training_type: existingData.training_type || 'teacher_training',
@@ -1021,10 +1029,10 @@ const AdminSchoolCRM = () => {
       kit_ratio: existingData.kit_ratio || '1:2',
       price_per_student: existingData.price_per_student || 690,
       min_students: existingData.min_students || 800,
-      grade_pricing: existingData.grade_pricing || [{ grade: '', students: '', price_per_student: '' }],
+      grade_pricing: gradePricing,
       book_type: existingData.book_type || 'individual',
       course_type: existingData.course_type || 'only_robotics',
-      model: existingData.model || 'in_school',
+      model: existingData.model || 'compulsory',
       notes: existingData.notes || '',
     });
     setShowEditLeadModal(inquiry);
@@ -1098,13 +1106,16 @@ const AdminSchoolCRM = () => {
       doc.text('Greetings from Team OLL', M, y);
       y += 10;
 
-      // ── INTRODUCTION ────────────────────────────────────────────
+      // ── INTRODUCTION (with increased line spacing) ────────────────────────────────────────────
       doc.setFontSize(10);
       doc.setTextColor(0, 0, 0);
       const introText = `We are delighted to share our OLL's Robotics & AI Lab Setup for the upcoming academic year for your school. Designed for students from Grades 1 to 10th, this program has already been successfully implemented in 400+ schools across India, with remarkable achievements.`;
       const introLines = doc.splitTextToSize(introText, CW);
-      doc.text(introLines, M, y);
-      y += introLines.length * 5 + 8;
+      // Increased line spacing (7mm instead of 5mm)
+      introLines.forEach((line, idx) => {
+        doc.text(line, M, y + (idx * 7));
+      });
+      y += introLines.length * 7 + 8;
 
       // ── PROGRAM DETAILS BOX ───────────────────────────────────
       doc.setFillColor(245, 245, 245);
@@ -1130,13 +1141,6 @@ const AdminSchoolCRM = () => {
       
       doc.text(`Grades: ${data.grades_from || '1st'} to ${data.grades_to || '8th'}`, M + 8, y + 22);
       y += 32;
-
-      // ── SECTION TITLE (OLL Blue) ───────────────────────────────────────────
-      doc.setFontSize(13);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95); // OLL Blue #1e3a5f
-      doc.text('Robotics & AI Lab Set-up', M, y);
-      y += 10;
 
       // ── PROGRAM DELIVERABLES SECTION (OLL Blue) ────────────────────────────
       doc.setFontSize(11);
@@ -1337,18 +1341,9 @@ const AdminSchoolCRM = () => {
     if (!showEditLeadModal) return;
     
     try {
-      // Calculate total from grade_pricing
-      const totalStudents = editLeadData.grade_pricing.reduce((sum, gp) => sum + (parseInt(gp.students) || 0), 0);
-      const totalAmount = editLeadData.grade_pricing.reduce((sum, gp) => {
-        const students = parseInt(gp.students) || 0;
-        const price = parseInt(gp.price_per_student) || editLeadData.price_per_student || 690;
-        return sum + (students * price);
-      }, 0);
-      
       // Save proposal data to inquiry
       const updateData = {
         proposal_data: { ...editLeadData },
-        quoted_price: totalAmount || 0,
       };
       
       // Also prepare onboarding_data for continuity when moving to Meeting Done
@@ -1358,10 +1353,15 @@ const AdminSchoolCRM = () => {
           training_type: editLeadData.training_type,
           pricing_type: 'per_student',
           grade_pricing: editLeadData.grade_pricing.filter(gp => gp.grade),
-          total_students: totalStudents,
-          total_amount: totalAmount,
           lab_kit_count: editLeadData.lab_kit_count || 30,
           kit_type: editLeadData.program_type === 'lab_setup' ? 'lab_setup' : 'student_kit',
+          book_type: editLeadData.book_type,
+          course_type: editLeadData.course_type,
+          model: editLeadData.model,
+          grades_from: editLeadData.grades_from,
+          grades_to: editLeadData.grades_to,
+          price_per_student: editLeadData.price_per_student,
+          min_students: editLeadData.min_students,
         };
         updateData.status = 'meeting_done';
       }
@@ -1869,7 +1869,7 @@ const AdminSchoolCRM = () => {
       setRenewalConvertData({
         offering: '', model: '', book_type: '', kit_type: '', lab_kit_count: '', course_type: '', training_type: '',
         pricing_type: 'per_student', fixed_price: '',
-        grade_pricing: [{ grade: '', students: '', price_per_student: '' }],
+        grade_pricing: [{ grade: '', price_per_student: '' }],
         total_students: 0, total_amount: 0,
         school_contacts: [{ name: '', phone_number: '', country_code: '+91', email: '', role: '' }],
         payment_mode: 'from_school', payment_method: '',
@@ -3442,7 +3442,7 @@ const AdminSchoolCRM = () => {
       setOnboardData({
         offering: '', model: '', book_type: '', kit_type: '', lab_kit_count: '', course_type: '', training_type: '',
         pricing_type: 'per_student', fixed_price: '',
-        grade_pricing: [{ grade: '', students: '', price_per_student: '' }],
+        grade_pricing: [{ grade: '', price_per_student: '' }],
         total_students: 0, total_amount: 0, school_contacts: [{ name: '', phone_number: '', country_code: '+91', email: '', role: '' }],
         payment_mode: 'from_school', payment_method: '', payment_tranches: [{ amount: '', percentage: '', date: '', notes: '' }],
         deadline_date: '',
@@ -6321,43 +6321,26 @@ const AdminSchoolCRM = () => {
               {/* Grade-wise Pricing Table */}
               <div className="bg-white rounded-lg border border-green-200 overflow-hidden">
                 <div className="grid grid-cols-12 gap-2 p-2 bg-green-100 text-xs font-semibold text-green-800">
-                  <div className="col-span-4">Grade</div>
-                  <div className="col-span-3">Students</div>
-                  <div className="col-span-4">Price/Student (₹)</div>
+                  <div className="col-span-6">Grade (e.g. 1-5)</div>
+                  <div className="col-span-5">Price/Student (₹)</div>
                   <div className="col-span-1"></div>
                 </div>
                 {editLeadData.grade_pricing.map((gp, idx) => (
                   <div key={idx} className="grid grid-cols-12 gap-2 p-2 border-t border-green-100 items-center">
-                    <div className="col-span-4">
-                      <select
+                    <div className="col-span-6">
+                      <Input
+                        type="text"
+                        placeholder="Grade (e.g. 1-5)"
                         value={gp.grade}
                         onChange={(e) => {
                           const newGrades = [...editLeadData.grade_pricing];
                           newGrades[idx] = { ...newGrades[idx], grade: e.target.value };
                           setEditLeadData(prev => ({ ...prev, grade_pricing: newGrades }));
                         }}
-                        className="w-full h-8 text-xs border border-slate-200 rounded px-2"
-                      >
-                        <option value="">Select Grade</option>
-                        {['Jr. Kg', 'Sr. Kg', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'].map(g => (
-                          <option key={g} value={g}>{g}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="col-span-3">
-                      <Input
-                        type="number"
-                        placeholder="Count"
-                        value={gp.students}
-                        onChange={(e) => {
-                          const newGrades = [...editLeadData.grade_pricing];
-                          newGrades[idx] = { ...newGrades[idx], students: e.target.value };
-                          setEditLeadData(prev => ({ ...prev, grade_pricing: newGrades }));
-                        }}
                         className="h-8 text-xs"
                       />
                     </div>
-                    <div className="col-span-4">
+                    <div className="col-span-5">
                       <Input
                         type="number"
                         placeholder={editLeadData.price_per_student.toString()}
@@ -6391,32 +6374,12 @@ const AdminSchoolCRM = () => {
                     size="sm"
                     onClick={() => setEditLeadData(prev => ({
                       ...prev,
-                      grade_pricing: [...prev.grade_pricing, { grade: '', students: '', price_per_student: '' }]
+                      grade_pricing: [...prev.grade_pricing, { grade: '', price_per_student: '' }]
                     }))}
                     className="text-green-600 hover:text-green-700 text-xs"
                   >
                     <Plus className="w-3 h-3 mr-1" /> Add Grade
                   </Button>
-                </div>
-              </div>
-
-              {/* Total Summary */}
-              <div className="mt-3 p-3 bg-green-100 rounded-lg">
-                <div className="flex justify-between text-sm">
-                  <span className="font-medium text-green-800">Total Students:</span>
-                  <span className="font-bold text-green-900">
-                    {editLeadData.grade_pricing.reduce((sum, gp) => sum + (parseInt(gp.students) || 0), 0).toLocaleString('en-IN')}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm mt-1">
-                  <span className="font-medium text-green-800">Total Amount:</span>
-                  <span className="font-bold text-green-900">
-                    ₹{editLeadData.grade_pricing.reduce((sum, gp) => {
-                      const students = parseInt(gp.students) || 0;
-                      const price = parseInt(gp.price_per_student) || editLeadData.price_per_student || 690;
-                      return sum + (students * price);
-                    }, 0).toLocaleString('en-IN')}
-                  </span>
                 </div>
               </div>
             </div>
