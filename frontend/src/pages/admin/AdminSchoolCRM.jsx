@@ -3100,11 +3100,11 @@ const AdminSchoolCRM = () => {
             children: [
               new TableCell({
                 children: [new Paragraph({ children: [new TextRun({ text: gp.grade, size: 22 })], alignment: AlignmentType.CENTER })],
-                width: { size: 50, type: WidthType.PERCENTAGE },
+                width: { size: 4500, type: WidthType.DXA },
               }),
               new TableCell({
                 children: [new Paragraph({ children: [new TextRun({ text: `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}`, size: 22 })], alignment: AlignmentType.CENTER })],
-                width: { size: 50, type: WidthType.PERCENTAGE },
+                width: { size: 4500, type: WidthType.DXA },
               }),
             ],
           })
@@ -3113,8 +3113,8 @@ const AdminSchoolCRM = () => {
         feeTableRows = [
           new TableRow({
             children: [
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'All Grades', size: 22 })], alignment: AlignmentType.CENTER })], width: { size: 50, type: WidthType.PERCENTAGE } }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: `Rs. ${Number(data.fixed_price).toLocaleString('en-IN')}`, size: 22 })], alignment: AlignmentType.CENTER })], width: { size: 50, type: WidthType.PERCENTAGE } }),
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'All Grades', size: 22 })], alignment: AlignmentType.CENTER })], width: { size: 4500, type: WidthType.DXA } }),
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: `Rs. ${Number(data.fixed_price).toLocaleString('en-IN')}`, size: 22 })], alignment: AlignmentType.CENTER })], width: { size: 4500, type: WidthType.DXA } }),
             ],
           }),
         ];
@@ -3122,14 +3122,14 @@ const AdminSchoolCRM = () => {
         feeTableRows = [
           new TableRow({
             children: [
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: '1st to 4th', size: 22 })], alignment: AlignmentType.CENTER })], width: { size: 50, type: WidthType.PERCENTAGE } }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Rs. ________', size: 22 })], alignment: AlignmentType.CENTER })], width: { size: 50, type: WidthType.PERCENTAGE } }),
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: '1st to 4th', size: 22 })], alignment: AlignmentType.CENTER })], width: { size: 4500, type: WidthType.DXA } }),
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Rs. ________', size: 22 })], alignment: AlignmentType.CENTER })], width: { size: 4500, type: WidthType.DXA } }),
             ],
           }),
           new TableRow({
             children: [
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: '5th to 8th', size: 22 })], alignment: AlignmentType.CENTER })], width: { size: 50, type: WidthType.PERCENTAGE } }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Rs. ________', size: 22 })], alignment: AlignmentType.CENTER })], width: { size: 50, type: WidthType.PERCENTAGE } }),
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: '5th to 8th', size: 22 })], alignment: AlignmentType.CENTER })], width: { size: 4500, type: WidthType.DXA } }),
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Rs. ________', size: 22 })], alignment: AlignmentType.CENTER })], width: { size: 4500, type: WidthType.DXA } }),
             ],
           }),
         ];
@@ -3180,18 +3180,18 @@ const AdminSchoolCRM = () => {
         }),
         // Fee Table
         new Table({
-          width: { size: 70, type: WidthType.PERCENTAGE },
+          width: { size: 9000, type: WidthType.DXA },
           rows: [
             new TableRow({
               children: [
                 new TableCell({
                   children: [new Paragraph({ children: [new TextRun({ text: 'Grade', bold: true, size: 22, color: 'FFFFFF' })], alignment: AlignmentType.CENTER })],
-                  width: { size: 50, type: WidthType.PERCENTAGE },
+                  width: { size: 4500, type: WidthType.DXA },
                   shading: { fill: '1E3A5F' },
                 }),
                 new TableCell({
                   children: [new Paragraph({ children: [new TextRun({ text: 'Fee per Student', bold: true, size: 22, color: 'FFFFFF' })], alignment: AlignmentType.CENTER })],
-                  width: { size: 50, type: WidthType.PERCENTAGE },
+                  width: { size: 4500, type: WidthType.DXA },
                   shading: { fill: '1E3A5F' },
                 }),
               ],
