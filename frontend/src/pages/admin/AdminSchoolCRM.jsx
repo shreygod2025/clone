@@ -544,8 +544,7 @@ const AdminSchoolCRM = () => {
     kit_ratio: '1:2', // 1 kit per 2 students
     price_per_student: 690,
     min_students: 800,
-    total_students: 0,
-    total_amount: 0,
+    grade_pricing: [{ grade: '', students: '', price_per_student: '' }],
     notes: '',
   });
   const [showRenewalMeetingModal, setShowRenewalMeetingModal] = useState(null);
@@ -1014,8 +1013,7 @@ const AdminSchoolCRM = () => {
       kit_ratio: existingData.kit_ratio || '1:2',
       price_per_student: existingData.price_per_student || 690,
       min_students: existingData.min_students || 800,
-      total_students: existingData.total_students || 0,
-      total_amount: existingData.total_amount || inquiry.quoted_price || 0,
+      grade_pricing: existingData.grade_pricing || [{ grade: '', students: '', price_per_student: '' }],
       notes: existingData.notes || '',
     });
     setShowEditLeadModal(inquiry);
@@ -1035,24 +1033,43 @@ const AdminSchoolCRM = () => {
       const data = editLeadData;
       const schoolName = school?.school_name || 'School';
 
-      let y = 10;
+      let y = 8;
 
-      // ── OLL LOGO ────────────────────────────────────────────────
-      doc.addImage(logoDataUrl, 'PNG', M, y, 45, 25);
-      y += 30;
+      // ── HEADER WITH LOGO AND RED ACCENT LINE ────────────────────
+      doc.addImage(logoDataUrl, 'PNG', M, y, 50, 28);
+      
+      // Red accent line at top right
+      doc.setDrawColor(220, 53, 69);
+      doc.setLineWidth(3);
+      doc.line(PW - 60, y + 5, PW - M, y + 5);
+      
+      y += 35;
 
-      // ── TITLE ───────────────────────────────────────────────────
-      doc.setFontSize(16);
+      // ── TITLE (Blue) ────────────────────────────────────────────
+      doc.setFontSize(18);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      doc.text("OLL's Robotics & AI Lab Set-up Program Proposal", PW / 2, y, { align: 'center' });
-      y += 12;
+      doc.setTextColor(30, 58, 138); // Deep blue
+      doc.text("OLL Robotics and AI Program Proposal", PW / 2, y, { align: 'center' });
+      
+      // Red underline for title
+      doc.setDrawColor(220, 53, 69);
+      doc.setLineWidth(1);
+      doc.line(PW / 2 - 55, y + 3, PW / 2 + 55, y + 3);
+      y += 15;
 
-      // ── GREETING ────────────────────────────────────────────────
+      // ── GREETING WITH BOLD SCHOOL NAME ──────────────────────────
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(50, 50, 50);
-      doc.text(`For ${schoolName} Team,`, M, y);
+      doc.text('For ', M, y);
+      const forWidth = doc.getTextWidth('For ');
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 138);
+      doc.text(schoolName, M + forWidth, y);
+      const schoolNameWidth = doc.getTextWidth(schoolName);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(50, 50, 50);
+      doc.text(' Team,', M + forWidth + schoolNameWidth, y);
       y += 6;
       doc.text('Greetings from Team OLL', M, y);
       y += 10;
@@ -1063,93 +1080,135 @@ const AdminSchoolCRM = () => {
       doc.text(introLines, M, y);
       y += introLines.length * 5 + 8;
 
-      // ── PROGRAM DETAILS BOX ─────────────────────────────────────
-      doc.setFillColor(240, 245, 250);
-      doc.roundedRect(M, y, CW, 24, 2, 2, 'F');
+      // ── PROGRAM DETAILS BOX (Blue background) ───────────────────
+      doc.setFillColor(235, 243, 255); // Light blue
+      doc.setDrawColor(30, 58, 138);
+      doc.setLineWidth(0.5);
+      doc.roundedRect(M, y, CW, 26, 3, 3, 'FD');
       
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      doc.text('• Program: Robotics & AI', M + 5, y + 7);
-      doc.text(`• Type of Training: ${data.training_type === 'teacher_training' ? 'Teacher Training' : data.training_type === 'student_training' ? 'Student Training' : 'Both'}`, M + 5, y + 14);
-      doc.text(`• Grades: ${data.grades_from || '1st'} to ${data.grades_to || '8th'}`, M + 5, y + 21);
-      y += 30;
+      doc.setTextColor(30, 58, 138);
+      doc.text('Program: Robotics & AI', M + 8, y + 8);
+      doc.text(`Type of Training: ${data.training_type === 'teacher_training' ? 'Teacher Training' : data.training_type === 'student_training' ? 'Student Training' : 'Both'}`, M + 8, y + 15);
+      doc.text(`Grades: ${data.grades_from || '1st'} to ${data.grades_to || '8th'}`, M + 8, y + 22);
+      y += 32;
 
-      // ── SECTION TITLE ───────────────────────────────────────────
-      doc.setFontSize(13);
+      // ── SECTION TITLE WITH RED ACCENT ───────────────────────────
+      doc.setFillColor(220, 53, 69);
+      doc.rect(M, y, 4, 8, 'F');
+      doc.setFontSize(14);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      doc.text('Robotics & AI Lab Set-up', M, y);
-      y += 8;
+      doc.setTextColor(30, 58, 138);
+      doc.text('Robotics & AI Lab Set-up', M + 8, y + 6);
+      y += 14;
 
-      // ── PROGRAM DELIVERABLES ────────────────────────────────────
+      // ── PROGRAM DELIVERABLES SECTION ────────────────────────────
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
+      doc.setTextColor(220, 53, 69); // Red heading
       doc.text('Program Deliverables', M, y);
-      y += 7;
+      y += 8;
 
       doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
       doc.setTextColor(50, 50, 50);
 
       const deliverables = [
-        `${data.lab_kit_count || 30} Master Robotics & AI - Lab Kits will be provided to the school in total for the Lab Setup. Kit to Child ratio → ${data.kit_ratio || '1:2'}`,
-        'Lab Wallpapers & Decoration material will be provided',
-        '28 Projects Based Curriculum covering: Robotics, Coding, 3D design, AI, Science',
-        'Year Long Teacher Training will be provided to the School Teachers.',
-        'One Hardcopy Robotics Manual / Grade will be provided to the Teachers.',
-        'LMS Access to Each child - Tracking program progress, Monitoring Assessment & Soft copy STEM Certificate for each child.',
-        'Robotics Competition & Robotics Exhibition conducted at the School.',
-        'Hardcopy Robotics Take home Book per child'
+        { title: 'Lab Kits:', desc: `${data.lab_kit_count || 30} Master Robotics & AI - Lab Kits will be provided to the school. Kit to Child ratio → ${data.kit_ratio || '1:2'}` },
+        { title: 'Lab Setup:', desc: 'Lab Wallpapers & Decoration material will be provided' },
+        { title: 'Curriculum:', desc: '28 Projects Based Curriculum covering: Robotics, Coding, 3D design, AI, Science' },
+        { title: 'Teacher Training:', desc: 'Year Long Teacher Training will be provided to the School Teachers' },
+        { title: 'Manuals:', desc: 'One Hardcopy Robotics Manual / Grade will be provided to the Teachers' },
+        { title: 'LMS Access:', desc: 'Each child gets LMS Access - Tracking progress, Monitoring Assessment & Soft copy STEM Certificate' },
+        { title: 'Events:', desc: 'Robotics Competition & Robotics Exhibition conducted at the School' },
+        { title: 'Books:', desc: 'Hardcopy Robotics Take home Book per child' }
       ];
 
       deliverables.forEach((item, idx) => {
-        const bullet = '•';
-        const lines = doc.splitTextToSize(`${bullet} ${item}`, CW - 5);
-        doc.text(lines, M + 3, y);
-        y += lines.length * 5 + 2;
+        // Red bullet
+        doc.setFillColor(220, 53, 69);
+        doc.circle(M + 3, y - 1.5, 1.5, 'F');
+        
+        // Bold title
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 58, 138);
+        doc.text(item.title, M + 8, y);
+        const titleWidth = doc.getTextWidth(item.title + ' ');
+        
+        // Normal description
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(50, 50, 50);
+        const descLines = doc.splitTextToSize(item.desc, CW - 12 - titleWidth);
+        if (descLines.length === 1) {
+          doc.text(descLines[0], M + 8 + titleWidth, y);
+          y += 6;
+        } else {
+          doc.text(descLines[0], M + 8 + titleWidth, y);
+          y += 5;
+          for (let i = 1; i < descLines.length; i++) {
+            doc.text(descLines[i], M + 12, y);
+            y += 5;
+          }
+          y += 1;
+        }
       });
       y += 5;
 
-      // ── FEES STRUCTURE ──────────────────────────────────────────
+      // ── FEES STRUCTURE TABLE ────────────────────────────────────
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
+      doc.setTextColor(220, 53, 69);
       doc.text('Fees Structure', M, y);
       y += 6;
+
+      // Build fees table from grade_pricing
+      const gradePricing = data.grade_pricing || [];
+      const feeRows = gradePricing.filter(gp => gp.grade && gp.price_per_student).map(gp => [
+        gp.grade,
+        `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}/student/year`
+      ]);
+      
+      // If no grade pricing, show default
+      if (feeRows.length === 0) {
+        feeRows.push(['Robotics & AI Program Fees', `Rs. ${(data.price_per_student || 690).toLocaleString('en-IN')}/student/year`]);
+      }
 
       autoTable(doc, {
         startY: y,
         head: [['Structure', 'Fees for Program']],
-        body: [
-          ['Robotics & AI Program Fees', `Rs. ${(data.price_per_student || 690).toLocaleString('en-IN')}/student/year`],
-        ],
+        body: feeRows,
         theme: 'grid',
-        headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontSize: 10, fontStyle: 'bold' },
+        headStyles: { fillColor: [30, 58, 138], textColor: [255, 255, 255], fontSize: 10, fontStyle: 'bold' },
         styles: { fontSize: 10, cellPadding: 4, textColor: [50, 50, 50] },
-        columnStyles: { 0: { cellWidth: 100 }, 1: { cellWidth: 80 } },
+        columnStyles: { 0: { cellWidth: 90 }, 1: { cellWidth: 90 } },
         margin: { left: M, right: M },
+        alternateRowStyles: { fillColor: [245, 247, 250] },
       });
       y = doc.lastAutoTable.finalY + 10;
 
       // ── PAGE 2 ──────────────────────────────────────────────────
       doc.addPage();
-      y = 15;
+      y = 12;
 
       // Logo on page 2
-      doc.addImage(logoDataUrl, 'PNG', M, y, 40, 22);
-      y += 28;
+      doc.addImage(logoDataUrl, 'PNG', M, y, 45, 25);
+      
+      // Red accent
+      doc.setDrawColor(220, 53, 69);
+      doc.setLineWidth(2);
+      doc.line(PW - 50, y + 8, PW - M, y + 8);
+      y += 32;
 
       // ── REQUIREMENTS FROM SCHOOL ────────────────────────────────
-      doc.setFontSize(12);
+      doc.setFillColor(220, 53, 69);
+      doc.rect(M, y, 4, 8, 'F');
+      doc.setFontSize(13);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      doc.text('Requirements from School', M, y);
-      y += 7;
+      doc.setTextColor(30, 58, 138);
+      doc.text('Requirements from School', M + 8, y + 6);
+      y += 14;
 
       doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
       doc.setTextColor(50, 50, 50);
 
       const requirements = [
@@ -1159,38 +1218,54 @@ const AdminSchoolCRM = () => {
       ];
 
       requirements.forEach((item, idx) => {
-        const bullet = '•';
-        const lines = doc.splitTextToSize(`${bullet} ${item}`, CW - 5);
-        doc.text(lines, M + 3, y);
-        y += lines.length * 5 + 3;
+        doc.setFillColor(30, 58, 138);
+        doc.circle(M + 3, y - 1.5, 1.5, 'F');
+        doc.setFont('helvetica', 'normal');
+        const lines = doc.splitTextToSize(item, CW - 12);
+        lines.forEach((line, lineIdx) => {
+          doc.text(line, M + 8, y);
+          y += 5;
+        });
+        y += 2;
       });
       y += 8;
 
-      // ── NEXT STEPS ──────────────────────────────────────────────
-      const nextStepsText = `Upon finalizing the proposal, we will proceed with signing the Memorandum of Understanding (MoU), which will be shared by OLL.
-
-After signing the MoU and completion of the payment process, a minimum of 15 days will be required to commence the teacher training program to ensure proper allocation and verification of resource personnel for quality execution.`;
-      const nextStepsLines = doc.splitTextToSize(nextStepsText, CW);
-      doc.text(nextStepsLines, M, y);
-      y += nextStepsLines.length * 5 + 10;
+      // ── NEXT STEPS BOX ──────────────────────────────────────────
+      doc.setFillColor(235, 243, 255);
+      doc.setDrawColor(30, 58, 138);
+      doc.setLineWidth(0.5);
+      const nextStepsText = `Upon finalizing the proposal, we will proceed with signing the Memorandum of Understanding (MoU), which will be shared by OLL.\n\nAfter signing the MoU and completion of the payment process, a minimum of 15 days will be required to commence the teacher training program to ensure proper allocation and verification of resource personnel for quality execution.`;
+      const nextStepsLines = doc.splitTextToSize(nextStepsText, CW - 16);
+      const boxHeight = nextStepsLines.length * 5 + 12;
+      doc.roundedRect(M, y, CW, boxHeight, 3, 3, 'FD');
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(50, 50, 50);
+      doc.text(nextStepsLines, M + 8, y + 8);
+      y += boxHeight + 10;
 
       // ── CLOSING ─────────────────────────────────────────────────
+      doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 138);
       doc.text('We look forward to your positive response and a fruitful collaboration ahead!', M, y);
       y += 12;
 
-      // ── CONTACT INFO ────────────────────────────────────────────
+      // ── CONTACT INFO BANNER ─────────────────────────────────────
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
+      doc.setTextColor(50, 50, 50);
       doc.text('For any queries or assistance, feel free to contact our Business Development Team at', M, y);
       y += 8;
 
-      doc.setFillColor(30, 58, 95);
-      doc.roundedRect(M, y, CW, 10, 2, 2, 'F');
-      doc.setFontSize(10);
+      // Blue banner with white text
+      doc.setFillColor(30, 58, 138);
+      doc.roundedRect(M, y, CW, 12, 2, 2, 'F');
+      doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(255, 255, 255);
-      doc.text('+91 9699188188 - Team OLL    www.oll.co', PW / 2, y + 6.5, { align: 'center' });
+      doc.text('+91 9699188188 - Team OLL', PW / 2 - 30, y + 7.5);
+      doc.setTextColor(220, 53, 69);
+      doc.text('www.oll.co', PW / 2 + 35, y + 7.5);
 
       // ── DOWNLOAD ────────────────────────────────────────────────
       const fileName = `Proposal_${(schoolName).replace(/\s+/g, '_')}_${format(new Date(), 'ddMMMyyyy')}.pdf`;
@@ -1237,10 +1312,18 @@ After signing the MoU and completion of the payment process, a minimum of 15 day
     if (!showEditLeadModal) return;
     
     try {
+      // Calculate total from grade_pricing
+      const totalStudents = editLeadData.grade_pricing.reduce((sum, gp) => sum + (parseInt(gp.students) || 0), 0);
+      const totalAmount = editLeadData.grade_pricing.reduce((sum, gp) => {
+        const students = parseInt(gp.students) || 0;
+        const price = parseInt(gp.price_per_student) || editLeadData.price_per_student || 690;
+        return sum + (students * price);
+      }, 0);
+      
       // Save proposal data to inquiry
       const updateData = {
         proposal_data: { ...editLeadData },
-        quoted_price: editLeadData.total_amount || (editLeadData.total_students * editLeadData.price_per_student) || 0,
+        quoted_price: totalAmount || 0,
       };
       
       // Also prepare onboarding_data for continuity when moving to Meeting Done
@@ -1249,13 +1332,9 @@ After signing the MoU and completion of the payment process, a minimum of 15 day
           offering: editLeadData.offering,
           training_type: editLeadData.training_type,
           pricing_type: 'per_student',
-          grade_pricing: [{
-            grade: `${editLeadData.grades_from || '1st'} to ${editLeadData.grades_to || '8th'}`,
-            students: editLeadData.total_students || '',
-            price_per_student: editLeadData.price_per_student || 690,
-          }],
-          total_students: editLeadData.total_students || 0,
-          total_amount: editLeadData.total_amount || 0,
+          grade_pricing: editLeadData.grade_pricing.filter(gp => gp.grade),
+          total_students: totalStudents,
+          total_amount: totalAmount,
           lab_kit_count: editLeadData.lab_kit_count || 30,
           kit_type: editLeadData.program_type === 'lab_setup' ? 'lab_setup' : 'student_kit',
         };
@@ -6153,25 +6232,20 @@ After signing the MoU and completion of the payment process, a minimum of 15 day
               </div>
             </div>
 
-            {/* Pricing Section */}
+            {/* Fees Structure Section (like conversion popup) */}
             <div className="bg-green-50 rounded-lg p-4">
               <h3 className="text-sm font-semibold text-green-800 mb-3 flex items-center gap-2">
-                <DollarSign className="w-4 h-4" /> Pricing Details
+                <DollarSign className="w-4 h-4" /> Fees Structure
               </h3>
-              <div className="grid grid-cols-2 gap-4">
+              
+              {/* Default Price & Min Students Row */}
+              <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label className="block text-xs font-medium text-green-700 mb-1">Price per Student (₹/year)</label>
+                  <label className="block text-xs font-medium text-green-700 mb-1">Default Price per Student (₹/year)</label>
                   <Input
                     type="number"
                     value={editLeadData.price_per_student}
-                    onChange={(e) => {
-                      const price = parseInt(e.target.value) || 0;
-                      setEditLeadData(prev => ({ 
-                        ...prev, 
-                        price_per_student: price,
-                        total_amount: prev.total_students * price
-                      }));
-                    }}
+                    onChange={(e) => setEditLeadData(prev => ({ ...prev, price_per_student: parseInt(e.target.value) || 690 }))}
                     className="h-9 text-sm"
                   />
                 </div>
@@ -6184,28 +6258,107 @@ After signing the MoU and completion of the payment process, a minimum of 15 day
                     className="h-9 text-sm"
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-green-700 mb-1">Expected Students</label>
-                  <Input
-                    type="number"
-                    value={editLeadData.total_students}
-                    onChange={(e) => {
-                      const students = parseInt(e.target.value) || 0;
-                      setEditLeadData(prev => ({ 
-                        ...prev, 
-                        total_students: students,
-                        total_amount: students * prev.price_per_student
-                      }));
-                    }}
-                    className="h-9 text-sm"
-                    placeholder="Enter expected student count"
-                  />
+              </div>
+
+              {/* Grade-wise Pricing Table */}
+              <div className="bg-white rounded-lg border border-green-200 overflow-hidden">
+                <div className="grid grid-cols-12 gap-2 p-2 bg-green-100 text-xs font-semibold text-green-800">
+                  <div className="col-span-4">Grade</div>
+                  <div className="col-span-3">Students</div>
+                  <div className="col-span-4">Price/Student (₹)</div>
+                  <div className="col-span-1"></div>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-green-700 mb-1">Total Amount (₹)</label>
-                  <div className="h-9 text-sm bg-white border border-green-200 rounded-lg px-3 flex items-center font-semibold text-green-800">
-                    ₹{(editLeadData.total_amount || 0).toLocaleString('en-IN')}
+                {editLeadData.grade_pricing.map((gp, idx) => (
+                  <div key={idx} className="grid grid-cols-12 gap-2 p-2 border-t border-green-100 items-center">
+                    <div className="col-span-4">
+                      <select
+                        value={gp.grade}
+                        onChange={(e) => {
+                          const newGrades = [...editLeadData.grade_pricing];
+                          newGrades[idx] = { ...newGrades[idx], grade: e.target.value };
+                          setEditLeadData(prev => ({ ...prev, grade_pricing: newGrades }));
+                        }}
+                        className="w-full h-8 text-xs border border-slate-200 rounded px-2"
+                      >
+                        <option value="">Select Grade</option>
+                        {['Jr. Kg', 'Sr. Kg', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'].map(g => (
+                          <option key={g} value={g}>{g}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="col-span-3">
+                      <Input
+                        type="number"
+                        placeholder="Count"
+                        value={gp.students}
+                        onChange={(e) => {
+                          const newGrades = [...editLeadData.grade_pricing];
+                          newGrades[idx] = { ...newGrades[idx], students: e.target.value };
+                          setEditLeadData(prev => ({ ...prev, grade_pricing: newGrades }));
+                        }}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="col-span-4">
+                      <Input
+                        type="number"
+                        placeholder={editLeadData.price_per_student.toString()}
+                        value={gp.price_per_student}
+                        onChange={(e) => {
+                          const newGrades = [...editLeadData.grade_pricing];
+                          newGrades[idx] = { ...newGrades[idx], price_per_student: e.target.value };
+                          setEditLeadData(prev => ({ ...prev, grade_pricing: newGrades }));
+                        }}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="col-span-1 flex justify-center">
+                      {editLeadData.grade_pricing.length > 1 && (
+                        <button
+                          onClick={() => {
+                            const newGrades = editLeadData.grade_pricing.filter((_, i) => i !== idx);
+                            setEditLeadData(prev => ({ ...prev, grade_pricing: newGrades }));
+                          }}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
+                ))}
+                <div className="p-2 border-t border-green-100">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setEditLeadData(prev => ({
+                      ...prev,
+                      grade_pricing: [...prev.grade_pricing, { grade: '', students: '', price_per_student: '' }]
+                    }))}
+                    className="text-green-600 hover:text-green-700 text-xs"
+                  >
+                    <Plus className="w-3 h-3 mr-1" /> Add Grade
+                  </Button>
+                </div>
+              </div>
+
+              {/* Total Summary */}
+              <div className="mt-3 p-3 bg-green-100 rounded-lg">
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium text-green-800">Total Students:</span>
+                  <span className="font-bold text-green-900">
+                    {editLeadData.grade_pricing.reduce((sum, gp) => sum + (parseInt(gp.students) || 0), 0).toLocaleString('en-IN')}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm mt-1">
+                  <span className="font-medium text-green-800">Total Amount:</span>
+                  <span className="font-bold text-green-900">
+                    ₹{editLeadData.grade_pricing.reduce((sum, gp) => {
+                      const students = parseInt(gp.students) || 0;
+                      const price = parseInt(gp.price_per_student) || editLeadData.price_per_student || 690;
+                      return sum + (students * price);
+                    }, 0).toLocaleString('en-IN')}
+                  </span>
                 </div>
               </div>
             </div>
