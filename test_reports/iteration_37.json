@@ -66,7 +66,7 @@
     }
   },
   "expected_cashfree_error_explanation": {
-    "error_message": "Broken Link! https://oll-edu-platform.preview.emergentagent.com/ is not enabled or approved",
+    "error_message": "Broken Link! https://oll-edu-hub.preview.emergentagent.com/ is not enabled or approved",
     "reason": "Preview domain not whitelisted in Cashfree merchant dashboard",
     "is_code_bug": false,
     "production_domain_whitelisted": "oll-front.wappzo.com (production domain is whitelisted)"

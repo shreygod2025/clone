@@ -54,7 +54,7 @@
   "test_execution_details": {
     "test_type": "Backend API Testing + Frontend UI Testing",
     "tools_used": ["pytest", "Playwright Browser Automation"],
-    "test_url": "https://oll-edu-platform.preview.emergentagent.com",
+    "test_url": "https://oll-edu-hub.preview.emergentagent.com",
     "pages_tested": [
       "/admin/login",
       "/admin/orders (Orders & Payments page)",

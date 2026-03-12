@@ -20,6 +20,9 @@ import { saveAs } from 'file-saver';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+// OLL Horizontal Logo for Proposals (black text version)
+const OLL_LOGO_HORIZONTAL = 'data:image/png;base64,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';
+
 // OLL Logo embedded as base64 (white version for dark header backgrounds)
 const OLL_LOGO_B64 = 'data:image/png;base64,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CrDVEWDgTYDdRQG2OwIMCLAAC7AFAwTYfRRguyPAwJsAO4sCbHkEGBBgARZgCwZEBNhVFGDbI8CAAAuwAFswQIDdRwG2PQIMvAmwoyjA1keAAQEWYAG2YIAAu48CbH0EGHgTYDdRgAVYgAEBFmABtmCAALuPAmx/BBh4E2AnUYAFWIABARZgAbZggAC7jwJsgQQYEGABFmALBpwJsIsowAIswIAAC7AAWzBAgN1HAbZB+gu8CbCLKMACLMCAAAvwwh9maQQYBNjxFGABtl/AigA7iAKswAIMCLAAu/wAAizAAgyAAAuwAAOcCbDeCjAAAizAAgwgwAIswAC8CbDcCjAAAizAAgwgwAIswAAIsAALMMCZAKutAAMgwAIswAACLMACDIAAC7AAA5wJsNgKMAACLMACDCDAAizAAAiwAAswwJkAa60AAyDAAizAAAIswAIMgAALsAADnAmw1AowAAIswAIMIMACLMAACLAACzCAAAuwAAPw5wFWWgEGQIAFWIABBFiABRgAARZgAQY4E2ChFWAABFiABRhAgAVYgAEQYAEWYAABFmABBuDPA6yzAgyAAAuwAAMIsAALMAACLMACDCDAAizAAAiwAAswwKoAy2xggBUYQIAFWIABBBgBBkCABViAAQRYgAUYgF8LsMoKMAACLMACDCDAAizAAAiwAAswgAALsAADIMACLMAAAizAAgwgwPorwAIMIMACLMAAAizAAgyAAAuwAAMIMAIMgAALsAADHAqwxgowAAIswAIMIMAIMAACLMACDCDAAizAAAiwAAswgAALsAADCLAAC7AAA4wLsMQKMAACLMACDCDACDAAAizAAgwgwAIswAAIsAALMIAAC7AAAwiwAAuwAAMIsAALMIAAC7AAA9ASYIUVYAAEWIAFGECAEWAABFiABRhAgAVYgAEQYAEWYAABFmABBhBgARZg/O0CCLBb61NYCkCAXX0BRoABARZgLAUgwAgwAgwIsAAjwMClALulAowAAwIswFgKQIARYAQYEGABRoABAXZrBdhSAAiwACPAgAC7tQJsKQABdvQFGAEGBNit9S0sBSDAjr4AI8CAAAswlgIQYAQYAQYEWIARYECA3VoBthQAAizACDAgwG6tAFsKQIAdfQFGgAEBdmt9C0sBCLCjL8AIMCDAbq1vYSkAAUaAEWBAgAUYAQYE2K0VYEsB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';
 
@@ -545,6 +548,9 @@ const AdminSchoolCRM = () => {
     price_per_student: 690,
     min_students: 800,
     grade_pricing: [{ grade: '', students: '', price_per_student: '' }],
+    book_type: 'individual', // individual or shared
+    course_type: 'only_robotics', // only_robotics or robotics_coding_ai
+    model: 'in_school', // in_school or hybrid
     notes: '',
   });
   const [showRenewalMeetingModal, setShowRenewalMeetingModal] = useState(null);
@@ -1014,6 +1020,9 @@ const AdminSchoolCRM = () => {
       price_per_student: existingData.price_per_student || 690,
       min_students: existingData.min_students || 800,
       grade_pricing: existingData.grade_pricing || [{ grade: '', students: '', price_per_student: '' }],
+      book_type: existingData.book_type || 'individual',
+      course_type: existingData.course_type || 'only_robotics',
+      model: existingData.model || 'in_school',
       notes: existingData.notes || '',
     });
     setShowEditLeadModal(inquiry);
@@ -1028,136 +1037,160 @@ const AdminSchoolCRM = () => {
       const CW = PW - M * 2;
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       
-      const logoDataUrl = OLL_LOGO_B64;
       const school = showEditLeadModal;
       const data = editLeadData;
       const schoolName = school?.school_name || 'School';
 
-      let y = 8;
+      // Helper function to add a bullet point with proper spacing
+      const addBulletPoint = (text, xOffset = 8) => {
+        doc.setFillColor(0, 0, 0);
+        doc.circle(M + 3, y - 1.5, 1.2, 'F');
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(0, 0, 0);
+        const lines = doc.splitTextToSize(text, CW - xOffset - 4);
+        lines.forEach((line, idx) => {
+          doc.text(line, M + xOffset, y);
+          y += 5;
+        });
+        y += 1;
+      };
 
-      // ── HEADER WITH LOGO AND RED ACCENT LINE ────────────────────
-      doc.addImage(logoDataUrl, 'PNG', M, y, 50, 28);
-      
-      // Red accent line at top right
-      doc.setDrawColor(220, 53, 69);
-      doc.setLineWidth(3);
-      doc.line(PW - 60, y + 5, PW - M, y + 5);
-      
-      y += 35;
+      let y = 12;
 
-      // ── TITLE (Blue) ────────────────────────────────────────────
-      doc.setFontSize(18);
+      // ── HEADER WITH HORIZONTAL OLL LOGO ────────────────────────
+      try {
+        doc.addImage(OLL_LOGO_HORIZONTAL, 'PNG', M, y, 50, 12);
+      } catch {
+        // Fallback: just add text if logo fails
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(0, 0, 0);
+        doc.text('OLL', M, y + 8);
+      }
+      y += 20;
+
+      // ── TITLE (Black) ────────────────────────────────────────────
+      doc.setFontSize(16);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 138); // Deep blue
-      doc.text("OLL Robotics and AI Program Proposal", PW / 2, y, { align: 'center' });
-      
-      // Red underline for title
-      doc.setDrawColor(220, 53, 69);
-      doc.setLineWidth(1);
-      doc.line(PW / 2 - 55, y + 3, PW / 2 + 55, y + 3);
-      y += 15;
+      doc.setTextColor(0, 0, 0);
+      doc.text('OLL Robotics and AI Program Proposal', PW / 2, y, { align: 'center' });
+      y += 12;
 
       // ── GREETING WITH BOLD SCHOOL NAME ──────────────────────────
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
-      doc.setTextColor(50, 50, 50);
+      doc.setTextColor(0, 0, 0);
       doc.text('For ', M, y);
       const forWidth = doc.getTextWidth('For ');
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 138);
       doc.text(schoolName, M + forWidth, y);
       const schoolNameWidth = doc.getTextWidth(schoolName);
       doc.setFont('helvetica', 'normal');
-      doc.setTextColor(50, 50, 50);
       doc.text(' Team,', M + forWidth + schoolNameWidth, y);
       y += 6;
       doc.text('Greetings from Team OLL', M, y);
       y += 10;
 
       // ── INTRODUCTION ────────────────────────────────────────────
+      doc.setFontSize(10);
+      doc.setTextColor(0, 0, 0);
       const introText = `We are delighted to share our OLL's Robotics & AI Lab Setup for the upcoming academic year for your school. Designed for students from Grades 1 to 10th, this program has already been successfully implemented in 400+ schools across India, with remarkable achievements.`;
       const introLines = doc.splitTextToSize(introText, CW);
       doc.text(introLines, M, y);
       y += introLines.length * 5 + 8;
 
-      // ── PROGRAM DETAILS BOX (Blue background) ───────────────────
-      doc.setFillColor(235, 243, 255); // Light blue
-      doc.setDrawColor(30, 58, 138);
+      // ── PROGRAM DETAILS BOX ───────────────────────────────────
+      doc.setFillColor(245, 245, 245);
+      doc.setDrawColor(200, 200, 200);
       doc.setLineWidth(0.5);
-      doc.roundedRect(M, y, CW, 26, 3, 3, 'FD');
+      doc.roundedRect(M, y, CW, 26, 2, 2, 'FD');
       
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 138);
-      doc.text('Program: Robotics & AI', M + 8, y + 8);
-      doc.text(`Type of Training: ${data.training_type === 'teacher_training' ? 'Teacher Training' : data.training_type === 'student_training' ? 'Student Training' : 'Both'}`, M + 8, y + 15);
+      doc.setTextColor(0, 0, 0);
+      
+      // Course type display
+      const courseTypeDisplay = data.course_type === 'robotics_coding_ai' ? 'Robotics, Coding & AI' : 'Robotics & AI';
+      doc.text(`Program: ${courseTypeDisplay}`, M + 8, y + 8);
+      
+      // Model display
+      const modelDisplay = data.model === 'hybrid' ? 'Hybrid' : 'In-School';
+      doc.text(`Model: ${modelDisplay}`, M + 100, y + 8);
+      
+      // Training type display
+      const trainingDisplay = data.training_type === 'teacher_training' ? 'Teacher Training' : data.training_type === 'student_training' ? 'Student Training' : 'Both';
+      doc.text(`Type of Training: ${trainingDisplay}`, M + 8, y + 15);
+      
       doc.text(`Grades: ${data.grades_from || '1st'} to ${data.grades_to || '8th'}`, M + 8, y + 22);
       y += 32;
 
-      // ── SECTION TITLE WITH RED ACCENT ───────────────────────────
-      doc.setFillColor(220, 53, 69);
-      doc.rect(M, y, 4, 8, 'F');
-      doc.setFontSize(14);
+      // ── SECTION TITLE ───────────────────────────────────────────
+      doc.setFontSize(13);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 138);
-      doc.text('Robotics & AI Lab Set-up', M + 8, y + 6);
-      y += 14;
+      doc.setTextColor(0, 0, 0);
+      doc.text('Robotics & AI Lab Set-up', M, y);
+      y += 10;
 
       // ── PROGRAM DELIVERABLES SECTION ────────────────────────────
-      doc.setFontSize(12);
+      doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(220, 53, 69); // Red heading
+      doc.setTextColor(0, 0, 0);
       doc.text('Program Deliverables', M, y);
       y += 8;
 
       doc.setFontSize(10);
-      doc.setTextColor(50, 50, 50);
+      doc.setTextColor(0, 0, 0);
 
-      const deliverables = [
-        { title: 'Lab Kits:', desc: `${data.lab_kit_count || 30} Master Robotics & AI - Lab Kits will be provided to the school. Kit to Child ratio → ${data.kit_ratio || '1:2'}` },
-        { title: 'Lab Setup:', desc: 'Lab Wallpapers & Decoration material will be provided' },
-        { title: 'Curriculum:', desc: '28 Projects Based Curriculum covering: Robotics, Coding, 3D design, AI, Science' },
-        { title: 'Teacher Training:', desc: 'Year Long Teacher Training will be provided to the School Teachers' },
-        { title: 'Manuals:', desc: 'One Hardcopy Robotics Manual / Grade will be provided to the Teachers' },
-        { title: 'LMS Access:', desc: 'Each child gets LMS Access - Tracking progress, Monitoring Assessment & Soft copy STEM Certificate' },
-        { title: 'Events:', desc: 'Robotics Competition & Robotics Exhibition conducted at the School' },
-        { title: 'Books:', desc: 'Hardcopy Robotics Take home Book per child' }
-      ];
+      // Build deliverables array conditionally based on kit_type, training_type, book_type
+      const deliverables = [];
 
-      deliverables.forEach((item, idx) => {
-        // Red bullet
-        doc.setFillColor(220, 53, 69);
-        doc.circle(M + 3, y - 1.5, 1.5, 'F');
-        
-        // Bold title
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(30, 58, 138);
-        doc.text(item.title, M + 8, y);
-        const titleWidth = doc.getTextWidth(item.title + ' ');
-        
-        // Normal description
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(50, 50, 50);
-        const descLines = doc.splitTextToSize(item.desc, CW - 12 - titleWidth);
-        if (descLines.length === 1) {
-          doc.text(descLines[0], M + 8 + titleWidth, y);
-          y += 6;
-        } else {
-          doc.text(descLines[0], M + 8 + titleWidth, y);
-          y += 5;
-          for (let i = 1; i < descLines.length; i++) {
-            doc.text(descLines[i], M + 12, y);
-            y += 5;
-          }
-          y += 1;
-        }
+      // 1. Lab Kits - only if program_type is lab_setup
+      if (data.program_type === 'lab_setup') {
+        deliverables.push(`${data.lab_kit_count || 30} Master Robotics & AI Lab Kits will be provided to the school. Kit to Child ratio: ${data.kit_ratio || '1:2'}`);
+        deliverables.push('Lab Wallpapers & Decoration material will be provided');
+      }
+
+      // 2. Individual kit - only if program_type is per_student
+      if (data.program_type === 'per_student') {
+        deliverables.push('Individual Robotics & AI Kit will be provided to each student');
+      }
+
+      // 3. Curriculum - always show
+      deliverables.push('28 Projects Based Curriculum covering: Robotics, Coding, 3D Design, AI, Science');
+
+      // 4. Training - based on training_type
+      if (data.training_type === 'teacher_training') {
+        deliverables.push('Year Long Teacher Training will be provided to the School Teachers');
+        deliverables.push('One Hardcopy Robotics Manual per Grade will be provided to the Teachers');
+      } else if (data.training_type === 'student_training') {
+        deliverables.push('Direct Student Training sessions will be conducted by OLL trainers');
+      } else if (data.training_type === 'both') {
+        deliverables.push('Year Long Teacher Training will be provided to the School Teachers');
+        deliverables.push('Direct Student Training sessions will also be conducted by OLL trainers');
+        deliverables.push('One Hardcopy Robotics Manual per Grade will be provided to the Teachers');
+      }
+
+      // 5. LMS Access - always show
+      deliverables.push('Each child gets LMS Access - Tracking progress, Monitoring Assessment & Soft copy STEM Certificate');
+
+      // 6. Events - always show
+      deliverables.push('Robotics Competition & Robotics Exhibition conducted at the School');
+
+      // 7. Books - only if book_type is individual
+      if (data.book_type === 'individual') {
+        deliverables.push('Hardcopy Robotics Take Home Book per child');
+      }
+
+      // Render deliverables with proper bullet points
+      deliverables.forEach((item) => {
+        addBulletPoint(item);
       });
-      y += 5;
+      y += 4;
 
       // ── FEES STRUCTURE TABLE ────────────────────────────────────
-      doc.setFontSize(12);
+      doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(220, 53, 69);
+      doc.setTextColor(0, 0, 0);
       doc.text('Fees Structure', M, y);
       y += 6;
 
@@ -1178,11 +1211,11 @@ const AdminSchoolCRM = () => {
         head: [['Structure', 'Fees for Program']],
         body: feeRows,
         theme: 'grid',
-        headStyles: { fillColor: [30, 58, 138], textColor: [255, 255, 255], fontSize: 10, fontStyle: 'bold' },
-        styles: { fontSize: 10, cellPadding: 4, textColor: [50, 50, 50] },
+        headStyles: { fillColor: [60, 60, 60], textColor: [255, 255, 255], fontSize: 10, fontStyle: 'bold' },
+        styles: { fontSize: 10, cellPadding: 4, textColor: [0, 0, 0] },
         columnStyles: { 0: { cellWidth: 90 }, 1: { cellWidth: 90 } },
         margin: { left: M, right: M },
-        alternateRowStyles: { fillColor: [245, 247, 250] },
+        alternateRowStyles: { fillColor: [248, 248, 248] },
       });
       y = doc.lastAutoTable.finalY + 10;
 
@@ -1191,25 +1224,25 @@ const AdminSchoolCRM = () => {
       y = 12;
 
       // Logo on page 2
-      doc.addImage(logoDataUrl, 'PNG', M, y, 45, 25);
-      
-      // Red accent
-      doc.setDrawColor(220, 53, 69);
-      doc.setLineWidth(2);
-      doc.line(PW - 50, y + 8, PW - M, y + 8);
-      y += 32;
+      try {
+        doc.addImage(OLL_LOGO_HORIZONTAL, 'PNG', M, y, 50, 12);
+      } catch {
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(0, 0, 0);
+        doc.text('OLL', M, y + 8);
+      }
+      y += 22;
 
       // ── REQUIREMENTS FROM SCHOOL ────────────────────────────────
-      doc.setFillColor(220, 53, 69);
-      doc.rect(M, y, 4, 8, 'F');
-      doc.setFontSize(13);
+      doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 138);
-      doc.text('Requirements from School', M + 8, y + 6);
-      y += 14;
+      doc.setTextColor(0, 0, 0);
+      doc.text('Requirements from School', M, y);
+      y += 8;
 
       doc.setFontSize(10);
-      doc.setTextColor(50, 50, 50);
+      doc.setTextColor(0, 0, 0);
 
       const requirements = [
         'Schools need to provide a list of enrolled students (Name, STD & Division), Schedule, school holidays & exam in a specific format for program related communication & Certification purposes.',
@@ -1217,55 +1250,40 @@ const AdminSchoolCRM = () => {
         'OLL collects 100% advance Program Fees which can be submitted via NEFT/Cheque to Clone Futura Live Solutions Private Limited.'
       ];
 
-      requirements.forEach((item, idx) => {
-        doc.setFillColor(30, 58, 138);
-        doc.circle(M + 3, y - 1.5, 1.5, 'F');
-        doc.setFont('helvetica', 'normal');
-        const lines = doc.splitTextToSize(item, CW - 12);
-        lines.forEach((line, lineIdx) => {
-          doc.text(line, M + 8, y);
-          y += 5;
-        });
-        y += 2;
+      requirements.forEach((item) => {
+        addBulletPoint(item);
       });
-      y += 8;
+      y += 6;
 
       // ── NEXT STEPS BOX ──────────────────────────────────────────
-      doc.setFillColor(235, 243, 255);
-      doc.setDrawColor(30, 58, 138);
+      doc.setFillColor(248, 248, 248);
+      doc.setDrawColor(200, 200, 200);
       doc.setLineWidth(0.5);
       const nextStepsText = `Upon finalizing the proposal, we will proceed with signing the Memorandum of Understanding (MoU), which will be shared by OLL.\n\nAfter signing the MoU and completion of the payment process, a minimum of 15 days will be required to commence the teacher training program to ensure proper allocation and verification of resource personnel for quality execution.`;
       const nextStepsLines = doc.splitTextToSize(nextStepsText, CW - 16);
       const boxHeight = nextStepsLines.length * 5 + 12;
-      doc.roundedRect(M, y, CW, boxHeight, 3, 3, 'FD');
+      doc.roundedRect(M, y, CW, boxHeight, 2, 2, 'FD');
       doc.setFont('helvetica', 'normal');
-      doc.setTextColor(50, 50, 50);
+      doc.setTextColor(0, 0, 0);
       doc.text(nextStepsLines, M + 8, y + 8);
       y += boxHeight + 10;
 
       // ── CLOSING ─────────────────────────────────────────────────
       doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 138);
+      doc.setTextColor(0, 0, 0);
       doc.text('We look forward to your positive response and a fruitful collaboration ahead!', M, y);
       y += 12;
 
-      // ── CONTACT INFO BANNER ─────────────────────────────────────
+      // ── CONTACT INFO ─────────────────────────────────────────────
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
-      doc.setTextColor(50, 50, 50);
+      doc.setTextColor(0, 0, 0);
       doc.text('For any queries or assistance, feel free to contact our Business Development Team at', M, y);
       y += 8;
 
-      // Blue banner with white text
-      doc.setFillColor(30, 58, 138);
-      doc.roundedRect(M, y, CW, 12, 2, 2, 'F');
-      doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(255, 255, 255);
-      doc.text('+91 9699188188 - Team OLL', PW / 2 - 30, y + 7.5);
-      doc.setTextColor(220, 53, 69);
-      doc.text('www.oll.co', PW / 2 + 35, y + 7.5);
+      doc.text('+91 9699188188  |  Team OLL  |  www.oll.co', M, y);
 
       // ── DOWNLOAD ────────────────────────────────────────────────
       const fileName = `Proposal_${(schoolName).replace(/\s+/g, '_')}_${format(new Date(), 'ddMMMyyyy')}.pdf`;
@@ -6229,6 +6247,39 @@ const AdminSchoolCRM = () => {
                     </div>
                   </>
                 )}
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Course Type</label>
+                  <select
+                    value={editLeadData.course_type}
+                    onChange={(e) => setEditLeadData(prev => ({ ...prev, course_type: e.target.value }))}
+                    className="w-full h-9 text-sm border border-slate-200 rounded-lg px-3"
+                  >
+                    <option value="only_robotics">Only Robotics & AI</option>
+                    <option value="robotics_coding_ai">Robotics, Coding & AI</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Model</label>
+                  <select
+                    value={editLeadData.model}
+                    onChange={(e) => setEditLeadData(prev => ({ ...prev, model: e.target.value }))}
+                    className="w-full h-9 text-sm border border-slate-200 rounded-lg px-3"
+                  >
+                    <option value="in_school">In-School</option>
+                    <option value="hybrid">Hybrid</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Book Type</label>
+                  <select
+                    value={editLeadData.book_type}
+                    onChange={(e) => setEditLeadData(prev => ({ ...prev, book_type: e.target.value }))}
+                    className="w-full h-9 text-sm border border-slate-200 rounded-lg px-3"
+                  >
+                    <option value="individual">Individual Books (per child)</option>
+                    <option value="shared">Shared / No Books</option>
+                  </select>
+                </div>
               </div>
             </div>
 
