@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Eye, Building2, Phone, MapPin, Plus, MessageSquare, Calendar, Archive, CalendarClock, CheckCircle2, CheckCircle, Video, Users, User, Mail, Layers, DollarSign, UserPlus, Send, Clock, Edit, Save, RefreshCw, RefreshCcw, X, Upload, Download, FileSpreadsheet, AlertCircle, Gift, FileText, Receipt, Paperclip, History, Ticket, FileCheck, ChevronDown, ChevronUp, Mic, MicOff, Play, Pause, Trash2, Package, ExternalLink, CreditCard, BarChart3 } from 'lucide-react';
+import { Search, Eye, Building2, Phone, MapPin, Plus, MessageSquare, Calendar, Archive, CalendarClock, CheckCircle2, CheckCircle, Video, Users, User, Mail, Layers, DollarSign, UserPlus, Send, Clock, Edit, Save, RefreshCw, RefreshCcw, X, Upload, Download, FileSpreadsheet, AlertCircle, Gift, FileText, Receipt, Paperclip, History, Ticket, FileCheck, ChevronDown, ChevronUp, Mic, MicOff, Play, Pause, Trash2, Package, ExternalLink, CreditCard, BarChart3, FileSignature } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -3042,6 +3042,316 @@ const AdminSchoolCRM = () => {
     } catch (err) {
       console.error('MOU generation error:', err);
       toast.error('Failed to generate MOU: ' + (err.message || 'Unknown error'));
+    } finally {
+      setGeneratingMOU(false);
+    }
+  };
+
+  // ═══ GENERATE RENEWAL PROPOSAL PDF ═══════════════════════════════════════════
+  const generateRenewalProposalPDF = async () => {
+    if (!showRenewalConvertModal) return;
+    setGeneratingProposal(true);
+    try {
+      const PW = 210, PH = 297, M = 15;
+      const CW = PW - M * 2;
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      
+      const school = showRenewalConvertModal;
+      const data = renewalConvertData;
+      const schoolName = school?.school_name || 'School';
+
+      // Helper function to add a bullet point with proper spacing (OLL Blue bullets)
+      const addBulletPoint = (text, xOffset = 8) => {
+        doc.setFillColor(30, 58, 95); // OLL Blue #1e3a5f
+        doc.circle(M + 3, y - 1.5, 1.2, 'F');
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(0, 0, 0);
+        const lines = doc.splitTextToSize(text, CW - xOffset - 4);
+        lines.forEach((line, idx) => {
+          doc.text(line, M + xOffset, y);
+          y += 5;
+        });
+        y += 1;
+      };
+
+      let y = 12;
+
+      // ── BLUE HEADER BAND WITH WHITE LOGO ────────────────────────
+      const HEADER_HEIGHT = 32;
+      doc.setFillColor(30, 58, 95); // OLL Blue #1e3a5f
+      doc.rect(0, 0, PW, HEADER_HEIGHT, 'F');
+      
+      try {
+        doc.addImage(OLL_LOGO_B64, 'PNG', M, 4, 45, 24);
+      } catch {
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(255, 255, 255);
+        doc.text('OLL', M + 10, 20);
+      }
+      y = HEADER_HEIGHT + 10;
+
+      // ── TITLE (OLL Blue) ────────────────────────────────────────────
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('OLL Robotics and AI Program Proposal (Renewal)', PW / 2, y, { align: 'center' });
+      y += 10;
+
+      // ── SCHOOL NAME ─────────────────────────────────────────────
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0, 0, 0);
+      doc.text(`School: ${schoolName}`, M, y);
+      y += 8;
+
+      // ── INTRODUCTION ────────────────────────────────────────────
+      doc.setFontSize(10);
+      doc.setTextColor(0, 0, 0);
+      const introText = `We are delighted to continue our partnership with ${schoolName} for the upcoming academic year. Our OLL Robotics & AI Program has been successfully implemented, and we look forward to another year of remarkable achievements with your students.`;
+      const introLines = doc.splitTextToSize(introText, CW);
+      introLines.forEach((line, idx) => {
+        doc.text(line, M, y + (idx * 7));
+      });
+      y += introLines.length * 7 + 8;
+
+      // ── PROGRAM DELIVERABLES SECTION (OLL Blue) ────────────────────────────
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('Program Deliverables', M, y);
+      y += 6;
+      doc.setFontSize(10);
+
+      const deliverables = [];
+      const kitType = data.kit_type || 'lab_setup';
+      if (kitType === 'lab_setup') {
+        deliverables.push(`${data.lab_kit_count || 30} Robotics & AI Lab Kits for the school lab`);
+      } else {
+        deliverables.push('Student Robotics Kits (1 per student or shared)');
+      }
+      deliverables.push('28 Projects Based Curriculum covering: Robotics, Coding, 3D Design, AI, Science');
+      if (data.training_type === 'teacher_training') {
+        deliverables.push('Year Long Teacher Training will be provided to the School Teachers');
+      } else if (data.training_type === 'student_training') {
+        deliverables.push('Direct Student Training sessions will be conducted by OLL trainers');
+      } else if (data.training_type === 'both') {
+        deliverables.push('Year Long Teacher Training + Direct Student Training sessions');
+      }
+      deliverables.push('LMS Access for each child - Progress tracking & Soft copy STEM Certificate');
+      deliverables.push('Robotics Competition & Robotics Exhibition');
+      if (data.book_type === 'individual') {
+        deliverables.push('Hardcopy Robotics Take Home Book per child');
+      }
+      deliverables.forEach((item) => addBulletPoint(item));
+      y += 4;
+
+      // ── FEES STRUCTURE TABLE ────────────────────────────────────
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('Fees Structure', M, y);
+      y += 6;
+
+      const pricingType = data.pricing_type || 'per_student';
+      let feeRows = [];
+      
+      if (pricingType === 'fixed') {
+        const fixedPrice = data.fixed_price || '0';
+        feeRows.push(['Robotics & AI Program (Annual Fee)', `Rs. ${Number(fixedPrice).toLocaleString('en-IN')}`]);
+      } else if (pricingType === 'both') {
+        const fixedPrice = data.fixed_price || '0';
+        feeRows.push(['Fixed Annual Program Fee', `Rs. ${Number(fixedPrice).toLocaleString('en-IN')}`]);
+        const gradePricing = data.grade_pricing || [];
+        gradePricing.filter(gp => gp.grade && gp.price_per_student).forEach(gp => {
+          feeRows.push([`Grade ${gp.grade} (Per Student)`, `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}/student/year`]);
+        });
+      } else {
+        const gradePricing = data.grade_pricing || [];
+        feeRows = gradePricing.filter(gp => gp.grade && gp.price_per_student).map(gp => [
+          `Grade ${gp.grade}`,
+          `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}/student/year`
+        ]);
+        if (feeRows.length === 0) {
+          feeRows.push(['Robotics & AI Program Fees', 'Per student pricing (to be discussed)']);
+        }
+      }
+
+      autoTable(doc, {
+        startY: y,
+        head: [['Structure', 'Fees for Program']],
+        body: feeRows,
+        theme: 'grid',
+        headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontSize: 10, fontStyle: 'bold' },
+        styles: { fontSize: 10, cellPadding: 4, textColor: [0, 0, 0] },
+        columnStyles: { 0: { cellWidth: 90 }, 1: { cellWidth: 90 } },
+        margin: { left: M, right: M },
+        alternateRowStyles: { fillColor: [248, 248, 248] },
+      });
+
+      y = doc.lastAutoTable.finalY + 10;
+
+      // ── CLOSING ─────────────────────────────────────────────────
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('We look forward to continuing our successful partnership!', M, y);
+
+      // Save the PDF
+      const fileName = `OLL_Proposal_Renewal_${schoolName.replace(/[^a-zA-Z0-9]/g, '_')}_${format(new Date(), 'yyyyMMdd')}.pdf`;
+      doc.save(fileName);
+      toast.success('Renewal Proposal generated successfully!');
+    } catch (err) {
+      console.error('Renewal Proposal generation error:', err);
+      toast.error('Failed to generate Renewal Proposal: ' + (err.message || 'Unknown error'));
+    } finally {
+      setGeneratingProposal(false);
+    }
+  };
+
+  // ═══ GENERATE RENEWAL MOU PDF ═══════════════════════════════════════════
+  const generateRenewalMOUPDF = async () => {
+    if (!showRenewalConvertModal) return;
+    setGeneratingMOU(true);
+    try {
+      const PW = 210, PH = 297, M = 15;
+      const CW = PW - M * 2;
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+      const logoDataUrl = OLL_LOGO_B64;
+      const school = showRenewalConvertModal;
+      const data = renewalConvertData;
+      const schoolName = school?.school_name || 'School';
+      const schoolAddress = data.address || school?.address || '';
+
+      let y = 12;
+
+      // ── HEADER WITH LOGO ───────────────────────────────────────────
+      try {
+        doc.addImage(logoDataUrl, 'PNG', M, y, 40, 20);
+      } catch {
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text('OLL', M, y + 10);
+      }
+      y += 30;
+
+      // ── TITLE ──────────────────────────────────────────────────────
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(30, 58, 95);
+      doc.text('MEMORANDUM OF UNDERSTANDING', PW / 2, y, { align: 'center' });
+      y += 6;
+      doc.setFontSize(12);
+      doc.text('(Renewal Agreement)', PW / 2, y, { align: 'center' });
+      y += 12;
+
+      // ── DATE ───────────────────────────────────────────────────────
+      doc.setFontSize(10);
+      doc.setTextColor(0, 0, 0);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Date: ${format(new Date(), 'dd MMMM yyyy')}`, PW - M, y, { align: 'right' });
+      y += 12;
+
+      // ── PARTIES ────────────────────────────────────────────────────
+      doc.setFont('helvetica', 'bold');
+      doc.text('Between:', M, y);
+      y += 6;
+      doc.setFont('helvetica', 'normal');
+      doc.text('1. OLL Technology Private Limited (hereinafter referred to as "OLL")', M, y);
+      y += 6;
+      doc.text(`2. ${schoolName}`, M, y);
+      if (schoolAddress) {
+        y += 5;
+        const addressLines = doc.splitTextToSize(`   Address: ${schoolAddress}`, CW);
+        doc.text(addressLines, M, y);
+        y += addressLines.length * 5;
+      }
+      y += 6;
+      doc.text('   (hereinafter referred to as "The School")', M, y);
+      y += 12;
+
+      // ── PREAMBLE ───────────────────────────────────────────────────
+      doc.setFont('helvetica', 'bold');
+      doc.text('WHEREAS:', M, y);
+      y += 6;
+      doc.setFont('helvetica', 'normal');
+      const preambleText = `The School has successfully completed the previous academic year with OLL's Robotics & AI Program and wishes to continue the partnership for the upcoming academic year. Both parties agree to renew this arrangement under the terms specified herein.`;
+      const preambleLines = doc.splitTextToSize(preambleText, CW);
+      doc.text(preambleLines, M, y);
+      y += preambleLines.length * 5 + 8;
+
+      // ── PROGRAM DETAILS ────────────────────────────────────────────
+      doc.setFont('helvetica', 'bold');
+      doc.text('PROGRAM DETAILS:', M, y);
+      y += 6;
+      doc.setFont('helvetica', 'normal');
+
+      const programDetails = [];
+      programDetails.push(`• Program: ${data.offering || 'Robotics Curriculum with Take-home Kits & Books'}`);
+      programDetails.push(`• Model: ${data.model === 'compulsory' ? 'Compulsory' : 'Optional'}`);
+      programDetails.push(`• Kit Type: ${data.kit_type === 'lab_setup' ? `Lab Setup (${data.lab_kit_count || 30} kits)` : 'Student Kits'}`);
+      programDetails.push(`• Training: ${data.training_type === 'teacher_training' ? 'Teacher Training' : data.training_type === 'student_training' ? 'Student Training' : 'Both'}`);
+      programDetails.push(`• Book Type: ${data.book_type === 'individual' ? 'Individual Books (per child)' : 'Shared / No Books'}`);
+
+      programDetails.forEach(detail => {
+        doc.text(detail, M, y);
+        y += 5;
+      });
+      y += 6;
+
+      // ── FINANCIAL TERMS ────────────────────────────────────────────
+      doc.setFont('helvetica', 'bold');
+      doc.text('FINANCIAL TERMS:', M, y);
+      y += 6;
+      doc.setFont('helvetica', 'normal');
+
+      const pricingType = data.pricing_type || 'per_student';
+      if (pricingType === 'fixed') {
+        doc.text(`• Total Program Fee: Rs. ${Number(data.fixed_price || 0).toLocaleString('en-IN')}`, M, y);
+      } else if (pricingType === 'both') {
+        doc.text(`• Fixed Component: Rs. ${Number(data.fixed_price || 0).toLocaleString('en-IN')}`, M, y);
+        y += 5;
+        doc.text('• Plus per-student fees as per grade structure', M, y);
+      } else {
+        doc.text('• Per-student pricing as per agreed grade structure', M, y);
+      }
+      y += 5;
+      doc.text(`• Payment Mode: ${data.payment_mode === 'from_school' ? 'From School' : 'From Students (Online)'}`, M, y);
+      y += 12;
+
+      // ── CONTRACT PERIOD ────────────────────────────────────────────
+      if (data.contract_start || data.contract_end) {
+        doc.setFont('helvetica', 'bold');
+        doc.text('CONTRACT PERIOD:', M, y);
+        y += 6;
+        doc.setFont('helvetica', 'normal');
+        const startDate = data.contract_start ? format(new Date(data.contract_start), 'dd MMM yyyy') : 'TBD';
+        const endDate = data.contract_end ? format(new Date(data.contract_end), 'dd MMM yyyy') : 'TBD';
+        doc.text(`From: ${startDate} To: ${endDate}`, M, y);
+        y += 12;
+      }
+
+      // ── SIGNATURES ─────────────────────────────────────────────────
+      y = Math.max(y, 220);
+      doc.setFont('helvetica', 'bold');
+      doc.text('For OLL Technology Pvt. Ltd.', M, y);
+      doc.text('For The School', PW - M - 60, y);
+      y += 20;
+      doc.setFont('helvetica', 'normal');
+      doc.text('Authorized Signatory', M, y);
+      doc.text('Authorized Signatory', PW - M - 60, y);
+      y += 5;
+      doc.text('Date: _______________', M, y);
+      doc.text('Date: _______________', PW - M - 60, y);
+
+      // Save the PDF
+      const fileName = `OLL_MOU_Renewal_${schoolName.replace(/[^a-zA-Z0-9]/g, '_')}_${format(new Date(), 'yyyyMMdd')}.pdf`;
+      doc.save(fileName);
+      toast.success('Renewal MOU generated successfully!');
+    } catch (err) {
+      console.error('Renewal MOU generation error:', err);
+      toast.error('Failed to generate Renewal MOU: ' + (err.message || 'Unknown error'));
     } finally {
       setGeneratingMOU(false);
     }
@@ -7437,6 +7747,49 @@ const AdminSchoolCRM = () => {
                 />
               </div>
             )}
+
+            {/* Document Generation Section */}
+            <div className="bg-slate-50 rounded-lg p-4 border border-slate-200">
+              <h4 className="font-medium text-slate-800 mb-3 flex items-center gap-2">
+                <FileText className="w-4 h-4" /> Generate Documents
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {/* Generate Proposal Button */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => generateRenewalProposalPDF()}
+                  className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                  data-testid="renewal-generate-proposal"
+                >
+                  <FileText className="w-4 h-4 mr-1" /> Generate Proposal
+                </Button>
+                
+                {/* Generate MOU Button */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => generateRenewalMOUPDF()}
+                  className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                  data-testid="renewal-generate-mou"
+                >
+                  <FileSignature className="w-4 h-4 mr-1" /> Generate MOU
+                </Button>
+                
+                {/* Generate Parent Circular - only when payment from student (online via Cashfree) */}
+                {renewalConvertData.payment_mode === 'from_student' && renewalConvertData.payment_method === 'online' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => generateParentCircularPDF(showRenewalConvertModal, renewalConvertData, setRenewalConvertData)}
+                    className="text-green-600 border-green-200 hover:bg-green-50"
+                    data-testid="renewal-generate-parent-circular"
+                  >
+                    <Mail className="w-4 h-4 mr-1" /> Generate Parent Circular
+                  </Button>
+                )}
+              </div>
+            </div>
 
             <div className="flex gap-3 pt-2">
               <Button variant="outline" onClick={() => setShowRenewalConvertModal(null)} className="flex-1">
