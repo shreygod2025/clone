@@ -176,7 +176,8 @@ const AdminOrders = () => {
     invoice_url: '',
     receipt_url: '',
     gst_type: '',
-    payment_link: ''
+    payment_link: '',
+    paid_amount: 0
   });
 
   useEffect(() => {
@@ -314,7 +315,7 @@ const AdminOrders = () => {
       
       toast.success('Payment updated successfully');
       setShowPaymentModal(null);
-      setPaymentUpdate({ status: '', payment_date: '', transaction_id: '', notes: '', invoice_url: '', receipt_url: '', gst_type: '' });
+      setPaymentUpdate({ status: '', payment_date: '', transaction_id: '', notes: '', invoice_url: '', receipt_url: '', gst_type: '', paid_amount: 0 });
       fetchPayments();
     } catch (error) {
       toast.error('Failed to update payment');
@@ -331,7 +332,8 @@ const AdminOrders = () => {
       invoice_url: payment.invoice_url || '',
       receipt_url: payment.receipt_url || '',
       gst_type: payment.gst_type || '',
-      payment_link: payment.payment_link || ''
+      payment_link: payment.payment_link || '',
+      paid_amount: payment.paid_amount || 0
     });
   };
 
@@ -428,6 +430,7 @@ const AdminOrders = () => {
           tranches: [],
           totalAmount: 0,
           paidAmount: 0,
+          receivableAmount: 0,
           hasOverdue: false,
           hasPending: false,
         };
@@ -435,8 +438,18 @@ const AdminOrders = () => {
       
       groups[schoolId].tranches.push(payment);
       groups[schoolId].totalAmount += payment.amount || 0;
+      
+      // Calculate paid and receivable amounts
       if (payment.status === 'paid') {
         groups[schoolId].paidAmount += payment.amount || 0;
+      } else if (payment.status === 'partial') {
+        // For partial payments, add the paid_amount to paidAmount and the rest to receivable
+        const partialPaid = payment.paid_amount || 0;
+        groups[schoolId].paidAmount += partialPaid;
+        groups[schoolId].receivableAmount += (payment.amount || 0) - partialPaid;
+      } else {
+        // Pending or other status - full amount is receivable
+        groups[schoolId].receivableAmount += payment.amount || 0;
       }
       
       let status = payment.status || 'pending';
@@ -959,10 +972,17 @@ const AdminOrders = () => {
                           <td className="px-6 py-5">
                             <div>
                               <p className="font-bold text-lg text-slate-800">₹{group.totalAmount.toLocaleString()}</p>
+                              <div className="mt-1 space-y-0.5">
+                                <p className="text-xs text-green-600 font-medium">
+                                  Paid: ₹{group.paidAmount.toLocaleString()}
+                                </p>
+                                <p className="text-xs text-orange-600 font-medium">
+                                  Receivable: ₹{group.receivableAmount.toLocaleString()}
+                                </p>
+                              </div>
                               {group.paidAmount > 0 && group.paidAmount < group.totalAmount && (
                                 <div className="mt-1">
-                                  <p className="text-xs text-green-600 font-medium">₹{group.paidAmount.toLocaleString()} paid</p>
-                                  <div className="w-20 h-1.5 bg-slate-200 rounded-full mt-1 overflow-hidden">
+                                  <div className="w-24 h-1.5 bg-slate-200 rounded-full overflow-hidden">
                                     <div 
                                       className="h-full bg-green-500 rounded-full transition-all" 
                                       style={{ width: `${(group.paidAmount / group.totalAmount) * 100}%` }}
@@ -1530,6 +1550,32 @@ const AdminOrders = () => {
                     value={paymentUpdate.payment_date}
                     onChange={(e) => setPaymentUpdate(prev => ({ ...prev, payment_date: e.target.value }))}
                   />
+                </div>
+              )}
+
+              {/* Partial Payment Amount */}
+              {paymentUpdate.status === 'partial' && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Amount Received <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">₹</span>
+                    <Input
+                      type="number"
+                      placeholder="Enter amount received"
+                      value={paymentUpdate.paid_amount || ''}
+                      onChange={(e) => setPaymentUpdate(prev => ({ ...prev, paid_amount: parseFloat(e.target.value) || 0 }))}
+                      className="pl-8"
+                      data-testid="partial-amount-input"
+                    />
+                  </div>
+                  {showPaymentModal?.amount && (
+                    <p className="text-xs text-slate-500 mt-1">
+                      Total Amount: ₹{showPaymentModal.amount.toLocaleString()} | 
+                      Remaining: ₹{Math.max(0, (showPaymentModal.amount - (paymentUpdate.paid_amount || 0))).toLocaleString()}
+                    </p>
+                  )}
                 </div>
               )}
 

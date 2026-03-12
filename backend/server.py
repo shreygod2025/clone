@@ -11099,6 +11099,7 @@ async def get_school_payments(
                 "invoice_url": existing_payment.get("invoice_url") if existing_payment else None,
                 "receipt_url": existing_payment.get("receipt_url") if existing_payment else None,
                 "notes": existing_payment.get("notes") if existing_payment else tranche.get("notes", ""),
+                "paid_amount": existing_payment.get("paid_amount", 0) if existing_payment else 0,
                 "created_at": existing_payment.get("created_at") if existing_payment else school.get("created_at"),
             }
             payments.append(payment)
@@ -11267,6 +11268,7 @@ async def update_payment(
             "gst_type": data.get("gst_type"),
             "payment_link": data.get("payment_link"),
             "notes": data.get("notes", ""),
+            "paid_amount": data.get("paid_amount", 0),
             "updated_at": datetime.now(timezone.utc).isoformat(),
             "updated_by": user.get("name", user.get("email", "Admin")),
         }

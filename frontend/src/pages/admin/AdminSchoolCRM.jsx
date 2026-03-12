@@ -16,6 +16,8 @@ import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import QRCode from 'qrcode';
+import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, BorderStyle, ImageRun, HeadingLevel, ExternalHyperlink } from 'docx';
+import { saveAs } from 'file-saver';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -2628,7 +2630,7 @@ const AdminSchoolCRM = () => {
     }
   };
 
-  // ═══ GENERATE PARENT CIRCULAR PDF ═══════════════════════════════════════════
+  // ═══ GENERATE PARENT CIRCULAR DOC ═══════════════════════════════════════════
   const generateParentCircularPDF = async (schoolOverride = null, dataOverride = null, setDataFunc = null) => {
     const school = schoolOverride || showOnboardModal;
     const data = dataOverride || onboardData;
@@ -2637,11 +2639,6 @@ const AdminSchoolCRM = () => {
     if (!school) return;
     setGeneratingParentCircular(true);
     try {
-      const PW = 210, PH = 297, M = 15;
-      const CW = PW - M * 2;
-      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-
-      const logoDataUrl = OLL_LOGO_B64;
       const schoolName = school?.school_name || 'School';
       const academicYear = data.contract_start ? format(new Date(data.contract_start), 'yyyy') + '-' + (parseInt(format(new Date(data.contract_start), 'yy')) + 1).toString().padStart(2, '0') : '2026-27';
       
@@ -2654,211 +2651,220 @@ const AdminSchoolCRM = () => {
         gradeRangeText = sortedGrades.length > 1 ? `${sortedGrades[0]} to ${sortedGrades[sortedGrades.length - 1]}` : sortedGrades[0];
       }
       
-      // Payment link (use the school's payment link or generate one)
+      // Payment link
       const paymentLink = data.payment_link || school?.payment_link || `https://oll.co/school-pay/${school?.id || 'demo'}`;
 
-      let y = 10;
-
-      // ── SCHOOL NAME AT TOP ──────────────────────────────────────
-      doc.setFontSize(18);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      const schoolNameLines = doc.splitTextToSize(schoolName, CW);
-      doc.text(schoolNameLines, PW / 2, y, { align: 'center' });
-      y += schoolNameLines.length * 8 + 5;
-
-      // ── OLL LOGO ────────────────────────────────────────────────
-      doc.addImage(logoDataUrl, 'PNG', PW / 2 - 25, y, 50, 28);
-      y += 32;
-
-      // ── TITLE ───────────────────────────────────────────────────
-      doc.setFontSize(16);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      doc.text(`Robotics & A.I. for Academic Year ${academicYear}`, PW / 2, y, { align: 'center' });
-      y += 12;
-
-      // ── DEAR PARENTS ────────────────────────────────────────────
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(40, 40, 40);
-      doc.text('Dear Parents,', M, y);
-      y += 8;
-
-      // ── INTRODUCTION PARAGRAPH ──────────────────────────────────
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(50, 50, 50);
-      
-      const introText = `As per the release of NEP 2020, Our school will introduce the Robotics & A.I. Program as a subject from next academic year. We are thrilled to announce our partnership with OLL, to train all our students of Classes from ${gradeRangeText || '_____ to _____'} grade in the field of Robotics & AI so that our children will have an upper hand in the future work industry. OLL is a skill partner with over 400+ Schools across India.`;
-
-      const introLines = doc.splitTextToSize(introText, CW);
-      doc.text(introLines, M, y);
-      y += introLines.length * 5.5 + 8;
-
-      // ── PROGRAM DELIVERABLES ────────────────────────────────────
-      doc.setFontSize(13);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      doc.text('Program Deliverables', M, y);
-      y += 8;
-
-      doc.setFontSize(11);
-      doc.setTextColor(50, 50, 50);
-
-      const deliverables = [
-        { title: 'Take home Robotic Kit:', desc: 'Every child gets their own Robotics Kit' },
-        { title: 'Duration:', desc: 'Year long - Once a Week, Offline in the school during school hours.' },
-        { title: 'Assessment & Certification:', desc: 'will be conducted by the expert from OLL. International Accredited Certificates by STEM.org will be provided after assessment' },
-        { title: 'Tech Exhibition:', desc: 'Parents will be invited to an exhibition where our students will proudly showcase their innovative robotics projects.' },
-        { title: '16 Projects:', desc: 'will be made from that kit' },
-        { title: 'Hard Copy Robotics & AI Books:', desc: 'will be provided (Step by Step manual + videos, and PDFs)' },
-      ];
-
-      deliverables.forEach((item, idx) => {
-        doc.setFont('helvetica', 'bold');
-        const numText = `${idx + 1}. ${item.title} `;
-        doc.text(numText, M, y);
-        const numWidth = doc.getTextWidth(numText);
-        doc.setFont('helvetica', 'normal');
-        const descLines = doc.splitTextToSize(item.desc, CW - numWidth - 5);
-        doc.text(descLines[0], M + numWidth, y);
-        y += 5.5;
-        if (descLines.length > 1) {
-          for (let i = 1; i < descLines.length; i++) {
-            doc.text(descLines[i], M + 8, y);
-            y += 5.5;
-          }
-        }
-        y += 1;
-      });
-      y += 6;
-
-      // ── FEES SECTION ────────────────────────────────────────────
-      doc.setFontSize(13);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      doc.text('Following are the Fees for the Robotics Program', M, y);
-      y += 8;
-
-      // ── FEE TABLE ───────────────────────────────────────────────
-      let feeTableBody;
-      if (enteredGrades.length > 0) {
-        feeTableBody = enteredGrades.map(gp => [
-          gp.grade,
-          `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}`,
-        ]);
-      } else if (data.pricing_type === 'fixed' && data.fixed_price) {
-        feeTableBody = [['All Grades', `Rs. ${Number(data.fixed_price).toLocaleString('en-IN')}`]];
-      } else {
-        feeTableBody = [
-          ['1st to 4th', 'Rs. ________'],
-          ['5th to 8th', 'Rs. ________'],
-        ];
-      }
-
-      autoTable(doc, {
-        startY: y,
-        head: [['Grade', 'Fee per Student']],
-        body: feeTableBody,
-        theme: 'grid',
-        headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontSize: 11, fontStyle: 'bold', halign: 'center' },
-        styles: { fontSize: 10.5, cellPadding: 3.5, textColor: [50, 50, 50] },
-        columnStyles: { 0: { cellWidth: 70, halign: 'center' }, 1: { cellWidth: 70, halign: 'center' } },
-        margin: { left: M + 20, right: M + 20 },
-        alternateRowStyles: { fillColor: [245, 249, 255] },
-      });
-      y = doc.lastAutoTable.finalY + 8;
-
-      // ── PAYMENT LINK WITH QR CODE ───────────────────────────────
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      const gradeRangeForLink = gradeRangeText || '1st to 8th';
-      doc.text(`For Grades ${gradeRangeForLink} Payment Link:`, M, y);
-      y += 6;
-
-      // Add clickable link
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(0, 102, 204);
-      doc.textWithLink(paymentLink, M, y, { url: paymentLink });
-      y += 8;
-
-      // Generate QR code for payment link
+      // Generate QR code as base64 image
+      let qrImageData = null;
       try {
         const qrDataUrl = await QRCode.toDataURL(paymentLink, {
-          width: 200,
+          width: 150,
           margin: 1,
           color: { dark: '#1e3a5f', light: '#ffffff' },
         });
-        
-        // Add QR code to PDF
-        doc.setFontSize(10);
-        doc.setTextColor(50, 50, 50);
-        doc.setFont('helvetica', 'normal');
-        doc.text('Scan QR Code to Pay:', M, y);
-        y += 3;
-        doc.addImage(qrDataUrl, 'PNG', M, y, 35, 35);
-        y += 40;
+        // Convert data URL to base64
+        qrImageData = qrDataUrl.split(',')[1];
       } catch (qrErr) {
         console.error('QR Code generation failed:', qrErr);
-        y += 5;
       }
 
-      // ── PLEASE NOTE BOX ─────────────────────────────────────────
-      doc.setFillColor(255, 248, 225);
-      doc.setDrawColor(255, 193, 7);
-      doc.setLineWidth(0.5);
-      doc.roundedRect(M, y, CW, 18, 2, 2, 'FD');
+      // Build fee table rows
+      let feeTableRows = [];
+      if (enteredGrades.length > 0) {
+        feeTableRows = enteredGrades.map(gp => 
+          new TableRow({
+            children: [
+              new TableCell({
+                children: [new Paragraph({ children: [new TextRun({ text: gp.grade, size: 22 })], alignment: AlignmentType.CENTER })],
+                width: { size: 50, type: WidthType.PERCENTAGE },
+              }),
+              new TableCell({
+                children: [new Paragraph({ children: [new TextRun({ text: `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}`, size: 22 })], alignment: AlignmentType.CENTER })],
+                width: { size: 50, type: WidthType.PERCENTAGE },
+              }),
+            ],
+          })
+        );
+      } else if (data.pricing_type === 'fixed' && data.fixed_price) {
+        feeTableRows = [
+          new TableRow({
+            children: [
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'All Grades', size: 22 })], alignment: AlignmentType.CENTER })], width: { size: 50, type: WidthType.PERCENTAGE } }),
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: `Rs. ${Number(data.fixed_price).toLocaleString('en-IN')}`, size: 22 })], alignment: AlignmentType.CENTER })], width: { size: 50, type: WidthType.PERCENTAGE } }),
+            ],
+          }),
+        ];
+      } else {
+        feeTableRows = [
+          new TableRow({
+            children: [
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: '1st to 4th', size: 22 })], alignment: AlignmentType.CENTER })], width: { size: 50, type: WidthType.PERCENTAGE } }),
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Rs. ________', size: 22 })], alignment: AlignmentType.CENTER })], width: { size: 50, type: WidthType.PERCENTAGE } }),
+            ],
+          }),
+          new TableRow({
+            children: [
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: '5th to 8th', size: 22 })], alignment: AlignmentType.CENTER })], width: { size: 50, type: WidthType.PERCENTAGE } }),
+              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Rs. ________', size: 22 })], alignment: AlignmentType.CENTER })], width: { size: 50, type: WidthType.PERCENTAGE } }),
+            ],
+          }),
+        ];
+      }
+
+      // Create document sections
+      const docSections = [
+        // School Name
+        new Paragraph({
+          children: [new TextRun({ text: schoolName, bold: true, size: 36, color: '1E3A5F' })],
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 200 },
+        }),
+        // Title
+        new Paragraph({
+          children: [new TextRun({ text: `Robotics & A.I. for Academic Year ${academicYear}`, bold: true, size: 32, color: '1E3A5F' })],
+          alignment: AlignmentType.CENTER,
+          spacing: { after: 400 },
+        }),
+        // Dear Parents
+        new Paragraph({
+          children: [new TextRun({ text: 'Dear Parents,', bold: true, size: 24 })],
+          spacing: { after: 200 },
+        }),
+        // Introduction paragraph
+        new Paragraph({
+          children: [
+            new TextRun({ text: `As per the release of NEP 2020, Our school will introduce the Robotics & A.I. Program as a subject from next academic year. We are thrilled to announce our partnership with OLL, to train all our students of Classes from ${gradeRangeText || '_____ to _____'} grade in the field of Robotics & AI so that our children will have an upper hand in the future work industry. OLL is a skill partner with over 400+ Schools across India.`, size: 22 }),
+          ],
+          spacing: { after: 300 },
+        }),
+        // Program Deliverables heading
+        new Paragraph({
+          children: [new TextRun({ text: 'Program Deliverables', bold: true, size: 26, color: '1E3A5F' })],
+          spacing: { before: 200, after: 200 },
+        }),
+        // Deliverables list
+        new Paragraph({ children: [new TextRun({ text: '1. Take home Robotic Kit: ', bold: true, size: 22 }), new TextRun({ text: 'Every child gets their own Robotics Kit', size: 22 })], spacing: { after: 100 } }),
+        new Paragraph({ children: [new TextRun({ text: '2. Duration: ', bold: true, size: 22 }), new TextRun({ text: 'Year long - Once a Week, Offline in the school during school hours.', size: 22 })], spacing: { after: 100 } }),
+        new Paragraph({ children: [new TextRun({ text: '3. Assessment & Certification: ', bold: true, size: 22 }), new TextRun({ text: 'will be conducted by the expert from OLL. International Accredited Certificates by STEM.org will be provided after assessment', size: 22 })], spacing: { after: 100 } }),
+        new Paragraph({ children: [new TextRun({ text: '4. Tech Exhibition: ', bold: true, size: 22 }), new TextRun({ text: 'Parents will be invited to an exhibition where our students will proudly showcase their innovative robotics projects.', size: 22 })], spacing: { after: 100 } }),
+        new Paragraph({ children: [new TextRun({ text: '5. 16 Projects: ', bold: true, size: 22 }), new TextRun({ text: 'will be made from that kit', size: 22 })], spacing: { after: 100 } }),
+        new Paragraph({ children: [new TextRun({ text: '6. Hard Copy Robotics & AI Books: ', bold: true, size: 22 }), new TextRun({ text: 'will be provided (Step by Step manual + videos, and PDFs)', size: 22 })], spacing: { after: 300 } }),
+        // Fees heading
+        new Paragraph({
+          children: [new TextRun({ text: 'Following are the Fees for the Robotics Program', bold: true, size: 26, color: '1E3A5F' })],
+          spacing: { before: 200, after: 200 },
+        }),
+        // Fee Table
+        new Table({
+          width: { size: 70, type: WidthType.PERCENTAGE },
+          rows: [
+            new TableRow({
+              children: [
+                new TableCell({
+                  children: [new Paragraph({ children: [new TextRun({ text: 'Grade', bold: true, size: 22, color: 'FFFFFF' })], alignment: AlignmentType.CENTER })],
+                  width: { size: 50, type: WidthType.PERCENTAGE },
+                  shading: { fill: '1E3A5F' },
+                }),
+                new TableCell({
+                  children: [new Paragraph({ children: [new TextRun({ text: 'Fee per Student', bold: true, size: 22, color: 'FFFFFF' })], alignment: AlignmentType.CENTER })],
+                  width: { size: 50, type: WidthType.PERCENTAGE },
+                  shading: { fill: '1E3A5F' },
+                }),
+              ],
+            }),
+            ...feeTableRows,
+          ],
+        }),
+        // Payment Link heading
+        new Paragraph({
+          children: [new TextRun({ text: `For Grades ${gradeRangeText || '1st to 8th'} Payment Link:`, bold: true, size: 24, color: '1E3A5F' })],
+          spacing: { before: 300, after: 100 },
+        }),
+        // Payment Link (clickable)
+        new Paragraph({
+          children: [
+            new ExternalHyperlink({
+              children: [new TextRun({ text: paymentLink, color: '0066CC', underline: {} , size: 22 })],
+              link: paymentLink,
+            }),
+          ],
+          spacing: { after: 200 },
+        }),
+      ];
+
+      // Add QR code if generated
+      if (qrImageData) {
+        docSections.push(
+          new Paragraph({
+            children: [new TextRun({ text: 'Scan QR Code to Pay:', size: 22 })],
+            spacing: { before: 100, after: 100 },
+          }),
+          new Paragraph({
+            children: [
+              new ImageRun({
+                data: Buffer.from(qrImageData, 'base64'),
+                transformation: { width: 100, height: 100 },
+                type: 'png',
+              }),
+            ],
+            spacing: { after: 200 },
+          })
+        );
+      }
+
+      // Add remaining sections
+      docSections.push(
+        // Please Note
+        new Paragraph({
+          children: [
+            new TextRun({ text: 'Please Note: ', bold: true, size: 22, color: 'B48200' }),
+            new TextRun({ text: 'Students will receive their kits and books once the Robotics Classes commence in School.', size: 22, color: '664600' }),
+          ],
+          spacing: { before: 200, after: 300 },
+          shading: { fill: 'FFF8E1' },
+        }),
+        // Closing
+        new Paragraph({
+          children: [new TextRun({ text: `We look forward to a progressive & dynamic year ${academicYear} on the Journey of Upskilling our students!`, size: 22 })],
+          spacing: { after: 300 },
+        }),
+        // Regards
+        new Paragraph({
+          children: [new TextRun({ text: 'Regards,', bold: true, size: 24 })],
+          spacing: { after: 50 },
+        }),
+        new Paragraph({
+          children: [new TextRun({ text: 'Principal', bold: true, size: 24 })],
+          spacing: { after: 300 },
+        }),
+        // Helpline
+        new Paragraph({
+          children: [new TextRun({ text: 'For Queries – Call the OLL Helpline Number - 99201 88188', bold: true, size: 22, color: 'FFFFFF' })],
+          alignment: AlignmentType.CENTER,
+          shading: { fill: '1E3A5F' },
+        })
+      );
+
+      // Create the document
+      const doc = new Document({
+        sections: [{
+          properties: {},
+          children: docSections,
+        }],
+      });
+
+      // Generate the blob
+      const blob = await Packer.toBlob(doc);
       
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(180, 130, 0);
-      doc.text('Please Note:', M + 4, y + 6);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(100, 80, 0);
-      doc.setFontSize(10);
-      const noteText = 'Students will receive their kits and books once the Robotics Classes commence in School.';
-      doc.text(noteText, M + 4, y + 12);
-      y += 24;
+      // Download
+      const fileName = `ParentCircular_${(schoolName).replace(/\s+/g, '_')}_${format(new Date(), 'ddMMMyyyy')}.docx`;
+      saveAs(blob, fileName);
 
-      // ── CLOSING PARAGRAPH ───────────────────────────────────────
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(50, 50, 50);
-      const closingText = `We look forward to a progressive & dynamic year ${academicYear} on the Journey of Upskilling our students!`;
-      const closingLines = doc.splitTextToSize(closingText, CW);
-      doc.text(closingLines, M, y);
-      y += closingLines.length * 5.5 + 8;
-
-      // ── REGARDS ─────────────────────────────────────────────────
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(50, 50, 50);
-      doc.text('Regards,', M, y);
-      y += 6;
-      doc.text('Principal', M, y);
-      y += 10;
-
-      // ── HELPLINE ────────────────────────────────────────────────
-      doc.setFillColor(30, 58, 95);
-      doc.roundedRect(M, y, CW, 10, 2, 2, 'F');
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(255, 255, 255);
-      doc.text('For Queries – Call the OLL Helpline Number - 99201 88188', PW / 2, y + 6.5, { align: 'center' });
-
-      // ── DOWNLOAD ────────────────────────────────────────────────
-      const fileName = `ParentCircular_${(schoolName).replace(/\s+/g, '_')}_${format(new Date(), 'ddMMMyyyy')}.pdf`;
-      doc.save(fileName);
-
-      // ── UPLOAD & STORE ──────────────────────────────────────────
+      // Upload & Store
       try {
-        const pdfBlob = doc.output('blob');
-        const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+        const docFile = new File([blob], fileName, { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
         const formData = new FormData();
-        formData.append('file', pdfFile);
+        formData.append('file', docFile);
         const uploadRes = await axios.post(`${API}/upload`, formData, {
           headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' },
         });
