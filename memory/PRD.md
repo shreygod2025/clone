@@ -47,6 +47,25 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+### March 12, 2026
+
+#### Generate Proposal PDF - Iteration 2
+**Feature Updated:**
+
+Updated the "Generate Proposal" feature in the Edit Lead modal based on user feedback:
+
+1. **New OLL Logo** - Replaced horizontal logo with latest brand version provided by user
+2. **OLL Brand Blue Color** - Applied `#1e3a5f` (navy blue) to:
+   - Main proposal title
+   - All section headers (Robotics & AI Lab Set-up, Program Deliverables, Fees Structure, Requirements from School, Closing message)
+   - Bullet point markers
+   - Table header backgrounds
+3. **Model Dropdown Options** - Changed from "In-School/Hybrid" to "Compulsory/Optional" to match business terminology
+
+**Modified Files:**
+- `frontend/src/pages/admin/AdminSchoolCRM.jsx` - Logo constant, generateProposalPDF function, model dropdown options
+
+---
 
 ### March 11, 2026
 
