@@ -893,6 +893,13 @@ const AdminSchoolCRM = () => {
     endOfWeek.setDate(startOfWeek.getDate() + 6);
     endOfWeek.setHours(23, 59, 59, 999);
 
+    // For followups, use next 7 days from today
+    const startOfToday = new Date(today);
+    startOfToday.setHours(0, 0, 0, 0);
+    const endOfNext7Days = new Date(today);
+    endOfNext7Days.setDate(today.getDate() + 7);
+    endOfNext7Days.setHours(23, 59, 59, 999);
+
     // Regular meetings (from new leads)
     const regularMeetings = inquiries.filter(i => {
       if (!i.meeting_date) return false;
@@ -917,11 +924,43 @@ const AdminSchoolCRM = () => {
     const meetings = [...regularMeetings, ...renewalMeetings]
       .sort((a, b) => new Date(a.meeting_date) - new Date(b.meeting_date));
 
-    const followups = inquiries.filter(i => {
+    // Legacy followups (from followup_date field) - use next 7 days
+    const legacyFollowups = inquiries.filter(i => {
       if (!i.followup_date) return false;
       const followupDate = new Date(i.followup_date);
-      return followupDate >= startOfWeek && followupDate <= endOfWeek;
-    }).sort((a, b) => new Date(a.followup_date) - new Date(b.followup_date));
+      return followupDate >= startOfToday && followupDate <= endOfNext7Days;
+    }).map(i => ({
+      ...i,
+      type: 'legacy',
+      task_label: 'Scheduled Followup'
+    }));
+
+    // Scheduled followup tasks (from followup_tasks array) - use next 7 days
+    const scheduledFollowups = [];
+    const taskLabels = { followup_1: 'F1: OLL Program', followup_2: 'F2: Partner Schools', followup_3: 'F3: Admissions +15%', followup_4: 'F4: Last Note' };
+    inquiries.forEach(i => {
+      if (i.followup_tasks && Array.isArray(i.followup_tasks)) {
+        i.followup_tasks.forEach(task => {
+          if (task.status === 'pending') {
+            const taskDate = new Date(task.scheduled_date);
+            if (taskDate >= startOfToday && taskDate <= endOfNext7Days) {
+              scheduledFollowups.push({
+                ...i,
+                followup_date: task.scheduled_date,
+                type: 'scheduled_task',
+                task_id: task.id,
+                task_label: taskLabels[task.email_type] || task.email_type,
+                email_type: task.email_type
+              });
+            }
+          }
+        });
+      }
+    });
+
+    // Combine all followups
+    const followups = [...legacyFollowups, ...scheduledFollowups]
+      .sort((a, b) => new Date(a.followup_date) - new Date(b.followup_date));
 
     // Additional meetings (stored in meetings array)
     const additionalMeetings = [];
@@ -4875,7 +4914,7 @@ const AdminSchoolCRM = () => {
             </div>
             <div className="bg-cyan-50 rounded-xl p-4">
               <div className="text-2xl font-bold text-cyan-700">{getThisWeekData().followups.length}</div>
-              <div className="text-sm text-cyan-600">Followups Due</div>
+              <div className="text-sm text-cyan-600">Followups (7 Days)</div>
             </div>
             <div className="bg-green-50 rounded-xl p-4">
               <div className="text-2xl font-bold text-green-700">{inquiries.filter(i => i.status === 'active').length}</div>
@@ -4931,7 +4970,7 @@ const AdminSchoolCRM = () => {
             <div className="bg-white rounded-xl border border-slate-200 p-4">
               <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
                 <Clock className="w-5 h-5" />
-                Followup Schedule
+                Upcoming Followups (7 Days)
               </h3>
               <div className="space-y-3 max-h-96 overflow-y-auto">
                 {getThisWeekData().followups.length === 0 ? (
@@ -4940,7 +4979,14 @@ const AdminSchoolCRM = () => {
                   getThisWeekData().followups.map((item, idx) => (
                     <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
                       <div>
-                        <p className="font-medium text-sm text-[#1E3A5F]">{item.school_name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm text-[#1E3A5F]">{item.school_name}</p>
+                          {item.task_label && (
+                            <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-700 font-medium">
+                              {item.task_label}
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-slate-500">{item.contact_name}</p>
                         {item.followup_comment && (
                           <p className="text-xs text-slate-400 mt-1 truncate max-w-xs">{item.followup_comment}</p>
@@ -5231,6 +5277,23 @@ const AdminSchoolCRM = () => {
                   </p>
                 </div>
               )}
+
+              {/* Scheduled Followup Tasks - show for new/lead status */}
+              {(inquiry.status === 'new' || inquiry.status === 'lead') && inquiry.followup_tasks?.length > 0 && (() => {
+                const pendingTasks = inquiry.followup_tasks.filter(t => t.status === 'pending');
+                const completedCount = inquiry.followup_tasks.filter(t => t.status === 'completed' || t.status === 'sent').length;
+                const nextTask = pendingTasks.sort((a, b) => new Date(a.scheduled_date) - new Date(b.scheduled_date))[0];
+                if (!nextTask) return null;
+                return (
+                  <div className="bg-blue-50/50 rounded px-2 py-1 mb-2">
+                    <p className="text-[10px] text-blue-700 font-medium flex items-center gap-1">
+                      <Mail className="w-2.5 h-2.5" /> 
+                      Next: {format(new Date(nextTask.scheduled_date), 'dd MMM')}
+                      <span className="ml-auto text-blue-500">({completedCount}/{inquiry.followup_tasks.length})</span>
+                    </p>
+                  </div>
+                );
+              })()}
 
               {/* Draft Progress Bar - Show if onboarding is in draft state */}
               {inquiry.onboarding_status === 'draft' && inquiry.onboarding_id && (
