@@ -539,6 +539,7 @@ const AdminSchoolCRM = () => {
   const [lostReason, setLostReason] = useState('');
   const [showEditLeadModal, setShowEditLeadModal] = useState(null);
   const [generatingProposal, setGeneratingProposal] = useState(false);
+  const [lastProposalPDF, setLastProposalPDF] = useState(null); // { base64, filename, schoolId }
   const [editLeadData, setEditLeadData] = useState({
     offering: '',
     training_type: '', // teacher_training, student_training, both
@@ -1059,7 +1060,7 @@ const AdminSchoolCRM = () => {
       const CW = PW - M * 2;
       const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
       
-      const schoolName = school?.school_name || 'School';
+      const schoolName = school?.school_name || school?.name || 'School';
 
       // Helper function to add a bullet point with proper spacing (OLL Blue bullets)
       const addBulletPoint = (text, xOffset = 8) => {
@@ -1099,19 +1100,21 @@ const AdminSchoolCRM = () => {
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(30, 58, 95); // OLL Blue #1e3a5f
       doc.text('OLL Robotics and AI Program Proposal', PW / 2, y, { align: 'center' });
-      y += 12;
+      y += 7;
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 100, 100);
+      doc.text(`For ${schoolName}`, PW / 2, y, { align: 'center' });
+      y += 10;
 
-      // ── GREETING WITH BOLD SCHOOL NAME ──────────────────────────
+      // ── GREETING ──────────────────────────────────────────
       doc.setFontSize(11);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(0, 0, 0);
-      doc.text('For ', M, y);
-      const forWidth = doc.getTextWidth('For ');
+      const greetingText = `Dear ${schoolName} Team,`;
       doc.setFont('helvetica', 'bold');
-      doc.text(schoolName, M + forWidth, y);
-      const schoolNameWidth = doc.getTextWidth(schoolName);
+      doc.text(greetingText, M, y);
       doc.setFont('helvetica', 'normal');
-      doc.text(' Team,', M + forWidth + schoolNameWidth, y);
       y += 6;
       doc.text('Greetings from Team OLL', M, y);
       y += 10;
@@ -1328,6 +1331,11 @@ const AdminSchoolCRM = () => {
 
       // ── DOWNLOAD ────────────────────────────────────────────────
       const fileName = `Proposal_${(schoolName).replace(/\s+/g, '_')}_${format(new Date(), 'ddMMMyyyy')}.pdf`;
+      
+      // ── STORE BASE64 FOR EMAIL ATTACHMENT ──────────────────────
+      const pdfBase64 = doc.output('datauristring').split(',')[1];
+      setLastProposalPDF({ base64: pdfBase64, filename: fileName, schoolId: school.id });
+      
       doc.save(fileName);
 
       // ── UPLOAD & STORE ──────────────────────────────────────────
@@ -1356,7 +1364,7 @@ const AdminSchoolCRM = () => {
         fetchInquiries();
         toast.success('Proposal generated, downloaded & saved!');
       } catch {
-        toast.success('Proposal downloaded! (Save to documents failed)');
+        toast.success('Proposal downloaded!');
       }
     } catch (err) {
       console.error('Proposal generation error:', err);
@@ -6546,6 +6554,9 @@ const AdminSchoolCRM = () => {
                 data-testid="send-proposal-email-btn"
               >
                 <Mail className="w-4 h-4 mr-1" /> Send Proposal Email
+                {lastProposalPDF?.schoolId === showEditLeadModal?.id && (
+                  <span className="ml-1 text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">+ PDF</span>
+                )}
               </Button>
               <Button
                 onClick={() => handleSaveEditLead(true)}
@@ -8159,6 +8170,12 @@ const AdminSchoolCRM = () => {
 
             <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-700">
               <strong>Reply-to:</strong> info@oll.co &nbsp;|&nbsp; <strong>From:</strong> OLL Team
+              {emailModalType === 'proposal' && lastProposalPDF?.schoolId === showEmailModal?.id && (
+                <span className="ml-2 text-green-700 font-semibold">&#10003; Proposal PDF will be attached</span>
+              )}
+              {emailModalType === 'proposal' && lastProposalPDF?.schoolId !== showEmailModal?.id && (
+                <span className="ml-2 text-amber-600">&#9888; Generate the proposal first to attach PDF</span>
+              )}
             </div>
 
             <div className="flex gap-3 pt-2 border-t">
@@ -8173,15 +8190,18 @@ const AdminSchoolCRM = () => {
                   }
                   setEmailModalSending(true);
                   try {
+                    // Include proposal PDF if available for this school and type is 'proposal'
+                    const hasPDF = emailModalType === 'proposal' && lastProposalPDF?.schoolId === showEmailModal?.id;
                     await axios.post(`${API}/schools/${showEmailModal.id}/send-crm-email`, {
                       email_type: emailModalType,
                       to_email: emailModalToEmail,
                       custom_message: emailModalCustomMsg,
                       meeting_date: showEmailModal.meeting_date,
                       meeting_time: showEmailModal.meeting_time,
-                      meeting_mode: showEmailModal.meeting_type
+                      meeting_mode: showEmailModal.meeting_type,
+                      ...(hasPDF ? { pdf_base64: lastProposalPDF.base64, pdf_filename: lastProposalPDF.filename } : {})
                     }, { headers: getAuthHeaders() });
-                    toast.success(`Email sent to ${emailModalToEmail}`);
+                    toast.success(`Email sent to ${emailModalToEmail}${hasPDF ? ' with PDF attached!' : ''}`);
                     setShowEmailModal(null);
                   } catch (err) {
                     toast.error(err?.response?.data?.detail || 'Failed to send email');
