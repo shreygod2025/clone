@@ -6532,7 +6532,7 @@ const AdminSchoolCRM = () => {
                 <Save className="w-4 h-4 mr-1" /> Save Details
               </Button>
               <Button
-                onClick={generateProposalPDF}
+                onClick={() => generateProposalPDF()}
                 disabled={generatingProposal}
                 className="flex-1 bg-amber-500 hover:bg-amber-600 text-white"
               >
