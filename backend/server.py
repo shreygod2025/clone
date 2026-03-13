@@ -37,6 +37,10 @@ import hmac
 import hashlib
 from base64 import b64encode
 import json
+import warnings
+
+# Suppress urllib3 SSL warnings for Cashfree SDK (SDK handles SSL internally)
+warnings.filterwarnings('ignore', message='Unverified HTTPS request')
 
 # Cashfree Payment Gateway
 from cashfree_pg.api_client import Cashfree
@@ -115,8 +119,12 @@ mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# JWT Configuration
-SECRET_KEY = os.environ.get('JWT_SECRET', 'oll-secret-key-change-in-production')
+# JWT Configuration - JWT_SECRET must be set in production
+SECRET_KEY = os.environ.get('JWT_SECRET')
+if not SECRET_KEY:
+    import secrets
+    SECRET_KEY = secrets.token_hex(32)
+    logging.warning("JWT_SECRET not set - using randomly generated key (sessions will not persist across restarts)")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 24
 
@@ -15943,8 +15951,12 @@ async def get_support_metrics(
     """Get support query metrics"""
     start, end = get_date_range(start_date, end_date, period)
     
-    # Get all support queries
-    all_queries = await db.support_queries.find({}, {"_id": 0}).to_list(10000)
+    # Get support queries with date filter in query (optimized)
+    query_filter = {}
+    if start and end:
+        query_filter["created_at"] = {"$gte": start.isoformat(), "$lte": end.isoformat()}
+    
+    all_queries = await db.support_queries.find(query_filter, {"_id": 0}).to_list(5000)
     queries = []
     for q in all_queries:
         created = parse_date_field(q.get('created_at'))
@@ -16575,11 +16587,11 @@ async def scheduled_payment_sync():
                 results["student_payments"]["errors"] += 1
                 logging.error(f"[SCHEDULER] Error syncing student payment {order_id}: {e}")
         
-        # Sync school student payments
+        # Sync school student payments (batch of 100 at a time)
         pending_school_payments = await db.school_student_payments.find(
             {"status": {"$nin": ["PAID", "CANCELLED", "EXPIRED"]}},
             {"_id": 0}
-        ).to_list(1000)
+        ).to_list(100)
         
         for payment in pending_school_payments:
             order_id = payment.get("id")
