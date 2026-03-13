@@ -1054,6 +1054,12 @@ const AdminSchoolCRM = () => {
     const school = overrideSchool || showEditLeadModal;
     const data = overrideData || editLeadData;
     if (!school) return;
+
+    // Auto-save proposal data when triggered from the edit lead modal (not from renewal override)
+    if (!overrideSchool && showEditLeadModal?.id) {
+      await autoSaveProposalData(showEditLeadModal.id, editLeadData);
+    }
+
     setGeneratingProposal(true);
     try {
       const PW = 210, PH = 297, M = 15;
@@ -1375,8 +1381,19 @@ const AdminSchoolCRM = () => {
   };
 
   // Save Edit Lead data and optionally continue to Meeting Done
-  const handleSaveEditLead = async (moveToMeetingDone = false) => {
-    if (!showEditLeadModal) return;
+  // Silently save proposal data without closing the modal
+  const autoSaveProposalData = async (schoolId, data) => {
+    if (!schoolId || !data) return;
+    try {
+      await axios.patch(`${API}/schools/inquiry/${schoolId}`, {
+        proposal_data: { ...data }
+      }, { headers: getAuthHeaders() });
+    } catch (err) {
+      console.warn('Auto-save failed:', err);
+    }
+  };
+
+  const handleSaveEditLead = async (moveToMeetingDone = false) => {    if (!showEditLeadModal) return;
     
     try {
       // Save proposal data to inquiry
@@ -6544,7 +6561,11 @@ const AdminSchoolCRM = () => {
               </Button>
               <Button
                 variant="outline"
-                onClick={() => {
+                onClick={async () => {
+                  // Auto-save proposal data before opening email modal
+                  if (showEditLeadModal?.id) {
+                    await autoSaveProposalData(showEditLeadModal.id, editLeadData);
+                  }
                   setShowEmailModal(showEditLeadModal);
                   setEmailModalType('proposal');
                   setEmailModalToEmail(showEditLeadModal?.email || '');
