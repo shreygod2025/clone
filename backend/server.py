@@ -1165,7 +1165,7 @@ OLL_CTA_BLOCK = """
                 </a>
             </td>
             <td style="width: 50%; padding: 0 0 0 6px; text-align: center;">
-                <a href="tel:+919892150714" style="display: inline-block; background: white; color: #1E3A5F; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 700; border: 2px solid #1E3A5F; width: 90%; box-sizing: border-box;">
+                <a href="http://wa.me/919892150714?text=Hi%20call%20me" style="display: inline-block; background: white; color: #1E3A5F; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 700; border: 2px solid #1E3A5F; width: 90%; box-sizing: border-box;">
                     Request Callback
                 </a>
             </td>
