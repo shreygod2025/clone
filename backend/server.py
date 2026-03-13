@@ -957,7 +957,7 @@ SCHOOL_INTRO_EMAIL_TEMPLATE = """
 
         <!-- About OLL PDF link -->
         <div style="margin: 24px 0; text-align: center;">
-            <a href="https://drive.google.com/drive/folders/1VFjJqxQ0poCxpkOHM5YMwevBx7Uh9p-M"
+            <a href="https://drive.google.com/file/d/1qUMDeQakzOLE-pbohTd-pzoKYpWvgC2k/view?usp=sharing"
                style="display: inline-block; background: #1E3A5F; color: white; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-size: 14px; font-weight: 600; letter-spacing: 0.3px;">
                 &#x1F4C4; Download About OLL
             </a>
