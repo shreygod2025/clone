@@ -902,61 +902,70 @@ SCHOOL_INTRO_EMAIL_TEMPLATE = """
     {header}
     <div style="padding: 36px 32px;">
         <h2 style="color: #1E3A5F; margin-top: 0; font-size: 22px;">Dear {contact_name},</h2>
-        <p style="color: #333; line-height: 1.7; margin-bottom: 16px;">
-            Thank you for your interest in partnering with <strong>OLL</strong>! We are excited about the opportunity to bring <strong>Robotics, AI & STEM education</strong> to the students of <strong>{school_name}</strong>.
+        <p style="color: #333; line-height: 1.7; margin-bottom: 20px;">
+            Thank you for your interest in partnering with <strong>OLL</strong>! We are excited about the opportunity to bring <strong>Robotics &amp; AI education</strong> to the students of <strong>{school_name}</strong>.
         </p>
-        <div style="background: #f8fafc; border-left: 4px solid #1E3A5F; padding: 20px; border-radius: 0 8px 8px 0; margin: 24px 0;">
-            <h3 style="color: #1E3A5F; margin: 0 0 12px 0; font-size: 16px;">About OLL</h3>
-            <p style="color: #444; line-height: 1.7; margin: 0; font-size: 14px;">
-                OLL is India's leading Robotics & AI skill education platform, partnering with 200+ schools across the country. We offer a complete <strong>plug-and-play program</strong> — from lab setup and kits to trained educators and curriculum — designed for Grades 1 to 12. Our mission is to make every child future-ready through hands-on, project-based learning.
+
+        <!-- About OLL -->
+        <div style="background: #f8fafc; border-left: 4px solid #1E3A5F; padding: 20px; border-radius: 0 8px 8px 0; margin: 20px 0;">
+            <h3 style="color: #1E3A5F; margin: 0 0 12px 0; font-size: 16px; font-weight: 700;">About OLL</h3>
+            <p style="color: #333; line-height: 1.75; margin: 0 0 12px 0; font-size: 14px;">
+                OLL — India's leading skill-education partner, working with <strong>400+ schools across 35+ cities</strong>. We have trained over <strong>1,50,000+ students</strong> with a focus on Robotics &amp; AI practical, outcome-driven learning.
+            </p>
+            <p style="color: #333; line-height: 1.75; margin: 0; font-size: 14px;">
+                OLL has been featured on major media like <strong>Shark Tank India</strong> and <strong>Kaun Banega Crorepati</strong> — a truly national brand.
             </p>
         </div>
-        <h3 style="color: #1E3A5F; font-size: 16px; margin-top: 24px;">Why Schools Choose OLL</h3>
-        <ul style="color: #333; line-height: 1.9; padding-left: 20px; margin: 12px 0;">
-            <li>Complete <strong>Robotics & AI Lab setup</strong> with kits and equipment</li>
-            <li>Trained, certified educators for every batch</li>
-            <li>CBSE/ICSE-aligned curriculum for Grades 1–12</li>
-            <li>Flexible models — Compulsory & Optional programs</li>
-            <li>200+ school partners | 50,000+ students impacted</li>
-        </ul>
-        <div style="background: #e8f4fd; padding: 20px; border-radius: 10px; margin: 24px 0;">
-            <h3 style="color: #1565c0; margin: 0 0 14px 0; font-size: 15px;">Explore Our Resources</h3>
-            <table style="width: 100%; border-collapse: collapse;">
-                <tr>
-                    <td style="padding: 6px 0; width: 50%;">
-                        <a href="https://drive.google.com/drive/folders/1VFjJqxQ0poCxpkOHM5YMwevBx7Uh9p-M" 
-                           style="color: #1565c0; text-decoration: none; font-size: 14px; font-weight: 600;">
-                            📁 Program Brochure
-                        </a>
-                    </td>
-                    <td style="padding: 6px 0; width: 50%;">
-                        <a href="https://www.youtube.com/@OLLindia" 
-                           style="color: #c0392b; text-decoration: none; font-size: 14px; font-weight: 600;">
-                            ▶ OLL YouTube Channel
-                        </a>
-                    </td>
-                </tr>
-                <tr>
-                    <td style="padding: 6px 0;">
-                        <a href="https://oll.co" 
-                           style="color: #1565c0; text-decoration: none; font-size: 14px; font-weight: 600;">
-                            🌐 Visit oll.co
-                        </a>
-                    </td>
-                    <td style="padding: 6px 0;">
-                        <a href="https://oll.co/school" 
-                           style="color: #1565c0; text-decoration: none; font-size: 14px; font-weight: 600;">
-                            🏫 School Program Details
-                        </a>
-                    </td>
-                </tr>
-            </table>
+
+        <!-- Media Badges -->
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+            <tr>
+                <td style="width: 50%; padding: 0 6px 0 0; vertical-align: top;">
+                    <div style="background: #fff3e0; border: 1px solid #ffcc80; border-radius: 8px; padding: 12px; text-align: center;">
+                        <p style="margin: 0; font-size: 13px; font-weight: 700; color: #e65100;">SHARK TANK INDIA</p>
+                        <p style="margin: 4px 0 0 0; font-size: 11px; color: #bf360c;">As Seen On TV</p>
+                    </div>
+                </td>
+                <td style="width: 50%; padding: 0 0 0 6px; vertical-align: top;">
+                    <a href="https://youtu.be/8M3A_InpVKw?si=Q9G3s9gWPFMLuHI6&amp;t=872" style="text-decoration: none;">
+                        <div style="background: #fce4ec; border: 1px solid #f48fb1; border-radius: 8px; padding: 12px; text-align: center;">
+                            <p style="margin: 0; font-size: 13px; font-weight: 700; color: #880e4f;">KBC &#8212; Watch Clip</p>
+                            <p style="margin: 4px 0 0 0; font-size: 11px; color: #ad1457;">&#9654; youtube.com</p>
+                        </div>
+                    </a>
+                </td>
+            </tr>
+        </table>
+
+        <!-- Why Schools Choose OLL -->
+        <h3 style="color: #1E3A5F; font-size: 16px; font-weight: 700; margin: 24px 0 12px 0;">Why Schools Choose OLL</h3>
+        <p style="color: #555; font-size: 13px; margin: 0 0 10px 0;">We offer a complete plug-and-play program for schools:</p>
+        <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+                <td style="padding: 8px 0; vertical-align: top; width: 28px; font-size: 20px;">&#x2713;</td>
+                <td style="padding: 8px 0; color: #333; font-size: 14px; line-height: 1.5;"><strong>1 Kit : 1 Child</strong> — personalised individual learning with dedicated kit per student</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px 0; vertical-align: top; font-size: 20px;">&#x2713;</td>
+                <td style="padding: 8px 0; color: #333; font-size: 14px; line-height: 1.5;">Each student receives a <strong>Certificate accredited by STEM &amp; UNESCO</strong></td>
+            </tr>
+            <tr>
+                <td style="padding: 8px 0; vertical-align: top; font-size: 20px;">&#x2713;</td>
+                <td style="padding: 8px 0; color: #333; font-size: 14px; line-height: 1.5;"><strong>CBSE/ICSE-aligned</strong> Robotics &amp; AI curriculum for Grades 1–12</td>
+            </tr>
+        </table>
+
+        <!-- About OLL PDF link -->
+        <div style="margin: 24px 0; text-align: center;">
+            <a href="https://drive.google.com/drive/folders/1VFjJqxQ0poCxpkOHM5YMwevBx7Uh9p-M"
+               style="display: inline-block; background: #1E3A5F; color: white; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-size: 14px; font-weight: 600; letter-spacing: 0.3px;">
+                &#x1F4C4; Download About OLL
+            </a>
         </div>
-        {meeting_section}
-        <p style="color: #333; line-height: 1.7; margin-top: 24px;">
-            We'd love to schedule a <strong>brief call or meeting</strong> to understand your school's needs and share how OLL can add value. Please feel free to reach out to us at any time.
-        </p>
-        <p style="color: #555; line-height: 1.6; margin-top: 16px;">
+
+        {meeting_or_schedule}
+
+        <p style="color: #555; line-height: 1.6; margin-top: 28px;">
             Warm regards,<br>
             <strong style="color: #1E3A5F;">{sender_name}</strong><br>
             <span style="color: #888; font-size: 13px;">OLL School Partnerships</span>
@@ -1152,19 +1161,51 @@ async def send_school_crm_email(
     extra = extra_data or {}
 
     # Build optional sections
+    meeting_date = extra.get("meeting_date", "")
+    meeting_time = extra.get("meeting_time", "")
+    meeting_mode = extra.get("meeting_mode", "offline") or "offline"
+    meeting_link = extra.get("meeting_link", "")
+
+    # For non-intro templates: build a simple meeting box
     meeting_section = ""
-    if extra.get("meeting_date") and extra.get("meeting_time"):
+    if meeting_date and meeting_time:
         meeting_section = f"""
         <div style="background: #e8f4fd; border-left: 4px solid #2196F3; padding: 16px; border-radius: 0 8px 8px 0; margin: 20px 0;">
             <h3 style="color: #1565c0; margin: 0 0 10px 0; font-size: 15px;">Scheduled Meeting</h3>
-            <p style="margin: 4px 0; font-size: 14px; color: #333;"><strong>Date:</strong> {extra.get('meeting_date')}</p>
-            <p style="margin: 4px 0; font-size: 14px; color: #333;"><strong>Time:</strong> {extra.get('meeting_time')}</p>
-            <p style="margin: 4px 0; font-size: 14px; color: #333;"><strong>Mode:</strong> {extra.get('meeting_mode', 'Offline').title()}</p>
+            <p style="margin: 4px 0; font-size: 14px; color: #333;"><strong>Date:</strong> {meeting_date}</p>
+            <p style="margin: 4px 0; font-size: 14px; color: #333;"><strong>Time:</strong> {meeting_time}</p>
+            <p style="margin: 4px 0; font-size: 14px; color: #333;"><strong>Mode:</strong> {meeting_mode.title()}</p>
         </div>"""
 
     meeting_link_section = ""
-    if extra.get("meeting_link"):
-        meeting_link_section = f'<p style="margin: 6px 0; color: #333; font-size: 14px;"><strong>Link:</strong> <a href="{extra.get("meeting_link")}" style="color: #1565c0;">{extra.get("meeting_link")}</a></p>'
+    if meeting_link:
+        meeting_link_section = f'<p style="margin: 6px 0; color: #333; font-size: 14px;"><strong>Link:</strong> <a href="{meeting_link}" style="color: #1565c0;">{meeting_link}</a></p>'
+
+    # For intro template: show meeting details if scheduled, or "Schedule Meeting" button if not
+    if email_type == "introduction":
+        if meeting_date and meeting_time:
+            _link_row = ""
+            if meeting_mode.lower() in ("online", "virtual") and meeting_link:
+                _link_row = f'<p style="margin: 6px 0; font-size: 14px; color: #333;"><strong>Link:</strong> <a href="{meeting_link}" style="color: #1565c0;">{meeting_link}</a></p>'
+            meeting_or_schedule = f"""
+        <div style="background: #e8f5e9; border-left: 4px solid #27ae60; padding: 18px; border-radius: 0 8px 8px 0; margin: 24px 0;">
+            <h3 style="color: #155724; margin: 0 0 12px 0; font-size: 15px; font-weight: 700;">Your Meeting is Confirmed</h3>
+            <p style="margin: 5px 0; font-size: 14px; color: #333;"><strong>Date:</strong> {meeting_date}</p>
+            <p style="margin: 5px 0; font-size: 14px; color: #333;"><strong>Time:</strong> {meeting_time}</p>
+            <p style="margin: 5px 0; font-size: 14px; color: #333;"><strong>Mode:</strong> {meeting_mode.title()}</p>
+            {_link_row}
+        </div>"""
+        else:
+            meeting_or_schedule = """
+        <div style="background: #f0f7ff; border: 1px solid #b3d4f5; border-radius: 10px; padding: 20px; margin: 24px 0; text-align: center;">
+            <p style="color: #1E3A5F; margin: 0 0 14px 0; font-size: 14px; font-weight: 600;">Ready to explore the OLL program for your school?</p>
+            <a href="https://oll.co/school"
+               style="display: inline-block; background: #27ae60; color: white; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-size: 14px; font-weight: 700;">
+                Schedule a Meeting
+            </a>
+        </div>"""
+    else:
+        meeting_or_schedule = meeting_section
 
     custom_message_section = ""
     if extra.get("custom_message"):
@@ -1176,11 +1217,12 @@ async def send_school_crm_email(
         contact_name=contact_name,
         school_name=school_name,
         sender_name=sender_name,
-        meeting_date=extra.get("meeting_date", ""),
-        meeting_time=extra.get("meeting_time", ""),
-        meeting_mode=extra.get("meeting_mode", "Offline"),
+        meeting_date=meeting_date,
+        meeting_time=meeting_time,
+        meeting_mode=meeting_mode,
         meeting_link_section=meeting_link_section,
         meeting_section=meeting_section,
+        meeting_or_schedule=meeting_or_schedule,
         custom_message_section=custom_message_section
     )
 
