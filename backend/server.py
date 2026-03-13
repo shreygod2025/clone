@@ -866,7 +866,7 @@ async def send_educator_rejected_email(educator: dict):
 
 SCHOOL_EMAIL_FOOTER = """
 <div style="background: #1E3A5F; padding: 24px; text-align: center; margin-top: 0;">
-    <p style="color: rgba(255,255,255,0.9); margin: 0 0 8px 0; font-size: 14px; font-weight: 600;">OLL - Omni Learning Labs</p>
+    <p style="color: rgba(255,255,255,0.9); margin: 0 0 8px 0; font-size: 14px; font-weight: 700; letter-spacing: 1px;">OLL</p>
     <p style="color: rgba(255,255,255,0.7); margin: 0; font-size: 13px;">
         <a href="tel:+919920188188" style="color: rgba(255,255,255,0.85); text-decoration: none;">+91 9920188188</a>
         &nbsp;|&nbsp;
@@ -880,9 +880,16 @@ SCHOOL_EMAIL_FOOTER = """
 def build_school_email_header(subtitle: str = "Empowering Future Skills") -> str:
     return f"""
 <div style="background: linear-gradient(135deg, #1E3A5F 0%, #2d4a6f 100%); padding: 32px; text-align: center;">
-    <img src="https://oll.co/logo.png" alt="OLL" style="height: 48px; margin-bottom: 12px; display: block; margin-left: auto; margin-right: auto;" onerror="this.style.display='none'" />
-    <h1 style="color: white; margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px;">OLL</h1>
-    <p style="color: rgba(255,255,255,0.85); margin: 6px 0 0 0; font-size: 14px;">{subtitle}</p>
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 0;">
+        <tr>
+            <td style="text-align: center; padding: 0;">
+                <div style="display: inline-block; background: rgba(255,255,255,0.15); border-radius: 12px; padding: 8px 20px; margin-bottom: 12px;">
+                    <span style="color: white; font-size: 28px; font-weight: 900; letter-spacing: 2px; font-family: 'Segoe UI', Arial, sans-serif;">OLL</span>
+                </div>
+                <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0 0; font-size: 13px; letter-spacing: 0.5px;">{subtitle}</p>
+            </td>
+        </tr>
+    </table>
 </div>
 """
 
@@ -896,7 +903,7 @@ SCHOOL_INTRO_EMAIL_TEMPLATE = """
     <div style="padding: 36px 32px;">
         <h2 style="color: #1E3A5F; margin-top: 0; font-size: 22px;">Dear {contact_name},</h2>
         <p style="color: #333; line-height: 1.7; margin-bottom: 16px;">
-            Thank you for your interest in partnering with <strong>OLL (Omni Learning Labs)</strong>! We are excited about the opportunity to bring <strong>Robotics, AI & STEM education</strong> to the students of <strong>{school_name}</strong>.
+            Thank you for your interest in partnering with <strong>OLL</strong>! We are excited about the opportunity to bring <strong>Robotics, AI & STEM education</strong> to the students of <strong>{school_name}</strong>.
         </p>
         <div style="background: #f8fafc; border-left: 4px solid #1E3A5F; padding: 20px; border-radius: 0 8px 8px 0; margin: 24px 0;">
             <h3 style="color: #1E3A5F; margin: 0 0 12px 0; font-size: 16px;">About OLL</h3>
@@ -1042,7 +1049,7 @@ SCHOOL_MOU_EMAIL_TEMPLATE = """
     <div style="padding: 36px 32px;">
         <h2 style="color: #1E3A5F; margin-top: 0; font-size: 22px;">Dear {contact_name},</h2>
         <p style="color: #333; line-height: 1.7;">
-            We are delighted to move forward with the partnership between <strong>{school_name}</strong> and <strong>OLL (Omni Learning Labs)</strong>. Please find attached the <strong>Memorandum of Understanding (MOU)</strong> for your review and signature.
+            We are delighted to move forward with the partnership between <strong>{school_name}</strong> and <strong>OLL</strong>. Please find attached the <strong>Memorandum of Understanding (MOU)</strong> for your review and signature.
         </p>
         <div style="background: #e8f5e9; border-left: 4px solid #27ae60; padding: 20px; border-radius: 0 10px 10px 0; margin: 24px 0;">
             <h3 style="color: #155724; margin: 0 0 12px 0; font-size: 15px;">Next Steps</h3>
@@ -10401,7 +10408,7 @@ async def send_personalized_school_email(data: dict):
                 
                 <div style="background: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #eee;">
                     <p style="color: #666; margin: 0; font-size: 14px;">
-                        OLL - Omni Learning Labs<br>
+                        OLL<br>
                         Transforming Education Through Innovation
                     </p>
                 </div>
@@ -10947,8 +10954,8 @@ async def init_school_onboarding(school_id: str, data: dict = None, user: dict =
                 
                 <!-- Footer -->
                 <div style="background: #1E3A5F; color: white; padding: 25px; text-align: center;">
-                    <p style="margin: 0 0 10px 0; font-size: 14px; font-weight: 600;">OLL - Omni Learning Labs</p>
-                    <p style="margin: 0; font-size: 12px; opacity: 0.8;">Clonefutura Live Solutions Pvt. Ltd | support@oll.co | +91 9920188188</p>
+                    <p style="margin: 0 0 10px 0; font-size: 14px; font-weight: 600;">OLL</p>
+                    <p style="margin: 0; font-size: 12px; opacity: 0.8;">support@oll.co | +91 9920188188</p>
                 </div>
             </div>
             """
@@ -11887,7 +11894,7 @@ async def update_payment(
                         
                         <!-- Footer -->
                         <div style="background: #1E3A5F; color: white; padding: 20px; text-align: center; font-size: 12px;">
-                            <p style="margin: 0 0 5px 0;">OLL - Omni Learning Labs | Clonefutura Live Solutions Pvt. Ltd</p>
+                            <p style="margin: 0 0 5px 0;">OLL</p>
                             <p style="margin: 0; opacity: 0.7;">accounts@oll.co | +91 9920188188</p>
                         </div>
                     </div>
