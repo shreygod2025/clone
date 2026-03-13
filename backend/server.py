@@ -1136,10 +1136,363 @@ SCHOOL_EMAIL_TEMPLATES = {
     "followup": {
         "template": SCHOOL_FOLLOWUP_EMAIL_TEMPLATE,
         "subject": "Following Up — OLL Program for {school_name}"
+    },
+    "followup_1": {
+        "template": None,
+        "subject": "OLL Robotics & AI Program — Academic Year 2026-27 | {school_name}"
+    },
+    "followup_2": {
+        "template": None,
+        "subject": "400+ Schools Trust OLL — Don't Get Left Behind | {school_name}"
+    },
+    "followup_3": {
+        "template": None,
+        "subject": "Admissions Grew by 15% After OLL — What Principals Say | {school_name}"
+    },
+    "followup_4": {
+        "template": None,
+        "subject": "Last Note from OLL — {school_name}"
     }
 }
 
+OLL_CTA_BLOCK = """
+<div style="text-align: center; margin: 28px 0 8px 0;">
+    <table style="width: 100%; border-collapse: collapse;">
+        <tr>
+            <td style="width: 50%; padding: 0 6px 0 0; text-align: center;">
+                <a href="https://oll.co/school" style="display: inline-block; background: #1E3A5F; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 700; width: 90%; box-sizing: border-box;">
+                    Book a Meeting
+                </a>
+            </td>
+            <td style="width: 50%; padding: 0 0 0 6px; text-align: center;">
+                <a href="tel:+919892150714" style="display: inline-block; background: white; color: #1E3A5F; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 700; border: 2px solid #1E3A5F; width: 90%; box-sizing: border-box;">
+                    Request Callback
+                </a>
+            </td>
+        </tr>
+    </table>
+</div>
+"""
+
+def build_followup_1_html(contact_name, school_name, sender_name):
+    return f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px;">
+<div style="max-width: 640px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.12);">
+    {build_school_email_header("Empowering Future Skills")}
+    <div style="padding: 36px 32px;">
+        <p style="color: #1E3A5F; font-size: 16px; font-weight: 600; margin: 0 0 4px 0;">Pranam,</p>
+        <h2 style="color: #1E3A5F; margin: 0 0 20px 0; font-size: 20px;">Dear {school_name} Team,</h2>
+        <p style="color: #333; line-height: 1.7; margin-bottom: 20px;">
+            We are grateful for the opportunity to introduce our comprehensive <strong>Robotics &amp; AI Program</strong> for the Academic Year 2026-27.
+        </p>
+
+        <!-- Key Highlights Header -->
+        <div style="background: #1E3A5F; color: white; padding: 14px 20px; border-radius: 8px 8px 0 0; margin-top: 8px;">
+            <h3 style="margin: 0; font-size: 15px; font-weight: 700; letter-spacing: 0.3px;">This Year&#8217;s Key Highlights</h3>
+        </div>
+
+        <!-- Highlight 1 -->
+        <div style="border: 1px solid #e0e7ef; border-top: none; padding: 16px 20px;">
+            <p style="margin: 0 0 6px 0; font-size: 14px; font-weight: 700; color: #1E3A5F;">1. Advancements in Curriculum</p>
+            <p style="margin: 0; font-size: 13px; color: #555; line-height: 1.65;">
+                Grades Jr KG to 10th &bull; Robotics: 16 Projects + 4 New Categories (3D Design, Science, Coding, AI tools) = <strong>28 Total Projects</strong>
+            </p>
+        </div>
+        <!-- Highlight 2 -->
+        <div style="border: 1px solid #e0e7ef; border-top: none; padding: 16px 20px;">
+            <p style="margin: 0 0 6px 0; font-size: 14px; font-weight: 700; color: #1E3A5F;">2. Free Robotics &amp; AI Lab Kits</p>
+            <p style="margin: 0; font-size: 13px; color: #555; line-height: 1.65;">
+                <strong>40 Robotics kits</strong> + Lab d&eacute;cor/branding setup for a structured and engaging environment
+            </p>
+        </div>
+        <!-- Highlight 3 -->
+        <div style="border: 1px solid #e0e7ef; border-top: none; padding: 16px 20px;">
+            <p style="margin: 0 0 6px 0; font-size: 14px; font-weight: 700; color: #1E3A5F;">3. Hardcopy Books for Each Student</p>
+            <p style="margin: 0; font-size: 13px; color: #555; line-height: 1.65;">
+                Innovative <strong>comic-book style learning</strong> with problem statements, real-life applications &amp; theory
+            </p>
+        </div>
+        <!-- Highlight 4 -->
+        <div style="border: 1px solid #e0e7ef; border-top: none; padding: 16px 20px;">
+            <p style="margin: 0 0 6px 0; font-size: 14px; font-weight: 700; color: #1E3A5F;">4. New Learning Management System</p>
+            <p style="margin: 0; font-size: 13px; color: #555; line-height: 1.65;">
+                Real-time progress tracking &bull; Gamification &bull; XP &amp; Gems &bull; Leaderboards &bull; Parent Reports
+            </p>
+        </div>
+        <!-- Highlight 5 -->
+        <div style="border: 1px solid #e0e7ef; border-top: none; border-radius: 0 0 8px 8px; padding: 16px 20px; margin-bottom: 24px;">
+            <p style="margin: 0 0 6px 0; font-size: 14px; font-weight: 700; color: #1E3A5F;">5. Workshops, Competitions &amp; Certifications</p>
+            <p style="margin: 0; font-size: 13px; color: #555; line-height: 1.65;">
+                3D Pen &bull; VR/AR &bull; Drone Flying &bull; Rocket Building &bull; National Competitions at IIT Bombay &bull; STEM.org &amp; UNESCO Certifications
+            </p>
+        </div>
+
+        <!-- Stats -->
+        <table style="width: 100%; border-collapse: collapse; text-align: center; margin: 8px 0 28px 0;">
+            <tr>
+                <td style="padding: 16px 4px; background: #f0f4ff; border-radius: 8px; width: 33%;">
+                    <p style="margin: 0; font-size: 22px; font-weight: 900; color: #1E3A5F;">400+</p>
+                    <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">Schools</p>
+                </td>
+                <td style="padding: 4px;"></td>
+                <td style="padding: 16px 4px; background: #f0f4ff; border-radius: 8px; width: 33%;">
+                    <p style="margin: 0; font-size: 22px; font-weight: 900; color: #1E3A5F;">35+</p>
+                    <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">Cities</p>
+                </td>
+                <td style="padding: 4px;"></td>
+                <td style="padding: 16px 4px; background: #f0f4ff; border-radius: 8px; width: 33%;">
+                    <p style="margin: 0; font-size: 22px; font-weight: 900; color: #1E3A5F;">1.5L+</p>
+                    <p style="margin: 4px 0 0 0; font-size: 12px; color: #666;">Students</p>
+                </td>
+            </tr>
+        </table>
+
+        <!-- Resources -->
+        <div style="background: #f8fafc; border-radius: 10px; padding: 20px; margin-bottom: 24px;">
+            <h3 style="color: #1E3A5F; margin: 0 0 16px 0; font-size: 15px; font-weight: 700;">&#x1F4DA; Explore Our Resources</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td style="padding: 10px; background: white; border-radius: 8px; border: 1px solid #e0e7ef; width: 48%;" valign="top">
+                        <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: 700; color: #1E3A5F;">&#x1F4CB; Detailed Curriculum</p>
+                        <p style="margin: 0 0 8px 0; font-size: 12px; color: #666;">Complete grade-wise curriculum breakdown</p>
+                        <a href="https://drive.google.com/drive/folders/1nYqvokOCiiaXo5FOs9CjfsEzwonMqdVL" style="color: #1565c0; font-size: 12px; font-weight: 600; text-decoration: none;">View &rarr;</a>
+                    </td>
+                    <td style="padding: 4px;"></td>
+                    <td style="padding: 10px; background: white; border-radius: 8px; border: 1px solid #e0e7ef; width: 48%;" valign="top">
+                        <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: 700; color: #1E3A5F;">&#x1F4D6; Sample Books</p>
+                        <p style="margin: 0 0 8px 0; font-size: 12px; color: #666;">Preview our innovative comic-style learning books</p>
+                        <a href="https://drive.google.com/drive/folders/1OZ95-fWhg_-UhTw0rNimuq9cRwn1zpJw" style="color: #1565c0; font-size: 12px; font-weight: 600; text-decoration: none;">View &rarr;</a>
+                    </td>
+                </tr>
+                <tr><td colspan="3" style="padding: 4px;"></td></tr>
+                <tr>
+                    <td colspan="3" style="padding: 10px; background: white; border-radius: 8px; border: 1px solid #e0e7ef;" valign="top">
+                        <p style="margin: 0 0 4px 0; font-size: 13px; font-weight: 700; color: #1E3A5F;">&#x1F3AC; LMS Walkthrough Video</p>
+                        <p style="margin: 0 0 8px 0; font-size: 12px; color: #666;">See our Learning Management System in action</p>
+                        <a href="https://www.youtube.com/watch?v=pkMSv6-bpic" style="color: #c0392b; font-size: 12px; font-weight: 600; text-decoration: none;">&#9654; Watch &rarr;</a>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- About OLL -->
+        <div style="background: #f8fafc; border-left: 4px solid #1E3A5F; padding: 16px 20px; border-radius: 0 8px 8px 0; margin-bottom: 24px;">
+            <h3 style="color: #1E3A5F; margin: 0 0 10px 0; font-size: 14px; font-weight: 700;">&#x1F3E2; About OLL</h3>
+            <p style="color: #444; font-size: 13px; line-height: 1.7; margin: 0 0 10px 0;">
+                OLL &#8212; India&#8217;s leading skill-education partner, working with <strong>400+ schools across 35+ cities</strong>. We have trained over <strong>1,50,000+ students</strong> with a focus on Robotics &amp; AI practical, outcome-driven learning.
+            </p>
+            <p style="color: #444; font-size: 13px; line-height: 1.7; margin: 0 0 10px 0;">
+                OLL has been featured on major media like <strong>Shark Tank India</strong> and <strong>Kaun Banega Crorepati</strong> &#8212; a truly national brand.
+            </p>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                <tr>
+                    <td style="width: 50%; padding: 0 6px 0 0;">
+                        <div style="background: #fff3e0; border: 1px solid #ffcc80; border-radius: 6px; padding: 8px; text-align: center;">
+                            <p style="margin: 0; font-size: 12px; font-weight: 700; color: #e65100;">SHARK TANK INDIA</p>
+                        </div>
+                    </td>
+                    <td style="width: 50%; padding: 0 0 0 6px;">
+                        <div style="background: #fce4ec; border: 1px solid #f48fb1; border-radius: 6px; padding: 8px; text-align: center;">
+                            <p style="margin: 0; font-size: 12px; font-weight: 700; color: #880e4f;">KBC</p>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <p style="color: #333; line-height: 1.7; margin-bottom: 8px;">We would love to schedule a meeting to discuss how this program can benefit your school and students.</p>
+        {OLL_CTA_BLOCK}
+
+        <p style="color: #555; line-height: 1.6; margin-top: 28px;">
+            Thanks &amp; Regards,<br>
+            <strong style="color: #1E3A5F;">Team OLL</strong><br>
+            <span style="font-size: 13px; color: #666;">&#x1F4DE; +91 9892150714 &nbsp;|&nbsp; &#x2709;&#xFE0F; info@oll.co</span>
+        </p>
+    </div>
+    {SCHOOL_EMAIL_FOOTER}
+</div>
+</body>
+</html>"""
+
+
+def build_followup_2_html(contact_name, school_name, sender_name):
+    partner_schools = [
+        "Activity High School", "G.D. Somani School", "Dosti Foundation School",
+        "St. Kabir School Vadodara", "Hiranandani Foundation School", "Parle Taiybiah School",
+        "Children's Academy", "Maneckji Cooper", "Pawar Public School",
+        "Suryadatta National School", "Ram Ratna International School",
+        "Goregaon Education Society", "MSB Mumbai Institute", "St Agnes High School",
+        "Indus Champ School", "Metas Adventist International School", "JB Vachha High School",
+        "Dr. Kadam Gurukul School", "St Anne's High School", "Novel International School",
+        "Lady Zubeida Quraishi English Primary and High School",
+        "Daffodils High Public High School", "L.K. Singhania Public School",
+        "Greenlawns School Worli", "GreenLawns High School Warden Road",
+        "NL Dalmia School", "Lodha World School", "Sunbeam Group of Schools",
+        "Shishuvan School", "Scholars High School",
+        "Shree Chandulal Nanavati Vinay Mandir", "Priyadarshani School",
+        "Synergy Schools", "Panbai International School", "Sanjeevani World School"
+    ]
+    school_rows = ""
+    for i in range(0, len(partner_schools), 2):
+        left = partner_schools[i]
+        right = partner_schools[i+1] if i+1 < len(partner_schools) else ""
+        school_rows += f"""<tr>
+            <td style="padding: 7px 12px 7px 0; font-size: 13px; color: #333; border-bottom: 1px solid #f0f4f8;">&#9679; {left}</td>
+            <td style="padding: 7px 0 7px 12px; font-size: 13px; color: #333; border-bottom: 1px solid #f0f4f8;">{"&#9679; " + right if right else ""}</td>
+        </tr>"""
+
+    return f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px;">
+<div style="max-width: 640px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.12);">
+    {build_school_email_header("Empowering Future Skills")}
+    <div style="padding: 36px 32px;">
+        <h2 style="color: #1E3A5F; margin-top: 0; font-size: 20px;">Dear {school_name} Team,</h2>
+        <p style="color: #333; line-height: 1.7; margin-bottom: 20px;">
+            The schools that partnered with OLL early are already seeing the difference &#8212; in student engagement, parent satisfaction, and school reputation. <strong>Don't get left behind.</strong>
+        </p>
+
+        <div style="background: #1E3A5F; color: white; padding: 14px 20px; border-radius: 8px 8px 0 0;">
+            <h3 style="margin: 0; font-size: 15px; font-weight: 700;">OLL Partner Schools (400+ &amp; Counting)</h3>
+        </div>
+        <div style="border: 1px solid #e0e7ef; border-top: none; border-radius: 0 0 8px 8px; padding: 16px 20px; margin-bottom: 24px;">
+            <table style="width: 100%; border-collapse: collapse;">
+                {school_rows}
+            </table>
+            <p style="color: #666; font-size: 12px; margin: 12px 0 0 0; text-align: center;">...and 365+ more schools across 35+ cities</p>
+        </div>
+
+        <div style="background: #e8f5e9; border-left: 4px solid #27ae60; padding: 16px 20px; border-radius: 0 8px 8px 0; margin-bottom: 24px;">
+            <p style="margin: 0; color: #155724; font-size: 14px; line-height: 1.7; font-style: italic;">
+                &#8220;Our journey of collaboration with OLL has been amazing. It is a remarkable platform providing us a variety of courses which will help teaching our students life skills.&#8221;
+            </p>
+            <p style="margin: 10px 0 0 0; color: #2e7d32; font-size: 13px; font-weight: 600;">&#8212; ICSE Maharashtra Head, Activity High School, Mumbai</p>
+        </div>
+
+        <p style="color: #333; line-height: 1.7; margin-bottom: 8px;">
+            Join the OLL family and give your students the competitive edge they deserve.
+        </p>
+        {OLL_CTA_BLOCK}
+
+        <p style="color: #555; line-height: 1.6; margin-top: 28px;">
+            Thanks &amp; Regards,<br>
+            <strong style="color: #1E3A5F;">Team OLL</strong><br>
+            <span style="font-size: 13px; color: #666;">&#x1F4DE; +91 9892150714 &nbsp;|&nbsp; &#x2709;&#xFE0F; info@oll.co</span>
+        </p>
+    </div>
+    {SCHOOL_EMAIL_FOOTER}
+</div>
+</body>
+</html>"""
+
+
+def build_followup_3_html(contact_name, school_name, sender_name):
+    return f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px;">
+<div style="max-width: 640px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.12);">
+    {build_school_email_header("Empowering Future Skills")}
+    <div style="padding: 36px 32px;">
+        <h2 style="color: #1E3A5F; margin-top: 0; font-size: 20px;">Dear {school_name} Team,</h2>
+
+        <!-- Impact stat -->
+        <div style="background: linear-gradient(135deg, #e8f5e9, #f0fff4); border: 1px solid #a5d6a7; border-radius: 12px; padding: 24px; text-align: center; margin-bottom: 24px;">
+            <p style="margin: 0 0 6px 0; font-size: 36px; font-weight: 900; color: #1b5e20;">+15%</p>
+            <p style="margin: 0; font-size: 16px; color: #2e7d32; font-weight: 600;">Admissions Growth After OLL Program</p>
+            <p style="margin: 8px 0 0 0; font-size: 13px; color: #555;">Schools that partnered with OLL consistently report higher parent preference and admissions growth</p>
+        </div>
+
+        <p style="color: #333; line-height: 1.7; margin-bottom: 20px;">
+            When parents see Robotics &amp; AI as part of the school curriculum, they choose <em>your</em> school over others. OLL has helped hundreds of schools become the <strong>preferred choice in their locality</strong>.
+        </p>
+
+        <!-- Principal testimonial -->
+        <div style="background: #f8fafc; border-radius: 10px; padding: 20px; margin-bottom: 24px;">
+            <h3 style="color: #1E3A5F; margin: 0 0 14px 0; font-size: 15px; font-weight: 700;">What Principals Say About OLL</h3>
+            <a href="https://www.youtube.com/watch?v=OavfLmAdprc&t=2s" style="text-decoration: none; display: block;">
+                <div style="background: #1E3A5F; border-radius: 10px; padding: 20px; text-align: center; position: relative;">
+                    <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 50%; margin: 0 auto 12px auto; display: flex; align-items: center; justify-content: center;">
+                        <p style="margin: 0; color: white; font-size: 24px;">&#9654;</p>
+                    </div>
+                    <p style="margin: 0 0 4px 0; color: white; font-weight: 700; font-size: 14px;">Principal Testimonial Video</p>
+                    <p style="margin: 0; color: rgba(255,255,255,0.75); font-size: 12px;">youtube.com &#8594; Watch Now</p>
+                </div>
+            </a>
+        </div>
+
+        <p style="color: #333; line-height: 1.7; margin-bottom: 8px;">
+            Let&#8217;s schedule a call to discuss how OLL can help <strong>{school_name}</strong> become the top choice for parents in your area.
+        </p>
+        {OLL_CTA_BLOCK}
+
+        <p style="color: #555; line-height: 1.6; margin-top: 28px;">
+            Thanks &amp; Regards,<br>
+            <strong style="color: #1E3A5F;">Team OLL</strong><br>
+            <span style="font-size: 13px; color: #666;">&#x1F4DE; +91 9892150714 &nbsp;|&nbsp; &#x2709;&#xFE0F; info@oll.co</span>
+        </p>
+    </div>
+    {SCHOOL_EMAIL_FOOTER}
+</div>
+</body>
+</html>"""
+
+
+def build_followup_4_html(contact_name, school_name, sender_name):
+    return f"""<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px;">
+<div style="max-width: 640px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.12);">
+    {build_school_email_header("Empowering Future Skills")}
+    <div style="padding: 36px 32px;">
+        <h2 style="color: #1E3A5F; margin-top: 0; font-size: 20px;">Dear {school_name} Team,</h2>
+        <p style="color: #333; line-height: 1.7; margin-bottom: 16px;">
+            This is my last note for now, and I wanted to keep it short and simple.
+        </p>
+        <div style="background: #f8fafc; border-left: 4px solid #1E3A5F; padding: 20px; border-radius: 0 8px 8px 0; margin: 20px 0;">
+            <p style="color: #333; line-height: 1.8; margin: 0; font-size: 14px;">
+                If you ever need anything &#8212; more information, a demo, a custom proposal, or just a conversation about how Robotics &amp; AI can benefit your students &#8212; please don&#8217;t hesitate to reach out.
+            </p>
+        </div>
+        <p style="color: #333; line-height: 1.7;">
+            <strong>Just give us a call or reply to this email.</strong> We&#8217;re always happy to help.
+        </p>
+        <p style="color: #333; line-height: 1.7; margin-bottom: 8px;">
+            Wishing the best for <strong>{school_name}</strong> and all your students.
+        </p>
+        {OLL_CTA_BLOCK}
+
+        <p style="color: #555; line-height: 1.6; margin-top: 28px;">
+            With warm regards,<br>
+            <strong style="color: #1E3A5F;">{sender_name}</strong><br>
+            <strong style="color: #1E3A5F;">Team OLL</strong><br>
+            <span style="font-size: 13px; color: #666;">&#x1F4DE; +91 9892150714 &nbsp;|&nbsp; &#x2709;&#xFE0F; info@oll.co</span>
+        </p>
+    </div>
+    {SCHOOL_EMAIL_FOOTER}
+</div>
+</body>
+</html>"""
+
 import base64 as b64_module
+
+def get_followup_weekday_dates(start_date, count: int = 4, interval: int = 4) -> list:
+    """Calculate N followup dates, each `interval` weekdays from the previous"""
+    from datetime import date as date_type
+    dates = []
+    current = start_date
+    for _ in range(count):
+        weekdays_added = 0
+        while weekdays_added < interval:
+            current = current + timedelta(days=1)
+            if current.weekday() < 5:  # Mon-Fri
+                weekdays_added += 1
+        dates.append(current)
+    return dates
 
 async def send_school_crm_email(
     to_email: str,
@@ -1161,6 +1514,33 @@ async def send_school_crm_email(
     template_info = SCHOOL_EMAIL_TEMPLATES.get(email_type)
     if not template_info:
         return {"success": False, "error": f"Unknown email type: {email_type}"}
+
+    # Handle custom followup templates (built dynamically)
+    if email_type in ("followup_1", "followup_2", "followup_3", "followup_4"):
+        builders = {
+            "followup_1": build_followup_1_html,
+            "followup_2": build_followup_2_html,
+            "followup_3": build_followup_3_html,
+            "followup_4": build_followup_4_html,
+        }
+        html_content = builders[email_type](contact_name, school_name, sender_name)
+        subject = template_info["subject"].format(school_name=school_name)
+        try:
+            params: dict = {
+                "from": SENDER_EMAIL,
+                "to": [to_email],
+                "reply_to": "info@oll.co",
+                "subject": subject,
+                "html": html_content
+            }
+            if pdf_base64 and pdf_filename:
+                params["attachments"] = [{"filename": pdf_filename, "content": pdf_base64}]
+            email_response = await asyncio.to_thread(resend.Emails.send, params)
+            email_id = email_response.get("id") if isinstance(email_response, dict) else str(email_response)
+            return {"success": True, "email_id": email_id}
+        except Exception as e:
+            logging.error(f"Followup email error [{email_type}]: {str(e)}")
+            return {"success": False, "error": str(e)}
 
     extra = extra_data or {}
 
@@ -1845,6 +2225,7 @@ class SchoolInquiry(BaseModel):
     renewal_meeting_address: Optional[str] = None
     lost_reason: Optional[str] = None
     documents: Optional[List[dict]] = None
+    followup_tasks: Optional[List[dict]] = None  # Auto-scheduled followup email tasks
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -3674,7 +4055,7 @@ async def create_payment_order(data: StudentPaymentRequest, user: dict = Depends
         )
         
         # Get frontend URL for return
-        frontend_url = os.getenv("FRONTEND_URL", "https://skill-education-hub-1.preview.emergentagent.com")
+        frontend_url = os.getenv("FRONTEND_URL", "https://oll-crm-hub.preview.emergentagent.com")
         
         # Create order meta
         order_meta = OrderMeta(
@@ -3866,7 +4247,7 @@ async def create_payment_session(student_id: str):
         )
         
         # Get frontend URL for return
-        frontend_url = os.getenv("FRONTEND_URL", "https://skill-education-hub-1.preview.emergentagent.com")
+        frontend_url = os.getenv("FRONTEND_URL", "https://oll-crm-hub.preview.emergentagent.com")
         backend_url = os.getenv("REACT_APP_BACKEND_URL", frontend_url)
         
         # Create order meta
@@ -6586,6 +6967,25 @@ async def create_school_inquiry(data: SchoolInquiryCreate):
     
     inquiry_dict['created_at'] = inquiry_dict['created_at'].isoformat()
     inquiry_dict['updated_at'] = inquiry_dict['updated_at'].isoformat()
+
+    # Auto-schedule 4 followup tasks (every 4 weekdays)
+    today = datetime.now(timezone.utc).date()
+    followup_dates = get_followup_weekday_dates(today, count=4, interval=4)
+    followup_tasks = [
+        {
+            "id": str(uuid.uuid4()),
+            "number": i + 1,
+            "scheduled_date": followup_dates[i].isoformat(),
+            "email_type": f"followup_{i + 1}",
+            "status": "pending",
+            "sent_at": None,
+            "sent_by": None
+        }
+        for i in range(4)
+    ]
+    inquiry_dict['followup_tasks'] = followup_tasks
+    inquiry.followup_tasks = followup_tasks
+
     await db.school_inquiries.insert_one(inquiry_dict)
     return inquiry
 
@@ -10547,6 +10947,22 @@ async def send_crm_email_for_school(
                     "performed_at": datetime.now(timezone.utc).isoformat()
                 }}}
             )
+            # Auto-mark followup task as sent if this was a followup email
+            if email_type in ("followup_1", "followup_2", "followup_3", "followup_4"):
+                task_id_override = data.get("task_id")
+                school_doc = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0, "followup_tasks": 1})
+                tasks = school_doc.get("followup_tasks", []) if school_doc else []
+                for task in tasks:
+                    if (task_id_override and task["id"] == task_id_override) or \
+                       (not task_id_override and task["email_type"] == email_type and task["status"] == "pending"):
+                        task["status"] = "sent"
+                        task["sent_at"] = datetime.now(timezone.utc).isoformat()
+                        task["sent_by"] = user.get("name", "Admin")
+                        break
+                await db.school_inquiries.update_one(
+                    {"id": school_id},
+                    {"$set": {"followup_tasks": tasks}}
+                )
             return {"success": True, "message": f"Email sent to {to_email}", "email_id": result.get("email_id")}
         else:
             raise HTTPException(status_code=500, detail=result.get("error", "Failed to send email"))
@@ -10556,6 +10972,46 @@ async def send_crm_email_for_school(
     except Exception as e:
         logging.error(f"Send CRM email error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ========================
+# FOLLOWUP TASK ENDPOINTS
+# ========================
+
+@api_router.patch("/schools/{school_id}/followup-task/{task_id}")
+async def update_followup_task(
+    school_id: str,
+    task_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Update a followup task: change date or mark as sent/skipped"""
+    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+
+    tasks = school.get("followup_tasks", [])
+    updated = False
+    for task in tasks:
+        if task["id"] == task_id:
+            if "scheduled_date" in data:
+                task["scheduled_date"] = data["scheduled_date"]
+            if "status" in data:
+                task["status"] = data["status"]
+            if data.get("status") == "sent":
+                task["sent_at"] = datetime.now(timezone.utc).isoformat()
+                task["sent_by"] = user.get("name", "Admin")
+            updated = True
+            break
+
+    if not updated:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    await db.school_inquiries.update_one(
+        {"id": school_id},
+        {"$set": {"followup_tasks": tasks}}
+    )
+    return {"success": True, "followup_tasks": tasks}
 
 
 # Schedule AI-generated followup email

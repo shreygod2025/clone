@@ -540,6 +540,8 @@ const AdminSchoolCRM = () => {
   const [showEditLeadModal, setShowEditLeadModal] = useState(null);
   const [generatingProposal, setGeneratingProposal] = useState(false);
   const [lastProposalPDF, setLastProposalPDF] = useState(null); // { base64, filename, schoolId }
+  const [expandedFollowups, setExpandedFollowups] = useState(new Set()); // Set of school IDs with expanded followup section
+  const [editingFollowupDate, setEditingFollowupDate] = useState(null); // { schoolId, taskId }
   const [editLeadData, setEditLeadData] = useState({
     offering: '',
     training_type: '', // teacher_training, student_training, both
@@ -731,6 +733,7 @@ const AdminSchoolCRM = () => {
   const [emailModalSending, setEmailModalSending] = useState(false);
   const [emailModalCustomMsg, setEmailModalCustomMsg] = useState('');
   const [emailModalToEmail, setEmailModalToEmail] = useState('');
+  const [emailModalTaskId, setEmailModalTaskId] = useState(null);
 
   const [newLead, setNewLead] = useState({
     school_name: '',
@@ -1391,6 +1394,34 @@ const AdminSchoolCRM = () => {
     } catch (err) {
       console.warn('Auto-save failed:', err);
     }
+  };
+
+  const handleUpdateFollowupDate = async (schoolId, taskId, newDate) => {
+    try {
+      await axios.patch(`${API}/schools/${schoolId}/followup-task/${taskId}`, {
+        scheduled_date: format(newDate, 'yyyy-MM-dd')
+      }, { headers: getAuthHeaders() });
+      setEditingFollowupDate(null);
+      fetchInquiries();
+      toast.success('Followup date updated');
+    } catch {
+      toast.error('Failed to update date');
+    }
+  };
+
+  const handleSendFollowupEmail = async (inquiry, task) => {
+    const toEmail = inquiry.email;
+    if (!toEmail || toEmail.endsWith('@school.oll')) {
+      toast.error('No valid email for this school. Please add an email first.');
+      return;
+    }
+    // Open email modal pre-filled with the followup type
+    setShowEmailModal(inquiry);
+    setEmailModalType(task.email_type);
+    setEmailModalToEmail(toEmail);
+    setEmailModalCustomMsg('');
+    // Store task_id so the endpoint can mark it as sent
+    setEmailModalTaskId(task.id);
   };
 
   const handleSaveEditLead = async (moveToMeetingDone = false) => {    if (!showEditLeadModal) return;
@@ -5284,6 +5315,64 @@ const AdminSchoolCRM = () => {
 
               {/* Action Buttons based on status */}
               {renderActionButtons(inquiry)}
+
+              {/* Followup Tasks Section — only for new/lead stage */}
+              {(inquiry.status === 'new' || inquiry.status === 'lead') && inquiry.followup_tasks?.length > 0 && (
+                <div className="mt-2 border-t border-slate-100 pt-2">
+                  <button
+                    className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 font-medium w-full"
+                    onClick={() => {
+                      const next = new Set(expandedFollowups);
+                      if (next.has(inquiry.id)) next.delete(inquiry.id);
+                      else next.add(inquiry.id);
+                      setExpandedFollowups(next);
+                    }}
+                  >
+                    <Mail className="w-3 h-3" />
+                    Followup Emails ({inquiry.followup_tasks.filter(t => t.status === 'sent').length}/{inquiry.followup_tasks.length} sent)
+                    <span className="ml-auto">{expandedFollowups.has(inquiry.id) ? '▲' : '▼'}</span>
+                  </button>
+                  {expandedFollowups.has(inquiry.id) && (
+                    <div className="mt-2 space-y-1.5">
+                      {inquiry.followup_tasks.map((task) => {
+                        const labels = { followup_1: 'F1: OLL Program', followup_2: 'F2: Partner Schools', followup_3: 'F3: Admissions +15%', followup_4: 'F4: Last Note' };
+                        const statusColors = { pending: 'bg-amber-100 text-amber-700', sent: 'bg-green-100 text-green-700', skipped: 'bg-slate-100 text-slate-500' };
+                        return (
+                          <div key={task.id} className="flex items-center gap-2 bg-slate-50 rounded-lg px-2.5 py-2">
+                            <span className="text-xs font-semibold text-slate-700 w-28 shrink-0 truncate">{labels[task.email_type] || task.email_type}</span>
+                            <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${statusColors[task.status] || statusColors.pending}`}>{task.status}</span>
+                            {editingFollowupDate?.taskId === task.id ? (
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button className="text-xs underline text-blue-600">{format(new Date(task.scheduled_date), 'dd MMM')}</button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0">
+                                  <Calendar mode="single" selected={new Date(task.scheduled_date)} onSelect={(d) => { if(d) handleUpdateFollowupDate(inquiry.id, task.id, d); }} />
+                                </PopoverContent>
+                              </Popover>
+                            ) : (
+                              <button
+                                className="text-xs text-slate-500 hover:text-blue-600 flex items-center gap-0.5"
+                                onClick={() => setEditingFollowupDate({ schoolId: inquiry.id, taskId: task.id })}
+                              >
+                                <CalendarClock className="w-3 h-3" />{format(new Date(task.scheduled_date), 'dd MMM')}
+                              </button>
+                            )}
+                            <button
+                              className="ml-auto text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 font-medium disabled:opacity-50"
+                              disabled={task.status === 'sent'}
+                              onClick={() => handleSendFollowupEmail(inquiry, task)}
+                              data-testid={`send-followup-${task.id}`}
+                            >
+                              {task.status === 'sent' ? 'Sent' : 'Send Mail'}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -8170,7 +8259,11 @@ const AdminSchoolCRM = () => {
                   { value: 'meeting_confirmation', label: 'Meeting Confirm', color: 'green' },
                   { value: 'proposal', label: 'Proposal', color: 'amber' },
                   { value: 'mou', label: 'MOU / Agreement', color: 'purple' },
-                  { value: 'followup', label: 'Follow-up', color: 'slate' },
+                  { value: 'followup', label: 'General Follow-up', color: 'slate' },
+                  { value: 'followup_1', label: 'F1: OLL Program', color: 'sky' },
+                  { value: 'followup_2', label: 'F2: Partner Schools', color: 'sky' },
+                  { value: 'followup_3', label: 'F3: Admissions +15%', color: 'sky' },
+                  { value: 'followup_4', label: 'F4: Last Note', color: 'sky' },
                 ].map(({ value, label, color }) => (
                   <button
                     key={value}
@@ -8248,10 +8341,13 @@ const AdminSchoolCRM = () => {
                       meeting_date: showEmailModal.meeting_date,
                       meeting_time: showEmailModal.meeting_time,
                       meeting_mode: showEmailModal.meeting_type,
+                      task_id: emailModalTaskId || undefined,
                       ...(hasPDF ? { pdf_base64: lastProposalPDF.base64, pdf_filename: lastProposalPDF.filename } : {})
                     }, { headers: getAuthHeaders() });
                     toast.success(`Email sent to ${emailModalToEmail}${hasPDF ? ' with PDF attached!' : ''}`);
                     setShowEmailModal(null);
+                    setEmailModalTaskId(null);
+                    fetchInquiries();
                   } catch (err) {
                     toast.error(err?.response?.data?.detail || 'Failed to send email');
                   } finally {
