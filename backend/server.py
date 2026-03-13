@@ -859,6 +859,350 @@ async def send_educator_rejected_email(educator: dict):
         }
     )
 
+
+# ========================
+# SCHOOL CRM EMAIL NOTIFICATION SYSTEM
+# ========================
+
+SCHOOL_EMAIL_FOOTER = """
+<div style="background: #1E3A5F; padding: 24px; text-align: center; margin-top: 0;">
+    <p style="color: rgba(255,255,255,0.9); margin: 0 0 8px 0; font-size: 14px; font-weight: 600;">OLL - Omni Learning Labs</p>
+    <p style="color: rgba(255,255,255,0.7); margin: 0; font-size: 13px;">
+        <a href="tel:+919920188188" style="color: rgba(255,255,255,0.85); text-decoration: none;">+91 9920188188</a>
+        &nbsp;|&nbsp;
+        <a href="mailto:info@oll.co" style="color: rgba(255,255,255,0.85); text-decoration: none;">info@oll.co</a>
+        &nbsp;|&nbsp;
+        <a href="https://oll.co" style="color: rgba(255,255,255,0.85); text-decoration: none;">www.oll.co</a>
+    </p>
+</div>
+"""
+
+def build_school_email_header(subtitle: str = "Empowering Future Skills") -> str:
+    return f"""
+<div style="background: linear-gradient(135deg, #1E3A5F 0%, #2d4a6f 100%); padding: 32px; text-align: center;">
+    <img src="https://oll.co/logo.png" alt="OLL" style="height: 48px; margin-bottom: 12px; display: block; margin-left: auto; margin-right: auto;" onerror="this.style.display='none'" />
+    <h1 style="color: white; margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px;">OLL</h1>
+    <p style="color: rgba(255,255,255,0.85); margin: 6px 0 0 0; font-size: 14px;">{subtitle}</p>
+</div>
+"""
+
+SCHOOL_INTRO_EMAIL_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px;">
+<div style="max-width: 620px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.12);">
+    {header}
+    <div style="padding: 36px 32px;">
+        <h2 style="color: #1E3A5F; margin-top: 0; font-size: 22px;">Dear {contact_name},</h2>
+        <p style="color: #333; line-height: 1.7; margin-bottom: 16px;">
+            Thank you for your interest in partnering with <strong>OLL (Omni Learning Labs)</strong>! We are excited about the opportunity to bring <strong>Robotics, AI & STEM education</strong> to the students of <strong>{school_name}</strong>.
+        </p>
+        <div style="background: #f8fafc; border-left: 4px solid #1E3A5F; padding: 20px; border-radius: 0 8px 8px 0; margin: 24px 0;">
+            <h3 style="color: #1E3A5F; margin: 0 0 12px 0; font-size: 16px;">About OLL</h3>
+            <p style="color: #444; line-height: 1.7; margin: 0; font-size: 14px;">
+                OLL is India's leading Robotics & AI skill education platform, partnering with 200+ schools across the country. We offer a complete <strong>plug-and-play program</strong> — from lab setup and kits to trained educators and curriculum — designed for Grades 1 to 12. Our mission is to make every child future-ready through hands-on, project-based learning.
+            </p>
+        </div>
+        <h3 style="color: #1E3A5F; font-size: 16px; margin-top: 24px;">Why Schools Choose OLL</h3>
+        <ul style="color: #333; line-height: 1.9; padding-left: 20px; margin: 12px 0;">
+            <li>Complete <strong>Robotics & AI Lab setup</strong> with kits and equipment</li>
+            <li>Trained, certified educators for every batch</li>
+            <li>CBSE/ICSE-aligned curriculum for Grades 1–12</li>
+            <li>Flexible models — Compulsory & Optional programs</li>
+            <li>200+ school partners | 50,000+ students impacted</li>
+        </ul>
+        <div style="background: #e8f4fd; padding: 20px; border-radius: 10px; margin: 24px 0;">
+            <h3 style="color: #1565c0; margin: 0 0 14px 0; font-size: 15px;">Explore Our Resources</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td style="padding: 6px 0; width: 50%;">
+                        <a href="https://drive.google.com/drive/folders/1VFjJqxQ0poCxpkOHM5YMwevBx7Uh9p-M" 
+                           style="color: #1565c0; text-decoration: none; font-size: 14px; font-weight: 600;">
+                            📁 Program Brochure
+                        </a>
+                    </td>
+                    <td style="padding: 6px 0; width: 50%;">
+                        <a href="https://www.youtube.com/@OLLindia" 
+                           style="color: #c0392b; text-decoration: none; font-size: 14px; font-weight: 600;">
+                            ▶ OLL YouTube Channel
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 6px 0;">
+                        <a href="https://oll.co" 
+                           style="color: #1565c0; text-decoration: none; font-size: 14px; font-weight: 600;">
+                            🌐 Visit oll.co
+                        </a>
+                    </td>
+                    <td style="padding: 6px 0;">
+                        <a href="https://oll.co/school" 
+                           style="color: #1565c0; text-decoration: none; font-size: 14px; font-weight: 600;">
+                            🏫 School Program Details
+                        </a>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        {meeting_section}
+        <p style="color: #333; line-height: 1.7; margin-top: 24px;">
+            We'd love to schedule a <strong>brief call or meeting</strong> to understand your school's needs and share how OLL can add value. Please feel free to reach out to us at any time.
+        </p>
+        <p style="color: #555; line-height: 1.6; margin-top: 16px;">
+            Warm regards,<br>
+            <strong style="color: #1E3A5F;">{sender_name}</strong><br>
+            <span style="color: #888; font-size: 13px;">OLL School Partnerships</span>
+        </p>
+    </div>
+    {footer}
+</div>
+</body>
+</html>
+"""
+
+SCHOOL_MEETING_CONFIRMATION_EMAIL_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px;">
+<div style="max-width: 620px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.12);">
+    {header}
+    <div style="padding: 36px 32px;">
+        <h2 style="color: #1E3A5F; margin-top: 0; font-size: 22px;">Dear {contact_name},</h2>
+        <p style="color: #333; line-height: 1.7;">
+            Thank you for your time and interest in OLL! We're pleased to confirm our upcoming meeting to discuss the OLL program for <strong>{school_name}</strong>.
+        </p>
+        <div style="background: #e8f5e9; border-left: 4px solid #27ae60; padding: 20px; border-radius: 0 10px 10px 0; margin: 24px 0;">
+            <h3 style="color: #155724; margin: 0 0 14px 0; font-size: 16px;">Meeting Details</h3>
+            <p style="margin: 6px 0; color: #333; font-size: 14px;"><strong>Date:</strong> {meeting_date}</p>
+            <p style="margin: 6px 0; color: #333; font-size: 14px;"><strong>Time:</strong> {meeting_time}</p>
+            <p style="margin: 6px 0; color: #333; font-size: 14px;"><strong>Mode:</strong> {meeting_mode}</p>
+            {meeting_link_section}
+        </div>
+        <p style="color: #333; line-height: 1.7;">
+            We look forward to an engaging discussion. Please don't hesitate to reach out if you have any questions before the meeting.
+        </p>
+        <p style="color: #555; line-height: 1.6; margin-top: 24px;">
+            Warm regards,<br>
+            <strong style="color: #1E3A5F;">{sender_name}</strong><br>
+            <span style="color: #888; font-size: 13px;">OLL School Partnerships</span>
+        </p>
+    </div>
+    {footer}
+</div>
+</body>
+</html>
+"""
+
+SCHOOL_PROPOSAL_EMAIL_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px;">
+<div style="max-width: 620px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.12);">
+    {header}
+    <div style="padding: 36px 32px;">
+        <h2 style="color: #1E3A5F; margin-top: 0; font-size: 22px;">Dear {contact_name},</h2>
+        <p style="color: #333; line-height: 1.7;">
+            Thank you for your time and interest in OLL's programs. As discussed, please find attached the <strong>detailed proposal</strong> for implementing the OLL Robotics & AI program at <strong>{school_name}</strong>.
+        </p>
+        <div style="background: #fff8e1; border-left: 4px solid #f39c12; padding: 20px; border-radius: 0 10px 10px 0; margin: 24px 0;">
+            <h3 style="color: #856404; margin: 0 0 12px 0; font-size: 15px;">Proposal Highlights</h3>
+            <ul style="color: #444; line-height: 1.9; padding-left: 18px; margin: 0; font-size: 14px;">
+                <li>Robotics & AI lab setup with complete kit supply</li>
+                <li>Trained educator support for every batch</li>
+                <li>CBSE/ICSE-aligned curriculum for Grades 1–12</li>
+                <li>Flexible pricing — per student or fixed model</li>
+                <li>Ongoing program support & quarterly assessments</li>
+            </ul>
+        </div>
+        <p style="color: #333; line-height: 1.7;">
+            We would love to discuss the proposal in detail at your convenience. Please feel free to share any feedback or questions — we're happy to customize the proposal as per your school's requirements.
+        </p>
+        <p style="color: #555; line-height: 1.6; margin-top: 24px;">
+            Warm regards,<br>
+            <strong style="color: #1E3A5F;">{sender_name}</strong><br>
+            <span style="color: #888; font-size: 13px;">OLL School Partnerships</span>
+        </p>
+    </div>
+    {footer}
+</div>
+</body>
+</html>
+"""
+
+SCHOOL_MOU_EMAIL_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px;">
+<div style="max-width: 620px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.12);">
+    {header}
+    <div style="padding: 36px 32px;">
+        <h2 style="color: #1E3A5F; margin-top: 0; font-size: 22px;">Dear {contact_name},</h2>
+        <p style="color: #333; line-height: 1.7;">
+            We are delighted to move forward with the partnership between <strong>{school_name}</strong> and <strong>OLL (Omni Learning Labs)</strong>. Please find attached the <strong>Memorandum of Understanding (MOU)</strong> for your review and signature.
+        </p>
+        <div style="background: #e8f5e9; border-left: 4px solid #27ae60; padding: 20px; border-radius: 0 10px 10px 0; margin: 24px 0;">
+            <h3 style="color: #155724; margin: 0 0 12px 0; font-size: 15px;">Next Steps</h3>
+            <ol style="color: #333; line-height: 1.9; padding-left: 18px; margin: 0; font-size: 14px;">
+                <li>Review the attached MOU carefully</li>
+                <li>Sign and return the MOU (two copies)</li>
+                <li>Kit delivery will be scheduled within 7 working days of signing</li>
+                <li>Teacher training session will be arranged before program launch</li>
+            </ol>
+        </div>
+        <p style="color: #333; line-height: 1.7;">
+            If you have any questions or need modifications to the MOU, please do not hesitate to reach out. We look forward to a long and successful partnership with {school_name}.
+        </p>
+        <p style="color: #555; line-height: 1.6; margin-top: 24px;">
+            Warm regards,<br>
+            <strong style="color: #1E3A5F;">{sender_name}</strong><br>
+            <span style="color: #888; font-size: 13px;">OLL School Partnerships</span>
+        </p>
+    </div>
+    {footer}
+</div>
+</body>
+</html>
+"""
+
+SCHOOL_FOLLOWUP_EMAIL_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px;">
+<div style="max-width: 620px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.12);">
+    {header}
+    <div style="padding: 36px 32px;">
+        <h2 style="color: #1E3A5F; margin-top: 0; font-size: 22px;">Dear {contact_name},</h2>
+        <p style="color: #333; line-height: 1.7;">
+            I hope this message finds you well. I'm following up on our earlier conversation regarding the OLL Robotics & AI program for <strong>{school_name}</strong>.
+        </p>
+        {custom_message_section}
+        <p style="color: #333; line-height: 1.7;">
+            We'd love to understand how we can best support your school's vision for skill education. Please feel free to reach out or let us know a convenient time for a brief call.
+        </p>
+        <p style="color: #555; line-height: 1.6; margin-top: 24px;">
+            Warm regards,<br>
+            <strong style="color: #1E3A5F;">{sender_name}</strong><br>
+            <span style="color: #888; font-size: 13px;">OLL School Partnerships</span>
+        </p>
+    </div>
+    {footer}
+</div>
+</body>
+</html>
+"""
+
+SCHOOL_EMAIL_TEMPLATES = {
+    "introduction": {
+        "template": SCHOOL_INTRO_EMAIL_TEMPLATE,
+        "subject": "Robotics & AI Education Partnership — {school_name} x OLL"
+    },
+    "meeting_confirmation": {
+        "template": SCHOOL_MEETING_CONFIRMATION_EMAIL_TEMPLATE,
+        "subject": "Meeting Confirmed — OLL Program Discussion for {school_name}"
+    },
+    "proposal": {
+        "template": SCHOOL_PROPOSAL_EMAIL_TEMPLATE,
+        "subject": "OLL Program Proposal for {school_name}"
+    },
+    "mou": {
+        "template": SCHOOL_MOU_EMAIL_TEMPLATE,
+        "subject": "MOU — OLL Partnership with {school_name}"
+    },
+    "followup": {
+        "template": SCHOOL_FOLLOWUP_EMAIL_TEMPLATE,
+        "subject": "Following Up — OLL Program for {school_name}"
+    }
+}
+
+import base64 as b64_module
+
+async def send_school_crm_email(
+    to_email: str,
+    email_type: str,
+    school_name: str,
+    contact_name: str,
+    sender_name: str = "OLL Team",
+    extra_data: dict = None,
+    pdf_base64: str = None,
+    pdf_filename: str = None
+) -> dict:
+    """
+    Send a School CRM email using Resend with reply-to info@oll.co.
+    Supports optional PDF attachment.
+    """
+    if not resend.api_key:
+        return {"success": False, "error": "Email service not configured"}
+
+    template_info = SCHOOL_EMAIL_TEMPLATES.get(email_type)
+    if not template_info:
+        return {"success": False, "error": f"Unknown email type: {email_type}"}
+
+    extra = extra_data or {}
+
+    # Build optional sections
+    meeting_section = ""
+    if extra.get("meeting_date") and extra.get("meeting_time"):
+        meeting_section = f"""
+        <div style="background: #e8f4fd; border-left: 4px solid #2196F3; padding: 16px; border-radius: 0 8px 8px 0; margin: 20px 0;">
+            <h3 style="color: #1565c0; margin: 0 0 10px 0; font-size: 15px;">Scheduled Meeting</h3>
+            <p style="margin: 4px 0; font-size: 14px; color: #333;"><strong>Date:</strong> {extra.get('meeting_date')}</p>
+            <p style="margin: 4px 0; font-size: 14px; color: #333;"><strong>Time:</strong> {extra.get('meeting_time')}</p>
+            <p style="margin: 4px 0; font-size: 14px; color: #333;"><strong>Mode:</strong> {extra.get('meeting_mode', 'Offline').title()}</p>
+        </div>"""
+
+    meeting_link_section = ""
+    if extra.get("meeting_link"):
+        meeting_link_section = f'<p style="margin: 6px 0; color: #333; font-size: 14px;"><strong>Link:</strong> <a href="{extra.get("meeting_link")}" style="color: #1565c0;">{extra.get("meeting_link")}</a></p>'
+
+    custom_message_section = ""
+    if extra.get("custom_message"):
+        custom_message_section = f'<div style="background: #f8f9fa; padding: 16px; border-radius: 8px; margin: 16px 0;"><p style="color: #444; line-height: 1.7; margin: 0; font-size: 14px;">{extra.get("custom_message")}</p></div>'
+
+    html_content = template_info["template"].format(
+        header=build_school_email_header(),
+        footer=SCHOOL_EMAIL_FOOTER,
+        contact_name=contact_name,
+        school_name=school_name,
+        sender_name=sender_name,
+        meeting_date=extra.get("meeting_date", ""),
+        meeting_time=extra.get("meeting_time", ""),
+        meeting_mode=extra.get("meeting_mode", "Offline"),
+        meeting_link_section=meeting_link_section,
+        meeting_section=meeting_section,
+        custom_message_section=custom_message_section
+    )
+
+    subject = template_info["subject"].format(school_name=school_name)
+
+    try:
+        params: dict = {
+            "from": SENDER_EMAIL,
+            "to": [to_email],
+            "reply_to": "info@oll.co",
+            "subject": subject,
+            "html": html_content
+        }
+
+        # Attach PDF if provided
+        if pdf_base64 and pdf_filename:
+            params["attachments"] = [{
+                "filename": pdf_filename,
+                "content": pdf_base64
+            }]
+
+        email_response = await asyncio.to_thread(resend.Emails.send, params)
+        email_id = email_response.get("id") if isinstance(email_response, dict) else str(email_response)
+        return {"success": True, "email_id": email_id}
+    except Exception as e:
+        logging.error(f"School CRM email error [{email_type}]: {str(e)}")
+        return {"success": False, "error": str(e)}
+
+
 # ========================
 # PYDANTIC MODELS
 # ========================
@@ -10084,6 +10428,81 @@ async def send_personalized_school_email(data: dict):
     except Exception as e:
         print(f"Error sending personalized email: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to send email: {str(e)}")
+
+# ========================
+# SCHOOL CRM EMAIL SEND ENDPOINT
+# ========================
+
+@api_router.post("/schools/{school_id}/send-crm-email")
+async def send_crm_email_for_school(
+    school_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """
+    Send a CRM email to the school contact.
+    data fields:
+        email_type: introduction | meeting_confirmation | proposal | mou | followup
+        to_email: override email (optional, uses school email by default)
+        pdf_base64: base64-encoded PDF (optional)
+        pdf_filename: filename for attachment (optional)
+        custom_message: extra message for followup emails (optional)
+    """
+    try:
+        school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
+        if not school:
+            raise HTTPException(status_code=404, detail="School not found")
+
+        email_type = data.get("email_type", "introduction")
+        to_email = data.get("to_email") or school.get("email", "")
+
+        if not to_email or "@" not in to_email or to_email.endswith("@school.oll"):
+            raise HTTPException(status_code=400, detail="Valid email address required. Please update the school's email first.")
+
+        sender_name = user.get("name", "OLL Team")
+
+        # Build extra_data for template
+        extra_data = {
+            "meeting_date": data.get("meeting_date") or school.get("meeting_date", ""),
+            "meeting_time": data.get("meeting_time") or school.get("meeting_time", ""),
+            "meeting_mode": data.get("meeting_mode") or school.get("meeting_type", "offline"),
+            "meeting_link": data.get("meeting_link") or school.get("meeting_link", ""),
+            "custom_message": data.get("custom_message", "")
+        }
+
+        result = await send_school_crm_email(
+            to_email=to_email,
+            email_type=email_type,
+            school_name=school.get("school_name", ""),
+            contact_name=school.get("contact_name", ""),
+            sender_name=sender_name,
+            extra_data=extra_data,
+            pdf_base64=data.get("pdf_base64"),
+            pdf_filename=data.get("pdf_filename")
+        )
+
+        if result.get("success"):
+            # Log this email in the school's activity log
+            await db.school_inquiries.update_one(
+                {"id": school_id},
+                {"$push": {"activity_log": {
+                    "id": str(uuid.uuid4()),
+                    "action": f"email_sent_{email_type}",
+                    "description": f"Email sent ({email_type.replace('_', ' ').title()}) to {to_email}",
+                    "performed_by": user.get("name", "Admin"),
+                    "performed_at": datetime.now(timezone.utc).isoformat()
+                }}}
+            )
+            return {"success": True, "message": f"Email sent to {to_email}", "email_id": result.get("email_id")}
+        else:
+            raise HTTPException(status_code=500, detail=result.get("error", "Failed to send email"))
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"Send CRM email error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # Schedule AI-generated followup email
 @api_router.post("/schools/schedule-followup-email")

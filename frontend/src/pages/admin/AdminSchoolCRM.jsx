@@ -724,6 +724,13 @@ const AdminSchoolCRM = () => {
   const [generatingMOU, setGeneratingMOU] = useState(false);
   const [generatingParentCircular, setGeneratingParentCircular] = useState(false);
   const lastOnboardInquiryId = useRef(null);
+  // Email modal states
+  const [showEmailModal, setShowEmailModal] = useState(null); // school inquiry object
+  const [emailModalType, setEmailModalType] = useState('introduction');
+  const [emailModalSending, setEmailModalSending] = useState(false);
+  const [emailModalCustomMsg, setEmailModalCustomMsg] = useState('');
+  const [emailModalToEmail, setEmailModalToEmail] = useState('');
+
   const [newLead, setNewLead] = useState({
     school_name: '',
     contact_name: '',
@@ -741,7 +748,8 @@ const AdminSchoolCRM = () => {
     notes: '',
     quoted_price: '',
     selected_offerings: [],
-    assign_option: 'self' // 'self' or 'admin'
+    assign_option: 'self', // 'self' or 'admin'
+    sendIntroEmail: false
   });
 
   useEffect(() => {
@@ -3606,7 +3614,7 @@ const AdminSchoolCRM = () => {
     // Clean phone for email generation - remove spaces and special chars
     const cleanPhone = newLead.phone.replace(/[^0-9]/g, '');
     try {
-      await axios.post(`${API}/schools/inquiry`, {
+      const response = await axios.post(`${API}/schools/inquiry`, {
         school_name: newLead.school_name,
         contact_name: newLead.contact_name,
         email: newLead.email || `${cleanPhone}@school.oll`,
@@ -3631,7 +3639,28 @@ const AdminSchoolCRM = () => {
       }, {
         headers: getAuthHeaders()
       });
-      toast.success('Lead added successfully');
+
+      // Send introduction email if checkbox is checked and email is valid
+      if (newLead.sendIntroEmail && newLead.email && !newLead.email.endsWith('@school.oll')) {
+        const createdId = response?.data?.id;
+        if (createdId) {
+          try {
+            await axios.post(`${API}/schools/${createdId}/send-crm-email`, {
+              email_type: 'introduction',
+              to_email: newLead.email
+            }, { headers: getAuthHeaders() });
+            toast.success('Lead added & introduction email sent!');
+          } catch (emailErr) {
+            toast.success('Lead added successfully');
+            toast.error('Could not send intro email: ' + (emailErr?.response?.data?.detail || 'Email error'));
+          }
+        } else {
+          toast.success('Lead added successfully');
+        }
+      } else {
+        toast.success('Lead added successfully');
+      }
+
       setShowAddForm(false);
       setNewLead({ 
         school_name: '', 
@@ -3650,7 +3679,8 @@ const AdminSchoolCRM = () => {
         notes: '',
         quoted_price: '',
         selected_offerings: [],
-        assign_option: 'self'
+        assign_option: 'self',
+        sendIntroEmail: false
       });
       fetchInquiries();
     } catch (error) {
@@ -4364,6 +4394,19 @@ const AdminSchoolCRM = () => {
     // Action buttons with names and icons
     const baseButtons = (
       <>
+        <button
+          onClick={() => {
+            setShowEmailModal(inquiry);
+            setEmailModalType('introduction');
+            setEmailModalToEmail(inquiry.email || '');
+            setEmailModalCustomMsg('');
+          }}
+          className="text-xs px-2.5 py-1.5 rounded-lg bg-sky-100 hover:bg-sky-200 text-sky-700 flex items-center gap-1 font-medium"
+          data-testid={`send-mail-${inquiry.id}`}
+        >
+          <Mail className="w-3 h-3" />
+          Mail
+        </button>
         <button
           onClick={() => setShowAssignModal(inquiry)}
           className="text-xs px-2.5 py-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 flex items-center gap-1 font-medium"
@@ -6472,7 +6515,7 @@ const AdminSchoolCRM = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3 pt-4 border-t">
+            <div className="flex gap-3 pt-4 border-t flex-wrap">
               <Button
                 variant="outline"
                 onClick={() => handleSaveEditLead(false)}
@@ -6490,6 +6533,19 @@ const AdminSchoolCRM = () => {
                 ) : (
                   <><FileText className="w-4 h-4 mr-1" /> Generate Proposal</>
                 )}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowEmailModal(showEditLeadModal);
+                  setEmailModalType('proposal');
+                  setEmailModalToEmail(showEditLeadModal?.email || '');
+                  setEmailModalCustomMsg('');
+                }}
+                className="flex-1 border-blue-500 text-blue-600 hover:bg-blue-50"
+                data-testid="send-proposal-email-btn"
+              >
+                <Mail className="w-4 h-4 mr-1" /> Send Proposal Email
               </Button>
               <Button
                 onClick={() => handleSaveEditLead(true)}
@@ -8000,6 +8056,28 @@ const AdminSchoolCRM = () => {
                 </label>
               </div>
             </div>
+
+            {/* Send Introduction Email Checkbox */}
+            <div className={`rounded-lg p-3 border ${newLead.sendIntroEmail ? 'bg-blue-50 border-blue-200' : 'bg-slate-50 border-slate-200'}`}>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={newLead.sendIntroEmail}
+                  onChange={(e) => setNewLead({...newLead, sendIntroEmail: e.target.checked})}
+                  className="w-4 h-4 text-blue-600 rounded"
+                  data-testid="send-intro-email-checkbox"
+                />
+                <div>
+                  <span className="text-sm font-medium text-slate-800">Send introduction email</span>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {newLead.email && !newLead.email.endsWith('@school.oll')
+                      ? `Will send to ${newLead.email}`
+                      : 'Add a valid email above to enable this'}
+                  </p>
+                </div>
+                <Mail className="w-4 h-4 text-blue-500 ml-auto" />
+              </label>
+            </div>
             
             <div className="flex gap-3 pt-4 border-t">
               <Button variant="outline" onClick={() => setShowAddForm(false)} className="flex-1">
@@ -8007,6 +8085,119 @@ const AdminSchoolCRM = () => {
               </Button>
               <Button onClick={handleAddLead} className="btn-primary flex-1" data-testid="save-new-school">
                 Add Lead
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Send Mail Modal */}
+      <Dialog open={!!showEmailModal} onOpenChange={() => setShowEmailModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="w-5 h-5 text-blue-600" />
+              Send Email — {showEmailModal?.school_name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {/* Email type selector */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Email Type</label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { value: 'introduction', label: 'Introduction', color: 'blue' },
+                  { value: 'meeting_confirmation', label: 'Meeting Confirm', color: 'green' },
+                  { value: 'proposal', label: 'Proposal', color: 'amber' },
+                  { value: 'mou', label: 'MOU / Agreement', color: 'purple' },
+                  { value: 'followup', label: 'Follow-up', color: 'slate' },
+                ].map(({ value, label, color }) => (
+                  <button
+                    key={value}
+                    onClick={() => setEmailModalType(value)}
+                    className={`text-sm px-3 py-2 rounded-lg border-2 font-medium transition-all ${
+                      emailModalType === value
+                        ? `bg-${color}-100 border-${color}-500 text-${color}-700`
+                        : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                    }`}
+                    data-testid={`email-type-${value}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* To Email */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">To Email</label>
+              <Input
+                value={emailModalToEmail}
+                onChange={(e) => setEmailModalToEmail(e.target.value)}
+                placeholder="recipient@school.com"
+                type="email"
+                data-testid="email-modal-to"
+              />
+              {(!emailModalToEmail || emailModalToEmail.endsWith('@school.oll')) && (
+                <p className="text-xs text-amber-600 mt-1">Please enter a valid email address</p>
+              )}
+            </div>
+
+            {/* Custom message (for followup) */}
+            {emailModalType === 'followup' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Custom Message (optional)</label>
+                <Textarea
+                  value={emailModalCustomMsg}
+                  onChange={(e) => setEmailModalCustomMsg(e.target.value)}
+                  placeholder="Add a personal note to include in the email..."
+                  className="h-20"
+                  data-testid="email-modal-custom-msg"
+                />
+              </div>
+            )}
+
+            <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-700">
+              <strong>Reply-to:</strong> info@oll.co &nbsp;|&nbsp; <strong>From:</strong> OLL Team
+            </div>
+
+            <div className="flex gap-3 pt-2 border-t">
+              <Button variant="outline" onClick={() => setShowEmailModal(null)} className="flex-1">
+                Cancel
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (!emailModalToEmail || emailModalToEmail.endsWith('@school.oll')) {
+                    toast.error('Please enter a valid email address');
+                    return;
+                  }
+                  setEmailModalSending(true);
+                  try {
+                    await axios.post(`${API}/schools/${showEmailModal.id}/send-crm-email`, {
+                      email_type: emailModalType,
+                      to_email: emailModalToEmail,
+                      custom_message: emailModalCustomMsg,
+                      meeting_date: showEmailModal.meeting_date,
+                      meeting_time: showEmailModal.meeting_time,
+                      meeting_mode: showEmailModal.meeting_type
+                    }, { headers: getAuthHeaders() });
+                    toast.success(`Email sent to ${emailModalToEmail}`);
+                    setShowEmailModal(null);
+                  } catch (err) {
+                    toast.error(err?.response?.data?.detail || 'Failed to send email');
+                  } finally {
+                    setEmailModalSending(false);
+                  }
+                }}
+                disabled={emailModalSending || !emailModalToEmail || emailModalToEmail.endsWith('@school.oll')}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                data-testid="send-email-confirm-btn"
+              >
+                {emailModalSending ? (
+                  <><RefreshCw className="w-4 h-4 mr-1 animate-spin" /> Sending...</>
+                ) : (
+                  <><Send className="w-4 h-4 mr-1" /> Send Email</>
+                )}
               </Button>
             </div>
           </div>
@@ -9152,7 +9343,7 @@ const AdminSchoolCRM = () => {
               </div>
             )}
 
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-3 pt-2 flex-wrap">
               <Button variant="outline" onClick={() => setShowOnboardModal(null)} className="flex-1">
                 Cancel
               </Button>
@@ -9168,6 +9359,19 @@ const AdminSchoolCRM = () => {
                 ) : (
                   <><FileText className="w-4 h-4 mr-1" /> Generate MOU</>
                 )}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowEmailModal(showOnboardModal);
+                  setEmailModalType('mou');
+                  setEmailModalToEmail(showOnboardModal?.email || '');
+                  setEmailModalCustomMsg('');
+                }}
+                className="flex-1 border-blue-500 text-blue-600 hover:bg-blue-50"
+                data-testid="send-mou-email-btn"
+              >
+                <Mail className="w-4 h-4 mr-1" /> Send MOU Email
               </Button>
               <Button variant="outline" onClick={() => handleOnboardSchool(true)} className="flex-1 border-blue-500 text-blue-600 hover:bg-blue-50">
                 Save as Draft

@@ -47,6 +47,48 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+### March 13, 2026
+
+#### School CRM Email Notification System
+**Feature Implemented:**
+
+Built a comprehensive email notification system for the School CRM, integrating with the existing Resend email service.
+
+**Backend (server.py):**
+1. 5 HTML email templates with OLL branding:
+   - **Introduction** — Welcome/intro email for new leads with About OLL, resource links, brochure/YouTube links
+   - **Meeting Confirmation** — Meeting details confirmation
+   - **Proposal** — Sends proposal with key highlights
+   - **MOU / Agreement** — Formal MOU sharing email
+   - **Follow-up** — Customizable follow-up email
+2. Email helper function `send_school_crm_email()`:
+   - Uses Resend API with `reply_to: info@oll.co`
+   - Footer: phone +91 9920188188, info@oll.co (no company name)
+   - Supports optional PDF base64 attachment
+3. New endpoint: `POST /api/schools/{school_id}/send-crm-email`
+   - Accepts: email_type, to_email, pdf_base64, pdf_filename, custom_message
+   - Logs email activity to school's activity_log
+
+**Frontend (AdminSchoolCRM.jsx):**
+1. **"Mail" button** on every lead card → opens Send Email modal
+2. **Send Email modal** with:
+   - 5 email type selector buttons (Introduction, Meeting Confirm, Proposal, MOU, Follow-up)
+   - Editable "To Email" field (pre-filled from school email)
+   - Custom message field (for Follow-up type)
+   - Reply-to/From info display
+3. **"Send introduction email" checkbox** in Add New Lead modal:
+   - Auto-sends intro email after lead creation if checked and valid email provided
+4. **"Send Proposal Email" button** in Edit Lead / Proposal section
+5. **"Send MOU Email" button** in Onboarding modal near Generate MOU button
+
+**Testing:** All 5 email types verified via API (sent to shreyaan@oll.co successfully)
+
+**Modified Files:**
+- `backend/server.py` - Added SCHOOL_EMAIL_TEMPLATES, send_school_crm_email(), POST endpoint
+- `frontend/src/pages/admin/AdminSchoolCRM.jsx` - Mail button, email modal, intro checkbox, proposal/MOU email buttons
+
+---
+
 ### March 12, 2026
 
 #### Generate Proposal PDF - Iteration 2
@@ -475,11 +517,14 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 - [x] Fix School Student Payment bugs (links, edit modal, convert/renew modal)
 - [x] Fix NaN fee amount on School Student Payment page
 - [x] Fix Pay Fees button to trigger Cashfree popup
+- [x] Email Notification System for School CRM - DONE March 13, 2026
 
 ### P1 - High Priority
 - [ ] Fix recurring file download issue (wrong name/type)
 - [ ] Generate Proposal & MOU PDFs
 - [ ] Gmail SMTP integration (blocked on credentials)
+- [ ] Fix Parent Circular docx table formatting (recurring 3+)
+- [ ] Phase 2 email: Meeting Reminder automation via APScheduler
 
 ### P2 - Medium Priority
 - [ ] CSV Export for all major tables
@@ -502,3 +547,4 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 1. **File Downloads:** Downloads have incorrect names/types (recurring - 3+ attempts)
 2. **Jitsi Moderator:** Limited control with public meet.jit.si server
 3. **Gmail SMTP:** Non-functional, blocked on user credentials
+4. **Parent Circular docx:** Table formatting broken (recurring 3+)
