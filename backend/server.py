@@ -10985,7 +10985,7 @@ async def update_followup_task(
     data: dict,
     user: dict = Depends(get_current_user)
 ):
-    """Update a followup task: change date or mark as sent/skipped"""
+    """Update a followup task: change date or mark as sent/completed/skipped"""
     school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
     if not school:
         raise HTTPException(status_code=404, detail="School not found")
@@ -10998,7 +10998,7 @@ async def update_followup_task(
                 task["scheduled_date"] = data["scheduled_date"]
             if "status" in data:
                 task["status"] = data["status"]
-            if data.get("status") == "sent":
+            if data.get("status") in ("sent", "completed"):
                 task["sent_at"] = datetime.now(timezone.utc).isoformat()
                 task["sent_by"] = user.get("name", "Admin")
             updated = True

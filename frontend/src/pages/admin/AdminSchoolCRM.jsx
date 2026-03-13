@@ -5,6 +5,7 @@ import { Search, Eye, Building2, Phone, MapPin, Plus, MessageSquare, Calendar, A
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover';
 import { Textarea } from '../../components/ui/textarea';
 import { Calendar as CalendarComponent } from '../../components/ui/calendar';
 import { toast } from 'sonner';
@@ -1406,6 +1407,18 @@ const AdminSchoolCRM = () => {
       toast.success('Followup date updated');
     } catch {
       toast.error('Failed to update date');
+    }
+  };
+
+  const handleUpdateFollowupStatus = async (schoolId, taskId, newStatus) => {
+    try {
+      await axios.patch(`${API}/schools/${schoolId}/followup-task/${taskId}`, {
+        status: newStatus
+      }, { headers: getAuthHeaders() });
+      fetchInquiries();
+      toast.success(`Followup marked as ${newStatus}`);
+    } catch {
+      toast.error('Failed to update status');
     }
   };
 
@@ -5315,64 +5328,6 @@ const AdminSchoolCRM = () => {
 
               {/* Action Buttons based on status */}
               {renderActionButtons(inquiry)}
-
-              {/* Followup Tasks Section — only for new/lead stage */}
-              {(inquiry.status === 'new' || inquiry.status === 'lead') && inquiry.followup_tasks?.length > 0 && (
-                <div className="mt-2 border-t border-slate-100 pt-2">
-                  <button
-                    className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 font-medium w-full"
-                    onClick={() => {
-                      const next = new Set(expandedFollowups);
-                      if (next.has(inquiry.id)) next.delete(inquiry.id);
-                      else next.add(inquiry.id);
-                      setExpandedFollowups(next);
-                    }}
-                  >
-                    <Mail className="w-3 h-3" />
-                    Followup Emails ({inquiry.followup_tasks.filter(t => t.status === 'sent').length}/{inquiry.followup_tasks.length} sent)
-                    <span className="ml-auto">{expandedFollowups.has(inquiry.id) ? '▲' : '▼'}</span>
-                  </button>
-                  {expandedFollowups.has(inquiry.id) && (
-                    <div className="mt-2 space-y-1.5">
-                      {inquiry.followup_tasks.map((task) => {
-                        const labels = { followup_1: 'F1: OLL Program', followup_2: 'F2: Partner Schools', followup_3: 'F3: Admissions +15%', followup_4: 'F4: Last Note' };
-                        const statusColors = { pending: 'bg-amber-100 text-amber-700', sent: 'bg-green-100 text-green-700', skipped: 'bg-slate-100 text-slate-500' };
-                        return (
-                          <div key={task.id} className="flex items-center gap-2 bg-slate-50 rounded-lg px-2.5 py-2">
-                            <span className="text-xs font-semibold text-slate-700 w-28 shrink-0 truncate">{labels[task.email_type] || task.email_type}</span>
-                            <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${statusColors[task.status] || statusColors.pending}`}>{task.status}</span>
-                            {editingFollowupDate?.taskId === task.id ? (
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <button className="text-xs underline text-blue-600">{format(new Date(task.scheduled_date), 'dd MMM')}</button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0">
-                                  <Calendar mode="single" selected={new Date(task.scheduled_date)} onSelect={(d) => { if(d) handleUpdateFollowupDate(inquiry.id, task.id, d); }} />
-                                </PopoverContent>
-                              </Popover>
-                            ) : (
-                              <button
-                                className="text-xs text-slate-500 hover:text-blue-600 flex items-center gap-0.5"
-                                onClick={() => setEditingFollowupDate({ schoolId: inquiry.id, taskId: task.id })}
-                              >
-                                <CalendarClock className="w-3 h-3" />{format(new Date(task.scheduled_date), 'dd MMM')}
-                              </button>
-                            )}
-                            <button
-                              className="ml-auto text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 font-medium disabled:opacity-50"
-                              disabled={task.status === 'sent'}
-                              onClick={() => handleSendFollowupEmail(inquiry, task)}
-                              data-testid={`send-followup-${task.id}`}
-                            >
-                              {task.status === 'sent' ? 'Sent' : 'Send Mail'}
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           ))}
         </div>
@@ -8487,6 +8442,58 @@ const AdminSchoolCRM = () => {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Scheduled Followup Emails Section */}
+            {(showFollowupModal?.status === 'new' || showFollowupModal?.status === 'lead') && showFollowupModal?.followup_tasks?.length > 0 && (
+              <div className="bg-slate-50 rounded-lg p-3 border border-slate-200">
+                <h4 className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-blue-600" />
+                  Scheduled Followup Emails ({showFollowupModal.followup_tasks.filter(t => t.status === 'completed').length}/{showFollowupModal.followup_tasks.length} completed)
+                </h4>
+                <div className="space-y-2">
+                  {showFollowupModal.followup_tasks.map((task) => {
+                    const labels = { followup_1: 'F1: OLL Program', followup_2: 'F2: Partner Schools', followup_3: 'F3: Admissions +15%', followup_4: 'F4: Last Note' };
+                    return (
+                      <div key={task.id} className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 border border-slate-100">
+                        <span className="text-xs font-semibold text-slate-700 flex-1 truncate">{labels[task.email_type] || task.email_type}</span>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button className="text-xs text-slate-500 hover:text-blue-600 flex items-center gap-1 px-2 py-1 rounded hover:bg-slate-50">
+                              <CalendarClock className="w-3 h-3" />
+                              {format(new Date(task.scheduled_date), 'dd MMM')}
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="end">
+                            <CalendarComponent 
+                              mode="single" 
+                              selected={new Date(task.scheduled_date)} 
+                              onSelect={(d) => { if(d) handleUpdateFollowupDate(showFollowupModal.id, task.id, d); }} 
+                            />
+                          </PopoverContent>
+                        </Popover>
+                        <select
+                          value={task.status === 'sent' ? 'completed' : task.status}
+                          onChange={(e) => handleUpdateFollowupStatus(showFollowupModal.id, task.id, e.target.value)}
+                          className="text-xs px-2 py-1 rounded border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          data-testid={`followup-status-${task.id}`}
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="completed">Completed</option>
+                        </select>
+                        <button
+                          className="text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 font-medium disabled:opacity-50"
+                          disabled={task.status === 'sent' || task.status === 'completed'}
+                          onClick={() => handleSendFollowupEmail(showFollowupModal, task)}
+                          data-testid={`send-followup-${task.id}`}
+                        >
+                          {task.status === 'sent' || task.status === 'completed' ? 'Sent' : 'Send'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {showFollowupModal?.followup_date && (
               <div className="bg-cyan-50 rounded-lg p-3">
                 <p className="text-sm text-cyan-700">
