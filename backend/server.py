@@ -987,7 +987,7 @@ SCHOOL_MEETING_CONFIRMATION_EMAIL_TEMPLATE = """
     <div style="padding: 36px 32px;">
         <h2 style="color: #1E3A5F; margin-top: 0; font-size: 22px;">Dear {contact_name},</h2>
         <p style="color: #333; line-height: 1.7;">
-            Thank you for your time and interest in OLL! We're pleased to confirm our upcoming meeting to discuss the OLL program for <strong>{school_name}</strong>.
+            {meeting_action_text} for <strong>{school_name}</strong>.
         </p>
         <div style="background: #e8f5e9; border-left: 4px solid #27ae60; padding: 20px; border-radius: 0 10px 10px 0; margin: 24px 0;">
             <h3 style="color: #155724; margin: 0 0 14px 0; font-size: 16px;">Meeting Details</h3>
@@ -997,7 +997,7 @@ SCHOOL_MEETING_CONFIRMATION_EMAIL_TEMPLATE = """
             {meeting_link_section}
         </div>
         <p style="color: #333; line-height: 1.7;">
-            We look forward to an engaging discussion. Please don't hesitate to reach out if you have any questions before the meeting.
+            We look forward to an engaging discussion. Please don't hesitate to reach out if you have any questions.
         </p>
         <p style="color: #555; line-height: 1.6; margin-top: 24px;">
             Warm regards,<br>
@@ -1121,6 +1121,10 @@ SCHOOL_EMAIL_TEMPLATES = {
         "template": SCHOOL_MEETING_CONFIRMATION_EMAIL_TEMPLATE,
         "subject": "Meeting Confirmed — OLL Program Discussion for {school_name}"
     },
+    "meeting_reschedule": {
+        "template": SCHOOL_MEETING_CONFIRMATION_EMAIL_TEMPLATE,
+        "subject": "Meeting Rescheduled — OLL Program Discussion for {school_name}"
+    },
     "proposal": {
         "template": SCHOOL_PROPOSAL_EMAIL_TEMPLATE,
         "subject": "OLL Program Proposal for {school_name}"
@@ -1219,11 +1223,12 @@ async def send_school_crm_email(
         sender_name=sender_name,
         meeting_date=meeting_date,
         meeting_time=meeting_time,
-        meeting_mode=meeting_mode,
+        meeting_mode=meeting_mode.title() if meeting_mode else "Offline",
         meeting_link_section=meeting_link_section,
         meeting_section=meeting_section,
         meeting_or_schedule=meeting_or_schedule,
-        custom_message_section=custom_message_section
+        custom_message_section=custom_message_section,
+        meeting_action_text="Your meeting has been <strong>rescheduled</strong>" if email_type == "meeting_reschedule" else "We're pleased to confirm our upcoming meeting to discuss the OLL program"
     )
 
     subject = template_info["subject"].format(school_name=school_name)

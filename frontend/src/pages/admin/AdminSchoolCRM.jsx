@@ -1568,22 +1568,46 @@ const AdminSchoolCRM = () => {
       return;
     }
     try {
+      const isFirstSchedule = !showRescheduleModal?.meeting_date;
+      const formattedDate = format(rescheduleData.date, 'dd MMM yyyy');
+
       await axios.patch(`${API}/schools/inquiry/${showRescheduleModal.id}`, {
         meeting_date: format(rescheduleData.date, 'yyyy-MM-dd'),
         meeting_time: rescheduleData.time,
         meeting_type: rescheduleData.meeting_type,
         notes: showRescheduleModal.notes 
-          ? `${showRescheduleModal.notes}\n\nMeeting Rescheduled (${rescheduleData.meeting_type}): ${rescheduleData.reason}` 
-          : `Meeting Rescheduled (${rescheduleData.meeting_type}): ${rescheduleData.reason}`
+          ? `${showRescheduleModal.notes}\n\n${isFirstSchedule ? 'Meeting Scheduled' : 'Meeting Rescheduled'} (${rescheduleData.meeting_type}): ${rescheduleData.reason}` 
+          : `${isFirstSchedule ? 'Meeting Scheduled' : 'Meeting Rescheduled'} (${rescheduleData.meeting_type}): ${rescheduleData.reason}`
       }, {
         headers: getAuthHeaders()
       });
-      toast.success('Meeting rescheduled successfully');
+
+      // Auto-send meeting email if school has a valid email
+      const schoolEmail = showRescheduleModal?.email;
+      if (schoolEmail && !schoolEmail.endsWith('@school.oll')) {
+        try {
+          const emailType = isFirstSchedule ? 'meeting_confirmation' : 'meeting_reschedule';
+          await axios.post(`${API}/schools/${showRescheduleModal.id}/send-crm-email`, {
+            email_type: emailType,
+            to_email: schoolEmail,
+            meeting_date: formattedDate,
+            meeting_time: rescheduleData.time,
+            meeting_mode: rescheduleData.meeting_type,
+            meeting_link: rescheduleData.meeting_type === 'online' ? rescheduleData.link || '' : ''
+          }, { headers: getAuthHeaders() });
+          toast.success(isFirstSchedule ? 'Meeting scheduled & confirmation email sent!' : 'Meeting rescheduled & email sent!');
+        } catch {
+          toast.success(isFirstSchedule ? 'Meeting scheduled!' : 'Meeting rescheduled!');
+        }
+      } else {
+        toast.success(isFirstSchedule ? 'Meeting scheduled successfully' : 'Meeting rescheduled successfully');
+      }
+
       setShowRescheduleModal(null);
       setRescheduleData({ date: null, time: '', meeting_type: 'offline', reason: '' });
       fetchInquiries();
     } catch (error) {
-      toast.error('Failed to reschedule');
+      toast.error('Failed to save meeting');
     }
   };
 
@@ -4518,7 +4542,7 @@ const AdminSchoolCRM = () => {
               data-testid={`reschedule-${inquiry.id}`}
             >
               <CalendarClock className="w-3 h-3" />
-              Reschedule
+              {inquiry.meeting_date ? 'Reschedule' : 'Schedule Meeting'}
             </button>
             {followupButton}
             {documentsButton}
@@ -5934,7 +5958,9 @@ const AdminSchoolCRM = () => {
       <Dialog open={!!showRescheduleModal} onOpenChange={() => setShowRescheduleModal(null)}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Reschedule Meeting - {showRescheduleModal?.school_name}</DialogTitle>
+            <DialogTitle>
+              {showRescheduleModal?.meeting_date ? 'Reschedule Meeting' : 'Schedule Meeting'} — {showRescheduleModal?.school_name}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             {/* Meeting Type Selection */}
@@ -6002,9 +6028,11 @@ const AdminSchoolCRM = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Reason for Rescheduling</label>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                {showRescheduleModal?.meeting_date ? 'Reason for Rescheduling' : 'Notes (optional)'}
+              </label>
               <Textarea
-                placeholder="Enter reason..."
+                placeholder={showRescheduleModal?.meeting_date ? 'Enter reason...' : 'Any notes about this meeting...'}
                 value={rescheduleData.reason}
                 onChange={(e) => setRescheduleData({...rescheduleData, reason: e.target.value})}
                 className="min-h-[80px]"
@@ -6016,7 +6044,7 @@ const AdminSchoolCRM = () => {
                 Cancel
               </Button>
               <Button onClick={handleReschedule} className="btn-primary flex-1">
-                Reschedule Meeting
+                {showRescheduleModal?.meeting_date ? 'Reschedule Meeting' : 'Schedule Meeting'}
               </Button>
             </div>
           </div>
