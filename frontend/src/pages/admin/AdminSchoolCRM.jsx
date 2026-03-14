@@ -2511,8 +2511,8 @@ const AdminSchoolCRM = () => {
       };
 
       // ── DATA ───────────────────────────────────────────────────
-      const schoolName = school?.school_name || school?.name || '';
-      const schoolAddress = data.school_address || school?.location || '';
+      const schoolName = school?.school_name || school?.name || school?.school || '';
+      const schoolAddress = data.school_address || school?.location || school?.address || '';
       const contacts = data.school_contacts || [];
       const principal = contacts.find(c => c.role === 'principal') || contacts[0] || {};
       const coordinator = contacts.find(c => ['coordinator', 'program_coordinator', 'teacher'].includes(c.role)) || contacts[1] || {};
