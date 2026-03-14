@@ -1016,11 +1016,35 @@ const AdminSchoolCRM = () => {
     // Check both onboarding_data and proposal_data for saved values
     const existingOnboardData = inquiry.onboarding_data || {};
     const proposalData = inquiry.proposal_data || {};
+    
+    // Map book_type values from proposal_data format to onboarding format
+    const mapBookType = (val) => {
+      if (!val) return '';
+      if (val === 'individual') return 'individual_books';
+      if (val === 'shared') return 'no_books';
+      return val; // Already in correct format
+    };
+    
+    // Map model values from proposal_data format to onboarding format (capitalize)
+    const mapModel = (val) => {
+      if (!val) return '';
+      if (val === 'compulsory') return 'Compulsory';
+      if (val === 'optional') return 'Optional';
+      return val; // Already in correct format
+    };
+    
+    // Map kit_type from program_type
+    const mapKitType = (programType) => {
+      if (programType === 'lab_setup') return 'lab_setup';
+      if (programType === 'per_student') return 'individual';
+      return '';
+    };
+    
     setOnboardData({
       offering: existingOnboardData.offering || proposalData.offering || inquiry.selected_offerings?.[0] || '',
-      model: existingOnboardData.model || proposalData.model || '',
-      book_type: existingOnboardData.book_type || proposalData.book_type || '',
-      kit_type: existingOnboardData.kit_type || (proposalData.program_type === 'lab_setup' ? 'lab_setup' : proposalData.program_type === 'per_student' ? 'individual' : ''),
+      model: existingOnboardData.model || mapModel(proposalData.model) || '',
+      book_type: existingOnboardData.book_type || mapBookType(proposalData.book_type) || '',
+      kit_type: existingOnboardData.kit_type || mapKitType(proposalData.program_type) || '',
       lab_kit_count: existingOnboardData.lab_kit_count || proposalData.lab_kit_count || '',
       course_type: existingOnboardData.course_type || proposalData.course_type || '',
       training_type: existingOnboardData.training_type || proposalData.training_type || '',
@@ -1028,7 +1052,11 @@ const AdminSchoolCRM = () => {
       fixed_price: existingOnboardData.fixed_price || proposalData.fixed_price || '',
       grade_pricing: existingOnboardData.grade_pricing?.length > 0 
         ? existingOnboardData.grade_pricing 
-        : (proposalData.grade_pricing?.length > 0 ? proposalData.grade_pricing : [{ grade: '', students: '', price_per_student: '' }]),
+        : (proposalData.grade_pricing?.length > 0 ? proposalData.grade_pricing.map(gp => ({
+            grade: gp.grade || '',
+            students: gp.students || '',
+            price_per_student: gp.price_per_student || ''
+          })) : [{ grade: '', students: '', price_per_student: '' }]),
       total_students: existingOnboardData.total_students || 0,
       total_amount: existingOnboardData.total_amount || inquiry.quoted_price || 0,
       school_contacts: existingOnboardData.school_contacts?.length > 0 
