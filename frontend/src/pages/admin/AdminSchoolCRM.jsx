@@ -1041,6 +1041,7 @@ const AdminSchoolCRM = () => {
     };
     
     setOnboardData({
+      school_name: inquiry.school_name || '',
       offering: existingOnboardData.offering || proposalData.offering || inquiry.selected_offerings?.[0] || '',
       model: existingOnboardData.model || mapModel(proposalData.model) || '',
       book_type: existingOnboardData.book_type || mapBookType(proposalData.book_type) || '',
@@ -1858,6 +1859,7 @@ const AdminSchoolCRM = () => {
     const existingData = inquiry.onboarding_data || {};
     setShowRenewalConvertModal(inquiry);
     setRenewalConvertData({
+      school_name: inquiry.school_name || '',
       offering: existingData.offering || '',
       model: existingData.model || '',
       book_type: existingData.book_type || '',
@@ -2511,7 +2513,7 @@ const AdminSchoolCRM = () => {
       };
 
       // ── DATA ───────────────────────────────────────────────────
-      const schoolName = school?.school_name || school?.name || school?.school || '';
+      const schoolName = data?.school_name || school?.school_name || school?.name || school?.school || '';
       const schoolAddress = data.school_address || school?.location || school?.address || '';
       const contacts = data.school_contacts || [];
       const principal = contacts.find(c => c.role === 'principal') || contacts[0] || {};
@@ -3233,7 +3235,7 @@ const AdminSchoolCRM = () => {
       const docx = await import('docx');
       const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, ImageRun, ExternalHyperlink, TableLayoutType } = docx;
 
-      const schoolName = school?.school_name || school?.name || 'School';
+      const schoolName = data?.school_name || school?.school_name || school?.name || 'School';
       const academicYear = data.contract_start ? format(new Date(data.contract_start), 'yyyy') + '-' + (parseInt(format(new Date(data.contract_start), 'yy')) + 1).toString().padStart(2, '0') : '2026-27';
       
       // Get grade range from grade_pricing

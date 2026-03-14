@@ -47,6 +47,26 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+### March 14, 2026
+
+#### Bug Fix: School Name Missing in MOU & Parent Circular PDFs (Root Cause Fix)
+**Problem:** School name was blank in generated MOU PDFs (showing underscores instead of the actual school name).
+
+**Root Cause:** The `generateMOUPDF` and `generateParentCircularPDF` functions relied on `school?.school_name` from the React state object (`showOnboardModal`). In some scenarios (especially production), this reference was not resolving correctly.
+
+**Fix Applied:**
+1. Added `school_name: inquiry.school_name` to `onboardData` state in `openConversionModal()` - so the school name is explicitly stored in the form data
+2. Added `school_name: inquiry.school_name` to `renewalConvertData` state in `openRenewalConvertModal()` - covers renewal flow
+3. Updated `generateMOUPDF` to use `data?.school_name` as PRIMARY source (most reliable, explicitly set): `data?.school_name || school?.school_name || ...`
+4. Updated `generateParentCircularPDF` similarly
+
+**Files Modified:**
+- `frontend/src/pages/admin/AdminSchoolCRM.jsx` - lines 1044, 1862, 2516, 3238
+
+**Tested:** MOU generation tested in preview environment - success toast shown, file generated correctly.
+
+---
+
 ### March 13, 2026
 
 #### School CRM Email Notification System
