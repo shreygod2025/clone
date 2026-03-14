@@ -1013,20 +1013,22 @@ const AdminSchoolCRM = () => {
     }
     lastOnboardInquiryId.current = inquiry.id;
     // Pre-populate onboardData with existing inquiry data
+    // Check both onboarding_data and proposal_data for saved values
     const existingOnboardData = inquiry.onboarding_data || {};
+    const proposalData = inquiry.proposal_data || {};
     setOnboardData({
-      offering: existingOnboardData.offering || inquiry.selected_offerings?.[0] || '',
-      model: existingOnboardData.model || '',
-      book_type: existingOnboardData.book_type || '',
-      kit_type: existingOnboardData.kit_type || '',
-      lab_kit_count: existingOnboardData.lab_kit_count || '',
-      course_type: existingOnboardData.course_type || '',
-      training_type: existingOnboardData.training_type || '',
-      pricing_type: existingOnboardData.pricing_type || 'per_student',
-      fixed_price: existingOnboardData.fixed_price || '',
+      offering: existingOnboardData.offering || proposalData.offering || inquiry.selected_offerings?.[0] || '',
+      model: existingOnboardData.model || proposalData.model || '',
+      book_type: existingOnboardData.book_type || proposalData.book_type || '',
+      kit_type: existingOnboardData.kit_type || (proposalData.program_type === 'lab_setup' ? 'lab_setup' : proposalData.program_type === 'per_student' ? 'individual' : ''),
+      lab_kit_count: existingOnboardData.lab_kit_count || proposalData.lab_kit_count || '',
+      course_type: existingOnboardData.course_type || proposalData.course_type || '',
+      training_type: existingOnboardData.training_type || proposalData.training_type || '',
+      pricing_type: existingOnboardData.pricing_type || proposalData.pricing_type || 'per_student',
+      fixed_price: existingOnboardData.fixed_price || proposalData.fixed_price || '',
       grade_pricing: existingOnboardData.grade_pricing?.length > 0 
         ? existingOnboardData.grade_pricing 
-        : [{ grade: '', students: '', price_per_student: '' }],
+        : (proposalData.grade_pricing?.length > 0 ? proposalData.grade_pricing : [{ grade: '', students: '', price_per_student: '' }]),
       total_students: existingOnboardData.total_students || 0,
       total_amount: existingOnboardData.total_amount || inquiry.quoted_price || 0,
       school_contacts: existingOnboardData.school_contacts?.length > 0 
