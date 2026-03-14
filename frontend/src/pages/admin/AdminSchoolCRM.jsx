@@ -2511,7 +2511,7 @@ const AdminSchoolCRM = () => {
       };
 
       // ── DATA ───────────────────────────────────────────────────
-      const schoolName = school?.school_name || '';
+      const schoolName = school?.school_name || school?.name || '';
       const schoolAddress = data.school_address || school?.location || '';
       const contacts = data.school_contacts || [];
       const principal = contacts.find(c => c.role === 'principal') || contacts[0] || {};
@@ -3233,7 +3233,7 @@ const AdminSchoolCRM = () => {
       const docx = await import('docx');
       const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, ImageRun, ExternalHyperlink, TableLayoutType } = docx;
 
-      const schoolName = school?.school_name || 'School';
+      const schoolName = school?.school_name || school?.name || 'School';
       const academicYear = data.contract_start ? format(new Date(data.contract_start), 'yyyy') + '-' + (parseInt(format(new Date(data.contract_start), 'yy')) + 1).toString().padStart(2, '0') : '2026-27';
       
       // Get grade range from grade_pricing
