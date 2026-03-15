@@ -44,7 +44,7 @@ const LandingPage = () => {
       description: 'Teach & grow with OLL',
       icon: Users,
       path: '/educator',
-      gradient: 'from-[#D63031] to-[#e84142]',
+      gradient: 'from-[#D63031] to-[#c0392b]',
       onClick: () => navigate('/educator')
     },
     {
