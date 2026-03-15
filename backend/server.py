@@ -28,7 +28,11 @@ from reportlab.platypus import Paragraph
 from reportlab.lib.enums import TA_CENTER
 import qrcode
 from PIL import Image
-from emergentintegrations.llm.chat import LlmChat, UserMessage
+try:
+    from emergentintegrations.llm.chat import LlmChat, UserMessage
+except ImportError:
+    LlmChat = None
+    UserMessage = None
 import cloudinary
 import cloudinary.uploader
 import cloudinary.utils
