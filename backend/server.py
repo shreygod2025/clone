@@ -1770,6 +1770,7 @@ class StudentInquiry(BaseModel):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 class StudentInquiryCreate(BaseModel):
+    model_config = ConfigDict(extra="ignore")
     learner_type: str = "self"
     age_group: str = ""
     skill: str = ""
