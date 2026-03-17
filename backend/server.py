@@ -13805,6 +13805,55 @@ async def optimize_database(user: dict = Depends(get_current_user)):
             "indexes_created": indexes_created
         }
 
+@api_router.get("/admin/mongodb-info")
+async def get_mongodb_info(user: dict = Depends(get_current_user)):
+    """Get MongoDB connection info for data export/migration"""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Only admins can access MongoDB info")
+    
+    try:
+        # Get database stats
+        db_name = os.environ.get("DB_NAME", "test_database")
+        mongo_url = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
+        
+        # Build a sanitized connection string (mask password if present)
+        connection_display = mongo_url
+        if "@" in mongo_url:
+            # Has credentials - mask the password
+            parts = mongo_url.split("@")
+            prefix = parts[0]
+            suffix = parts[1]
+            if ":" in prefix:
+                user_pass = prefix.split("//")[1] if "//" in prefix else prefix
+                if ":" in user_pass:
+                    username = user_pass.split(":")[0]
+                    connection_display = f"mongodb+srv://{username}:****@{suffix}"
+        
+        # Get collection stats
+        collections_info = []
+        collection_names = await db.list_collection_names()
+        for col_name in sorted(collection_names):
+            try:
+                count = await db[col_name].count_documents({})
+                collections_info.append({"name": col_name, "count": count})
+            except:
+                collections_info.append({"name": col_name, "count": "N/A"})
+        
+        # For export, provide the actual connection string (admin only)
+        export_connection = f"{mongo_url}/{db_name}"
+        if not mongo_url.endswith("/"):
+            export_connection = f"{mongo_url}/{db_name}"
+        
+        return {
+            "db_name": db_name,
+            "connection_string": export_connection,
+            "collections": collections_info,
+            "total_collections": len(collection_names),
+            "export_command": f'mongodump --uri="{export_connection}" --archive=backup.gz --gzip'
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get MongoDB info: {str(e)}")
+
 # Cloudinary signature endpoint for frontend uploads
 @api_router.get("/cloudinary/signature")
 async def get_cloudinary_signature(

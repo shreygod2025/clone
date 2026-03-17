@@ -36,6 +36,22 @@ const AdminSettings = () => {
   const [revokingKey, setRevokingKey] = useState(null);
   const [optimizing, setOptimizing] = useState(false);
   const [optimizeResult, setOptimizeResult] = useState(null);
+  const [mongoInfo, setMongoInfo] = useState(null);
+  const [loadingMongoInfo, setLoadingMongoInfo] = useState(false);
+
+  // Get MongoDB connection info
+  const handleGetMongoInfo = async () => {
+    setLoadingMongoInfo(true);
+    try {
+      const res = await axios.get(`${API}/admin/mongodb-info`, { headers: getAuthHeaders() });
+      setMongoInfo(res.data);
+      toast.success('MongoDB connection info retrieved');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to get MongoDB info');
+    } finally {
+      setLoadingMongoInfo(false);
+    }
+  };
 
   // Database optimization handler
   const handleOptimizeDatabase = async () => {
@@ -574,6 +590,109 @@ const AdminSettings = () => {
                 <div className="p-4 bg-slate-50 rounded-lg">
                   <p className="text-xs text-slate-500 uppercase">Blogs</p>
                   <p className="text-2xl font-bold text-[#1E3A5F]">{blogs.length}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* MongoDB Export/Connection */}
+            <div className="bg-white rounded-xl p-6 shadow-sm">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-green-100 rounded-lg">
+                  <Database className="w-6 h-6 text-green-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-lg text-[#1E3A5F]">MongoDB Connection</h3>
+                  <p className="text-slate-600 text-sm mt-1">
+                    Get your MongoDB connection details to connect from external tools like MongoDB Compass, 
+                    or to migrate your data to your own MongoDB Atlas cluster.
+                  </p>
+                  
+                  {mongoInfo && (
+                    <div className="mt-4 space-y-3">
+                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                        <p className="text-xs text-slate-500 uppercase mb-1">Database Name</p>
+                        <div className="flex items-center gap-2">
+                          <code className="text-sm font-mono text-[#1E3A5F] flex-1">{mongoInfo.db_name}</code>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => copyToClipboard(mongoInfo.db_name)}
+                            className="h-8 px-2"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                        <p className="text-xs text-slate-500 uppercase mb-1">Connection String (Read-Only)</p>
+                        <div className="flex items-center gap-2">
+                          <code className="text-xs font-mono text-[#1E3A5F] flex-1 break-all">{mongoInfo.connection_string}</code>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => copyToClipboard(mongoInfo.connection_string)}
+                            className="h-8 px-2"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                        <p className="text-sm text-amber-800">
+                          <strong>⚠️ Important:</strong> This connection string provides read-only access. 
+                          Use it to export/backup your data. Do not share it publicly.
+                        </p>
+                      </div>
+
+                      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-sm text-blue-800 font-medium mb-2">Export Commands:</p>
+                        <div className="space-y-2">
+                          <div>
+                            <p className="text-xs text-blue-600 mb-1">Export entire database:</p>
+                            <code className="text-xs font-mono bg-blue-100 p-2 rounded block break-all">
+                              mongodump --uri="{mongoInfo.connection_string}" --archive=backup.gz --gzip
+                            </code>
+                          </div>
+                          <div>
+                            <p className="text-xs text-blue-600 mb-1">Export to your Atlas cluster:</p>
+                            <code className="text-xs font-mono bg-blue-100 p-2 rounded block break-all">
+                              mongodump --uri="{mongoInfo.connection_string}" --archive | mongorestore --uri="YOUR_ATLAS_URI" --archive
+                            </code>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+                        {mongoInfo.collections?.map((col) => (
+                          <div key={col.name} className="p-3 bg-slate-50 rounded-lg">
+                            <p className="text-xs text-slate-500 truncate">{col.name}</p>
+                            <p className="text-lg font-bold text-[#1E3A5F]">{col.count}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <Button
+                    onClick={handleGetMongoInfo}
+                    disabled={loadingMongoInfo}
+                    className="mt-4 bg-green-600 hover:bg-green-700"
+                    data-testid="get-mongo-info-btn"
+                  >
+                    {loadingMongoInfo ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <Database className="w-4 h-4 mr-2" />
+                        {mongoInfo ? 'Refresh Connection Info' : 'Get MongoDB Connection'}
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
             </div>
