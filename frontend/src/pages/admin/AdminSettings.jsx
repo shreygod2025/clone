@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { 
   MapPin, Building, FileText, Plus, Edit2, Trash2, X, Save, Eye, EyeOff,
   Search, Globe, Calendar, Image, Tag, Briefcase, Users, Video, Play, Key, Copy, RefreshCw,
-  Database, Zap, CheckCircle
+  Database, Zap, CheckCircle, Mail
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -41,6 +41,55 @@ const AdminSettings = () => {
   const [currentIP, setCurrentIP] = useState(null);
   const [ipToWhitelist, setIpToWhitelist] = useState('');
   const [whitelistingIP, setWhitelistingIP] = useState(false);
+  
+  // Service API Keys state
+  const [resendApiKey, setResendApiKey] = useState('');
+  const [resendApiKeyMasked, setResendApiKeyMasked] = useState('');
+  const [showResendKey, setShowResendKey] = useState(false);
+  const [savingResendKey, setSavingResendKey] = useState(false);
+  const [loadingServiceKeys, setLoadingServiceKeys] = useState(false);
+
+  // Load service API keys
+  const loadServiceApiKeys = async () => {
+    setLoadingServiceKeys(true);
+    try {
+      const res = await axios.get(`${API}/admin/service-api-keys`, { headers: getAuthHeaders() });
+      if (res.data.resend_api_key) {
+        setResendApiKeyMasked(res.data.resend_api_key_masked || '****');
+        setResendApiKey(''); // Don't show actual key for security
+      }
+    } catch (error) {
+      console.error('Failed to load service keys:', error);
+    } finally {
+      setLoadingServiceKeys(false);
+    }
+  };
+
+  // Save Resend API key
+  const handleSaveResendKey = async () => {
+    if (!resendApiKey.trim()) {
+      toast.error('Please enter a Resend API key');
+      return;
+    }
+    if (!resendApiKey.startsWith('re_')) {
+      toast.error('Invalid Resend API key format (should start with re_)');
+      return;
+    }
+    setSavingResendKey(true);
+    try {
+      await axios.post(`${API}/admin/service-api-keys/resend`, 
+        { api_key: resendApiKey }, 
+        { headers: getAuthHeaders() }
+      );
+      toast.success('Resend API key updated successfully!');
+      setResendApiKey('');
+      loadServiceApiKeys();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to save Resend API key');
+    } finally {
+      setSavingResendKey(false);
+    }
+  };
 
   // Get MongoDB connection info
   const handleGetMongoInfo = async () => {
@@ -200,6 +249,8 @@ const AdminSettings = () => {
       setTeamRequirements(teamReqRes.data || []);
       setCaseStudies(caseStudiesRes.data || []);
       setApiKeys(apiKeysRes.data || []);
+      // Load service API keys
+      loadServiceApiKeys();
     } catch (error) {
       console.error('Failed to fetch data:', error);
     } finally {
@@ -914,6 +965,71 @@ const AdminSettings = () => {
                 </table>
               </div>
             )}
+
+            {/* Service API Keys Section */}
+            <div className="bg-white rounded-xl shadow-sm p-6 mt-6">
+              <h3 className="font-semibold text-lg text-[#1E3A5F] mb-4 flex items-center gap-2">
+                <Mail className="w-5 h-5" />
+                Email Service (Resend) API Key
+              </h3>
+              <p className="text-sm text-slate-600 mb-4">
+                Configure your Resend API key for sending emails (intro emails, proposals, follow-ups, etc.)
+              </p>
+              
+              {resendApiKeyMasked && (
+                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-800 flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4" />
+                    Current API Key: <code className="font-mono bg-green-100 px-2 py-0.5 rounded">{resendApiKeyMasked}</code>
+                  </p>
+                </div>
+              )}
+              
+              <div className="flex gap-2">
+                <div className="flex-1 relative">
+                  <Input
+                    type={showResendKey ? "text" : "password"}
+                    placeholder="Enter new Resend API key (re_...)"
+                    value={resendApiKey}
+                    onChange={(e) => setResendApiKey(e.target.value)}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowResendKey(!showResendKey)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showResendKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <Button
+                  onClick={handleSaveResendKey}
+                  disabled={savingResendKey || !resendApiKey.trim()}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {savingResendKey ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 mr-1" />
+                      Save Key
+                    </>
+                  )}
+                </Button>
+              </div>
+              
+              <div className="mt-4 p-3 bg-slate-50 rounded-lg">
+                <p className="text-xs text-slate-600">
+                  <strong>How to get a Resend API key:</strong>
+                </p>
+                <ol className="text-xs text-slate-500 mt-2 list-decimal list-inside space-y-1">
+                  <li>Go to <a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">resend.com/api-keys</a></li>
+                  <li>Create a new API key with "Sending access"</li>
+                  <li>Copy the key (starts with <code className="bg-slate-200 px-1 rounded">re_</code>)</li>
+                  <li>Paste it above and click Save</li>
+                </ol>
+              </div>
+            </div>
           </div>
         )}
 

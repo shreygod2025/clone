@@ -533,6 +533,24 @@ SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "clonefutura@gmail.com")
 # Legacy Resend support (fallback)
 resend.api_key = os.environ.get("RESEND_API_KEY", "")
 
+# Helper to get Resend API key (checks DB first, then env)
+async def get_resend_api_key():
+    """Get Resend API key from database or environment"""
+    try:
+        resend_doc = await db.service_api_keys.find_one({"service": "resend"}, {"_id": 0})
+        if resend_doc and resend_doc.get("api_key"):
+            return resend_doc["api_key"]
+    except Exception as e:
+        logging.warning(f"Failed to get Resend key from DB: {e}")
+    return os.environ.get("RESEND_API_KEY", "")
+
+async def ensure_resend_api_key():
+    """Ensure Resend API key is set from DB or env"""
+    key = await get_resend_api_key()
+    if key:
+        resend.api_key = key
+    return bool(key)
+
 async def send_email_gmail(to_email: str, subject: str, html_content: str):
     """Send email using Gmail SMTP"""
     try:
@@ -1516,8 +1534,11 @@ async def send_school_crm_email(
     Send a School CRM email using Resend with reply-to info@oll.co.
     Supports optional PDF attachment.
     """
+    # Ensure API key is loaded from DB or env
+    await ensure_resend_api_key()
+    
     if not resend.api_key:
-        return {"success": False, "error": "Email service not configured"}
+        return {"success": False, "error": "Email service not configured - please set Resend API key in Settings"}
 
     template_info = SCHOOL_EMAIL_TEMPLATES.get(email_type)
     if not template_info:
@@ -15442,6 +15463,76 @@ async def delete_external_api_key(key_id: str, user: dict = Depends(get_current_
     
     await db.external_api_keys.delete_one({"id": key_id})
     return {"message": "API key deleted successfully"}
+
+
+# ========================
+# SERVICE API KEYS (Resend, etc.)
+# ========================
+
+@api_router.get("/admin/service-api-keys")
+async def get_service_api_keys(user: dict = Depends(get_current_user)):
+    """Get service API keys (masked for security)"""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    result = {}
+    
+    # Get Resend API key from database (or fall back to env)
+    resend_doc = await db.service_api_keys.find_one({"service": "resend"}, {"_id": 0})
+    if resend_doc and resend_doc.get("api_key"):
+        key = resend_doc["api_key"]
+        result["resend_api_key"] = True
+        result["resend_api_key_masked"] = f"{key[:8]}...{key[-4:]}" if len(key) > 12 else "****"
+    else:
+        # Fall back to environment variable
+        env_key = os.environ.get("RESEND_API_KEY", "")
+        if env_key:
+            result["resend_api_key"] = True
+            result["resend_api_key_masked"] = f"{env_key[:8]}...{env_key[-4:]}" if len(env_key) > 12 else "****"
+        else:
+            result["resend_api_key"] = False
+            result["resend_api_key_masked"] = None
+    
+    return result
+
+@api_router.post("/admin/service-api-keys/resend")
+async def save_resend_api_key(data: dict, user: dict = Depends(get_current_user)):
+    """Save Resend API key"""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    api_key = data.get("api_key", "").strip()
+    if not api_key:
+        raise HTTPException(status_code=400, detail="API key is required")
+    
+    if not api_key.startswith("re_"):
+        raise HTTPException(status_code=400, detail="Invalid Resend API key format")
+    
+    # Test the API key by initializing Resend
+    try:
+        resend.api_key = api_key
+        # We can't easily test without sending an email, so just validate format
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid API key: {str(e)}")
+    
+    # Save to database
+    await db.service_api_keys.update_one(
+        {"service": "resend"},
+        {
+            "$set": {
+                "service": "resend",
+                "api_key": api_key,
+                "updated_by": user.get("email"),
+                "updated_at": datetime.now(timezone.utc).isoformat()
+            }
+        },
+        upsert=True
+    )
+    
+    # Also update the runtime resend instance
+    resend.api_key = api_key
+    
+    return {"message": "Resend API key saved successfully", "success": True}
 
 
 # ========================
