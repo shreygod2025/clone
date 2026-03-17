@@ -38,6 +38,9 @@ const AdminSettings = () => {
   const [optimizeResult, setOptimizeResult] = useState(null);
   const [mongoInfo, setMongoInfo] = useState(null);
   const [loadingMongoInfo, setLoadingMongoInfo] = useState(false);
+  const [currentIP, setCurrentIP] = useState(null);
+  const [ipToWhitelist, setIpToWhitelist] = useState('');
+  const [whitelistingIP, setWhitelistingIP] = useState(false);
 
   // Get MongoDB connection info
   const handleGetMongoInfo = async () => {
@@ -45,11 +48,46 @@ const AdminSettings = () => {
     try {
       const res = await axios.get(`${API}/admin/mongodb-info`, { headers: getAuthHeaders() });
       setMongoInfo(res.data);
+      setCurrentIP(res.data.your_ip);
       toast.success('MongoDB connection info retrieved');
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to get MongoDB info');
     } finally {
       setLoadingMongoInfo(false);
+    }
+  };
+
+  // Whitelist an IP address
+  const handleWhitelistIP = async () => {
+    if (!ipToWhitelist.trim()) {
+      toast.error('Please enter an IP address');
+      return;
+    }
+    setWhitelistingIP(true);
+    try {
+      const res = await axios.post(`${API}/admin/mongodb-whitelist-ip`, 
+        { ip_address: ipToWhitelist, description: 'Added from Admin Panel' }, 
+        { headers: getAuthHeaders() }
+      );
+      toast.success(res.data.message || 'IP whitelisted successfully');
+      setIpToWhitelist('');
+      handleGetMongoInfo(); // Refresh to get updated whitelist
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to whitelist IP');
+    } finally {
+      setWhitelistingIP(false);
+    }
+  };
+
+  // Remove IP from whitelist
+  const handleRemoveWhitelistedIP = async (ip) => {
+    if (!confirm(`Remove ${ip} from whitelist?`)) return;
+    try {
+      await axios.delete(`${API}/admin/mongodb-whitelist-ip/${encodeURIComponent(ip)}`, { headers: getAuthHeaders() });
+      toast.success('IP removed from whitelist');
+      handleGetMongoInfo();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to remove IP');
     }
   };
 
@@ -625,7 +663,7 @@ const AdminSettings = () => {
                       </div>
                       
                       <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
-                        <p className="text-xs text-slate-500 uppercase mb-1">Connection String (Read-Only)</p>
+                        <p className="text-xs text-slate-500 uppercase mb-1">Connection String</p>
                         <div className="flex items-center gap-2">
                           <code className="text-xs font-mono text-[#1E3A5F] flex-1 break-all">{mongoInfo.connection_string}</code>
                           <Button
@@ -639,10 +677,101 @@ const AdminSettings = () => {
                         </div>
                       </div>
 
+                      <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-sm text-green-800">
+                          <strong>✅ Full Access:</strong> This connection string has read/write access. 
+                          You can use it to export data, import data, or connect from MongoDB Compass.
+                        </p>
+                      </div>
+
                       <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
                         <p className="text-sm text-amber-800">
-                          <strong>⚠️ Important:</strong> This connection string provides read-only access. 
-                          Use it to export/backup your data. Do not share it publicly.
+                          <strong>⚠️ Security:</strong> Keep this connection string private. Do not share it publicly.
+                          If using Atlas, you may need to whitelist your IP address in Network Access settings.
+                        </p>
+                      </div>
+
+                      {/* IP Whitelisting Section */}
+                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                        <h4 className="font-medium text-[#1E3A5F] mb-3 flex items-center gap-2">
+                          <Globe className="w-4 h-4" />
+                          IP Whitelisting
+                        </h4>
+                        
+                        {mongoInfo.your_ip && (
+                          <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p className="text-xs text-blue-600 mb-1">Your Current IP Address:</p>
+                            <div className="flex items-center gap-2">
+                              <code className="text-sm font-mono text-blue-800 font-bold">{mongoInfo.your_ip}</code>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => copyToClipboard(mongoInfo.your_ip)}
+                                className="h-6 px-2"
+                              >
+                                <Copy className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setIpToWhitelist(mongoInfo.your_ip)}
+                                className="h-6 px-2 text-xs"
+                              >
+                                Use This IP
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex gap-2 mb-3">
+                          <Input
+                            placeholder="Enter IP address (e.g., 192.168.1.1 or 0.0.0.0/0 for all)"
+                            value={ipToWhitelist}
+                            onChange={(e) => setIpToWhitelist(e.target.value)}
+                            className="flex-1"
+                          />
+                          <Button
+                            onClick={handleWhitelistIP}
+                            disabled={whitelistingIP || !ipToWhitelist.trim()}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            {whitelistingIP ? (
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Plus className="w-4 h-4 mr-1" />
+                                Whitelist IP
+                              </>
+                            )}
+                          </Button>
+                        </div>
+
+                        {mongoInfo.whitelisted_ips && mongoInfo.whitelisted_ips.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-xs text-slate-500 uppercase">Whitelisted IPs:</p>
+                            {mongoInfo.whitelisted_ips.map((item, idx) => (
+                              <div key={idx} className="flex items-center justify-between p-2 bg-white rounded border">
+                                <div>
+                                  <code className="text-sm font-mono text-[#1E3A5F]">{item.ip}</code>
+                                  {item.description && (
+                                    <span className="text-xs text-slate-500 ml-2">({item.description})</span>
+                                  )}
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleRemoveWhitelistedIP(item.ip)}
+                                  className="h-6 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <p className="text-xs text-slate-500 mt-3">
+                          💡 Use <code className="bg-slate-200 px-1 rounded">0.0.0.0/0</code> to allow access from any IP (not recommended for production).
                         </p>
                       </div>
 

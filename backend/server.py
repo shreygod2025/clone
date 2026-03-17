@@ -13806,7 +13806,7 @@ async def optimize_database(user: dict = Depends(get_current_user)):
         }
 
 @api_router.get("/admin/mongodb-info")
-async def get_mongodb_info(user: dict = Depends(get_current_user)):
+async def get_mongodb_info(request: Request, user: dict = Depends(get_current_user)):
     """Get MongoDB connection info for data export/migration"""
     if user.get("role") not in ["admin", "super_admin"]:
         raise HTTPException(status_code=403, detail="Only admins can access MongoDB info")
@@ -13815,6 +13815,12 @@ async def get_mongodb_info(user: dict = Depends(get_current_user)):
         # Get database stats
         db_name = os.environ.get("DB_NAME", "test_database")
         mongo_url = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
+        
+        # Get user's IP address
+        client_ip = request.client.host if request.client else None
+        forwarded_for = request.headers.get("X-Forwarded-For")
+        if forwarded_for:
+            client_ip = forwarded_for.split(",")[0].strip()
         
         # Build a sanitized connection string (mask password if present)
         connection_display = mongo_url
@@ -13844,15 +13850,73 @@ async def get_mongodb_info(user: dict = Depends(get_current_user)):
         if not mongo_url.endswith("/"):
             export_connection = f"{mongo_url}/{db_name}"
         
+        # Get whitelisted IPs from database
+        whitelisted_ips = []
+        try:
+            whitelist_docs = await db.mongodb_whitelist.find({}, {"_id": 0}).to_list(100)
+            whitelisted_ips = whitelist_docs
+        except:
+            pass
+        
         return {
             "db_name": db_name,
             "connection_string": export_connection,
             "collections": collections_info,
             "total_collections": len(collection_names),
-            "export_command": f'mongodump --uri="{export_connection}" --archive=backup.gz --gzip'
+            "export_command": f'mongodump --uri="{export_connection}" --archive=backup.gz --gzip',
+            "your_ip": client_ip,
+            "whitelisted_ips": whitelisted_ips
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get MongoDB info: {str(e)}")
+
+@api_router.post("/admin/mongodb-whitelist-ip")
+async def whitelist_ip(data: dict, user: dict = Depends(get_current_user)):
+    """Add an IP address to the whitelist"""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Only admins can manage IP whitelist")
+    
+    ip_address = data.get("ip_address", "").strip()
+    description = data.get("description", "")
+    
+    if not ip_address:
+        raise HTTPException(status_code=400, detail="IP address is required")
+    
+    # Basic IP validation
+    import re
+    ip_pattern = r'^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$|^0\.0\.0\.0\/0$'
+    if not re.match(ip_pattern, ip_address):
+        raise HTTPException(status_code=400, detail="Invalid IP address format")
+    
+    # Check if already exists
+    existing = await db.mongodb_whitelist.find_one({"ip": ip_address})
+    if existing:
+        raise HTTPException(status_code=400, detail="IP already whitelisted")
+    
+    # Add to whitelist
+    await db.mongodb_whitelist.insert_one({
+        "ip": ip_address,
+        "description": description,
+        "added_by": user.get("email"),
+        "added_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return {"message": f"IP {ip_address} added to whitelist", "success": True}
+
+@api_router.delete("/admin/mongodb-whitelist-ip/{ip_address}")
+async def remove_whitelisted_ip(ip_address: str, user: dict = Depends(get_current_user)):
+    """Remove an IP address from the whitelist"""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Only admins can manage IP whitelist")
+    
+    from urllib.parse import unquote
+    ip_address = unquote(ip_address)
+    
+    result = await db.mongodb_whitelist.delete_one({"ip": ip_address})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="IP not found in whitelist")
+    
+    return {"message": f"IP {ip_address} removed from whitelist", "success": True}
 
 # Cloudinary signature endpoint for frontend uploads
 @api_router.get("/cloudinary/signature")
