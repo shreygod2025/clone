@@ -1087,6 +1087,9 @@ const AdminSchoolCRM = () => {
       gp_share_calc: existingOnboardData.gp_share_calc || 'lumpsum',
       gp_share_value: existingOnboardData.gp_share_value || '',
       gp_share_amount: existingOnboardData.gp_share_amount || 0,
+      // Store school identity fields in onboardData as fallback for PDF generation
+      _school_name: inquiry.school_name || inquiry.name || '',
+      _school_id: inquiry.id,
     });
     setShowOnboardModal(inquiry);
   };
@@ -1900,7 +1903,10 @@ const AdminSchoolCRM = () => {
       gp_share_type: existingData.gp_share_type || 'none',
       gp_share_calc: existingData.gp_share_calc || 'lumpsum',
       gp_share_value: existingData.gp_share_value || '',
-      gp_share_amount: existingData.gp_share_amount || 0
+      gp_share_amount: existingData.gp_share_amount || 0,
+      // Store school identity for PDF generation fallback
+      _school_name: inquiry.school_name || inquiry.name || '',
+      _school_id: inquiry.id,
     });
   };
 
@@ -2511,7 +2517,10 @@ const AdminSchoolCRM = () => {
       };
 
       // ── DATA ───────────────────────────────────────────────────
-      const schoolName = school?.school_name || school?.name || school?.school || '';
+      const schoolName = school?.school_name || school?.name || school?.school || data?._school_name || data?.school_name || '';
+      // Debug: log what data is available (remove after confirming fix)
+      console.log('[MOU Debug] school object:', JSON.stringify({ school_name: school?.school_name, name: school?.name, id: school?.id }));
+      console.log('[MOU Debug] data._school_name:', data?._school_name, '| final schoolName:', schoolName);
       const schoolAddress = data.school_address || school?.location || school?.address || '';
       const contacts = data.school_contacts || [];
       const principal = contacts.find(c => c.role === 'principal') || contacts[0] || {};
