@@ -12021,7 +12021,9 @@ async def get_school_onboarding(school_id: str, user: dict = Depends(get_current
         "school_id": school_id,
         "school_name": school.get("school_name"),
         "contact_name": school.get("contact_name"),
-        "workflow": school.get("onboarding_workflow", {})
+        "workflow": school.get("onboarding_workflow", {}),
+        "po_requests": school.get("po_requests", []),
+        "onboarding_data": school.get("onboarding_data", {}),
     }
 
 @api_router.post("/schools/{school_id}/lms-students")

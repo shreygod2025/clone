@@ -872,7 +872,9 @@ const AdminSchoolCRM = () => {
             });
             setShowOnboardingWorkflowModal(prev => ({
               ...prev,
-              onboarding_workflow: updatedResponse.data.workflow
+              onboarding_workflow: updatedResponse.data.workflow,
+              po_requests: updatedResponse.data.po_requests || [],
+              onboarding_data: updatedResponse.data.onboarding_data || prev.onboarding_data,
             }));
           }
         }
@@ -4167,7 +4169,12 @@ const AdminSchoolCRM = () => {
       // Refresh the modal data
       const updated = await axios.get(`${API}/schools/${showOnboardingWorkflowModal.id}/onboarding`, { headers: getAuthHeaders() });
       if (updated.data) {
-        setShowOnboardingWorkflowModal(prev => ({ ...prev, ...updated.data }));
+        setShowOnboardingWorkflowModal(prev => ({
+          ...prev,
+          onboarding_workflow: updated.data.workflow,
+          po_requests: updated.data.po_requests || [],
+          onboarding_data: updated.data.onboarding_data || prev.onboarding_data,
+        }));
       }
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to raise PO');
@@ -11230,6 +11237,59 @@ const AdminSchoolCRM = () => {
                               {step.data.vendor_name && (
                                 <p className="text-xs text-slate-600">Vendor: {step.data.vendor_name}</p>
                               )}
+                            </div>
+                          )}
+
+                          {/* Show all raised PO requests */}
+                          {showOnboardingWorkflowModal?.po_requests?.length > 0 && (
+                            <div className="space-y-2">
+                              <p className="text-xs font-semibold text-slate-600">Raised PO Requests</p>
+                              {showOnboardingWorkflowModal.po_requests.map((po, poIdx) => (
+                                <div key={poIdx} className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 text-sm">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                      <Package className="w-4 h-4 text-indigo-600" />
+                                      <span className="font-semibold text-indigo-700">{po.po_number}</span>
+                                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                        po.status === 'delivered' || po.status === 'closed' ? 'bg-green-100 text-green-700' :
+                                        po.status === 'dispatched' ? 'bg-blue-100 text-blue-700' :
+                                        po.status === 'confirmed' ? 'bg-teal-100 text-teal-700' :
+                                        po.status === 'sent' ? 'bg-yellow-100 text-yellow-700' :
+                                        'bg-slate-100 text-slate-600'
+                                      }`}>
+                                        {po.status || 'request'}
+                                      </span>
+                                    </div>
+                                    {po.tracking_url && (
+                                      <a href={po.tracking_url} target="_blank" rel="noopener noreferrer"
+                                        className="text-xs text-indigo-600 hover:underline flex items-center gap-1">
+                                        <ExternalLink className="w-3 h-3" /> Track
+                                      </a>
+                                    )}
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-600">
+                                    <p>Delivery Date: <span className="font-medium text-slate-800">
+                                      {po.delivery_date ? new Date(po.delivery_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                                    </span></p>
+                                    <p>Raised: <span className="font-medium text-slate-800">
+                                      {po.raised_at ? new Date(po.raised_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                                    </span></p>
+                                    <p>Products: <span className="font-medium text-slate-800">{po.products?.length || 0} items</span></p>
+                                    <p>By: <span className="font-medium text-slate-800">{po.raised_by || '-'}</span></p>
+                                  </div>
+                                  {po.products?.length > 0 && (
+                                    <div className="mt-2 pt-2 border-t border-indigo-100">
+                                      <div className="flex flex-wrap gap-1">
+                                        {po.products.map((prod, pIdx) => (
+                                          <span key={pIdx} className="text-xs bg-white border border-indigo-100 rounded px-2 py-0.5 text-slate-700">
+                                            {prod.product_name} x{prod.quantity}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
                             </div>
                           )}
                           
