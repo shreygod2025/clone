@@ -586,3 +586,37 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
   - PO response stored on school record (`po_requests` array) and kit_delivery step auto-updated
   - Tested: Backend API verified with curl, multiple scenarios (individual kit, lab setup, robotics_coding_ai grade split)
 
+### March 2026 (Fork Session 3 - P0 MOU Fix + P0 Refactor)
+- **P0 BUG FIX: MOU PDF document not saving (DONE, TESTED):**
+  - Root cause: FormData uploads had `Content-Type: multipart/form-data` manually set, breaking the multipart boundary — server returned 400.
+  - Fix: Removed all manual `Content-Type: multipart/form-data` headers from FormData axios calls in `AdminSchoolCRM.jsx` using `sed`.
+  - Atomic append: Created `POST /api/schools/{school_id}/add-document` endpoint using MongoDB `$push` to prevent race conditions when saving documents.
+  - Proposal and Parent Circular document saves also updated to use atomic `/add-document` instead of PATCH.
+  - Tested: 9/9 backend tests pass (iteration_47). Frontend: 100% pass.
+
+- **P0 REFACTOR: AdminSchoolCRM.jsx extraction (DONE, TESTED):**
+  - Extracted 3 large PDF generator functions (~1,370 lines total) from AdminSchoolCRM.jsx into dedicated utility files:
+    - `/utils/proposalPdfGenerator.js` — exports `generateProposalDocument(school, data, ctx)`
+    - `/utils/mouPdfGenerator.js` — exports `generateMOUDocument(school, data, ctx)`  
+    - `/utils/parentCircularGenerator.js` — exports `generateParentCircularDocument(school, data, ctx)`
+    - `/utils/ollAssets.js` — exports `OLL_LOGO_B64` and `OLL_LOGO_HORIZONTAL` base64 logos
+  - AdminSchoolCRM.jsx reduced from 12,077 → 10,707 lines (-1,370 lines).
+  - All 3 functions replaced with thin wrappers that manage loading state and pass context to utilities.
+  - Also fixed bug: `generateProposalPDF` was reading `onboardData?.grade_pricing` instead of `data?.grade_pricing` (now fixed in utility).
+  - Tested: 100% pass — 9/9 backend + frontend compilation verified (iteration_47).
+
+## Prioritized Backlog
+
+### P0 (Critical)
+- Continue refactoring `server.py` (17,908 lines → target modular route files)
+
+### P1 (High Priority)
+- CSV Export button for all major admin data tables
+- Phase 2 & 3 email notification templates
+
+### P2 (Medium Priority)
+- Background job for AI follow-up emails
+- Backend RBAC enforcement
+- Audit logging for sensitive operations
+- AdminSchoolCRM.jsx further reduction (still 10,707 lines)
+
