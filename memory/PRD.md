@@ -519,6 +519,7 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 - [x] Fix Pay Fees button to trigger Cashfree popup
 - [x] Email Notification System for School CRM - DONE March 13, 2026
 - [x] School Student Portal (Login + Dashboard) - DONE Feb 2026 - 100% tests passing
+- [x] Admin Payment Tracker: Fix missing payments (limit 1000→10000), add edit/refund actions - DONE March 2026
 
 ### P1 - High Priority
 - [ ] Fix recurring file download issue (wrong name/type)

@@ -5117,7 +5117,7 @@ async def get_school_payment_tracker(
     if grade:
         query["grade"] = grade
     
-    payments = await db.school_student_payments.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    payments = await db.school_student_payments.find(query, {"_id": 0}).sort("created_at", -1).to_list(10000)
     
     # Calculate stats
     total_collected = sum(p.get("amount", 0) for p in payments if p.get("status") == "PAID")
@@ -5216,6 +5216,90 @@ async def get_school_payment_tracker_public(school_id: str):
         "available_grades": sorted(all_grades),
         "available_divisions": sorted(all_divisions)
     }
+
+# ========================
+# SCHOOL STUDENT PAYMENT ADMIN ENDPOINTS
+# ========================
+
+@api_router.patch("/school-payment/student/{payment_id}")
+async def update_school_student_record(payment_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Admin: Edit a student's name, grade, division"""
+    allowed_fields = ["student_name", "grade", "division"]
+    update_data = {k: v for k, v in data.items() if k in allowed_fields}
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    result = await db.school_student_payments.update_one({"id": payment_id}, {"$set": update_data})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Payment record not found")
+    return {"message": "Record updated successfully"}
+
+@api_router.patch("/school-payment/status/{payment_id}")
+async def update_school_payment_status(payment_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Admin: Change payment status (e.g., mark as REFUNDED)"""
+    new_status = data.get("status")
+    if new_status not in ["REFUNDED", "CANCELLED", "PENDING"]:
+        raise HTTPException(status_code=400, detail="Invalid status. Allowed: REFUNDED, CANCELLED, PENDING")
+    update_data = {
+        "status": new_status,
+        "status_updated_at": datetime.now(timezone.utc).isoformat(),
+        "status_updated_by": user.get("email", "admin")
+    }
+    result = await db.school_student_payments.update_one({"id": payment_id}, {"$set": update_data})
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Payment record not found")
+    return {"message": f"Status updated to {new_status}"}
+
+@api_router.post("/school-payment/refund/{payment_id}")
+async def initiate_cashfree_refund(payment_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Admin: Initiate a Cashfree refund for a PAID school student payment"""
+    if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
+        raise HTTPException(status_code=500, detail="Payment gateway not configured")
+    
+    payment = await db.school_student_payments.find_one({"id": payment_id}, {"_id": 0})
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    if payment.get("status") != "PAID":
+        raise HTTPException(status_code=400, detail="Refunds can only be initiated for PAID payments")
+    
+    # Use the merchant order_id (the 'id' field we set when creating the order)
+    order_id = payment.get("id")
+    refund_amount = float(data.get("refund_amount", payment.get("amount", 0)))
+    refund_note = data.get("refund_note", "Admin initiated refund")
+    refund_id = f"REF_{payment_id[:20]}_{int(datetime.now(timezone.utc).timestamp())}"
+    
+    try:
+        from cashfree_pg.models.order_create_refund_request import OrderCreateRefundRequest
+        refund_request = OrderCreateRefundRequest(
+            refund_amount=refund_amount,
+            refund_id=refund_id,
+            refund_note=refund_note,
+            refund_speed="STANDARD"
+        )
+        api_response = get_cashfree_client().PGOrderCreateRefund(
+            CASHFREE_API_VERSION,
+            order_id,
+            refund_request,
+            None
+        )
+        refund_data = api_response.to_dict() if hasattr(api_response, 'to_dict') else {}
+        
+        # Update payment status in DB
+        await db.school_student_payments.update_one(
+            {"id": payment_id},
+            {"$set": {
+                "status": "REFUNDED",
+                "refund_id": refund_id,
+                "refund_amount": refund_amount,
+                "refund_note": refund_note,
+                "refunded_at": datetime.now(timezone.utc).isoformat(),
+                "refunded_by": user.get("email", "admin")
+            }}
+        )
+        return {"message": "Refund initiated successfully", "refund_id": refund_id, "data": refund_data}
+    except Exception as e:
+        logging.error(f"[REFUND] Cashfree refund failed for {payment_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Refund failed: {str(e)}")
 
 # ========================
 # PAYMENT SYNC ENDPOINTS (Admin)
