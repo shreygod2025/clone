@@ -4050,6 +4050,25 @@ const AdminSchoolCRM = () => {
     }
   };
 
+  const handleRegenerateWorkflow = async (schoolId) => {
+    if (!window.confirm('Regenerate workflow steps based on current program details?\n\nThis will add/remove steps to match the school\'s kit type and training type, while preserving completed step data.')) return;
+    try {
+      const response = await axios.post(`${API}/schools/${schoolId}/regenerate-workflow`, {}, {
+        headers: getAuthHeaders()
+      });
+      toast.success(response.data.message || 'Workflow regenerated');
+      fetchInquiries();
+      if (showOnboardingWorkflowModal) {
+        setShowOnboardingWorkflowModal({
+          ...showOnboardingWorkflowModal,
+          onboarding_workflow: response.data.workflow
+        });
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to regenerate workflow');
+    }
+  };
+
   // Add a query during onboarding
   const handleAddOnboardingQuery = async (schoolId, queryData) => {
     try {
@@ -10877,6 +10896,13 @@ const AdminSchoolCRM = () => {
                     Copy Tracking Link
                   </button>
                 )}
+                <button
+                  onClick={() => handleRegenerateWorkflow(showOnboardingWorkflowModal.id)}
+                  className="text-xs px-3 py-1.5 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 flex items-center gap-1"
+                  title="Re-sync steps based on current program details (kit type & training type)"
+                >
+                  <RefreshCw className="w-3 h-3" /> Sync Steps
+                </button>
               </div>
             </DialogTitle>
           </DialogHeader>

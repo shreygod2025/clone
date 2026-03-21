@@ -11797,6 +11797,74 @@ async def init_school_onboarding(school_id: str, data: dict = None, user: dict =
         "emails_sent": school_emails
     }
 
+@api_router.post("/schools/{school_id}/regenerate-workflow")
+async def regenerate_onboarding_workflow(school_id: str, user: dict = Depends(get_current_user)):
+    """
+    Regenerate onboarding workflow steps based on current onboarding_data.
+    Preserves completed status and data for steps that exist in both old and new workflow.
+    Useful when a school's kit_type or training_type changes after onboarding was initialized.
+    """
+    school = await db.school_inquiries.find_one({"id": school_id})
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+
+    workflow = school.get("onboarding_workflow")
+    if not workflow:
+        raise HTTPException(status_code=400, detail="No onboarding workflow found. Initialize onboarding first.")
+
+    onboarding_data = school.get("onboarding_data", {})
+    is_renewal = workflow.get("is_renewal", False)
+
+    # Generate fresh step set based on current onboarding_data
+    new_steps = generate_dynamic_onboarding_steps(onboarding_data, is_renewal=is_renewal)
+
+    # Preserve completed status and data from existing steps
+    old_steps = workflow.get("steps", {})
+    for key, step in new_steps.items():
+        if key in old_steps:
+            step["completed"] = old_steps[key].get("completed", False)
+            step["completed_date"] = old_steps[key].get("completed_date")
+            # Merge saved data fields
+            saved_data = old_steps[key].get("data", {})
+            if saved_data:
+                step["data"] = {**step.get("data", {}), **saved_data}
+
+    # Find next incomplete step
+    current_step = None
+    for sk in new_steps.keys():
+        if not new_steps[sk].get("completed", False):
+            current_step = sk
+            break
+
+    workflow["steps"] = new_steps
+    workflow["current_step"] = current_step
+
+    # Add timeline entry
+    timeline = workflow.get("timeline", [])
+    timeline.append({
+        "action": "Workflow steps regenerated based on current program details",
+        "date": datetime.now(timezone.utc).isoformat(),
+        "by": user.get("name", user.get("email", "Admin"))
+    })
+    workflow["timeline"] = timeline
+
+    await db.school_inquiries.update_one(
+        {"id": school_id},
+        {"$set": {
+            "onboarding_workflow": workflow,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+
+    updated_school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
+    return {
+        "success": True,
+        "message": f"Workflow regenerated with {len(new_steps)} steps",
+        "workflow": updated_school.get("onboarding_workflow"),
+        "school": updated_school
+    }
+
+
 @api_router.patch("/schools/{school_id}/onboarding-step/{step_key}")
 async def update_onboarding_step(
     school_id: str, 
