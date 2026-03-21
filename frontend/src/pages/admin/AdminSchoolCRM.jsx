@@ -3218,11 +3218,8 @@ const AdminSchoolCRM = () => {
         const formData = new FormData();
         formData.append('file', pdfFile);
         formData.append('type', 'mou');
-        // Do NOT manually set Content-Type for FormData - let browser handle boundary
-        const authHeaders = getAuthHeaders();
-        delete authHeaders['Content-Type'];
         const uploadRes = await axios.post(`${API}/upload`, formData, {
-          headers: authHeaders,
+          headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' },
         });
         const fileUrl = uploadRes.data.url;
         if (!fileUrl) throw new Error('Upload returned no URL');
