@@ -568,12 +568,12 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 6. **MOU School Name** (User Verification Pending): School name should appear in MOU PDF header
 
 ### March 21, 2026 (Session 2)
-- **P0 Fix: Backend Shutdown Crash (DONE):** Fixed `NameError: name 'client' is not defined` that occurred on every server restart/shutdown. Root cause: `client.close()` in shutdown handler referenced undefined variable. Fix: Import `_client as mongo_client` from `database.py` and use `mongo_client.close()`. Tested: Clean `Application shutdown complete` in logs.
-- **P0 Fix: Resend Email Production Diagnostics (DONE):** 
-  - Added `POST /api/admin/service-api-keys/resend/test` endpoint that sends a real test email and detects if the API key is a test key vs production key
-  - Improved error handling in all email sending functions to detect "testing emails" Resend error and return clear guidance about needing a production API key
-  - Added "Test Email Configuration" section with "Send Test Email" button in Admin Settings > API Keys tab
-  - Added step 3 in instructions: verify sending domain at resend.com/domains
-  - **Production issue root cause:** The Resend API key stored in the production database is a TEST key. Test keys can only send to the account owner's email. User must update to a production key via Admin > Settings > API Keys or at resend.com/api-keys
-  - Tested: 8/8 backend tests passed, frontend test email button works correctly (iteration 45)
+- **P0 Fix: Backend Shutdown Crash (DONE):** Fixed `NameError: name 'client' is not defined` on server restart. Import `_client as mongo_client` from `database.py`.
+- **P0 Fix: Resend Email Diagnostics (DONE):** Added test email endpoint and "Send Test Email" button in Admin Settings > API Keys. Production issue is a test API key.
+- **School Receipt Filtering & PDF Download (DONE):**
+  - Student /my-bookings: School Receipts tab now only shows PAID/REFUNDED payments (filters out ACTIVE, EXPIRED, PENDING)
+  - Student /my-bookings: Added "Download Receipt" button for each receipt card
+  - Admin SchoolPaymentTracker: Added download receipt (FileText icon) action for PAID/REFUNDED payments
+  - Created `/utils/receiptPdfGenerator.js` - generates styled receipt PDF with OLL branding using jsPDF
+  - Tested: 5/5 features passed (iteration 46)
 
