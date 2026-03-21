@@ -1209,7 +1209,13 @@ const AdminSchoolCRM = () => {
       // ── INTRODUCTION (with increased line spacing) ────────────────────────────────────────────
       doc.setFontSize(10);
       doc.setTextColor(0, 0, 0);
-      const introText = `We are delighted to share our OLL's Robotics & AI Lab Setup for the upcoming academic year for your school. Designed for students from Grades 1 to 10th, this program has already been successfully implemented in 400+ schools across India, with remarkable achievements.`;
+      // Build dynamic grade range from onboarding data
+      const grades = (onboardData?.grade_pricing || [])
+        .map(g => parseInt(g.grade)).filter(g => !isNaN(g)).sort((a, b) => a - b);
+      const gradeRange = grades.length > 0
+        ? `Grades ${grades[0]} to ${grades[grades.length - 1]}`
+        : 'Grades 1 to 10';
+      const introText = `We are delighted to share our OLL's Robotics & AI Lab Setup for the upcoming academic year for your school. Designed for students from ${gradeRange}, this program has already been successfully implemented in 400+ schools across India, with remarkable achievements.`;
       const introLines = doc.splitTextToSize(introText, CW);
       // Increased line spacing (7mm instead of 5mm)
       introLines.forEach((line, idx) => {
