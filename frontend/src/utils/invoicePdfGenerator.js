@@ -11,7 +11,7 @@ const COMPANY = {
   email: 'accounts@clonefutura.com',
   gstin: '27AAKCC1113B1ZC',
   website: 'https://www.oll.co/',
-  stateCode: '27', // Maharashtra
+  stateCode: '27',
   stateName: 'Maharashtra',
   cin: 'U80903MH2022PTC377002',
   pan: 'AAKCC1113B',
@@ -21,7 +21,7 @@ const COMPANY = {
   regdOffice: '91, Nagdevi Cross Lane Mumbai-400003',
 };
 
-const HSN_SAC = '999259'; // Education/Training services
+const HSN_SAC = '999259';
 
 // ──────────────────────────────────────────────
 // Number to Words (Indian Rupees)
@@ -67,18 +67,12 @@ function amountInWords(amount) {
   return words;
 }
 
-// ──────────────────────────────────────────────
-// Format Indian currency
-// ──────────────────────────────────────────────
 function formatINR(num) {
   if (!num && num !== 0) return '0.00';
   const n = Number(num);
   return n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// ──────────────────────────────────────────────
-// Load image as base64 data URL
-// ──────────────────────────────────────────────
 function loadImageAsDataURL(url) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -96,13 +90,9 @@ function loadImageAsDataURL(url) {
   });
 }
 
-// ──────────────────────────────────────────────
-// Generate Invoice Number
-// ──────────────────────────────────────────────
 function generateInvoiceNumber(payment) {
   const now = new Date();
   const year = now.getFullYear();
-  // Use tranche_index + school_id hash for uniqueness
   const hash = (payment.school_id || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0);
   const idx = (payment.tranche_index || 0) + 1;
   const seq = String(hash * 100 + idx + now.getMonth() * 10).slice(-6).padStart(6, '0');
@@ -113,7 +103,20 @@ function generateInvoiceNumber(payment) {
 // GST Calculation
 // ──────────────────────────────────────────────
 function calculateGST(amount, gstType, schoolState) {
-  const gstRate = 18; // 18% total GST for education services
+  // Book GST = no GST applicable
+  if (gstType === 'book_gst') {
+    return {
+      baseAmount: amount,
+      totalWithGST: amount,
+      cgstRate: 0, cgstAmount: 0,
+      sgstRate: 0, sgstAmount: 0,
+      igstRate: 0, igstAmount: 0,
+      isIntraState: true,
+      isBookGST: true,
+    };
+  }
+
+  const gstRate = 18;
   const halfRate = gstRate / 2;
   let baseAmount, gstAmount;
 
@@ -121,37 +124,27 @@ function calculateGST(amount, gstType, schoolState) {
     baseAmount = amount / (1 + gstRate / 100);
     gstAmount = amount - baseAmount;
   } else {
-    // exclusive or book_gst
     baseAmount = amount;
     gstAmount = amount * gstRate / 100;
   }
 
-  // Determine if intra-state (CGST+SGST) or inter-state (IGST)
   const isIntraState = !schoolState || schoolState.toLowerCase().includes('maharashtra');
 
   if (isIntraState) {
     return {
-      baseAmount,
-      totalWithGST: baseAmount + gstAmount,
-      cgstRate: halfRate,
-      cgstAmount: gstAmount / 2,
-      sgstRate: halfRate,
-      sgstAmount: gstAmount / 2,
-      igstRate: 0,
-      igstAmount: 0,
-      isIntraState: true,
+      baseAmount, totalWithGST: baseAmount + gstAmount,
+      cgstRate: halfRate, cgstAmount: gstAmount / 2,
+      sgstRate: halfRate, sgstAmount: gstAmount / 2,
+      igstRate: 0, igstAmount: 0,
+      isIntraState: true, isBookGST: false,
     };
   } else {
     return {
-      baseAmount,
-      totalWithGST: baseAmount + gstAmount,
-      cgstRate: 0,
-      cgstAmount: 0,
-      sgstRate: 0,
-      sgstAmount: 0,
-      igstRate: gstRate,
-      igstAmount: gstAmount,
-      isIntraState: false,
+      baseAmount, totalWithGST: baseAmount + gstAmount,
+      cgstRate: 0, cgstAmount: 0,
+      sgstRate: 0, sgstAmount: 0,
+      igstRate: gstRate, igstAmount: gstAmount,
+      isIntraState: false, isBookGST: false,
     };
   }
 }
@@ -163,55 +156,58 @@ export async function generateInvoicePDF(payment, schoolData) {
   const doc = new jsPDF('p', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 12;
+  const margin = 14;
   const contentWidth = pageWidth - margin * 2;
+  const innerLeft = margin;
+  const innerRight = pageWidth - margin;
   let y = margin;
 
   // Load images
   let logoImg = null;
   let signImg = null;
-  try {
-    logoImg = await loadImageAsDataURL('/oll_logo_invoice.png');
-  } catch (e) { /* fallback text */ }
-  try {
-    signImg = await loadImageAsDataURL('/shreyaan_sign.png');
-  } catch (e) { /* fallback text */ }
+  try { logoImg = await loadImageAsDataURL('/oll_logo_invoice.png'); } catch (e) { /* fallback */ }
+  try { signImg = await loadImageAsDataURL('/shreyaan_sign.png'); } catch (e) { /* fallback */ }
 
   // ─── Border ───
   doc.setDrawColor(30, 58, 95);
   doc.setLineWidth(0.5);
   doc.rect(margin - 2, margin - 2, contentWidth + 4, pageHeight - margin * 2 + 4);
 
-  // ─── Header: Logo + Company Info ───
+  // ─── Header: Logo (aspect-ratio preserved) + Company Info ───
+  // Logo is 1080x1920 (portrait). Height=30mm, Width=30*(1080/1920)=16.9mm
+  const logoH = 30;
+  const logoW = 16.9;
   if (logoImg) {
-    doc.addImage(logoImg, 'PNG', margin + 2, y, 28, 28);
+    doc.addImage(logoImg, 'PNG', innerLeft + 2, y, logoW, logoH);
   }
 
-  const companyX = margin + 34;
+  const companyX = innerLeft + logoW + 6;
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 58, 95);
-  doc.text(COMPANY.name, companyX, y + 6);
+  doc.text(COMPANY.name, companyX, y + 8);
 
   doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(80, 80, 80);
-  doc.text(COMPANY.address, companyX, y + 12);
-  doc.text(`Phone: ${COMPANY.phone}  |  Email: ${COMPANY.email}`, companyX, y + 17);
-  doc.text(`GSTIN: ${COMPANY.gstin}  |  ${COMPANY.website}`, companyX, y + 22);
+  doc.text(COMPANY.address, companyX, y + 14);
+  doc.text(`Phone: ${COMPANY.phone}  |  Email: ${COMPANY.email}`, companyX, y + 19);
+  doc.text(`GSTIN: ${COMPANY.gstin}  |  ${COMPANY.website}`, companyX, y + 24);
 
-  // TAX INVOICE title
+  // TAX INVOICE title (no "TAX" prefix for book_gst)
+  const gstType = payment.gst_type || 'exclusive';
+  const invoiceTitle = gstType === 'book_gst' ? 'INVOICE' : 'TAX INVOICE';
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 58, 95);
-  doc.text('TAX INVOICE', pageWidth - margin - 2, y + 10, { align: 'right' });
+  doc.text(invoiceTitle, innerRight - 2, y + 12, { align: 'right' });
 
-  y += 32;
+  y += 34;
 
   // ─── Divider ───
   doc.setDrawColor(30, 58, 95);
   doc.setLineWidth(0.3);
-  doc.line(margin, y, pageWidth - margin, y);
+  doc.line(innerLeft, y, innerRight, y);
   y += 4;
 
   // ─── Invoice Details ───
@@ -228,7 +224,7 @@ export async function generateInvoicePDF(payment, schoolData) {
   const placeOfSupply = stateCode ? `${schoolState} (${stateCode})` : schoolState || 'Maharashtra (27)';
 
   doc.setFontSize(8);
-  const detailsLeft = margin + 2;
+  const detailsLeft = innerLeft + 2;
   const detailsRight = pageWidth / 2 + 10;
 
   const addDetailPair = (label, value, x, rowY) => {
@@ -252,7 +248,7 @@ export async function generateInvoicePDF(payment, schoolData) {
   // ─── Divider ───
   doc.setDrawColor(200, 200, 200);
   doc.setLineWidth(0.2);
-  doc.line(margin, y, pageWidth - margin, y);
+  doc.line(innerLeft, y, innerRight, y);
   y += 4;
 
   // ─── Bill To / Ship To ───
@@ -261,25 +257,23 @@ export async function generateInvoicePDF(payment, schoolData) {
   const schoolGSTIN = schoolData?.gstin || schoolData?.onboarding_data?.gstin || '';
   const halfWidth = contentWidth / 2 - 2;
 
-  // Bill To box
   doc.setFillColor(248, 250, 252);
-  doc.roundedRect(margin, y, halfWidth, 22, 2, 2, 'F');
+  doc.roundedRect(innerLeft, y, halfWidth, 22, 2, 2, 'F');
   doc.setFontSize(7);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(100, 100, 100);
-  doc.text('Bill To', margin + 3, y + 5);
+  doc.text('Bill To', innerLeft + 3, y + 5);
   doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 30, 30);
-  doc.text(schoolName, margin + 3, y + 11);
+  doc.text(schoolName, innerLeft + 3, y + 11);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   doc.setTextColor(80, 80, 80);
-  if (schoolAddress) doc.text(schoolAddress, margin + 3, y + 16, { maxWidth: halfWidth - 6 });
-  if (schoolGSTIN) doc.text(`GSTIN: ${schoolGSTIN}`, margin + 3, y + 20);
+  if (schoolAddress) doc.text(schoolAddress, innerLeft + 3, y + 16, { maxWidth: halfWidth - 6 });
+  if (schoolGSTIN) doc.text(`GSTIN: ${schoolGSTIN}`, innerLeft + 3, y + 20);
 
-  // Ship To box
-  const shipX = margin + halfWidth + 4;
+  const shipX = innerLeft + halfWidth + 4;
   doc.setFillColor(248, 250, 252);
   doc.roundedRect(shipX, y, halfWidth, 22, 2, 2, 'F');
   doc.setFontSize(7);
@@ -298,10 +292,8 @@ export async function generateInvoicePDF(payment, schoolData) {
   y += 28;
 
   // ─── Items Table ───
-  const gstType = payment.gst_type || 'exclusive';
   const gst = calculateGST(payment.amount || 0, gstType, schoolState);
 
-  // Build item description
   const gradePricing = schoolData?.onboarding_data?.grade_pricing || [];
   const totalStudents = schoolData?.onboarding_data?.total_students || payment.qty || '';
   let itemDesc = schoolName;
@@ -314,35 +306,59 @@ export async function generateInvoicePDF(payment, schoolData) {
   }
 
   const pricePerStudent = totalStudents ? (gst.baseAmount / Number(totalStudents)) : gst.baseAmount;
+  const qtyStr = totalStudents ? String(totalStudents) : '1';
+  const rateStr = formatINR(totalStudents ? pricePerStudent : gst.baseAmount);
 
-  // Table headers and body differ based on intra/inter state
-  let tableHeaders, tableBody;
-  if (gst.isIntraState) {
+  // Table layout depends on GST type
+  let tableHeaders, tableBody, columnStyles;
+
+  if (gst.isBookGST) {
+    // No GST columns for Book GST
+    tableHeaders = [['#', 'Item & Description', 'HSN/SAC', 'Qty', 'Rate', 'Amount']];
+    tableBody = [['1', itemDesc, HSN_SAC, qtyStr, rateStr, formatINR(gst.baseAmount)]];
+    columnStyles = {
+      0: { halign: 'center', cellWidth: 10 },
+      1: { cellWidth: 'auto' },
+      2: { halign: 'center', cellWidth: 20 },
+      3: { halign: 'center', cellWidth: 18 },
+      4: { halign: 'right', cellWidth: 28 },
+      5: { halign: 'right', cellWidth: 28 },
+    };
+  } else if (gst.isIntraState) {
     tableHeaders = [['#', 'Item & Description', 'HSN/SAC', 'Qty', 'Rate', 'CGST %', 'CGST Amt', 'SGST %', 'SGST Amt', 'Amount']];
-    tableBody = [[
-      '1',
-      itemDesc,
-      HSN_SAC,
-      totalStudents ? String(totalStudents) : '1',
-      formatINR(totalStudents ? pricePerStudent : gst.baseAmount),
-      `${gst.cgstRate}%`,
-      formatINR(gst.cgstAmount),
-      `${gst.sgstRate}%`,
-      formatINR(gst.sgstAmount),
+    tableBody = [['1', itemDesc, HSN_SAC, qtyStr, rateStr,
+      `${gst.cgstRate}%`, formatINR(gst.cgstAmount),
+      `${gst.sgstRate}%`, formatINR(gst.sgstAmount),
       formatINR(gst.baseAmount),
     ]];
+    columnStyles = {
+      0: { halign: 'center', cellWidth: 8 },
+      1: { cellWidth: 'auto' },
+      2: { halign: 'center', cellWidth: 16 },
+      3: { halign: 'center', cellWidth: 13 },
+      4: { halign: 'right', cellWidth: 18 },
+      5: { halign: 'center', cellWidth: 12 },
+      6: { halign: 'right', cellWidth: 18 },
+      7: { halign: 'center', cellWidth: 12 },
+      8: { halign: 'right', cellWidth: 18 },
+      9: { halign: 'right', cellWidth: 20 },
+    };
   } else {
     tableHeaders = [['#', 'Item & Description', 'HSN/SAC', 'Qty', 'Rate', 'IGST %', 'IGST Amt', 'Amount']];
-    tableBody = [[
-      '1',
-      itemDesc,
-      HSN_SAC,
-      totalStudents ? String(totalStudents) : '1',
-      formatINR(totalStudents ? pricePerStudent : gst.baseAmount),
-      `${gst.igstRate}%`,
-      formatINR(gst.igstAmount),
+    tableBody = [['1', itemDesc, HSN_SAC, qtyStr, rateStr,
+      `${gst.igstRate}%`, formatINR(gst.igstAmount),
       formatINR(gst.baseAmount),
     ]];
+    columnStyles = {
+      0: { halign: 'center', cellWidth: 10 },
+      1: { cellWidth: 'auto' },
+      2: { halign: 'center', cellWidth: 18 },
+      3: { halign: 'center', cellWidth: 16 },
+      4: { halign: 'right', cellWidth: 22 },
+      5: { halign: 'center', cellWidth: 14 },
+      6: { halign: 'right', cellWidth: 22 },
+      7: { halign: 'right', cellWidth: 24 },
+    };
   }
 
   doc.autoTable({
@@ -350,6 +366,7 @@ export async function generateInvoicePDF(payment, schoolData) {
     body: tableBody,
     startY: y,
     margin: { left: margin, right: margin },
+    tableWidth: contentWidth,
     theme: 'grid',
     headStyles: {
       fillColor: [30, 58, 95],
@@ -364,34 +381,13 @@ export async function generateInvoicePDF(payment, schoolData) {
       cellPadding: 2.5,
       textColor: [30, 30, 30],
     },
-    columnStyles: gst.isIntraState ? {
-      0: { halign: 'center', cellWidth: 8 },
-      1: { cellWidth: 52 },
-      2: { halign: 'center', cellWidth: 16 },
-      3: { halign: 'center', cellWidth: 14 },
-      4: { halign: 'right', cellWidth: 20 },
-      5: { halign: 'center', cellWidth: 12 },
-      6: { halign: 'right', cellWidth: 20 },
-      7: { halign: 'center', cellWidth: 12 },
-      8: { halign: 'right', cellWidth: 20 },
-      9: { halign: 'right', cellWidth: 22 },
-    } : {
-      0: { halign: 'center', cellWidth: 8 },
-      1: { cellWidth: 64 },
-      2: { halign: 'center', cellWidth: 18 },
-      3: { halign: 'center', cellWidth: 16 },
-      4: { halign: 'right', cellWidth: 24 },
-      5: { halign: 'center', cellWidth: 14 },
-      6: { halign: 'right', cellWidth: 22 },
-      7: { halign: 'right', cellWidth: 24 },
-    },
-    didDrawPage: () => {},
+    columnStyles,
   });
 
   y = doc.lastAutoTable.finalY + 4;
 
   // ─── Totals Section ───
-  const totalsX = pageWidth - margin - 70;
+  const totalsX = innerRight - 70;
   const totalsW = 68;
 
   const addTotalRow = (label, value, isBold, bgColor) => {
@@ -408,15 +404,19 @@ export async function generateInvoicePDF(payment, schoolData) {
   };
 
   addTotalRow('Sub Total', formatINR(gst.baseAmount), false);
-  if (gst.isIntraState) {
-    addTotalRow(`CGST9 (${gst.cgstRate}%)`, formatINR(gst.cgstAmount), false);
-    addTotalRow(`SGST9 (${gst.sgstRate}%)`, formatINR(gst.sgstAmount), false);
-  } else {
-    addTotalRow(`IGST (${gst.igstRate}%)`, formatINR(gst.igstAmount), false);
+
+  if (!gst.isBookGST) {
+    if (gst.isIntraState) {
+      addTotalRow(`CGST9 (${gst.cgstRate}%)`, formatINR(gst.cgstAmount), false);
+      addTotalRow(`SGST9 (${gst.sgstRate}%)`, formatINR(gst.sgstAmount), false);
+    } else {
+      addTotalRow(`IGST (${gst.igstRate}%)`, formatINR(gst.igstAmount), false);
+    }
   }
+
   y += 1;
   addTotalRow('Total', `Rs. ${formatINR(gst.totalWithGST)}`, true, [30, 58, 95]);
-  // Override text color for total row
+  // Override text color for total row (white on dark bg)
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.text('Total', totalsX + 2, y - 6);
@@ -424,45 +424,44 @@ export async function generateInvoicePDF(payment, schoolData) {
 
   y += 2;
   addTotalRow('Balance Due', `Rs. ${formatINR(payment.status === 'paid' ? 0 : gst.totalWithGST)}`, true);
-
   y += 4;
 
   // ─── Amount in Words ───
   doc.setDrawColor(200, 200, 200);
-  doc.line(margin, y, pageWidth - margin, y);
+  doc.line(innerLeft, y, innerRight, y);
   y += 5;
   doc.setFontSize(7.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 58, 95);
-  doc.text('Total In Words', margin + 2, y);
+  doc.text('Total In Words', innerLeft + 2, y);
   y += 4;
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(30, 30, 30);
-  doc.text(amountInWords(gst.totalWithGST), margin + 2, y);
+  doc.text(amountInWords(gst.totalWithGST), innerLeft + 2, y);
   y += 7;
 
   // ─── Notes ───
   doc.setDrawColor(200, 200, 200);
-  doc.line(margin, y, pageWidth - margin, y);
+  doc.line(innerLeft, y, innerRight, y);
   y += 5;
   doc.setFontSize(7.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 58, 95);
-  doc.text('Notes', margin + 2, y);
+  doc.text('Notes', innerLeft + 2, y);
   y += 4;
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(80, 80, 80);
-  doc.text('We appreciate your business and look forward to helping you again soon.', margin + 2, y);
+  doc.text('We appreciate your business and look forward to helping you again soon.', innerLeft + 2, y);
   y += 7;
 
   // ─── Terms & Conditions ───
   doc.setDrawColor(200, 200, 200);
-  doc.line(margin, y, pageWidth - margin, y);
+  doc.line(innerLeft, y, innerRight, y);
   y += 5;
   doc.setFontSize(7.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 58, 95);
-  doc.text('Terms & Conditions', margin + 2, y);
+  doc.text('Terms & Conditions', innerLeft + 2, y);
   y += 4;
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(80, 80, 80);
@@ -475,17 +474,17 @@ export async function generateInvoicePDF(payment, schoolData) {
     `Regd office: ${COMPANY.regdOffice}`,
   ];
   terms.forEach(t => {
-    doc.text(t, margin + 2, y);
+    doc.text(t, innerLeft + 2, y);
     y += 3.5;
   });
   y += 4;
 
   // ─── Signature ───
   doc.setDrawColor(200, 200, 200);
-  doc.line(margin, y, pageWidth - margin, y);
+  doc.line(innerLeft, y, innerRight, y);
   y += 3;
 
-  const signX = pageWidth - margin - 50;
+  const signX = innerRight - 52;
   doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 100, 100);
