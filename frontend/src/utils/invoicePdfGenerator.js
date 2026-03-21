@@ -74,17 +74,24 @@ function formatINR(num) {
   return n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function loadImageAsDataURL(url) {
+function loadImageAsDataURL(url, maxWidth = 200, maxHeight = 200) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
+      // Resize to fit within maxWidth x maxHeight
+      let w = img.width, h = img.height;
+      if (w > maxWidth || h > maxHeight) {
+        const ratio = Math.min(maxWidth / w, maxHeight / h);
+        w = Math.round(w * ratio);
+        h = Math.round(h * ratio);
+      }
       const canvas = document.createElement('canvas');
-      canvas.width = img.width;
-      canvas.height = img.height;
+      canvas.width = w;
+      canvas.height = h;
       const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0);
-      resolve(canvas.toDataURL('image/png'));
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', 0.7));
     };
     img.onerror = () => reject(new Error('Failed to load image'));
     img.src = url;
@@ -166,8 +173,8 @@ export async function generateInvoicePDF(payment, schoolData) {
   // Load images
   let logoImg = null;
   let signImg = null;
-  try { logoImg = await loadImageAsDataURL('/oll_logo_invoice.png'); } catch (e) { /* fallback */ }
-  try { signImg = await loadImageAsDataURL('/shreyaan_sign.png'); } catch (e) { /* fallback */ }
+  try { logoImg = await loadImageAsDataURL('/oll_logo_invoice.png', 120, 200); } catch (e) { /* fallback */ }
+  try { signImg = await loadImageAsDataURL('/shreyaan_sign.png', 200, 100); } catch (e) { /* fallback */ }
 
   // ─── Border ───
   doc.setDrawColor(30, 58, 95);
@@ -179,7 +186,7 @@ export async function generateInvoicePDF(payment, schoolData) {
   const logoH = 30;
   const logoW = 16.9;
   if (logoImg) {
-    doc.addImage(logoImg, 'PNG', innerLeft + 2, y, logoW, logoH);
+    doc.addImage(logoImg, 'JPEG', innerLeft + 2, y, logoW, logoH);
   }
 
   const companyX = innerLeft + logoW + 6;
@@ -493,7 +500,7 @@ export async function generateInvoicePDF(payment, schoolData) {
   doc.text(`For ${COMPANY.name}`, signX, y + 3);
 
   if (signImg) {
-    doc.addImage(signImg, 'PNG', signX + 5, y + 5, 30, 15);
+    doc.addImage(signImg, 'JPEG', signX + 5, y + 5, 30, 15);
   }
 
   doc.setFont('helvetica', 'bold');
