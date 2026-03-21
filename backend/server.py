@@ -12011,6 +12011,108 @@ async def add_onboarding_query(
     
     return {"success": True, "query": query}
 
+
+@api_router.post("/schools/{school_id}/send-mou-email")
+async def send_mou_email(school_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Send MOU PDF as email attachment to school contacts"""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+
+    mou_url = data.get("mou_url")
+    file_name = data.get("file_name", "MOU.pdf")
+    recipient_emails = data.get("emails", [])
+
+    # Collect school contact emails
+    if not recipient_emails:
+        if school.get("email"):
+            recipient_emails.append(school["email"])
+        od = school.get("onboarding_data", {})
+        for contact_key in ["coordinator", "principal", "accounts_coordinator"]:
+            c = od.get(contact_key, {})
+            if c.get("email") and c["email"] not in recipient_emails:
+                recipient_emails.append(c["email"])
+
+    if not recipient_emails:
+        raise HTTPException(status_code=400, detail="No recipient email addresses found for this school")
+
+    await ensure_resend_api_key()
+    if not resend.api_key:
+        raise HTTPException(status_code=400, detail="Email service not configured. Add Resend API key in Settings.")
+
+    school_name = school.get("school_name", "School")
+
+    # Download PDF from URL to attach
+    attachment = None
+    if mou_url:
+        try:
+            async with httpx.AsyncClient(follow_redirects=True) as client:
+                pdf_resp = await client.get(mou_url, timeout=15.0)
+                pdf_resp.raise_for_status()
+                import base64
+                attachment = {
+                    "filename": file_name,
+                    "content": base64.b64encode(pdf_resp.content).decode(),
+                }
+        except Exception as e:
+            logging.error(f"Failed to download MOU for attachment: {e}")
+
+    html_content = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: #1E3A5F; padding: 20px; border-radius: 10px 10px 0 0;">
+            <h1 style="color: white; margin: 0; font-size: 24px;">OLL</h1>
+            <p style="color: #e0e0e0; margin: 5px 0 0 0;">One Learner at a time, One Life skill at a time</p>
+        </div>
+        <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
+            <h2 style="color: #1E3A5F; margin-top: 0;">Memorandum of Understanding</h2>
+            <p style="color: #444; line-height: 1.6;">Dear {school_name} Team,</p>
+            <p style="color: #444; line-height: 1.6;">Please find attached the Memorandum of Understanding (MOU) for our programme partnership.</p>
+            <p style="color: #444; line-height: 1.6;">Kindly review, sign, and return a copy at your earliest convenience.</p>
+            <div style="background: #f0f5fc; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p style="color: #1E3A5F; margin: 0; font-weight: bold;">Next Steps:</p>
+                <ul style="color: #444; margin: 8px 0 0 0; padding-left: 20px;">
+                    <li>Review all terms and conditions</li>
+                    <li>Sign and stamp the document</li>
+                    <li>Share a scanned copy with us</li>
+                </ul>
+            </div>
+            <p style="color: #444;">Warm regards,<br><strong>The OLL Team</strong></p>
+        </div>
+        <div style="text-align: center; padding: 15px; color: #888; font-size: 12px;">
+            <p>Clone Futura Live Solutions Pvt Ltd | www.oll.co</p>
+        </div>
+    </div>
+    """
+
+    try:
+        params = {
+            "from": SENDER_EMAIL,
+            "to": recipient_emails,
+            "subject": f"MOU - OLL x {school_name}",
+            "html": html_content,
+        }
+        if attachment:
+            params["attachments"] = [attachment]
+
+        email_response = await asyncio.to_thread(resend.Emails.send, params)
+        email_id = email_response.get("id") if isinstance(email_response, dict) else str(email_response)
+        return {
+            "success": True,
+            "message": f"MOU sent to {', '.join(recipient_emails)}",
+            "email_id": email_id,
+            "recipients": recipient_emails,
+        }
+    except Exception as e:
+        error_msg = str(e)
+        logging.error(f"MOU email error: {error_msg}")
+        if "testing" in error_msg.lower():
+            raise HTTPException(status_code=400, detail="Resend API key is a TEST key. Update to production key.")
+        raise HTTPException(status_code=500, detail=f"Failed to send email: {error_msg}")
+
+
 @api_router.get("/schools/{school_id}/onboarding")
 async def get_school_onboarding(school_id: str, user: dict = Depends(get_current_user)):
     """Get onboarding workflow for a school"""

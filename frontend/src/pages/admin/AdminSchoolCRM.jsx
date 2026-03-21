@@ -3211,6 +3211,7 @@ const AdminSchoolCRM = () => {
         const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
         const formData = new FormData();
         formData.append('file', pdfFile);
+        formData.append('type', 'mou');
         const uploadRes = await axios.post(`${API}/upload`, formData, {
           headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' },
         });
@@ -3223,17 +3224,33 @@ const AdminSchoolCRM = () => {
           uploaded_at: new Date().toISOString(),
           uploaded_by: user?.name || user?.email || 'Admin',
         };
-        // Only save to documents if we have an ID
+        // Save to documents and update mou_url
         if (school?.id) {
           await axios.patch(`${API}/schools/inquiry/${school.id}`, {
             documents: [...existingDocs, newDoc],
+            'onboarding_data.mou_url': fileUrl,
           }, { headers: getAuthHeaders() });
           setOnboardData(prev => ({ ...prev, mou_url: fileUrl }));
           fetchInquiries();
         }
         toast.success('MOU generated, downloaded & saved to documents!');
-      } catch {
-        toast.success('MOU downloaded! (Save to documents failed — check upload service)');
+
+        // Send MOU email with attachment
+        try {
+          const emailRes = await axios.post(`${API}/schools/${school.id}/send-mou-email`, {
+            mou_url: fileUrl,
+            file_name: fileName,
+          }, { headers: getAuthHeaders() });
+          if (emailRes.data.success) {
+            toast.success(`MOU emailed to ${emailRes.data.recipients?.join(', ')}`);
+          }
+        } catch (emailErr) {
+          console.error('MOU email error:', emailErr);
+          toast.info('MOU saved but email could not be sent');
+        }
+      } catch (uploadErr) {
+        console.error('MOU upload error:', uploadErr);
+        toast.success('MOU downloaded! (Save to docs failed — check upload service)');
       }
     } catch (err) {
       console.error('MOU generation error:', err);
