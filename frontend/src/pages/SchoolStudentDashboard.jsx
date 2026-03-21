@@ -16,7 +16,6 @@ const SchoolStudentDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [payments, setPayments] = useState([]);
-  const [activeTab, setActiveTab] = useState('receipts');
   const [editMode, setEditMode] = useState(false);
   const [editData, setEditData] = useState({});
   const [saving, setSaving] = useState(false);
@@ -176,7 +175,7 @@ const SchoolStudentDashboard = () => {
             <h1 className="text-2xl font-bold text-[#1E3A5F]">My Dashboard</h1>
             <p className="text-slate-600">Welcome back, {profile?.student_name || 'Student'}</p>
           </div>
-          <Button variant="outline" onClick={handleLogout} className="gap-2">
+          <Button variant="outline" onClick={handleLogout} className="gap-2" data-testid="logout-btn">
             <LogOut className="w-4 h-4" />
             Logout
           </Button>
@@ -190,16 +189,16 @@ const SchoolStudentDashboard = () => {
               Profile Details
             </h2>
             {!editMode ? (
-              <Button variant="outline" size="sm" onClick={() => setEditMode(true)} className="gap-1">
+              <Button variant="outline" size="sm" onClick={() => setEditMode(true)} className="gap-1" data-testid="edit-profile-btn">
                 <Edit2 className="w-4 h-4" />
                 Edit
               </Button>
             ) : (
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setEditMode(false)}>
+                <Button variant="outline" size="sm" onClick={() => setEditMode(false)} data-testid="cancel-edit-btn">
                   <X className="w-4 h-4" />
                 </Button>
-                <Button size="sm" onClick={handleSaveProfile} disabled={saving} className="gap-1 bg-green-600 hover:bg-green-700">
+                <Button size="sm" onClick={handleSaveProfile} disabled={saving} className="gap-1 bg-green-600 hover:bg-green-700" data-testid="save-profile-btn">
                   <Save className="w-4 h-4" />
                   {saving ? 'Saving...' : 'Save'}
                 </Button>
@@ -330,8 +329,10 @@ const SchoolStudentDashboard = () => {
                           size="sm" 
                           onClick={() => handleDownloadReceipt(payment)}
                           className="text-xs gap-1"
+                          data-testid="download-receipt-btn"
                         >
                           <Download className="w-3 h-3" />
+                          Download
                         </Button>
                       </div>
                     )}
