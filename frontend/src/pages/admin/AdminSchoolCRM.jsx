@@ -4479,6 +4479,27 @@ const AdminSchoolCRM = () => {
       if (editOnboardData.pricing_type === 'fixed' || editOnboardData.pricing_type === 'both') {
         calculatedTotalAmount += parseFloat(editOnboardData.fixed_price) || 0;
       }
+
+      // Recalculate school_share_amount from current share type/calc/value
+      const calcShareAmount = (shareType, shareCalc, shareValue, totalStudents, totalAmount) => {
+        if (!shareType || shareType === 'none' || !shareValue) return 0;
+        const val = parseFloat(shareValue) || 0;
+        if (shareType === 'percentage') {
+          const base = shareCalc === 'per_student' ? totalStudents : totalAmount;
+          return shareCalc === 'per_student' ? val * base : (val / 100) * base;
+        }
+        // fixed amount
+        return shareCalc === 'per_student' ? val * totalStudents : val;
+      };
+
+      const calculatedSchoolShareAmount = calcShareAmount(
+        editOnboardData.school_share_type, editOnboardData.school_share_calc,
+        editOnboardData.school_share_value, calculatedTotalStudents, calculatedTotalAmount
+      );
+      const calculatedGpShareAmount = calcShareAmount(
+        editOnboardData.gp_share_type, editOnboardData.gp_share_calc,
+        editOnboardData.gp_share_value, calculatedTotalStudents, calculatedTotalAmount
+      );
       
       // Build the onboarding data object with recalculated values
       const onboardingData = {
@@ -4507,11 +4528,11 @@ const AdminSchoolCRM = () => {
         school_share_type: editOnboardData.school_share_type,
         school_share_calc: editOnboardData.school_share_calc,
         school_share_value: editOnboardData.school_share_value,
-        school_share_amount: editOnboardData.school_share_amount,
+        school_share_amount: calculatedSchoolShareAmount,
         gp_share_type: editOnboardData.gp_share_type,
         gp_share_calc: editOnboardData.gp_share_calc,
         gp_share_value: editOnboardData.gp_share_value,
-        gp_share_amount: editOnboardData.gp_share_amount,
+        gp_share_amount: calculatedGpShareAmount,
       };
 
       // Update school inquiry basic info AND onboarding_data for renewed/converted schools

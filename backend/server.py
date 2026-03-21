@@ -7410,18 +7410,22 @@ async def update_school_inquiry(
     
     await db.school_inquiries.update_one({"id": inquiry_id}, {"$set": update_data})
     
-    # Auto-create GP Share and School Share expenses if present in onboarding_data
+    # Auto-sync GP Share and School Share expenses whenever onboarding_data changes
     onboarding_data = update_data.get('onboarding_data', {})
+    if not onboarding_data:
+        # Also check if share fields are passed directly at top level (legacy support)
+        share_keys = ['gp_share_amount', 'school_share_amount', 'gp_share_type', 'school_share_type']
+        if any(k in update_data for k in share_keys):
+            onboarding_data = {**current_inquiry.get('onboarding_data', {}), **{k: update_data[k] for k in share_keys if k in update_data}}
     if onboarding_data:
         school_name = current_inquiry.get('school_name', '')
         
-        # Check for GP Share expense - create or update
+        # Check for GP Share expense - create or update (any existing expense for this school/category)
         gp_share_amount = onboarding_data.get('gp_share_amount', 0)
         if gp_share_amount and float(gp_share_amount) > 0:
             existing_gp = await db.school_expenses.find_one({
                 "school_id": inquiry_id,
-                "category": "gp_share",
-                "source": {"$in": ["conversion", "renewal"]}
+                "category": "gp_share"
             })
             if not existing_gp:
                 gp_expense = {
@@ -7442,7 +7446,7 @@ async def update_school_inquiry(
                     "created_at": datetime.now(timezone.utc).isoformat(),
                     "updated_at": datetime.now(timezone.utc).isoformat(),
                     "auto_created": True,
-                    "source": "renewal"
+                    "source": "edit"
                 }
                 await db.school_expenses.insert_one(gp_expense)
             else:
@@ -7451,17 +7455,20 @@ async def update_school_inquiry(
                     {"id": existing_gp["id"]},
                     {"$set": {
                         "amount": float(gp_share_amount),
+                        "description": f"Growth Partner share ({onboarding_data.get('gp_share_type', 'amount')} - {onboarding_data.get('gp_share_calc', 'lumpsum')})",
+                        "gp_share_type": onboarding_data.get("gp_share_type"),
+                        "gp_share_calc": onboarding_data.get("gp_share_calc"),
+                        "gp_share_value": onboarding_data.get("gp_share_value"),
                         "updated_at": datetime.now(timezone.utc).isoformat()
                     }}
                 )
         
-        # Check for School Share expense - create or update
+        # Check for School Share expense - create or update (any existing expense for this school/category)
         school_share_amount = onboarding_data.get('school_share_amount', 0)
         if school_share_amount and float(school_share_amount) > 0:
             existing_school_share = await db.school_expenses.find_one({
                 "school_id": inquiry_id,
-                "category": "school_share",
-                "source": {"$in": ["conversion", "renewal"]}
+                "category": "school_share"
             })
             if not existing_school_share:
                 school_share_expense = {
@@ -7482,7 +7489,7 @@ async def update_school_inquiry(
                     "created_at": datetime.now(timezone.utc).isoformat(),
                     "updated_at": datetime.now(timezone.utc).isoformat(),
                     "auto_created": True,
-                    "source": "renewal"
+                    "source": "edit"
                 }
                 await db.school_expenses.insert_one(school_share_expense)
             else:
@@ -7491,6 +7498,10 @@ async def update_school_inquiry(
                     {"id": existing_school_share["id"]},
                     {"$set": {
                         "amount": float(school_share_amount),
+                        "description": f"School revenue share ({onboarding_data.get('school_share_type', 'amount')} - {onboarding_data.get('school_share_calc', 'lumpsum')})",
+                        "school_share_type": onboarding_data.get("school_share_type"),
+                        "school_share_calc": onboarding_data.get("school_share_calc"),
+                        "school_share_value": onboarding_data.get("school_share_value"),
                         "updated_at": datetime.now(timezone.utc).isoformat()
                     }}
                 )
