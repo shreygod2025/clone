@@ -9987,7 +9987,8 @@ async def add_query_reply(query_id: str, data: dict, user: dict = Depends(get_cu
         "by": user.get("name", user.get("email", "admin")),
         "by_id": user.get("id", user.get("email")),
         "role": user.get("role", "admin"),
-        "created_at": datetime.now(timezone.utc).isoformat()
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "attachment": data.get("attachment")  # {url, filename, original_name, type}
     }
     
     # Add reply and activity history entry
