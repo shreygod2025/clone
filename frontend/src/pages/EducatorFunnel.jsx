@@ -471,7 +471,9 @@ const EducatorFunnel = () => {
                 const fullPhone = formData.countryCode === '+91' ? formData.phone : `${formData.countryCode}${formData.phone}`;
                 const result = await sendOTP(fullPhone, 'educator');
                 if (result.success && result.sent) {
-                  toast.success('OTP resent!');
+                  toast.success('OTP resent! Valid for 10 minutes.');
+                } else {
+                  toast.error(result.message || 'Could not resend OTP. Please try again.');
                 }
               }}
               className="w-full text-sm text-slate-500 hover:text-[#1E3A5F]"

@@ -115,7 +115,7 @@ def get_cashfree_client():
     return Cashfree(cf_env)
 
 # MongoDB connection — import from database module for shared state
-from database import db, otp_store, otp_store_new, otp_verify, otp_send_allowed
+from database import db, otp_store_new, otp_verify, otp_send_allowed
 
 # JWT Configuration
 SECRET_KEY = os.environ.get('JWT_SECRET')
@@ -3742,7 +3742,7 @@ async def send_otp(data: OTPRequest):
     import httpx
 
     # Rate limiting — enforce cooldown between sends
-    allowed, reason = otp_send_allowed(data.phone)
+    allowed, reason = await otp_send_allowed(data.phone)
     if not allowed:
         raise HTTPException(status_code=429, detail=reason)
     
@@ -3750,7 +3750,7 @@ async def send_otp(data: OTPRequest):
     otp = str(random.SystemRandom().randint(1000, 9999))
     
     # Store OTP with expiration and attempt counter
-    otp_store_new(data.phone, otp)
+    await otp_store_new(data.phone, otp)
     
     # AiSensy WhatsApp API Integration
     AISENSY_API_KEY = os.environ.get("AISENSY_API_KEY", "")
@@ -3816,7 +3816,7 @@ async def send_otp(data: OTPRequest):
 
 @api_router.post("/auth/verify-otp")
 async def verify_otp(data: OTPVerify):
-    success, error_msg = otp_verify(data.phone, data.otp)
+    success, error_msg = await otp_verify(data.phone, data.otp)
     if not success:
         raise HTTPException(status_code=400, detail=error_msg)
     
@@ -7781,7 +7781,7 @@ class EducatorApplyWithOTP(BaseModel):
 @api_router.post("/educators/apply-verified")
 async def create_educator_application_verified(data: EducatorApplyWithOTP):
     """Create educator application with OTP verification"""
-    success, error_msg = otp_verify(data.phone, data.otp)
+    success, error_msg = await otp_verify(data.phone, data.otp)
     if not success:
         raise HTTPException(status_code=400, detail=error_msg)
     
@@ -8621,7 +8621,7 @@ async def get_all_onboarding_progress(user: dict = Depends(get_current_user)):
 @api_router.post("/educator/login")
 async def educator_login(data: OTPVerify):
     """Login for educators (both onboarded and applicants) using phone + OTP"""
-    success, error_msg = otp_verify(data.phone, data.otp)
+    success, error_msg = await otp_verify(data.phone, data.otp)
     if not success:
         raise HTTPException(status_code=400, detail=error_msg)
     

@@ -50,4 +50,4 @@ PAYMENT_SYNC_INTERVAL_MINUTES: int = int(os.getenv("PAYMENT_SYNC_INTERVAL_MINUTE
 OTP_EXPIRE_MINUTES = 10
 OTP_MAX_ATTEMPTS = 5          # block after N wrong guesses
 OTP_LOCKOUT_MINUTES = 15      # lock phone for this long after max attempts
-OTP_SEND_COOLDOWN_SECONDS = 60  # minimum gap between two OTP sends to same phone
+OTP_SEND_COOLDOWN_SECONDS = 30  # minimum gap between two OTP sends to same phone

@@ -233,10 +233,19 @@ export default function EducatorApplyPage() {
             {submitting ? 'Submitting...' : 'Verify & Submit Application'}
           </Button>
           <button
-            onClick={() => { setOtp(''); setStep('form'); }}
+            onClick={async () => {
+              setOtp('');
+              try {
+                setOtpSending(true);
+                await axios.post(`${API}/api/auth/send-otp`, { phone: fullPhone(), user_type: 'educator' });
+                toast.success('OTP resent! Valid for 10 minutes.');
+              } catch(e) {
+                toast.error(e.response?.data?.detail || 'Could not resend. Please wait a moment and try again.');
+              } finally { setOtpSending(false); }
+            }}
             className="mt-3 w-full text-center text-sm text-slate-400 hover:text-slate-600"
           >
-            Resend OTP
+            {otpSending ? 'Sending...' : 'Resend OTP'}
           </button>
         </div>
       </div>
