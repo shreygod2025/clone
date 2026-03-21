@@ -114,16 +114,14 @@ def get_cashfree_client():
     cf_env = Cashfree.PRODUCTION if CASHFREE_ENVIRONMENT == "PRODUCTION" else Cashfree.SANDBOX
     return Cashfree(cf_env)
 
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+# MongoDB connection — import from database module for shared state
+from database import db, otp_store, otp_store_new, otp_verify, otp_send_allowed
 
-# JWT Configuration - JWT_SECRET must be set in production
+# JWT Configuration
 SECRET_KEY = os.environ.get('JWT_SECRET')
 if not SECRET_KEY:
-    import secrets
-    SECRET_KEY = secrets.token_hex(32)
+    import secrets as _secrets
+    SECRET_KEY = _secrets.token_hex(32)
     logging.warning("JWT_SECRET not set - using randomly generated key (sessions will not persist across restarts)")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 24
@@ -131,6 +129,20 @@ ACCESS_TOKEN_EXPIRE_HOURS = 24
 app = FastAPI(title="OLL Platform API")
 api_router = APIRouter(prefix="/api")
 security = HTTPBearer()
+
+# ── Security middleware ───────────────────────────────────────────────────
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi import Request
+from fastapi.responses import JSONResponse
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
 
 # ================================================================
 # SERVER.PY TABLE OF CONTENTS
@@ -3113,7 +3125,7 @@ async def get_me(user: dict = Depends(get_current_user)):
 # ========================
 
 # Store OTPs temporarily (in production, use Redis)
-otp_store = {}
+# otp_store is imported from database module (see top of file)
 
 class OTPRequest(BaseModel):
     phone: str
@@ -3728,16 +3740,17 @@ async def create_center_demo(data: StudentInquiryCreate, user: dict = Depends(ge
 async def send_otp(data: OTPRequest):
     import random
     import httpx
+
+    # Rate limiting — enforce cooldown between sends
+    allowed, reason = otp_send_allowed(data.phone)
+    if not allowed:
+        raise HTTPException(status_code=429, detail=reason)
     
-    # Generate random 4-digit OTP
-    otp = str(random.randint(1000, 9999))
+    # Generate cryptographically random 4-digit OTP
+    otp = str(random.SystemRandom().randint(1000, 9999))
     
-    # Store OTP with 5 minute expiration
-    otp_store[data.phone] = {
-        "otp": otp,
-        "user_type": data.user_type,
-        "expires": datetime.now(timezone.utc) + timedelta(minutes=5)
-    }
+    # Store OTP with expiration and attempt counter
+    otp_store_new(data.phone, otp)
     
     # AiSensy WhatsApp API Integration
     AISENSY_API_KEY = os.environ.get("AISENSY_API_KEY", "")
@@ -3803,27 +3816,9 @@ async def send_otp(data: OTPRequest):
 
 @api_router.post("/auth/verify-otp")
 async def verify_otp(data: OTPVerify):
-    stored = otp_store.get(data.phone)
-    
-    # Test OTP for development/testing (not shown in frontend)
-    TEST_OTP = "1111"
-    
-    # Check if using test OTP
-    if data.otp == TEST_OTP:
-        # Clear any stored OTP
-        if stored and data.phone in otp_store:
-            del otp_store[data.phone]
-        # Continue to user lookup
-    elif not stored:
-        raise HTTPException(status_code=400, detail="OTP expired or not found. Please request a new one.")
-    elif stored["otp"] != data.otp:
-        raise HTTPException(status_code=400, detail="Invalid OTP")
-    elif datetime.now(timezone.utc) > stored["expires"]:
-        del otp_store[data.phone]
-        raise HTTPException(status_code=400, detail="OTP expired. Please request a new one.")
-    else:
-        # Valid OTP - clear it
-        del otp_store[data.phone]
+    success, error_msg = otp_verify(data.phone, data.otp)
+    if not success:
+        raise HTTPException(status_code=400, detail=error_msg)
     
     # Find or create user based on phone and type
     collection_map = {
@@ -7775,21 +7770,9 @@ class EducatorApplyWithOTP(BaseModel):
 @api_router.post("/educators/apply-verified")
 async def create_educator_application_verified(data: EducatorApplyWithOTP):
     """Create educator application with OTP verification"""
-    # Test OTP for development
-    TEST_OTP = "1111"
-    
-    stored = otp_store.get(data.phone)
-    
-    # Verify OTP
-    if not stored:
-        if data.otp != TEST_OTP:
-            raise HTTPException(status_code=400, detail="OTP expired or not found")
-    elif stored["otp"] != data.otp and data.otp != TEST_OTP:
-        raise HTTPException(status_code=400, detail="Invalid OTP")
-    
-    # Clear OTP
-    if stored and data.phone in otp_store:
-        del otp_store[data.phone]
+    success, error_msg = otp_verify(data.phone, data.otp)
+    if not success:
+        raise HTTPException(status_code=400, detail=error_msg)
     
     # Create the application
     app_data = data.application_data.model_dump()
@@ -8627,24 +8610,9 @@ async def get_all_onboarding_progress(user: dict = Depends(get_current_user)):
 @api_router.post("/educator/login")
 async def educator_login(data: OTPVerify):
     """Login for educators (both onboarded and applicants) using phone + OTP"""
-    # Test OTP for development/testing
-    TEST_OTP = "1111"
-    
-    stored = otp_store.get(data.phone)
-    
-    # Verify OTP
-    if not stored:
-        if data.otp != TEST_OTP:
-            raise HTTPException(status_code=400, detail="OTP expired or not found")
-    elif stored["otp"] != data.otp and data.otp != TEST_OTP:
-        raise HTTPException(status_code=400, detail="Invalid OTP")
-    elif datetime.now(timezone.utc) > stored["expires"] and data.otp != TEST_OTP:
-        del otp_store[data.phone]
-        raise HTTPException(status_code=400, detail="OTP expired")
-    
-    # Clear OTP if stored
-    if stored and data.phone in otp_store:
-        del otp_store[data.phone]
+    success, error_msg = otp_verify(data.phone, data.otp)
+    if not success:
+        raise HTTPException(status_code=400, detail=error_msg)
     
     # Find educator by phone (any status, not just onboarded)
     educator = await db.educator_applications.find_one({
