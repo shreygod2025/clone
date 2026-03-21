@@ -2535,7 +2535,15 @@ const AdminSchoolCRM = () => {
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(30, 58, 95);
       doc.text('MEMORANDUM OF UNDERSTANDING', PW / 2, y, { align: 'center' });
-      y += 5;
+      y += 6;
+      // Subtitle with school name
+      if (schoolName) {
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(80, 100, 130);
+        doc.text(`Between ${schoolName} and Clonefutura Live Solutions Pvt Ltd (OLL)`, PW / 2, y, { align: 'center' });
+        y += 5;
+      }
       doc.setDrawColor(30, 58, 95);
       doc.setLineWidth(0.6);
       doc.line(M, y, PW - M, y);
@@ -2545,9 +2553,10 @@ const AdminSchoolCRM = () => {
       doc.setFontSize(9.5);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(50, 50, 50);
-      const introText = `This Memorandum of Understanding (MOU) is entered into on ${todayStr} by and between`;
-      doc.text(introText, M, y);
-      y += 7;
+      const introText = `This Memorandum of Understanding (MOU) is entered into on ${todayStr} by and between Clonefutura Live Solutions Pvt Ltd ("OLL") and ${schoolName || '________________________________________'} ("School").`;
+      const introLines = doc.splitTextToSize(introText, CW);
+      doc.text(introLines, M, y);
+      y += introLines.length * 5.5 + 3;
 
       // Party 1 — dynamic height based on address line count
       const ollAddrText = '103, 1st Floor - Kshitij Building, Veera Desai Rd, Dattaguru Nagar, Azad Nagar, Andheri West, Mumbai, Maharashtra 400053';

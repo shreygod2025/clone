@@ -122,14 +122,24 @@ const AdminExpenses = () => {
   };
 
   const handleDelete = async (expenseId) => {
-    if (!confirm('Are you sure you want to delete this expense?')) return;
-    
+    if (!confirm('Are you sure you want to delete this expense? This cannot be undone.')) return;
     try {
       await axios.delete(`${API}/school-expenses/${expenseId}`, { headers: getAuthHeaders() });
       toast.success('Expense deleted');
       fetchData();
     } catch (error) {
       toast.error('Failed to delete expense');
+    }
+  };
+
+  const handleCleanDuplicates = async () => {
+    if (!confirm('This will remove duplicate auto-synced expenses (keeping one per school/PO/category). Manually added expenses will not be affected. Continue?')) return;
+    try {
+      const res = await axios.post(`${API}/expenses/cleanup-duplicates`, {}, { headers: getAuthHeaders() });
+      toast.success(res.data.message);
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to clean duplicates');
     }
   };
 
@@ -214,13 +224,24 @@ const AdminExpenses = () => {
             </h1>
             <p className="text-slate-600 text-sm mt-1">Track and manage expenses for each school</p>
           </div>
-          <Button 
-            onClick={() => { resetForm(); setEditingExpense(null); setShowAddModal(true); }}
-            className="bg-[#1E3A5F] hover:bg-[#2a4a6f]"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Expense
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleCleanDuplicates}
+              className="text-amber-600 border-amber-300 hover:bg-amber-50"
+              title="Remove duplicate auto-synced entries"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Clean Duplicates
+            </Button>
+            <Button 
+              onClick={() => { resetForm(); setEditingExpense(null); setShowAddModal(true); }}
+              className="bg-[#1E3A5F] hover:bg-[#2a4a6f]"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Expense
+            </Button>
+          </div>
         </div>
 
         {/* Summary Cards */}
@@ -477,12 +498,15 @@ const AdminExpenses = () => {
                       <button 
                         onClick={() => openEditModal(expense)}
                         className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600"
+                        title="Edit expense"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
                       <button 
                         onClick={() => handleDelete(expense.id)}
-                        className="p-1.5 hover:bg-red-50 rounded-lg text-red-600"
+                        className="p-1.5 hover:bg-red-50 rounded-lg text-red-500 hover:text-red-700"
+                        title="Delete expense"
+                        data-testid={`delete-expense-${expense.id}`}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
