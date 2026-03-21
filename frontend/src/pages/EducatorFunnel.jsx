@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, ArrowRight, Check, Briefcase, MapPin, Clock, Users, HelpCircle, Send, Calendar, IndianRupee, X, Shield, Video, Home, Building2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Briefcase, MapPin, Clock, Users, HelpCircle, Send, Calendar, IndianRupee, X, Shield, Video, Home, Building2, School } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
@@ -32,6 +32,7 @@ const TEACHING_MODES = [
   { id: 'online', label: 'Online Classes', icon: Video, description: 'Teach via video call' },
   { id: 'offline_home', label: 'At Student\'s Home', icon: Home, description: 'Visit students for classes' },
   { id: 'offline_center', label: 'At OLL Center', icon: Building2, description: 'Teach at our learning centers' },
+  { id: 'at_school', label: 'At a School', icon: School, description: 'Teach at partner schools' },
 ];
 
 const EducatorFunnel = () => {
@@ -79,7 +80,6 @@ const EducatorFunnel = () => {
     other_city: '',
     teaching_mode: [],
     availability: [],
-    demo_ready: false,
     demo_date: null,
     demo_time: '',
   });
@@ -93,7 +93,8 @@ const EducatorFunnel = () => {
     experience: '',
     why_interested: '',
     available_days: [],
-    demo_ready: false,
+    demo_date: null,
+    demo_time: '',
   });
 
   useEffect(() => {
@@ -222,7 +223,7 @@ const EducatorFunnel = () => {
       toast.error('Please enter a valid phone number');
       return;
     }
-    if (formData.demo_ready && (!formData.demo_date || !formData.demo_time)) {
+    if (!formData.demo_date || !formData.demo_time) {
       toast.error('Please select your preferred demo date and time');
       return;
     }
@@ -271,6 +272,7 @@ const EducatorFunnel = () => {
           city: showOtherCity ? formData.other_city : formData.city,
           teaching_mode: formData.teaching_mode.join(', '),
           availability: formData.availability.join(', ') || 'Flexible',
+          demo_ready: true,
           demo_date: formData.demo_date ? format(formData.demo_date, 'yyyy-MM-dd') : null,
         }
       });
@@ -302,7 +304,8 @@ const EducatorFunnel = () => {
       experience: '',
       why_interested: '',
       available_days: req.days || [],
-      demo_ready: false,
+      demo_date: null,
+      demo_time: '',
     });
     setShowRequirementForm(true);
   };
@@ -311,6 +314,10 @@ const EducatorFunnel = () => {
     e.preventDefault();
     if (!reqFormData.name || !reqFormData.email || !reqFormData.phone) {
       toast.error('Please fill all required fields');
+      return;
+    }
+    if (!reqFormData.demo_date || !reqFormData.demo_time) {
+      toast.error('Please select your preferred demo date and time');
       return;
     }
 
@@ -367,7 +374,9 @@ const EducatorFunnel = () => {
           grades_comfortable: [],
           city: selectedRequirement.city,
           availability: reqFormData.available_days.join(', ') || 'Flexible',
-          demo_ready: reqFormData.demo_ready,
+          demo_ready: true,
+          demo_date: reqFormData.demo_date ? format(reqFormData.demo_date, 'yyyy-MM-dd') : null,
+          demo_time: reqFormData.demo_time,
           requirement_id: selectedRequirement.id,
           requirement_title: selectedRequirement.title,
           why_interested: reqFormData.why_interested || '',
@@ -482,7 +491,7 @@ const EducatorFunnel = () => {
           </p>
           
           {/* Demo Scheduled Info */}
-          {(submittedApplication?.demo_date || (formData.demo_ready && formData.demo_date)) && (
+          {(submittedApplication?.demo_date || formData.demo_date) && (
             <div className="bg-gradient-to-r from-[#1E3A5F]/5 to-[#D63031]/5 rounded-xl p-5 mb-6 text-left border border-slate-200">
               <div className="flex items-center gap-2 mb-3">
                 <Calendar className="w-5 h-5 text-[#D63031]" />
@@ -761,7 +770,7 @@ const EducatorFunnel = () => {
                 {/* Teaching Mode Preference Section */}
                 <div className="mt-6 pt-6 border-t border-slate-200">
                   <h3 className="font-semibold text-[#1E3A5F] text-base sm:text-lg mb-4">Preferred Teaching Mode *</h3>
-                  <div className="grid sm:grid-cols-3 gap-3">
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
                     {getAvailableTeachingModes().map(mode => {
                       const IconComponent = mode.icon;
                       const isSelected = formData.teaching_mode.includes(mode.id);
@@ -806,76 +815,62 @@ const EducatorFunnel = () => {
                   </div>
                 </div>
 
-                {/* Demo Class Section */}
+                {/* Demo Class Section - Compulsory */}
                 <div className="mt-6 pt-6 border-t border-slate-200">
-                  <div className="flex items-center gap-2 sm:gap-3 mb-4">
-                    <Checkbox
-                      id="demo_ready"
-                      checked={formData.demo_ready}
-                      onCheckedChange={(checked) => setFormData({...formData, demo_ready: checked})}
-                      data-testid="demo-ready-checkbox"
-                    />
-                    <label htmlFor="demo_ready" className="text-sm sm:text-base font-medium text-[#1E3A5F]">
-                      I am ready to give a demo class
-                    </label>
+                  <div className="mb-4">
+                    <h3 className="font-semibold text-[#1E3A5F] text-base sm:text-lg">Demo Class Schedule *</h3>
+                    <p className="text-sm text-slate-500 mt-1">A demo class is required as part of your application. Please select your preferred date and time.</p>
                   </div>
 
-                  {/* Demo Date/Time Selection - shown when demo_ready is checked */}
-                  {formData.demo_ready && (
-                    <div className="bg-blue-50 rounded-xl p-4 sm:p-6 space-y-4">
-                      <p className="text-sm text-slate-600">
-                        Select your preferred date and time for the demo class:
-                      </p>
-                      
-                      <div className="grid sm:grid-cols-2 gap-4">
-                        {/* Date Selection */}
-                        <div>
-                          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Preferred Date</label>
-                          <div className="flex justify-center bg-white rounded-xl p-2">
-                            <CalendarComponent
-                              mode="single"
-                              selected={formData.demo_date}
-                              onSelect={(date) => setFormData({...formData, demo_date: date})}
-                              disabled={(date) => date < new Date() || date > addDays(new Date(), 14) || date.getDay() === 0}
-                              className="rounded-lg"
-                              data-testid="demo-calendar"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Time Selection */}
-                        <div>
-                          <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Preferred Time</label>
-                          <div className="grid grid-cols-2 gap-2">
-                            {TIME_SLOTS.map(time => (
-                              <button
-                                key={time}
-                                type="button"
-                                className={`p-2 sm:p-3 rounded-lg border-2 text-center transition-all text-sm ${
-                                  formData.demo_time === time 
-                                    ? 'border-[#D63031] bg-red-50 text-[#D63031]' 
-                                    : 'border-slate-200 bg-white hover:border-slate-300'
-                                }`}
-                                onClick={() => setFormData({...formData, demo_time: time})}
-                                data-testid={`demo-time-${time.replace(':', '')}`}
-                              >
-                                <Clock className="w-4 h-4 mx-auto mb-1" />
-                                {time}
-                              </button>
-                            ))}
-                          </div>
-                          
-                          {formData.demo_date && formData.demo_time && (
-                            <div className="mt-4 p-3 bg-green-50 rounded-lg">
-                              <p className="text-sm text-green-700">
-                                <span className="font-medium">Selected:</span> {format(formData.demo_date, 'EEE, MMM d')} at {formData.demo_time}
-                              </p>
-                            </div>
-                          )}
+                  <div className="bg-blue-50 rounded-xl p-4 sm:p-6 space-y-4">
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      {/* Date Selection */}
+                      <div>
+                        <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Preferred Date *</label>
+                        <div className="flex justify-center bg-white rounded-xl p-2">
+                          <CalendarComponent
+                            mode="single"
+                            selected={formData.demo_date}
+                            onSelect={(date) => setFormData({...formData, demo_date: date})}
+                            disabled={(date) => date < new Date() || date > addDays(new Date(), 14) || date.getDay() === 0}
+                            className="rounded-lg"
+                            data-testid="demo-calendar"
+                          />
                         </div>
                       </div>
+
+                      {/* Time Selection */}
+                      <div>
+                        <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Preferred Time *</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {TIME_SLOTS.map(time => (
+                            <button
+                              key={time}
+                              type="button"
+                              className={`p-2 sm:p-3 rounded-lg border-2 text-center transition-all text-sm ${
+                                formData.demo_time === time 
+                                  ? 'border-[#D63031] bg-red-50 text-[#D63031]' 
+                                  : 'border-slate-200 bg-white hover:border-slate-300'
+                              }`}
+                              onClick={() => setFormData({...formData, demo_time: time})}
+                              data-testid={`demo-time-${time.replace(':', '')}`}
+                            >
+                              <Clock className="w-4 h-4 mx-auto mb-1" />
+                              {time}
+                            </button>
+                          ))}
+                        </div>
+                        
+                        {formData.demo_date && formData.demo_time && (
+                          <div className="mt-4 p-3 bg-green-50 rounded-lg">
+                            <p className="text-sm text-green-700">
+                              <span className="font-medium">Selected:</span> {format(formData.demo_date, 'EEE, MMM d')} at {formData.demo_time}
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
+                  </div>
                 </div>
 
                 <div className="flex flex-col-reverse sm:flex-row justify-between items-center gap-3 sm:gap-0 mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-slate-200">
@@ -891,7 +886,7 @@ const EducatorFunnel = () => {
                   </Button>
                   <Button
                     type="submit"
-                    disabled={otpSending || formData.teaching_mode.length === 0}
+                    disabled={otpSending || formData.teaching_mode.length === 0 || !formData.demo_date || !formData.demo_time}
                     className="btn-primary flex items-center gap-2 w-full sm:w-auto justify-center"
                     data-testid="submit-application-btn"
                   >
@@ -1212,15 +1207,52 @@ const EducatorFunnel = () => {
                 </div>
               )}
 
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  id="req_demo_ready"
-                  checked={reqFormData.demo_ready}
-                  onCheckedChange={(checked) => setReqFormData({...reqFormData, demo_ready: checked})}
-                />
-                <label htmlFor="req_demo_ready" className="text-sm text-slate-600">
-                  I am ready to give a demo class
-                </label>
+              {/* Demo Date/Time - Compulsory for requirement applications */}
+              <div className="space-y-3 pt-2 border-t border-slate-100">
+                <div>
+                  <label className="block text-sm font-semibold text-[#1E3A5F] mb-1">Demo Class Schedule *</label>
+                  <p className="text-xs text-slate-500 mb-3">A demo is compulsory. Select your preferred date and time.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-2">Preferred Date *</label>
+                    <div className="flex justify-center bg-slate-50 rounded-xl p-1 border border-slate-200">
+                      <CalendarComponent
+                        mode="single"
+                        selected={reqFormData.demo_date}
+                        onSelect={(date) => setReqFormData({...reqFormData, demo_date: date})}
+                        disabled={(date) => date < new Date() || date > addDays(new Date(), 14) || date.getDay() === 0}
+                        className="rounded-lg scale-90"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-2">Preferred Time *</label>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {TIME_SLOTS.map(time => (
+                        <button
+                          key={time}
+                          type="button"
+                          className={`p-2 rounded-lg border text-center transition-all text-xs ${
+                            reqFormData.demo_time === time
+                              ? 'border-[#1E3A5F] bg-[#1E3A5F] text-white'
+                              : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'
+                          }`}
+                          onClick={() => setReqFormData({...reqFormData, demo_time: time})}
+                        >
+                          {time}
+                        </button>
+                      ))}
+                    </div>
+                    {reqFormData.demo_date && reqFormData.demo_time && (
+                      <div className="mt-3 p-2 bg-green-50 rounded-lg border border-green-200">
+                        <p className="text-xs text-green-700">
+                          <span className="font-medium">Selected:</span> {format(reqFormData.demo_date, 'EEE, MMM d')} at {reqFormData.demo_time}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
 
               <div className="flex gap-3 pt-4">
