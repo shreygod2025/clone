@@ -18,6 +18,7 @@ const COMPANY = {
   bank: 'HDFC Bank',
   accountNo: '50200063789133',
   ifsc: 'HDFC0000240',
+  branch: 'Sandoz House Worli',
   regdOffice: '91, Nagdevi Cross Lane Mumbai-400003',
 };
 
@@ -470,7 +471,8 @@ export async function generateInvoicePDF(payment, schoolData) {
     `All Payment has to be made in the name of '${COMPANY.name}'`,
     `Company CINO : ${COMPANY.cin}`,
     `Company PAN No. ${COMPANY.pan}`,
-    `${COMPANY.bank}, A/C No. ${COMPANY.accountNo} IFSCode: ${COMPANY.ifsc}`,
+    `Bank: ${COMPANY.bank}, Branch: ${COMPANY.branch}`,
+    `A/C No. ${COMPANY.accountNo}, IFSC Code: ${COMPANY.ifsc}`,
     `Regd office: ${COMPANY.regdOffice}`,
   ];
   terms.forEach(t => {
