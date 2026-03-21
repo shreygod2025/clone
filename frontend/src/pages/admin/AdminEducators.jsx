@@ -96,6 +96,7 @@ const AdminEducators = () => {
   const [newComment, setNewComment] = useState('');
   const [scheduleData, setScheduleData] = useState({ date: null, time: '' });
   const [techScheduleData, setTechScheduleData] = useState({ date: null, time: '' });
+  const [hrDoneModal, setHrDoneModal] = useState(null); // educator object
   
   // Edit Educator state
   const [showEditEducatorModal, setShowEditEducatorModal] = useState(null);
@@ -773,7 +774,7 @@ const AdminEducators = () => {
             </a>
             {/* HR Round Done */}
             <button
-              onClick={() => handleHRDone(educator)}
+              onClick={() => setHrDoneModal(educator)}
               className="text-xs px-3 py-1.5 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 flex items-center gap-1 font-medium"
               data-testid={`hr-done-${educator.id}`}
             >
@@ -1956,6 +1957,51 @@ const AdminEducators = () => {
                 Schedule Demo
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* HR Done Decision Modal */}
+      <Dialog open={!!hrDoneModal} onOpenChange={() => setHrDoneModal(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-green-600" />
+              HR Round Complete
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            <p className="text-sm text-slate-600 mb-1">What would you like to do with <span className="font-semibold text-slate-800">{hrDoneModal?.name}</span>?</p>
+          </div>
+          <div className="flex flex-col gap-3 pt-1">
+            <button
+              onClick={async () => {
+                await handleHRDone(hrDoneModal);
+                setHrDoneModal(null);
+              }}
+              className="w-full px-4 py-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-medium text-sm flex items-center gap-3 transition-colors"
+              data-testid="hr-done-move-tech"
+            >
+              <CalendarClock className="w-5 h-5 flex-shrink-0" />
+              <div className="text-left">
+                <p className="font-semibold">Move to Technical Round</p>
+                <p className="text-xs text-indigo-500 font-normal">Schedule the technical demo next</p>
+              </div>
+            </button>
+            <button
+              onClick={async () => {
+                await handleStatusChange(hrDoneModal, 'archived');
+                setHrDoneModal(null);
+              }}
+              className="w-full px-4 py-3 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-medium text-sm flex items-center gap-3 transition-colors"
+              data-testid="hr-done-reject"
+            >
+              <Archive className="w-5 h-5 flex-shrink-0" />
+              <div className="text-left">
+                <p className="font-semibold">Reject Applicant</p>
+                <p className="text-xs text-red-400 font-normal">Archive and end their application</p>
+              </div>
+            </button>
           </div>
         </DialogContent>
       </Dialog>
