@@ -79,7 +79,6 @@ function loadImageAsDataURL(url, maxWidth = 200, maxHeight = 200) {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      // Resize to fit within maxWidth x maxHeight
       let w = img.width, h = img.height;
       if (w > maxWidth || h > maxHeight) {
         const ratio = Math.min(maxWidth / w, maxHeight / h);
@@ -90,8 +89,11 @@ function loadImageAsDataURL(url, maxWidth = 200, maxHeight = 200) {
       canvas.width = w;
       canvas.height = h;
       const ctx = canvas.getContext('2d');
+      // Fill white background to avoid black on transparency
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, w, h);
       ctx.drawImage(img, 0, 0, w, h);
-      resolve(canvas.toDataURL('image/jpeg', 0.7));
+      resolve(canvas.toDataURL('image/jpeg', 0.75));
     };
     img.onerror = () => reject(new Error('Failed to load image'));
     img.src = url;
