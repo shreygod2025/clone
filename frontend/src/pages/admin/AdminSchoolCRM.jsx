@@ -5462,6 +5462,7 @@ const AdminSchoolCRM = () => {
             >
               <option value="all">All Roles</option>
               <option value="principal">Principal</option>
+              <option value="vice_principal">Vice Principal</option>
               <option value="trustee_owner">Trustee/Owner</option>
               <option value="director">Director</option>
               <option value="coordinator">Coordinator</option>
@@ -7430,6 +7431,7 @@ const AdminSchoolCRM = () => {
                       >
                         <option value="">Select Role *</option>
                         <option value="principal">Principal</option>
+                        <option value="vice_principal">Vice Principal</option>
                         <option value="trustee_owner">Trustee/Owner</option>
                         <option value="director">Director</option>
                         <option value="coordinator">Coordinator</option>
@@ -9285,6 +9287,7 @@ const AdminSchoolCRM = () => {
                       >
                         <option value="">Select Role *</option>
                         <option value="principal">Principal</option>
+                        <option value="vice_principal">Vice Principal</option>
                         <option value="trustee_owner">Trustee/Owner</option>
                         <option value="director">Director</option>
                         <option value="coordinator">Coordinator</option>
@@ -10335,6 +10338,7 @@ const AdminSchoolCRM = () => {
                         >
                           <option value="">Select Role *</option>
                           <option value="principal">Principal</option>
+                          <option value="vice_principal">Vice Principal</option>
                           <option value="trustee_owner">Trustee/Owner</option>
                           <option value="director">Director</option>
                           <option value="coordinator">Coordinator</option>
