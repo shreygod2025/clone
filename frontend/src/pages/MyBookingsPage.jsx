@@ -50,6 +50,9 @@ const MyBookingsPage = () => {
   const [paymentError, setPaymentError] = useState(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
+  // School student payment receipts
+  const [schoolReceipts, setSchoolReceipts] = useState(null); // null = not loaded yet
+
   const CANCEL_REASONS = [
     { value: 'schedule_conflict', label: 'Schedule conflict' },
     { value: 'found_alternative', label: 'Found an alternative' },
@@ -94,6 +97,7 @@ const MyBookingsPage = () => {
       if (user?.user_type === 'student' || !user?.user_type) {
         fetchSessions();
         fetchPaymentInfo();
+        fetchSchoolReceipts();
       }
     }
   }, [isLoggedIn, navigate, user?.phone, authLoading]);
@@ -106,6 +110,24 @@ const MyBookingsPage = () => {
       setPaymentInfo(response.data);
     } catch (error) {
       console.error('Failed to fetch payment info:', error);
+    }
+  };
+
+  const fetchSchoolReceipts = async () => {
+    if (!user?.phone) return;
+    try {
+      const response = await axios.get(`${API}/school-student/profile/${user.phone}`);
+      setSchoolReceipts(response.data);
+      // Auto-switch to school receipts tab if they have school payments
+      if (response.data?.payments?.length > 0) {
+        setActiveTab('school_receipts');
+      }
+    } catch (error) {
+      // 404 = no school payments, that's fine
+      if (error.response?.status !== 404) {
+        console.error('Failed to fetch school receipts:', error);
+      }
+      setSchoolReceipts({ payments: [] });
     }
   };
 
@@ -715,21 +737,9 @@ const MyBookingsPage = () => {
             </div>
           )}
 
-          {/* Tabs - Only show if user has sessions */}
-          {hasActiveSessions && (
-            <div className="flex gap-2 mb-6">
-              <button
-                onClick={() => setActiveTab('sessions')}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  activeTab === 'sessions' 
-                    ? 'bg-[#1E3A5F] text-white' 
-                    : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
-                }`}
-                data-testid="sessions-tab"
-              >
-                <PlayCircle className="w-4 h-4 inline-block mr-1.5" />
-                My Sessions ({sessions.length})
-              </button>
+          {/* Tabs - Show sessions + school receipts if applicable */}
+          {(hasActiveSessions || schoolReceipts?.payments?.length > 0) && (
+            <div className="flex gap-2 mb-6 flex-wrap">
               <button
                 onClick={() => setActiveTab('bookings')}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
@@ -742,6 +752,34 @@ const MyBookingsPage = () => {
                 <Calendar className="w-4 h-4 inline-block mr-1.5" />
                 Demo Bookings ({bookings.length})
               </button>
+              {hasActiveSessions && (
+                <button
+                  onClick={() => setActiveTab('sessions')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    activeTab === 'sessions' 
+                      ? 'bg-[#1E3A5F] text-white' 
+                      : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
+                  }`}
+                  data-testid="sessions-tab"
+                >
+                  <PlayCircle className="w-4 h-4 inline-block mr-1.5" />
+                  My Sessions ({sessions.length})
+                </button>
+              )}
+              {schoolReceipts?.payments?.length > 0 && (
+                <button
+                  onClick={() => setActiveTab('school_receipts')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    activeTab === 'school_receipts' 
+                      ? 'bg-[#1E3A5F] text-white' 
+                      : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
+                  }`}
+                  data-testid="school-receipts-tab"
+                >
+                  <CreditCard className="w-4 h-4 inline-block mr-1.5" />
+                  School Receipts ({schoolReceipts.payments.length})
+                </button>
+              )}
             </div>
           )}
 
@@ -864,7 +902,7 @@ const MyBookingsPage = () => {
           )}
 
           {/* Bookings View (Original) */}
-          {(!hasActiveSessions || activeTab === 'bookings') && (
+          {activeTab === 'bookings' && (
             <>
               {/* Booking Filter Tabs */}
               <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
@@ -1118,6 +1156,62 @@ const MyBookingsPage = () => {
             </div>
           )}
             </>
+          )}
+
+          {/* Other Courses Section - Show for all logged in users (except schools) */}
+          {/* School Receipts Tab */}
+          {activeTab === 'school_receipts' && schoolReceipts?.payments?.length > 0 && (
+            <div data-testid="school-receipts-section">
+              <div className="mb-4">
+                <h2 className="text-lg font-bold text-[#1E3A5F]">School Programme Receipts</h2>
+                <p className="text-sm text-slate-500">Payments made via your school's programme portal</p>
+              </div>
+              <div className="space-y-3">
+                {schoolReceipts.payments.map((payment, idx) => (
+                  <div key={payment.id || idx} className="bg-white rounded-xl p-4 shadow-sm border border-slate-100" data-testid={`school-receipt-${idx}`}>
+                    <div className="flex items-start justify-between gap-3 flex-wrap">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                            payment.status === 'paid' ? 'bg-green-100 text-green-700' :
+                            payment.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-slate-100 text-slate-600'
+                          }`}>{payment.status?.charAt(0).toUpperCase() + payment.status?.slice(1)}</span>
+                          {payment.receipt_number && (
+                            <span className="text-xs text-slate-400">#{payment.receipt_number}</span>
+                          )}
+                        </div>
+                        <p className="font-semibold text-slate-800">{payment.student_name || user?.name}</p>
+                        <p className="text-sm text-slate-500">{payment.school_name || schoolReceipts.school_name}</p>
+                        {payment.grade && <p className="text-xs text-slate-400">Grade: {payment.grade}</p>}
+                        {payment.programme_name && <p className="text-xs text-slate-400">{payment.programme_name}</p>}
+                        {payment.created_at && (
+                          <p className="text-xs text-slate-400 mt-1">
+                            Paid on: {new Date(payment.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </p>
+                        )}
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-lg font-bold text-[#1E3A5F]">₹{Number(payment.amount || 0).toLocaleString('en-IN')}</p>
+                        {payment.payment_id && (
+                          <p className="text-xs text-slate-400 mt-0.5">Txn: {payment.payment_id}</p>
+                        )}
+                        {payment.receipt_url && (
+                          <a
+                            href={payment.receipt_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 mt-1"
+                          >
+                            <FileText className="w-3 h-3" /> View Receipt
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
 
           {/* Other Courses Section - Show for all logged in users (except schools) */}
