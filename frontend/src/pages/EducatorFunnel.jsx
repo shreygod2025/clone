@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, ArrowRight, Check, Briefcase, MapPin, Clock, Users, HelpCircle, Send, Calendar, IndianRupee, X, Shield, Video, Home, Building2, School } from 'lucide-react';
 import { Button } from '../components/ui/button';
@@ -37,6 +37,7 @@ const TEACHING_MODES = [
 
 const EducatorFunnel = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { sendOTP } = useUserAuth();
   const [activeTab, setActiveTab] = useState('apply');
   const [requirements, setRequirements] = useState([]);
@@ -102,6 +103,18 @@ const EducatorFunnel = () => {
     fetchFormConfig();
     fetchCenters();
   }, []);
+
+  // Auto-open requirement apply modal if ?req=<id> is in URL
+  useEffect(() => {
+    const reqId = searchParams.get('req');
+    if (reqId && requirements.length > 0) {
+      const req = requirements.find(r => r.id === reqId);
+      if (req) {
+        handleApplyToRequirement(req);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requirements, searchParams]);
 
   const fetchCenters = async () => {
     try {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Eye, Phone, Mail, Calendar, Clock, Plus, ChevronRight, MessageSquare, Archive, CalendarClock, CheckCircle2, User, Users, Briefcase, MapPin, UserPlus, Send, Edit, Save, Video, Star, FileText, X, Download } from 'lucide-react';
+import { Search, Eye, Phone, Mail, Calendar, Clock, Plus, ChevronRight, MessageSquare, Archive, CalendarClock, CheckCircle2, User, Users, Briefcase, MapPin, UserPlus, Send, Edit, Save, Video, Star, FileText, X, Download, Copy, Link } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -161,7 +161,7 @@ const AdminEducators = () => {
     }
     try {
       if (editingRequirement) {
-        await axios.put(`${API}/requirements/${editingRequirement.id}`, requirementForm, {
+        await axios.patch(`${API}/requirements/${editingRequirement.id}`, requirementForm, {
           headers: getAuthHeaders()
         });
         toast.success('Requirement updated');
@@ -1082,6 +1082,17 @@ const AdminEducators = () => {
                         View {matchingApps} applicant(s)
                       </button>
                       <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            const link = `${window.location.origin}/educator?req=${req.id}`;
+                            navigator.clipboard.writeText(link);
+                            toast.success('Application link copied!');
+                          }}
+                          className="p-2 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Copy public application link"
+                        >
+                          <Copy className="w-4 h-4 text-blue-500" />
+                        </button>
                         <button
                           onClick={() => {
                             setEditingRequirement(req);
