@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { format, addDays, parseISO, isAfter, isBefore, addHours } from 'date-fns';
 import axios from 'axios';
 import PhoneInput from '../../components/PhoneInput';
+import CitySearch from '../../components/CitySearch';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -22,7 +23,7 @@ const STATUS_SECTIONS = [
 ];
 
 const SKILLS = ['Robotics', 'Coding', 'AI', 'Entrepreneurship', 'Financial Literacy', 'Other'];
-const CITIES = ['Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow'];
+
 const TIME_SLOTS = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00'];
 const AGE_GROUPS = ['6-8 years', '9-12 years', '13-16 years', '17+ years'];
 const LEARNING_MODES = [
@@ -1727,15 +1728,12 @@ const AdminStudentCRM = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">City</label>
-                <select
+                <CitySearch
                   value={newLead.city}
-                  onChange={(e) => setNewLead({...newLead, city: e.target.value})}
-                  className="w-full h-10 px-4 border border-slate-200 rounded-lg"
+                  onChange={(city) => setNewLead({...newLead, city})}
+                  placeholder="Search city..."
                   data-testid="new-lead-city"
-                >
-                  <option value="">Select city</option>
-                  {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Source</label>

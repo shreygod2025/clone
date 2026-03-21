@@ -16,6 +16,7 @@ import { Switch } from '../../components/ui/switch';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import axios from 'axios';
+import CitySearch from '../../components/CitySearch';
 import PhoneInput from '../../components/PhoneInput';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -1003,10 +1004,10 @@ const AdminTeamApplications = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">City</label>
-                <Input
+                <CitySearch
                   value={newApplication.city}
-                  onChange={(e) => setNewApplication({...newApplication, city: e.target.value})}
-                  placeholder="City"
+                  onChange={(city) => setNewApplication({...newApplication, city})}
+                  placeholder="Search city..."
                   data-testid="new-app-city"
                 />
               </div>

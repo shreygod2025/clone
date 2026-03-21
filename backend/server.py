@@ -13631,9 +13631,209 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
 # ========================
 
 @api_router.get("/cities", response_model=List[City])
-async def get_cities():
-    cities = await db.cities.find({}, {"_id": 0}).sort("order", 1).to_list(100)
+async def get_cities(search: Optional[str] = None, active_only: bool = False):
+    query = {}
+    if active_only:
+        query["is_active"] = True
+    cities = await db.cities.find(query, {"_id": 0}).sort([("state", 1), ("name", 1)]).to_list(2000)
+    if search:
+        s = search.lower()
+        cities = [c for c in cities if s in c.get("name", "").lower() or s in c.get("state", "").lower()]
     return cities
+
+
+@api_router.post("/cities/seed-india")
+async def seed_india_cities(user: dict = Depends(get_current_user)):
+    """Seed the DB with all India cities and states. Skips cities already present (by name)."""
+    INDIA_CITIES = [
+        # Andhra Pradesh
+        ("Visakhapatnam", "Andhra Pradesh"), ("Vijayawada", "Andhra Pradesh"), ("Guntur", "Andhra Pradesh"),
+        ("Nellore", "Andhra Pradesh"), ("Kurnool", "Andhra Pradesh"), ("Rajahmundry", "Andhra Pradesh"),
+        ("Tirupati", "Andhra Pradesh"), ("Kakinada", "Andhra Pradesh"), ("Kadapa", "Andhra Pradesh"),
+        ("Anantapur", "Andhra Pradesh"), ("Vizianagaram", "Andhra Pradesh"), ("Eluru", "Andhra Pradesh"),
+        ("Ongole", "Andhra Pradesh"), ("Nandyal", "Andhra Pradesh"), ("Chittoor", "Andhra Pradesh"),
+        # Arunachal Pradesh
+        ("Itanagar", "Arunachal Pradesh"), ("Naharlagun", "Arunachal Pradesh"),
+        # Assam
+        ("Guwahati", "Assam"), ("Silchar", "Assam"), ("Dibrugarh", "Assam"), ("Jorhat", "Assam"),
+        ("Nagaon", "Assam"), ("Tinsukia", "Assam"), ("Tezpur", "Assam"), ("Bongaigaon", "Assam"),
+        # Bihar
+        ("Patna", "Bihar"), ("Gaya", "Bihar"), ("Bhagalpur", "Bihar"), ("Muzaffarpur", "Bihar"),
+        ("Darbhanga", "Bihar"), ("Purnia", "Bihar"), ("Arrah", "Bihar"), ("Begusarai", "Bihar"),
+        ("Katihar", "Bihar"), ("Munger", "Bihar"), ("Chapra", "Bihar"), ("Saharsa", "Bihar"),
+        ("Sitamarhi", "Bihar"), ("Hajipur", "Bihar"), ("Bihar Sharif", "Bihar"),
+        # Chhattisgarh
+        ("Raipur", "Chhattisgarh"), ("Bhilai", "Chhattisgarh"), ("Bilaspur", "Chhattisgarh"),
+        ("Korba", "Chhattisgarh"), ("Durg", "Chhattisgarh"), ("Raigarh", "Chhattisgarh"),
+        ("Rajnandgaon", "Chhattisgarh"), ("Jagdalpur", "Chhattisgarh"), ("Ambikapur", "Chhattisgarh"),
+        # Goa
+        ("Panaji", "Goa"), ("Vasco da Gama", "Goa"), ("Margao", "Goa"), ("Mapusa", "Goa"),
+        # Gujarat
+        ("Ahmedabad", "Gujarat"), ("Surat", "Gujarat"), ("Vadodara", "Gujarat"), ("Rajkot", "Gujarat"),
+        ("Bhavnagar", "Gujarat"), ("Jamnagar", "Gujarat"), ("Junagadh", "Gujarat"), ("Gandhinagar", "Gujarat"),
+        ("Gandhidham", "Gujarat"), ("Anand", "Gujarat"), ("Navsari", "Gujarat"), ("Morbi", "Gujarat"),
+        ("Nadiad", "Gujarat"), ("Surendranagar", "Gujarat"), ("Bharuch", "Gujarat"), ("Mehsana", "Gujarat"),
+        ("Bhuj", "Gujarat"), ("Porbandar", "Gujarat"), ("Palanpur", "Gujarat"), ("Valsad", "Gujarat"),
+        # Haryana
+        ("Faridabad", "Haryana"), ("Gurugram", "Haryana"), ("Panipat", "Haryana"), ("Ambala", "Haryana"),
+        ("Yamunanagar", "Haryana"), ("Rohtak", "Haryana"), ("Hisar", "Haryana"), ("Karnal", "Haryana"),
+        ("Sonipat", "Haryana"), ("Panchkula", "Haryana"), ("Bhiwani", "Haryana"), ("Sirsa", "Haryana"),
+        ("Bahadurgarh", "Haryana"), ("Rewari", "Haryana"), ("Kurukshetra", "Haryana"),
+        # Himachal Pradesh
+        ("Shimla", "Himachal Pradesh"), ("Dharamshala", "Himachal Pradesh"), ("Solan", "Himachal Pradesh"),
+        ("Mandi", "Himachal Pradesh"), ("Baddi", "Himachal Pradesh"), ("Kullu", "Himachal Pradesh"),
+        # Jharkhand
+        ("Ranchi", "Jharkhand"), ("Jamshedpur", "Jharkhand"), ("Dhanbad", "Jharkhand"),
+        ("Bokaro", "Jharkhand"), ("Hazaribagh", "Jharkhand"), ("Deoghar", "Jharkhand"),
+        ("Giridih", "Jharkhand"), ("Ramgarh", "Jharkhand"),
+        # Karnataka
+        ("Bangalore", "Karnataka"), ("Mysore", "Karnataka"), ("Hubli", "Karnataka"),
+        ("Mangalore", "Karnataka"), ("Belgaum", "Karnataka"), ("Gulbarga", "Karnataka"),
+        ("Davangere", "Karnataka"), ("Bellary", "Karnataka"), ("Shimoga", "Karnataka"),
+        ("Tumkur", "Karnataka"), ("Udupi", "Karnataka"), ("Bijapur", "Karnataka"),
+        ("Hassan", "Karnataka"), ("Bidar", "Karnataka"), ("Raichur", "Karnataka"),
+        ("Dharwad", "Karnataka"), ("Bagalkot", "Karnataka"), ("Chitradurga", "Karnataka"),
+        ("Hospet", "Karnataka"), ("Gadag", "Karnataka"),
+        # Kerala
+        ("Thiruvananthapuram", "Kerala"), ("Kochi", "Kerala"), ("Kozhikode", "Kerala"),
+        ("Thrissur", "Kerala"), ("Kollam", "Kerala"), ("Alappuzha", "Kerala"),
+        ("Kannur", "Kerala"), ("Palakkad", "Kerala"), ("Kottayam", "Kerala"),
+        ("Malappuram", "Kerala"), ("Irinjalakuda", "Kerala"), ("Kasaragod", "Kerala"),
+        # Madhya Pradesh
+        ("Indore", "Madhya Pradesh"), ("Bhopal", "Madhya Pradesh"), ("Jabalpur", "Madhya Pradesh"),
+        ("Gwalior", "Madhya Pradesh"), ("Ujjain", "Madhya Pradesh"), ("Sagar", "Madhya Pradesh"),
+        ("Dewas", "Madhya Pradesh"), ("Satna", "Madhya Pradesh"), ("Ratlam", "Madhya Pradesh"),
+        ("Rewa", "Madhya Pradesh"), ("Murwara", "Madhya Pradesh"), ("Singrauli", "Madhya Pradesh"),
+        ("Burhanpur", "Madhya Pradesh"), ("Khandwa", "Madhya Pradesh"), ("Bhind", "Madhya Pradesh"),
+        ("Chhindwara", "Madhya Pradesh"), ("Guna", "Madhya Pradesh"), ("Shivpuri", "Madhya Pradesh"),
+        ("Vidisha", "Madhya Pradesh"), ("Damoh", "Madhya Pradesh"), ("Mandsaur", "Madhya Pradesh"),
+        ("Neemuch", "Madhya Pradesh"), ("Itarsi", "Madhya Pradesh"),
+        # Maharashtra
+        ("Mumbai", "Maharashtra"), ("Pune", "Maharashtra"), ("Nagpur", "Maharashtra"),
+        ("Thane", "Maharashtra"), ("Nashik", "Maharashtra"), ("Aurangabad", "Maharashtra"),
+        ("Solapur", "Maharashtra"), ("Kolhapur", "Maharashtra"), ("Navi Mumbai", "Maharashtra"),
+        ("Amravati", "Maharashtra"), ("Sangli", "Maharashtra"), ("Pimpri-Chinchwad", "Maharashtra"),
+        ("Akola", "Maharashtra"), ("Latur", "Maharashtra"), ("Dhule", "Maharashtra"),
+        ("Ahmednagar", "Maharashtra"), ("Chandrapur", "Maharashtra"), ("Parbhani", "Maharashtra"),
+        ("Jalgaon", "Maharashtra"), ("Bhiwandi", "Maharashtra"), ("Jalna", "Maharashtra"),
+        ("Nanded", "Maharashtra"), ("Osmanabad", "Maharashtra"), ("Ratnagiri", "Maharashtra"),
+        ("Satara", "Maharashtra"), ("Beed", "Maharashtra"), ("Wardha", "Maharashtra"),
+        ("Yavatmal", "Maharashtra"), ("Buldhana", "Maharashtra"), ("Vasai-Virar", "Maharashtra"),
+        ("Mira-Bhayandar", "Maharashtra"), ("Kalyan", "Maharashtra"), ("Ulhasnagar", "Maharashtra"),
+        # Manipur
+        ("Imphal", "Manipur"),
+        # Meghalaya
+        ("Shillong", "Meghalaya"),
+        # Mizoram
+        ("Aizawl", "Mizoram"),
+        # Nagaland
+        ("Kohima", "Nagaland"), ("Dimapur", "Nagaland"),
+        # Odisha
+        ("Bhubaneswar", "Odisha"), ("Cuttack", "Odisha"), ("Rourkela", "Odisha"),
+        ("Brahmapur", "Odisha"), ("Sambalpur", "Odisha"), ("Puri", "Odisha"),
+        ("Balasore", "Odisha"), ("Bhadrak", "Odisha"), ("Baripada", "Odisha"),
+        ("Jharsuguda", "Odisha"), ("Bargarh", "Odisha"),
+        # Punjab
+        ("Ludhiana", "Punjab"), ("Amritsar", "Punjab"), ("Jalandhar", "Punjab"),
+        ("Patiala", "Punjab"), ("Bathinda", "Punjab"), ("Pathankot", "Punjab"),
+        ("Hoshiarpur", "Punjab"), ("Batala", "Punjab"), ("Moga", "Punjab"),
+        ("Mohali", "Punjab"), ("Abohar", "Punjab"), ("Phagwara", "Punjab"),
+        # Rajasthan
+        ("Jaipur", "Rajasthan"), ("Jodhpur", "Rajasthan"), ("Kota", "Rajasthan"),
+        ("Bikaner", "Rajasthan"), ("Ajmer", "Rajasthan"), ("Udaipur", "Rajasthan"),
+        ("Bhilwara", "Rajasthan"), ("Alwar", "Rajasthan"), ("Bharatpur", "Rajasthan"),
+        ("Sikar", "Rajasthan"), ("Sri Ganganagar", "Rajasthan"), ("Pali", "Rajasthan"),
+        ("Beawar", "Rajasthan"), ("Hanumangarh", "Rajasthan"), ("Gangapur City", "Rajasthan"),
+        ("Churu", "Rajasthan"), ("Jhunjhunu", "Rajasthan"), ("Sawai Madhopur", "Rajasthan"),
+        ("Tonk", "Rajasthan"), ("Barmer", "Rajasthan"), ("Jaisalmer", "Rajasthan"),
+        # Sikkim
+        ("Gangtok", "Sikkim"),
+        # Tamil Nadu
+        ("Chennai", "Tamil Nadu"), ("Coimbatore", "Tamil Nadu"), ("Madurai", "Tamil Nadu"),
+        ("Tiruchirappalli", "Tamil Nadu"), ("Salem", "Tamil Nadu"), ("Tirunelveli", "Tamil Nadu"),
+        ("Tiruppur", "Tamil Nadu"), ("Vellore", "Tamil Nadu"), ("Erode", "Tamil Nadu"),
+        ("Thoothukudi", "Tamil Nadu"), ("Dindigul", "Tamil Nadu"), ("Thanjavur", "Tamil Nadu"),
+        ("Ranipet", "Tamil Nadu"), ("Sivakasi", "Tamil Nadu"), ("Karur", "Tamil Nadu"),
+        ("Udhagamandalam", "Tamil Nadu"), ("Hosur", "Tamil Nadu"), ("Nagercoil", "Tamil Nadu"),
+        ("Kancheepuram", "Tamil Nadu"), ("Kumarapalayam", "Tamil Nadu"),
+        # Telangana
+        ("Hyderabad", "Telangana"), ("Warangal", "Telangana"), ("Nizamabad", "Telangana"),
+        ("Karimnagar", "Telangana"), ("Khammam", "Telangana"), ("Ramagundam", "Telangana"),
+        ("Secunderabad", "Telangana"), ("Mahbubnagar", "Telangana"), ("Nalgonda", "Telangana"),
+        ("Adilabad", "Telangana"), ("Suryapet", "Telangana"), ("Mancherial", "Telangana"),
+        # Tripura
+        ("Agartala", "Tripura"),
+        # Uttar Pradesh
+        ("Lucknow", "Uttar Pradesh"), ("Kanpur", "Uttar Pradesh"), ("Ghaziabad", "Uttar Pradesh"),
+        ("Agra", "Uttar Pradesh"), ("Varanasi", "Uttar Pradesh"), ("Meerut", "Uttar Pradesh"),
+        ("Prayagraj", "Uttar Pradesh"), ("Noida", "Uttar Pradesh"), ("Bareilly", "Uttar Pradesh"),
+        ("Aligarh", "Uttar Pradesh"), ("Moradabad", "Uttar Pradesh"), ("Saharanpur", "Uttar Pradesh"),
+        ("Gorakhpur", "Uttar Pradesh"), ("Firozabad", "Uttar Pradesh"), ("Jhansi", "Uttar Pradesh"),
+        ("Muzaffarnagar", "Uttar Pradesh"), ("Mathura", "Uttar Pradesh"), ("Rampur", "Uttar Pradesh"),
+        ("Shahjahanpur", "Uttar Pradesh"), ("Farrukhabad", "Uttar Pradesh"), ("Hapur", "Uttar Pradesh"),
+        ("Etawah", "Uttar Pradesh"), ("Mirzapur", "Uttar Pradesh"), ("Bulandshahr", "Uttar Pradesh"),
+        ("Sambhal", "Uttar Pradesh"), ("Amroha", "Uttar Pradesh"), ("Hardoi", "Uttar Pradesh"),
+        ("Fatehpur", "Uttar Pradesh"), ("Raebareli", "Uttar Pradesh"), ("Orai", "Uttar Pradesh"),
+        ("Sitapur", "Uttar Pradesh"), ("Bahraich", "Uttar Pradesh"), ("Modinagar", "Uttar Pradesh"),
+        ("Unnao", "Uttar Pradesh"), ("Jaunpur", "Uttar Pradesh"), ("Lakhimpur", "Uttar Pradesh"),
+        ("Hathras", "Uttar Pradesh"), ("Banda", "Uttar Pradesh"), ("Pilibhit", "Uttar Pradesh"),
+        ("Barabanki", "Uttar Pradesh"), ("Khurja", "Uttar Pradesh"), ("Gonda", "Uttar Pradesh"),
+        ("Greater Noida", "Uttar Pradesh"), ("Ayodhya", "Uttar Pradesh"), ("Vrindavan", "Uttar Pradesh"),
+        # Uttarakhand
+        ("Dehradun", "Uttarakhand"), ("Haridwar", "Uttarakhand"), ("Roorkee", "Uttarakhand"),
+        ("Haldwani", "Uttarakhand"), ("Rudrapur", "Uttarakhand"), ("Kashipur", "Uttarakhand"),
+        ("Rishikesh", "Uttarakhand"), ("Kotdwar", "Uttarakhand"),
+        # West Bengal
+        ("Kolkata", "West Bengal"), ("Asansol", "West Bengal"), ("Siliguri", "West Bengal"),
+        ("Durgapur", "West Bengal"), ("Bardhaman", "West Bengal"), ("Malda", "West Bengal"),
+        ("Baharampur", "West Bengal"), ("Habra", "West Bengal"), ("Kharagpur", "West Bengal"),
+        ("Shantipur", "West Bengal"), ("Raiganj", "West Bengal"), ("Darjeeling", "West Bengal"),
+        ("Jalpaiguri", "West Bengal"), ("Bankura", "West Bengal"),
+        # Union Territories
+        ("New Delhi", "Delhi"), ("Delhi", "Delhi"), ("Dwarka", "Delhi"), ("Rohini", "Delhi"),
+        ("Chandigarh", "Chandigarh"), ("Panchkula", "Chandigarh"),
+        ("Puducherry", "Puducherry"),
+        ("Srinagar", "Jammu & Kashmir"), ("Jammu", "Jammu & Kashmir"), ("Leh", "Ladakh"),
+        ("Port Blair", "Andaman & Nicobar Islands"),
+        ("Silvassa", "Dadra & Nagar Haveli"), ("Daman", "Daman & Diu"),
+        ("Kavaratti", "Lakshadweep"),
+    ]
+
+    # Get existing city names (case-insensitive)
+    existing = await db.cities.find({}, {"_id": 0, "name": 1}).to_list(5000)
+    existing_names = {c["name"].lower() for c in existing}
+
+    # Also update existing cities with missing states
+    existing_full = await db.cities.find({}, {"_id": 0}).to_list(5000)
+    city_state_map = {name.lower(): state for name, state in INDIA_CITIES}
+    for city in existing_full:
+        if not city.get("state") and city.get("name", "").lower() in city_state_map:
+            await db.cities.update_one(
+                {"id": city["id"]},
+                {"$set": {"state": city_state_map[city["name"].lower()]}}
+            )
+
+    # Insert new cities
+    inserted = 0
+    order_start = await db.cities.count_documents({})
+    for i, (name, state) in enumerate(INDIA_CITIES):
+        if name.lower() not in existing_names:
+            city_data = {
+                "id": str(uuid.uuid4()),
+                "name": name,
+                "state": state,
+                "is_active": True,
+                "has_center": False,
+                "order": order_start + i + 1,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.cities.insert_one(city_data)
+            existing_names.add(name.lower())
+            inserted += 1
+
+    total = await db.cities.count_documents({})
+    return {"message": f"Seeded {inserted} new cities. Total: {total} cities in DB."}
+
 
 @api_router.post("/cities", response_model=City)
 async def create_city(city: CityCreate):

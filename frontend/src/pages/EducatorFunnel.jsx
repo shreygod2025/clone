@@ -13,6 +13,7 @@ import { toast } from 'sonner';
 import axios from 'axios';
 import { format, addDays } from 'date-fns';
 import Navbar from '../components/Navbar';
+import CitySearch from '../components/CitySearch';
 import { useUserAuth } from '../context/UserAuthContext';
 import PhoneInput from '../components/PhoneInput';
 

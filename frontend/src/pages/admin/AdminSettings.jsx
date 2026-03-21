@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
+import CitySearch from '../../components/CitySearch';
 import { 
   MapPin, Building, FileText, Plus, Edit2, Trash2, X, Save, Eye, EyeOff,
   Search, Globe, Calendar, Image, Tag, Briefcase, Users, Video, Play, Key, Copy, RefreshCw,
@@ -1198,6 +1199,23 @@ const AdminSettings = () => {
         {/* Cities Tab */}
         {activeTab === 'cities' && (
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div className="px-4 py-3 bg-blue-50 border-b border-blue-100 flex items-center justify-between">
+              <p className="text-sm text-blue-700 font-medium">Cities are shared across Schools, Educators, Students, and all other location fields.</p>
+              <button
+                onClick={async () => {
+                  if (!window.confirm('Seed all India cities and states into the database? Existing cities won\'t be duplicated.')) return;
+                  try {
+                    const res = await axios.post(`${API}/cities/seed-india`, {}, { headers: getAuthHeaders() });
+                    toast.success(res.data.message);
+                    const citiesRes = await axios.get(`${API}/cities`, { headers: getAuthHeaders() });
+                    setCities(citiesRes.data);
+                  } catch (e) { toast.error('Failed to seed cities'); }
+                }}
+                className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-1.5 whitespace-nowrap"
+              >
+                <MapPin className="w-3.5 h-3.5" /> Seed All India Cities
+              </button>
+            </div>
             <table className="w-full">
               <thead className="bg-slate-50">
                 <tr>
@@ -1436,16 +1454,11 @@ const AdminSettings = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">City *</label>
-                <select
+                <CitySearch
                   value={centerForm.city}
-                  onChange={(e) => setCenterForm({ ...centerForm, city: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
-                >
-                  <option value="">Select city</option>
-                  {cities.map(city => (
-                    <option key={city.id} value={city.name}>{city.name}</option>
-                  ))}
-                </select>
+                  onChange={(city) => setCenterForm({ ...centerForm, city })}
+                  placeholder="Search city..."
+                />
               </div>
             </div>
             <div>
@@ -1685,10 +1698,10 @@ const AdminSettings = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Location</label>
-                <Input
+                <CitySearch
                   value={teamReqForm.city}
-                  onChange={(e) => setTeamReqForm({ ...teamReqForm, city: e.target.value })}
-                  placeholder="e.g., Remote, Mumbai"
+                  onChange={(city) => setTeamReqForm({ ...teamReqForm, city })}
+                  placeholder="Search city (or type Remote)..."
                 />
               </div>
             </div>

@@ -8,6 +8,7 @@ import { Textarea } from '../components/ui/textarea';
 import { toast } from 'sonner';
 import axios from 'axios';
 import PhoneInput from '../components/PhoneInput';
+import CitySearch from '../components/CitySearch';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -328,12 +329,10 @@ const GrowthPartnerPage = () => {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">City</label>
                 <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                  <Input
-                    placeholder="Your city"
+                  <CitySearch
                     value={formData.city}
-                    onChange={(e) => setFormData({...formData, city: e.target.value})}
-                    className="pl-10 h-12"
+                    onChange={(city) => setFormData({...formData, city})}
+                    placeholder="Your city"
                     data-testid="input-city"
                   />
                 </div>

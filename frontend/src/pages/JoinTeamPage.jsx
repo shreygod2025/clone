@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { User, Mail, Phone, MapPin, Briefcase, Send, Check, Users, Clock, Target, Heart, Upload, FileText, X, ChevronRight, Building2 } from 'lucide-react';
 import { Input } from '../components/ui/input';
+import CitySearch from '../components/CitySearch';
 import { Textarea } from '../components/ui/textarea';
 import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
@@ -11,11 +12,6 @@ import Footer from '../components/Footer';
 import PhoneInput from '../components/PhoneInput';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
-
-const CITIES = [
-  'Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 
-  'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow', 'Chandigarh', 'Kochi', 'Other'
-];
 
 const EXPERIENCE_LEVELS = [
   'Student / Intern',
@@ -344,31 +340,14 @@ const JoinTeamPage = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">City</label>
-                  <select
+                  <CitySearch
                     value={form.city}
-                    onChange={(e) => setForm({ ...form, city: e.target.value })}
-                    className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white"
+                    onChange={(city) => setForm({ ...form, city })}
+                    placeholder="Search city..."
                     data-testid="select-city"
-                  >
-                    <option value="">Select city</option>
-                    {CITIES.map(city => (
-                      <option key={city} value={city}>{city}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {form.city === 'Other' && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Your City</label>
-                  <Input
-                    value={form.otherCity}
-                    onChange={(e) => setForm({ ...form, otherCity: e.target.value })}
-                    placeholder="Enter your city"
-                    data-testid="input-other-city"
                   />
                 </div>
-              )}
+              </div>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Availability</label>

@@ -10,6 +10,7 @@ import { Calendar as CalendarComponent } from '../../components/ui/calendar';
 import { toast } from 'sonner';
 import { format, addDays, parseISO, isAfter, isBefore, addHours } from 'date-fns';
 import axios from 'axios';
+import CitySearch from '../../components/CitySearch';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -2419,10 +2420,10 @@ const AdminEducators = () => {
             </div>
             <div>
               <label className="text-sm font-medium text-slate-700">City</label>
-              <Input
+              <CitySearch
                 value={directOnboardForm.city}
-                onChange={(e) => setDirectOnboardForm({...directOnboardForm, city: e.target.value})}
-                placeholder="City"
+                onChange={(city) => setDirectOnboardForm({...directOnboardForm, city})}
+                placeholder="Search city..."
               />
             </div>
             <div>
@@ -2486,16 +2487,11 @@ const AdminEducators = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">City *</label>
-                <select
+                <CitySearch
                   value={requirementForm.city}
-                  onChange={(e) => setRequirementForm({ ...requirementForm, city: e.target.value })}
-                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
-                >
-                  <option value="">Select City</option>
-                  {cities.map(c => (
-                    <option key={c.name} value={c.name}>{c.name}</option>
-                  ))}
-                </select>
+                  onChange={(city) => setRequirementForm({ ...requirementForm, city })}
+                  placeholder="Search city..."
+                />
               </div>
             </div>
             <div>
@@ -2604,16 +2600,11 @@ const AdminEducators = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">City</label>
-              <select
+              <CitySearch
                 value={addEducatorForm.city}
-                onChange={(e) => setAddEducatorForm({ ...addEducatorForm, city: e.target.value })}
-                className="w-full h-10 px-3 border border-slate-200 rounded-lg"
-              >
-                <option value="">Select City</option>
-                {cities.map(c => (
-                  <option key={c.name} value={c.name}>{c.name}</option>
-                ))}
-              </select>
+                onChange={(city) => setAddEducatorForm({ ...addEducatorForm, city })}
+                placeholder="Search city..."
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Skills</label>
@@ -2775,10 +2766,10 @@ const AdminEducators = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">City</label>
-                <Input
+                <CitySearch
                   value={editEducatorForm.city}
-                  onChange={(e) => setEditEducatorForm({ ...editEducatorForm, city: e.target.value })}
-                  placeholder="City"
+                  onChange={(city) => setEditEducatorForm({ ...editEducatorForm, city })}
+                  placeholder="Search city..."
                 />
               </div>
               <div>

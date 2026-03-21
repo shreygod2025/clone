@@ -151,7 +151,7 @@ const TICKET_RELATED_TO_OPTIONS = {
   ],
 };
 
-const CITIES = ['Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow'];
+import CitySearch from '../../components/CitySearch';
 const BOARDS = ['CBSE', 'ICSE', 'IGCSE', 'State Board', 'IB'];
 const TIME_SLOTS = [
   '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', 
@@ -5499,9 +5499,7 @@ const AdminSchoolCRM = () => {
               data-testid="contact-city-filter"
             >
               <option value="all">All Cities</option>
-              {CITIES.map(city => (
-                <option key={city} value={city}>{city}</option>
-              ))}
+              {/* Cities loaded dynamically - replace with CitySearch if needed */}
             </select>
             <select
               value={contactRoleFilter}
@@ -8085,15 +8083,12 @@ const AdminSchoolCRM = () => {
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">City</label>
-                <select
+                <CitySearch
                   value={newLead.location}
-                  onChange={(e) => setNewLead({...newLead, location: e.target.value})}
-                  className="w-full h-10 px-4 border border-slate-200 rounded-lg"
+                  onChange={(city) => setNewLead({...newLead, location: city})}
+                  placeholder="Search city..."
                   data-testid="new-school-city"
-                >
-                  <option value="">Select city</option>
-                  {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Board</label>
@@ -9887,16 +9882,11 @@ const AdminSchoolCRM = () => {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-slate-700">Location</label>
-                    <select
+                    <CitySearch
                       value={editOnboardData.location || ''}
-                      onChange={(e) => setEditOnboardData(prev => ({ ...prev, location: e.target.value }))}
-                      className="w-full h-10 px-4 border border-slate-200 rounded-lg"
-                    >
-                      <option value="">Select City</option>
-                      {CITIES.map(city => (
-                        <option key={city} value={city}>{city}</option>
-                      ))}
-                    </select>
+                      onChange={(city) => setEditOnboardData(prev => ({ ...prev, location: city }))}
+                      placeholder="Search city..."
+                    />
                   </div>
                   <div>
                     <label className="text-sm font-medium text-slate-700">Board</label>
