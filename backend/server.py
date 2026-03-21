@@ -9331,6 +9331,16 @@ async def get_open_requirements(city: Optional[str] = None, skill: Optional[str]
             req['created_at'] = datetime.fromisoformat(req['created_at'])
     return requirements
 
+@api_router.get("/requirements/{req_id}")
+async def get_single_requirement(req_id: str):
+    """Public: get a single requirement by ID"""
+    req = await db.open_requirements.find_one({"id": req_id}, {"_id": 0})
+    if not req:
+        raise HTTPException(status_code=404, detail="Requirement not found")
+    if isinstance(req.get('created_at'), str):
+        req['created_at'] = datetime.fromisoformat(req['created_at'])
+    return req
+
 @api_router.post("/requirements", response_model=OpenRequirement)
 async def create_requirement(data: OpenRequirementCreate, user: dict = Depends(get_current_user)):
     requirement = OpenRequirement(**data.model_dump())

@@ -1223,7 +1223,7 @@ const AdminEducators = () => {
                       <div className="flex gap-2">
                         <button
                           onClick={() => {
-                            const link = `${window.location.origin}/educator?req=${req.id}`;
+                            const link = `${window.location.origin}/educator/apply/${req.id}`;
                             navigator.clipboard.writeText(link);
                             toast.success('Application link copied!');
                           }}

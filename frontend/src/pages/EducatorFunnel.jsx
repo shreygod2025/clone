@@ -104,17 +104,14 @@ const EducatorFunnel = () => {
     fetchCenters();
   }, []);
 
-  // Auto-open requirement apply modal if ?req=<id> is in URL
+  // Redirect to dedicated apply page if ?req=<id> is in URL
   useEffect(() => {
     const reqId = searchParams.get('req');
-    if (reqId && requirements.length > 0) {
-      const req = requirements.find(r => r.id === reqId);
-      if (req) {
-        handleApplyToRequirement(req);
-      }
+    if (reqId) {
+      navigate(`/educator/apply/${reqId}`, { replace: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requirements, searchParams]);
+  }, [searchParams]);
 
   const fetchCenters = async () => {
     try {
