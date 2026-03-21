@@ -5,7 +5,7 @@ import {
   DollarSign, Building2, GraduationCap, Upload, Download, Eye, 
   CheckCircle2, Clock, AlertCircle, Calendar, Search, Filter,
   FileText, Receipt, CreditCard, X, ExternalLink, ChevronDown, ChevronRight,
-  Phone, Mail, User, Trash2, Wallet, BanknoteIcon, RefreshCw, BarChart3
+  Phone, Mail, User, Trash2, Wallet, BanknoteIcon, RefreshCw, BarChart3, FilePlus
 } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
@@ -14,6 +14,7 @@ import { Textarea } from '../../components/ui/textarea';
 import { toast } from 'sonner';
 import { format, isPast, parseISO, differenceInDays } from 'date-fns';
 import axios from 'axios';
+import { generateInvoicePDF } from '../../utils/invoicePdfGenerator';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -166,6 +167,8 @@ const AdminOrders = () => {
   const [showViewModal, setShowViewModal] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [loadingSchoolDetails, setLoadingSchoolDetails] = useState(false);
+  const [generatingInvoice, setGeneratingInvoice] = useState(null);
+  const schoolDataCache = React.useRef({});
   const [uploadingInvoice, setUploadingInvoice] = useState(false);
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
   const [paymentUpdate, setPaymentUpdate] = useState({
@@ -488,6 +491,29 @@ const AdminOrders = () => {
     receivablesAmount: payments.filter(p => p.status !== 'paid').reduce((sum, p) => sum + (p.amount || 0), 0),
   };
   
+  // Generate Invoice PDF for a school payment tranche
+  const handleGenerateInvoice = async (payment) => {
+    const paymentId = payment.id;
+    setGeneratingInvoice(paymentId);
+    try {
+      let schoolData = schoolDataCache.current[payment.school_id];
+      if (!schoolData) {
+        const res = await axios.get(`${API}/orders/school-details/${payment.school_id}`, {
+          headers: getAuthHeaders()
+        });
+        schoolData = res.data;
+        schoolDataCache.current[payment.school_id] = schoolData;
+      }
+      await generateInvoicePDF(payment, schoolData);
+      toast.success('Invoice PDF downloaded');
+    } catch (error) {
+      console.error('Invoice generation error:', error);
+      toast.error('Failed to generate invoice');
+    } finally {
+      setGeneratingInvoice(null);
+    }
+  };
+
   // Delete payment handler
   const handleDeletePayment = async (payment) => {
     try {
@@ -1075,6 +1101,19 @@ const AdminOrders = () => {
                                 <Button
                                   variant="outline"
                                   size="sm"
+                                  onClick={(e) => { e.stopPropagation(); handleGenerateInvoice(group.tranches[0]); }}
+                                  disabled={generatingInvoice === group.tranches[0].id}
+                                  className="border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:border-indigo-300"
+                                  data-testid={`generate-invoice-${group.tranches[0].id}`}
+                                >
+                                  <FilePlus className="w-3.5 h-3.5 mr-1" />
+                                  {generatingInvoice === group.tranches[0].id ? 'Generating...' : 'Invoice'}
+                                </Button>
+                              )}
+                              {group.tranches.length === 1 && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
                                   onClick={(e) => { e.stopPropagation(); openPaymentModal(group.tranches[0]); }}
                                   className="border-orange-200 text-orange-600 hover:bg-orange-50 hover:border-orange-300"
                                   data-testid={`update-payment-${group.tranches[0].id}`}
@@ -1146,6 +1185,17 @@ const AdminOrders = () => {
                                     <Receipt className="w-4 h-4 text-green-600" />
                                   </button>
                                 )}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleGenerateInvoice(payment)}
+                                  disabled={generatingInvoice === payment.id}
+                                  className="border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+                                  data-testid={`generate-invoice-${payment.id}`}
+                                >
+                                  <FilePlus className="w-3.5 h-3.5 mr-1" />
+                                  {generatingInvoice === payment.id ? '...' : 'Invoice'}
+                                </Button>
                                 <Button
                                   variant="outline"
                                   size="sm"
