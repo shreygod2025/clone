@@ -2521,7 +2521,7 @@ const AdminSchoolCRM = () => {
       const courseTypeLabel = { only_robotics: 'Only Robotics', robotics_coding_ai: 'Robotics, Coding & AI' };
       const kitTypeLabel = { lab_setup: 'Lab Setup', individual: 'Individual', no_kit: 'No Kit' };
       const trainingLabel = { student_training: 'Student Training', teacher_training: 'Teacher Training', both: 'Teacher & Student Training' };
-      const paymentCollectionLabel = { from_school: 'School Collects & Pays OLL', from_student: 'OLL Collects Online', online: 'OLL Collects Online' };
+      const paymentCollectionLabel = { from_school: 'School Collects & Pays OLL', from_student: 'OLL Collects Online', from_distributor: 'Via Distributor', online: 'OLL Collects Online' };
       const paymentMethodLabel = { cheque: 'Cheque', neft: 'Netbanking', online: 'Online Payments', cash: 'Cash' };
 
       const todayStr = format(new Date(), 'dd MMMM yyyy');
@@ -7509,6 +7509,7 @@ const AdminSchoolCRM = () => {
                   >
                     <option value="from_school">From School</option>
                     <option value="from_student">From Student (Offline)</option>
+                    <option value="from_distributor">From Distributor</option>
                     <option value="online">Online (Student Payment via Cashfree)</option>
                   </select>
                 </div>
@@ -9429,6 +9430,7 @@ const AdminSchoolCRM = () => {
                   >
                     <option value="from_school">From School</option>
                     <option value="from_student">From Student (Offline)</option>
+                    <option value="from_distributor">From Distributor</option>
                     <option value="online">Online (Student Payment via Cashfree)</option>
                   </select>
                 </div>
