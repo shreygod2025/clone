@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Eye, Phone, Mail, Calendar, Clock, Plus, ChevronRight, MessageSquare, Archive, CalendarClock, CheckCircle2, User, Users, Briefcase, MapPin, UserPlus, Send, Edit, Save, Video, Star, FileText, X, Download, Copy, Link } from 'lucide-react';
+import { Search, Eye, Phone, Mail, Calendar, Clock, Plus, ChevronRight, MessageSquare, Archive, CalendarClock, CheckCircle2, User, Users, Briefcase, MapPin, UserPlus, Send, Edit, Save, Video, Star, FileText, X, Download, Copy, Link, Trash2, XCircle } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -508,6 +508,28 @@ const AdminEducators = () => {
   const handleHRDone = async (educator) => {
     await handleStatusChange(educator, 'hr_done');
     toast.success('HR Round marked as done. You can now schedule the Technical Demo.');
+  };
+
+  const handleCloseRequirement = async (req) => {
+    try {
+      const newState = !req.is_active;
+      await axios.patch(`${API}/requirements/${req.id}`, { is_active: newState }, { headers: getAuthHeaders() });
+      toast.success(newState ? 'Requirement reopened' : 'Requirement closed');
+      fetchRequirements();
+    } catch {
+      toast.error('Failed to update requirement');
+    }
+  };
+
+  const handleDeleteRequirement = async (req) => {
+    if (!window.confirm(`Delete "${req.title}"? This cannot be undone.`)) return;
+    try {
+      await axios.delete(`${API}/requirements/${req.id}`, { headers: getAuthHeaders() });
+      toast.success('Requirement deleted');
+      fetchRequirements();
+    } catch {
+      toast.error('Failed to delete requirement');
+    }
   };
 
   const handleScheduleTechDemo = async () => {
@@ -1221,7 +1243,8 @@ const AdminEducators = () => {
                         <Eye className="w-3 h-3" />
                         View {matchingApps} applicant(s)
                       </button>
-                      <div className="flex gap-2">
+                      <div className="flex gap-1">
+                        {/* Copy link */}
                         <button
                           onClick={() => {
                             const link = `${window.location.origin}/educator/apply/${req.id}`;
@@ -1233,6 +1256,7 @@ const AdminEducators = () => {
                         >
                           <Copy className="w-4 h-4 text-blue-500" />
                         </button>
+                        {/* Edit */}
                         <button
                           onClick={() => {
                             setEditingRequirement(req);
@@ -1240,8 +1264,25 @@ const AdminEducators = () => {
                             setShowRequirementModal(true);
                           }}
                           className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                          title="Edit requirement"
                         >
                           <Edit className="w-4 h-4 text-slate-500" />
+                        </button>
+                        {/* Close / Reopen */}
+                        <button
+                          onClick={() => handleCloseRequirement(req)}
+                          className={`p-2 rounded-lg transition-colors ${req.is_active ? 'hover:bg-amber-50 text-amber-500' : 'hover:bg-green-50 text-green-600'}`}
+                          title={req.is_active ? 'Close requirement' : 'Reopen requirement'}
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                        {/* Delete */}
+                        <button
+                          onClick={() => handleDeleteRequirement(req)}
+                          className="p-2 hover:bg-red-50 rounded-lg transition-colors text-red-400 hover:text-red-600"
+                          title="Delete requirement"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
