@@ -49,6 +49,8 @@ const GPSelfOnboarding = lazy(() => import("./pages/GPSelfOnboarding"));
 const StudentPayment = lazy(() => import("./pages/StudentPayment"));
 const SchoolStudentPayment = lazy(() => import("./pages/SchoolStudentPayment"));
 const SchoolPaymentTrackerPublic = lazy(() => import("./pages/public/SchoolPaymentTrackerPublic"));
+const SchoolStudentLogin = lazy(() => import("./pages/SchoolStudentLogin"));
+const SchoolStudentDashboard = lazy(() => import("./pages/SchoolStudentDashboard"));
 
 // Course SEO Pages - Lazy loaded
 const CoursesListPage = lazy(() => import("./pages/courses/CoursesListPage"));
@@ -145,6 +147,10 @@ function App() {
               <Route path="/school-pay/:schoolId" element={<SchoolStudentPayment />} />
               <Route path="/school-payment-success/:schoolId" element={<SchoolStudentPayment />} />
               <Route path="/school-payment-tracker-public/:schoolId" element={<SchoolPaymentTrackerPublic />} />
+              
+              {/* School Student Login & Dashboard */}
+              <Route path="/school-student/login" element={<SchoolStudentLogin />} />
+              <Route path="/school-student/dashboard" element={<SchoolStudentDashboard />} />
               
               {/* Public Team Onboarding Tracking */}
               <Route path="/team-track/:token" element={<TeamOnboardingTrack />} />

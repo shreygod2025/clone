@@ -3825,7 +3825,8 @@ async def verify_otp(data: OTPVerify):
     collection_map = {
         "student": "student_inquiries",
         "educator": "educator_applications", 
-        "school": "school_inquiries"
+        "school": "school_inquiries",
+        "school_student": "school_student_payments"
     }
     collection = collection_map.get(data.user_type, "student_inquiries")
     
@@ -3834,6 +3835,20 @@ async def verify_otp(data: OTPVerify):
     
     # Get all bookings for this phone
     bookings = await db[collection].find({"phone": data.phone}, {"_id": 0}).sort("created_at", -1).to_list(10)
+    
+    # For school_student, include payment details
+    if data.user_type == "school_student":
+        return {
+            "phone": data.phone,
+            "user_type": data.user_type,
+            "name": user_data.get("student_name") if user_data else None,
+            "email": user_data.get("email") if user_data else None,
+            "grade": user_data.get("grade") if user_data else None,
+            "division": user_data.get("division") if user_data else None,
+            "school_name": user_data.get("school_name") if user_data else None,
+            "payments": bookings,
+            "is_registered": user_data is not None
+        }
     
     return {
         "phone": data.phone,
@@ -3906,6 +3921,89 @@ async def cancel_booking(data: dict):
     
     await db[collection].update_one({"id": booking_id}, {"$set": update_data})
     return {"message": "Booking cancelled successfully"}
+
+# ========================
+# SCHOOL STUDENT PROFILE & RECEIPTS
+# ========================
+
+@api_router.get("/school-student/profile/{phone}")
+async def get_school_student_profile(phone: str):
+    """Get school student profile and payment history"""
+    # Find all payments for this phone
+    payments = await db.school_student_payments.find(
+        {"phone": phone}, 
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+    
+    if not payments:
+        raise HTTPException(status_code=404, detail="No records found for this phone number")
+    
+    # Get the most recent record for profile info
+    latest = payments[0]
+    
+    return {
+        "phone": phone,
+        "student_name": latest.get("student_name", ""),
+        "email": latest.get("email", ""),
+        "grade": latest.get("grade", ""),
+        "division": latest.get("division", ""),
+        "school_name": latest.get("school_name", ""),
+        "school_id": latest.get("school_id", ""),
+        "payments": payments
+    }
+
+@api_router.patch("/school-student/profile/{phone}")
+async def update_school_student_profile(phone: str, data: dict):
+    """Update school student profile details"""
+    allowed_fields = ["student_name", "email", "grade", "division"]
+    update_data = {k: v for k, v in data.items() if k in allowed_fields and v is not None}
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+    
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    # Update all payment records for this phone
+    result = await db.school_student_payments.update_many(
+        {"phone": phone},
+        {"$set": update_data}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="No records found for this phone number")
+    
+    return {"message": "Profile updated successfully", "modified_count": result.modified_count}
+
+@api_router.get("/school-student/receipt/{payment_id}")
+async def get_school_student_receipt(payment_id: str):
+    """Get a specific payment receipt"""
+    payment = await db.school_student_payments.find_one(
+        {"id": payment_id},
+        {"_id": 0}
+    )
+    
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    
+    # Only return paid payments as receipts
+    if payment.get("status") != "PAID":
+        raise HTTPException(status_code=400, detail="Receipt only available for completed payments")
+    
+    return {
+        "receipt_id": payment.get("id"),
+        "student_name": payment.get("student_name"),
+        "phone": payment.get("phone"),
+        "email": payment.get("email"),
+        "school_name": payment.get("school_name"),
+        "grade": payment.get("grade"),
+        "division": payment.get("division"),
+        "skill": payment.get("skill"),
+        "amount": payment.get("amount"),
+        "status": payment.get("status"),
+        "cf_order_id": payment.get("cf_order_id"),
+        "payment_time": payment.get("payment_time") or payment.get("synced_at"),
+        "created_at": payment.get("created_at")
+    }
 
 # ========================
 # STUDENT INQUIRY ENDPOINTS
@@ -4084,7 +4182,7 @@ async def create_payment_order(data: StudentPaymentRequest, user: dict = Depends
         )
         
         # Get frontend URL for return
-        frontend_url = os.getenv("FRONTEND_URL", "https://oll-crm-hub.preview.emergentagent.com")
+        frontend_url = os.getenv("FRONTEND_URL", "https://oll-payment-portal.preview.emergentagent.com")
         
         # Create order meta
         order_meta = OrderMeta(
@@ -4276,7 +4374,7 @@ async def create_payment_session(student_id: str):
         )
         
         # Get frontend URL for return
-        frontend_url = os.getenv("FRONTEND_URL", "https://oll-crm-hub.preview.emergentagent.com")
+        frontend_url = os.getenv("FRONTEND_URL", "https://oll-payment-portal.preview.emergentagent.com")
         backend_url = os.getenv("REACT_APP_BACKEND_URL", frontend_url)
         
         # Create order meta

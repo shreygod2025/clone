@@ -1,0 +1,152 @@
+<analysis>**original_problem_statement**: Build a high-conversion, multi-user skill-education platform for OLL with separate funnels for Students/Parents, Educators, and Schools. The platform must be SEO-first and include a powerful backend admin panel and CRM system.
+PRODUCT REQUIREMENTS: 
+- Global Structure: Landing Page, Learner Funnel, Educator Funnel, School Funnel, Admin Panel.
+- Admin CRM: Email automation for lead lifecycle, bulk imports, proposal/MOU PDF generation, automated follow-up system.
+- Orders & Payments: Tracking for School and Student payments via Cashfree.
+
+**User's preferred language**: English (INSTRUCT next agent to respond in English)
+
+**what currently exists?** 
+A comprehensive React + FastAPI full-stack application featuring a heavy Admin School CRM. The CRM includes complex lead state management, automated follow-up email scheduling (via Resend), document generation (Proposal, MOU, Parent Circular), and deployment-ready backend configurations. Recently, an Admin Settings tab was added to expose MongoDB connection details, and a new portal for School Students (who paid via Cashfree) is currently being built.
+
+**Last working item**:
+    - Last item agent was working: Building the School Student Portal. The user requested that users who make online school payments via Cashfree can log in using their phone/OTP to view their payment receipts and edit basic profile details (name, standard, division). The agent set up the backend auth/endpoints, created  and , updated  routes, and was in the middle of testing the login UI.
+    - Status: IN PROGRESS
+    - Agent Testing Done: Y (Backend endpoints tested via curl; initial frontend login screenshot taken)
+    - Which testing method agent to use? both (Use screenshot tool for frontend UI completion, python -c/curl for backend receipt fetching logic)
+    - User Testing Done: N
+
+**All Pending/In progress Issue list**:
+  Issue 1: (P0) Finish and verify the School Student Dashboard functionality (Profile editing and Receipt viewing).
+  Issue 2: (P1) User verification of the Data Transfer bug fix (ensuring book type, kit type, and model transfer correctly from Meeting Done to Converted stages).
+  Issue 3: (P2) User verification of the MOU PDF School Name fix.
+  Issue 4: (P3) User verification of the Vice Principal role addition in contact dropdowns.
+
+  Issues Detail:
+  - Issue 1: Finish School Student Dashboard
+     - Attempted fixes: Backend endpoints for profile update and receipt fetching are written. Frontend login page is created and routes are active. Dashboard UI needs finalization and wiring.
+     - Next debug checklist: Check  to ensure it successfully calls  and  and displays the data correctly.
+     - Why fix this issue and what will be achieved with the fix? Completes the user's latest request to give parents/students a portal to track their school-based Cashfree payments.
+     - Status: IN PROGRESS
+     - Is recurring issue? N
+     - Should Test frontend/backend/both after fix? Both
+     - Blocked on other issue: None
+  - Issue 2: Data Transfer Bug (Proposal to Onboarding)
+     - Attempted fixes: Added mapping logic in  inside  to pull from  and map values (e.g.,  -> ) to .
+     - Next debug checklist: Ask user to test converting a lead and verify if Program Details auto-fill correctly.
+     - Why fix this issue and what will be achieved with the fix? Prevents data loss during the sales pipeline progression.
+     - Status: USER VERIFICATION PENDING
+     - Is recurring issue? Y
+     - Should Test frontend/backend/both after fix? Frontend
+     - Blocked on other issue: None
+
+**In progress Task List**:
+  Task 1: School Student Dashboard Implementation
+     - Where to resume: Resume in . Ensure the UI allows editing name, standard, and division, and displays a list of downloadable payment receipts.
+     - What will be achieved with this? Fulfills the requirement for school students to manage their post-payment experience.
+     - Status: IN PROGRESS
+     - Should Test frontend/backend/both after fix? Both
+     - Blocked on something: None
+
+**Upcoming and Future Tasks**
+    Upcoming Tasks:
+    - P0: CSV Export: Add a CSV Export button to all major data tables where it's missing.
+    - P1: Refactor : This file is over 11,000 lines. It MUST be broken down into smaller components.
+    - P2: Refactor : Break down the monolithic file (16,000+ lines) into standard routing and model files.
+    
+    Future Tasks:
+    - Implement Phase 2 & 3 email notifications.
+    - Background Job for AI Follow-up Emails.
+    - PO generation system connected to Vendor panel.
+    - Enforce backend RBAC permissions.
+
+**Completed work in this session**
+- Moved Follow-up tasks from lead cards to a Schedule Followup popup modal (DONE)
+- Added upcoming scheduled follow-ups to the Admin Dashboard and next follow-up dates to lead cards (DONE)
+- Fixed deployment blockers: Replaced hardcoded JWT secret, reduced unbounded DB queries, batched scheduler jobs, suppressed Cashfree SSL warnings (DONE)
+- Updated Resend API Key to fetch dynamically from DB and fixed sender email to  (DONE)
+- Fixed data transfer mismatch between  and  in CRM (DONE)
+- Fixed missing School Name in generated MOU PDFs (DONE)
+- Added MongoDB Connection and IP Whitelisting UI to Admin Settings (DONE)
+- Added Vice Principal to CRM contact role dropdowns (DONE)
+
+**Earlier issues found/mentioned but not fixed**
+  Issue 1: IP Whitelisting UI does not actually update MongoDB Atlas Network settings.
+   - Debug checklist: Ensure the user understands that the IP Whitelisting UI added to Admin Settings only stores IPs in the database for tracking. It *cannot* programmatically alter Emergent's managed Atlas network rules.
+   - Why to solve this issue and what will be achieved with this? Manages user expectations; prevents them from thinking their IP is automatically unblocked at the cloud infrastructure level.
+   - Should Test frontend/backend/both after fix: NA (Requires communication with user)
+   - Is recurring issue? N
+
+**Known issue recurrence from previous fork**
+  - Issue recurrence in previous fork: Data persistence/transfer issues across CRM stages (Proposal -> Conversion).
+  - Recurrence count: 3
+  - Status: USER VERIFICATION PENDING
+  Note: Pay close attention to  state management (, , ), as it is highly fragile.
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+- Frontend: React, Tailwind, Shadcn UI components.
+- Backend: FastAPI, Python, Motor (Async MongoDB), APScheduler.
+- PDF Generation:  and  done strictly on the client side.
+- Email:  API using dynamic HTML templates constructed in Python.
+
+**key DB schema**
+  - : {school_name, status, proposal_data, onboarding_data, followup_tasks}
+  - : {school_id, student_name, phone, amount, status}
+  - : {service: 'resend', api_key: '...'} (New collection added this session)
+
+**changes in tech stack**
+  - None, but implemented dynamic DB-based fetching for 3rd party API keys (Resend) as a fallback mechanism over .
+
+**All files of reference**
+  1.  (Modified auth logic, added student endpoints, fixed deployment blockers)
+  2.  (Fixed data mappings, PDF generation, and follow-up UI)
+  3.  (Added DB Connection string viewer and Resend API key manager)
+  4.  (Added new routes)
+  5.  (Created)
+  6.  (Created, needs completion)
+
+**Areas that need refactoring**: 
+CRITICAL:  and . Both are dangerously large monolithic files. State management in the CRM is causing recurring regression bugs.
+
+**key api endpoints**
+-  &  (Updated to accept  type)
+-  &  (New)
+-  (New)
+-  (New)
+
+**Critical Info for New Agent** 
+- **Database Confusion:** The user was confused about missing data. *Crucial context:* This preview environment pod runs a local MongoDB ( with ~89 mock rows). The user's actual production data (100+ schools) lives on Emergent's managed cloud infrastructure (). You CANNOT access their live production DB from this pod. Remind the user of this if they ask where their data went.
+- **Resend Email:** Resend is now configured to dynamically look for the API key in the database first, then fallback to . The sender is verified as . 
+- **File Fragility:** Be extremely careful editing . Use exact  blocks.
+
+**documents and test reports created in this job**
+  - /app/memory/PRD.md
+
+**Last 10 User Messages and any pending HUMAN messages** 
+ - **User:** Requested to add Vice Principal to the school contacts role dropdown. (COMPLETED)
+ - **User (LATEST / PENDING):** Requested a login portal (using phone OTP) for School Students who make online payments via Cashfree, allowing them to view receipts and edit name/standard/division. Warned not to mess anything else up. (IN PROGRESS - Endpoints created, login page created, Dashboard needs UI completion and testing).
+
+**Project Health Check:**
+- Broken: None actively broken, but School Student Dashboard is incomplete.
+- Mocked: Local database is test data, distinct from their production data.
+
+**3rd Party Integrations** 
+  • Cashfree (Payments) — requires User API Key
+  • Resend (Emails) — requires User API Key (Stored in DB now)
+  • Cloudinary (File Storage) — requires User API Key
+
+**Testing status**
+  - Testing agent used after significant changes: NO (Deployment agent was used to fix build errors).
+  - Troubleshoot agent used after agent stuck in loop: NO
+  - Test files created: []
+  - Known regressions: None currently known, but verify  modal states thoroughly.
+
+**Credentials to test flow:**
+- **Admin:**  / 
+- **School Student Login (New):** Use phone  with OTP  for testing the new portal.
+
+**What agent forgot to execute**
+The agent did not finish building the UI for  (viewing receipts and updating profile data) before the session ended. This is the immediate priority for the next fork.</analysis>
