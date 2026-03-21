@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File, Query, Header, Request
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File, Query, Header, Request, BackgroundTasks
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, Response
@@ -9341,12 +9341,116 @@ async def get_single_requirement(req_id: str):
         req['created_at'] = datetime.fromisoformat(req['created_at'])
     return req
 
+async def notify_educators_new_requirement(requirement: dict):
+    """Background task: send email to all educators when a new requirement is posted."""
+    try:
+        await ensure_resend_api_key()
+        # Fetch all educators that should be notified
+        target_statuses = ['new', 'demo_scheduled', 'hr_done', 'tech_scheduled', 'demo_completed', 'onboarded', 'active']
+        educators = await db.educator_applications.find(
+            {"status": {"$in": target_statuses}, "email": {"$exists": True, "$ne": ""}},
+            {"_id": 0, "name": 1, "email": 1}
+        ).to_list(1000)
+
+        if not educators:
+            logging.info("[REQ_NOTIFY] No educators to notify")
+            return
+
+        req_id = requirement.get("id", "")
+        frontend_url = os.environ.get("FRONTEND_URL", "https://oll-payment-portal.preview.emergentagent.com")
+        apply_link = f"{frontend_url}/educator/apply/{req_id}"
+
+        pay_text = ""
+        if requirement.get("pay_amount"):
+            pay_type_label = {"per_session": "per session", "per_day": "per day", "per_month": "per month"}.get(requirement.get("pay_type", ""), "")
+            pay_text = f"<p style='margin:5px 0;'><strong>Pay:</strong> ₹{requirement['pay_amount']} {pay_type_label}</p>"
+
+        timing_text = ""
+        if requirement.get("timing_from") and requirement.get("timing_to"):
+            timing_text = f"<p style='margin:5px 0;'><strong>Timing:</strong> {requirement['timing_from']} – {requirement['timing_to']}</p>"
+
+        days_text = ""
+        if requirement.get("days"):
+            days_text = f"<p style='margin:5px 0;'><strong>Days:</strong> {', '.join(requirement['days'])}</p>"
+
+        sent_count = 0
+        for educator in educators:
+            try:
+                name = educator.get("name", "Educator")
+                email = educator.get("email", "")
+                if not email:
+                    continue
+
+                html = f"""
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="background: linear-gradient(135deg, #1E3A5F 0%, #D63031 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                        <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 800;">OLL</h1>
+                        <p style="color: #f0f0f0; margin: 6px 0 0 0; font-size: 14px;">New Teaching Opportunity</p>
+                    </div>
+                    <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
+                        <h2 style="color: #1E3A5F; margin-top: 0;">Hi {name}! 👋</h2>
+                        <p style="color: #444; line-height: 1.6;">We just posted a new teaching opportunity that you or someone you know might be a great fit for:</p>
+
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #D63031;">
+                            <h3 style="color: #1E3A5F; margin-top: 0; font-size: 18px;">{requirement.get('title', 'New Opening')}</h3>
+                            <p style="margin:5px 0;"><strong>Skill:</strong> {requirement.get('skill', '')}</p>
+                            <p style="margin:5px 0;"><strong>Location:</strong> {requirement.get('city', '')}{(' – ' + requirement.get('area', '')) if requirement.get('area') else ''}</p>
+                            <p style="margin:5px 0;"><strong>Positions:</strong> {requirement.get('positions', 1)}</p>
+                            {pay_text}
+                            {timing_text}
+                            {days_text}
+                            {('<p style="margin:10px 0 0 0; color:#555;">' + requirement.get('description','') + '</p>') if requirement.get('description') else ''}
+                        </div>
+
+                        <p style="color: #444; line-height: 1.6; font-size: 15px;">
+                            <strong>Know someone perfect for this role?</strong> Share the link below — you'll be helping a great candidate find their opportunity!
+                        </p>
+
+                        <div style="text-align: center; margin: 28px 0;">
+                            <a href="{apply_link}" style="background: #D63031; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 15px; display: inline-block;">
+                                Apply or Refer a Candidate →
+                            </a>
+                        </div>
+
+                        <p style="color: #888; font-size: 13px; line-height: 1.6;">
+                            Or copy this link: <a href="{apply_link}" style="color: #D63031;">{apply_link}</a>
+                        </p>
+
+                        <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+                        <p style="color: #999; font-size: 12px; margin: 0;">You're receiving this because you're part of the OLL Educator community. Thank you for being with us!</p>
+                    </div>
+                    <div style="text-align: center; padding: 16px; color: #bbb; font-size: 11px;">
+                        © 2026 OLL. All rights reserved.
+                    </div>
+                </div>
+                """
+
+                params = {
+                    "from": "OLL Team <welcome@oll.co>",
+                    "to": [email],
+                    "subject": f"New Opening: {requirement.get('title', 'Teaching Opportunity')} — Refer or Apply",
+                    "html": html,
+                    "reply_to": "info@oll.co"
+                }
+                await asyncio.to_thread(resend.Emails.send, params)
+                sent_count += 1
+                await asyncio.sleep(0.1)  # small delay to avoid rate limits
+            except Exception as e:
+                logging.error(f"[REQ_NOTIFY] Failed to email {educator.get('email')}: {e}")
+
+        logging.info(f"[REQ_NOTIFY] Sent new requirement notification to {sent_count}/{len(educators)} educators")
+    except Exception as e:
+        logging.error(f"[REQ_NOTIFY] Background task failed: {e}")
+
 @api_router.post("/requirements", response_model=OpenRequirement)
-async def create_requirement(data: OpenRequirementCreate, user: dict = Depends(get_current_user)):
+async def create_requirement(data: OpenRequirementCreate, user: dict = Depends(get_current_user), background_tasks: BackgroundTasks = None):
     requirement = OpenRequirement(**data.model_dump())
     doc = requirement.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
     await db.open_requirements.insert_one(doc)
+    # Send email notifications to all educators in background
+    if background_tasks:
+        background_tasks.add_task(notify_educators_new_requirement, requirement.model_dump())
     return requirement
 
 @api_router.patch("/requirements/{req_id}", response_model=OpenRequirement)
