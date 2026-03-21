@@ -115,7 +115,7 @@ def get_cashfree_client():
     return Cashfree(cf_env)
 
 # MongoDB connection — import from database module for shared state
-from database import db, otp_store_new, otp_verify, otp_send_allowed
+from database import db, _client as mongo_client, otp_store_new, otp_verify, otp_send_allowed
 
 # JWT Configuration
 SECRET_KEY = os.environ.get('JWT_SECRET')
@@ -817,8 +817,11 @@ async def send_educator_email(
         return {"success": False, "message": "No email provider configured"}
         
     except Exception as e:
-        print(f"Email notification error [{template_key}]: {str(e)}")
-        return {"success": False, "message": str(e)}
+        error_msg = str(e)
+        print(f"Email notification error [{template_key}]: {error_msg}")
+        if "testing" in error_msg.lower():
+            return {"success": False, "message": "Resend API key is a TEST key. Update to production key in Admin > Settings > API Keys."}
+        return {"success": False, "message": error_msg}
 
 
 async def send_educator_application_received_email(educator: dict):
@@ -1580,8 +1583,11 @@ async def send_school_crm_email(
             email_id = email_response.get("id") if isinstance(email_response, dict) else str(email_response)
             return {"success": True, "email_id": email_id}
         except Exception as e:
-            logging.error(f"Followup email error [{email_type}]: {str(e)}")
-            return {"success": False, "error": str(e)}
+            error_msg = str(e)
+            logging.error(f"Followup email error [{email_type}]: {error_msg}")
+            if "testing" in error_msg.lower():
+                return {"success": False, "error": "Resend API key is a TEST key. Please update to a production key in Admin > Settings > API Keys."}
+            return {"success": False, "error": error_msg}
 
     extra = extra_data or {}
 
@@ -4181,7 +4187,7 @@ async def create_payment_order(data: StudentPaymentRequest, user: dict = Depends
         )
         
         # Get frontend URL for return
-        frontend_url = os.getenv("FRONTEND_URL", "https://multi-funnel-oll.preview.emergentagent.com")
+        frontend_url = os.getenv("FRONTEND_URL", "https://admin-dashboard-oll.preview.emergentagent.com")
         
         # Create order meta
         order_meta = OrderMeta(
@@ -4373,7 +4379,7 @@ async def create_payment_session(student_id: str):
         )
         
         # Get frontend URL for return
-        frontend_url = os.getenv("FRONTEND_URL", "https://multi-funnel-oll.preview.emergentagent.com")
+        frontend_url = os.getenv("FRONTEND_URL", "https://admin-dashboard-oll.preview.emergentagent.com")
         backend_url = os.getenv("REACT_APP_BACKEND_URL", frontend_url)
         
         # Create order meta
@@ -9336,7 +9342,7 @@ async def notify_educators_new_requirement(requirement: dict):
             return
 
         req_id = requirement.get("id", "")
-        frontend_url = os.environ.get("FRONTEND_URL", "https://multi-funnel-oll.preview.emergentagent.com")
+        frontend_url = os.environ.get("FRONTEND_URL", "https://admin-dashboard-oll.preview.emergentagent.com")
         apply_link = f"{frontend_url}/educator/apply/{req_id}"
 
         pay_text = ""
@@ -16087,6 +16093,53 @@ async def save_resend_api_key(data: dict, user: dict = Depends(get_current_user)
     return {"message": "Resend API key saved successfully", "success": True}
 
 
+@api_router.post("/admin/service-api-keys/resend/test")
+async def test_resend_email(data: dict, user: dict = Depends(get_current_user)):
+    """Send a test email to verify Resend API key works (detects test vs production key)"""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    test_to = data.get("to_email", user.get("email", ""))
+    if not test_to:
+        raise HTTPException(status_code=400, detail="Recipient email required")
+
+    await ensure_resend_api_key()
+    if not resend.api_key:
+        return {"success": False, "error": "No Resend API key configured. Go to Settings > API Keys to add one."}
+
+    key_masked = f"{resend.api_key[:8]}...{resend.api_key[-4:]}" if len(resend.api_key) > 12 else "****"
+    try:
+        email_response = await asyncio.to_thread(resend.Emails.send, {
+            "from": SENDER_EMAIL,
+            "to": [test_to],
+            "subject": "OLL - Test Email",
+            "html": "<h2>Test Email from OLL</h2><p>If you received this, your Resend email integration is working correctly.</p>"
+        })
+        email_id = email_response.get("id") if isinstance(email_response, dict) else str(email_response)
+        return {
+            "success": True,
+            "message": f"Test email sent to {test_to}",
+            "email_id": email_id,
+            "key_used": key_masked,
+            "key_type": "production"
+        }
+    except Exception as e:
+        error_msg = str(e)
+        is_test_key = "testing" in error_msg.lower() or "test" in error_msg.lower()
+        return {
+            "success": False,
+            "error": error_msg,
+            "key_used": key_masked,
+            "key_type": "test (restricted)" if is_test_key else "unknown",
+            "fix_instructions": (
+                "Your Resend API key is a TEST key. Test keys can only send emails to the account owner's email. "
+                "To fix: 1) Go to https://resend.com/api-keys  2) Create a new API key with 'Sending access' permission  "
+                "3) Make sure your sending domain (oll.co) is verified at https://resend.com/domains  "
+                "4) Update the key in OLL Admin > Settings > API Keys"
+            ) if is_test_key else f"Email send failed: {error_msg}"
+        }
+
+
 # ========================
 # EXTERNAL API ENDPOINTS (Protected by API Key)
 # ========================
@@ -17498,4 +17551,5 @@ async def shutdown_db_client():
     if scheduler.running:
         scheduler.shutdown(wait=False)
         print("[SHUTDOWN] Payment sync scheduler stopped")
-    client.close()
+    mongo_client.close()
+    print("[SHUTDOWN] MongoDB client closed")

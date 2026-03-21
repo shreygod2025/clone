@@ -51,7 +51,7 @@
   "test_execution_details": {
     "test_type": "Frontend UI Testing",
     "tools_used": ["Playwright Browser Automation"],
-    "test_url": "https://multi-funnel-oll.preview.emergentagent.com",
+    "test_url": "https://admin-dashboard-oll.preview.emergentagent.com",
     "pages_tested": [
       "/admin/login",
       "/admin/school-crm (Dashboard tab)",

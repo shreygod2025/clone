@@ -19,7 +19,7 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const ROLE_TYPES = ['Full-time', 'Part-time', 'Internship', 'Freelance', 'Contract'];
 
 const AdminSettings = () => {
-  const { getAuthHeaders } = useAuth();
+  const { getAuthHeaders, user } = useAuth();
   const [activeTab, setActiveTab] = useState('team-requirements');
   const [loading, setLoading] = useState(true);
   
@@ -49,6 +49,8 @@ const AdminSettings = () => {
   const [showResendKey, setShowResendKey] = useState(false);
   const [savingResendKey, setSavingResendKey] = useState(false);
   const [loadingServiceKeys, setLoadingServiceKeys] = useState(false);
+  const [testingEmail, setTestingEmail] = useState(false);
+  const [testEmailResult, setTestEmailResult] = useState(null);
 
   // Load service API keys
   const loadServiceApiKeys = async () => {
@@ -89,6 +91,30 @@ const AdminSettings = () => {
       toast.error(error.response?.data?.detail || 'Failed to save Resend API key');
     } finally {
       setSavingResendKey(false);
+    }
+  };
+
+  // Test Resend email
+  const handleTestResendEmail = async () => {
+    setTestingEmail(true);
+    setTestEmailResult(null);
+    try {
+      const res = await axios.post(`${API}/admin/service-api-keys/resend/test`,
+        { to_email: user?.email || 'admin@oll.co' },
+        { headers: getAuthHeaders() }
+      );
+      setTestEmailResult(res.data);
+      if (res.data.success) {
+        toast.success(`Test email sent to ${user?.email || 'admin@oll.co'}`);
+      } else {
+        toast.error(res.data.error || 'Test email failed');
+      }
+    } catch (error) {
+      const msg = error.response?.data?.detail || 'Failed to send test email';
+      toast.error(msg);
+      setTestEmailResult({ success: false, error: msg });
+    } finally {
+      setTestingEmail(false);
     }
   };
 
@@ -1026,10 +1052,50 @@ const AdminSettings = () => {
                 <ol className="text-xs text-slate-500 mt-2 list-decimal list-inside space-y-1">
                   <li>Go to <a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">resend.com/api-keys</a></li>
                   <li>Create a new API key with "Sending access"</li>
+                  <li>Make sure your sending domain is verified at <a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">resend.com/domains</a></li>
                   <li>Copy the key (starts with <code className="bg-slate-200 px-1 rounded">re_</code>)</li>
                   <li>Paste it above and click Save</li>
                 </ol>
               </div>
+
+              {/* Test Email Button */}
+              {resendApiKeyMasked && (
+                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-blue-900">Test Email Configuration</p>
+                      <p className="text-xs text-blue-700 mt-1">Send a test email to verify your API key works correctly</p>
+                    </div>
+                    <Button
+                      data-testid="test-resend-email-btn"
+                      onClick={handleTestResendEmail}
+                      disabled={testingEmail}
+                      variant="outline"
+                      className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                    >
+                      {testingEmail ? (
+                        <><RefreshCw className="w-4 h-4 mr-1 animate-spin" /> Sending...</>
+                      ) : (
+                        <><Mail className="w-4 h-4 mr-1" /> Send Test Email</>
+                      )}
+                    </Button>
+                  </div>
+                  {testEmailResult && (
+                    <div className={`mt-3 p-3 rounded-lg text-sm ${testEmailResult.success ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-red-50 border border-red-200 text-red-800'}`}>
+                      {testEmailResult.success ? (
+                        <p><CheckCircle className="w-4 h-4 inline mr-1" /> Email sent successfully! Key type: <strong>{testEmailResult.key_type}</strong></p>
+                      ) : (
+                        <div>
+                          <p className="font-medium">Failed: {testEmailResult.error}</p>
+                          {testEmailResult.key_type === 'test (restricted)' && (
+                            <p className="mt-2 text-xs">{testEmailResult.fix_instructions}</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}

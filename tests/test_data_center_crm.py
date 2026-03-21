@@ -7,7 +7,7 @@ import requests
 import os
 import time
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://multi-funnel-oll.preview.emergentagent.com')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://admin-dashboard-oll.preview.emergentagent.com')
 
 # Test credentials
 ADMIN_EMAIL = "admin@oll.co"
