@@ -3212,10 +3212,15 @@ const AdminSchoolCRM = () => {
         const formData = new FormData();
         formData.append('file', pdfFile);
         formData.append('type', 'mou');
+        // Do NOT manually set Content-Type for FormData - let browser handle boundary
+        const authHeaders = getAuthHeaders();
+        delete authHeaders['Content-Type'];
         const uploadRes = await axios.post(`${API}/upload`, formData, {
-          headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' },
+          headers: authHeaders,
         });
         const fileUrl = uploadRes.data.url;
+        if (!fileUrl) throw new Error('Upload returned no URL');
+
         const existingDocs = school?.documents || [];
         const newDoc = {
           type: 'MOU',
@@ -3224,18 +3229,16 @@ const AdminSchoolCRM = () => {
           uploaded_at: new Date().toISOString(),
           uploaded_by: user?.name || user?.email || 'Admin',
         };
-        // Save to documents and update mou_url
         if (school?.id) {
           await axios.patch(`${API}/schools/inquiry/${school.id}`, {
             documents: [...existingDocs, newDoc],
-            'onboarding_data.mou_url': fileUrl,
           }, { headers: getAuthHeaders() });
           setOnboardData(prev => ({ ...prev, mou_url: fileUrl }));
           fetchInquiries();
         }
-        toast.success('MOU generated, downloaded & saved to documents!');
+        toast.success('MOU saved to documents!');
 
-        // Send MOU email with attachment
+        // Send MOU email with PDF attachment
         try {
           const emailRes = await axios.post(`${API}/schools/${school.id}/send-mou-email`, {
             mou_url: fileUrl,
@@ -3246,11 +3249,11 @@ const AdminSchoolCRM = () => {
           }
         } catch (emailErr) {
           console.error('MOU email error:', emailErr);
-          toast.info('MOU saved but email could not be sent');
+          toast.error('MOU saved but email failed: ' + (emailErr.response?.data?.detail || emailErr.message));
         }
       } catch (uploadErr) {
-        console.error('MOU upload error:', uploadErr);
-        toast.success('MOU downloaded! (Save to docs failed — check upload service)');
+        console.error('MOU upload/save error:', uploadErr);
+        toast.error('Failed to save MOU: ' + (uploadErr.response?.data?.detail || uploadErr.message));
       }
     } catch (err) {
       console.error('MOU generation error:', err);

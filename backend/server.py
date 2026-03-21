@@ -12045,20 +12045,13 @@ async def send_mou_email(school_id: str, data: dict, user: dict = Depends(get_cu
 
     school_name = school.get("school_name", "School")
 
-    # Download PDF from URL to attach
+    # Build attachment from URL
     attachment = None
     if mou_url:
-        try:
-            async with httpx.AsyncClient(follow_redirects=True) as client:
-                pdf_resp = await client.get(mou_url, timeout=15.0)
-                pdf_resp.raise_for_status()
-                import base64
-                attachment = {
-                    "filename": file_name,
-                    "content": base64.b64encode(pdf_resp.content).decode(),
-                }
-        except Exception as e:
-            logging.error(f"Failed to download MOU for attachment: {e}")
+        attachment = {
+            "path": mou_url,
+            "filename": file_name,
+        }
 
     html_content = f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
