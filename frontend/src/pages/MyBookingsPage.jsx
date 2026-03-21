@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Calendar, Clock, MapPin, ArrowRight, CalendarClock, LogOut, Check, X, ChevronRight, BookOpen, Users, Video, MessageCircle, XCircle, Navigation, Home, PlayCircle, CheckCircle2, Circle, CreditCard, Loader2, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, MapPin, ArrowRight, CalendarClock, LogOut, Check, X, ChevronRight, BookOpen, Users, Video, MessageCircle, XCircle, Navigation, Home, PlayCircle, CheckCircle2, Circle, CreditCard, Loader2, AlertCircle, Download } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Calendar as CalendarComponent } from '../components/ui/calendar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
@@ -10,6 +10,7 @@ import { useUserAuth } from '../context/UserAuthContext';
 import { format, addDays, parseISO, isAfter, isBefore, addHours, compareAsc, isToday, isTomorrow } from 'date-fns';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
+import { downloadReceiptPDF } from '../utils/receiptPdfGenerator';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -118,8 +119,9 @@ const MyBookingsPage = () => {
     try {
       const response = await axios.get(`${API}/school-student/profile/${user.phone}`);
       setSchoolReceipts(response.data);
-      // Auto-switch to school receipts tab if they have school payments
-      if (response.data?.payments?.length > 0) {
+      // Auto-switch to school receipts tab if they have completed payments
+      const completedPayments = response.data?.payments?.filter(p => ['PAID', 'REFUNDED'].includes(p.status));
+      if (completedPayments?.length > 0) {
         setActiveTab('school_receipts');
       }
     } catch (error) {
@@ -777,7 +779,7 @@ const MyBookingsPage = () => {
                   data-testid="school-receipts-tab"
                 >
                   <CreditCard className="w-4 h-4 inline-block mr-1.5" />
-                  School Receipts ({schoolReceipts.payments.length})
+                  School Receipts ({schoolReceipts.payments.filter(p => ['PAID', 'REFUNDED', 'paid', 'refunded'].includes(p.status)).length})
                 </button>
               )}
             </div>
@@ -1167,16 +1169,18 @@ const MyBookingsPage = () => {
                 <p className="text-sm text-slate-500">Payments made via your school's programme portal</p>
               </div>
               <div className="space-y-3">
-                {schoolReceipts.payments.map((payment, idx) => (
+                {schoolReceipts.payments
+                  .filter(p => ['PAID', 'REFUNDED', 'paid', 'refunded'].includes(p.status))
+                  .map((payment, idx) => (
                   <div key={payment.id || idx} className="bg-white rounded-xl p-4 shadow-sm border border-slate-100" data-testid={`school-receipt-${idx}`}>
                     <div className="flex items-start justify-between gap-3 flex-wrap">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                            payment.status === 'paid' ? 'bg-green-100 text-green-700' :
-                            payment.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                            payment.status?.toUpperCase() === 'PAID' ? 'bg-green-100 text-green-700' :
+                            payment.status?.toUpperCase() === 'REFUNDED' ? 'bg-purple-100 text-purple-700' :
                             'bg-slate-100 text-slate-600'
-                          }`}>{payment.status?.charAt(0).toUpperCase() + payment.status?.slice(1)}</span>
+                          }`}>{payment.status?.toUpperCase()}</span>
                           {payment.receipt_number && (
                             <span className="text-xs text-slate-400">#{payment.receipt_number}</span>
                           )}
@@ -1196,20 +1200,27 @@ const MyBookingsPage = () => {
                         {payment.payment_id && (
                           <p className="text-xs text-slate-400 mt-0.5">Txn: {payment.payment_id}</p>
                         )}
-                        {payment.receipt_url && (
-                          <a
-                            href={payment.receipt_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 mt-1"
-                          >
-                            <FileText className="w-3 h-3" /> View Receipt
-                          </a>
-                        )}
                       </div>
+                    </div>
+                    {/* Download Receipt Button */}
+                    <div className="mt-3 pt-3 border-t border-slate-100">
+                      <button
+                        onClick={() => downloadReceiptPDF(payment, schoolReceipts.school_name)}
+                        className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-[#1E3A5F] text-white hover:bg-[#2d5a87] transition-colors"
+                        data-testid={`download-receipt-${idx}`}
+                      >
+                        <Download className="w-4 h-4" />
+                        Download Receipt
+                      </button>
                     </div>
                   </div>
                 ))}
+                {schoolReceipts.payments.filter(p => ['PAID', 'REFUNDED', 'paid', 'refunded'].includes(p.status)).length === 0 && (
+                  <div className="bg-white rounded-xl p-8 text-center shadow-sm border border-slate-100">
+                    <CreditCard className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                    <p className="text-slate-500">No completed payments yet</p>
+                  </div>
+                )}
               </div>
             </div>
           )}

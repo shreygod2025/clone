@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, Filter, Search, Users, CreditCard, TrendingUp, Check, Clock, Copy, FileSpreadsheet, Edit2, RefreshCw, X, Save, RotateCcw, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Download, Filter, Search, Users, CreditCard, TrendingUp, Check, Clock, Copy, FileSpreadsheet, Edit2, RefreshCw, X, Save, RotateCcw, AlertTriangle, FileText } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { toast } from 'sonner';
 import axios from 'axios';
 import * as XLSX from 'xlsx';
+import { downloadReceiptPDF } from '../../utils/receiptPdfGenerator';
 
 const API = process.env.REACT_APP_BACKEND_URL;
 
@@ -407,6 +408,17 @@ const SchoolPaymentTracker = () => {
                       <td className="px-4 py-3 text-sm font-mono text-slate-500 max-w-[140px] truncate">{payment.transaction_id || '-'}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
+                          {/* Download Receipt (for PAID / REFUNDED) */}
+                          {(payment.status === 'PAID' || payment.status === 'REFUNDED') && (
+                            <button
+                              onClick={() => downloadReceiptPDF(payment, schoolName)}
+                              className="p-1.5 rounded hover:bg-green-100 text-green-600 transition-colors"
+                              title="Download Receipt PDF"
+                              data-testid="download-receipt-btn"
+                            >
+                              <FileText className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                           {/* Edit */}
                           <button
                             onClick={() => openEditModal(payment)}
