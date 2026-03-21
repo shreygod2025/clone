@@ -2337,11 +2337,13 @@ class EducatorApplication(BaseModel):
     demo_ready: bool = False
     requirement_id: Optional[str] = None
     requirement_title: Optional[str] = None
-    status: str = "new"  # new, demo_scheduled, demo_completed, onboarded, archived
+    status: str = "new"  # new, demo_scheduled, hr_done, tech_scheduled, demo_completed, onboarded, archived
     notes: str = ""
     comments: List[dict] = []
     demo_date: Optional[str] = None
     demo_time: Optional[str] = None
+    tech_demo_date: Optional[str] = None
+    tech_demo_time: Optional[str] = None
     meeting_link: str = ""
     phone_verified: bool = False
     onboarding_date: Optional[str] = None
@@ -2382,6 +2384,8 @@ class EducatorApplicationUpdate(BaseModel):
     notes: Optional[str] = None
     demo_date: Optional[str] = None
     demo_time: Optional[str] = None
+    tech_demo_date: Optional[str] = None
+    tech_demo_time: Optional[str] = None
     onboarding_date: Optional[str] = None
     assigned_to: Optional[str] = None
 

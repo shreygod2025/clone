@@ -86,6 +86,7 @@ const AdminEducators = () => {
   // Modal states
   const [viewEducator, setViewEducator] = useState(null);
   const [showScheduleModal, setShowScheduleModal] = useState(null);
+  const [showTechScheduleModal, setShowTechScheduleModal] = useState(null);
   const [showAssignModal, setShowAssignModal] = useState(null);
   const [showCommentModal, setShowCommentModal] = useState(null);
   const [showRatingModal, setShowRatingModal] = useState(null);
@@ -94,6 +95,7 @@ const AdminEducators = () => {
   const [onboardingData, setOnboardingData] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [scheduleData, setScheduleData] = useState({ date: null, time: '' });
+  const [techScheduleData, setTechScheduleData] = useState({ date: null, time: '' });
   
   // Edit Educator state
   const [showEditEducatorModal, setShowEditEducatorModal] = useState(null);
@@ -497,6 +499,36 @@ const AdminEducators = () => {
     await handleStatusChange(educator, 'archived');
   };
 
+  const handleUnarchive = async (educator) => {
+    await handleStatusChange(educator, 'new');
+    toast.success(`${educator.name} has been unarchived`);
+  };
+
+  const handleHRDone = async (educator) => {
+    await handleStatusChange(educator, 'hr_done');
+    toast.success('HR Round marked as done. You can now schedule the Technical Demo.');
+  };
+
+  const handleScheduleTechDemo = async () => {
+    if (!techScheduleData.date || !techScheduleData.time) {
+      toast.error('Please select date and time for the technical demo');
+      return;
+    }
+    try {
+      await axios.patch(`${API}/educators/application/${showTechScheduleModal.id}`, {
+        status: 'tech_scheduled',
+        tech_demo_date: format(techScheduleData.date, 'yyyy-MM-dd'),
+        tech_demo_time: techScheduleData.time
+      }, { headers: getAuthHeaders() });
+      toast.success('Technical demo scheduled successfully!');
+      setShowTechScheduleModal(null);
+      setTechScheduleData({ date: null, time: '' });
+      fetchEducators();
+    } catch (error) {
+      toast.error('Failed to schedule technical demo');
+    }
+  };
+
   const openEditEducatorModal = (educator) => {
     setEditEducatorForm({
       name: educator.name || '',
@@ -653,7 +685,7 @@ const AdminEducators = () => {
     let matchesTab = false;
     if (activeTab === 'applicants') {
       if (applicantSubFilter === 'all') {
-        matchesTab = edu.status === 'new' || edu.status === 'demo_scheduled';
+        matchesTab = ['new', 'demo_scheduled', 'hr_done', 'tech_scheduled'].includes(edu.status);
       } else {
         matchesTab = edu.status === applicantSubFilter;
       }
@@ -682,7 +714,7 @@ const AdminEducators = () => {
 
   const getCount = (status) => {
     if (status === 'applicants') {
-      return educators.filter(e => e.status === 'new' || e.status === 'demo_scheduled').length;
+      return educators.filter(e => ['new', 'demo_scheduled', 'hr_done', 'tech_scheduled'].includes(e.status)).length;
     }
     if (status === 'requirements') {
       return requirements.length;
@@ -692,7 +724,10 @@ const AdminEducators = () => {
 
   // Render action buttons based on status
   const renderActionButtons = (educator) => {
-    switch (educator.status) {
+    // Treat 'new' with demo_date as 'demo_scheduled' (HR round booked via application)
+    const effectiveStatus = (educator.status === 'new' && educator.demo_date) ? 'demo_scheduled' : educator.status;
+
+    switch (effectiveStatus) {
       case 'new':
         return (
           <div className="flex gap-1 flex-wrap">
@@ -705,7 +740,7 @@ const AdminEducators = () => {
               data-testid={`schedule-demo-${educator.id}`}
             >
               <CalendarClock className="w-3 h-3" />
-              Schedule Demo
+              Schedule HR Demo
             </button>
             <button
               onClick={() => handleArchive(educator)}
@@ -717,11 +752,11 @@ const AdminEducators = () => {
             </button>
           </div>
         );
-      
+
       case 'demo_scheduled':
         return (
           <div className="flex gap-1 flex-wrap">
-            {/* Join Demo Button */}
+            {/* Join HR Demo */}
             <a
               href={generateMeetingLink(educator)}
               target="_blank"
@@ -734,15 +769,16 @@ const AdminEducators = () => {
               data-testid={`join-demo-${educator.id}`}
             >
               <Video className="w-3 h-3" />
-              {isDemoJoinable(educator) ? 'Join Now' : 'Join Demo'}
+              {isDemoJoinable(educator) ? 'Join Now' : 'Join HR Demo'}
             </a>
+            {/* HR Round Done */}
             <button
-              onClick={() => handleDemoCompleted(educator)}
-              className="text-xs px-3 py-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-700 flex items-center gap-1 font-medium"
-              data-testid={`demo-completed-${educator.id}`}
+              onClick={() => handleHRDone(educator)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 flex items-center gap-1 font-medium"
+              data-testid={`hr-done-${educator.id}`}
             >
               <CheckCircle2 className="w-3 h-3" />
-              Complete & Rate
+              HR Done
             </button>
             <button
               onClick={() => {
@@ -765,7 +801,99 @@ const AdminEducators = () => {
             </button>
           </div>
         );
-      
+
+      case 'hr_done':
+        return (
+          <div className="flex gap-1 flex-wrap">
+            <div className="w-full mb-1">
+              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">HR Round Completed</span>
+            </div>
+            <button
+              onClick={() => {
+                setShowTechScheduleModal(educator);
+                setTechScheduleData({ date: null, time: '' });
+              }}
+              className="text-xs px-3 py-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 flex items-center gap-1 font-medium"
+              data-testid={`schedule-tech-${educator.id}`}
+            >
+              <CalendarClock className="w-3 h-3" />
+              Schedule Tech Demo
+            </button>
+            <button
+              onClick={() => handleArchive(educator)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1 font-medium"
+            >
+              <Archive className="w-3 h-3" />
+              Archive
+            </button>
+          </div>
+        );
+
+      case 'tech_scheduled':
+        return (
+          <div className="flex gap-1 flex-wrap">
+            {/* Join Tech Demo */}
+            <a
+              href={generateMeetingLink(educator)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white flex items-center gap-1 font-medium"
+              data-testid={`join-tech-demo-${educator.id}`}
+            >
+              <Video className="w-3 h-3" />
+              Join Tech Demo
+            </a>
+            {/* Complete & Rate */}
+            <button
+              onClick={() => handleDemoCompleted(educator)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-700 flex items-center gap-1 font-medium"
+              data-testid={`demo-completed-${educator.id}`}
+            >
+              <CheckCircle2 className="w-3 h-3" />
+              Complete & Rate
+            </button>
+            <button
+              onClick={() => {
+                setShowTechScheduleModal(educator);
+                setTechScheduleData({ date: null, time: '' });
+              }}
+              className="text-xs px-3 py-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 flex items-center gap-1 font-medium"
+              data-testid={`reschedule-tech-${educator.id}`}
+            >
+              <CalendarClock className="w-3 h-3" />
+              Reschedule
+            </button>
+            <button
+              onClick={() => handleArchive(educator)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1 font-medium"
+            >
+              <Archive className="w-3 h-3" />
+              Archive
+            </button>
+          </div>
+        );
+
+      case 'demo_completed':
+        return (
+          <div className="flex gap-1 flex-wrap">
+            <button
+              onClick={() => handleDemoCompleted(educator)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-700 flex items-center gap-1 font-medium"
+              data-testid={`demo-completed-${educator.id}`}
+            >
+              <CheckCircle2 className="w-3 h-3" />
+              Complete & Rate
+            </button>
+            <button
+              onClick={() => handleArchive(educator)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1 font-medium"
+            >
+              <Archive className="w-3 h-3" />
+              Archive
+            </button>
+          </div>
+        );
+
       case 'onboarded':
         return (
           <div className="flex gap-1 flex-wrap">
@@ -794,7 +922,7 @@ const AdminEducators = () => {
             </button>
           </div>
         );
-      
+
       case 'active':
         return (
           <div className="flex gap-1 flex-wrap">
@@ -816,10 +944,21 @@ const AdminEducators = () => {
             </button>
           </div>
         );
-      
+
       case 'archived':
-        return null;
-      
+        return (
+          <div className="flex gap-1 flex-wrap">
+            <button
+              onClick={() => handleUnarchive(educator)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 flex items-center gap-1 font-medium"
+              data-testid={`unarchive-${educator.id}`}
+            >
+              <CheckCircle2 className="w-3 h-3" />
+              Unarchive
+            </button>
+          </div>
+        );
+
       default:
         return null;
     }
@@ -1180,7 +1319,13 @@ const AdminEducators = () => {
                 {educator.demo_date && (
                   <p className="flex items-center gap-1 text-purple-600 font-medium">
                     <Calendar className="w-3 h-3" />
-                    Demo: {educator.demo_date} {educator.demo_time && `at ${educator.demo_time}`}
+                    {educator.status === 'tech_scheduled' ? 'Tech Demo:' : 'HR Demo:'} {educator.status === 'tech_scheduled' ? (educator.tech_demo_date || educator.demo_date) : educator.demo_date} {((educator.status === 'tech_scheduled' ? educator.tech_demo_time : educator.demo_time)) && `at ${educator.status === 'tech_scheduled' ? (educator.tech_demo_time || educator.demo_time) : educator.demo_time}`}
+                  </p>
+                )}
+                {educator.status === 'hr_done' && (
+                  <p className="flex items-center gap-1 text-green-600 font-medium">
+                    <CheckCircle2 className="w-3 h-3" />
+                    HR Round Done — Pending Tech Demo
                   </p>
                 )}
                 {educator.onboarding_date && (
@@ -1809,6 +1954,60 @@ const AdminEducators = () => {
               </Button>
               <Button onClick={handleScheduleDemo} className="btn-primary flex-1">
                 Schedule Demo
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Schedule Tech Demo Modal */}
+      <Dialog open={!!showTechScheduleModal} onOpenChange={() => setShowTechScheduleModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Video className="w-5 h-5 text-indigo-600" />
+              Schedule Technical Demo — {showTechScheduleModal?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="bg-indigo-50 rounded-lg p-3 mb-4">
+            <p className="text-sm text-indigo-700">HR Round completed. Now schedule the Technical Demo round with admin/expert.</p>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Select Date</label>
+              <div className="flex justify-center">
+                <CalendarComponent
+                  mode="single"
+                  selected={techScheduleData.date}
+                  onSelect={(date) => setTechScheduleData({...techScheduleData, date})}
+                  disabled={(date) => date < new Date() || date > addDays(new Date(), 30) || date.getDay() === 0}
+                  className="rounded-xl border border-slate-200"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Select Time</label>
+              <div className="grid grid-cols-4 gap-2">
+                {TIME_SLOTS.map(time => (
+                  <button
+                    key={time}
+                    type="button"
+                    className={`p-2 rounded-lg border text-sm font-medium transition-all ${
+                      techScheduleData.time === time
+                        ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                    onClick={() => setTechScheduleData({...techScheduleData, time})}
+                  >
+                    {time}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" onClick={() => setShowTechScheduleModal(null)} className="flex-1">Cancel</Button>
+              <Button onClick={handleScheduleTechDemo} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white">
+                Schedule Tech Demo
               </Button>
             </div>
           </div>
