@@ -23,10 +23,6 @@ const DEFAULT_SKILLS = ['Robotics', 'Coding', 'AI & ML', 'Entrepreneurship', 'Fi
 const DEFAULT_GRADES = ['Pre-primary', 'Primary (1-5)', 'Middle (6-8)', 'High School (9-10)', 'Senior (11-12)'];
 const DEFAULT_AVAILABILITY = ['Weekday Mornings', 'Weekday Afternoons', 'Weekday Evenings', 'Weekends'];
 
-const CITIES = [
-  'Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 
-  'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow', 'Chandigarh', 'Kochi'
-];
 const TIME_SLOTS = ['10:00', '11:00', '12:00', '14:00', '15:00', '16:00', '17:00'];
 
 const TEACHING_MODES = [
@@ -57,7 +53,7 @@ const EducatorFunnel = () => {
   const [submittedApplication, setSubmittedApplication] = useState(null);
   const [selectedRequirement, setSelectedRequirement] = useState(null);
   const [showRequirementForm, setShowRequirementForm] = useState(false);
-  const [showOtherCity, setShowOtherCity] = useState(false);
+  const [showOtherCity, setShowOtherCity] = useState(false); // kept for logic compat, unused
   
   // OTP verification state
   const [step, setStep] = useState('form'); // form, otp, success
@@ -195,15 +191,8 @@ const EducatorFunnel = () => {
     }));
   };
 
-  const handleCityChange = (e) => {
-    const value = e.target.value;
-    if (value === 'other') {
-      setShowOtherCity(true);
-      setFormData(prev => ({ ...prev, city: '' }));
-    } else {
-      setShowOtherCity(false);
-      setFormData(prev => ({ ...prev, city: value, other_city: '' }));
-    }
+  const handleCityChange = (city) => {
+    setFormData(prev => ({ ...prev, city, other_city: '' }));
   };
 
   // Check if city has OLL center
@@ -213,7 +202,7 @@ const EducatorFunnel = () => {
 
   // Get available teaching modes based on city
   const getAvailableTeachingModes = () => {
-    const selectedCity = showOtherCity ? formData.other_city : formData.city;
+    const selectedCity = formData.city;
     const hasCenter = cityHasCenter(selectedCity);
     
     return TEACHING_MODES.map(mode => ({
@@ -280,7 +269,7 @@ const EducatorFunnel = () => {
           ...formData,
           skills: skillsList,
           phone: fullPhone,
-          city: showOtherCity ? formData.other_city : formData.city,
+          city: formData.city,
           teaching_mode: formData.teaching_mode.join(', '),
           availability: formData.availability.join(', ') || 'Flexible',
           demo_ready: true,
@@ -664,31 +653,13 @@ const EducatorFunnel = () => {
                     </div>
                     <div>
                       <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">City</label>
-                      <select
-                        value={showOtherCity ? 'other' : formData.city}
+                      <CitySearch
+                        value={formData.city}
                         onChange={handleCityChange}
-                        className="w-full h-10 sm:h-12 px-3 sm:px-4 bg-white/50 backdrop-blur-sm border border-slate-200 rounded-xl focus:border-[#1E3A5F] focus:outline-none text-sm sm:text-base"
+                        placeholder="Search your city..."
                         data-testid="educator-city"
-                      >
-                        <option value="">Select City</option>
-                        {CITIES.map(city => (
-                          <option key={city} value={city}>{city}</option>
-                        ))}
-                        <option value="other">Other City</option>
-                      </select>
-                      
-                      {/* Other City Input */}
-                      {showOtherCity && (
-                        <div className="mt-2">
-                          <Input
-                            placeholder="Enter your city name"
-                            value={formData.other_city}
-                            onChange={(e) => setFormData({...formData, other_city: e.target.value})}
-                            className="input-glass h-10 sm:h-12"
-                            data-testid="educator-other-city"
-                          />
-                        </div>
-                      )}
+                        className="w-full"
+                      />
                     </div>
                   </div>
 
