@@ -431,7 +431,13 @@ export async function generateInvoicePDF(payment, schoolData) {
   doc.text(`Rs. ${formatINR(gst.totalWithGST)}`, totalsX + totalsW - 2, y - 6, { align: 'right' });
 
   y += 2;
-  addTotalRow('Balance Due', `Rs. ${formatINR(payment.status === 'paid' ? 0 : gst.totalWithGST)}`, true);
+  const paidAmount = Number(payment.paid_amount || 0);
+  const balanceDue = Math.max(0, gst.totalWithGST - paidAmount);
+
+  if (paidAmount > 0) {
+    addTotalRow('Amount Paid', `Rs. ${formatINR(paidAmount)}`, false);
+  }
+  addTotalRow('Balance Due', `Rs. ${formatINR(balanceDue)}`, true);
   y += 4;
 
   // ─── Amount in Words ───
