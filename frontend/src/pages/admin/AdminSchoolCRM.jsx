@@ -5379,13 +5379,13 @@ const AdminSchoolCRM = () => {
                     <div 
                       className={`${inquiry.status === 'renewed' ? 'bg-emerald-500' : 'bg-purple-500'} h-1.5 rounded-full transition-all`}
                       style={{ 
-                        width: `${(Object.values(inquiry.onboarding_workflow.steps || {}).filter(s => s.completed).length / 9 * 100).toFixed(0)}%` 
+                        width: `${(Object.values(inquiry.onboarding_workflow.steps || {}).filter(s => s.completed).length / Math.max(Object.keys(inquiry.onboarding_workflow.steps || {}).length, 1) * 100).toFixed(0)}%` 
                       }}
                     />
                   </div>
                   <div className="flex items-center justify-between text-[10px]">
                     <span className={inquiry.status === 'renewed' ? 'text-emerald-600' : 'text-purple-600'}>
-                      {Object.values(inquiry.onboarding_workflow.steps || {}).filter(s => s.completed).length}/9
+                      {Object.values(inquiry.onboarding_workflow.steps || {}).filter(s => s.completed).length}/{Object.keys(inquiry.onboarding_workflow.steps || {}).length}
                     </span>
                     {inquiry.onboarding_workflow.tracking_token && (
                       <button
@@ -10888,7 +10888,7 @@ const AdminSchoolCRM = () => {
                 <div 
                   className="h-full bg-gradient-to-r from-green-500 to-emerald-500 transition-all"
                   style={{ 
-                    width: `${Object.values(showOnboardingWorkflowModal.onboarding_workflow.steps || {}).filter(s => s.completed).length / 9 * 100}%` 
+                    width: `${Object.values(showOnboardingWorkflowModal.onboarding_workflow.steps || {}).filter(s => s.completed).length / Math.max(Object.keys(showOnboardingWorkflowModal.onboarding_workflow.steps || {}).length, 1) * 100}%` 
                   }}
                 />
               </div>

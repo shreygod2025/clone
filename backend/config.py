@@ -40,7 +40,7 @@ CLOUDINARY_API_KEY: str = os.getenv("CLOUDINARY_API_KEY", "")
 CLOUDINARY_API_SECRET: str = os.getenv("CLOUDINARY_API_SECRET", "")
 
 # ── Frontend URL ─────────────────────────────────────────────────────────
-FRONTEND_URL: str = os.getenv("FRONTEND_URL", "https://oll-payment-portal.preview.emergentagent.com")
+FRONTEND_URL: str = os.getenv("FRONTEND_URL", "https://multi-funnel-oll.preview.emergentagent.com")
 
 # ── Payment Sync ──────────────────────────────────────────────────────────
 PAYMENT_SYNC_ENABLED: bool = os.getenv("PAYMENT_SYNC_ENABLED", "true").lower() == "true"

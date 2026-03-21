@@ -4181,7 +4181,7 @@ async def create_payment_order(data: StudentPaymentRequest, user: dict = Depends
         )
         
         # Get frontend URL for return
-        frontend_url = os.getenv("FRONTEND_URL", "https://oll-payment-portal.preview.emergentagent.com")
+        frontend_url = os.getenv("FRONTEND_URL", "https://multi-funnel-oll.preview.emergentagent.com")
         
         # Create order meta
         order_meta = OrderMeta(
@@ -4373,7 +4373,7 @@ async def create_payment_session(student_id: str):
         )
         
         # Get frontend URL for return
-        frontend_url = os.getenv("FRONTEND_URL", "https://oll-payment-portal.preview.emergentagent.com")
+        frontend_url = os.getenv("FRONTEND_URL", "https://multi-funnel-oll.preview.emergentagent.com")
         backend_url = os.getenv("REACT_APP_BACKEND_URL", frontend_url)
         
         # Create order meta
@@ -9325,7 +9325,7 @@ async def notify_educators_new_requirement(requirement: dict):
             return
 
         req_id = requirement.get("id", "")
-        frontend_url = os.environ.get("FRONTEND_URL", "https://oll-payment-portal.preview.emergentagent.com")
+        frontend_url = os.environ.get("FRONTEND_URL", "https://multi-funnel-oll.preview.emergentagent.com")
         apply_link = f"{frontend_url}/educator/apply/{req_id}"
 
         pay_text = ""
@@ -11416,142 +11416,152 @@ DEFAULT_ONBOARDING_STEPS = {
     "payment_collection": {
         "title": "Payment Collection",
         "description": "Initial payment received from school",
-        "completed": False,
-        "completed_date": None,
-        "data": {
-            "amount": None,
-            "payment_date": None,
-            "payment_mode": None,
-            "transaction_id": None,
-            "notes": ""
-        }
+        "completed": False, "completed_date": None,
+        "data": {"amount": None, "payment_date": None, "payment_mode": None, "transaction_id": None, "notes": ""}
     },
     "kit_delivery": {
         "title": "Kit Delivery & Tracking",
         "description": "Kits dispatched and delivered to school",
-        "completed": False,
-        "completed_date": None,
-        "data": {
-            "dispatch_date": None,
-            "tracking_link": "",
-            "delivery_date": None,
-            "items_list": [],
-            "notes": ""
-        }
+        "completed": False, "completed_date": None,
+        "data": {"dispatch_date": None, "tracking_link": "", "delivery_date": None, "items_list": [], "notes": ""}
     },
     "distribution_checking": {
-        "title": "Distribution & Checking",
+        "title": "Kit Distribution",
         "description": "Kits distributed to students and verified",
-        "completed": False,
-        "completed_date": None,
-        "data": {
-            "distribution_date": None,
-            "students_count": None,
-            "queries": [],
-            "notes": ""
-        }
+        "completed": False, "completed_date": None,
+        "data": {"distribution_date": None, "students_count": None, "queries": [], "notes": ""}
+    },
+    "lab_setup": {
+        "title": "Lab Setup",
+        "description": "School lab installed and configured",
+        "completed": False, "completed_date": None,
+        "data": {"setup_date": None, "technician_name": "", "checklist": [], "notes": ""}
+    },
+    "lab_refilling": {
+        "title": "Kits Checking & Refilling",
+        "description": "Existing lab kits inspected and refilled for renewal",
+        "completed": False, "completed_date": None,
+        "data": {"check_date": None, "items_replaced": [], "notes": ""}
     },
     "technical_check": {
         "title": "Technical Check",
         "description": "All technical requirements verified",
-        "completed": False,
-        "completed_date": None,
-        "data": {
-            "checklist": [
-                {"item": "Lab/Classroom setup verified", "checked": False},
-                {"item": "Power supply & electrical points", "checked": False},
-                {"item": "Internet connectivity", "checked": False},
-                {"item": "Projector/Display working", "checked": False},
-                {"item": "All kits functional", "checked": False},
-                {"item": "Software installed", "checked": False}
-            ],
-            "notes": ""
-        }
+        "completed": False, "completed_date": None,
+        "data": {"checklist": [
+            {"item": "Lab/Classroom setup verified", "checked": False},
+            {"item": "Power supply & electrical points", "checked": False},
+            {"item": "Internet connectivity", "checked": False},
+            {"item": "Projector/Display working", "checked": False},
+            {"item": "All kits functional", "checked": False},
+            {"item": "Software installed", "checked": False}
+        ], "notes": ""}
     },
     "teacher_training": {
         "title": "Teacher Training",
         "description": "Teachers trained and certified",
-        "completed": False,
-        "completed_date": None,
-        "data": {
-            "training_date": None,
-            "training_mode": "offline",
-            "teachers_count": None,
-            "checklist": [
-                {"item": "Training session conducted", "checked": False},
-                {"item": "Assessment completed", "checked": False},
-                {"item": "Certificates issued", "checked": False},
-                {"item": "Doubt clearing session done", "checked": False}
-            ],
-            "teachers": [],
-            "notes": ""
-        }
+        "completed": False, "completed_date": None,
+        "data": {"training_date": None, "training_mode": "offline", "teachers_count": None,
+                 "checklist": [
+                     {"item": "Training session conducted", "checked": False},
+                     {"item": "Assessment completed", "checked": False},
+                     {"item": "Certificates issued", "checked": False},
+                     {"item": "Doubt clearing session done", "checked": False}
+                 ], "teachers": [], "notes": ""}
+    },
+    "teacher_allocation": {
+        "title": "Teacher Allocation",
+        "description": "OLL educator allocated to the school for student training",
+        "completed": False, "completed_date": None,
+        "data": {"educator_name": "", "educator_phone": "", "allocation_date": None, "grades_assigned": [], "notes": ""}
+    },
+    "teacher_approval": {
+        "title": "Teacher Approval from School",
+        "description": "School principal/contact approves the allocated educator",
+        "completed": False, "completed_date": None,
+        "data": {"approval_date": None, "approved_by": "", "approval_mode": "email", "notes": ""}
+    },
+    "timetable_finalization": {
+        "title": "Timetable Creation",
+        "description": "Class timetable created and confirmed by school",
+        "completed": False, "completed_date": None,
+        "data": {"grades": [], "sessions_per_week": None, "synced_to_checkin": False, "timetable_data": [], "notes": ""}
     },
     "calendar_making": {
         "title": "Calendar Making",
         "description": "Academic calendar finalized with all events",
-        "completed": False,
-        "completed_date": None,
-        "data": {
-            "holidays": [],
-            "competitions": [],
-            "exhibitions": [],
-            "special_events": [],
-            "notes": ""
-        }
-    },
-    "timetable_finalization": {
-        "title": "Timetable Finalization",
-        "description": "Class timetable created and synced",
-        "completed": False,
-        "completed_date": None,
-        "data": {
-            "grades": [],
-            "sessions_per_week": None,
-            "synced_to_checkin": False,
-            "timetable_data": [],
-            "notes": ""
-        }
+        "completed": False, "completed_date": None,
+        "data": {"holidays": [], "competitions": [], "exhibitions": [], "special_events": [], "notes": ""}
     },
     "mou_signing": {
         "title": "MOU Signing",
         "description": "Memorandum of Understanding signed",
-        "completed": False,
-        "completed_date": None,
-        "data": {
-            "mou_date": None,
-            "signed_by_school": False,
-            "signed_by_oll": False,
-            "document_link": "",
-            "notes": ""
-        }
+        "completed": False, "completed_date": None,
+        "data": {"mou_date": None, "signed_by_school": False, "signed_by_oll": False, "document_link": "", "notes": ""}
     },
     "lms_setup": {
         "title": "LMS Setup",
         "description": "Student credentials uploaded to LMS",
-        "completed": False,
-        "completed_date": None,
-        "data": {
-            "students_uploaded": 0,
-            "upload_date": None,
-            "file_url": "",
-            "students_list": [],
-            "notes": ""
-        }
+        "completed": False, "completed_date": None,
+        "data": {"students_uploaded": 0, "upload_date": None, "file_url": "", "students_list": [], "notes": ""}
     },
     "school_confirmation": {
         "title": "School Finalization",
         "description": "Final confirmation received from school",
-        "completed": False,
-        "completed_date": None,
-        "data": {
-            "confirmation_date": None,
-            "confirmed_by": "",
-            "feedback": "",
-            "notes": ""
-        }
+        "completed": False, "completed_date": None,
+        "data": {"confirmation_date": None, "confirmed_by": "", "feedback": "", "notes": ""}
     }
 }
+
+# ── Ordered step keys per scenario ────────────────────────────────────────
+# Used to control rendering order in the UI
+
+def generate_dynamic_onboarding_steps(onboarding_data: dict, is_renewal: bool = False) -> dict:
+    """
+    Build a tailored onboarding workflow based on the school's program details.
+
+    Rules
+    ─────
+    • individual kit  → kit_distribution step
+    • lab setup       → no kit_distribution; new=lab_setup | renewal=lab_refilling
+    • teacher_training (or both) → teacher_training step
+    • student_training (or both) → teacher_allocation + teacher_approval + timetable_finalization
+    """
+    import copy
+
+    kit_type      = (onboarding_data.get("kit_type") or "individual").lower()
+    training_type = (onboarding_data.get("training_type") or "teacher_training").lower()
+
+    all_steps = copy.deepcopy(DEFAULT_ONBOARDING_STEPS)
+
+    # Determine which step keys are active (in order)
+    ordered_keys = ["payment_collection", "kit_delivery"]
+
+    if kit_type in ("individual", "student_kit", "individual_books"):
+        ordered_keys.append("distribution_checking")
+    elif kit_type == "lab_setup":
+        ordered_keys.append("lab_refilling" if is_renewal else "lab_setup")
+
+    ordered_keys.append("technical_check")
+
+    needs_teacher_training = training_type in ("teacher_training", "both")
+    needs_student_training = training_type in ("student_training", "both")
+
+    if needs_teacher_training:
+        ordered_keys.append("teacher_training")
+
+    if needs_student_training:
+        ordered_keys += ["teacher_allocation", "teacher_approval", "timetable_finalization"]
+
+    ordered_keys += ["calendar_making", "mou_signing", "lms_setup", "school_confirmation"]
+
+    # Return only the active steps (in order, as an ordered dict)
+    from collections import OrderedDict
+    active = OrderedDict()
+    for key in ordered_keys:
+        if key in all_steps:
+            active[key] = all_steps[key]
+
+    return dict(active)
 
 @api_router.post("/schools/{school_id}/init-onboarding")
 async def init_school_onboarding(school_id: str, data: dict = None, user: dict = Depends(get_current_user)):
@@ -11570,10 +11580,12 @@ async def init_school_onboarding(school_id: str, data: dict = None, user: dict =
     # Generate unique tracking token
     tracking_token = f"oll-{uuid.uuid4().hex[:12]}"
     
-    # Initialize onboarding steps with MOU already completed
-    steps = copy.deepcopy(DEFAULT_ONBOARDING_STEPS)
-    steps["mou_signing"]["completed"] = True
-    steps["mou_signing"]["completed_date"] = datetime.now(timezone.utc).isoformat()
+    # Initialize onboarding steps dynamically based on what the school purchased
+    onboarding_data_for_steps = school.get("onboarding_data", {})
+    steps = generate_dynamic_onboarding_steps(onboarding_data_for_steps, is_renewal=is_renewal)
+    if "mou_signing" in steps:
+        steps["mou_signing"]["completed"] = True
+        steps["mou_signing"]["completed_date"] = datetime.now(timezone.utc).isoformat()
     
     action_label = "Renewal Started" if is_renewal else "Onboarding Started"
     mou_label = "MOU Signed - School Renewed" if is_renewal else "MOU Signed - School Converted"
@@ -11835,12 +11847,9 @@ async def update_onboarding_step(
     if all_completed:
         workflow["completed_at"] = datetime.now(timezone.utc).isoformat()
     
-    # Find next incomplete step
-    step_order = ["payment_collection", "kit_delivery", "distribution_checking", 
-                  "technical_check", "teacher_training", "calendar_making", 
-                  "timetable_finalization", "mou_signing", "school_confirmation"]
+    # Find next incomplete step using actual workflow keys (preserves dynamic order)
     current_step = None
-    for sk in step_order:
+    for sk in steps.keys():
         if not steps.get(sk, {}).get("completed", False):
             current_step = sk
             break
@@ -12050,23 +12059,18 @@ async def get_public_tracking(tracking_token: str):
     completed_steps = sum(1 for s in steps.values() if s.get("completed", False))
     progress_percent = int((completed_steps / total_steps) * 100) if total_steps > 0 else 0
     
-    # Build public-safe response - MOU first!
+    # Build public-safe response - MOU first, then rest in workflow order
     public_steps = []
-    step_order = ["mou_signing", "payment_collection", "kit_delivery", "distribution_checking", 
-                  "technical_check", "teacher_training", "calendar_making", 
-                  "timetable_finalization", "lms_setup", "school_confirmation"]
+    # Use actual step keys from workflow (preserves dynamic order), put mou_signing first
+    all_step_keys = list(steps.keys())
+    if "mou_signing" in all_step_keys:
+        all_step_keys.remove("mou_signing")
+        all_step_keys.insert(0, "mou_signing")
     
-    for key in step_order:
+    for key in all_step_keys:
         step = steps.get(key, {})
-        # If step doesn't exist in workflow, create default entry
-        if not step and key == "lms_setup":
-            step = {
-                "title": "LMS Setup",
-                "description": "Student credentials uploaded to LMS",
-                "completed": False,
-                "completed_date": None,
-                "data": {}
-            }
+        if not step:
+            continue
         step_data = step.get("data", {})
         
         # For kit_delivery, include PO info
