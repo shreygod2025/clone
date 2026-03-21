@@ -577,3 +577,12 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
   - Created `/utils/receiptPdfGenerator.js` - generates styled receipt PDF with OLL branding using jsPDF
   - Tested: 5/5 features passed (iteration 46)
 
+### March 21, 2026 (Session 2 - continued)
+- **Raise PO Request from Onboarding (DONE):**
+  - Backend: `POST /api/schools/{school_id}/raise-po` builds products from onboarding data (course_type, kit_type, book_type, grade_pricing) and submits to vendor panel API (`vendorplus-4.emergent.host/api/public/po-request`)
+  - Product logic: Only Robotics → Robotics Kit all grades; Robotics+Coding+AI → Robotics Kit (Grade 1-6), IOT Kit (Grade 7-10); Lab Setup → Lab Kit × count; Individual Books → 1 per student per grade
+  - Frontend: "Raise PO Request" button in onboarding workflow > payment_collection step (activated when payment step complete or partial payment received)
+  - Delivery date dialog prompts for date before raising PO
+  - PO response stored on school record (`po_requests` array) and kit_delivery step auto-updated
+  - Tested: Backend API verified with curl, multiple scenarios (individual kit, lab setup, robotics_coding_ai grade split)
+

@@ -566,6 +566,9 @@ const AdminSchoolCRM = () => {
   const [schoolPoData, setSchoolPoData] = useState(null);  // PO data from ProcureWay
   const [loadingPoData, setLoadingPoData] = useState(false);
   const [syncingExpenses, setSyncingExpenses] = useState(false);
+  const [showRaisePODialog, setShowRaisePODialog] = useState(false);
+  const [poDeliveryDate, setPoDeliveryDate] = useState('');
+  const [raisingPO, setRaisingPO] = useState(false);
   const [renewalConvertData, setRenewalConvertData] = useState({
     offering: '',
     model: '',
@@ -4142,6 +4145,34 @@ const AdminSchoolCRM = () => {
       toast.error('Failed to sync expenses');
     } finally {
       setSyncingExpenses(false);
+    }
+  };
+
+  // Raise PO Request to Vendor Panel
+  const handleRaisePO = async () => {
+    if (!poDeliveryDate) {
+      toast.error('Please select a delivery date');
+      return;
+    }
+    setRaisingPO(true);
+    try {
+      const res = await axios.post(`${API}/schools/${showOnboardingWorkflowModal.id}/raise-po`, {
+        delivery_date: poDeliveryDate
+      }, { headers: getAuthHeaders() });
+      toast.success(res.data.message || 'PO raised successfully!');
+      setShowRaisePODialog(false);
+      setPoDeliveryDate('');
+      // Refresh school data
+      fetchInquiries();
+      // Refresh the modal data
+      const updated = await axios.get(`${API}/schools/${showOnboardingWorkflowModal.id}/onboarding`, { headers: getAuthHeaders() });
+      if (updated.data) {
+        setShowOnboardingWorkflowModal(prev => ({ ...prev, ...updated.data }));
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to raise PO');
+    } finally {
+      setRaisingPO(false);
     }
   };
 
@@ -11097,6 +11128,41 @@ const AdminSchoolCRM = () => {
                               → Manage payments in Orders → School Payments
                             </a>
                           </p>
+                          
+                          {/* Raise PO Request Button - shown when payment step is complete or at least one payment received */}
+                          {(() => {
+                            const paymentStep = showOnboardingWorkflowModal?.onboarding_workflow?.steps?.payment_collection;
+                            const hasPaidTranche = showOnboardingWorkflowModal?.payments?.some(p => p.status === 'paid');
+                            const canRaisePO = paymentStep?.completed || hasPaidTranche;
+                            const existingPOs = showOnboardingWorkflowModal?.po_requests || [];
+                            return canRaisePO ? (
+                              <div className="mt-3 pt-3 border-t border-slate-200">
+                                {existingPOs.length > 0 && (
+                                  <div className="mb-2 space-y-1">
+                                    {existingPOs.map((po, i) => (
+                                      <div key={i} className="text-xs bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 flex items-center justify-between">
+                                        <span className="text-blue-700 font-medium">{po.po_number} ({po.products?.length} items)</span>
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-blue-500">{po.status}</span>
+                                          {po.tracking_url && (
+                                            <a href={po.tracking_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Track</a>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                <button
+                                  onClick={() => { setShowRaisePODialog(true); setPoDeliveryDate(''); }}
+                                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white text-xs rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+                                  data-testid="raise-po-btn"
+                                >
+                                  <Package className="w-3.5 h-3.5" />
+                                  Raise PO Request
+                                </button>
+                              </div>
+                            ) : null;
+                          })()}
                         </div>
                       )}
                       
@@ -11523,6 +11589,52 @@ const AdminSchoolCRM = () => {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Raise PO Delivery Date Dialog */}
+      <Dialog open={showRaisePODialog} onOpenChange={setShowRaisePODialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="w-5 h-5 text-indigo-600" />
+              Raise PO Request
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-slate-50 p-3 rounded-lg text-sm">
+              <p className="font-medium text-slate-800">{showOnboardingWorkflowModal?.school_name}</p>
+              <div className="mt-2 space-y-1 text-xs text-slate-600">
+                <p>Course: {showOnboardingWorkflowModal?.onboarding_data?.course_type === 'robotics_coding_ai' ? 'Robotics, Coding & AI' : 'Only Robotics'}</p>
+                <p>Kit: {showOnboardingWorkflowModal?.onboarding_data?.kit_type === 'lab_setup' ? `Lab Setup (${showOnboardingWorkflowModal?.onboarding_data?.lab_kit_count || 0} kits)` : 'Individual Kit'}</p>
+                <p>Books: {showOnboardingWorkflowModal?.onboarding_data?.book_type === 'individual_books' ? 'Individual Books' : 'No Books'}</p>
+                <p>Students: {showOnboardingWorkflowModal?.onboarding_data?.total_students || '-'}</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Delivery Date *</label>
+              <Input
+                type="date"
+                value={poDeliveryDate}
+                onChange={(e) => setPoDeliveryDate(e.target.value)}
+                min={new Date().toISOString().split('T')[0]}
+                data-testid="po-delivery-date"
+              />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => setShowRaisePODialog(false)} className="flex-1">
+                Cancel
+              </Button>
+              <Button
+                onClick={handleRaisePO}
+                disabled={raisingPO || !poDeliveryDate}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+                data-testid="confirm-raise-po"
+              >
+                {raisingPO ? 'Raising PO...' : 'Confirm & Raise PO'}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 

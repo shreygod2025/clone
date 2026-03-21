@@ -15616,6 +15616,139 @@ async def fetch_po_data(endpoint: str, params: dict = None, timeout: float = 10.
             return None
 
 
+VENDOR_PUBLIC_API = os.environ.get("VENDOR_PUBLIC_API", "https://vendorplus-4.emergent.host/api/public")
+
+
+@api_router.post("/schools/{school_id}/raise-po")
+async def raise_po_for_school(school_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Build PO products from onboarding data and submit to vendor panel"""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+
+    od = school.get("onboarding_data", {})
+    delivery_date = data.get("delivery_date")
+    if not delivery_date:
+        raise HTTPException(status_code=400, detail="Delivery date is required")
+
+    course_type = od.get("course_type", "only_robotics")
+    kit_type = od.get("kit_type", "individual")
+    book_type = od.get("book_type", "no_books")
+    lab_kit_count = int(od.get("lab_kit_count") or 0)
+    grade_pricing = od.get("grade_pricing", [])
+
+    products = []
+
+    # ── Kit Products ──
+    if kit_type == "individual":
+        for gp in grade_pricing:
+            grade = gp.get("grade", "")
+            students = int(gp.get("students") or 0)
+            if not grade or students <= 0:
+                continue
+            grade_num = int(grade) if str(grade).isdigit() else 0
+
+            if course_type == "robotics_coding_ai" and grade_num >= 7:
+                products.append({"product_name": f"IOT Kit - Grade {grade}", "quantity": students})
+            else:
+                products.append({"product_name": f"Robotics Kit - Grade {grade}", "quantity": students})
+
+    elif kit_type == "lab_setup" and lab_kit_count > 0:
+        if course_type == "robotics_coding_ai":
+            products.append({"product_name": "IOT Lab Kit", "quantity": lab_kit_count})
+        else:
+            products.append({"product_name": "Robotics Lab Kit", "quantity": lab_kit_count})
+
+    # ── Book Products ──
+    if book_type == "individual_books":
+        for gp in grade_pricing:
+            grade = gp.get("grade", "")
+            students = int(gp.get("students") or 0)
+            if not grade or students <= 0:
+                continue
+            products.append({"product_name": f"Book - Grade {grade}", "quantity": students})
+
+    if not products:
+        raise HTTPException(status_code=400, detail="No products could be determined from onboarding data. Check course type, kit type, and grade pricing.")
+
+    school_name = school.get("school_name", "")
+    contact_name = school.get("contact_name", "")
+    contact_phone = school.get("contact_phone") or school.get("phone", "")
+    address = school.get("address") or od.get("address") or school.get("city", "")
+
+    po_payload = {
+        "requester_name": user.get("name") or user.get("email", "OLL System"),
+        "delivery_date": delivery_date,
+        "delivery_address": address or school_name,
+        "contact_person": contact_name or school_name,
+        "contact_number": contact_phone or "",
+        "school_name": school_name,
+        "city": school.get("city", ""),
+        "notes": f"Auto-generated PO for {school_name}. Course: {course_type}, Kit: {kit_type}, Book: {book_type}",
+        "source_system": "oll_admin",
+        "products": products,
+    }
+
+    # Call vendor panel API
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(
+                f"{VENDOR_PUBLIC_API}/po-request",
+                json=po_payload,
+                timeout=15.0
+            )
+            response.raise_for_status()
+            po_result = response.json()
+        except httpx.HTTPStatusError as e:
+            err_text = e.response.text if hasattr(e.response, 'text') else str(e)
+            logging.error(f"Vendor PO API error: {e.response.status_code} - {err_text}")
+            raise HTTPException(status_code=502, detail=f"Vendor API error: {err_text}")
+        except Exception as e:
+            logging.error(f"Vendor PO API error: {str(e)}")
+            raise HTTPException(status_code=502, detail=f"Failed to reach vendor API: {str(e)}")
+
+    # Store PO info on the school
+    po_info = {
+        "po_number": po_result.get("po_number"),
+        "po_id": po_result.get("po_id"),
+        "tracking_token": po_result.get("tracking_token"),
+        "tracking_url": po_result.get("tracking_url"),
+        "status": po_result.get("status"),
+        "products": products,
+        "delivery_date": delivery_date,
+        "raised_at": datetime.now(timezone.utc).isoformat(),
+        "raised_by": user.get("email"),
+    }
+    await db.school_inquiries.update_one(
+        {"id": school_id},
+        {"$push": {"po_requests": po_info}}
+    )
+
+    # Also update onboarding kit_delivery step
+    await db.school_inquiries.update_one(
+        {"id": school_id},
+        {"$set": {
+            "onboarding_workflow.steps.kit_delivery.data.po_number": po_result.get("po_number"),
+            "onboarding_workflow.steps.kit_delivery.data.po_status": po_result.get("status"),
+            "onboarding_workflow.steps.kit_delivery.data.delivery_date": delivery_date,
+            "onboarding_workflow.steps.kit_delivery.data.tracking_url": po_result.get("tracking_url"),
+        }}
+    )
+
+    return {
+        "success": True,
+        "po_number": po_result.get("po_number"),
+        "tracking_token": po_result.get("tracking_token"),
+        "tracking_url": po_result.get("tracking_url"),
+        "products_count": len(products),
+        "products": products,
+        "message": f"PO {po_result.get('po_number')} raised successfully with {len(products)} product(s)",
+    }
+
+
 @api_router.get("/schools/{school_id}/po-data")
 async def get_school_po_data(school_id: str, user: dict = Depends(get_current_user)):
     """Get PO data for a school from ProcureWay - excludes delivered POs"""
