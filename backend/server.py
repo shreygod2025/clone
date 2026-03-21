@@ -540,7 +540,7 @@ from email.mime.multipart import MIMEMultipart
 # Gmail SMTP Configuration
 GMAIL_EMAIL = os.environ.get("GMAIL_EMAIL", "clonefutura@gmail.com")
 GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "")  # App Password, not regular password
-SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "clonefutura@gmail.com")
+SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "OLL Team <welcome@oll.co>")
 
 # Legacy Resend support (fallback)
 resend.api_key = os.environ.get("RESEND_API_KEY", "")
