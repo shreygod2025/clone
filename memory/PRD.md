@@ -545,8 +545,24 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 
 ---
 
+### March 21, 2026
+- **Dynamic Onboarding Steps (DONE):** School onboarding workflow now generates tailored step sets based on purchase:
+  - Individual kit → includes `distribution_checking`, excludes `lab_setup/refilling`
+  - Lab setup → includes `lab_setup` (new) / `lab_refilling` (renewal), excludes distribution
+  - Student training → includes `teacher_allocation`, `teacher_approval`, `timetable_finalization`
+  - Teacher training → includes `teacher_training` only
+  - `both` → includes all student + teacher training steps
+  - Fixed: `init_school_onboarding` now uses `generate_dynamic_onboarding_steps` instead of hardcoded `DEFAULT_ONBOARDING_STEPS`
+  - Fixed: `get_public_tracking` iterates over actual workflow steps (no ghost steps from hardcoded list)
+  - Fixed: `update_onboarding_step` uses actual workflow keys for `current_step` calculation
+  - Fixed: `AdminSchoolCRM.jsx` 3 hardcoded `/9` replaced with dynamic step count
+  - Fixed: `SchoolTrackingPage.jsx` added icons for `lab_setup` (Building2), `lab_refilling` (Package), `teacher_allocation` (User), `teacher_approval` (ThumbsUp)
+  - Tested: 20/20 tests passed (iteration 44)
+
 ## Known Issues
 1. **File Downloads:** Downloads have incorrect names/types (recurring - 3+ attempts)
 2. **Jitsi Moderator:** Limited control with public meet.jit.si server
 3. **Gmail SMTP:** Non-functional, blocked on user credentials
 4. **Parent Circular docx:** Table formatting broken (recurring 3+)
+5. **Data Transfer** (User Verification Pending): Converting a lead - Program Details should auto-fill from proposal_data
+6. **MOU School Name** (User Verification Pending): School name should appear in MOU PDF header
