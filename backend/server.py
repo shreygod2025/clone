@@ -4188,7 +4188,7 @@ async def create_payment_order(data: StudentPaymentRequest, user: dict = Depends
         )
         
         # Get frontend URL for return
-        frontend_url = os.getenv("FRONTEND_URL", "https://admin-dashboard-oll.preview.emergentagent.com")
+        frontend_url = os.getenv("FRONTEND_URL", "https://oll-admin-portal.preview.emergentagent.com")
         
         # Create order meta
         order_meta = OrderMeta(
@@ -4380,7 +4380,7 @@ async def create_payment_session(student_id: str):
         )
         
         # Get frontend URL for return
-        frontend_url = os.getenv("FRONTEND_URL", "https://admin-dashboard-oll.preview.emergentagent.com")
+        frontend_url = os.getenv("FRONTEND_URL", "https://oll-admin-portal.preview.emergentagent.com")
         backend_url = os.getenv("REACT_APP_BACKEND_URL", frontend_url)
         
         # Create order meta
@@ -9343,7 +9343,7 @@ async def notify_educators_new_requirement(requirement: dict):
             return
 
         req_id = requirement.get("id", "")
-        frontend_url = os.environ.get("FRONTEND_URL", "https://admin-dashboard-oll.preview.emergentagent.com")
+        frontend_url = os.environ.get("FRONTEND_URL", "https://oll-admin-portal.preview.emergentagent.com")
         apply_link = f"{frontend_url}/educator/apply/{req_id}"
 
         pay_text = ""
@@ -12104,6 +12104,31 @@ async def send_mou_email(school_id: str, data: dict, user: dict = Depends(get_cu
         if "testing" in error_msg.lower():
             raise HTTPException(status_code=400, detail="Resend API key is a TEST key. Update to production key.")
         raise HTTPException(status_code=500, detail=f"Failed to send email: {error_msg}")
+
+
+@api_router.post("/schools/{school_id}/add-document")
+async def add_school_document(school_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Atomically append a document to school's documents array"""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    doc_entry = {
+        "type": data.get("type", "General"),
+        "url": data.get("url"),
+        "name": data.get("name"),
+        "uploaded_at": data.get("uploaded_at", datetime.now(timezone.utc).isoformat()),
+        "uploaded_by": data.get("uploaded_by", user.get("name") or user.get("email", "Admin")),
+    }
+    if not doc_entry["url"]:
+        raise HTTPException(status_code=400, detail="Document URL is required")
+
+    result = await db.school_inquiries.update_one(
+        {"id": school_id},
+        {"$push": {"documents": doc_entry}}
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="School not found")
+    return {"success": True, "document": doc_entry}
 
 
 @api_router.get("/schools/{school_id}/onboarding")

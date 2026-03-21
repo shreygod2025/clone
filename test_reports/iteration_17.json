@@ -60,7 +60,7 @@
   "test_execution_details": {
     "test_type": "Frontend UI Testing + Backend API Verification",
     "tool_used": "Playwright Browser Automation + curl",
-    "test_url": "https://admin-dashboard-oll.preview.emergentagent.com",
+    "test_url": "https://oll-admin-portal.preview.emergentagent.com",
     "pages_tested": [
       "/admin/login",
       "School CRM - Leads & Schools tab",
