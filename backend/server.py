@@ -15619,6 +15619,87 @@ async def fetch_po_data(endpoint: str, params: dict = None, timeout: float = 10.
 VENDOR_PUBLIC_API = os.environ.get("VENDOR_PUBLIC_API", "https://vendorplus-4.emergent.host/api/public")
 
 
+async def fetch_vendor_products():
+    """Fetch product catalog from vendor panel"""
+    async with httpx.AsyncClient(follow_redirects=True) as client:
+        try:
+            response = await client.get(
+                f"{VENDOR_PUBLIC_API}/products",
+                timeout=10.0
+            )
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logging.error(f"Failed to fetch vendor products: {e}")
+            return []
+
+
+def match_vendor_product(products_catalog, grade, product_type, course_type):
+    """Match a grade+type to the best vendor product_id.
+    product_type: 'kit', 'book', 'lab_kit'
+    """
+    grade_str = str(grade).strip()
+    grade_num = int(grade_str) if grade_str.isdigit() else 0
+
+    if product_type == 'lab_kit':
+        # Lab kits
+        if course_type == 'robotics_coding_ai':
+            candidates = ['lab kit-iot', 'lab kit iot', 'labkit-iot']
+        else:
+            candidates = ['lab kit rob', 'lab kit-rob', 'labkit rob']
+        for p in products_catalog:
+            name_lower = p.get('name', '').strip().lower()
+            sku_lower = p.get('sku', '').strip().lower()
+            for c in candidates:
+                if c in name_lower or c.replace(' ', '') in sku_lower.replace('-', '').replace(' ', ''):
+                    return p['id'], p['name']
+        return None, None
+
+    if product_type == 'kit':
+        # Determine kit variant
+        is_iot = (course_type == 'robotics_coding_ai' and grade_num >= 7)
+        for p in products_catalog:
+            name_lower = p.get('name', '').strip().lower()
+            sku_lower = p.get('sku', '').strip().lower()
+            # Match grade number in name
+            if f'grade {grade_str}' in name_lower or f'g-{grade_str.zfill(2)}' in sku_lower or f'g-{grade_str}' in sku_lower:
+                if is_iot and ('iot' in name_lower or 'iot' in sku_lower):
+                    return p['id'], p['name']
+                elif not is_iot and ('robotics' in name_lower or 'rob' in sku_lower) and 'iot' not in name_lower and 'iot' not in sku_lower:
+                    return p['id'], p['name']
+        # Fallback: just grade match
+        for p in products_catalog:
+            name_lower = p.get('name', '').strip().lower()
+            if f'grade {grade_str}' in name_lower and 'book' not in name_lower:
+                if is_iot and 'iot' in name_lower:
+                    return p['id'], p['name']
+                elif not is_iot and 'iot' not in name_lower:
+                    return p['id'], p['name']
+        return None, None
+
+    if product_type == 'book':
+        is_iot = (course_type == 'robotics_coding_ai' and grade_num >= 7)
+        for p in products_catalog:
+            name_lower = p.get('name', '').strip().lower()
+            sku_lower = p.get('sku', '').strip().lower()
+            if 'book' not in name_lower and 'book' not in sku_lower:
+                continue
+            # Match grade
+            if f'g-{grade_str}' in name_lower or f'g-{grade_str}' in sku_lower or f'grade {grade_str}' in name_lower:
+                if grade_num >= 7:
+                    if is_iot and ('iot' in name_lower or 'iot' in sku_lower):
+                        return p['id'], p['name']
+                    elif not is_iot and ('rob' in name_lower or 'rob' in sku_lower):
+                        return p['id'], p['name']
+                else:
+                    # Grade 1-6 books don't have IOT/ROB variants
+                    if 'iot' not in name_lower and 'rob' not in name_lower and 'iot' not in sku_lower and 'rob' not in sku_lower:
+                        return p['id'], p['name']
+        return None, None
+
+    return None, None
+
+
 @api_router.post("/schools/{school_id}/raise-po")
 async def raise_po_for_school(school_id: str, data: dict, user: dict = Depends(get_current_user)):
     """Build PO products from onboarding data and submit to vendor panel"""
@@ -15641,6 +15722,10 @@ async def raise_po_for_school(school_id: str, data: dict, user: dict = Depends(g
     grade_pricing = od.get("grade_pricing", [])
 
     products = []
+    unmatched = []
+
+    # Fetch vendor product catalog for ID matching
+    catalog = await fetch_vendor_products()
 
     # ── Kit Products ──
     if kit_type == "individual":
@@ -15649,18 +15734,23 @@ async def raise_po_for_school(school_id: str, data: dict, user: dict = Depends(g
             students = int(gp.get("students") or 0)
             if not grade or students <= 0:
                 continue
-            grade_num = int(grade) if str(grade).isdigit() else 0
-
-            if course_type == "robotics_coding_ai" and grade_num >= 7:
-                products.append({"product_name": f"IOT Kit - Grade {grade}", "quantity": students})
+            pid, pname = match_vendor_product(catalog, grade, "kit", course_type)
+            if pid:
+                products.append({"product_id": pid, "product_name": pname, "quantity": students})
             else:
-                products.append({"product_name": f"Robotics Kit - Grade {grade}", "quantity": students})
+                grade_num = int(grade) if str(grade).isdigit() else 0
+                fallback = "IOT Kit" if (course_type == "robotics_coding_ai" and grade_num >= 7) else "Robotics Kit"
+                products.append({"product_name": f"{fallback} - Grade {grade}", "quantity": students})
+                unmatched.append(f"{fallback} Grade {grade}")
 
     elif kit_type == "lab_setup" and lab_kit_count > 0:
-        if course_type == "robotics_coding_ai":
-            products.append({"product_name": "IOT Lab Kit", "quantity": lab_kit_count})
+        pid, pname = match_vendor_product(catalog, "", "lab_kit", course_type)
+        if pid:
+            products.append({"product_id": pid, "product_name": pname, "quantity": lab_kit_count})
         else:
-            products.append({"product_name": "Robotics Lab Kit", "quantity": lab_kit_count})
+            fallback = "IOT Lab Kit" if course_type == "robotics_coding_ai" else "Robotics Lab Kit"
+            products.append({"product_name": fallback, "quantity": lab_kit_count})
+            unmatched.append(fallback)
 
     # ── Book Products ──
     if book_type == "individual_books":
@@ -15669,7 +15759,12 @@ async def raise_po_for_school(school_id: str, data: dict, user: dict = Depends(g
             students = int(gp.get("students") or 0)
             if not grade or students <= 0:
                 continue
-            products.append({"product_name": f"Book - Grade {grade}", "quantity": students})
+            pid, pname = match_vendor_product(catalog, grade, "book", course_type)
+            if pid:
+                products.append({"product_id": pid, "product_name": pname, "quantity": students})
+            else:
+                products.append({"product_name": f"Book - Grade {grade}", "quantity": students})
+                unmatched.append(f"Book Grade {grade}")
 
     if not products:
         raise HTTPException(status_code=400, detail="No products could be determined from onboarding data. Check course type, kit type, and grade pricing.")
@@ -15745,6 +15840,7 @@ async def raise_po_for_school(school_id: str, data: dict, user: dict = Depends(g
         "tracking_url": po_result.get("tracking_url"),
         "products_count": len(products),
         "products": products,
+        "unmatched_products": unmatched,
         "message": f"PO {po_result.get('po_number')} raised successfully with {len(products)} product(s)",
     }
 
