@@ -13134,6 +13134,7 @@ from routes.reports import router as reports_router
 from routes.jobs import router as jobs_router
 from routes.expenses import router as expenses_router, transform_tracking_url, fetch_po_data, fetch_vendor_products, match_vendor_product, VENDOR_PUBLIC_API
 from routes.admin_keys import router as admin_keys_router
+from routes.daily_report import router as daily_report_router, send_daily_reports
 
 api_router.include_router(reports_router)
 api_router.include_router(jobs_router)
@@ -13141,6 +13142,7 @@ api_router.include_router(expenses_router)
 api_router.include_router(admin_keys_router)
 api_router.include_router(payments_router)
 api_router.include_router(gp_onboarding_router)
+api_router.include_router(daily_report_router)
 
 app.include_router(api_router)
 
@@ -13244,19 +13246,31 @@ async def startup_db_client():
             name="Automated Payment Sync",
             replace_existing=True
         )
-        scheduler.start()
-        print(f"[STARTUP] Payment sync scheduler started - runs every {PAYMENT_SYNC_INTERVAL_MINUTES} minutes")
+        print(f"[STARTUP] Payment sync scheduler configured - runs every {PAYMENT_SYNC_INTERVAL_MINUTES} minutes")
     else:
         if not PAYMENT_SYNC_ENABLED:
             print("[STARTUP] Payment sync scheduler disabled via PAYMENT_SYNC_ENABLED=false")
         else:
             print("[STARTUP] Payment sync scheduler not started - Cashfree credentials missing")
 
+    # Schedule daily report at 8:00 PM IST = 14:30 UTC every day
+    from apscheduler.triggers.cron import CronTrigger
+    scheduler.add_job(
+        send_daily_reports,
+        trigger=CronTrigger(hour=14, minute=30, timezone="UTC"),
+        id="daily_report_job",
+        name="Daily Category Reports",
+        replace_existing=True
+    )
+    if not scheduler.running:
+        scheduler.start()
+    print("[STARTUP] Daily report emailer scheduled — fires at 8:00 PM IST (14:30 UTC)")
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     # Stop the scheduler if running
     if scheduler.running:
         scheduler.shutdown(wait=False)
-        print("[SHUTDOWN] Payment sync scheduler stopped")
+        print("[SHUTDOWN] Scheduler stopped")
     mongo_client.close()
     print("[SHUTDOWN] MongoDB client closed")

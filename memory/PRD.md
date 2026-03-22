@@ -614,6 +614,13 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 - server.py: 15,704 → 13,217 lines (−2,487 lines, total −4,690 lines from original 17,907)
 - Tested: 20/20 pytest pass + scheduler-status 200 verified (iteration_49)
 
+## Session: March 22, 2026 — Daily Report Emailer (DONE)
+- Created `/app/backend/routes/daily_report.py` — generates and emails 5 separate daily category reports
+- Recipients: shreyaan@oll.co, lavisha@oll.co, clonefutura@gmail.com
+- Scheduled at 8:00 PM IST (14:30 UTC) daily using APScheduler CronTrigger
+- Manual trigger available at POST /api/admin/daily-report/send-now
+- Reports: Support (queries/categories/resolution), B2C (leads/demos/conversions/revenue), Growth Partners, Team Members, Educators (all with rich HTML metrics)
+
 ## Session: March 22, 2026 — PO Tracking URL Fix (DONE)
 - Fixed PO tracking links redirecting to wrong preview domain (`vendor-mgmt-v2.preview.emergentagent.com`) instead of `vendorplus-4.emergent.host`
 - Updated `transform_tracking_url` in `routes/expenses.py` to use regex wildcard for any `*.preview.emergentagent.com` domain
