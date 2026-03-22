@@ -77,40 +77,34 @@ const AdminExpenses = () => {
     try {
       setLoading(true);
       const headers = getAuthHeaders();
-      
-      // Fetch categories
-      const catRes = await axios.get(`${API}/school-expenses/categories`, { headers });
-      setCategories(Array.isArray(catRes.data) ? catRes.data : []);
-      
-      // Fetch schools for dropdown (all schools, not just converted)
-      try {
-        const schoolsRes = await axios.get(`${API}/school-inquiries`, { headers });
-        const schoolsList = schoolsRes.data?.inquiries || schoolsRes.data || [];
-        setSchools(Array.isArray(schoolsList) ? schoolsList : []);
-      } catch (err) {
-        console.error('Failed to fetch schools:', err);
-        setSchools([]);
-      }
-      
-      // Build query params
+
+      // Build expense query params
       const params = new URLSearchParams();
       if (filters.school_id) params.append('school_id', filters.school_id);
       if (filters.category) params.append('category', filters.category);
       if (filters.start_date) params.append('start_date', filters.start_date);
       if (filters.end_date) params.append('end_date', filters.end_date);
-      
-      // Fetch expenses
-      const expRes = await axios.get(`${API}/school-expenses?${params.toString()}`, { headers });
-      // Handle both response formats: direct array or object with expenses property
+      const summaryQuery = filters.school_id ? `?school_id=${filters.school_id}` : '';
+
+      // Run all API calls in parallel for faster load
+      const [catRes, schoolsRes, expRes, summaryRes] = await Promise.all([
+        axios.get(`${API}/school-expenses/categories`, { headers }),
+        axios.get(`${API}/schools/inquiries`, { headers }),
+        axios.get(`${API}/school-expenses?${params.toString()}`, { headers }),
+        axios.get(`${API}/school-expenses/summary${summaryQuery}`, { headers })
+      ]);
+
+      setCategories(Array.isArray(catRes.data) ? catRes.data : []);
+
+      const schoolsList = schoolsRes.data?.inquiries || schoolsRes.data || [];
+      setSchools(Array.isArray(schoolsList) ? schoolsList : []);
+
       const expenseData = Array.isArray(expRes.data) ? expRes.data : (expRes.data?.expenses || []);
       setExpenses(expenseData);
       setSelectedIds([]);
-      
-      // Fetch summary
-      const summaryParams = filters.school_id ? `?school_id=${filters.school_id}` : '';
-      const summaryRes = await axios.get(`${API}/school-expenses/summary${summaryParams}`, { headers });
+
       setSummary(summaryRes.data);
-      
+
     } catch (error) {
       console.error('Failed to fetch expenses:', error);
       toast.error('Failed to load expenses');
