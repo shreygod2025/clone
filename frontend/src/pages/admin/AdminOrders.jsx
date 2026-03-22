@@ -346,15 +346,18 @@ const AdminOrders = () => {
       // Auto-send confirmation email if paid or partial
       if (isPaymentConfirm) {
         try {
-          // Silently generate & save invoice if not already saved
-          if (!invoiceSentMap[showPaymentModal.id]?.saved) {
+      // Silently generate & save invoice (always regenerate on paid/partial to reflect updated balance)
+          if (true) {
             let schoolData = schoolDataCache.current[showPaymentModal.school_id];
             if (!schoolData) {
               const r = await axios.get(`${API}/orders/school-details/${showPaymentModal.school_id}`, { headers: getAuthHeaders() });
               schoolData = r.data;
               schoolDataCache.current[showPaymentModal.school_id] = schoolData;
             }
-            const { invoiceNo, base64 } = await generateInvoicePDF(showPaymentModal, schoolData, { skipDownload: true });
+            const { invoiceNo, base64 } = await generateInvoicePDF(
+              { ...showPaymentModal, status: paymentUpdate.status, paid_amount: paymentUpdate.paid_amount },
+              schoolData, { skipDownload: true }
+            );
             await axios.post(`${API}/orders/save-invoice-pdf`, {
               payment_id: showPaymentModal.id,
               school_id: showPaymentModal.school_id,

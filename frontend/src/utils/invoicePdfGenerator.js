@@ -433,11 +433,17 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
   doc.text(`Rs. ${formatINR(gst.totalWithGST)}`, totalsX + totalsW - 2, y - 6, { align: 'right' });
 
   y += 2;
-  const paidAmount = Number(payment.paid_amount || 0);
+  // Balance Due: 0 if fully paid, remaining if partial, full amount otherwise
+  const paidAmount = payment.status === 'paid'
+    ? gst.totalWithGST  // fully paid → balance = 0
+    : Number(payment.paid_amount || 0);
   const balanceDue = Math.max(0, gst.totalWithGST - paidAmount);
 
-  if (paidAmount > 0) {
+  if (paidAmount > 0 && payment.status !== 'paid') {
     addTotalRow('Amount Paid', `Rs. ${formatINR(paidAmount)}`, false);
+  }
+  if (payment.status === 'paid') {
+    addTotalRow('Amount Paid', `Rs. ${formatINR(gst.totalWithGST)}`, false);
   }
   addTotalRow('Balance Due', `Rs. ${formatINR(balanceDue)}`, true);
   y += 4;
