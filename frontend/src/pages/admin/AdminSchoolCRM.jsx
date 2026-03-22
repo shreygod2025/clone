@@ -606,7 +606,8 @@ const AdminSchoolCRM = () => {
     quoted_price: '',
     followup_type: '', // 'message' or 'meeting'
     followup_date: null, 
-    followup_time: '' 
+    followup_time: '',
+    sendFollowupEmail: true,
   });
   const [newMeetingData, setNewMeetingData] = useState({ date: null, time: '', type: 'offline', notes: '' });
   const [newComment, setNewComment] = useState('');
@@ -1362,21 +1363,22 @@ const AdminSchoolCRM = () => {
           ? 'Meeting completed & follow-up message scheduled!'
           : 'Meeting marked as done!';
       toast.success(successMsg);
+      // Capture school before clearing state
+      const schoolForEmail = showMeetingDoneModal;
+      const notesForEmail = meetingDoneData.notes;
+      const shouldEmail = meetingDoneData.sendFollowupEmail;
       setShowMeetingDoneModal(null);
-      setMeetingDoneData({ notes: '', quoted_price: '', followup_type: '', followup_date: null, followup_time: '' });
+      setMeetingDoneData({ notes: '', quoted_price: '', followup_type: '', followup_date: null, followup_time: '', sendFollowupEmail: true });
       fetchInquiries();
-      // Offer to send followup email
-      const savedNotes = meetingDoneData.notes;
-      const savedSchool = showMeetingDoneModal;
-      setTimeout(() => setEmailModal({
-        mode: 'meeting_followup',
-        schoolId: savedSchool.id,
-        initialSubject: `Thank you for meeting with OLL — ${savedSchool.school_name}`,
-        initialBody: '',
-        recipients: [{ email: savedSchool.email, name: savedSchool.contact_name }],
-        notes: savedNotes,
-        nextSteps: '',
-      }), 300);
+      // Send followup email silently in background if checkbox was checked
+      if (shouldEmail && schoolForEmail?.id) {
+        axios.post(`${API}/schools/${schoolForEmail.id}/send-meeting-followup`, {
+          notes: notesForEmail,
+          next_steps: '',
+        }, { headers: getAuthHeaders() })
+          .then(() => toast.success('Meeting followup email sent to school'))
+          .catch(() => toast.error('Meeting followup email failed to send'));
+      }
     } catch (error) {
       toast.error('Failed to update meeting status');
     }
@@ -5114,6 +5116,22 @@ const AdminSchoolCRM = () => {
                 </div>
               </div>
             )}
+
+            {/* Send followup email option */}
+            <div className="flex items-center gap-3 px-3 py-2.5 bg-blue-50 rounded-lg border border-blue-100">
+              <input
+                type="checkbox"
+                id="sendFollowupEmail"
+                checked={meetingDoneData.sendFollowupEmail}
+                onChange={e => setMeetingDoneData({...meetingDoneData, sendFollowupEmail: e.target.checked})}
+                className="w-4 h-4 rounded accent-[#1E3A5F] cursor-pointer shrink-0"
+                data-testid="send-followup-email-checkbox"
+              />
+              <label htmlFor="sendFollowupEmail" className="text-sm text-blue-800 cursor-pointer select-none">
+                <span className="font-medium">Send meeting followup email to school</span>
+                <span className="text-blue-600 text-xs block">Sends a thank-you email with meeting notes to the school contact</span>
+              </label>
+            </div>
 
             <div className="flex gap-3 pt-4">
               <Button variant="outline" onClick={() => setShowMeetingDoneModal(null)} className="flex-1">
