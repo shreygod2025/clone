@@ -65,11 +65,13 @@ def pct(a, b):
 # ─────────────────────────────────────────────
 
 COLORS = {
-    "support": "#e55a2b",
-    "b2c":     "#1a56db",
-    "gp":      "#057a55",
-    "team":    "#7e3af2",
-    "educator":"#c27803",
+    "support":  "#e55a2b",
+    "b2c":      "#1a56db",
+    "gp":       "#057a55",
+    "team":     "#7e3af2",
+    "educator": "#c27803",
+    "accounts": "#0f766e",
+    "b2b":      "#be185d",
 }
 
 BASE_STYLE = """
@@ -384,7 +386,7 @@ async def _send(subject: str, html: str, api_key: str):
 
 
 async def send_daily_reports():
-    """Main entry — gather all data and fire 5 category emails."""
+    """Main entry — gather all data and fire 7 category emails."""
     logger.info("[DailyReport] Starting daily report generation...")
     api_key = await get_resend_api_key()
     if not api_key:
@@ -395,30 +397,217 @@ async def send_daily_reports():
     date_str = fmt_date()
 
     try:
-        (support_d, b2c_d, gp_d, team_d, educator_d) = await asyncio.gather(
+        (support_d, b2c_d, gp_d, team_d, educator_d, accounts_d, b2b_d) = await asyncio.gather(
             fetch_support_data(start, end),
             fetch_b2c_data(start, end),
             fetch_gp_data(start, end),
             fetch_team_data(start, end),
             fetch_educator_data(start, end),
+            fetch_accounts_data(),
+            fetch_b2b_data(start, end),
         )
     except Exception as e:
         logger.error(f"[DailyReport] Data fetch error: {e}")
         return
 
     emails = [
-        (f"[OLL Report] Support — {date_str}",      build_support_email(support_d, date_str)),
-        (f"[OLL Report] B2C — {date_str}",           build_b2c_email(b2c_d, date_str)),
-        (f"[OLL Report] Growth Partners — {date_str}", build_gp_email(gp_d, date_str)),
-        (f"[OLL Report] Team Members — {date_str}",  build_team_email(team_d, date_str)),
-        (f"[OLL Report] Educators — {date_str}",     build_educator_email(educator_d, date_str)),
+        (f"[OLL Report] Support — {date_str}",         build_support_email(support_d, date_str)),
+        (f"[OLL Report] B2C — {date_str}",              build_b2c_email(b2c_d, date_str)),
+        (f"[OLL Report] Growth Partners — {date_str}",  build_gp_email(gp_d, date_str)),
+        (f"[OLL Report] Team Members — {date_str}",     build_team_email(team_d, date_str)),
+        (f"[OLL Report] Educators — {date_str}",        build_educator_email(educator_d, date_str)),
+        (f"[OLL Report] Accounts / Receivables — {date_str}", build_accounts_email(accounts_d, date_str)),
+        (f"[OLL Report] B2B CRM — {date_str}",          build_b2b_email(b2b_d, date_str)),
     ]
 
     for subject, html in emails:
         await _send(subject, html, api_key)
         await asyncio.sleep(1)  # 1s gap between category batches
 
-    logger.info("[DailyReport] All 5 reports dispatched.")
+    logger.info("[DailyReport] All 7 reports dispatched.")
+
+
+# ─────────────────────────────────────────────
+# Accounts Data Fetcher
+# ─────────────────────────────────────────────
+
+async def fetch_accounts_data():
+    """All school-level payment tranches that are pending or overdue."""
+    now_ist = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
+    today_str = now_ist.strftime("%Y-%m-%d")
+
+    schools = await db.school_inquiries.find(
+        {"status": {"$in": ["converted", "active", "renewed", "onboarded"]},
+         "onboarding_data": {"$ne": None}},
+        {"_id": 0, "school_name": 1, "onboarding_data": 1, "id": 1}
+    ).to_list(500)
+
+    rows = []
+    total_pending = 0.0
+    total_overdue = 0.0
+
+    for school in schools:
+        name = school.get("school_name", "Unknown")
+        od = school.get("onboarding_data") or {}
+        tranches = od.get("payment_tranches") or []
+        for t in tranches:
+            status = (t.get("status") or "pending").lower()
+            if status in ("paid", "verified"):
+                continue
+            amount = float(str(t.get("amount") or 0).replace(",", "") or 0)
+            due_date = t.get("due_date") or t.get("date") or "—"
+            label = t.get("label") or t.get("description") or "Tranche"
+            is_overdue = False
+            if due_date != "—":
+                try:
+                    is_overdue = due_date < today_str
+                except Exception:
+                    pass
+            flag = "overdue" if is_overdue else "pending"
+            rows.append({
+                "school": name,
+                "label": label,
+                "amount": amount,
+                "due_date": due_date,
+                "status": flag,
+            })
+            total_pending += amount
+            if is_overdue:
+                total_overdue += amount
+
+    rows.sort(key=lambda x: (x["status"] != "overdue", x["due_date"]))
+    return dict(rows=rows, total_pending=total_pending, total_overdue=total_overdue)
+
+
+# ─────────────────────────────────────────────
+# B2B CRM Data Fetcher
+# ─────────────────────────────────────────────
+
+async def fetch_b2b_data(start, end):
+    """School CRM metrics — all-time totals + tomorrow's meetings/followups."""
+    now_ist = datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)
+    tomorrow_str = (now_ist + timedelta(days=1)).strftime("%Y-%m-%d")
+
+    all_schools = await db.school_inquiries.find({}, {"_id": 0,
+        "status": 1, "meeting_date": 1, "followup_date": 1,
+        "school_name": 1, "contact_name": 1,
+        "conversion_amount": 1, "assigned_to_name": 1}).to_list(2000)
+
+    total = len(all_schools)
+    meetings_done = [s for s in all_schools if s.get("status") == "meeting_done"]
+    converted = [s for s in all_schools if s.get("status") in ("converted", "active", "renewed")]
+    revenue = sum(
+        float(str(s.get("conversion_amount") or 0).replace(",", "") or 0)
+        for s in converted
+    )
+    # Tomorrow's meetings
+    tmrw_meetings = [s for s in all_schools if (s.get("meeting_date") or "")[:10] == tomorrow_str]
+    # Tomorrow's followups
+    tmrw_followups = [s for s in all_schools if (s.get("followup_date") or "")[:10] == tomorrow_str]
+
+    return dict(
+        total_leads=total,
+        meetings_done=len(meetings_done),
+        meetings_pct=pct(len(meetings_done), total),
+        conversions=len(converted),
+        conversion_pct=pct(len(converted), total),
+        revenue=revenue,
+        aov=round(revenue / len(converted), 0) if converted else 0,
+        tmrw_meetings=tmrw_meetings,
+        tmrw_followups=tmrw_followups,
+    )
+
+
+# ─────────────────────────────────────────────
+# Accounts Email Builder
+# ─────────────────────────────────────────────
+
+def build_accounts_email(d, date_str):
+    tp = f"₹{int(d['total_pending']):,}"
+    to_ = f"₹{int(d['total_overdue']):,}"
+    rows = d["rows"]
+
+    def status_pill(s):
+        if s == "overdue":
+            return '<span class="pill" style="background:#fee2e2;color:#dc2626">Overdue</span>'
+        return '<span class="pill" style="background:#fef3c7;color:#d97706">Pending</span>'
+
+    table_rows = ""
+    for r in rows[:40]:
+        amt = f"₹{int(r['amount']):,}" if r['amount'] else "—"
+        table_rows += f"""<tr>
+            <td><strong>{r['school']}</strong></td>
+            <td>{r['label']}</td>
+            <td style="text-align:right;font-weight:700">{amt}</td>
+            <td>{r['due_date']}</td>
+            <td style="text-align:center">{status_pill(r['status'])}</td>
+        </tr>"""
+
+    if not table_rows:
+        table_rows = '<tr><td colspan="5" style="color:#94a3b8;text-align:center;padding:16px">No pending receivables</td></tr>'
+
+    overdue_count = sum(1 for r in rows if r["status"] == "overdue")
+    pending_count = sum(1 for r in rows if r["status"] == "pending")
+
+    body = f"""
+    <div class="kpi-grid">
+      {kpi(tp, "Total Receivables")}
+      {kpi(to_, "Overdue Amount", "Past due date")}
+      {kpi(overdue_count, "Overdue Tranches")}
+      {kpi(pending_count, "Pending Tranches")}
+    </div>
+    <hr class="divider">
+    <div class="section-title">School-wise Pending Payments</div>
+    <table class="breakdown">
+      <thead><tr>
+        <th>School</th><th>Tranche</th>
+        <th style="text-align:right">Amount</th>
+        <th>Due Date</th><th style="text-align:center">Status</th>
+      </tr></thead>
+      <tbody>{table_rows}</tbody>
+    </table>
+    """
+    return email_wrap(COLORS["accounts"], "💰", "Accounts — Receivables Report", date_str, body)
+
+
+# ─────────────────────────────────────────────
+# B2B CRM Email Builder
+# ─────────────────────────────────────────────
+
+def _school_list_table(schools, label_col):
+    if not schools:
+        return f'<p style="color:#94a3b8;font-size:13px">No {label_col.lower()} tomorrow</p>'
+    rows = ""
+    for s in schools[:20]:
+        date_val = s.get("meeting_date") or s.get("followup_date") or "—"
+        rows += f"<tr><td><strong>{s.get('school_name','—')}</strong></td><td>{s.get('contact_name','—')}</td><td>{date_val[:10] if date_val != '—' else '—'}</td></tr>"
+    return f"""<table class="breakdown">
+      <thead><tr><th>School</th><th>Contact</th><th>{label_col}</th></tr></thead>
+      <tbody>{rows}</tbody>
+    </table>"""
+
+
+def build_b2b_email(d, date_str):
+    rev = f"₹{int(d['revenue']):,}" if d['revenue'] else "₹0"
+    aov = f"₹{int(d['aov']):,}" if d['aov'] else "₹0"
+    body = f"""
+    <div class="kpi-grid">
+      {kpi(d['total_leads'], "Total Leads", "All time")}
+      {kpi(d['meetings_done'], "Meetings Done")}
+      {kpi(d['meetings_pct'], "Meeting Rate")}
+      {kpi(d['conversions'], "Converted")}
+      {kpi(d['conversion_pct'], "Conversion Rate")}
+      {kpi(rev, "Total Revenue")}
+      {kpi(aov, "Avg Order Value")}
+    </div>
+    <hr class="divider">
+    <div class="section-title">Tomorrow's Meetings ({len(d['tmrw_meetings'])})</div>
+    {_school_list_table(d['tmrw_meetings'], "Meeting Date")}
+    <hr class="divider">
+    <div class="section-title">Tomorrow's Follow-ups ({len(d['tmrw_followups'])})</div>
+    {_school_list_table(d['tmrw_followups'], "Followup Date")}
+    """
+    return email_wrap(COLORS["b2b"], "🏫", "B2B CRM Report", date_str, body)
 
 
 # ─────────────────────────────────────────────
