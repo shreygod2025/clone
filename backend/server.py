@@ -5690,7 +5690,7 @@ async def get_educator_onboarding(educator_id: str):
     onboarding = await db.educator_onboarding.find_one({"educator_id": educator_id}, {"_id": 0})
     
     if not onboarding:
-        # Create new onboarding record
+        # Create new onboarding record for educators without one
         educator = await db.educator_applications.find_one({"id": educator_id}, {"_id": 0})
         if not educator:
             raise HTTPException(status_code=404, detail="Educator not found")
@@ -5700,6 +5700,7 @@ async def get_educator_onboarding(educator_id: str):
         doc['started_at'] = doc['started_at'].isoformat()
         doc['last_activity'] = doc['last_activity'].isoformat()
         await db.educator_onboarding.insert_one(doc)
+        doc.pop('_id', None)  # Remove MongoDB ObjectId before returning
         onboarding = doc
     
     # Get educator details
@@ -5713,17 +5714,27 @@ async def get_educator_onboarding(educator_id: str):
 @api_router.patch("/educator/onboarding/{educator_id}")
 async def update_educator_onboarding(educator_id: str, data: EducatorOnboardingUpdate):
     """Update onboarding progress"""
-    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None and v != "" and v != {}}
     update_data['last_activity'] = datetime.now(timezone.utc).isoformat()
     
     # Check if contract is being accepted
     if data.contract_accepted:
         update_data['contract_accepted_at'] = datetime.now(timezone.utc).isoformat()
     
-    await db.educator_onboarding.update_one(
+    # Use upsert to create record if it doesn't exist
+    result = await db.educator_onboarding.update_one(
         {"educator_id": educator_id}, 
-        {"$set": update_data}
+        {"$set": update_data},
+        upsert=True
     )
+    
+    # If upserting (new record), set the educator_id field
+    if result.upserted_id:
+        await db.educator_onboarding.update_one(
+            {"_id": result.upserted_id},
+            {"$set": {"educator_id": educator_id, "current_step": 1, "completed_steps": [],
+                      "started_at": datetime.now(timezone.utc).isoformat()}}
+        )
     
     onboarding = await db.educator_onboarding.find_one({"educator_id": educator_id}, {"_id": 0})
     return onboarding
@@ -5735,7 +5746,17 @@ async def complete_onboarding_step(educator_id: str, data: dict):
     
     onboarding = await db.educator_onboarding.find_one({"educator_id": educator_id}, {"_id": 0})
     if not onboarding:
-        raise HTTPException(status_code=404, detail="Onboarding record not found")
+        # Auto-create missing onboarding record
+        educator = await db.educator_applications.find_one({"id": educator_id}, {"_id": 0})
+        if not educator:
+            raise HTTPException(status_code=404, detail="Educator not found")
+        new_onboarding = EducatorOnboarding(educator_id=educator_id)
+        doc = new_onboarding.model_dump()
+        doc['started_at'] = doc['started_at'].isoformat()
+        doc['last_activity'] = doc['last_activity'].isoformat()
+        await db.educator_onboarding.insert_one(doc)
+        doc.pop('_id', None)
+        onboarding = doc
     
     completed_steps = onboarding.get("completed_steps", [])
     if step not in completed_steps:
