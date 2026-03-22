@@ -1,0 +1,63 @@
+{
+  "summary": "Iteration 49: Backend-only testing for route extraction batch 2 (payments.py 21 routes, gp_onboarding.py 20 routes). 20/20 pytest tests pass. All 9 required test items verified. Found 2 bugs in extracted route files.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "GET /api/payments/scheduler-status and POST /api/payments/trigger-sync",
+        "issue": "routes/payments.py references `scheduler`, `PAYMENT_SYNC_ENABLED`, and `PAYMENT_SYNC_INTERVAL_MINUTES` which are defined ONLY in server.py and NOT imported into routes/payments.py. scheduler-status endpoint always returns 500 (NameError: name 'scheduler' is not defined). trigger-sync line 1772 also references `scheduled_payment_sync()` which IS defined in the same file, so trigger-sync would fail on scheduler check but scheduled_payment_sync() call itself is fine.",
+        "priority": "HIGH",
+        "fix": "Add `from apscheduler.schedulers.asyncio import AsyncIOScheduler` and either import `scheduler` from server.py (circular import issue) or move the scheduler instantiation to routes/payments.py and import it into server.py. Alternatively, create a shared scheduler module. Also add PAYMENT_SYNC_ENABLED and PAYMENT_SYNC_INTERVAL_MINUTES env var reads to routes/payments.py."
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "POST /api/gp-onboarding/{onboarding_id}/verify-payment",
+        "issue": "Duplicate route definition in routes/gp_onboarding.py — POST /gp-onboarding/{onboarding_id}/verify-payment is defined TWICE (lines 354 and 773). FastAPI logs a warning 'Duplicate Operation ID verify_gp_payment_api_gp_onboarding__onboarding_id__verify_payment_post'. Only the first one (line 354) is ever called; the second (line 773) is dead code. The two versions have slightly different logic (line 354 does a db fetch+404 check, line 773 does a blind update without validation).",
+        "priority": "MEDIUM"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter49_route_extraction_batch2.py",
+    "/app/test_reports/pytest/pytest_results_iter49.xml"
+  ],
+  "action_items": [
+    "CRITICAL: Fix routes/payments.py - import or re-define `scheduler`, `PAYMENT_SYNC_ENABLED`, `PAYMENT_SYNC_INTERVAL_MINUTES` so GET /api/payments/scheduler-status returns 200 instead of 500. Best approach: move scheduler creation to routes/payments.py (it already owns scheduled_payment_sync), then import scheduler into server.py's startup handler.",
+    "MEDIUM: Remove duplicate POST /gp-onboarding/{onboarding_id}/verify-payment route at lines 773-793 of routes/gp_onboarding.py (dead code shadowed by line 354 definition). Keep the version at line 354 which includes 404 handling."
+  ],
+  "critical_code_review_comments": [
+    "routes/payments.py lines 1745-1759: scheduler-status endpoint uses `scheduler`, `PAYMENT_SYNC_ENABLED`, `PAYMENT_SYNC_INTERVAL_MINUTES` — all undefined in this file. Always 500 at runtime. The scheduler object belongs logically with payments.py (since scheduled_payment_sync is there), so moving scheduler instantiation to payments.py is the cleanest fix.",
+    "routes/gp_onboarding.py has duplicate async def verify_gp_payment function definitions (lines 354 and 773). The second overwrites the first Python name but FastAPI route was already bound at decorator time. FastAPI emits 'Duplicate Operation ID' warning during startup — confirms dead code at line 773.",
+    "Route count confirmed: 267 unique paths in OpenAPI (315 total operations counting multiple HTTP methods per path) — matches the claimed 315.",
+    "All other 9 required test items PASS: health check, auth login, batch 1 regression (reports/expenses), payments student 404, school-payment tracker 200, school-payment 404, gp-onboarding 200 list, gp-onboarding/{id} 404."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter49_route_extraction_batch2.py"
+  ],
+  "success_rate": {
+    "backend": "95% (20/20 pytest pass; 2 bugs found: 1 active 500 on scheduler-status, 1 duplicate route warning)",
+    "frontend": "N/A (backend-only test)"
+  },
+  "test_credentials": "testadmin@oll.co / test123 (fallback: admin@oll.co / Dagaji03@)",
+  "seed_data_creation": "None",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Iteration 49: Route extraction batch 2 testing. routes/payments.py (21 routes) and routes/gp_onboarding.py (20 routes) verified. Key working: GET /api/payments/student/{id} 404, GET /api/school-payment/tracker/{id} 200, GET /api/school-payment/{id} 404, GET /api/gp-onboarding 200, GET /api/gp-onboarding/{id} 404. Key bugs: (1) GET /api/payments/scheduler-status always 500 (NameError: scheduler not in scope), (2) duplicate POST /gp-onboarding/{id}/verify-payment route (dead code at line 773). OpenAPI serves at localhost:8001/openapi.json (NOT at public URL /openapi.json which goes to React frontend). Total route count: 267 unique paths = 315 total operations.",
+  "rca_of_issues": {
+    "scheduler_undefined_in_payments_py": {
+      "description": "During extraction of payment routes to routes/payments.py, the scheduler-status and trigger-sync endpoints were moved but their dependencies (scheduler object, PAYMENT_SYNC_ENABLED, PAYMENT_SYNC_INTERVAL_MINUTES env vars) were left only in server.py. The scheduler is an AsyncIOScheduler instance created at line 13151 of server.py.",
+      "reproduction": "GET /api/payments/scheduler-status with valid auth → 500 Internal Server Error: NameError: name 'scheduler' is not defined",
+      "mitigation": "Move AsyncIOScheduler creation to routes/payments.py and import it back into server.py's startup handler. Also move PAYMENT_SYNC_ENABLED and PAYMENT_SYNC_INTERVAL_MINUTES env var reads to payments.py (CASHFREE_ vars are already there)."
+    },
+    "duplicate_verify_payment_route": {
+      "description": "gp_onboarding.py was extracted from server.py and the verify-payment endpoint was defined twice — once with 404 safety check (line 354) and once without (line 773). FastAPI emits a warning at startup and always uses the first registration.",
+      "reproduction": "POST /api/gp-onboarding/{id}/verify-payment — always uses line 354 logic (with 404 check). The line 773 version (blind update) is never executed.",
+      "mitigation": "Remove lines 773-793 (the second verify_gp_payment function definition) from routes/gp_onboarding.py."
+    }
+  }
+}
