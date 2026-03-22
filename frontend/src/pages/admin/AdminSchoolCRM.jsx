@@ -57,6 +57,12 @@ const STATUS_SECTIONS = [
   { value: 'archived', label: 'Archived', color: 'bg-slate-400' },
 ];
 
+// Lost sub-statuses for granular tracking
+const LOST_SUB_STATUSES = [
+  { value: 'lost_lead', label: 'Lost Leads', color: 'bg-red-400' },
+  { value: 'lost_customer', label: 'Lost Customers', color: 'bg-red-600' },
+];
+
 // Ticket query types with FAQ auto-fill
 const TICKET_QUERIES = [
   { type: 'kit_delivery', label: 'Kit Delivery Issue', faq: 'We have not received the kit delivery yet / items are missing or damaged. Please help resolve this.' },
@@ -535,6 +541,7 @@ const AdminSchoolCRM = () => {
   const [showMeetingDoneModal, setShowMeetingDoneModal] = useState(null);
   const [showLostReasonModal, setShowLostReasonModal] = useState(null);
   const [lostReason, setLostReason] = useState('');
+  const [lostTargetStatus, setLostTargetStatus] = useState('lost'); // 'lost_lead' or 'lost_customer'
   const [showEditLeadModal, setShowEditLeadModal] = useState(null);
   const [generatingProposal, setGeneratingProposal] = useState(false);
   const [lastProposalPDF, setLastProposalPDF] = useState(null); // { base64, filename, schoolId }
@@ -1577,9 +1584,14 @@ ${FOOTER}</div></body></html>`
   };
 
   // Lost Reason Modal handlers
-  const openLostReasonModal = (inquiry) => {
+  const openLostReasonModal = (inquiry, targetStatus = 'lost_customer') => {
+    // Determine default target based on current inquiry status
+    // If inquiry is 'new' or 'meeting_done', default to 'lost_lead'
+    // If inquiry is 'active', 'converted', 'renewal_meeting', 'renewed', default to 'lost_customer'
+    const defaultTarget = ['new', 'meeting_done'].includes(inquiry.status) ? 'lost_lead' : 'lost_customer';
     setShowLostReasonModal(inquiry);
     setLostReason('');
+    setLostTargetStatus(targetStatus || defaultTarget);
   };
 
   const submitLostReason = async () => {
@@ -1588,18 +1600,20 @@ ${FOOTER}</div></body></html>`
       return;
     }
     try {
+      const lostLabel = lostTargetStatus === 'lost_lead' ? 'Lost Lead' : 'Lost Customer';
       await axios.patch(`${API}/schools/inquiry/${showLostReasonModal.id}`, { 
-        status: 'lost',
+        status: lostTargetStatus,
         lost_reason: lostReason,
         notes: showLostReasonModal.notes 
-          ? `${showLostReasonModal.notes}\n\n--- Lost Reason (${format(new Date(), 'dd MMM yyyy')}) ---\n${lostReason}`
-          : `--- Lost Reason (${format(new Date(), 'dd MMM yyyy')}) ---\n${lostReason}`
+          ? `${showLostReasonModal.notes}\n\n--- ${lostLabel} Reason (${format(new Date(), 'dd MMM yyyy')}) ---\n${lostReason}`
+          : `--- ${lostLabel} Reason (${format(new Date(), 'dd MMM yyyy')}) ---\n${lostReason}`
       }, {
         headers: getAuthHeaders()
       });
-      toast.success('School marked as lost');
+      toast.success(`School marked as ${lostLabel.toLowerCase()}`);
       setShowLostReasonModal(null);
       setLostReason('');
+      setLostTargetStatus('lost');
       fetchInquiries();
     } catch (error) {
       toast.error('Failed to update status');
@@ -3398,7 +3412,15 @@ ${FOOTER}</div></body></html>`
       inq.phone?.includes(searchQuery);
     
     // If searching all statuses and there's a search query, ignore section filter
-    const matchesSection = (searchAllStatuses && searchQuery.trim()) ? true : inq.status === activeSection;
+    let matchesSection = false;
+    if (searchAllStatuses && searchQuery.trim()) {
+      matchesSection = true;
+    } else if (activeSection === 'lost') {
+      // "Lost" tab shows both lost_lead and lost_customer (and legacy 'lost')
+      matchesSection = ['lost', 'lost_lead', 'lost_customer'].includes(inq.status);
+    } else {
+      matchesSection = inq.status === activeSection;
+    }
     
     // Assignee filter
     let matchesAssignee = true;
@@ -3413,7 +3435,316 @@ ${FOOTER}</div></body></html>`
     return matchesSearch && matchesSection && matchesAssignee;
   });
 
-  const getCount = (status) => inquiries.filter(i => i.status === status).length;
+  // Count function that groups lost statuses under 'lost' tab
+  const getCount = (status) => {
+    if (status === 'lost') {
+      return inquiries.filter(i => ['lost', 'lost_lead', 'lost_customer'].includes(i.status)).length;
+    }
+    return inquiries.filter(i => i.status === status).length;
+  };
+
+  // Helper function to render a school card
+  const renderSchoolCard = (inquiry) => (
+    <div 
+      key={inquiry.id} 
+      className={`bg-white rounded-xl border ${inquiry.is_viewer ? 'border-slate-200 ring-1 ring-slate-100' : 'border-slate-100'} p-4 hover:shadow-md transition-shadow`}
+      data-testid={`school-card-${inquiry.id}`}
+    >
+      <div className="flex items-start justify-between mb-2">
+        <div className="min-w-0 flex-1 pr-2">
+          <h3 className="font-semibold text-[#1E3A5F] break-words">{inquiry.school_name}</h3>
+          <p className="text-sm text-slate-500">{inquiry.contact_name}</p>
+          {/* Source badge on separate line */}
+          <div className="flex flex-wrap gap-1 mt-1">
+            <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+              inquiry.source === 'website' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
+            }`}>
+              {inquiry.source || 'website'}
+            </span>
+            {inquiry.meeting_type && (
+              <span className={`px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1 ${
+                inquiry.meeting_type === 'online' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+              }`}>
+                {inquiry.meeting_type === 'online' ? <Video className="w-3 h-3" /> : <Users className="w-3 h-3" />}
+                {inquiry.meeting_type === 'online' ? 'Online' : 'Offline'}
+              </span>
+            )}
+            {/* Show lost status badge */}
+            {['lost_lead', 'lost_customer', 'lost'].includes(inquiry.status) && (
+              <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                inquiry.status === 'lost_lead' ? 'bg-red-100 text-red-600' : 'bg-red-200 text-red-700'
+              }`}>
+                {inquiry.status === 'lost_lead' ? 'Lost Lead' : 'Lost Customer'}
+              </span>
+            )}
+          </div>
+          {inquiry.assigned_to && (
+            <p className="text-xs text-indigo-600 mt-1 flex items-center gap-1">
+              <UserPlus className="w-3 h-3 flex-shrink-0" /> 
+              <span>{inquiry.assigned_to_name || getAssignedUserName(inquiry.assigned_to) || 'Team'}</span>
+            </p>
+          )}
+          {inquiry.is_viewer && (
+            <span className="inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">
+              Viewer Only
+            </span>
+          )}
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          {/* Show status badge when searching all statuses */}
+          {searchAllStatuses && searchQuery.trim() && (
+            <span className={`px-2 py-1 rounded text-xs font-medium ${
+              STATUS_SECTIONS.find(s => s.value === inquiry.status)?.color || 
+              (inquiry.status === 'lost_lead' ? 'bg-red-400' : inquiry.status === 'lost_customer' ? 'bg-red-600' : 'bg-slate-100')
+            } text-white`}>
+              {STATUS_SECTIONS.find(s => s.value === inquiry.status)?.label || 
+               (inquiry.status === 'lost_lead' ? 'Lost Lead' : inquiry.status === 'lost_customer' ? 'Lost Customer' : inquiry.status)}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-0.5 text-sm text-slate-600 mb-2">
+        <p className="flex items-center gap-1 text-xs">
+          <Phone className="w-3 h-3 text-slate-400" /> {inquiry.phone}
+        </p>
+        {inquiry.location && (
+          <p className="flex items-center gap-1 text-xs truncate">
+            <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" /> <span className="truncate">{inquiry.location}</span>
+          </p>
+        )}
+        {inquiry.board && (
+          <p className="text-xs"><span className="text-slate-400">Board:</span> {inquiry.board}</p>
+        )}
+        {inquiry.meeting_date && (
+          <p className="flex items-center gap-1 text-[#D63031] font-medium text-xs">
+            <Calendar className="w-3 h-3" />
+            {inquiry.meeting_date} {inquiry.meeting_time && `${inquiry.meeting_time}`}
+          </p>
+        )}
+        {(inquiry.conversion_amount || inquiry.onboarding_data?.total_amount) && (
+          <p className="text-green-600 font-medium text-xs">
+            ₹{Number(inquiry.conversion_amount || inquiry.onboarding_data?.total_amount).toLocaleString()}
+          </p>
+        )}
+        {inquiry.quoted_price && !inquiry.conversion_amount && !inquiry.onboarding_data?.total_amount && (
+          <p className="text-blue-600 font-medium text-xs">
+            Quoted: ₹{Number(inquiry.quoted_price).toLocaleString()}
+          </p>
+        )}
+      </div>
+
+      {/* Lost Reason - Show for lost items */}
+      {['lost_lead', 'lost_customer', 'lost'].includes(inquiry.status) && inquiry.lost_reason && (
+        <div className="bg-red-50 border border-red-100 rounded-lg p-2 mb-2">
+          <p className="text-xs text-red-600 font-medium mb-0.5 flex items-center gap-1">
+            <X className="w-3 h-3" /> Lost Reason
+          </p>
+          <p className="text-xs text-red-700">
+            {inquiry.lost_reason.startsWith('custom:') ? inquiry.lost_reason.replace('custom:', '') : inquiry.lost_reason}
+          </p>
+        </div>
+      )}
+
+      {/* Selected Offerings */}
+      {inquiry.selected_offerings?.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-2">
+          {inquiry.selected_offerings.slice(0, 2).map((offeringId, idx) => {
+            const offering = offerings.find(o => o.id === offeringId);
+            return (
+              <span key={idx} className="px-1.5 py-0.5 bg-purple-100 rounded text-[10px] text-purple-700">
+                {offering ? offering.title : offeringId}
+              </span>
+            );
+          })}
+          {inquiry.selected_offerings.length > 2 && (
+            <span className="px-1.5 py-0.5 bg-purple-100 rounded text-[10px] text-purple-700">
+              +{inquiry.selected_offerings.length - 2}
+            </span>
+          )}
+        </div>
+      )}
+      
+      {/* Support Needed (from SchoolFunnel) */}
+      {inquiry.support_needed?.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-2">
+          {inquiry.support_needed.slice(0, 2).map((supportId, idx) => {
+            const offering = offerings.find(o => o.id === supportId);
+            return (
+              <span key={idx} className="px-1.5 py-0.5 bg-green-100 rounded text-[10px] text-green-700">
+                {offering ? offering.title : supportId}
+              </span>
+            );
+          })}
+        </div>
+      )}
+
+      {inquiry.programs_interested?.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-2">
+          {inquiry.programs_interested.slice(0, 3).map((p, idx) => (
+            <span key={idx} className="px-1.5 py-0.5 bg-[#1E3A5F]/10 rounded text-[10px] text-[#1E3A5F] capitalize">
+              {p}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Comments shown outside */}
+      {inquiry.notes && (
+        <div className="bg-slate-50 border border-slate-100 rounded-lg p-2 mb-2">
+          <p className="text-xs text-slate-500 font-medium mb-0.5 flex items-center gap-1">
+            <MessageSquare className="w-3 h-3" /> Latest Note
+          </p>
+          <p className="text-xs text-slate-700 line-clamp-2">
+            {inquiry.notes.split('\n\n').pop()?.split('\n').slice(0, 2).join('\n') || inquiry.notes.slice(-150)}
+          </p>
+        </div>
+      )}
+
+      {/* Relationship Manager - Show for converted/active schools */}
+      {['converted', 'active', 'renewed'].includes(inquiry.status) && inquiry.relationship_manager_name && (
+        <div className="bg-indigo-50/50 rounded px-2 py-1 mb-2">
+          <p className="text-[10px] text-indigo-700 flex items-center gap-1">
+            <User className="w-2.5 h-2.5" />
+            <span className="font-medium">RM:</span> {inquiry.relationship_manager_name}
+          </p>
+        </div>
+      )}
+
+      {/* Referred By - Show for referral leads */}
+      {inquiry.referred_by && (
+        <div className="bg-green-50/50 rounded px-2 py-1 mb-2">
+          <p className="text-[10px] text-green-700 flex items-center gap-1">
+            <Users className="w-2.5 h-2.5" />
+            <span className="font-medium">Ref:</span> {inquiry.referred_by}
+          </p>
+        </div>
+      )}
+
+      {/* Followup shown outside - only for non-converted */}
+      {inquiry.status !== 'converted' && inquiry.followup_date && (
+        <div className="bg-cyan-50/50 rounded px-2 py-1 mb-2">
+          <p className="text-[10px] text-cyan-700 font-medium flex items-center gap-1">
+            <Clock className="w-2.5 h-2.5" /> Followup: {inquiry.followup_date}
+          </p>
+        </div>
+      )}
+
+      {/* Scheduled Followup Tasks - show for new/lead status */}
+      {(inquiry.status === 'new' || inquiry.status === 'lead') && inquiry.followup_tasks?.length > 0 && (() => {
+        const pendingTasks = inquiry.followup_tasks.filter(t => t.status === 'pending');
+        const completedCount = inquiry.followup_tasks.filter(t => t.status === 'completed' || t.status === 'sent').length;
+        const nextTask = pendingTasks.sort((a, b) => new Date(a.scheduled_date) - new Date(b.scheduled_date))[0];
+        if (!nextTask) return null;
+        return (
+          <div className="bg-blue-50/50 rounded px-2 py-1 mb-2">
+            <p className="text-[10px] text-blue-700 font-medium flex items-center gap-1">
+              <Mail className="w-2.5 h-2.5" /> 
+              Next: {format(new Date(nextTask.scheduled_date), 'dd MMM')}
+              <span className="ml-auto text-blue-500">({completedCount}/{inquiry.followup_tasks.length})</span>
+            </p>
+          </div>
+        );
+      })()}
+
+      {/* Draft Progress Bar - Show if onboarding is in draft state */}
+      {inquiry.onboarding_status === 'draft' && inquiry.onboarding_id && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 mb-2">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-[10px] text-amber-700 font-medium flex items-center gap-1">
+              <Clock className="w-2.5 h-2.5" /> Draft
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-5 text-[10px] text-amber-700 hover:bg-amber-100 px-1"
+              onClick={() => openConversionModal(inquiry)}
+            >
+              Continue →
+            </Button>
+          </div>
+          <div className="w-full bg-amber-200 rounded-full h-1.5">
+            <div 
+              className="bg-amber-500 h-1.5 rounded-full transition-all" 
+              style={{ width: `${inquiry.total_students ? 60 : 25}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Onboarding Progress - Show for converted and renewed schools with onboarding_workflow */}
+      {inquiry.onboarding_workflow && ['converted', 'renewed'].includes(inquiry.status) && (
+        <div className={`${inquiry.status === 'renewed' ? 'bg-emerald-50 border-emerald-200' : 'bg-purple-50 border-purple-200'} border rounded-lg p-2 mb-2`}>
+          <div className="flex items-center justify-between mb-1">
+            <p className={`text-[10px] font-medium flex items-center gap-1 ${inquiry.status === 'renewed' ? 'text-emerald-700' : 'text-purple-700'}`}>
+              <CheckCircle2 className="w-2.5 h-2.5" />
+              {inquiry.status === 'renewed' ? 'Re-Onboarding' : 'Onboarding'}
+            </p>
+            <button
+              onClick={() => setShowOnboardingWorkflowModal(inquiry)}
+              className={`text-[10px] font-medium ${inquiry.status === 'renewed' ? 'text-emerald-600 hover:text-emerald-800' : 'text-purple-600 hover:text-purple-800'}`}
+            >
+              View →
+            </button>
+          </div>
+          {/* Progress Bar */}
+          <div className={`w-full ${inquiry.status === 'renewed' ? 'bg-emerald-200' : 'bg-purple-200'} rounded-full h-1.5 mb-1`}>
+            <div 
+              className={`${inquiry.status === 'renewed' ? 'bg-emerald-500' : 'bg-purple-500'} h-1.5 rounded-full transition-all`}
+              style={{ 
+                width: `${(Object.values(inquiry.onboarding_workflow.steps || {}).filter(s => s.completed).length / Math.max(Object.keys(inquiry.onboarding_workflow.steps || {}).length, 1) * 100).toFixed(0)}%` 
+              }}
+            />
+          </div>
+          <div className="flex items-center justify-between text-[10px]">
+            <span className={inquiry.status === 'renewed' ? 'text-emerald-600' : 'text-purple-600'}>
+              {Object.values(inquiry.onboarding_workflow.steps || {}).filter(s => s.completed).length}/{Object.keys(inquiry.onboarding_workflow.steps || {}).length}
+            </span>
+            {inquiry.onboarding_workflow.tracking_token && (
+              <button
+                onClick={() => {
+                  const url = `${window.location.origin}/track/${inquiry.onboarding_workflow.tracking_token}`;
+                  navigator.clipboard.writeText(url);
+                  toast.success('Link copied!');
+                }}
+                className={`flex items-center gap-0.5 ${inquiry.status === 'renewed' ? 'text-emerald-500 hover:text-emerald-700' : 'text-purple-500 hover:text-purple-700'}`}
+              >
+                <Gift className="w-2.5 h-2.5" /> Copy link
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* View Button */}
+      <div className="flex gap-1.5 mb-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="flex-1 h-7 text-xs"
+          onClick={() => setViewInquiry(inquiry)}
+          data-testid={`view-school-${inquiry.id}`}
+        >
+          <Eye className="w-3 h-3 mr-1" /> View
+        </Button>
+        {/* Add Meeting button for relevant statuses */}
+        {['meeting_done', 'converted', 'active', 'renewed'].includes(inquiry.status) && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 px-2"
+            onClick={() => setShowAddMeetingModal(inquiry)}
+            data-testid={`add-meeting-${inquiry.id}`}
+          >
+            <Plus className="w-3 h-3" />
+          </Button>
+        )}
+      </div>
+
+      {/* Action Buttons based on status */}
+      {renderActionButtons(inquiry)}
+    </div>
+  );
 
   // Render action buttons based on status
   const renderActionButtons = (inquiry) => {
@@ -3525,6 +3856,14 @@ ${FOOTER}</div></body></html>`
             {documentsButton}
             {baseButtons}
             <button
+              onClick={() => openLostReasonModal(inquiry, 'lost_lead')}
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 font-medium"
+              data-testid={`lost-lead-${inquiry.id}`}
+            >
+              <X className="w-3 h-3" />
+              Lost Lead
+            </button>
+            <button
               onClick={() => handleArchive(inquiry)}
               className="text-xs px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1 font-medium"
               data-testid={`archive-${inquiry.id}`}
@@ -3549,6 +3888,14 @@ ${FOOTER}</div></body></html>`
             {followupButton}
             {documentsButton}
             {baseButtons}
+            <button
+              onClick={() => openLostReasonModal(inquiry, 'lost_lead')}
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 font-medium"
+              data-testid={`lost-lead-${inquiry.id}`}
+            >
+              <X className="w-3 h-3" />
+              Lost Lead
+            </button>
             <button
               onClick={() => handleArchive(inquiry)}
               className="text-xs px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1 font-medium"
@@ -3749,15 +4096,17 @@ ${FOOTER}</div></body></html>`
         );
       
       case 'lost':
+      case 'lost_lead':
+      case 'lost_customer':
         return (
           <div className="flex gap-1.5 flex-wrap items-center">
             <button
-              onClick={() => handleStatusChange(inquiry, 'active')}
+              onClick={() => handleStatusChange(inquiry, inquiry.status === 'lost_lead' ? 'new' : 'active')}
               className="text-xs px-2.5 py-1.5 rounded-lg bg-green-500 hover:bg-green-600 text-white flex items-center gap-1 font-medium"
               data-testid={`reactivate-${inquiry.id}`}
             >
               <RefreshCw className="w-3 h-3" />
-              Reactivate
+              {inquiry.status === 'lost_lead' ? 'Restore to Lead' : 'Reactivate'}
             </button>
             {documentsButton}
             {baseButtons}
@@ -4006,287 +4355,52 @@ ${FOOTER}</div></body></html>`
             </button>
           )}
         </div>
+      ) : activeSection === 'lost' ? (
+        /* Lost Section - Divided into Lost Leads and Lost Customers */
+        <div className="space-y-8">
+          {/* Lost Leads Subsection */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="w-3 h-3 rounded-full bg-red-400"></span>
+              <h3 className="text-lg font-semibold text-slate-800">Lost Leads</h3>
+              <span className="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-700">
+                {filteredInquiries.filter(i => i.status === 'lost_lead').length}
+              </span>
+            </div>
+            {filteredInquiries.filter(i => i.status === 'lost_lead').length === 0 ? (
+              <div className="text-center py-6 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                <p className="text-sm text-slate-500">No lost leads</p>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredInquiries.filter(i => i.status === 'lost_lead').map((inquiry) => renderSchoolCard(inquiry))}
+              </div>
+            )}
+          </div>
+
+          {/* Lost Customers Subsection */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="w-3 h-3 rounded-full bg-red-600"></span>
+              <h3 className="text-lg font-semibold text-slate-800">Lost Customers</h3>
+              <span className="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-700">
+                {filteredInquiries.filter(i => i.status === 'lost_customer' || i.status === 'lost').length}
+              </span>
+            </div>
+            {filteredInquiries.filter(i => i.status === 'lost_customer' || i.status === 'lost').length === 0 ? (
+              <div className="text-center py-6 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                <p className="text-sm text-slate-500">No lost customers</p>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredInquiries.filter(i => i.status === 'lost_customer' || i.status === 'lost').map((inquiry) => renderSchoolCard(inquiry))}
+              </div>
+            )}
+          </div>
+        </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredInquiries.map((inquiry) => (
-            <div 
-              key={inquiry.id} 
-              className={`bg-white rounded-xl border ${inquiry.is_viewer ? 'border-slate-200 ring-1 ring-slate-100' : 'border-slate-100'} p-4 hover:shadow-md transition-shadow`}
-              data-testid={`school-card-${inquiry.id}`}
-            >
-              <div className="flex items-start justify-between mb-2">
-                <div className="min-w-0 flex-1 pr-2">
-                  <h3 className="font-semibold text-[#1E3A5F] break-words">{inquiry.school_name}</h3>
-                  <p className="text-sm text-slate-500">{inquiry.contact_name}</p>
-                  {/* Source badge on separate line */}
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                      inquiry.source === 'website' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
-                    }`}>
-                      {inquiry.source || 'website'}
-                    </span>
-                    {inquiry.meeting_type && (
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1 ${
-                        inquiry.meeting_type === 'online' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
-                      }`}>
-                        {inquiry.meeting_type === 'online' ? <Video className="w-3 h-3" /> : <Users className="w-3 h-3" />}
-                        {inquiry.meeting_type === 'online' ? 'Online' : 'Offline'}
-                      </span>
-                    )}
-                  </div>
-                  {inquiry.assigned_to && (
-                    <p className="text-xs text-indigo-600 mt-1 flex items-center gap-1">
-                      <UserPlus className="w-3 h-3 flex-shrink-0" /> 
-                      <span>{inquiry.assigned_to_name || getAssignedUserName(inquiry.assigned_to) || 'Team'}</span>
-                    </p>
-                  )}
-                  {inquiry.is_viewer && (
-                    <span className="inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">
-                      Viewer Only
-                    </span>
-                  )}
-                </div>
-                <div className="flex flex-col items-end gap-1">
-                  {/* Show status badge when searching all statuses */}
-                  {searchAllStatuses && searchQuery.trim() && (
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      STATUS_SECTIONS.find(s => s.value === inquiry.status)?.color || 'bg-slate-100'
-                    } text-white`}>
-                      {STATUS_SECTIONS.find(s => s.value === inquiry.status)?.label || inquiry.status}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-0.5 text-sm text-slate-600 mb-2">
-                <p className="flex items-center gap-1 text-xs">
-                  <Phone className="w-3 h-3 text-slate-400" /> {inquiry.phone}
-                </p>
-                {inquiry.location && (
-                  <p className="flex items-center gap-1 text-xs truncate">
-                    <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" /> <span className="truncate">{inquiry.location}</span>
-                  </p>
-                )}
-                {inquiry.board && (
-                  <p className="text-xs"><span className="text-slate-400">Board:</span> {inquiry.board}</p>
-                )}
-                {inquiry.meeting_date && (
-                  <p className="flex items-center gap-1 text-[#D63031] font-medium text-xs">
-                    <Calendar className="w-3 h-3" />
-                    {inquiry.meeting_date} {inquiry.meeting_time && `${inquiry.meeting_time}`}
-                  </p>
-                )}
-                {(inquiry.conversion_amount || inquiry.onboarding_data?.total_amount) && (
-                  <p className="text-green-600 font-medium text-xs">
-                    ₹{Number(inquiry.conversion_amount || inquiry.onboarding_data?.total_amount).toLocaleString()}
-                  </p>
-                )}
-                {inquiry.quoted_price && !inquiry.conversion_amount && !inquiry.onboarding_data?.total_amount && (
-                  <p className="text-blue-600 font-medium text-xs">
-                    Quoted: ₹{Number(inquiry.quoted_price).toLocaleString()}
-                  </p>
-                )}
-              </div>
-
-              {/* Selected Offerings */}
-              {inquiry.selected_offerings?.length > 0 && (
-                <div className="flex flex-wrap gap-1 mb-2">
-                  {inquiry.selected_offerings.slice(0, 2).map((offeringId, idx) => {
-                    const offering = offerings.find(o => o.id === offeringId);
-                    return (
-                      <span key={idx} className="px-1.5 py-0.5 bg-purple-100 rounded text-[10px] text-purple-700">
-                        {offering ? offering.title : offeringId}
-                      </span>
-                    );
-                  })}
-                  {inquiry.selected_offerings.length > 2 && (
-                    <span className="px-1.5 py-0.5 bg-purple-100 rounded text-[10px] text-purple-700">
-                      +{inquiry.selected_offerings.length - 2}
-                    </span>
-                  )}
-                </div>
-              )}
-              
-              {/* Support Needed (from SchoolFunnel) */}
-              {inquiry.support_needed?.length > 0 && (
-                <div className="flex flex-wrap gap-1 mb-2">
-                  {inquiry.support_needed.slice(0, 2).map((supportId, idx) => {
-                    const offering = offerings.find(o => o.id === supportId);
-                    return (
-                      <span key={idx} className="px-1.5 py-0.5 bg-green-100 rounded text-[10px] text-green-700">
-                        {offering ? offering.title : supportId}
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
-
-              {inquiry.programs_interested?.length > 0 && (
-                <div className="flex flex-wrap gap-1 mb-2">
-                  {inquiry.programs_interested.slice(0, 3).map((p, idx) => (
-                    <span key={idx} className="px-1.5 py-0.5 bg-[#1E3A5F]/10 rounded text-[10px] text-[#1E3A5F] capitalize">
-                      {p}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {/* Comments shown outside */}
-              {inquiry.notes && (
-                <div className="bg-slate-50 border border-slate-100 rounded-lg p-2 mb-2">
-                  <p className="text-xs text-slate-500 font-medium mb-0.5 flex items-center gap-1">
-                    <MessageSquare className="w-3 h-3" /> Latest Note
-                  </p>
-                  <p className="text-xs text-slate-700 line-clamp-2">
-                    {inquiry.notes.split('\n\n').pop()?.split('\n').slice(0, 2).join('\n') || inquiry.notes.slice(-150)}
-                  </p>
-                </div>
-              )}
-
-              {/* Relationship Manager - Show for converted/active schools */}
-              {['converted', 'active', 'renewed'].includes(inquiry.status) && inquiry.relationship_manager_name && (
-                <div className="bg-indigo-50/50 rounded px-2 py-1 mb-2">
-                  <p className="text-[10px] text-indigo-700 flex items-center gap-1">
-                    <User className="w-2.5 h-2.5" />
-                    <span className="font-medium">RM:</span> {inquiry.relationship_manager_name}
-                  </p>
-                </div>
-              )}
-
-              {/* Referred By - Show for referral leads */}
-              {inquiry.referred_by && (
-                <div className="bg-green-50/50 rounded px-2 py-1 mb-2">
-                  <p className="text-[10px] text-green-700 flex items-center gap-1">
-                    <Users className="w-2.5 h-2.5" />
-                    <span className="font-medium">Ref:</span> {inquiry.referred_by}
-                  </p>
-                </div>
-              )}
-
-              {/* Followup shown outside - only for non-converted */}
-              {inquiry.status !== 'converted' && inquiry.followup_date && (
-                <div className="bg-cyan-50/50 rounded px-2 py-1 mb-2">
-                  <p className="text-[10px] text-cyan-700 font-medium flex items-center gap-1">
-                    <Clock className="w-2.5 h-2.5" /> Followup: {inquiry.followup_date}
-                  </p>
-                </div>
-              )}
-
-              {/* Scheduled Followup Tasks - show for new/lead status */}
-              {(inquiry.status === 'new' || inquiry.status === 'lead') && inquiry.followup_tasks?.length > 0 && (() => {
-                const pendingTasks = inquiry.followup_tasks.filter(t => t.status === 'pending');
-                const completedCount = inquiry.followup_tasks.filter(t => t.status === 'completed' || t.status === 'sent').length;
-                const nextTask = pendingTasks.sort((a, b) => new Date(a.scheduled_date) - new Date(b.scheduled_date))[0];
-                if (!nextTask) return null;
-                return (
-                  <div className="bg-blue-50/50 rounded px-2 py-1 mb-2">
-                    <p className="text-[10px] text-blue-700 font-medium flex items-center gap-1">
-                      <Mail className="w-2.5 h-2.5" /> 
-                      Next: {format(new Date(nextTask.scheduled_date), 'dd MMM')}
-                      <span className="ml-auto text-blue-500">({completedCount}/{inquiry.followup_tasks.length})</span>
-                    </p>
-                  </div>
-                );
-              })()}
-
-              {/* Draft Progress Bar - Show if onboarding is in draft state */}
-              {inquiry.onboarding_status === 'draft' && inquiry.onboarding_id && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 mb-2">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-[10px] text-amber-700 font-medium flex items-center gap-1">
-                      <Clock className="w-2.5 h-2.5" /> Draft
-                    </p>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-5 text-[10px] text-amber-700 hover:bg-amber-100 px-1"
-                      onClick={() => openConversionModal(inquiry)}
-                    >
-                      Continue →
-                    </Button>
-                  </div>
-                  <div className="w-full bg-amber-200 rounded-full h-1.5">
-                    <div 
-                      className="bg-amber-500 h-1.5 rounded-full transition-all" 
-                      style={{ width: `${inquiry.total_students ? 60 : 25}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Onboarding Progress - Show for converted and renewed schools with onboarding_workflow */}
-              {inquiry.onboarding_workflow && ['converted', 'renewed'].includes(inquiry.status) && (
-                <div className={`${inquiry.status === 'renewed' ? 'bg-emerald-50 border-emerald-200' : 'bg-purple-50 border-purple-200'} border rounded-lg p-2 mb-2`}>
-                  <div className="flex items-center justify-between mb-1">
-                    <p className={`text-[10px] font-medium flex items-center gap-1 ${inquiry.status === 'renewed' ? 'text-emerald-700' : 'text-purple-700'}`}>
-                      <CheckCircle2 className="w-2.5 h-2.5" />
-                      {inquiry.status === 'renewed' ? 'Re-Onboarding' : 'Onboarding'}
-                    </p>
-                    <button
-                      onClick={() => setShowOnboardingWorkflowModal(inquiry)}
-                      className={`text-[10px] font-medium ${inquiry.status === 'renewed' ? 'text-emerald-600 hover:text-emerald-800' : 'text-purple-600 hover:text-purple-800'}`}
-                    >
-                      View →
-                    </button>
-                  </div>
-                  {/* Progress Bar */}
-                  <div className={`w-full ${inquiry.status === 'renewed' ? 'bg-emerald-200' : 'bg-purple-200'} rounded-full h-1.5 mb-1`}>
-                    <div 
-                      className={`${inquiry.status === 'renewed' ? 'bg-emerald-500' : 'bg-purple-500'} h-1.5 rounded-full transition-all`}
-                      style={{ 
-                        width: `${(Object.values(inquiry.onboarding_workflow.steps || {}).filter(s => s.completed).length / Math.max(Object.keys(inquiry.onboarding_workflow.steps || {}).length, 1) * 100).toFixed(0)}%` 
-                      }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-[10px]">
-                    <span className={inquiry.status === 'renewed' ? 'text-emerald-600' : 'text-purple-600'}>
-                      {Object.values(inquiry.onboarding_workflow.steps || {}).filter(s => s.completed).length}/{Object.keys(inquiry.onboarding_workflow.steps || {}).length}
-                    </span>
-                    {inquiry.onboarding_workflow.tracking_token && (
-                      <button
-                        onClick={() => {
-                          const url = `${window.location.origin}/track/${inquiry.onboarding_workflow.tracking_token}`;
-                          navigator.clipboard.writeText(url);
-                          toast.success('Link copied!');
-                        }}
-                        className={`flex items-center gap-0.5 ${inquiry.status === 'renewed' ? 'text-emerald-500 hover:text-emerald-700' : 'text-purple-500 hover:text-purple-700'}`}
-                      >
-                        <Gift className="w-2.5 h-2.5" /> Copy link
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* View Button */}
-              <div className="flex gap-1.5 mb-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 h-7 text-xs"
-                  onClick={() => setViewInquiry(inquiry)}
-                  data-testid={`view-school-${inquiry.id}`}
-                >
-                  <Eye className="w-3 h-3 mr-1" /> View
-                </Button>
-                {/* Add Meeting button for relevant statuses */}
-                {['meeting_done', 'converted', 'active', 'renewed'].includes(inquiry.status) && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 px-2"
-                    onClick={() => setShowAddMeetingModal(inquiry)}
-                    data-testid={`add-meeting-${inquiry.id}`}
-                  >
-                    <Plus className="w-3 h-3" />
-                  </Button>
-                )}
-              </div>
-
-              {/* Action Buttons based on status */}
-              {renderActionButtons(inquiry)}
-            </div>
-          ))}
+          {filteredInquiries.map((inquiry) => renderSchoolCard(inquiry))}
         </div>
       )}
         </>
@@ -5685,10 +5799,42 @@ ${FOOTER}</div></body></html>`
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <X className="w-5 h-5 text-red-600" />
-              Mark as Lost - {showLostReasonModal?.school_name}
+              Mark as {lostTargetStatus === 'lost_lead' ? 'Lost Lead' : 'Lost Customer'} - {showLostReasonModal?.school_name}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Lost Type Selection */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Mark as *</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setLostTargetStatus('lost_lead')}
+                  className={`p-3 rounded-lg border text-center transition-all ${
+                    lostTargetStatus === 'lost_lead' 
+                      ? 'border-red-400 bg-red-50 text-red-700 ring-1 ring-red-400' 
+                      : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                  }`}
+                  data-testid="lost-type-lead"
+                >
+                  <span className="block text-sm font-medium">Lost Lead</span>
+                  <span className="block text-xs text-slate-500 mt-1">Before conversion</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLostTargetStatus('lost_customer')}
+                  className={`p-3 rounded-lg border text-center transition-all ${
+                    lostTargetStatus === 'lost_customer' 
+                      ? 'border-red-600 bg-red-50 text-red-700 ring-1 ring-red-600' 
+                      : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                  }`}
+                  data-testid="lost-type-customer"
+                >
+                  <span className="block text-sm font-medium">Lost Customer</span>
+                  <span className="block text-xs text-slate-500 mt-1">After conversion</span>
+                </button>
+              </div>
+            </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Reason for Lost *</label>
               <select
@@ -5710,6 +5856,13 @@ ${FOOTER}</div></body></html>`
                 <option value="Decision postponed">Decision postponed</option>
                 <option value="No response">No response / Not reachable</option>
                 <option value="Management change">Management change</option>
+                {lostTargetStatus === 'lost_customer' && (
+                  <>
+                    <option value="Service dissatisfaction">Service dissatisfaction</option>
+                    <option value="Contract not renewed">Contract not renewed</option>
+                    <option value="School closed/merged">School closed/merged</option>
+                  </>
+                )}
                 <option value="other">Other (specify)</option>
               </select>
               {lostReason.startsWith('custom:') && (
@@ -5731,7 +5884,7 @@ ${FOOTER}</div></body></html>`
                 className="flex-1 bg-red-600 hover:bg-red-700"
                 data-testid="lost-submit"
               >
-                Mark as Lost
+                Mark as {lostTargetStatus === 'lost_lead' ? 'Lost Lead' : 'Lost Customer'}
               </Button>
             </div>
           </div>

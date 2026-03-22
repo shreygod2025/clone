@@ -2244,7 +2244,7 @@ class SchoolInquiry(BaseModel):
     address: str = ""  # Full school address
     programs_interested: List[str]
     support_needed: List[str]
-    status: str = "new"  # new, meeting_done, converted, archived
+    status: str = "new"  # new, meeting_done, converted, active, renewal_meeting, renewed, lost, lost_lead, lost_customer, archived
     notes: str = ""
     comments: List[dict] = []
     meeting_date: Optional[str] = None
@@ -7077,7 +7077,7 @@ async def notify_educators_new_requirement(requirement: dict):
             return
 
         req_id = requirement.get("id", "")
-        frontend_url = os.environ.get("FRONTEND_URL", "https://oll-learner-funnel.preview.emergentagent.com")
+        frontend_url = os.environ.get("FRONTEND_URL", "https://skill-edu-admin.preview.emergentagent.com")
         apply_link = f"{frontend_url}/educator/apply/{req_id}"
 
         pay_text = ""
