@@ -8297,7 +8297,7 @@ const AdminSchoolCRM = () => {
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
-                      onClick={generateParentCircularPDF}
+                      onClick={() => generateParentCircularPDF()}
                       disabled={generatingParentCircular}
                       className="flex-1 border-yellow-500 text-yellow-700 hover:bg-yellow-100"
                       data-testid="generate-parent-circular-btn"
@@ -8356,7 +8356,7 @@ const AdminSchoolCRM = () => {
               </Button>
               <Button
                 variant="outline"
-                onClick={generateMOUPDF}
+                onClick={() => generateMOUPDF()}
                 disabled={generatingMOU}
                 className="flex-1 border-[#1E3A5F] text-[#1E3A5F] hover:bg-[#1E3A5F]/10"
                 data-testid="generate-mou-btn"

@@ -614,6 +614,13 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 - server.py: 15,704 → 13,217 lines (−2,487 lines, total −4,690 lines from original 17,907)
 - Tested: 20/20 pytest pass + scheduler-status 200 verified (iteration_49)
 
+## Session: March 22, 2026 — P0 MOU PDF Save Bug Fix (DONE)
+- Fixed critical React event handler bug in `AdminSchoolCRM.jsx`:
+  - `onClick={generateMOUPDF}` was passing the SyntheticEvent as `overrideSchool`, making `school.id` undefined → `/api/schools/undefined/add-document` 404
+  - Fixed by wrapping in arrow functions: `onClick={() => generateMOUPDF()}` and `onClick={() => generateParentCircularPDF()}`
+  - Same bug existed in both MOU and Parent Circular buttons (lines 8359 and 8300)
+- Root cause: Classic React onClick direct function reference pitfall with optional-arg functions
+
 ## Prioritized Backlog
 
 ### P0 (Critical)
