@@ -14,10 +14,14 @@ import logging
 try:
     from cashfree_pg.models.create_order_request import CreateOrderRequest
     from cashfree_pg.api_client import Cashfree
+    from cashfree_pg.models.customer_details import CustomerDetails as CashfreeCustomerDetails
+    from cashfree_pg.models.order_meta import OrderMeta
     CASHFREE_AVAILABLE = True
 except ImportError:
     CASHFREE_AVAILABLE = False
     Cashfree = None
+    CashfreeCustomerDetails = None
+    OrderMeta = None
 
 from .shared import db, get_current_user
 
