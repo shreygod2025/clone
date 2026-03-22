@@ -23,7 +23,7 @@ from routes.admin_keys import get_current_user, get_resend_api_key
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-FROM_EMAIL = "OLL <welcome@oll.co>"
+FROM_EMAIL = "OLL <skills@oll.co>"
 
 # ─── Resend helper ───────────────────────────────────────────────────────────
 
@@ -99,7 +99,7 @@ def generate_invoice_pdf(school_name: str, tranche: dict, invoice_no: str) -> by
     pdf.ln(12)
     pdf.set_font("Helvetica", "", 9)
     pdf.set_text_color(100, 116, 139)
-    pdf.multi_cell(0, 6, "For queries contact: accounts@oll.co | +91-XXXXXXXXXX\nBank: HDFC Bank | A/C: XXXXXXXXXXXX | IFSC: HDFC0000000")
+    pdf.multi_cell(0, 6, "For queries contact: accounts@oll.co | +91 98921 50714\nBank: HDFC Bank | A/C: XXXXXXXXXXXX | IFSC: HDFC0000000")
 
     return bytes(pdf.output())
 
@@ -157,27 +157,26 @@ MEETING_FOLLOWUP_HTML = """
 <div style="max-width:600px;margin:30px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)">
   <div style="background:linear-gradient(135deg,#1E3A5F,#2d5a8e);padding:28px 32px;color:#fff">
     <h1 style="margin:0;font-size:22px">Thank you for meeting with OLL!</h1>
-    <p style="margin:6px 0 0;opacity:.8;font-size:13px">One Life Learning · Skill Education</p>
+    <p style="margin:6px 0 0;opacity:.8;font-size:13px">OLL · Skill Education</p>
   </div>
   <div style="padding:28px 32px">
     <p style="color:#334155;font-size:15px">Dear {contact_name},</p>
     <p style="color:#475569;font-size:14px;line-height:1.7">Thank you for taking the time to meet with us today. We really enjoyed discussing how OLL can partner with <strong>{school_name}</strong> to bring quality skill education to your students.</p>
-    {notes_section}
+    {next_step_section}
     <h3 style="color:#1E3A5F;font-size:15px;margin-top:24px">Why schools choose OLL</h3>
     <ul style="color:#475569;font-size:14px;line-height:2">
       <li>Structured skill curriculum aligned with NEP 2020</li>
-      <li>Trained & certified educators for every skill</li>
-      <li>End-to-end program management & reporting</li>
+      <li>Trained &amp; certified educators for every skill</li>
+      <li>End-to-end program management &amp; reporting</li>
       <li>Flexible pricing — per-student or package model</li>
     </ul>
-    {next_step_section}
     <div style="margin-top:28px;padding:18px;background:#f0f9ff;border-radius:8px;border-left:4px solid #1E3A5F">
-      <p style="margin:0;color:#1E3A5F;font-size:13px">Questions? Reply to this email or call us at <strong>+91-XXXXXXXXXX</strong></p>
+      <p style="margin:0;color:#1E3A5F;font-size:13px">Questions? Reply to this email or call us at <strong>+91 98921 50714</strong></p>
     </div>
-    <p style="color:#475569;font-size:14px;margin-top:24px">Warm regards,<br><strong>The OLL Team</strong><br>One Life Learning Pvt. Ltd.</p>
+    <p style="color:#475569;font-size:14px;margin-top:24px">Warm regards,<br><strong>The OLL Team</strong></p>
   </div>
   <div style="padding:14px 32px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;text-align:center">
-    OLL · skill@oll.co · www.oll.co
+    OLL · skills@oll.co · www.oll.co
   </div>
 </div></body></html>
 """
@@ -202,7 +201,7 @@ async def send_meeting_followup(school_id: str, data: dict, user: dict = Depends
     notes = data.get("notes") or school.get("notes") or ""
     next_steps = data.get("next_steps") or ""
 
-    notes_section = f'<div style="background:#f8fafc;border-radius:8px;padding:14px;margin:18px 0"><p style="margin:0;font-size:13px;color:#64748b;font-weight:600">Meeting Notes</p><p style="margin:6px 0 0;color:#475569;font-size:14px;white-space:pre-line">{notes}</p></div>' if notes else ""
+    notes_section = ""  # Notes removed from template per design
     next_step_section = f'<div style="background:#ecfdf5;border-radius:8px;padding:14px;margin:18px 0"><p style="margin:0;font-size:13px;color:#059669;font-weight:600">Next Steps</p><p style="margin:6px 0 0;color:#065f46;font-size:14px;white-space:pre-line">{next_steps}</p></div>' if next_steps else ""
 
     sent_to = []
@@ -211,8 +210,8 @@ async def send_meeting_followup(school_id: str, data: dict, user: dict = Depends
         html = custom_body or MEETING_FOLLOWUP_HTML.replace(
             "{contact_name}", c.get("name") or "there"
         ).replace("{school_name}", school.get("school_name", "")).replace(
-            "{notes_section}", notes_section
-        ).replace("{next_step_section}", next_step_section)
+            "{next_step_section}", next_step_section
+        )
         try:
             await _send_email(c["email"], custom_subject, html)
             sent_to.append(c["email"])
@@ -284,9 +283,12 @@ BASE_EMAIL_WRAP = """<!DOCTYPE html><html><body style="font-family:'Segoe UI',Ar
     <p style="color:#334155;font-size:15px">Dear {contact_name},</p>
     {body}
     <p style="color:#475569;font-size:14px;margin-top:28px">Warm regards,<br><strong>The OLL Team</strong></p>
+    <div style="margin-top:16px;padding:14px;background:#f0f9ff;border-radius:8px;border-left:4px solid #1E3A5F">
+      <p style="margin:0;color:#1E3A5F;font-size:12px">Questions? Call us at <strong>+91 98921 50714</strong> or email skills@oll.co</p>
+    </div>
   </div>
   <div style="padding:14px 32px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;text-align:center">
-    OLL · skill@oll.co · www.oll.co
+    OLL · skills@oll.co · www.oll.co
   </div>
 </div></body></html>"""
 

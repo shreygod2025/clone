@@ -22,7 +22,7 @@ REPORT_RECIPIENTS = [
     "lavisha@oll.co",
     "clonefutura@gmail.com",
 ]
-REPORT_FROM = "OLL Reports <welcome@oll.co>"
+REPORT_FROM = "OLL Reports <skills@oll.co>"
 
 # ─────────────────────────────────────────────
 # Helpers
