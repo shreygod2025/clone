@@ -23,7 +23,7 @@ from routes.admin_keys import get_current_user, get_resend_api_key
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-FROM_EMAIL = "OLL <no-reply@oll.co>"
+FROM_EMAIL = "OLL <welcome@oll.co>"
 
 # ─── Resend helper ───────────────────────────────────────────────────────────
 

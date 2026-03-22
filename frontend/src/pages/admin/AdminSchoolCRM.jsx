@@ -1367,12 +1367,13 @@ const AdminSchoolCRM = () => {
       fetchInquiries();
       // Offer to send followup email
       const savedNotes = meetingDoneData.notes;
+      const savedSchool = showMeetingDoneModal;
       setTimeout(() => setEmailModal({
         mode: 'meeting_followup',
-        schoolId: inquiry.id,
-        initialSubject: `Thank you for meeting with OLL — ${inquiry.school_name}`,
+        schoolId: savedSchool.id,
+        initialSubject: `Thank you for meeting with OLL — ${savedSchool.school_name}`,
         initialBody: '',
-        recipients: [{ email: inquiry.email, name: inquiry.contact_name }],
+        recipients: [{ email: savedSchool.email, name: savedSchool.contact_name }],
         notes: savedNotes,
         nextSteps: '',
       }), 300);
