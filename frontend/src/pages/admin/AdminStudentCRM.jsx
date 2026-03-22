@@ -120,6 +120,7 @@ const AdminStudentCRM = () => {
     fetchTeamUsers();
     fetchOnboardedEducators();
     fetchBatches();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchTeamUsers = async () => {

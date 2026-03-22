@@ -222,6 +222,7 @@ const AdminReports = () => {
 
   useEffect(() => {
     fetchTeamMembers();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchAllData = async () => {
@@ -267,6 +268,7 @@ const AdminReports = () => {
 
   useEffect(() => {
     fetchAllData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateFilterType, customDateRange, selectedMonth, selectedYear, selectedTeamMember]);
 
   const handleSaveExpense = async () => {

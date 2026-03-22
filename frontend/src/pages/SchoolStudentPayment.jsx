@@ -227,6 +227,7 @@ const SchoolStudentPayment = () => {
     } finally {
       setProcessingPayment(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cashfreeReady, schoolId, studentName, phone, grade, division, selectedAmount]);
 
   // Get program name (skill) or default

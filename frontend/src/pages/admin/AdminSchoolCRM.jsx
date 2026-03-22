@@ -756,6 +756,7 @@ const AdminSchoolCRM = () => {
     fetchTeamUsers();
     fetchOfferings();
     fetchRelationshipManagers();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Extract all contacts from all schools for contact management
@@ -823,6 +824,7 @@ const AdminSchoolCRM = () => {
       }
     };
     fetchSchoolHistory();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewInquiry?.id]);
 
   // Auto-fetch PO data when onboarding workflow modal opens
@@ -877,6 +879,7 @@ const AdminSchoolCRM = () => {
       }
     };
     autoFetchPoData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showOnboardingWorkflowModal?.id]);
 
   // Get this week's data for dashboard

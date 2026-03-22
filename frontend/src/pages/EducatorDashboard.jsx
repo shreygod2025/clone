@@ -123,6 +123,7 @@ const EducatorDashboard = () => {
       fetchAvailableEducators();
       fetchSessions();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn, user, navigate, authLoading]);
 
   const checkOnboardingStatus = async () => {

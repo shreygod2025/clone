@@ -189,6 +189,7 @@ const AdminOrders = () => {
     } else {
       fetchPayments();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   const fetchPayments = async () => {
@@ -551,6 +552,7 @@ const AdminOrders = () => {
       }
     };
     fetchSchedulerStatus();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Sync single payment with Cashfree

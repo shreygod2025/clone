@@ -49,6 +49,7 @@ const AdminGPOnboarding = () => {
   useEffect(() => {
     fetchOnboardings();
     fetchRoles();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchOnboardings = async () => {

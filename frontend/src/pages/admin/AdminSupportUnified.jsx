@@ -222,6 +222,7 @@ const AdminSupportUnified = () => {
   useEffect(() => {
     fetchAllQueries();
     fetchTeamUsers();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchTeamUsers = async () => {

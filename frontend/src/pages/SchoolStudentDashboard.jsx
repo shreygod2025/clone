@@ -30,6 +30,7 @@ const SchoolStudentDashboard = () => {
       return;
     }
     fetchProfile();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phone, navigate]);
   
   const fetchProfile = async () => {

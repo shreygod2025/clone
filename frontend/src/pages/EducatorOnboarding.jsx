@@ -152,6 +152,7 @@ const EducatorOnboarding = () => {
     }
     fetchOnboardingData();
     fetchContent();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, token]);
 
   const fetchOnboardingData = async () => {

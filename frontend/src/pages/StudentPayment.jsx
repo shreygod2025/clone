@@ -53,6 +53,7 @@ const StudentPayment = () => {
       // Fetch payment info for student
       fetchPaymentInfo();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studentId, orderId]);
 
   const fetchPaymentInfo = async () => {
@@ -159,6 +160,7 @@ const StudentPayment = () => {
     } finally {
       setProcessingPayment(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cashfreeReady, paymentInfo, fetchPaymentInfo]);
 
   const formatCurrency = (amount) => {

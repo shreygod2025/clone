@@ -134,6 +134,7 @@ const AdminEducators = () => {
     fetchEducators();
     fetchTeamUsers();
     fetchRequirements();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auto-load onboarding details when viewing an onboarding educator
@@ -143,6 +144,7 @@ const AdminEducators = () => {
     } else {
       setSelectedOnboarding(null);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewEducator]);
 
   const fetchRequirements = async () => {

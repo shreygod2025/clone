@@ -4154,7 +4154,7 @@ async def get_all_school_student_payments(user: dict = Depends(get_current_user)
     for school in schools:
         school_id = school.get("id")
         school_name = school.get("school_name", "Unknown School")
-        onboarding_data = school.get("onboarding_data", {})
+        onboarding_data = school.get("onboarding_data") or {}
         
         # Get all payments for this school
         payments = await db.school_student_payments.find(
@@ -9292,7 +9292,7 @@ async def init_school_onboarding(school_id: str, data: dict = None, user: dict =
     tracking_token = f"oll-{uuid.uuid4().hex[:12]}"
     
     # Initialize onboarding steps dynamically based on what the school purchased
-    onboarding_data_for_steps = school.get("onboarding_data", {})
+    onboarding_data_for_steps = school.get("onboarding_data") or {}
     steps = generate_dynamic_onboarding_steps(onboarding_data_for_steps, is_renewal=is_renewal)
     if "mou_signing" in steps:
         steps["mou_signing"]["completed"] = True
@@ -9332,7 +9332,7 @@ async def init_school_onboarding(school_id: str, data: dict = None, user: dict =
     
     # Get updated school and onboarding data
     school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
-    onboarding_data = school.get("onboarding_data", {})
+    onboarding_data = school.get("onboarding_data") or {}
     
     # Send welcome email to school
     school_emails = []
@@ -9523,7 +9523,7 @@ async def regenerate_onboarding_workflow(school_id: str, user: dict = Depends(ge
     if not workflow:
         raise HTTPException(status_code=400, detail="No onboarding workflow found. Initialize onboarding first.")
 
-    onboarding_data = school.get("onboarding_data", {})
+    onboarding_data = school.get("onboarding_data") or {}
     is_renewal = workflow.get("is_renewal", False)
 
     # Generate fresh step set based on current onboarding_data
@@ -9722,7 +9722,7 @@ async def send_mou_email(school_id: str, data: dict, user: dict = Depends(get_cu
     if not recipient_emails:
         if school.get("email"):
             recipient_emails.append(school["email"])
-        od = school.get("onboarding_data", {})
+        od = school.get("onboarding_data") or {}
         for contact_key in ["coordinator", "principal", "accounts_coordinator"]:
             c = od.get(contact_key, {})
             if c.get("email") and c["email"] not in recipient_emails:
@@ -9849,7 +9849,7 @@ async def get_school_onboarding(school_id: str, user: dict = Depends(get_current
         "contact_name": school.get("contact_name"),
         "workflow": school.get("onboarding_workflow", {}),
         "po_requests": po_requests,
-        "onboarding_data": school.get("onboarding_data", {}),
+        "onboarding_data": school.get("onboarding_data") or {},
     }
 
 @api_router.post("/schools/{school_id}/lms-students")
@@ -9926,7 +9926,7 @@ async def get_public_tracking(tracking_token: str):
     
     workflow = school.get("onboarding_workflow", {})
     steps = workflow.get("steps", {})
-    onboarding_data = school.get("onboarding_data", {})
+    onboarding_data = school.get("onboarding_data") or {}
     
     # Fetch PO data for this school (for kit_delivery step) - with short timeout for better UX
     po_info = None
@@ -10274,7 +10274,7 @@ async def get_school_payments(
     }).to_list(length=None)
     
     for school in schools:
-        onboarding_data = school.get("onboarding_data", {})
+        onboarding_data = school.get("onboarding_data") or {}
         payment_tranches = onboarding_data.get("payment_tranches", [])
         school_payments = school.get("payments", [])
         
@@ -10339,7 +10339,7 @@ async def get_student_payments(
     }).to_list(length=None)
     
     for student in students:
-        onboarding_data = student.get("onboarding_data", {})
+        onboarding_data = student.get("onboarding_data") or {}
         student_payments = student.get("payments", [])
         
         # Create payment record from student conversion data
@@ -10491,7 +10491,7 @@ async def update_payment(
         # Send invoice email if new invoice is uploaded
         if data.get("invoice_url") and (existing_idx is None or not payments[existing_idx].get("invoice_url") if existing_idx is not None else True):
             # Get school contacts - specifically accounts team
-            onboarding_data = school.get("onboarding_data", {})
+            onboarding_data = school.get("onboarding_data") or {}
             school_contacts = onboarding_data.get("school_contacts", [])
             accounts_contacts = [c for c in school_contacts if c.get("role") == "accounts"]
             
@@ -10638,7 +10638,7 @@ async def update_payment(
         
         if data.get("status") == "paid":
             # Check if all tranches are paid
-            onboarding_data = school.get("onboarding_data", {})
+            onboarding_data = school.get("onboarding_data") or {}
             payment_tranches = onboarding_data.get("payment_tranches", [])
             all_paid = all(
                 any(p.get("tranche_index") == i and p.get("status") == "paid" for p in payments)
@@ -12665,7 +12665,7 @@ async def raise_po_for_school(school_id: str, data: dict, user: dict = Depends(g
     if not school:
         raise HTTPException(status_code=404, detail="School not found")
 
-    od = school.get("onboarding_data", {})
+    od = school.get("onboarding_data") or {}
     delivery_date = data.get("delivery_date")
     if not delivery_date:
         raise HTTPException(status_code=400, detail="Delivery date is required")

@@ -174,6 +174,7 @@ const AdminDataCenter = () => {
   useEffect(() => {
     fetchData();
     fetchStats();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -181,6 +182,7 @@ const AdminDataCenter = () => {
       fetchData();
     }, 300);
     return () => clearTimeout(debounce);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, dataType, statusFilter, cityFilter, ageFilter, skillFilter, feeRangeFilter, studentCountFilter, availabilityFilter]);
 
   const clearFilters = () => {

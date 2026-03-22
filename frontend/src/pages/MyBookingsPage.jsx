@@ -101,6 +101,7 @@ const MyBookingsPage = () => {
         fetchSchoolReceipts();
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn, navigate, user?.phone, authLoading]);
 
   // Fetch payment info for logged-in student
@@ -467,6 +468,7 @@ const MyBookingsPage = () => {
     } finally {
       setProcessingPayment(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cashfreeReady, paymentInfo]);
 
   const getStatusColor = (status) => {
