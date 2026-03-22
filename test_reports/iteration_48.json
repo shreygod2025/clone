@@ -1,0 +1,73 @@
+{
+  "summary": "Iteration 48: Backend-only testing of server.py route extraction. Tested all 4 extracted route modules (reports.py, jobs.py, expenses.py, admin_keys.py). All 37 pytest tests pass. Core API, auth, and non-extracted routes verified intact. b2b-insights NoneType fix confirmed working.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "routes/jobs.py (functions: send_ticket_overdue_notification, send_ticket_overdue_admin_notification, send_school_meeting_reminder_24h, send_school_meeting_reminder_2h, send_support_ticket_notification, fetch_po_data, transform_tracking_url)",
+        "issue": "jobs.py references these functions but they are NOT defined or imported in jobs.py. They only exist in server.py. The check-overdue-tickets job tests pass NOW because there are 0 overdue tickets in test data — the loop body never executes. If real tickets exist (48h+ old), this job would crash with NameError at the await lines.",
+        "priority": "HIGH"
+      },
+      {
+        "endpoint": "routes/admin_keys.py line 221 - POST /api/admin/service-api-keys/resend/test",
+        "issue": "admin_keys.py uses `asyncio.to_thread(...)` at line 221 inside test_resend_email but does NOT import asyncio. Will cause NameError: name 'asyncio' is not defined when endpoint is called.",
+        "priority": "HIGH"
+      },
+      {
+        "endpoint": "routes/admin_keys.py lines 447-508",
+        "issue": "Dead code: ReportsDateFilter, get_date_range, parse_date_field are defined in admin_keys.py but never used by any endpoint in that file. These are leftover from the extraction process.",
+        "priority": "LOW"
+      },
+      {
+        "endpoint": "routes/jobs.py lines 513-526",
+        "issue": "EXPENSE_CATEGORIES constant is duplicated in both jobs.py and expenses.py. The one in jobs.py appears after router definition but is not used by any endpoint in jobs.py — it's dead code.",
+        "priority": "LOW"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter48_route_extraction.py",
+    "/app/test_reports/pytest/pytest_results_iter48.xml"
+  ],
+  "action_items": [
+    "CRITICAL (latent): Fix jobs.py missing function references — add imports from expenses.py for fetch_po_data and transform_tracking_url, and move/import send_ticket_overdue_notification, send_ticket_overdue_admin_notification, send_school_meeting_reminder_24h, send_school_meeting_reminder_2h, send_support_ticket_notification into jobs.py or a shared module.",
+    "HIGH: Add `import asyncio` to routes/admin_keys.py (line 5 import block) to fix test_resend_email endpoint.",
+    "LOW: Remove dead code from admin_keys.py (ReportsDateFilter, get_date_range, parse_date_field at lines 447-508) and from jobs.py (EXPENSE_CATEGORIES at lines 513-526)."
+  ],
+  "critical_code_review_comments": [
+    "jobs.py is incomplete — it was extracted from server.py but the notification helper functions (send_ticket_overdue_notification etc.) were NOT extracted with it. The job endpoints will silently return 200 with 0 notifications if there's no data, masking the bug. When real data is present, they will crash with NameError.",
+    "admin_keys.py is missing `import asyncio` — the test_resend_email endpoint (POST /api/admin/service-api-keys/resend/test) will always fail at runtime with NameError.",
+    "Duplication: EXPENSE_CATEGORIES is defined in both expenses.py (correct location) and jobs.py (unused/dead code). The one in jobs.py should be removed.",
+    "Duplication: get_date_range and parse_date_field are defined in both reports.py and admin_keys.py. The ones in admin_keys.py are unused.",
+    "server.py still 15,694 lines — the extraction is working but not all helpers for jobs.py were moved."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter48_route_extraction.py"
+  ],
+  "success_rate": {
+    "backend": "100% (37/37 tests pass)",
+    "frontend": "N/A (backend-only test)"
+  },
+  "test_credentials": "testadmin@oll.co / test123 (fallback: admin@oll.co / Dagaji03@), Jobs secret: oll_cron_secret_2024",
+  "seed_data_creation": "Generated and deleted TEST_Key_iter48 and TEST_Lifecycle_iter48 API keys via lifecycle tests (cleanup done in tests).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Iteration 48: Route extraction testing. All 4 new route modules verified working: routes/reports.py (9 endpoints, all 200), routes/jobs.py (5 job endpoints, all 200 with correct secret), routes/expenses.py (9 endpoints including 12 categories), routes/admin_keys.py (10 endpoints including generate/list/delete lifecycle). Key latent bugs to watch: (1) jobs.py will NameError on notification helpers when real data triggers the loop body, (2) admin_keys.py missing asyncio import will crash test_resend_email. These are code issues to fix, not runtime blockers for current test data.",
+  "rca_of_issues": {
+    "jobs_missing_functions": {
+      "description": "jobs.py was extracted from server.py but the notification and PO helper functions were not co-located. The extractor moved the router endpoint definitions but left the helper functions in server.py only.",
+      "reproduction": "POST /api/jobs/check-overdue-tickets?secret=oll_cron_secret_2024 when there are support tickets older than 48h with no overdue_notified_at — triggers NameError on send_ticket_overdue_notification",
+      "mitigation": "Import fetch_po_data and transform_tracking_url from routes.expenses, and either extract the 4 notification helpers into routes/shared.py or define them inline in jobs.py"
+    },
+    "asyncio_missing_import": {
+      "description": "admin_keys.py test_resend_email uses asyncio.to_thread but the import was omitted during extraction",
+      "reproduction": "POST /api/admin/service-api-keys/resend/test with valid auth — immediately fails with NameError: name 'asyncio' is not defined",
+      "mitigation": "Add `import asyncio` to the imports section at top of routes/admin_keys.py"
+    }
+  }
+}
