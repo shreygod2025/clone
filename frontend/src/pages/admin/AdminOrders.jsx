@@ -574,6 +574,30 @@ const AdminOrders = () => {
     const { payment } = sendEmailModal;
     setSendingEmail(payment.id);
     try {
+      // If no saved invoice yet, silently generate & save it (jsPDF format, no download)
+      if (!invoiceSentMap[payment.id]?.saved) {
+        let schoolData = schoolDataCache.current[payment.school_id];
+        if (!schoolData) {
+          const r = await axios.get(`${API}/orders/school-details/${payment.school_id}`, { headers: getAuthHeaders() });
+          schoolData = r.data;
+          schoolDataCache.current[payment.school_id] = schoolData;
+        }
+        const { invoiceNo, base64 } = await generateInvoicePDF(payment, schoolData, { skipDownload: true });
+        await axios.post(`${API}/orders/save-invoice-pdf`, {
+          payment_id: payment.id,
+          school_id: payment.school_id,
+          tranche_index: payment.tranche_index ?? 0,
+          invoice_no: invoiceNo,
+          pdf_base64: base64,
+          amount: payment.amount,
+          due_date: payment.due_date || '',
+          status: payment.status || 'pending',
+          tranche_info: payment.tranche_info || `Tranche ${(payment.tranche_index ?? 0) + 1}`,
+        }, { headers: getAuthHeaders() });
+        setInvoiceSentMap(prev => ({ ...prev, [payment.id]: { ...prev[payment.id], invoice_no: invoiceNo, saved: true } }));
+      }
+
+      // Now send email — backend will use the saved jsPDF PDF from invoices collection
       const res = await axios.post(`${API}/orders/send-invoice-email`, {
         school_id: payment.school_id,
         payment_id: payment.id,
@@ -584,7 +608,7 @@ const AdminOrders = () => {
         tranche_info: payment.tranche_info || `Tranche ${(payment.tranche_index || 0) + 1}`,
       }, { headers: getAuthHeaders() });
       const { email_type, sent_to, invoice_no, is_resend } = res.data;
-      toast.success(`${is_resend ? 'Invoice resent' : 'Invoice generated &'} emailed to ${sent_to.length} contact(s) — #${invoice_no}`);
+      toast.success(`Invoice #${invoice_no} emailed to ${sent_to.length} contact(s)`);
       setInvoiceSentMap(prev => ({ ...prev, [payment.id]: { ...prev[payment.id], sent_at: new Date().toISOString(), email_type, invoice_no } }));
       setSendEmailModal(null);
     } catch (err) {

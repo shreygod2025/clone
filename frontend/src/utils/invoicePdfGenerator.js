@@ -162,7 +162,7 @@ function calculateGST(amount, gstType, schoolState) {
 // ──────────────────────────────────────────────
 // Main: Generate Invoice PDF
 // ──────────────────────────────────────────────
-export async function generateInvoicePDF(payment, schoolData) {
+export async function generateInvoicePDF(payment, schoolData, { skipDownload = false } = {}) {
   const doc = new jsPDF('p', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -520,7 +520,7 @@ export async function generateInvoicePDF(payment, schoolData) {
 
   // ─── Save & return ───
   const fileName = `Invoice_${schoolName.replace(/\s+/g, '_')}_${invoiceNo.replace('/', '_')}.pdf`;
-  doc.save(fileName);
+  if (!skipDownload) doc.save(fileName);
   // Return invoice number + base64 so the caller can persist it
   return { invoiceNo, fileName, base64: doc.output('datauristring').split(',')[1] };
 }
