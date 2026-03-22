@@ -52,7 +52,7 @@ def generate_invoice_pdf(school_name: str, tranche: dict, invoice_no: str) -> by
     pdf.set_text_color(255, 255, 255)
     pdf.set_font("Helvetica", "B", 22)
     pdf.set_xy(20, 12)
-    pdf.cell(0, 10, "OLL — Invoice", ln=True)
+    pdf.cell(0, 10, "OLL - Invoice", ln=True)
     pdf.set_font("Helvetica", "", 10)
     pdf.set_xy(20, 24)
     pdf.cell(0, 8, "One Life Learning Pvt. Ltd.", ln=True)
