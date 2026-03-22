@@ -5,13 +5,14 @@ School Email System — OLL Platform
 - Payment Invoice (with PDF attachment) + Reminders
 - Bulk Email to selected contacts
 - Email Templates CRUD
+- Orders: Send Invoice Email + save to invoices collection
 """
 import asyncio
 import base64
 import io
 import logging
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date as date_cls
 
 import resend
 from fastapi import APIRouter, Depends, HTTPException
@@ -198,10 +199,8 @@ async def send_meeting_followup(school_id: str, data: dict, user: dict = Depends
 
     custom_subject = data.get("subject") or f"Thank you for the meeting — {school.get('school_name', '')}"
     custom_body = data.get("body_html") or ""
-    notes = data.get("notes") or school.get("notes") or ""
     next_steps = data.get("next_steps") or ""
 
-    notes_section = ""  # Notes removed from template per design
     next_step_section = f'<div style="background:#ecfdf5;border-radius:8px;padding:14px;margin:18px 0"><p style="margin:0;font-size:13px;color:#059669;font-weight:600">Next Steps</p><p style="margin:6px 0 0;color:#065f46;font-size:14px;white-space:pre-line">{next_steps}</p></div>' if next_steps else ""
 
     sent_to = []
@@ -500,3 +499,191 @@ async def send_bulk_email(data: dict, user: dict = Depends(get_current_user)):
         "sent_to": sent_to, "failed_list": failed,
         "message": f"Sent to {len(sent_to)}/{len(contacts)} contacts"
     }
+
+
+
+# ─── Orders: Send Invoice Email ───────────────────────────────────────────────
+
+def _is_overdue(due_date_str: str | None, status: str) -> bool:
+    if not due_date_str or status == 'paid':
+        return False
+    try:
+        return date_cls.fromisoformat(due_date_str) < date_cls.today()
+    except Exception:
+        return False
+
+
+def _get_email_type(status: str, due_date: str | None) -> str:
+    if status == 'paid':
+        return 'confirmation'
+    if status == 'overdue' or _is_overdue(due_date, status):
+        return 'overdue'
+    return 'invoice'
+
+
+@router.post("/orders/send-invoice-email")
+async def send_order_invoice_email(data: dict, user: dict = Depends(get_current_user)):
+    """Generate (or retrieve saved) invoice PDF and email to school's accounts + principal."""
+    school_id = data.get("school_id")
+    payment_id = data.get("payment_id")
+    tranche_index = int(data.get("tranche_index", 0))
+    amount = data.get("amount") or 0
+    due_date = data.get("due_date") or ""
+    status = data.get("status") or "pending"
+    tranche_label = data.get("tranche_info") or f"Tranche {tranche_index + 1}"
+
+    if not school_id:
+        raise HTTPException(status_code=400, detail="school_id is required")
+
+    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+
+    school_name = school.get("school_name", "")
+    invoice_no = f"OLL-{school_id[:6].upper()}-{tranche_index + 1:02d}"
+
+    # ── Get or generate PDF ──────────────────────────────────────────────────
+    existing_invoice = await db.invoices.find_one({"payment_id": payment_id}, {"_id": 0})
+
+    if existing_invoice and existing_invoice.get("pdf_base64"):
+        pdf_bytes = base64.b64decode(existing_invoice["pdf_base64"])
+        invoice_no = existing_invoice.get("invoice_no", invoice_no)
+        is_resend = True
+    else:
+        tranche_for_pdf = {
+            "label": tranche_label,
+            "due_date": due_date or "—",
+            "status": status,
+            "amount": amount,
+        }
+        pdf_bytes = generate_invoice_pdf(school_name, tranche_for_pdf, invoice_no)
+        is_resend = False
+
+        # Save to invoices collection
+        invoice_doc = {
+            "id": str(uuid.uuid4()),
+            "payment_id": payment_id,
+            "school_id": school_id,
+            "school_name": school_name,
+            "tranche_index": tranche_index,
+            "invoice_no": invoice_no,
+            "amount": float(str(amount).replace(",", "") or 0),
+            "due_date": due_date,
+            "status": status,
+            "pdf_base64": base64.b64encode(pdf_bytes).decode(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "last_sent_at": None,
+            "sent_count": 0,
+            "sent_to": [],
+        }
+        await db.invoices.insert_one(invoice_doc)
+        invoice_doc.pop("_id", None)
+
+    # ── Determine email type ─────────────────────────────────────────────────
+    email_type = _get_email_type(status, due_date if due_date else None)
+    amount_str = f"₹{int(float(str(amount).replace(',', '') or 0)):,}"
+
+    # ── Get recipients: accounts + principal roles ───────────────────────────
+    all_contacts = (school.get("onboarding_data") or {}).get("school_contacts") or [
+        {"name": school.get("contact_name"), "email": school.get("email"), "role": "Principal"}
+    ]
+    priority_roles = {"accounts", "principal", "director", "trustee_owner"}
+    to_contacts = [c for c in all_contacts
+                   if c.get("email") and c.get("role", "").lower() in priority_roles]
+    if not to_contacts:
+        to_contacts = [c for c in all_contacts if c.get("email")]
+    if not to_contacts:
+        raise HTTPException(status_code=400, detail="No email recipients found for this school")
+
+    # ── Build email body ─────────────────────────────────────────────────────
+    if email_type == "invoice":
+        subject = f"Invoice #{invoice_no} — {school_name} | OLL Program Fee"
+        body_rows = f"""<tr>
+          <td style="padding:10px;border:1px solid #e2e8f0">{tranche_label}</td>
+          <td style="padding:10px;border:1px solid #e2e8f0;text-align:right">{due_date or '—'}</td>
+          <td style="padding:10px;border:1px solid #e2e8f0;text-align:right;font-weight:700">{amount_str}</td></tr>"""
+        email_body = f"""
+        <p style="color:#475569;font-size:14px">Please find the invoice attached for the OLL program fee for <strong>{school_name}</strong>.</p>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;margin:18px 0">
+          <thead><tr style="background:#f1f5f9">
+            <th style="padding:10px;border:1px solid #e2e8f0;text-align:left">Description</th>
+            <th style="padding:10px;border:1px solid #e2e8f0">Due Date</th>
+            <th style="padding:10px;border:1px solid #e2e8f0;text-align:right">Amount</th>
+          </tr></thead><tbody>{body_rows}</tbody>
+          <tfoot><tr>
+            <td colspan="2" style="padding:10px;font-weight:700;text-align:right;border:1px solid #e2e8f0">Total Due</td>
+            <td style="padding:10px;border:1px solid #e2e8f0;text-align:right;font-weight:700;color:#1E3A5F">{amount_str}</td>
+          </tr></tfoot>
+        </table>
+        <p style="color:#475569;font-size:14px">Please process the payment by <strong>{due_date or 'the due date'}</strong>. For queries, contact accounts@oll.co.</p>"""
+
+    elif email_type == "overdue":
+        subject = f"Action Required — Payment Overdue | {school_name}"
+        email_body = f"""
+        <p style="color:#475569;font-size:14px">We notice that the payment of <strong>{amount_str}</strong> for <strong>{tranche_label}</strong> was due on <strong>{due_date or '—'}</strong> and remains unpaid.</p>
+        <div style="background:#fee2e2;border-radius:8px;padding:14px;margin:16px 0;border-left:4px solid #dc2626">
+          <p style="margin:0;color:#991b1b;font-size:14px">Overdue: <strong>{amount_str}</strong> (was due {due_date or '—'})</p>
+        </div>
+        <p style="color:#475569;font-size:14px">Please process the payment at your earliest convenience or contact us to discuss. Invoice #{invoice_no} is attached for reference.</p>"""
+
+    else:  # confirmation
+        subject = f"Payment Received — Thank You! | {school_name}"
+        email_body = f"""
+        <p style="color:#475569;font-size:14px">We have received your payment of <strong>{amount_str}</strong> for <strong>{tranche_label}</strong>. Thank you!</p>
+        <div style="background:#dcfce7;border-radius:8px;padding:14px;margin:16px 0;border-left:4px solid #16a34a">
+          <p style="margin:0;color:#166534;font-size:14px">Payment of <strong>{amount_str}</strong> confirmed. Invoice #{invoice_no} attached for your records.</p>
+        </div>
+        <p style="color:#475569;font-size:14px">Your partnership is fully active. Please don't hesitate to reach out for any support.</p>"""
+
+    attachments = [{"filename": f"OLL_Invoice_{invoice_no}.pdf",
+                    "content": base64.b64encode(pdf_bytes).decode()}]
+
+    # ── Send emails ──────────────────────────────────────────────────────────
+    sent_to = []
+    for c in to_contacts:
+        name = c.get("name") or "there"
+        html = BASE_EMAIL_WRAP.replace("{title}", subject.split(" | ")[0]) \
+                              .replace("{contact_name}", name) \
+                              .replace("{body}", email_body)
+        try:
+            await _send_email(c["email"], subject, html, attachments)
+            sent_to.append(c["email"])
+        except Exception as e:
+            logger.error(f"Order invoice email error to {c['email']}: {e}")
+        await asyncio.sleep(0.3)
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    # ── Update invoice record ────────────────────────────────────────────────
+    await db.invoices.update_one(
+        {"payment_id": payment_id},
+        {"$set": {"last_sent_at": now_iso, "sent_to": sent_to},
+         "$inc": {"sent_count": 1}}
+    )
+
+    # ── Activity log ─────────────────────────────────────────────────────────
+    await db.school_inquiries.update_one(
+        {"id": school_id},
+        {"$push": {"activity_log": {
+            "type": "email_sent", "category": f"invoice_{email_type}",
+            "description": f"Invoice #{invoice_no} ({email_type}) sent to: {', '.join(sent_to)} — {amount_str}",
+            "by": user.get("email"), "at": now_iso
+        }}}
+    )
+
+    return {
+        "invoice_no": invoice_no,
+        "email_type": email_type,
+        "sent_to": sent_to,
+        "is_resend": is_resend,
+        "message": f"{'Invoice resent' if is_resend else 'Invoice generated &'} sent to {len(sent_to)} contact(s)"
+    }
+
+
+@router.get("/orders/{payment_id}/invoice-status")
+async def get_invoice_status(payment_id: str, user: dict = Depends(get_current_user)):
+    """Check if invoice has been generated and sent for a payment."""
+    inv = await db.invoices.find_one({"payment_id": payment_id}, {"_id": 0, "pdf_base64": 0})
+    if not inv:
+        return {"exists": False}
+    return {"exists": True, **inv}

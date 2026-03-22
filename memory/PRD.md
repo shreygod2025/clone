@@ -637,7 +637,17 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 
 ## Prioritized Backlog
 
-### March 22, 2026
+### March 22, 2026 (Session 2)
+- **Orders: Send Invoice Email with saved invoices** — COMPLETE
+  - New `POST /api/orders/send-invoice-email` endpoint in `school_emails.py`
+  - Generates invoice PDF (fpdf2), saves to new `invoices` MongoDB collection (with base64 PDF for resending)
+  - Determines email type automatically: `invoice` (pending), `overdue` (past due), `confirmation` (paid)
+  - Recipients: Accounts + Principal contacts from `school_contacts`; falls back to primary contact
+  - On resend: uses the same saved PDF (same invoice number, consistent accounting)
+  - `GET /api/orders/{payment_id}/invoice-status` endpoint to check saved invoice status
+  - Frontend: "Send Email" button added to all order rows (single + multi-tranche); shows "Resend" after first send
+  - Confirmation dialog shows: school, tranche, amount, due date, email type badge, recipient note
+  - Activity logged to `school_inquiries.activity_log`
 - **Follow-up Email Template System for Meeting Done Schools** — COMPLETE (iter_50: 15/15 backend, 11/11 frontend tests PASS)
   - Added `meetingDoneEmailState` state + `buildMeetingDoneTemplate` + `handleSendMeetingDoneEmail` to `AdminSchoolCRM.jsx`
   - New purple "Send Follow-up Email" section in Follow-up Modal (visible only for `meeting_done` status schools)

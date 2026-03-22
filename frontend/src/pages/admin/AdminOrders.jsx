@@ -171,6 +171,10 @@ const AdminOrders = () => {
   const schoolDataCache = React.useRef({});
   const [uploadingInvoice, setUploadingInvoice] = useState(false);
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  // Send Invoice Email states
+  const [sendEmailModal, setSendEmailModal] = useState(null); // { payment, group }
+  const [sendingEmail, setSendingEmail] = useState(null); // payment_id
+  const [invoiceSentMap, setInvoiceSentMap] = useState({}); // { [payment_id]: { sent_at, count } }
   const [paymentUpdate, setPaymentUpdate] = useState({
     status: '',
     payment_date: '',
@@ -512,6 +516,41 @@ const AdminOrders = () => {
       toast.error('Failed to generate invoice');
     } finally {
       setGeneratingInvoice(null);
+    }
+  };
+
+  // Email type helper (mirrors backend logic)
+  const getEmailType = (payment) => {
+    const status = payment.status || 'pending';
+    if (status === 'paid') return 'confirmation';
+    if (status === 'overdue') return 'overdue';
+    if (status === 'pending' && payment.due_date && isPast(parseISO(payment.due_date))) return 'overdue';
+    return 'invoice';
+  };
+
+  // Send Invoice Email handler
+  const handleSendInvoiceEmail = async () => {
+    if (!sendEmailModal) return;
+    const { payment } = sendEmailModal;
+    setSendingEmail(payment.id);
+    try {
+      const res = await axios.post(`${API}/orders/send-invoice-email`, {
+        school_id: payment.school_id,
+        payment_id: payment.id,
+        tranche_index: payment.tranche_index,
+        amount: payment.amount,
+        due_date: payment.due_date || '',
+        status: payment.status || 'pending',
+        tranche_info: payment.tranche_info || `Tranche ${(payment.tranche_index || 0) + 1}`,
+      }, { headers: getAuthHeaders() });
+      const { email_type, sent_to, invoice_no, is_resend } = res.data;
+      toast.success(`${is_resend ? 'Invoice resent' : 'Invoice generated &'} emailed to ${sent_to.length} contact(s) — #${invoice_no}`);
+      setInvoiceSentMap(prev => ({ ...prev, [payment.id]: { sent_at: new Date().toISOString(), email_type } }));
+      setSendEmailModal(null);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to send invoice email');
+    } finally {
+      setSendingEmail(null);
     }
   };
 
@@ -1116,6 +1155,18 @@ const AdminOrders = () => {
                                 <Button
                                   variant="outline"
                                   size="sm"
+                                  onClick={(e) => { e.stopPropagation(); setSendEmailModal({ payment: group.tranches[0], group }); }}
+                                  className={`${invoiceSentMap[group.tranches[0].id] ? 'border-green-200 text-green-700 hover:bg-green-50' : 'border-teal-200 text-teal-600 hover:bg-teal-50 hover:border-teal-300'}`}
+                                  data-testid={`send-invoice-email-${group.tranches[0].id}`}
+                                >
+                                  <Mail className="w-3.5 h-3.5 mr-1" />
+                                  {invoiceSentMap[group.tranches[0].id] ? 'Resend' : 'Send Email'}
+                                </Button>
+                              )}
+                              {group.tranches.length === 1 && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
                                   onClick={(e) => { e.stopPropagation(); openPaymentModal(group.tranches[0]); }}
                                   className="border-orange-200 text-orange-600 hover:bg-orange-50 hover:border-orange-300"
                                   data-testid={`update-payment-${group.tranches[0].id}`}
@@ -1197,6 +1248,16 @@ const AdminOrders = () => {
                                 >
                                   <FilePlus className="w-3.5 h-3.5 mr-1" />
                                   {generatingInvoice === payment.id ? '...' : 'Invoice'}
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setSendEmailModal({ payment, group })}
+                                  className={`${invoiceSentMap[payment.id] ? 'border-green-200 text-green-700 hover:bg-green-50' : 'border-teal-200 text-teal-600 hover:bg-teal-50'}`}
+                                  data-testid={`send-invoice-email-${payment.id}`}
+                                >
+                                  <Mail className="w-3.5 h-3.5 mr-1" />
+                                  {invoiceSentMap[payment.id] ? 'Resend' : 'Send Email'}
                                 </Button>
                                 <Button
                                   variant="outline"
@@ -2190,6 +2251,82 @@ const AdminOrders = () => {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Send Invoice Email Confirmation Modal */}
+      <Dialog open={!!sendEmailModal} onOpenChange={() => setSendEmailModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-teal-700">
+              <Mail className="w-5 h-5" />
+              Send Invoice Email
+            </DialogTitle>
+          </DialogHeader>
+          {sendEmailModal && (() => {
+            const { payment, group } = sendEmailModal;
+            const emailType = getEmailType(payment);
+            const emailTypeLabel = emailType === 'overdue' ? 'Overdue Notice' : emailType === 'confirmation' ? 'Payment Confirmation' : 'Invoice';
+            const emailTypeBadge = emailType === 'overdue'
+              ? 'bg-red-100 text-red-700 border-red-200'
+              : emailType === 'confirmation'
+              ? 'bg-green-100 text-green-700 border-green-200'
+              : 'bg-blue-100 text-blue-700 border-blue-200';
+            return (
+              <div className="space-y-4">
+                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">School</span>
+                    <span className="font-semibold text-slate-800">{group?.school_name || payment.school_name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Tranche</span>
+                    <span className="font-medium">{payment.tranche_info || `Tranche ${(payment.tranche_index || 0) + 1}`}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Amount</span>
+                    <span className="font-semibold">₹{(payment.amount || 0).toLocaleString()}</span>
+                  </div>
+                  {payment.due_date && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Due Date</span>
+                      <span className={isPast(parseISO(payment.due_date)) && payment.status !== 'paid' ? 'text-red-600 font-medium' : ''}>
+                        {format(parseISO(payment.due_date), 'MMM d, yyyy')}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                  <Mail className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-slate-700">
+                      Email type: <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold border ${emailTypeBadge}`}>{emailTypeLabel}</span>
+                    </p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Invoice PDF will be generated &amp; attached. Sent to Accounts &amp; Principal contacts.
+                    </p>
+                    {invoiceSentMap[payment.id] && (
+                      <p className="text-xs text-green-700 mt-1 font-medium">Previously sent — this will resend the same invoice.</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-3 pt-1">
+                  <Button variant="outline" onClick={() => setSendEmailModal(null)} className="flex-1">
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleSendInvoiceEmail}
+                    disabled={sendingEmail === payment.id}
+                    className="flex-1 bg-teal-600 hover:bg-teal-700 text-white"
+                    data-testid="confirm-send-invoice-email"
+                  >
+                    <Mail className="w-4 h-4 mr-1" />
+                    {sendingEmail === payment.id ? 'Sending...' : 'Send Email'}
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
 
