@@ -614,6 +614,13 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 - server.py: 15,704 → 13,217 lines (−2,487 lines, total −4,690 lines from original 17,907)
 - Tested: 20/20 pytest pass + scheduler-status 200 verified (iteration_49)
 
+## Session: March 22, 2026 — PO Tracking URL Fix (DONE)
+- Fixed PO tracking links redirecting to wrong preview domain (`vendor-mgmt-v2.preview.emergentagent.com`) instead of `vendorplus-4.emergent.host`
+- Updated `transform_tracking_url` in `routes/expenses.py` to use regex wildcard for any `*.preview.emergentagent.com` domain
+- Applied transform at write-time (PO raise) and read-time (inquiries + onboarding endpoints) to fix both new and existing records
+- Also fixed bonus `add-document` 500 error: MongoDB `$push` on null `documents` field now handled via aggregation pipeline update
+- Also fixed proper import: `transform_tracking_url`, `fetch_po_data`, `VENDOR_PUBLIC_API`, `fetch_vendor_products`, `match_vendor_product` now properly imported into server.py
+
 ## Session: March 22, 2026 — P0 MOU PDF Save Bug Fix (DONE)
 - Fixed critical React event handler bug in `AdminSchoolCRM.jsx`:
   - `onClick={generateMOUPDF}` was passing the SyntheticEvent as `overrideSchool`, making `school.id` undefined → `/api/schools/undefined/add-document` 404

@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 import uuid
 import httpx
 import os
+import re
 import logging
 
 from .shared import db, get_current_user
@@ -270,20 +271,9 @@ def transform_tracking_url(url: str) -> str:
     """Transform preview tracking URLs to production URLs"""
     if not url:
         return url
-    # Replace preview domain with production domain
-    preview_patterns = [
-        "oll-procure.preview.emergentagent.com",
-        "procureway.preview.emergentagent.com",
-        "vendorplus.preview.emergentagent.com",
-        "procureway.stage-preview.emergentagent.com",
-        "vendorplus.stage-preview.emergentagent.com",
-        "oll-procure.stage-preview.emergentagent.com"
-    ]
-    for pattern in preview_patterns:
-        if pattern in url:
-            # Extract the path after the domain
-            url = url.replace(f"https://{pattern}", PO_TRACKING_PROD_URL)
-            url = url.replace(f"http://{pattern}", PO_TRACKING_PROD_URL)
+    # Replace any *.preview.emergentagent.com or *.stage-preview.emergentagent.com with production domain
+    url = re.sub(r'https?://[^/]*\.preview\.emergentagent\.com', PO_TRACKING_PROD_URL, url)
+    url = re.sub(r'https?://[^/]*\.stage-preview\.emergentagent\.com', PO_TRACKING_PROD_URL, url)
     return url
 
 async def fetch_po_data(endpoint: str, params: dict = None, timeout: float = 10.0):

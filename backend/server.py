@@ -4935,6 +4935,11 @@ async def get_school_inquiries(
         # Add flags to indicate ownership
         inq['is_owner'] = inq.get('assigned_to') == user_id or inq.get('added_by') == user_id
         inq['is_viewer'] = not inq['is_owner']
+        
+        # Transform any stale preview tracking URLs in po_requests
+        for po_req in inq.get('po_requests', []):
+            if po_req.get('tracking_url'):
+                po_req['tracking_url'] = transform_tracking_url(po_req['tracking_url'])
     
     return inquiries
 
@@ -9811,7 +9816,15 @@ async def add_school_document(school_id: str, data: dict, user: dict = Depends(g
 
     result = await db.school_inquiries.update_one(
         {"id": school_id},
-        {"$push": {"documents": doc_entry}}
+        [{"$set": {
+            "documents": {
+                "$cond": {
+                    "if": {"$isArray": "$documents"},
+                    "then": {"$concatArrays": ["$documents", [doc_entry]]},
+                    "else": [doc_entry]
+                }
+            }
+        }}]
     )
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="School not found")
@@ -9825,12 +9838,17 @@ async def get_school_onboarding(school_id: str, user: dict = Depends(get_current
     if not school:
         raise HTTPException(status_code=404, detail="School not found")
     
+    po_requests = school.get("po_requests", [])
+    for po_req in po_requests:
+        if po_req.get('tracking_url'):
+            po_req['tracking_url'] = transform_tracking_url(po_req['tracking_url'])
+    
     return {
         "school_id": school_id,
         "school_name": school.get("school_name"),
         "contact_name": school.get("contact_name"),
         "workflow": school.get("onboarding_workflow", {}),
-        "po_requests": school.get("po_requests", []),
+        "po_requests": po_requests,
         "onboarding_data": school.get("onboarding_data", {}),
     }
 
@@ -12747,7 +12765,7 @@ async def raise_po_for_school(school_id: str, data: dict, user: dict = Depends(g
         "po_number": po_result.get("po_number"),
         "po_id": po_result.get("po_id"),
         "tracking_token": po_result.get("tracking_token"),
-        "tracking_url": po_result.get("tracking_url"),
+        "tracking_url": transform_tracking_url(po_result.get("tracking_url")),
         "status": po_result.get("status"),
         "products": products,
         "delivery_date": delivery_date,
@@ -12766,7 +12784,7 @@ async def raise_po_for_school(school_id: str, data: dict, user: dict = Depends(g
             "onboarding_workflow.steps.kit_delivery.data.po_number": po_result.get("po_number"),
             "onboarding_workflow.steps.kit_delivery.data.po_status": po_result.get("status"),
             "onboarding_workflow.steps.kit_delivery.data.delivery_date": delivery_date,
-            "onboarding_workflow.steps.kit_delivery.data.tracking_url": po_result.get("tracking_url"),
+            "onboarding_workflow.steps.kit_delivery.data.tracking_url": transform_tracking_url(po_result.get("tracking_url")),
         }}
     )
 
@@ -12774,7 +12792,7 @@ async def raise_po_for_school(school_id: str, data: dict, user: dict = Depends(g
         "success": True,
         "po_number": po_result.get("po_number"),
         "tracking_token": po_result.get("tracking_token"),
-        "tracking_url": po_result.get("tracking_url"),
+        "tracking_url": transform_tracking_url(po_result.get("tracking_url")),
         "products_count": len(products),
         "products": products,
         "unmatched_products": unmatched,
@@ -13114,7 +13132,7 @@ from routes.payments import router as payments_router, scheduled_payment_sync, s
 from routes.gp_onboarding import router as gp_onboarding_router
 from routes.reports import router as reports_router
 from routes.jobs import router as jobs_router
-from routes.expenses import router as expenses_router
+from routes.expenses import router as expenses_router, transform_tracking_url, fetch_po_data, fetch_vendor_products, match_vendor_product, VENDOR_PUBLIC_API
 from routes.admin_keys import router as admin_keys_router
 
 api_router.include_router(reports_router)
