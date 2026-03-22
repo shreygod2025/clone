@@ -137,6 +137,14 @@ const AdminEducators = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Refresh onboarding progress when Onboarding tab becomes active
+  useEffect(() => {
+    if (activeTab === 'onboarded') {
+      fetchOnboardingProgress();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
   // Auto-load onboarding details when viewing an onboarding educator
   useEffect(() => {
     if (viewEducator && viewEducator.status === 'onboarded') {
@@ -722,7 +730,8 @@ const AdminEducators = () => {
     } else if (activeTab === 'requirements') {
       matchesTab = false; // Requirements tab doesn't show educators
     } else if (activeTab === 'onboarded') {
-      matchesTab = ['onboarded', 'onboarding'].includes(edu.status);
+      matchesTab = ['onboarded', 'onboarding', 'active'].includes(edu.status) && 
+                   onboardingData.some(o => o.educator?.id === edu.id);
     } else {
       matchesTab = edu.status === activeTab;
     }

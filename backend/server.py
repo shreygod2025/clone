@@ -5724,17 +5724,25 @@ async def update_educator_onboarding(educator_id: str, data: EducatorOnboardingU
     # Use upsert to create record if it doesn't exist
     result = await db.educator_onboarding.update_one(
         {"educator_id": educator_id}, 
-        {"$set": update_data},
+        {
+            "$set": update_data,
+            "$setOnInsert": {
+                "id": str(uuid.uuid4()),
+                "current_step": 1,
+                "completed_steps": [],
+                "started_at": datetime.now(timezone.utc).isoformat(),
+                "status": "in_progress",
+                "documents_verified": False,
+                "welcome_video_watched": False,
+                "video_progress": {},
+                "video_uploads": {}
+            }
+        },
         upsert=True
     )
     
-    # If upserting (new record), set the educator_id field
-    if result.upserted_id:
-        await db.educator_onboarding.update_one(
-            {"_id": result.upserted_id},
-            {"$set": {"educator_id": educator_id, "current_step": 1, "completed_steps": [],
-                      "started_at": datetime.now(timezone.utc).isoformat()}}
-        )
+    # No need to re-set educator_id separately — it's already in $set via update_data context
+    # (educator_id is the query field so MongoDB includes it in upserted document)
     
     onboarding = await db.educator_onboarding.find_one({"educator_id": educator_id}, {"_id": 0})
     return onboarding
@@ -6314,30 +6322,35 @@ async def direct_onboard_educator(data: dict, user: dict = Depends(get_current_u
 # Admin endpoint to view all onboarding progress
 @api_router.get("/admin/educators/onboarding-progress")
 async def get_all_onboarding_progress(user: dict = Depends(get_current_user)):
-    """Get onboarding progress for all educators"""
-    # Get all educators in onboarding status
+    """Get onboarding progress for all educators that have an onboarding record"""
+    # Get ALL onboarding records first
+    onboarding_records = await db.educator_onboarding.find({}, {"_id": 0}).to_list(500)
+    
+    if not onboarding_records:
+        return []
+    
+    educator_ids = [o["educator_id"] for o in onboarding_records]
+    
+    # Get matching educators (any status)
     educators = await db.educator_applications.find(
-        {"status": {"$in": ["onboarding", "onboarded"]}},
+        {"id": {"$in": educator_ids}},
         {"_id": 0}
     ).to_list(500)
     
-    # Get onboarding records
-    educator_ids = [e["id"] for e in educators]
-    onboarding_records = await db.educator_onboarding.find(
-        {"educator_id": {"$in": educator_ids}},
-        {"_id": 0}
-    ).to_list(500)
-    
-    # Create lookup
+    educator_map = {e["id"]: e for e in educators}
     onboarding_map = {o["educator_id"]: o for o in onboarding_records}
     
     result = []
-    for e in educators:
-        onb = onboarding_map.get(e["id"], {})
+    for educator_id in educator_ids:
+        educator = educator_map.get(educator_id)
+        onb = onboarding_map.get(educator_id, {})
+        if not educator:
+            continue
+        completed = onb.get("completed_steps", [])
         result.append({
-            "educator": e,
+            "educator": educator,
             "onboarding": onb,
-            "progress": len(onb.get("completed_steps", [])) / 7 * 100 if onb else 0
+            "progress": len(completed) / 7 * 100
         })
     
     return result
