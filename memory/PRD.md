@@ -608,7 +608,7 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 ## Prioritized Backlog
 
 ### P0 (Critical)
-- Continue refactoring `server.py` (17,908 lines → target modular route files)
+- Continue refactoring `server.py` (15,704 lines → extract schools.py ~4000 lines, payments.py ~2000 lines)
 
 ### P1 (High Priority)
 - CSV Export button for all major admin data tables
@@ -619,4 +619,15 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 - Backend RBAC enforcement
 - Audit logging for sensitive operations
 - AdminSchoolCRM.jsx further reduction (still 10,707 lines)
+
+## Session: March 22, 2026 — server.py P0 Refactoring Batch 1 (DONE, TESTED)
+- Extracted 4 route groups from server.py into modular files under `backend/routes/`:
+  - `routes/reports.py` — 10 `/admin/reports/*` endpoints (886 lines, includes get_date_range/parse_date_field helpers)
+  - `routes/jobs.py` — 5 `/jobs/*` endpoints (868 lines, includes WhatsApp helpers + notification helpers + PO fetch)
+  - `routes/expenses.py` — 9 `/school-expenses/*` endpoints (392 lines, includes EXPENSE_CATEGORIES constant)
+  - `routes/admin_keys.py` — 10 `/admin/api-keys/*` + `/admin/service-api-keys/*` + `/external/*` endpoints (447 lines)
+- Fixed latent bugs: missing `os`, `asyncio`, `secrets` imports; `verify_external_api_key` dependency added to admin_keys.py; `get_date_range` helpers added to reports.py; notification helpers + `send_whatsapp_notification` added to jobs.py
+- Fixed pre-existing bug: b2b-insights NoneType error on `onboarding_data.get()`
+- server.py: 17,907 → 15,704 lines (−2,203 lines, −12.3%)
+- All routes registered (315 total). Tested: 37/37 backend tests pass (iteration_48). All 4 module groups verified HTTP 200.
 
