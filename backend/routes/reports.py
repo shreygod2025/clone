@@ -941,3 +941,384 @@ async def get_support_insights(
         "period": {"start": start.isoformat(), "end": end.isoformat()}
     }
 
+
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PUBLIC REPORT LINK MANAGEMENT
+# ─────────────────────────────────────────────────────────────────────────────
+
+from pydantic import BaseModel
+import bcrypt
+import uuid
+
+class PublicReportLinkCreate(BaseModel):
+    password: str
+
+class PublicReportPasswordVerify(BaseModel):
+    password: str
+
+class PublicReportPasswordUpdate(BaseModel):
+    new_password: str
+
+
+@router.post("/admin/reports/public-link")
+async def create_or_update_public_link(
+    data: PublicReportLinkCreate,
+    user: dict = Depends(get_current_user)
+):
+    """Create or update the public report link with password"""
+    if not data.password or len(data.password) < 4:
+        raise HTTPException(status_code=400, detail="Password must be at least 4 characters")
+    
+    # Hash the password
+    password_hash = bcrypt.hashpw(data.password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    
+    # Check if a public link already exists
+    existing = await db.public_report_links.find_one({})
+    
+    if existing:
+        # Update existing link
+        await db.public_report_links.update_one(
+            {"id": existing["id"]},
+            {"$set": {
+                "password_hash": password_hash,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "updated_by": user.get("email")
+            }}
+        )
+        token = existing["token"]
+    else:
+        # Create new link
+        token = str(uuid.uuid4())[:8]  # Short token for URL
+        new_link = {
+            "id": str(uuid.uuid4()),
+            "token": token,
+            "password_hash": password_hash,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_by": user.get("email"),
+            "is_active": True
+        }
+        await db.public_report_links.insert_one(new_link)
+    
+    return {
+        "success": True,
+        "token": token,
+        "message": "Public report link created/updated successfully"
+    }
+
+
+@router.get("/admin/reports/public-link")
+async def get_public_link_info(
+    user: dict = Depends(get_current_user)
+):
+    """Get current public report link info (without password)"""
+    link = await db.public_report_links.find_one({}, {"_id": 0, "password_hash": 0})
+    
+    if not link:
+        return {"exists": False}
+    
+    return {
+        "exists": True,
+        "token": link.get("token"),
+        "is_active": link.get("is_active", True),
+        "created_at": link.get("created_at"),
+        "updated_at": link.get("updated_at"),
+        "created_by": link.get("created_by")
+    }
+
+
+@router.patch("/admin/reports/public-link/password")
+async def update_public_link_password(
+    data: PublicReportPasswordUpdate,
+    user: dict = Depends(get_current_user)
+):
+    """Update the password for public report link"""
+    if not data.new_password or len(data.new_password) < 4:
+        raise HTTPException(status_code=400, detail="Password must be at least 4 characters")
+    
+    link = await db.public_report_links.find_one({})
+    if not link:
+        raise HTTPException(status_code=404, detail="No public link exists. Create one first.")
+    
+    password_hash = bcrypt.hashpw(data.new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    
+    await db.public_report_links.update_one(
+        {"id": link["id"]},
+        {"$set": {
+            "password_hash": password_hash,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_by": user.get("email")
+        }}
+    )
+    
+    return {"success": True, "message": "Password updated successfully"}
+
+
+@router.delete("/admin/reports/public-link")
+async def delete_public_link(
+    user: dict = Depends(get_current_user)
+):
+    """Delete the public report link"""
+    result = await db.public_report_links.delete_many({})
+    return {"success": True, "deleted": result.deleted_count}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PUBLIC REPORT ACCESS (No Admin Auth Required)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.post("/public/reports/{token}/verify")
+async def verify_public_report_access(
+    token: str,
+    data: PublicReportPasswordVerify
+):
+    """Verify password for public report access"""
+    link = await db.public_report_links.find_one({"token": token})
+    
+    if not link:
+        raise HTTPException(status_code=404, detail="Invalid report link")
+    
+    if not link.get("is_active", True):
+        raise HTTPException(status_code=403, detail="This report link has been disabled")
+    
+    # Verify password
+    if not bcrypt.checkpw(data.password.encode('utf-8'), link["password_hash"].encode('utf-8')):
+        raise HTTPException(status_code=401, detail="Invalid password")
+    
+    # Generate a short-lived access token (valid for 24 hours)
+    import jwt
+    import os
+    
+    secret = os.environ.get("JWT_SECRET", "your-secret-key")
+    access_token = jwt.encode(
+        {
+            "type": "public_report",
+            "token": token,
+            "exp": datetime.now(timezone.utc) + timedelta(hours=24)
+        },
+        secret,
+        algorithm="HS256"
+    )
+    
+    return {
+        "success": True,
+        "access_token": access_token,
+        "expires_in": 86400  # 24 hours in seconds
+    }
+
+
+async def verify_public_report_token(authorization: str = None):
+    """Verify the public report access token"""
+    import jwt
+    import os
+    
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid authorization header")
+    
+    token = authorization.replace("Bearer ", "")
+    secret = os.environ.get("JWT_SECRET", "your-secret-key")
+    
+    try:
+        payload = jwt.decode(token, secret, algorithms=["HS256"])
+        if payload.get("type") != "public_report":
+            raise HTTPException(status_code=401, detail="Invalid token type")
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+
+@router.get("/public/reports/{token}/data")
+async def get_public_report_data(
+    token: str,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    period: Optional[str] = None,
+    authorization: str = Query(None, alias="auth")
+):
+    """Get public report data (with sensitive info masked)"""
+    # Verify access
+    await verify_public_report_token(f"Bearer {authorization}")
+    
+    # Verify link exists and is active
+    link = await db.public_report_links.find_one({"token": token})
+    if not link or not link.get("is_active", True):
+        raise HTTPException(status_code=403, detail="Report link is invalid or disabled")
+    
+    start, end = get_date_range(start_date, end_date, period)
+    
+    # ── Fetch all data (reusing existing logic) ──
+    
+    # Students
+    all_students = await db.student_inquiries.find({}, {"_id": 0}).to_list(10000)
+    students = []
+    for s in all_students:
+        created = parse_date_field(s.get('created_at'))
+        if created and start <= created <= end:
+            students.append(s)
+    
+    # Schools
+    all_schools = await db.school_inquiries.find({}, {"_id": 0}).to_list(10000)
+    schools = []
+    for s in all_schools:
+        created = parse_date_field(s.get('created_at'))
+        if created and start <= created <= end:
+            schools.append(s)
+    
+    # Educators
+    all_educators = await db.educator_applications.find({}, {"_id": 0}).to_list(10000)
+    educators = []
+    for e in all_educators:
+        created = parse_date_field(e.get('created_at'))
+        if created and start <= created <= end:
+            educators.append(e)
+    
+    # Team
+    all_team = await db.team_applications.find({}, {"_id": 0}).to_list(10000)
+    team = [t for t in all_team if parse_date_field(t.get('created_at')) and start <= parse_date_field(t.get('created_at')) <= end]
+    
+    # Growth Partners
+    all_gps = await db.growth_partners.find({}, {"_id": 0}).to_list(10000)
+    gps = [g for g in all_gps if parse_date_field(g.get('created_at')) and start <= parse_date_field(g.get('created_at')) <= end]
+    
+    # Support queries
+    all_support = await db.support_queries.find({}, {"_id": 0}).to_list(10000)
+    support = []
+    for q in all_support:
+        created = parse_date_field(q.get('created_at'))
+        if created and start <= created <= end:
+            support.append(q)
+    
+    # Expenses
+    all_expenses = await db.expenses.find({}, {"_id": 0}).to_list(10000)
+    expenses = []
+    for e in all_expenses:
+        exp_date = e.get('date')
+        if exp_date:
+            try:
+                if isinstance(exp_date, str):
+                    exp_dt = datetime.strptime(exp_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+                else:
+                    exp_dt = exp_date
+                if start <= exp_dt <= end:
+                    expenses.append(e)
+            except:
+                pass
+    
+    # ── Calculate Overview Metrics ──
+    
+    # Student metrics
+    total_students = len(students)
+    paid_students = len([s for s in students if s.get('status') == 'converted' or s.get('payment_status') == 'paid'])
+    student_revenue = sum(float(s.get('conversion_amount') or s.get('amount_paid') or 0) for s in students if s.get('status') == 'converted' or s.get('payment_status') == 'paid')
+    
+    # School metrics
+    total_schools = len(schools)
+    converted_schools = len([s for s in schools if s.get('status') == 'converted'])
+    active_schools = len([s for s in all_schools if s.get('status') == 'active'])
+    renewed_schools = len([s for s in all_schools if s.get('status') == 'renewed'])
+    lost_schools = len([s for s in all_schools if s.get('status') in ['lost', 'lost_lead', 'lost_customer']])
+    school_revenue = sum(float(s.get('conversion_amount') or (s.get('onboarding_data') or {}).get('total_amount') or 0) for s in all_schools if s.get('status') in ['converted', 'active', 'renewed'])
+    
+    # Educator metrics
+    total_educators = len(educators)
+    active_educators = len([e for e in educators if e.get('status') == 'active'])
+    
+    # Team metrics
+    team_total = len(team)
+    team_hired = len([t for t in team if t.get('status') == 'hired'])
+    
+    # GP metrics
+    gp_total = len(gps)
+    gp_converted = len([g for g in gps if g.get('status') == 'converted'])
+    
+    # Support metrics
+    support_total = len(support)
+    support_resolved = len([q for q in support if q.get('status') in ['resolved', 'closed']])
+    
+    # Expense metrics
+    total_expenses = sum(float(e.get('amount') or 0) for e in expenses)
+    expenses_by_category = {}
+    for e in expenses:
+        cat = e.get('category') or 'Other'
+        expenses_by_category[cat] = expenses_by_category.get(cat, 0) + float(e.get('amount') or 0)
+    
+    # Total revenue and profit
+    total_revenue = student_revenue + school_revenue
+    net_profit = total_revenue - total_expenses
+    
+    # ── Stage Breakdowns ──
+    
+    def get_stage_breakdown(items, default_status='new'):
+        stages = {}
+        for item in items:
+            stage = item.get('status', default_status)
+            stages[stage] = stages.get(stage, 0) + 1
+        return [{"name": k, "count": v} for k, v in sorted(stages.items(), key=lambda x: -x[1])]
+    
+    # ── Build Response (No sensitive data) ──
+    
+    return {
+        "overview": {
+            "total_revenue": total_revenue,
+            "student_revenue": student_revenue,
+            "school_revenue": school_revenue,
+            "total_expenses": total_expenses,
+            "net_profit": net_profit,
+            "paid_students": paid_students,
+            "converted_schools": converted_schools,
+            "active_educators": active_educators,
+        },
+        "students": {
+            "total": total_students,
+            "stages": get_stage_breakdown(students),
+            "new": len([s for s in students if s.get('status') == 'new']),
+            "demo_scheduled": len([s for s in students if s.get('status') == 'demo_scheduled']),
+            "demo_completed": len([s for s in students if s.get('status') == 'demo_completed']),
+            "converted": paid_students,
+        },
+        "schools": {
+            "total": total_schools,
+            "stages": get_stage_breakdown(schools),
+            "new": len([s for s in schools if s.get('status') == 'new']),
+            "meeting_done": len([s for s in schools if s.get('status') == 'meeting_done']),
+            "converted": converted_schools,
+            "active": active_schools,
+            "renewed": renewed_schools,
+            "lost": lost_schools,
+        },
+        "educators": {
+            "total": total_educators,
+            "stages": get_stage_breakdown(educators),
+            "new": len([e for e in educators if e.get('status') == 'new']),
+            "demo_scheduled": len([e for e in educators if e.get('status') == 'demo_scheduled']),
+            "onboarding": len([e for e in educators if e.get('status') == 'onboarding']),
+            "active": active_educators,
+        },
+        "team": {
+            "total": team_total,
+            "stages": get_stage_breakdown(team),
+            "hired": team_hired,
+        },
+        "growth_partners": {
+            "total": gp_total,
+            "stages": get_stage_breakdown(gps),
+            "converted": gp_converted,
+        },
+        "support": {
+            "total": support_total,
+            "stages": get_stage_breakdown(support, 'open'),
+            "resolved": support_resolved,
+            "pending": support_total - support_resolved,
+        },
+        "expenses": {
+            "total": total_expenses,
+            "by_category": [{"name": k, "amount": v} for k, v in sorted(expenses_by_category.items(), key=lambda x: -x[1])],
+        },
+        "period": {
+            "start": start.isoformat(),
+            "end": end.isoformat(),
+        }
+    }

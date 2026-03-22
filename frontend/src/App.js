@@ -52,6 +52,7 @@ const SchoolStudentPayment = lazy(() => import("./pages/SchoolStudentPayment"));
 const SchoolPaymentTrackerPublic = lazy(() => import("./pages/public/SchoolPaymentTrackerPublic"));
 const SchoolStudentLogin = lazy(() => import("./pages/SchoolStudentLogin"));
 const SchoolStudentDashboard = lazy(() => import("./pages/SchoolStudentDashboard"));
+const PublicReports = lazy(() => import("./pages/PublicReports"));
 
 // Course SEO Pages - Lazy loaded
 const CoursesListPage = lazy(() => import("./pages/courses/CoursesListPage"));
@@ -162,6 +163,9 @@ function App() {
               
               {/* GP Self Onboarding - Full onboarding form */}
               <Route path="/gp-onboard/:token" element={<GPSelfOnboarding />} />
+              
+              {/* Public Reports (Password Protected) */}
+              <Route path="/reports/:token" element={<PublicReports />} />
               
               {/* User Auth Routes */}
               <Route path="/login" element={<LoginPage />} />

@@ -6,7 +6,7 @@ import {
   Calendar, RefreshCw, ArrowUpRight, ArrowDownRight,
   UserCheck, Clock, MessageSquare, Target, BarChart3,
   Briefcase, Handshake, Wallet, Receipt, TrendingDown,
-  FileText, Plus, Edit2, Trash2, X, ChevronDown
+  FileText, Plus, Edit2, Trash2, X, ChevronDown, Link, Copy, Eye, EyeOff, ExternalLink, Lock
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -189,6 +189,13 @@ const AdminReports = () => {
     date: format(new Date(), 'yyyy-MM-dd'), payment_method: '', vendor: '', notes: ''
   });
 
+  // Public link management
+  const [showPublicLinkModal, setShowPublicLinkModal] = useState(false);
+  const [publicLinkInfo, setPublicLinkInfo] = useState(null);
+  const [publicLinkPassword, setPublicLinkPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [publicLinkLoading, setPublicLinkLoading] = useState(false);
+
   const getDateParams = () => {
     let params = {};
     if (dateFilterType === 'custom' && customDateRange.start && customDateRange.end) {
@@ -302,6 +309,81 @@ const AdminReports = () => {
       fetchAllData();
     } catch (error) {
       toast.error('Failed to delete expense');
+    }
+  };
+
+  // Public Link Management Functions
+  const fetchPublicLinkInfo = async () => {
+    try {
+      const res = await axios.get(`${API}/admin/reports/public-link`, { headers: getAuthHeaders() });
+      setPublicLinkInfo(res.data);
+    } catch (error) {
+      console.error('Failed to fetch public link info:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchPublicLinkInfo();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleCreateOrUpdatePublicLink = async () => {
+    if (!publicLinkPassword || publicLinkPassword.length < 4) {
+      toast.error('Password must be at least 4 characters');
+      return;
+    }
+    setPublicLinkLoading(true);
+    try {
+      const res = await axios.post(`${API}/admin/reports/public-link`, {
+        password: publicLinkPassword
+      }, { headers: getAuthHeaders() });
+      
+      toast.success('Public report link created/updated!');
+      setPublicLinkInfo({ exists: true, token: res.data.token });
+      setPublicLinkPassword('');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to create public link');
+    } finally {
+      setPublicLinkLoading(false);
+    }
+  };
+
+  const handleUpdatePassword = async () => {
+    if (!publicLinkPassword || publicLinkPassword.length < 4) {
+      toast.error('Password must be at least 4 characters');
+      return;
+    }
+    setPublicLinkLoading(true);
+    try {
+      await axios.patch(`${API}/admin/reports/public-link/password`, {
+        new_password: publicLinkPassword
+      }, { headers: getAuthHeaders() });
+      
+      toast.success('Password updated successfully!');
+      setPublicLinkPassword('');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to update password');
+    } finally {
+      setPublicLinkLoading(false);
+    }
+  };
+
+  const handleDeletePublicLink = async () => {
+    if (!window.confirm('Delete the public report link? Anyone with the link will no longer be able to access reports.')) return;
+    try {
+      await axios.delete(`${API}/admin/reports/public-link`, { headers: getAuthHeaders() });
+      toast.success('Public link deleted');
+      setPublicLinkInfo({ exists: false });
+    } catch (error) {
+      toast.error('Failed to delete public link');
+    }
+  };
+
+  const copyPublicLink = () => {
+    if (publicLinkInfo?.token) {
+      const link = `${window.location.origin}/reports/${publicLinkInfo.token}`;
+      navigator.clipboard.writeText(link);
+      toast.success('Link copied to clipboard!');
     }
   };
 
@@ -423,10 +505,22 @@ const AdminReports = () => {
         </select>
       </div>
       
-      <Button variant="outline" size="sm" onClick={fetchAllData} className="ml-auto">
-        <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-        Refresh
-      </Button>
+      <div className="flex items-center gap-2 ml-auto">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => setShowPublicLinkModal(true)}
+          className="border-blue-200 text-blue-600 hover:bg-blue-50"
+          data-testid="share-report-btn"
+        >
+          <Link className="w-4 h-4 mr-2" />
+          Share Report
+        </Button>
+        <Button variant="outline" size="sm" onClick={fetchAllData}>
+          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </div>
     </div>
   );
 
@@ -1232,6 +1326,137 @@ const AdminReports = () => {
                 {editingExpense ? 'Update' : 'Add'} Expense
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Public Report Link Modal */}
+      <Dialog open={showPublicLinkModal} onOpenChange={setShowPublicLinkModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Link className="w-5 h-5 text-blue-600" />
+              Share Reports Externally
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-500">
+              Create a password-protected public link to share reports with external stakeholders. 
+              They can view all tabs and filters with real-time data. Contact details and names are hidden for privacy.
+            </p>
+
+            {publicLinkInfo?.exists ? (
+              <>
+                {/* Existing Link Info */}
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                      <ExternalLink className="w-4 h-4 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-green-800">Public Link Active</p>
+                      <p className="text-xs text-green-600">Anyone with the link and password can view</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-3">
+                    <Input
+                      value={`${window.location.origin}/reports/${publicLinkInfo.token}`}
+                      readOnly
+                      className="text-sm bg-white"
+                    />
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={copyPublicLink}
+                      className="shrink-0"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Change Password */}
+                <div className="border-t pt-4">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    <Lock className="w-4 h-4 inline mr-1" />
+                    Change Password
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        type={showPassword ? 'text' : 'password'}
+                        value={publicLinkPassword}
+                        onChange={(e) => setPublicLinkPassword(e.target.value)}
+                        placeholder="Enter new password"
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    <Button 
+                      onClick={handleUpdatePassword}
+                      disabled={publicLinkLoading || !publicLinkPassword}
+                      className="shrink-0 bg-blue-600 hover:bg-blue-700"
+                    >
+                      {publicLinkLoading ? 'Updating...' : 'Update'}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Delete Link */}
+                <div className="border-t pt-4">
+                  <Button 
+                    variant="outline" 
+                    className="w-full text-red-600 border-red-200 hover:bg-red-50"
+                    onClick={handleDeletePublicLink}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Public Link
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Create New Link */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Set Password for Public Access *
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? 'text' : 'password'}
+                      value={publicLinkPassword}
+                      onChange={(e) => setPublicLinkPassword(e.target.value)}
+                      placeholder="Enter password (min 4 characters)"
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">
+                    This password will be required to view the reports
+                  </p>
+                </div>
+
+                <Button 
+                  onClick={handleCreateOrUpdatePublicLink}
+                  disabled={publicLinkLoading || publicLinkPassword.length < 4}
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                >
+                  {publicLinkLoading ? 'Creating...' : 'Create Public Link'}
+                </Button>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
