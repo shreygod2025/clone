@@ -637,7 +637,15 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 
 ## Prioritized Backlog
 
-### March 22, 2026 (Session 2)
+### March 22, 2026 (Session 3)
+- **School Map Picker** — COMPLETE
+  - Created `/app/frontend/src/components/SchoolMapPicker.jsx` using Leaflet.js + OpenStreetMap (no API key)
+  - Free geocoding via Nominatim (search → lat/lng) + reverse geocoding (click map → address)
+  - GPS button (browser geolocation), draggable marker, interactive geofence circle
+  - Geofence radius slider (100m–5km)
+  - Added to 3 modals in AdminSchoolCRM.jsx: Edit School, Convert (Onboard), Renewal Convert
+  - Saves `latitude`, `longitude`, `address`, `geofence_radius` to `school_inquiries` root level
+  - External API (`GET /external/schools`) now returns `latitude`, `longitude`, `geofence_radius` in `location` object for Check-in app integration
 - **Orders: Send Invoice Email with saved invoices** — COMPLETE
   - New `POST /api/orders/send-invoice-email` endpoint in `school_emails.py`
   - Generates invoice PDF (fpdf2), saves to new `invoices` MongoDB collection (with base64 PDF for resending)

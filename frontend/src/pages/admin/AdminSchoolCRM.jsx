@@ -18,6 +18,7 @@ import { generateProposalDocument } from '../../utils/proposalPdfGenerator';
 import { generateMOUDocument } from '../../utils/mouPdfGenerator';
 import BulkEmailModal from '../../components/BulkEmailModal';
 import { generateParentCircularDocument } from '../../utils/parentCircularGenerator';
+import { SchoolMapPicker } from '../../components/SchoolMapPicker';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -1794,6 +1795,9 @@ ${FOOTER}</div></body></html>`
         status: 'renewed',
         conversion_amount: String(finalAmount),
         address: renewalConvertData.address,
+        latitude: renewalConvertData.latitude || null,
+        longitude: renewalConvertData.longitude || null,
+        geofence_radius: renewalConvertData.geofence_radius || 500,
         onboarding_data: {
           ...(showRenewalConvertModal.onboarding_data || {}),
           offering: renewalConvertData.offering,
@@ -2343,6 +2347,9 @@ ${FOOTER}</div></body></html>`
         payment_tranches: formattedTranches,
         gst_type: String(onboardData.gst_type || ''),
         school_address: String(onboardData.school_address || ''),
+        latitude: onboardData.latitude || null,
+        longitude: onboardData.longitude || null,
+        geofence_radius: onboardData.geofence_radius || 500,
         additional_services: onboardData.additional_services || [],
         deadline_date: String(onboardData.deadline_date || ''),
         contract_start: contractStart,
@@ -2384,10 +2391,14 @@ ${FOOTER}</div></body></html>`
       
       // Update school status based on save mode
       if (!saveAsDraft) {
-        // Set status to converted
+        // Set status to converted and include location data at root level
         await axios.patch(`${API}/schools/inquiry/${showOnboardModal.id}`, {
           status: 'converted',
-          conversion_amount: String(totalAmount)
+          conversion_amount: String(totalAmount),
+          latitude: onboardData.latitude || null,
+          longitude: onboardData.longitude || null,
+          geofence_radius: onboardData.geofence_radius || 500,
+          address: onboardData.school_address || '',
         }, { headers: getAuthHeaders() });
         
         // Auto-initialize the onboarding workflow
@@ -3341,6 +3352,9 @@ ${FOOTER}</div></body></html>`
         location: editOnboardData.location,
         board: editOnboardData.board,
         address: editOnboardData.address,
+        latitude: editOnboardData.latitude || null,
+        longitude: editOnboardData.longitude || null,
+        geofence_radius: editOnboardData.geofence_radius || 500,
         model: editOnboardData.model,
         total_students: calculatedTotalStudents,
         // Keep conversion_amount in sync with total_amount for display purposes
@@ -5992,14 +6006,23 @@ ${FOOTER}</div></body></html>`
             {/* School Address */}
             <div>
               <label className="text-sm font-medium text-slate-700">School Address</label>
-              <Textarea
-                placeholder="Enter full school address"
-                value={renewalConvertData.address || ''}
-                onChange={(e) => setRenewalConvertData(prev => ({ ...prev, address: e.target.value }))}
-                rows={2}
-                className="mt-1"
-                data-testid="renewal-address"
-              />
+              <div className="mt-1">
+                <SchoolMapPicker
+                  value={{
+                    address: renewalConvertData.address || '',
+                    latitude: renewalConvertData.latitude,
+                    longitude: renewalConvertData.longitude,
+                    geofence_radius: renewalConvertData.geofence_radius || 500,
+                  }}
+                  onChange={(loc) => setRenewalConvertData(prev => ({
+                    ...prev,
+                    address: loc.address,
+                    latitude: loc.latitude,
+                    longitude: loc.longitude,
+                    geofence_radius: loc.geofence_radius,
+                  }))}
+                />
+              </div>
             </div>
 
             {/* MOU Upload */}
@@ -8324,13 +8347,23 @@ ${FOOTER}</div></body></html>`
             {/* School Address */}
             <div>
               <label className="text-sm font-medium text-slate-700">School Address</label>
-              <Input
-                placeholder="Enter school full address"
-                value={onboardData.school_address || ''}
-                onChange={(e) => setOnboardData(prev => ({ ...prev, school_address: e.target.value }))}
-                className="h-10"
-                data-testid="onboard-school-address"
-              />
+              <div className="mt-1">
+                <SchoolMapPicker
+                  value={{
+                    address: onboardData.school_address || '',
+                    latitude: onboardData.latitude,
+                    longitude: onboardData.longitude,
+                    geofence_radius: onboardData.geofence_radius || 500,
+                  }}
+                  onChange={(loc) => setOnboardData(prev => ({
+                    ...prev,
+                    school_address: loc.address,
+                    latitude: loc.latitude,
+                    longitude: loc.longitude,
+                    geofence_radius: loc.geofence_radius,
+                  }))}
+                />
+              </div>
             </div>
 
             {/* Additional Services / Components */}
@@ -8855,14 +8888,23 @@ ${FOOTER}</div></body></html>`
                 {/* School Address */}
                 <div className="mt-3">
                   <label className="text-sm font-medium text-slate-700">School Address</label>
-                  <Textarea
-                    placeholder="Enter full school address"
-                    value={editOnboardData.address || ''}
-                    onChange={(e) => setEditOnboardData(prev => ({ ...prev, address: e.target.value }))}
-                    rows={2}
-                    className="mt-1"
-                    data-testid="edit-school-address"
-                  />
+                  <div className="mt-1">
+                    <SchoolMapPicker
+                      value={{
+                        address: editOnboardData.address || '',
+                        latitude: editOnboardData.latitude,
+                        longitude: editOnboardData.longitude,
+                        geofence_radius: editOnboardData.geofence_radius || 500,
+                      }}
+                      onChange={(loc) => setEditOnboardData(prev => ({
+                        ...prev,
+                        address: loc.address,
+                        latitude: loc.latitude,
+                        longitude: loc.longitude,
+                        geofence_radius: loc.geofence_radius,
+                      }))}
+                    />
+                  </div>
                 </div>
               </div>
 

@@ -324,6 +324,9 @@ async def external_get_schools(
                 "state": school.get("state"),
                 "address": school.get("address"),
                 "area": school.get("city"),  # some schools may have 'city' as area
+                "latitude": school.get("latitude"),
+                "longitude": school.get("longitude"),
+                "geofence_radius": school.get("geofence_radius", 500),
             },
             
             # Relationship Manager
