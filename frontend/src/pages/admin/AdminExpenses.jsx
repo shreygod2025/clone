@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { 
   Wallet, Plus, Search, Building2, Calendar, Edit, Trash2, 
   ChevronDown, ChevronUp, FileText, Download, Filter, X,
-  DollarSign, TrendingUp, BarChart3, RefreshCw, CheckSquare
+  DollarSign, TrendingUp, BarChart3, RefreshCw, CheckSquare,
+  Upload, Paperclip, ChevronRight
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -33,7 +34,11 @@ const AdminExpenses = () => {
   });
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
-  
+  const [schoolSearch, setSchoolSearch] = useState('');
+  const [showSchoolDropdown, setShowSchoolDropdown] = useState(false);
+  const [invoiceUploading, setInvoiceUploading] = useState(false);
+  const schoolDropdownRef = useRef(null);
+
   const [expenseForm, setExpenseForm] = useState({
     school_id: '',
     category: '',
@@ -44,13 +49,29 @@ const AdminExpenses = () => {
     vendor_name: '',
     payment_status: 'pending',
     payment_mode: '',
-    notes: ''
+    notes: '',
+    expense_breakup_type: '',
+    expense_breakup_value: '',
+    expected_payment_date: '',
+    partial_amount_paid: '',
+    partial_payment_date: '',
+    invoice_file_url: ''
   });
 
   useEffect(() => {
     fetchData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (schoolDropdownRef.current && !schoolDropdownRef.current.contains(e.target)) {
+        setShowSchoolDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const fetchData = async () => {
     try {
@@ -173,8 +194,15 @@ const AdminExpenses = () => {
       vendor_name: '',
       payment_status: 'pending',
       payment_mode: '',
-      notes: ''
+      notes: '',
+      expense_breakup_type: '',
+      expense_breakup_value: '',
+      expected_payment_date: '',
+      partial_amount_paid: '',
+      partial_payment_date: '',
+      invoice_file_url: ''
     });
+    setSchoolSearch('');
   };
 
   const openEditModal = (expense) => {
@@ -189,9 +217,35 @@ const AdminExpenses = () => {
       vendor_name: expense.vendor_name || '',
       payment_status: expense.payment_status || 'pending',
       payment_mode: expense.payment_mode || '',
-      notes: expense.notes || ''
+      notes: expense.notes || '',
+      expense_breakup_type: expense.expense_breakup_type || '',
+      expense_breakup_value: expense.expense_breakup_value || '',
+      expected_payment_date: expense.expected_payment_date || '',
+      partial_amount_paid: expense.partial_amount_paid || '',
+      partial_payment_date: expense.partial_payment_date || '',
+      invoice_file_url: expense.invoice_file_url || ''
     });
+    setSchoolSearch(expense.school_name || '');
     setShowAddModal(true);
+  };
+
+  const handleInvoiceUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setInvoiceUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await axios.post(`${API}/upload?type=invoice`, formData, {
+        headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
+      });
+      setExpenseForm(prev => ({ ...prev, invoice_file_url: res.data.url }));
+      toast.success('Invoice uploaded successfully');
+    } catch (err) {
+      toast.error('Failed to upload invoice');
+    } finally {
+      setInvoiceUploading(false);
+    }
   };
 
   const formatCurrency = (amount) => {
@@ -457,8 +511,15 @@ const AdminExpenses = () => {
                       <span className="ml-1 text-xs text-green-600">⚡</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-sm text-slate-600 max-w-[200px] truncate">
-                    {expense.description || '-'}
+                  <td className="px-4 py-3 text-sm text-slate-600 max-w-[220px]">
+                    <span className="whitespace-normal break-words leading-snug">{expense.description || '-'}</span>
+                    {expense.expense_breakup_type && (
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Breakup: {expense.expense_breakup_type === 'per_student' ? `₹${expense.expense_breakup_value}/student` :
+                          expense.expense_breakup_type === 'lumpsum' ? `Lumpsum ₹${expense.expense_breakup_value}` :
+                          `${expense.expense_breakup_value}%`}
+                      </p>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-sm text-slate-600">
                     {expense.vendor_name || '-'}
@@ -541,6 +602,12 @@ const AdminExpenses = () => {
                     }`}>
                       {expense.payment_status || 'pending'}
                     </span>
+                    {expense.payment_status === 'partial' && expense.partial_amount_paid && (
+                      <p className="text-xs text-amber-600 mt-0.5">Paid: {formatCurrency(expense.partial_amount_paid)}</p>
+                    )}
+                    {expense.expected_payment_date && expense.payment_status !== 'paid' && (
+                      <p className="text-xs text-slate-400 mt-0.5">Due: {format(new Date(expense.expected_payment_date), 'dd MMM yy')}</p>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-1">
@@ -586,19 +653,59 @@ const AdminExpenses = () => {
           </DialogHeader>
           
           <div className="space-y-4 overflow-y-auto flex-1 pr-2">
-            {/* School Selection */}
-            <div>
+            {/* School Selection - Searchable */}
+            <div ref={schoolDropdownRef} className="relative">
               <label className="block text-sm font-medium text-slate-700 mb-1">School *</label>
-              <select
-                value={expenseForm.school_id}
-                onChange={(e) => setExpenseForm({...expenseForm, school_id: e.target.value})}
-                className="w-full h-10 px-3 border border-slate-200 rounded-lg"
-              >
-                <option value="">Select School</option>
-                {schools.map(school => (
-                  <option key={school.id} value={school.id}>{school.school_name}</option>
-                ))}
-              </select>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={schoolSearch}
+                  onChange={(e) => {
+                    setSchoolSearch(e.target.value);
+                    setShowSchoolDropdown(true);
+                    if (!e.target.value) setExpenseForm(prev => ({ ...prev, school_id: '' }));
+                  }}
+                  onFocus={() => setShowSchoolDropdown(true)}
+                  placeholder="Search and select school..."
+                  className="w-full h-10 pl-9 pr-8 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/30"
+                  data-testid="school-search-input"
+                />
+                {schoolSearch && (
+                  <button
+                    type="button"
+                    onClick={() => { setSchoolSearch(''); setExpenseForm(prev => ({ ...prev, school_id: '' })); }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              {showSchoolDropdown && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {schools
+                    .filter(s => s.school_name?.toLowerCase().includes(schoolSearch.toLowerCase()))
+                    .slice(0, 20)
+                    .map(school => (
+                      <button
+                        key={school.id}
+                        type="button"
+                        onClick={() => {
+                          setExpenseForm(prev => ({ ...prev, school_id: school.id }));
+                          setSchoolSearch(school.school_name);
+                          setShowSchoolDropdown(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 transition-colors ${expenseForm.school_id === school.id ? 'bg-blue-50 text-blue-700 font-medium' : 'text-slate-700'}`}
+                      >
+                        {school.school_name}
+                      </button>
+                    ))
+                  }
+                  {schools.filter(s => s.school_name?.toLowerCase().includes(schoolSearch.toLowerCase())).length === 0 && (
+                    <p className="px-3 py-2 text-sm text-slate-400">No schools found</p>
+                  )}
+                </div>
+              )}
             </div>
             
             {/* Category Selection */}
@@ -625,6 +732,7 @@ const AdminExpenses = () => {
                   value={expenseForm.amount}
                   onChange={(e) => setExpenseForm({...expenseForm, amount: e.target.value})}
                   placeholder="0"
+                  data-testid="expense-amount-input"
                 />
               </div>
               <div>
@@ -636,15 +744,55 @@ const AdminExpenses = () => {
                 />
               </div>
             </div>
+
+            {/* Expected Payment Date */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Expected Payment Date</label>
+              <Input
+                type="date"
+                value={expenseForm.expected_payment_date}
+                onChange={(e) => setExpenseForm({...expenseForm, expected_payment_date: e.target.value})}
+                data-testid="expected-payment-date-input"
+              />
+            </div>
             
             {/* Description */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
-              <Input
+              <Textarea
                 value={expenseForm.description}
                 onChange={(e) => setExpenseForm({...expenseForm, description: e.target.value})}
-                placeholder="Brief description of the expense"
+                placeholder="Full description of the expense"
+                rows={2}
               />
+            </div>
+
+            {/* Expense Breakup */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Expense Breakup</label>
+              <div className="flex gap-2">
+                <select
+                  value={expenseForm.expense_breakup_type}
+                  onChange={(e) => setExpenseForm({...expenseForm, expense_breakup_type: e.target.value})}
+                  className="h-10 px-3 border border-slate-200 rounded-lg text-sm flex-1"
+                  data-testid="breakup-type-select"
+                >
+                  <option value="">Select Type</option>
+                  <option value="per_student">Amount per Student</option>
+                  <option value="lumpsum">Lumpsum</option>
+                  <option value="percentage">Percentage (%)</option>
+                </select>
+                {expenseForm.expense_breakup_type && (
+                  <Input
+                    type="number"
+                    value={expenseForm.expense_breakup_value}
+                    onChange={(e) => setExpenseForm({...expenseForm, expense_breakup_value: e.target.value})}
+                    placeholder={expenseForm.expense_breakup_type === 'percentage' ? '0%' : '₹0'}
+                    className="w-28"
+                    data-testid="breakup-value-input"
+                  />
+                )}
+              </div>
             </div>
             
             {/* Vendor and Invoice */}
@@ -675,6 +823,7 @@ const AdminExpenses = () => {
                   value={expenseForm.payment_status}
                   onChange={(e) => setExpenseForm({...expenseForm, payment_status: e.target.value})}
                   className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                  data-testid="payment-status-select"
                 >
                   <option value="pending">Pending</option>
                   <option value="partial">Partial</option>
@@ -697,6 +846,71 @@ const AdminExpenses = () => {
                 </select>
               </div>
             </div>
+
+            {/* Partial Payment Details - shown only when status is 'partial' */}
+            {expenseForm.payment_status === 'partial' && (
+              <div className="grid grid-cols-2 gap-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                <div>
+                  <label className="block text-sm font-medium text-amber-700 mb-1">Partial Amount Paid (₹)</label>
+                  <Input
+                    type="number"
+                    value={expenseForm.partial_amount_paid}
+                    onChange={(e) => setExpenseForm({...expenseForm, partial_amount_paid: e.target.value})}
+                    placeholder="0"
+                    data-testid="partial-amount-input"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-amber-700 mb-1">Date Paid</label>
+                  <Input
+                    type="date"
+                    value={expenseForm.partial_payment_date}
+                    onChange={(e) => setExpenseForm({...expenseForm, partial_payment_date: e.target.value})}
+                    data-testid="partial-payment-date-input"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Invoice Upload - only in edit mode */}
+            {editingExpense && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Upload Invoice Document</label>
+                <div className="space-y-2">
+                  {expenseForm.invoice_file_url ? (
+                    <div className="flex items-center gap-2 p-2 bg-green-50 border border-green-200 rounded-lg">
+                      <Paperclip className="w-4 h-4 text-green-600 flex-shrink-0" />
+                      <a href={expenseForm.invoice_file_url} target="_blank" rel="noopener noreferrer"
+                         className="text-sm text-green-700 hover:underline truncate flex-1">
+                        View Invoice
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => setExpenseForm(prev => ({ ...prev, invoice_file_url: '' }))}
+                        className="text-slate-400 hover:text-red-500"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex items-center gap-2 px-3 py-2 border border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                      <Upload className="w-4 h-4 text-slate-400" />
+                      <span className="text-sm text-slate-500">
+                        {invoiceUploading ? 'Uploading...' : 'Click to upload (PDF, image, max 10MB)'}
+                      </span>
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                        onChange={handleInvoiceUpload}
+                        disabled={invoiceUploading}
+                        data-testid="invoice-file-input"
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
+            )}
             
             {/* Notes */}
             <div>

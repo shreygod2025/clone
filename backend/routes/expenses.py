@@ -171,10 +171,16 @@ async def create_school_expense(data: dict, user: dict = Depends(get_current_use
         "expense_date": data.get("expense_date", datetime.now(timezone.utc).strftime("%Y-%m-%d")),
         "invoice_number": data.get("invoice_number", ""),
         "vendor_name": data.get("vendor_name", ""),
-        "payment_status": data.get("payment_status", "pending"),  # pending, paid, partial
-        "payment_mode": data.get("payment_mode", ""),  # cash, bank_transfer, upi, cheque
+        "payment_status": data.get("payment_status", "pending"),
+        "payment_mode": data.get("payment_mode", ""),
         "notes": data.get("notes", ""),
         "attachments": data.get("attachments", []),
+        "expense_breakup_type": data.get("expense_breakup_type", ""),
+        "expense_breakup_value": float(data.get("expense_breakup_value")) if data.get("expense_breakup_value") else None,
+        "expected_payment_date": data.get("expected_payment_date", ""),
+        "partial_amount_paid": float(data.get("partial_amount_paid")) if data.get("partial_amount_paid") else None,
+        "partial_payment_date": data.get("partial_payment_date", ""),
+        "invoice_file_url": data.get("invoice_file_url", ""),
         "created_by": user.get("email"),
         "created_by_name": user.get("name"),
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -191,7 +197,9 @@ async def update_school_expense(expense_id: str, data: dict, user: dict = Depend
     update_data = {"updated_at": datetime.now(timezone.utc).isoformat()}
     
     allowed_fields = ["amount", "description", "expense_date", "invoice_number", 
-                      "vendor_name", "payment_status", "payment_mode", "notes", "attachments", "category"]
+                      "vendor_name", "payment_status", "payment_mode", "notes", "attachments", "category",
+                      "expense_breakup_type", "expense_breakup_value", "expected_payment_date",
+                      "partial_amount_paid", "partial_payment_date", "invoice_file_url"]
     
     for field in allowed_fields:
         if field in data:

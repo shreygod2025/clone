@@ -1,133 +1,140 @@
-<analysis>Here is the handoff summary for the next agent:
-
-**original_problem_statement**: Build a high-conversion, multi-user skill-education platform for OLL with separate funnels for Students/Parents, Educators, and Schools. The platform must be SEO-first and include a powerful backend admin panel and CRM system. 
+<analysis>**original_problem_statement**: Build a high-conversion, multi-user skill-education platform for OLL with separate funnels for Students/Parents, Educators, and Schools. The platform must include a powerful backend admin panel and CRM system. 
 PRODUCT REQUIREMENTS: 
 - Global Structure: Landing Page, Learner Funnel, Educator Funnel, School Funnel, Admin Panel.
-- Admin CRM: Email automation for lead lifecycle, bulk imports, proposal/MOU PDF generation, automated follow-up system.
-- Orders & Payments: Tracking for School and Student payments.
+- Orders & Invoicing: Seamless jsPDF generation, saving to database, and email delivery.
+- Admin CRM: Map-based geolocation, dynamic onboarding workflows (Timetables), and detailed Expense Management.
 
 **User's preferred language**: English (INSTRUCT next agent to respond in English only)
 
 **what currently exists?** 
-A React + FastAPI full-stack application. It features a comprehensive Admin CRM for schools, dynamic client-side PDF generation (Invoices, Receipts, Proposals, MOUs) using , external Vendor PO API integrations, MongoDB-backed OTP auth, unified Support Center with Cloudinary attachments, and automated email notifications via Resend.
+A React + FastAPI full-stack application with MongoDB. The platform features an extensive Admin CRM (), an Orders management system () that generates and emails invoices using jsPDF and Resend, a dynamic onboarding workflow builder, and a fast Leaflet+Photon based map picker for school geolocation. 
 
 **Last working item**:
-    - Last item agent was working: Fixing a bug where generated MOU PDFs were not saving to the school's  array. The agent identified a race condition where the standard  was overwriting the document state. The agent just created a new atomic  endpoint and updated  to use it.
-    - Status: USER VERIFICATION PENDING
-    - Agent Testing Done: N (Code was just replaced; end-to-end test of the new endpoint wasn't run).
-    - Which testing method agent to use? manual testing by curl/python -c to verify the backend atomic append, and screenshot tool to verify the frontend UI triggers the save successfully.
+    - Last item agent was working: Upgrading the Admin Expenses () page based on 6 specific new user requirements (full descriptions, expense breakups, partial payment tracking, expected dates, invoice uploads, and school search in the Add Expense modal). 
+    - Status: IN PROGRESS (Agent just started exploring  and reading file state. No code changes made yet).
+    - Agent Testing Done: N
+    - Which testing method agent to use? Frontend testing agent or manual screenshot tool to verify UI changes, followed by curl to test backend delivery.
     - User Testing Done: N
 
-**All Pending/In progress Issue list**:
-  Issue 1: (P0) MOU PDF is not saving to docs and not sending via email
-     - Attempted fixes: Removed manual  header to allow FormData boundaries. Created  to atomically append the Cloudinary URL to the documents array rather than updating the whole school object. 
-     - Next debug checklist: Verify  in  successfully calls . Verify  triggers correctly and uses the Cloudinary URL in the Resend  parameter.
-     - Why fix this issue and what will be achieved with the fix? Critical CRM workflow blocker; MOUs must be stored and sent to clients automatically.
-     - Status: TESTING PENDING
-     - Is recurring issue? Y (User reported twice in this session).
+**All Pending/In progress Issue list**:  
+  Issue 1: (P0) Overhaul Admin Expenses Page & Modals
+     - Attempted fixes: Agent only executed bash and view_file commands to analyze . No code written.
+     - Next debug checklist: Modify  and corresponding backend route ( or ). Address all 6 user requirements:
+       1. UI: Allow full description text to wrap/show in multiple lines in the table.
+       2. UI/Schema: Add a breakup of expenses field (e.g., amount/student, lumpsum, %).
+       3. UI/Schema: If partial payment is selected in Edit mode, add a field for Partial Amount Paid and Date Paid.
+       4. UI/Schema: Add Expected Payment Date field.
+       5. UI/Schema: Add an option to upload an invoice document in Edit mode and display it in the files column.
+       6. UI/Functionality: In Add Expense, add a searchable dropdown to select a School.
+     - Why fix this issue and what will be achieved with the fix? It is the immediate user request to improve financial tracking granularity.
+     - Status: IN PROGRESS
+     - Is recurring issue? N
      - Should Test frontend/backend/both after fix? Both
      - Blocked on other issue: None
 
 **In progress Task List**:
-  None (All newly requested features were completed; only the MOU bug verification remains).
+  Task 1: Continue  Refactoring (Batch 3)
+     - Where to resume: Extracting the remaining  CRM routes out of  into dedicated routing files.
+     - What will be achieved with this? Reducing the monolithic  footprint for better maintainability.
+     - Status: NOT STARTED (in this session)
+     - Should Test frontend/backend/both after fix? Backend
+     - Blocked on something: Must finish the P0 Expenses issue first.
 
 **Upcoming and Future Tasks**
     Upcoming Tasks:
-    - P0: Extract PDF generation utilities. Refactoring is required to move  and  out of  into dedicated  files (like we did with Invoices) to reduce component size (currently >12k lines).
+    - P0: Complete  refactoring (Extract Schools, Support, Educator routes).
     - P1: CSV Export: Add a CSV Export button to all major data tables.
-    - P2: Continue refactoring  (still >17.8k lines).
+    - P2: Add a Report Settings UI panel to let admins change daily report times, recipients, and toggle categories without touching code.
 
     Future Tasks:
-    - Implement Phase 2 & 3 email notifications.
-    - Background Job for AI Follow-up Emails.
     - Enforce backend RBAC permissions.
     - Audit logging for sensitive operations.
 
 **Completed work in this session**
-- Fixed Backend graceful shutdown crash () (DONE)
-- School Receipts: Filtered  to only show PAID/REFUNDED, built , added download buttons (DONE)
-- School Invoice PDF Generator: Built  matching user's template (logo, signature, dynamic GST columns, bank details, partial payment tracking). Fixed image sizes to reduce PDF from 24MB to <100KB (DONE)
-- Vendor PO Request Integration: Built . Dynamically maps grades to Robotics/IoT kits and books. Fetches exact s from external Vendor API catalog. Displays raised POs in the CRM Onboarding modal under Kit Delivery (DONE)
-- Resend Production Fix: Hardcoded  to bypass incorrect production env variables causing test-mode restrictions. Added Send Test Email diagnostic UI (DONE)
-- PDF Image Rendering: Fixed black background on transparent PNGs in PDFs by using white-fill PNG generation (DONE)
-- Dynamic Proposal Grades: Replaced hardcoded 1st to 10th with dynamic text based on  limits (DONE)
+- Built Follow-up Email Template System for B2B pipeline (Next Steps, Confirmation Reminder) (DONE)
+- Added Send Email functionality to Orders page that saves generated jsPDFs to MongoDB and attaches them to emails (DONE)
+- Fixed Invoice PDF Balance Due logic to accurately reflect partial/paid statuses before emailing (DONE)
+- Updated invoice contact email globally to  and added auto-confirmation emails for Paid/Partial order updates (DONE)
+- Implemented  using Leaflet.js and Photon geocoding API for fast, free, typeahead location selection yielding lat/lng for external APIs (DONE)
+- Reordered Onboarding workflow to put Timetable Creation first, and built a dedicated UI builder for it omitting payment/educator fields (DONE)
 
 **Earlier issues found/mentioned but not fixed**
-None
+None.
 
 **Known issue recurrence from previous fork**
-  - Issue recurrence in previous fork: Resend email failures on production.
-  - Recurrence count: 4
-  - Status: RESOLVED (Hardcoded to bypass prod env vars).
-  Note: If emails fail again, verify the Resend API Key inside the  MongoDB collection. 
+  - Issue recurrence in previous fork: None
+  - Recurrence count: 0
+  - Status: N/A
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- Frontend: React, Tailwind, Shadcn UI,  &  for robust client-side document generation.
-- Backend: FastAPI, Motor (Async MongoDB).
-- External Vendor Integration:  (Fetch catalog, POST requests).
-- File Storage: Cloudinary. (Note: Avoid setting  manually on FormData uploads via Axios).
+- Frontend: React, Tailwind, Shadcn UI, Leaflet (), jsPDF
+- Backend: FastAPI, Motor (Async MongoDB),  (Email API)
+- Geocoding: Photon API () - used because it is free, fast, and supports typeahead without API keys.
 
 **key DB schema**
-  - : {school_id, student_name, phone, amount, status, paid_amount}
-  - : { ..., : { : [...] }, : [...] }
+  - : Tracks generated PDF invoices (base64/URLs) linked to payments.
+  - : Added , , .
+  - : Needs updates for partial amount, expected dates, and invoice uploads.
 
 **changes in tech stack**
-  - Heavy integration of  and  for complex, customized document templates directly in the browser.
+  - Added  and  for mapping.
+  - jsPDF is now generating base64 strings that are passed to the backend and saved in MongoDB, replacing the backend  logic for uniformity.
 
 **All files of reference** 
-  1. 
-  2.  (MOU saving logic)
+  1.  (CURRENT FOCUS)
+  2.  
   3. 
   4. 
   5. 
+  6. 
 
 **Areas that need refactoring**: 
-CRITICAL:  (12k+ lines). The  and  logic takes up thousands of lines. They must be moved to the  folder similar to the new Invoice generator.
+- : Still contains thousands of lines of CRM routes. Needs extraction.
 
 **key api endpoints**
--  (NEW - Atomic append for Cloudinary files to prevent race conditions).
--  (NEW - Sends Resend email with Cloudinary URL attachment).
--  (NEW - Interacts with external vendor API).
+- 
+- 
+- Expense endpoints inside  or  will need updates.
 
 **Critical Info for New Agent** 
-- **Resend Attachments:** Do not download files to base64 for Resend attachments. Resend natively supports URL attachments via the  key (e.g., ).
-- **Cloudinary / FormData Uploads:** When sending FormData to the  endpoint from the frontend, **do not** include  in the Axios headers. Let the browser auto-generate the boundary, otherwise the FastAPI backend will throw a 400 Bad Request.
+- **Invoice Generation**: All invoices must use the frontend  (jsPDF) which returns a base64 string. Do NOT generate invoices using the backend  library anymore; the backend should only save and serve the jsPDF version.
+- **Geocoding**: If you need to tweak the map search, remember we switched from Nominatim to Photon () for the typeahead dropdown due to Nominatim's strict rate limits and slow speeds.
+- **Testing**: The previous agent relied heavily on manual screenshots for the last 5 features and skipped the testing subagent.
 
 **documents and test reports created in this job**
   - 
-  -  (Backend shutdown & Resend testing)
-  -  (School receipts feature)
+  -  (Updated regularly)
 
 **Last 10 User Messages and any pending HUMAN messages** 
- 1. User: Asked to auto-generate Invoice PDF based on provided template with OLL logo and signature. (COMPLETED)
- 2. User: Asked to fix logo stretching, table overflow, and remove GST columns if 'Book GST' is selected. (COMPLETED)
- 3. User: Added bank details to the invoice terms. (COMPLETED)
- 4. User: Requested PO generation logic using external Vendor API based on specific grade/kit mappings. (COMPLETED)
- 5. User: Reported POs were generating without products. (Agent fixed by fetching s from Vendor catalog). (COMPLETED)
- 6. User: Requested POs be displayed under the Kit Delivery section of the CRM Onboarding modal. (COMPLETED)
- 7. User: Reported invoice PDF was 24MB. (Agent fixed by resizing/compressing images). (COMPLETED)
- 8. User: Requested partial payment tracking on Invoices. (COMPLETED)
- 9. User: Reported Resend emails failing on production. (Agent fixed by hardcoding verified Sender Email to bypass prod env vars). (COMPLETED)
- 10. **User (LATEST/PENDING):** Reported MOU is *still* not saving to docs. Agent identified a race condition in the generic PATCH endpoint, wrote a new atomic  endpoint, and replaced the code. **Testing of this final fix is pending.**
+ 1. User: Add send email option in orders... save generated invoice and send that only.
+ 2. User: Add an option in school edit to select address through a map yielding lat/lng.
+ 3. User: Map search is very slow and lagging, no suggestions in dropdown.
+ 4. User: When I click generate invoice it should save, and email should attach that exact invoice.
+ 5. User: Mail attachment is still incorrect, giving old format.
+ 6. User: Change queries contact to accounts@clonefutura.com. Auto-send confirmation mail if payment marked paid/partial. Show saved invoice in update payment popup.
+ 7. User: If payment is made, balance due on invoice should be updated.
+ 8. User: In onboarding, put timetable creation step above teacher allocation. Give a button to create timetable omitting payment/educator fields.
+ 9. **User (LATEST/PENDING)**: Updates to expenses: show full multiline description, add expense breakup (amount/student, lumpsum, %), if edit expense has partial amount ask for amount and date, add expected payment date, add invoice upload option in edit, allow searching school list in Add Expense.
 
 **Project Health Check:**
-- Broken: MOU saving workflow (Agent just applied fix, requires verification).
-- Mocked: None. Vendor API integration is using live external URLs.
+- Broken: None
+- Mocked: None
 
 **3rd Party Integrations** 
   • Cashfree (Payments) — requires User API Key
-  • Resend (Emails) — requires User API Key (Uses user's live key in Prod DB)
+  • Resend (Emails) — requires User API Key 
   • Cloudinary (File Storage) — requires User API Key
-  • ProcureWay / Vendor Panel (External API) — External URLs
+  • Photon API (Geocoding) — Free/No Key
+  • Leaflet/OpenStreetMap (Maps) — Free/No Key
 
 **Testing status**
-  - Testing agent used after significant changes: YES
+  - Testing agent used after significant changes: YES (Only for iteration 50, subsequent features were manually tested via screenshot tool).
   - Troubleshoot agent used after agent stuck in loop: NO
   - Test files created: None
-  - Known regressions: MOU generation document saving race condition (Fix applied, pending verification).
+  - Known regressions: None currently known.
 
 **What agent forgot to execute**
-The agent applied the final code change to fix the MOU document saving issue (creating an atomic POST endpoint to prevent race conditions), but the session ended before the agent could run manual tests or invoke the testing agent to verify the fix actually worked end-to-end on the frontend.</analysis>
+The agent did not run the  for the Map Picker, Orders UI upgrades, or Onboarding Timetable builder, relying solely on screenshot self-testing. Next agent should ensure broad regression testing if major backend logic changes.</analysis>
