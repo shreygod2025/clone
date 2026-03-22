@@ -210,6 +210,18 @@ async def delete_school_expense(expense_id: str, user: dict = Depends(get_curren
     return {"message": "Expense deleted successfully"}
 
 
+@router.post("/school-expenses/bulk-delete")
+async def bulk_delete_expenses(data: dict, user: dict = Depends(get_current_user)):
+    """Delete multiple expense entries by IDs"""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    ids = data.get("ids", [])
+    if not ids:
+        raise HTTPException(status_code=400, detail="No IDs provided")
+    result = await db.school_expenses.delete_many({"id": {"$in": ids}})
+    return {"deleted": result.deleted_count, "message": f"Deleted {result.deleted_count} expense(s)"}
+
+
 @router.post("/expenses/cleanup-duplicates")
 async def cleanup_duplicate_expenses(user: dict = Depends(get_current_user)):
     """Remove duplicate expenses - keeps only the first expense per school/PO/category combination"""

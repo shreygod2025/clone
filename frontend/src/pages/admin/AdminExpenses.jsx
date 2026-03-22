@@ -3,7 +3,7 @@ import { AdminLayout } from './AdminDashboard';
 import { 
   Wallet, Plus, Search, Building2, Calendar, Edit, Trash2, 
   ChevronDown, ChevronUp, FileText, Download, Filter, X,
-  DollarSign, TrendingUp, BarChart3, RefreshCw
+  DollarSign, TrendingUp, BarChart3, RefreshCw, CheckSquare
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -32,6 +32,7 @@ const AdminExpenses = () => {
     end_date: ''
   });
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedIds, setSelectedIds] = useState([]);
   
   const [expenseForm, setExpenseForm] = useState({
     school_id: '',
@@ -82,6 +83,7 @@ const AdminExpenses = () => {
       // Handle both response formats: direct array or object with expenses property
       const expenseData = Array.isArray(expRes.data) ? expRes.data : (expRes.data?.expenses || []);
       setExpenses(expenseData);
+      setSelectedIds([]);
       
       // Fetch summary
       const summaryParams = filters.school_id ? `?school_id=${filters.school_id}` : '';
@@ -132,6 +134,22 @@ const AdminExpenses = () => {
       toast.error('Failed to delete expense');
     }
   };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`Delete ${selectedIds.length} selected expense(s)? This cannot be undone.`)) return;
+    try {
+      await axios.post(`${API}/school-expenses/bulk-delete`, { ids: selectedIds }, { headers: getAuthHeaders() });
+      toast.success(`Deleted ${selectedIds.length} expense(s)`);
+      setSelectedIds([]);
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to delete selected expenses');
+    }
+  };
+
+  const toggleSelect = (id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  const toggleSelectAll = () => setSelectedIds(prev => prev.length === filteredExpenses.length ? [] : filteredExpenses.map(e => e.id));
 
   const handleCleanDuplicates = async () => {
     if (!confirm('This will remove duplicate auto-synced expenses (keeping one per school/PO/category). Manually added expenses will not be affected. Continue?')) return;
@@ -369,13 +387,34 @@ const AdminExpenses = () => {
             <FileText className="w-5 h-5" />
             All Expense Entries
           </h2>
-          <span className="text-sm text-slate-500">{filteredExpenses.length} entries</span>
+          <div className="flex items-center gap-3">
+            {selectedIds.length > 0 && (
+              <button
+                onClick={handleBulkDelete}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors font-medium"
+                data-testid="bulk-delete-btn"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete {selectedIds.length} selected
+              </button>
+            )}
+            <span className="text-sm text-slate-500">{filteredExpenses.length} entries</span>
+          </div>
         </div>
         
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px]">
             <thead className="bg-slate-50 border-b">
               <tr>
+                <th className="px-4 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    checked={filteredExpenses.length > 0 && selectedIds.length === filteredExpenses.length}
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 rounded border-slate-300 accent-[#1E3A5F] cursor-pointer"
+                    data-testid="select-all-expenses"
+                  />
+                </th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">Date</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">School</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">Category</th>
@@ -391,7 +430,16 @@ const AdminExpenses = () => {
             </thead>
             <tbody className="divide-y">
               {filteredExpenses.map((expense) => (
-                <tr key={expense.id} className="hover:bg-slate-50/50">
+                <tr key={expense.id} className={`hover:bg-slate-50/50 transition-colors ${selectedIds.includes(expense.id) ? 'bg-red-50/40' : ''}`}>
+                  <td className="px-4 py-3 w-10">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(expense.id)}
+                      onChange={() => toggleSelect(expense.id)}
+                      className="w-4 h-4 rounded border-slate-300 accent-[#1E3A5F] cursor-pointer"
+                      data-testid={`select-expense-${expense.id}`}
+                    />
+                  </td>
                   <td className="px-4 py-3 text-sm text-slate-600">
                     {expense.expense_date ? format(new Date(expense.expense_date), 'dd MMM yyyy') : '-'}
                   </td>
