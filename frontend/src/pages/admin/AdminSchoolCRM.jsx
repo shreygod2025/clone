@@ -683,6 +683,13 @@ const AdminSchoolCRM = () => {
     meeting_link: '', // if online
     address: '' // if offline
   });
+  const [meetingDoneEmailState, setMeetingDoneEmailState] = useState({
+    selectedTemplate: null, // 'next_steps' | 'confirmation' | 'custom'
+    subject: '',
+    body_html: '',
+    sending: false,
+    sent: false
+  });
   // Contact Management Filters
   const [contactCityFilter, setContactCityFilter] = useState('all');
   const [contactRoleFilter, setContactRoleFilter] = useState('all');
@@ -1200,6 +1207,80 @@ const AdminSchoolCRM = () => {
     setEmailModalCustomMsg('');
     // Store task_id so the endpoint can mark it as sent
     setEmailModalTaskId(task.id);
+  };
+
+  const buildMeetingDoneTemplate = (type, schoolName = 'your school', contactName = 'there') => {
+    const BASE_STYLE = `font-family:'Segoe UI',Arial,sans-serif;background:#f4f6f9;margin:0;padding:0`;
+    const WRAP = `max-width:600px;margin:30px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)`;
+    const FOOTER = `<div style="padding:14px 32px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;text-align:center">OLL · skills@oll.co · www.oll.co</div>`;
+    const STEP = (n, color, title, desc) =>
+      `<div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid #f1f5f9"><div style="min-width:28px;height:28px;background:${color};border-radius:50%;color:#fff;font-size:12px;font-weight:700;text-align:center;line-height:28px;flex-shrink:0">${n}</div><div><p style="margin:0;font-size:14px;font-weight:600;color:#1e293b">${title}</p><p style="margin:4px 0 0;font-size:13px;color:#64748b">${desc}</p></div></div>`;
+
+    if (type === 'next_steps') {
+      return {
+        subject: `Next Steps — OLL Program for ${schoolName}`,
+        body_html: `<!DOCTYPE html><html><body style="${BASE_STYLE}"><div style="${WRAP}">
+<div style="background:linear-gradient(135deg,#1E3A5F,#2d5a8e);padding:28px 32px;color:#fff"><h1 style="margin:0;font-size:22px">Your Next Steps with OLL</h1><p style="margin:6px 0 0;opacity:.8;font-size:13px">OLL · Skill Education</p></div>
+<div style="padding:28px 32px">
+<p style="color:#334155;font-size:15px">Dear ${contactName},</p>
+<p style="color:#475569;font-size:14px;line-height:1.7">Thank you for the productive discussion! We are thrilled about the opportunity to partner with <strong>${schoolName}</strong> on the OLL Skill Program.</p>
+<p style="color:#1E3A5F;font-size:14px;font-weight:600;margin-top:20px">Here are the next steps to get started:</p>
+<div style="margin:16px 0">
+${STEP(1,'#1E3A5F','Review &amp; Sign the MOU / Contract','Our team will share the agreement document within 24 hours for your review and signature.')}
+${STEP(2,'#1E3A5F','Initial Payment','An invoice will be raised for the first tranche upon contract signing.')}
+${STEP(3,'#1E3A5F','Curriculum Kit Delivery','OLL kits and learning materials will be dispatched to your school within 7–10 working days.')}
+${STEP(4,'#1E3A5F','Educator Assignment &amp; Training','A certified OLL educator will be assigned and a training session conducted for your staff.')}
+<div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0"><div style="min-width:28px;height:28px;background:#059669;border-radius:50%;color:#fff;font-size:12px;font-weight:700;text-align:center;line-height:28px;flex-shrink:0">5</div><div><p style="margin:0;font-size:14px;font-weight:600;color:#1e293b">Program Launch!</p><p style="margin:4px 0 0;font-size:13px;color:#64748b">Your students start their OLL skill journey. We will provide continuous support and monthly progress reports.</p></div></div>
+</div>
+<div style="margin-top:24px;padding:16px;background:#f0f9ff;border-radius:8px;border-left:4px solid #1E3A5F"><p style="margin:0;color:#1E3A5F;font-size:13px">Ready to move forward? Reply to this email or call <strong>+91 98921 50714</strong> to confirm.</p></div>
+<p style="color:#475569;font-size:14px;margin-top:24px">Warm regards,<br><strong>The OLL Team</strong></p>
+</div>
+${FOOTER}</div></body></html>`
+      };
+    }
+    if (type === 'confirmation') {
+      return {
+        subject: `Action Required — Confirm OLL Program for ${schoolName}`,
+        body_html: `<!DOCTYPE html><html><body style="${BASE_STYLE}"><div style="${WRAP}">
+<div style="background:linear-gradient(135deg,#6d28d9,#7c3aed);padding:28px 32px;color:#fff"><h1 style="margin:0;font-size:22px">Confirm Your OLL Program</h1><p style="margin:6px 0 0;opacity:.8;font-size:13px">OLL · Skill Education</p></div>
+<div style="padding:28px 32px">
+<p style="color:#334155;font-size:15px">Dear ${contactName},</p>
+<p style="color:#475569;font-size:14px;line-height:1.7">We hope you are doing well! We are following up on our recent discussion about bringing the OLL Skill Program to <strong>${schoolName}</strong>.</p>
+<div style="background:#fef3c7;border-radius:10px;padding:18px;margin:20px 0;border-left:4px solid #d97706"><p style="margin:0;font-size:14px;color:#92400e;font-weight:600">A quick reminder — your enrollment slot is being held!</p><p style="margin:8px 0 0;font-size:13px;color:#78350f">To secure your school's place in the upcoming batch, please confirm your enrollment at your earliest convenience.</p></div>
+<p style="color:#1E3A5F;font-size:14px;font-weight:600">What you'll get upon confirmation:</p>
+<ul style="color:#475569;font-size:14px;line-height:2;margin:8px 0 20px 0">
+  <li>Dedicated Relationship Manager for ${schoolName}</li>
+  <li>Priority slot for educator assignment</li>
+  <li>Access to OLL curriculum materials before program start</li>
+  <li>Flexible payment schedule tailored to your needs</li>
+</ul>
+<div style="text-align:center;margin:20px 0"><a href="mailto:skills@oll.co?subject=Confirming OLL Program - ${schoolName}" style="background:#7c3aed;color:#fff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:14px;font-weight:600;display:inline-block">Confirm Enrollment →</a></div>
+<p style="color:#475569;font-size:14px">Or simply reply to this email or call us at <strong>+91 98921 50714</strong>.</p>
+<p style="color:#475569;font-size:14px;margin-top:24px">Warm regards,<br><strong>The OLL Team</strong></p>
+</div>
+${FOOTER}</div></body></html>`
+      };
+    }
+    // custom
+    return { subject: '', body_html: '' };
+  };
+
+  const handleSendMeetingDoneEmail = async () => {
+    if (!meetingDoneEmailState.subject.trim()) { toast.error('Please enter an email subject'); return; }
+    if (!meetingDoneEmailState.body_html.trim()) { toast.error('Please select a template or enter email body'); return; }
+    setMeetingDoneEmailState(prev => ({ ...prev, sending: true }));
+    try {
+      await axios.post(
+        `${API}/schools/${showFollowupModal.id}/send-meeting-followup`,
+        { subject: meetingDoneEmailState.subject, body_html: meetingDoneEmailState.body_html },
+        { headers: getAuthHeaders() }
+      );
+      toast.success('Follow-up email sent successfully!');
+      setMeetingDoneEmailState({ selectedTemplate: null, subject: '', body_html: '', sending: false, sent: true });
+    } catch (err) {
+      toast.error('Failed to send email. Please try again.');
+      setMeetingDoneEmailState(prev => ({ ...prev, sending: false }));
+    }
   };
 
   const handleSaveEditLead = async (moveToMeetingDone = false) => {    if (!showEditLeadModal) return;
@@ -7349,7 +7430,7 @@ const AdminSchoolCRM = () => {
       </Dialog>
 
       {/* Followup Modal */}
-      <Dialog open={!!showFollowupModal} onOpenChange={() => setShowFollowupModal(null)}>
+      <Dialog open={!!showFollowupModal} onOpenChange={() => { setShowFollowupModal(null); setMeetingDoneEmailState({ selectedTemplate: null, subject: '', body_html: '', sending: false, sent: false }); }}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -7407,6 +7488,99 @@ const AdminSchoolCRM = () => {
                     );
                   })}
                 </div>
+              </div>
+            )}
+
+            {/* Meeting Done Follow-up Email Templates */}
+            {showFollowupModal?.status === 'meeting_done' && (
+              <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
+                <h4 className="text-sm font-semibold text-purple-800 mb-3 flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-purple-600" />
+                  Send Follow-up Email
+                  {meetingDoneEmailState.sent && (
+                    <span className="ml-auto text-xs font-medium text-green-700 bg-green-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" /> Sent
+                    </span>
+                  )}
+                </h4>
+
+                {!meetingDoneEmailState.selectedTemplate ? (
+                  /* Template picker */
+                  <div className="space-y-2">
+                    {[
+                      { key: 'next_steps', label: 'Next Steps for Your School', desc: 'Outlines the 5-step onboarding roadmap after the meeting', color: 'border-blue-200 hover:border-blue-400 hover:bg-blue-50' },
+                      { key: 'confirmation', label: 'Confirmation Reminder', desc: 'Gentle nudge to confirm enrollment — with urgency cue', color: 'border-violet-200 hover:border-violet-400 hover:bg-violet-50' },
+                      { key: 'custom', label: 'Custom Message', desc: 'Write your own subject and email body', color: 'border-slate-200 hover:border-slate-400 hover:bg-slate-50' },
+                    ].map(({ key, label, desc, color }) => (
+                      <button
+                        key={key}
+                        data-testid={`email-template-${key}`}
+                        onClick={() => {
+                          const tpl = buildMeetingDoneTemplate(key, showFollowupModal.school_name, showFollowupModal.contact_name);
+                          setMeetingDoneEmailState(prev => ({ ...prev, selectedTemplate: key, subject: tpl.subject, body_html: tpl.body_html, sent: false }));
+                        }}
+                        className={`w-full text-left px-3 py-2.5 rounded-lg border bg-white transition-all ${color}`}
+                      >
+                        <p className="text-sm font-semibold text-slate-800">{label}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{desc}</p>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  /* Edit & Send view */
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Subject</label>
+                      <Input
+                        value={meetingDoneEmailState.subject}
+                        onChange={(e) => setMeetingDoneEmailState(prev => ({ ...prev, subject: e.target.value }))}
+                        placeholder="Email subject"
+                        data-testid="followup-email-subject"
+                        className="text-sm"
+                      />
+                    </div>
+                    {meetingDoneEmailState.selectedTemplate === 'custom' ? (
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Email Body (HTML)</label>
+                        <Textarea
+                          value={meetingDoneEmailState.body_html}
+                          onChange={(e) => setMeetingDoneEmailState(prev => ({ ...prev, body_html: e.target.value }))}
+                          placeholder="Write your email body here..."
+                          className="min-h-[100px] text-sm font-mono"
+                          data-testid="followup-email-body"
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Preview</label>
+                        <div className="bg-white rounded-lg border border-slate-200 p-3 max-h-[140px] overflow-y-auto text-xs text-slate-600 leading-relaxed">
+                          <div dangerouslySetInnerHTML={{ __html: meetingDoneEmailState.body_html }} />
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex gap-2 pt-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setMeetingDoneEmailState(prev => ({ ...prev, selectedTemplate: null, subject: '', body_html: '' }))}
+                        className="text-xs"
+                        data-testid="followup-email-back"
+                      >
+                        <X className="w-3 h-3 mr-1" /> Back
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleSendMeetingDoneEmail}
+                        disabled={meetingDoneEmailState.sending}
+                        className="flex-1 bg-purple-600 hover:bg-purple-700 text-xs"
+                        data-testid="followup-email-send"
+                      >
+                        <Send className="w-3 h-3 mr-1" />
+                        {meetingDoneEmailState.sending ? 'Sending...' : 'Send Email'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -7601,7 +7775,7 @@ const AdminSchoolCRM = () => {
             )}
             
             <div className="flex gap-3 pt-2">
-              <Button variant="outline" onClick={() => setShowFollowupModal(null)} className="flex-1">
+              <Button variant="outline" onClick={() => { setShowFollowupModal(null); setMeetingDoneEmailState({ selectedTemplate: null, subject: '', body_html: '', sending: false, sent: false }); }} className="flex-1">
                 Cancel
               </Button>
               <Button onClick={handleAddFollowup} className="flex-1 bg-cyan-600 hover:bg-cyan-700" data-testid="submit-followup">
