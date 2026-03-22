@@ -9261,7 +9261,7 @@ def generate_dynamic_onboarding_steps(onboarding_data: dict, is_renewal: bool = 
         ordered_keys.append("teacher_training")
 
     if needs_student_training:
-        ordered_keys += ["teacher_allocation", "teacher_approval", "timetable_finalization"]
+        ordered_keys += ["timetable_finalization", "teacher_allocation", "teacher_approval"]
 
     ordered_keys += ["calendar_making", "mou_signing", "lms_setup", "school_confirmation"]
 

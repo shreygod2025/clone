@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Eye, Building2, Phone, MapPin, Plus, MessageSquare, Calendar, Archive, CalendarClock, CheckCircle2, CheckCircle, Video, Users, User, Mail, Layers, DollarSign, UserPlus, Send, Clock, Edit, Save, RefreshCw, RefreshCcw, X, Upload, Download, FileSpreadsheet, AlertCircle, Gift, FileText, Receipt, Paperclip, History, Ticket, FileCheck, ChevronDown, ChevronUp, Mic, MicOff, Play, Pause, Trash2, Package, ExternalLink, CreditCard, BarChart3, FileSignature } from 'lucide-react';
+import { Search, Eye, Building2, Phone, MapPin, Plus, MessageSquare, Calendar, Archive, CalendarClock, CalendarDays, CheckCircle2, CheckCircle, Video, Users, User, Mail, Layers, DollarSign, UserPlus, Send, Clock, Edit, Save, RefreshCw, RefreshCcw, X, Upload, Download, FileSpreadsheet, AlertCircle, Gift, FileText, Receipt, Paperclip, History, Ticket, FileCheck, ChevronDown, ChevronUp, Mic, MicOff, Play, Pause, Trash2, Package, ExternalLink, CreditCard, BarChart3, FileSignature } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -690,6 +690,11 @@ const AdminSchoolCRM = () => {
     body_html: '',
     sending: false,
     sent: false
+  });
+  const [showTimetableBuilder, setShowTimetableBuilder] = useState(null); // schoolId when open
+  const [timetableFormLocal, setTimetableFormLocal] = useState({
+    session_mode: 'offline', start_date: '', end_date: '',
+    days_of_week: [], time_slots: {}, sessions_per_week: '', timetable_status: 'active', notes: ''
   });
   // Contact Management Filters
   const [contactCityFilter, setContactCityFilter] = useState('all');
@@ -10450,28 +10455,187 @@ ${FOOTER}</div></body></html>`
                       {/* Timetable */}
                       {key === 'timetable_finalization' && (
                         <div className="space-y-3">
-                          <div>
-                            <label className="text-xs text-slate-500">Sessions per Week</label>
-                            <Input
-                              type="number"
-                              value={step.data?.sessions_per_week || ''}
-                              onChange={(e) => handleUpdateOnboardingStep(
-                                showOnboardingWorkflowModal.id, key,
-                                { data: { sessions_per_week: e.target.value } }
+                          {/* Summary if already created */}
+                          {step.data?.timetable_created && showTimetableBuilder !== showOnboardingWorkflowModal.id && (
+                            <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-100">
+                              <p className="text-xs font-semibold text-indigo-700 mb-1">Timetable Created</p>
+                              <div className="text-xs text-indigo-600 space-y-0.5">
+                                {step.data?.days_of_week?.length > 0 && <p>Days: {step.data.days_of_week.join(', ')}</p>}
+                                {step.data?.start_date && <p>Period: {step.data.start_date} → {step.data.end_date || '—'}</p>}
+                                {step.data?.session_mode && <p>Mode: {step.data.session_mode === 'online' ? 'Online' : 'Offline'}</p>}
+                                {step.data?.sessions_per_week && <p>Sessions/week: {step.data.sessions_per_week}</p>}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Create / Edit button */}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              if (showTimetableBuilder === showOnboardingWorkflowModal.id) {
+                                setShowTimetableBuilder(null);
+                              } else {
+                                // Pre-fill from saved step data
+                                setTimetableFormLocal({
+                                  session_mode: step.data?.session_mode || 'offline',
+                                  start_date: step.data?.start_date || '',
+                                  end_date: step.data?.end_date || '',
+                                  days_of_week: step.data?.days_of_week || [],
+                                  time_slots: step.data?.time_slots || {},
+                                  sessions_per_week: step.data?.sessions_per_week || '',
+                                  timetable_status: step.data?.timetable_status || 'active',
+                                  notes: step.data?.notes || '',
+                                });
+                                setShowTimetableBuilder(showOnboardingWorkflowModal.id);
+                              }
+                            }}
+                            className={`text-xs ${step.data?.timetable_created ? 'border-indigo-200 text-indigo-600 hover:bg-indigo-50' : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'}`}
+                            data-testid="create-timetable-btn"
+                          >
+                            <CalendarDays className="w-3.5 h-3.5 mr-1.5" />
+                            {showTimetableBuilder === showOnboardingWorkflowModal.id ? 'Close' : step.data?.timetable_created ? 'Edit Timetable' : 'Create Timetable'}
+                          </Button>
+
+                          {/* Timetable Builder Form */}
+                          {showTimetableBuilder === showOnboardingWorkflowModal.id && (
+                            <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 space-y-3">
+                              <p className="text-xs font-semibold text-slate-700">Timetable Configuration</p>
+
+                              {/* School + Mode */}
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="text-xs text-slate-500 mb-1 block">School</label>
+                                  <Input value={showOnboardingWorkflowModal.school_name || ''} readOnly className="h-8 text-xs bg-slate-100 text-slate-600" />
+                                </div>
+                                <div>
+                                  <label className="text-xs text-slate-500 mb-1 block">Session Mode</label>
+                                  <select
+                                    value={timetableFormLocal.session_mode}
+                                    onChange={(e) => setTimetableFormLocal(prev => ({ ...prev, session_mode: e.target.value }))}
+                                    className="w-full h-8 px-2 border border-slate-200 rounded-lg text-xs"
+                                  >
+                                    <option value="offline">Offline</option>
+                                    <option value="online">Online</option>
+                                  </select>
+                                </div>
+                              </div>
+
+                              {/* Start / End Date */}
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="text-xs text-slate-500 mb-1 block">Start Date *</label>
+                                  <Input type="date" value={timetableFormLocal.start_date} onChange={(e) => setTimetableFormLocal(prev => ({ ...prev, start_date: e.target.value }))} className="h-8 text-xs" />
+                                </div>
+                                <div>
+                                  <label className="text-xs text-slate-500 mb-1 block">End Date *</label>
+                                  <Input type="date" value={timetableFormLocal.end_date} onChange={(e) => setTimetableFormLocal(prev => ({ ...prev, end_date: e.target.value }))} className="h-8 text-xs" />
+                                </div>
+                              </div>
+
+                              {/* Days of Week */}
+                              <div>
+                                <label className="text-xs text-slate-500 mb-1.5 block">Days of Week *</label>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(day => (
+                                    <button
+                                      key={day}
+                                      type="button"
+                                      onClick={() => {
+                                        const days = timetableFormLocal.days_of_week || [];
+                                        const newDays = days.includes(day) ? days.filter(d => d !== day) : [...days, day];
+                                        // Initialize empty slot for new day
+                                        const slots = { ...timetableFormLocal.time_slots };
+                                        if (!days.includes(day)) slots[day] = slots[day] || [{ start: '', end: '' }];
+                                        setTimetableFormLocal(prev => ({ ...prev, days_of_week: newDays, time_slots: slots }));
+                                      }}
+                                      className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${(timetableFormLocal.days_of_week||[]).includes(day) ? 'bg-indigo-600 text-white border-indigo-600' : 'border-slate-200 text-slate-600 hover:border-indigo-300 bg-white'}`}
+                                    >
+                                      {day}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Time Slots per Day */}
+                              {(timetableFormLocal.days_of_week||[]).length > 0 && (
+                                <div className="space-y-2">
+                                  {(timetableFormLocal.days_of_week||[]).map(day => (
+                                    <div key={day} className="bg-white rounded-lg border border-slate-200 p-2">
+                                      <div className="flex items-center justify-between mb-1.5">
+                                        <span className="text-xs font-medium text-slate-700">{day}</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const slots = [...(timetableFormLocal.time_slots?.[day] || [])];
+                                            setTimetableFormLocal(prev => ({ ...prev, time_slots: { ...prev.time_slots, [day]: [...slots, { start: '', end: '' }] } }));
+                                          }}
+                                          className="text-xs text-indigo-600 hover:text-indigo-700"
+                                        >+ Add Slot</button>
+                                      </div>
+                                      {(timetableFormLocal.time_slots?.[day] || [{ start: '', end: '' }]).map((slot, i) => (
+                                        <div key={i} className="flex gap-1.5 items-center mb-1">
+                                          <Input type="time" value={slot.start}
+                                            onChange={(e) => { const s = [...(timetableFormLocal.time_slots?.[day]||[])]; s[i]={...s[i],start:e.target.value}; setTimetableFormLocal(prev => ({...prev,time_slots:{...prev.time_slots,[day]:s}})); }}
+                                            className="h-7 flex-1 text-xs" placeholder="Start" />
+                                          <span className="text-slate-400 text-xs">–</span>
+                                          <Input type="time" value={slot.end}
+                                            onChange={(e) => { const s = [...(timetableFormLocal.time_slots?.[day]||[])]; s[i]={...s[i],end:e.target.value}; setTimetableFormLocal(prev => ({...prev,time_slots:{...prev.time_slots,[day]:s}})); }}
+                                            className="h-7 flex-1 text-xs" placeholder="End" />
+                                          {(timetableFormLocal.time_slots?.[day]||[]).length > 1 && (
+                                            <button type="button"
+                                              onClick={() => { const s = (timetableFormLocal.time_slots?.[day]||[]).filter((_,si)=>si!==i); setTimetableFormLocal(prev=>({...prev,time_slots:{...prev.time_slots,[day]:s}})); }}
+                                              className="text-red-400 hover:text-red-600"><X className="w-3 h-3" /></button>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ))}
+                                </div>
                               )}
-                              placeholder="e.g., 2"
-                              className="h-9"
-                            />
-                          </div>
-                          <Textarea
-                            value={step.data?.notes || ''}
-                            onChange={(e) => handleUpdateOnboardingStep(
-                              showOnboardingWorkflowModal.id, key,
-                              { data: { notes: e.target.value } }
-                            )}
-                            placeholder="Timetable details, grades covered, etc."
-                            className="min-h-[60px]"
-                          />
+
+                              {/* Sessions / Status */}
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="text-xs text-slate-500 mb-1 block">Sessions per Week</label>
+                                  <Input type="number" value={timetableFormLocal.sessions_per_week}
+                                    onChange={(e) => setTimetableFormLocal(prev => ({ ...prev, sessions_per_week: e.target.value }))}
+                                    placeholder="e.g., 2" className="h-8 text-xs" />
+                                </div>
+                                <div>
+                                  <label className="text-xs text-slate-500 mb-1 block">Status</label>
+                                  <select value={timetableFormLocal.timetable_status}
+                                    onChange={(e) => setTimetableFormLocal(prev => ({ ...prev, timetable_status: e.target.value }))}
+                                    className="w-full h-8 px-2 border border-slate-200 rounded-lg text-xs">
+                                    <option value="active">Active</option>
+                                    <option value="draft">Draft</option>
+                                  </select>
+                                </div>
+                              </div>
+
+                              <Textarea value={timetableFormLocal.notes}
+                                onChange={(e) => setTimetableFormLocal(prev => ({ ...prev, notes: e.target.value }))}
+                                placeholder="Additional notes..." className="min-h-[50px] text-xs" />
+
+                              <div className="flex gap-2 pt-1">
+                                <Button type="button" variant="outline" size="sm" onClick={() => setShowTimetableBuilder(null)} className="text-xs">Cancel</Button>
+                                <Button type="button" size="sm"
+                                  onClick={() => {
+                                    if (!timetableFormLocal.start_date || !timetableFormLocal.end_date || !(timetableFormLocal.days_of_week||[]).length) {
+                                      toast.error('Please fill Start Date, End Date, and select at least one day');
+                                      return;
+                                    }
+                                    handleUpdateOnboardingStep(showOnboardingWorkflowModal.id, 'timetable_finalization', { data: { ...timetableFormLocal, timetable_created: true } });
+                                    setShowTimetableBuilder(null);
+                                  }}
+                                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-xs"
+                                  data-testid="save-timetable-btn">
+                                  <CalendarDays className="w-3.5 h-3.5 mr-1" />Save Timetable
+                                </Button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                       
