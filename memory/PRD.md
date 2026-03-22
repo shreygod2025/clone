@@ -637,6 +637,15 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 
 ## Prioritized Backlog
 
+### March 22, 2026
+- **Follow-up Email Template System for Meeting Done Schools** — COMPLETE (iter_50: 15/15 backend, 11/11 frontend tests PASS)
+  - Added `meetingDoneEmailState` state + `buildMeetingDoneTemplate` + `handleSendMeetingDoneEmail` to `AdminSchoolCRM.jsx`
+  - New purple "Send Follow-up Email" section in Follow-up Modal (visible only for `meeting_done` status schools)
+  - 3 templates: "Next Steps for Your School" (5-step onboarding roadmap), "Confirmation Reminder" (purple header, urgency cue), "Custom Message" (free-text)
+  - Template subject auto-fills with school name; preview shows rendered HTML; editable subject before send
+  - Wired to existing `POST /api/schools/{id}/send-meeting-followup` endpoint (school_emails.py)
+  - Bulk email (`POST /api/schools/contacts/bulk-email`) confirmed working
+
 ### P0 (Critical)
 - Continue refactoring `server.py` (13,217 lines → extract schools_onboarding ~2500 lines, auth_routes ~700 lines, support ~600 lines)
 - Target: Get server.py under 8,000 lines
