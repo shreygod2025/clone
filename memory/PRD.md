@@ -47,6 +47,79 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+### March 22, 2026
+
+#### Public Reports Link Feature
+**Feature Implemented:**
+
+Created a password-protected public shareable link for the Reports page, allowing external stakeholders to view reports without admin access.
+
+**Backend (routes/reports.py):**
+1. **Public Link Management Endpoints:**
+   - `POST /api/admin/reports/public-link` - Create/update public link with password
+   - `GET /api/admin/reports/public-link` - Get current link info
+   - `PATCH /api/admin/reports/public-link/password` - Change password
+   - `DELETE /api/admin/reports/public-link` - Delete public link
+2. **Public Access Endpoints (No Admin Auth):**
+   - `POST /api/public/reports/{token}/verify` - Verify password, returns JWT access token (24h expiry)
+   - `GET /api/public/reports/{token}/data` - Get report data (with JWT auth)
+3. **Security:**
+   - Bcrypt password hashing
+   - JWT tokens with 24-hour expiration
+   - No sensitive data exposed (contact details, names hidden)
+
+**Frontend:**
+1. **AdminReports.jsx - Share Report Modal:**
+   - "Share Report" button in filter bar
+   - Modal shows: link URL, copy button, change password, delete link
+   - Create new link with password (min 4 characters)
+2. **PublicReports.jsx - Public Reports Page:**
+   - Password gate requiring authentication
+   - All 8 tabs: Overview, B2C, B2B, HR-Team, Educator HR, Growth Partners, Support, P&L
+   - Full date filters (Month/Year/Custom)
+   - Real-time data display
+   - Privacy: No contact details or names visible
+
+**Testing:** All 15 backend tests pass. Frontend UI verified.
+
+**Public Link URL:** `/reports/{token}` (password protected)
+
+**Modified Files:**
+- `backend/routes/reports.py` - Added public link endpoints
+- `frontend/src/pages/admin/AdminReports.jsx` - Share Report modal
+- `frontend/src/pages/PublicReports.jsx` - New public reports page
+- `frontend/src/App.js` - Added route `/reports/:token`
+
+---
+
+#### School CRM Lost Lead Feature
+**Feature Implemented:**
+
+Enhanced the School CRM to better track lost opportunities by dividing them into "Lost Leads" (before conversion) and "Lost Customers" (after conversion).
+
+**Changes:**
+1. **New Statuses:** Added `lost_lead` and `lost_customer` statuses
+2. **Lost Lead Button:** Added "Lost Lead" action button to:
+   - New Leads section
+   - Meeting Done section
+3. **Updated Lost Reason Modal:**
+   - Type selector: Lost Lead vs Lost Customer
+   - Context-aware reason options (e.g., "Service dissatisfaction" for lost customers)
+4. **Divided Lost Tab:**
+   - "Lost Leads" subsection with count
+   - "Lost Customers" subsection with count
+5. **Lost Card Display:**
+   - Shows "Lost Lead" or "Lost Customer" badge
+   - Displays lost reason on card
+   - "Restore to Lead" button for lost leads
+   - "Reactivate" button for lost customers
+
+**Modified Files:**
+- `frontend/src/pages/admin/AdminSchoolCRM.jsx` - STATUS_SECTIONS, renderSchoolCard, renderActionButtons, Lost tab rendering
+- `backend/server.py` - Updated status comment
+
+---
+
 ### March 13, 2026
 
 #### School CRM Email Notification System

@@ -90,12 +90,14 @@ const StatCard = ({ title, value, subtitle, icon: Icon, color = 'blue', trend, s
 
 // Progress Bar Component
 const ProgressBar = ({ label, value, total, color = '#1E3A5F' }) => {
-  const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+  const safeValue = Number(value) || 0;
+  const safeTotal = Number(total) || 0;
+  const percentage = safeTotal > 0 ? Math.round((safeValue / safeTotal) * 100) : 0;
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-sm">
         <span className="text-slate-600 capitalize">{label?.replace(/_/g, ' ')}</span>
-        <span className="font-medium text-slate-800">{value} ({percentage}%)</span>
+        <span className="font-medium text-slate-800">{safeValue} ({percentage}%)</span>
       </div>
       <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
         <div 
