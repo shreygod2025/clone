@@ -4893,6 +4893,13 @@ async def create_school_inquiry(data: SchoolInquiryCreate):
     await db.school_inquiries.insert_one(inquiry_dict)
     return inquiry
 
+@api_router.get("/schools/names")
+async def get_school_names_list(user: dict = Depends(get_current_user)):
+    """Lightweight endpoint returning only id + school_name for dropdowns"""
+    schools = await db.school_inquiries.find({}, {"_id": 0, "id": 1, "school_name": 1}).sort("school_name", 1).to_list(2000)
+    return schools
+
+
 @api_router.get("/schools/inquiries")
 async def get_school_inquiries(
     status: Optional[str] = None,
@@ -12851,183 +12858,8 @@ async def get_school_po_data(school_id: str, user: dict = Depends(get_current_us
 
 @api_router.post("/schools/{school_id}/sync-po-expenses")
 async def sync_po_expenses(school_id: str, data: dict = None, user: dict = Depends(get_current_user)):
-    """Sync expenses from PO data for a school - creates kit and logistics expenses only when delivery is confirmed"""
-    if data is None:
-        data = {}
-    
-    # Get school info
-    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
-    if not school:
-        raise HTTPException(status_code=404, detail="School not found")
-    
-    school_name = school.get("school_name", "")
-    po_number = data.get("po_number")  # Optional - sync specific PO
-    
-    # If specific PO number provided, fetch that one
-    if po_number:
-        po_data = await fetch_po_data(f"po/{po_number}")
-        pos_to_sync = [po_data] if po_data else []
-    else:
-        # Fetch all POs for this school - ONLY delivered ones for expenses
-        po_list_data = await fetch_po_data("po", {"school_name": school_name, "status": "delivered", "limit": 50})
-        if not po_list_data or "data" not in po_list_data:
-            return {"message": "No delivered POs found", "expenses_created": 0, "note": "Expenses are only created after delivery is confirmed"}
-        
-        # Get detailed info for each delivered PO
-        pos_to_sync = []
-        for po in po_list_data.get("data", []):
-            po_num = po.get("po_number")
-            if po_num:
-                detailed = await fetch_po_data(f"po/{po_num}")
-                if detailed:
-                    pos_to_sync.append(detailed)
-    
-    expenses_created = []
-    
-    for po in pos_to_sync:
-        po_num = po.get("po_number", "Unknown")
-        po_status = po.get("status", "").lower()
-        
-        # Only create expenses for delivered POs
-        if po_status != "delivered":
-            continue
-        
-        # Verify PO belongs to this school
-        po_school_name = po.get("school_name", "")
-        if po_school_name and po_school_name.lower().strip() != school_name.lower().strip():
-            continue
-            
-        vendor_name = po.get("vendor_name", "")
-        invoice_info = po.get("invoice_info") or {}
-        
-        # Get amounts from invoice_info if available, otherwise from PO total
-        invoice_amount = invoice_info.get("amount", 0) or po.get("subtotal", 0) or po.get("grand_total", 0)
-        logistics_cost = invoice_info.get("logistics_cost", 0)
-        
-        # Get GST/Tax info
-        total_tax = po.get("total_tax", 0)
-        subtotal = po.get("subtotal", 0)
-        grand_total = po.get("grand_total", 0)
-        
-        # Determine GST type based on tax amount (18% is standard GST)
-        gst_rate = 18 if total_tax > 0 and subtotal > 0 else 0
-        if total_tax > 0 and subtotal > 0:
-            gst_rate = round((total_tax / subtotal) * 100, 2)
-        
-        # Default to IGST for inter-state, can be configured
-        gst_type = "IGST" if total_tax > 0 else "None"
-        
-        # Check if expense already exists for this PO
-        existing_kit = await db.school_expenses.find_one({
-            "school_id": school_id,
-            "po_number": po_num,
-            "category": "kit_cost"
-        })
-        
-        existing_logistics = await db.school_expenses.find_one({
-            "school_id": school_id,
-            "po_number": po_num,
-            "category": "logistics_cost"
-        })
-        
-        # Create Kit Cost expense if not exists and amount > 0
-        if not existing_kit and invoice_amount > 0:
-            # Build attachments from PO files
-            kit_attachments = []
-            if po.get("po_pdf_url"):
-                kit_attachments.append({
-                    "name": f"PO-{po_num}.pdf",
-                    "url": po.get("po_pdf_url"),
-                    "type": "po_file"
-                })
-            if po.get("invoice_file_url"):
-                kit_attachments.append({
-                    "name": f"Invoice-{po_num}",
-                    "url": po.get("invoice_file_url"),
-                    "type": "invoice"
-                })
-            
-            kit_expense = {
-                "id": str(uuid.uuid4()),
-                "school_id": school_id,
-                "school_name": school_name,
-                "category": "kit_cost",
-                "category_name": "Kit Cost",
-                "amount": float(invoice_amount),
-                "subtotal": float(subtotal),
-                "gst_amount": float(total_tax),
-                "gst_rate": gst_rate,
-                "gst_type": gst_type,
-                "grand_total": float(grand_total),
-                "description": f"Kit cost from PO {po_num}",
-                "expense_date": po.get("created_at", datetime.now(timezone.utc).isoformat())[:10],
-                "invoice_number": po_num,
-                "vendor_name": vendor_name,
-                "payment_status": invoice_info.get("payment_status", "pending"),
-                "payment_mode": "",
-                "notes": f"Auto-synced from ProcureWay PO {po_num}",
-                "po_number": po_num,
-                "po_pdf_url": po.get("po_pdf_url"),
-                "invoice_file_url": po.get("invoice_file_url"),
-                "attachments": kit_attachments,
-                "created_by": user.get("email"),
-                "created_by_name": user.get("name"),
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-                "auto_synced": True
-            }
-            await db.school_expenses.insert_one(kit_expense)
-            expenses_created.append({"type": "kit_cost", "po": po_num, "amount": invoice_amount, "gst": total_tax})
-        
-        # Create Logistics Cost expense if not exists and amount > 0
-        if not existing_logistics and logistics_cost > 0:
-            # Build attachments for logistics
-            logistics_attachments = []
-            if po.get("logistics_bill_url"):
-                logistics_attachments.append({
-                    "name": f"Logistics-Bill-{po_num}",
-                    "url": po.get("logistics_bill_url"),
-                    "type": "logistics_bill"
-                })
-            if po.get("delivery_proof_url"):
-                logistics_attachments.append({
-                    "name": f"Delivery-Proof-{po_num}",
-                    "url": po.get("delivery_proof_url"),
-                    "type": "delivery_proof"
-                })
-            
-            logistics_expense = {
-                "id": str(uuid.uuid4()),
-                "school_id": school_id,
-                "school_name": school_name,
-                "category": "logistics_cost",
-                "category_name": "Logistics Cost",
-                "amount": float(logistics_cost),
-                "description": f"Logistics cost from PO {po_num}",
-                "expense_date": po.get("created_at", datetime.now(timezone.utc).isoformat())[:10],
-                "invoice_number": f"{po_num}-LOGISTICS",
-                "vendor_name": vendor_name,
-                "payment_status": "pending",
-                "payment_mode": "",
-                "notes": f"Auto-synced logistics from ProcureWay PO {po_num}",
-                "po_number": po_num,
-                "logistics_bill_url": po.get("logistics_bill_url"),
-                "delivery_proof_url": po.get("delivery_proof_url"),
-                "attachments": logistics_attachments,
-                "created_by": user.get("email"),
-                "created_by_name": user.get("name"),
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-                "auto_synced": True
-            }
-            await db.school_expenses.insert_one(logistics_expense)
-            expenses_created.append({"type": "logistics_cost", "po": po_num, "amount": logistics_cost})
-    
-    return {
-        "message": f"Synced {len(expenses_created)} expenses from POs",
-        "expenses_created": expenses_created,
-        "pos_processed": len(pos_to_sync)
-    }
+    """PO expense sync disabled - expenses are managed manually in the Admin Expenses panel."""
+    return {"message": "PO expense sync is disabled. Add expenses manually via the Expenses page.", "expenses_created": 0}
 
 
 @api_router.get("/schools/{school_id}/onboarding-po-info")

@@ -89,7 +89,7 @@ const AdminExpenses = () => {
       // Run all API calls in parallel for faster load
       const [catRes, schoolsRes, expRes, summaryRes] = await Promise.all([
         axios.get(`${API}/school-expenses/categories`, { headers }),
-        axios.get(`${API}/schools/inquiries`, { headers }),
+        axios.get(`${API}/schools/names`, { headers }),
         axios.get(`${API}/school-expenses?${params.toString()}`, { headers }),
         axios.get(`${API}/school-expenses/summary${summaryQuery}`, { headers })
       ]);

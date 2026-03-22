@@ -188,6 +188,7 @@ async def create_school_expense(data: dict, user: dict = Depends(get_current_use
     }
     
     await db.school_expenses.insert_one(expense)
+    expense.pop('_id', None)  # Remove MongoDB ObjectId before returning
     return {"message": "Expense created successfully", "expense": expense}
 
 
