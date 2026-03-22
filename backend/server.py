@@ -6263,9 +6263,10 @@ async def direct_onboard_educator(data: dict, user: dict = Depends(get_current_u
         skills=data.get("skills", []),
         city=data.get("city", ""),
         experience=data.get("experience", ""),
-        status="onboarding",
+        status="onboarded",
         source="direct_onboard",
-        added_by=user.get("id", "")
+        added_by=user.get("id", ""),
+        onboarding_date=datetime.now(timezone.utc).strftime("%Y-%m-%d")
     )
     
     doc = educator.model_dump()

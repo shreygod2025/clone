@@ -721,6 +721,8 @@ const AdminEducators = () => {
       }
     } else if (activeTab === 'requirements') {
       matchesTab = false; // Requirements tab doesn't show educators
+    } else if (activeTab === 'onboarded') {
+      matchesTab = ['onboarded', 'onboarding'].includes(edu.status);
     } else {
       matchesTab = edu.status === activeTab;
     }
@@ -1133,56 +1135,7 @@ const AdminEducators = () => {
       )}
 
       {/* Onboarding Progress View - Show when onboarding tab is active */}
-      {activeTab === 'onboarded' && onboardingData.length > 0 && (
-        <div className="mb-6 bg-gradient-to-r from-orange-50 to-amber-50 rounded-2xl p-6 border border-orange-100">
-          <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-orange-500" />
-            Onboarding Progress Overview
-          </h3>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {onboardingData.map((item) => {
-              const progress = item.progress || 0;
-              const steps = item.onboarding?.completed_steps || [];
-              const verified = item.onboarding?.documents_verified;
-              return (
-                <div key={item.educator?.id} className="bg-white rounded-xl p-4 shadow-sm">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-[#1E3A5F] rounded-full flex items-center justify-center text-white font-bold">
-                      {item.educator?.name?.charAt(0) || '?'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-[#1E3A5F] truncate">{item.educator?.name}</h4>
-                      <p className="text-xs text-slate-500">{steps.length}/7 steps completed</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-lg text-[#1E3A5F]">{Math.round(progress)}%</p>
-                    </div>
-                  </div>
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
-                    <div 
-                      className={`h-full transition-all ${progress >= 100 ? 'bg-green-500' : 'bg-orange-500'}`}
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className={`px-2 py-0.5 rounded-full ${
-                      verified ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-                    }`}>
-                      {verified ? '✓ Docs Verified' : 'Docs Pending'}
-                    </span>
-                    <button 
-                      onClick={() => setViewEducator(educators.find(e => e.id === item.educator?.id))}
-                      className="text-[#D63031] hover:underline"
-                    >
-                      View Details
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* Onboarding progress is now shown inline inside each educator card */}
 
       {/* Requirements Tab Content */}
       {activeTab === 'requirements' && (
@@ -1380,6 +1333,34 @@ const AdminEducators = () => {
                   </p>
                 )}
               </div>
+
+              {/* Onboarding Progress - inside card for onboarded tab */}
+              {activeTab === 'onboarded' && (() => {
+                const onbItem = onboardingData.find(o => o.educator?.id === educator.id);
+                if (!onbItem) return null;
+                const progress = onbItem.progress || 0;
+                const steps = onbItem.onboarding?.completed_steps || [];
+                const verified = onbItem.onboarding?.documents_verified;
+                return (
+                  <div className="mb-3 p-3 bg-orange-50 rounded-lg border border-orange-100">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-medium text-orange-700">{steps.length}/7 steps</span>
+                      <span className="text-xs font-bold text-[#1E3A5F]">{Math.round(progress)}%</span>
+                    </div>
+                    <div className="h-1.5 bg-orange-100 rounded-full overflow-hidden mb-1.5">
+                      <div
+                        className={`h-full transition-all rounded-full ${progress >= 100 ? 'bg-green-500' : 'bg-orange-500'}`}
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                      verified ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                    }`}>
+                      {verified ? '✓ Docs Verified' : 'Docs Pending'}
+                    </span>
+                  </div>
+                );
+              })()}
 
               {/* Notes shown outside */}
               {educator.notes && (
