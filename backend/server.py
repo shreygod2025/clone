@@ -13110,7 +13110,7 @@ async def verify_external_api_key(api_key: str = Header(None, alias="X-API-Key")
 # NOTE: /reports routes moved to routes/reports.py
 # Include router and middleware
 # Import and include extracted route modules
-from routes.payments import router as payments_router, scheduled_payment_sync
+from routes.payments import router as payments_router, scheduled_payment_sync, scheduler, PAYMENT_SYNC_ENABLED, PAYMENT_SYNC_INTERVAL_MINUTES
 from routes.gp_onboarding import router as gp_onboarding_router
 from routes.reports import router as reports_router
 from routes.jobs import router as jobs_router
@@ -13148,9 +13148,9 @@ logger = logging.getLogger(__name__)
 # PAYMENT SYNC SCHEDULER
 # ========================
 
-scheduler = AsyncIOScheduler()
 
 # NOTE: scheduled_payment_sync routes moved to routes/payments.py
+# scheduler, PAYMENT_SYNC_ENABLED, PAYMENT_SYNC_INTERVAL_MINUTES imported from routes/payments.py
 @app.on_event("startup")
 async def startup_db_client():
     """Create database indexes on startup and start background scheduler"""

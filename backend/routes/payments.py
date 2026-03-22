@@ -21,6 +21,16 @@ except ImportError:
 
 from .shared import db, get_current_user
 
+# Scheduler + Cashfree payment sync config
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+
+PAYMENT_SYNC_ENABLED = os.getenv("PAYMENT_SYNC_ENABLED", "true").lower() == "true"
+PAYMENT_SYNC_INTERVAL_MINUTES = int(os.getenv("PAYMENT_SYNC_INTERVAL_MINUTES", "60"))
+
+# Module-level scheduler (imported by server.py startup handler)
+scheduler = AsyncIOScheduler()
+
 # Cashfree Configuration
 CASHFREE_APP_ID = os.getenv("CASHFREE_APP_ID", "")
 CASHFREE_SECRET_KEY = os.getenv("CASHFREE_SECRET_KEY", "")

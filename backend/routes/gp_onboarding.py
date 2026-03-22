@@ -769,29 +769,6 @@ async def submit_gp_training_step(token: str, step: str, data: dict):
         "all_training_complete": all_training_complete
     }
 
-# Admin endpoints for GP onboarding verification
-@router.post("/gp-onboarding/{onboarding_id}/verify-payment")
-async def verify_gp_payment(
-    onboarding_id: str,
-    data: dict,
-    user: dict = Depends(get_current_user)
-):
-    """Admin endpoint to verify GP payment"""
-    now = datetime.now(timezone.utc).isoformat()
-    
-    await db.gp_onboarding.update_one(
-        {"id": onboarding_id},
-        {"$set": {
-            "payment_status": "verified",
-            "steps.payment.verified": True,
-            "steps.payment.verified_by": user.get("id"),
-            "steps.payment.verified_at": now,
-            "updated_at": now
-        }}
-    )
-    
-    return {"message": "Payment verified"}
-
 @router.post("/gp-onboarding/{onboarding_id}/ship-kit")
 async def ship_gp_kit(
     onboarding_id: str,

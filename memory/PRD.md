@@ -605,10 +605,20 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
   - Also fixed bug: `generateProposalPDF` was reading `onboardData?.grade_pricing` instead of `data?.grade_pricing` (now fixed in utility).
   - Tested: 100% pass — 9/9 backend + frontend compilation verified (iteration_47).
 
+## Session: March 22, 2026 — server.py P0 Refactoring Batch 2 (DONE, TESTED)
+- Extracted 2 more route groups from server.py:
+  - `routes/payments.py` — 21 routes: `/payments/*` + `/school-payment/*` + `scheduled_payment_sync` background task + `scheduler` (AsyncIOScheduler)
+  - `routes/gp_onboarding.py` — 19 routes: `/gp-onboarding/*` + `/gp-onboard/*` (includes GPOnboarding + TeamUser models)
+- Moved `scheduler` instance and `PAYMENT_SYNC_*` config to `routes/payments.py`; server.py startup handler imports them
+- Fixed duplicate `verify_gp_payment` route in gp_onboarding.py (dead code removed)
+- server.py: 15,704 → 13,217 lines (−2,487 lines, total −4,690 lines from original 17,907)
+- Tested: 20/20 pytest pass + scheduler-status 200 verified (iteration_49)
+
 ## Prioritized Backlog
 
 ### P0 (Critical)
-- Continue refactoring `server.py` (15,704 lines → extract schools.py ~4000 lines, payments.py ~2000 lines)
+- Continue refactoring `server.py` (13,217 lines → extract schools_onboarding ~2500 lines, auth_routes ~700 lines, support ~600 lines)
+- Target: Get server.py under 8,000 lines
 
 ### P1 (High Priority)
 - CSV Export button for all major admin data tables
@@ -619,8 +629,6 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 - Backend RBAC enforcement
 - Audit logging for sensitive operations
 - AdminSchoolCRM.jsx further reduction (still 10,707 lines)
-
-## Session: March 22, 2026 — server.py P0 Refactoring Batch 1 (DONE, TESTED)
 - Extracted 4 route groups from server.py into modular files under `backend/routes/`:
   - `routes/reports.py` — 10 `/admin/reports/*` endpoints (886 lines, includes get_date_range/parse_date_field helpers)
   - `routes/jobs.py` — 5 `/jobs/*` endpoints (868 lines, includes WhatsApp helpers + notification helpers + PO fetch)
