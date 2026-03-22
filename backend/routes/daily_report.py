@@ -380,6 +380,7 @@ async def _send(subject: str, html: str, api_key: str):
             logger.info(f"[DailyReport] Sent '{subject}' to {recipient}")
         except Exception as e:
             logger.error(f"[DailyReport] Failed to send to {recipient}: {e}")
+        await asyncio.sleep(0.3)  # Avoid Resend rate limit (5 req/s)
 
 
 async def send_daily_reports():
@@ -415,6 +416,7 @@ async def send_daily_reports():
 
     for subject, html in emails:
         await _send(subject, html, api_key)
+        await asyncio.sleep(1)  # 1s gap between category batches
 
     logger.info("[DailyReport] All 5 reports dispatched.")
 
