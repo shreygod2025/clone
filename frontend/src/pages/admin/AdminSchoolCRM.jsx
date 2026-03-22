@@ -16,6 +16,7 @@ import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
 import { generateProposalDocument } from '../../utils/proposalPdfGenerator';
 import { generateMOUDocument } from '../../utils/mouPdfGenerator';
+import BulkEmailModal from '../../components/BulkEmailModal';
 import { generateParentCircularDocument } from '../../utils/parentCircularGenerator';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -507,6 +508,10 @@ const AdminSchoolCRM = () => {
   // Contacts Management State
   const [allContacts, setAllContacts] = useState([]);
   const [contactSearchQuery, setContactSearchQuery] = useState('');
+  // Email modal state
+  const [emailModal, setEmailModal] = useState(null); // { mode, ...props }
+  // Contacts bulk selection
+  const [contactBulkSelected, setContactBulkSelected] = useState([]);
   const [showEditContactModal, setShowEditContactModal] = useState(null);
   const [editContactData, setEditContactData] = useState({
     name: '', phone: '', email: '', role: '', school_id: '', school_name: '',
@@ -1360,6 +1365,17 @@ const AdminSchoolCRM = () => {
       setShowMeetingDoneModal(null);
       setMeetingDoneData({ notes: '', quoted_price: '', followup_type: '', followup_date: null, followup_time: '' });
       fetchInquiries();
+      // Offer to send followup email
+      const savedNotes = meetingDoneData.notes;
+      setTimeout(() => setEmailModal({
+        mode: 'meeting_followup',
+        schoolId: inquiry.id,
+        initialSubject: `Thank you for meeting with OLL — ${inquiry.school_name}`,
+        initialBody: '',
+        recipients: [{ email: inquiry.email, name: inquiry.contact_name }],
+        notes: savedNotes,
+        nextSteps: '',
+      }), 300);
     } catch (error) {
       toast.error('Failed to update meeting status');
     }
@@ -4227,9 +4243,41 @@ const AdminSchoolCRM = () => {
 
           {/* Contacts Table */}
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            {/* Bulk email toolbar */}
+            {contactBulkSelected.length > 0 && (
+              <div className="flex items-center justify-between px-4 py-2.5 bg-blue-50 border-b border-blue-200">
+                <span className="text-sm font-medium text-blue-800">{contactBulkSelected.length} contact{contactBulkSelected.length > 1 ? 's' : ''} selected</span>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setContactBulkSelected([])}
+                    className="text-xs text-slate-500 hover:text-slate-700">Clear</button>
+                  <button
+                    onClick={() => setEmailModal({
+                      mode: 'bulk',
+                      initialSubject: '',
+                      initialBody: '<p>Dear {{name}},</p>\n\n<p>Write your message here...</p>\n\n<p>Best regards,<br>The OLL Team</p>',
+                      recipients: contactBulkSelected,
+                    })}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1E3A5F] text-white text-sm rounded-lg hover:bg-[#162d4a] transition-colors"
+                    data-testid="bulk-email-contacts-btn"
+                  >
+                    <Mail className="w-4 h-4" /> Compose & Send
+                  </button>
+                </div>
+              </div>
+            )}
             <table className="w-full">
               <thead className="bg-slate-50">
                 <tr>
+                  <th className="px-4 py-3 w-10">
+                    <input type="checkbox"
+                      className="w-4 h-4 rounded accent-[#1E3A5F] cursor-pointer"
+                      checked={contactBulkSelected.length > 0 && contactBulkSelected.length === allContacts.filter(c => c.email).length}
+                      onChange={e => setContactBulkSelected(e.target.checked
+                        ? allContacts.filter(c => c.email).map(c => ({ email: c.email, name: c.name, school_name: c.school_name }))
+                        : [])}
+                      data-testid="select-all-contacts"
+                    />
+                  </th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">Contact</th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">School</th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">Role</th>
@@ -4261,7 +4309,20 @@ const AdminSchoolCRM = () => {
                     return true;
                   })
                   .map((contact) => (
-                    <tr key={contact.id} className="hover:bg-slate-50">
+                    <tr key={contact.id} className={`hover:bg-slate-50 ${contactBulkSelected.some(s => s.email === contact.email) ? 'bg-blue-50/40' : ''}`}>
+                      <td className="px-4 py-3 w-10">
+                        <input type="checkbox"
+                          className="w-4 h-4 rounded accent-[#1E3A5F] cursor-pointer"
+                          disabled={!contact.email}
+                          checked={contactBulkSelected.some(s => s.email === contact.email)}
+                          onChange={e => setContactBulkSelected(prev =>
+                            e.target.checked
+                              ? [...prev, { email: contact.email, name: contact.name, school_name: contact.school_name }]
+                              : prev.filter(s => s.email !== contact.email)
+                          )}
+                          data-testid={`select-contact-${contact.id}`}
+                        />
+                      </td>
                       <td className="px-4 py-3">
                         <div>
                           <p className="font-medium text-[#1E3A5F]">{contact.name}</p>
@@ -9663,6 +9724,23 @@ const AdminSchoolCRM = () => {
                           )}
                         </div>
                       </div>
+                      {/* Send step email */}
+                      <button
+                        onClick={() => setEmailModal({
+                          mode: 'onboarding_step',
+                          schoolId: showOnboardingWorkflowModal.id,
+                          stepKey: key,
+                          stepTitle: step.title,
+                          initialSubject: '',
+                          initialBody: '',
+                          recipients: (showOnboardingWorkflowModal.onboarding_data?.school_contacts || [])
+                            .filter(c => c.email).map(c => ({ email: c.email, name: c.name })),
+                        })}
+                        className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 border border-blue-200 rounded px-2 py-1 hover:bg-blue-50 transition-colors shrink-0"
+                        title="Send email notification for this step"
+                      >
+                        <Mail className="w-3.5 h-3.5" /> Email
+                      </button>
                     </div>
                     
                     {/* Step-specific fields */}
@@ -9746,8 +9824,8 @@ const AdminSchoolCRM = () => {
                                         </span>
                                       </div>
                                     </div>
-                                    {/* Download buttons */}
-                                    <div className="flex items-center gap-3 mt-2 pt-2 border-t">
+                                    {/* Download buttons + Email actions */}
+                                    <div className="flex items-center gap-3 mt-2 pt-2 border-t flex-wrap">
                                       {tranchePayment?.invoice_url ? (
                                         <button 
                                           onClick={() => downloadFile(tranchePayment.invoice_url, `Invoice_${showOnboardingWorkflowModal.school_name?.replace(/\s+/g, '_') || 'School'}_Tranche${idx + 1}.pdf`)}
@@ -9768,6 +9846,47 @@ const AdminSchoolCRM = () => {
                                       ) : (
                                         <span className="text-slate-400 text-xs">No receipt</span>
                                       )}
+                                      <div className="flex items-center gap-1.5 ml-auto">
+                                        <button
+                                          onClick={() => setEmailModal({
+                                            mode: 'payment', paymentType: 'invoice',
+                                            schoolId: showOnboardingWorkflowModal.id,
+                                            tranche: { ...tranche, label: `Tranche ${idx+1}`, due_date: tranche.date },
+                                            trancheIndex: idx,
+                                            initialSubject: `Invoice — ${showOnboardingWorkflowModal.school_name} Tranche ${idx+1}`,
+                                            initialBody: '',
+                                            recipients: (showOnboardingWorkflowModal.onboarding_data?.school_contacts || []).filter(c=>c.email).map(c=>({email:c.email,name:c.name})),
+                                          })}
+                                          className="text-blue-600 text-xs flex items-center gap-1 border border-blue-200 rounded px-2 py-0.5 hover:bg-blue-50"
+                                          title="Send invoice email with PDF"
+                                        ><Mail className="w-3 h-3" /> Invoice</button>
+                                        <button
+                                          onClick={() => setEmailModal({
+                                            mode: 'payment', paymentType: 'reminder',
+                                            schoolId: showOnboardingWorkflowModal.id,
+                                            tranche: { ...tranche, label: `Tranche ${idx+1}`, due_date: tranche.date },
+                                            trancheIndex: idx,
+                                            initialSubject: `Payment Reminder — ${showOnboardingWorkflowModal.school_name} Tranche ${idx+1}`,
+                                            initialBody: '',
+                                            recipients: (showOnboardingWorkflowModal.onboarding_data?.school_contacts || []).filter(c=>c.email).map(c=>({email:c.email,name:c.name})),
+                                          })}
+                                          className="text-amber-600 text-xs flex items-center gap-1 border border-amber-200 rounded px-2 py-0.5 hover:bg-amber-50"
+                                          title="Send gentle payment reminder"
+                                        ><Mail className="w-3 h-3" /> Reminder</button>
+                                        <button
+                                          onClick={() => setEmailModal({
+                                            mode: 'payment', paymentType: 'overdue',
+                                            schoolId: showOnboardingWorkflowModal.id,
+                                            tranche: { ...tranche, label: `Tranche ${idx+1}`, due_date: tranche.date },
+                                            trancheIndex: idx,
+                                            initialSubject: `Overdue Notice — ${showOnboardingWorkflowModal.school_name} Tranche ${idx+1}`,
+                                            initialBody: '',
+                                            recipients: (showOnboardingWorkflowModal.onboarding_data?.school_contacts || []).filter(c=>c.email).map(c=>({email:c.email,name:c.name})),
+                                          })}
+                                          className="text-red-600 text-xs flex items-center gap-1 border border-red-200 rounded px-2 py-0.5 hover:bg-red-50"
+                                          title="Send overdue payment notice"
+                                        ><Mail className="w-3 h-3" /> Overdue</button>
+                                      </div>
                                     </div>
                                   </div>
                                 );
@@ -10703,6 +10822,26 @@ const AdminSchoolCRM = () => {
           </div>
         </DialogContent>
       </Dialog>
+      {/* Global Email Compose Modal */}
+      {emailModal && (
+        <BulkEmailModal
+          open={!!emailModal}
+          onClose={() => setEmailModal(null)}
+          mode={emailModal.mode}
+          initialSubject={emailModal.initialSubject || ''}
+          initialBody={emailModal.initialBody || ''}
+          recipients={emailModal.recipients || []}
+          schoolId={emailModal.schoolId}
+          stepKey={emailModal.stepKey}
+          stepTitle={emailModal.stepTitle}
+          tranche={emailModal.tranche}
+          trancheIndex={emailModal.trancheIndex || 0}
+          paymentType={emailModal.paymentType || 'invoice'}
+          notes={emailModal.notes || ''}
+          nextSteps={emailModal.nextSteps || ''}
+          onSent={() => setEmailModal(null)}
+        />
+      )}
     </AdminLayout>
   );
 };
