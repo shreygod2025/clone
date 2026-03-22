@@ -518,7 +518,9 @@ export async function generateInvoicePDF(payment, schoolData) {
   doc.setTextColor(100, 100, 100);
   doc.text('Authorized Signatory', signX + 6, y + 27);
 
-  // ─── Save ───
+  // ─── Save & return ───
   const fileName = `Invoice_${schoolName.replace(/\s+/g, '_')}_${invoiceNo.replace('/', '_')}.pdf`;
   doc.save(fileName);
+  // Return invoice number + base64 so the caller can persist it
+  return { invoiceNo, fileName, base64: doc.output('datauristring').split(',')[1] };
 }

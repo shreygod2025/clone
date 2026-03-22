@@ -687,3 +687,48 @@ async def get_invoice_status(payment_id: str, user: dict = Depends(get_current_u
     if not inv:
         return {"exists": False}
     return {"exists": True, **inv}
+
+
+@router.post("/orders/save-invoice-pdf")
+async def save_invoice_pdf(data: dict, user: dict = Depends(get_current_user)):
+    """Save a client-generated invoice PDF (base64) to the invoices collection.
+    Uses upsert so regenerating updates the stored PDF.
+    """
+    payment_id = data.get("payment_id")
+    school_id = data.get("school_id")
+    if not payment_id or not school_id:
+        raise HTTPException(status_code=400, detail="payment_id and school_id are required")
+
+    invoice_no = data.get("invoice_no") or f"OLL-{school_id[:6].upper()}-{int(data.get('tranche_index', 0)) + 1:02d}"
+    now_iso = datetime.now(timezone.utc).isoformat()
+
+    doc = {
+        "payment_id": payment_id,
+        "school_id": school_id,
+        "school_name": (await db.school_inquiries.find_one({"id": school_id}, {"school_name": 1, "_id": 0}) or {}).get("school_name", ""),
+        "tranche_index": int(data.get("tranche_index", 0)),
+        "invoice_no": invoice_no,
+        "amount": float(str(data.get("amount") or 0).replace(",", "") or 0),
+        "due_date": data.get("due_date", ""),
+        "status": data.get("status", "pending"),
+        "tranche_info": data.get("tranche_info", ""),
+        "pdf_base64": data.get("pdf_base64", ""),
+        "updated_at": now_iso,
+    }
+
+    existing = await db.invoices.find_one({"payment_id": payment_id}, {"_id": 0, "id": 1, "created_at": 1, "sent_count": 1, "sent_to": 1, "last_sent_at": 1})
+    if existing:
+        # Upsert — update PDF but preserve sent history
+        await db.invoices.update_one({"payment_id": payment_id}, {"$set": doc})
+        invoice_id = existing.get("id", str(uuid.uuid4()))
+    else:
+        doc["id"] = str(uuid.uuid4())
+        doc["created_at"] = now_iso
+        doc["last_sent_at"] = None
+        doc["sent_count"] = 0
+        doc["sent_to"] = []
+        await db.invoices.insert_one(doc)
+        doc.pop("_id", None)
+        invoice_id = doc["id"]
+
+    return {"invoice_id": invoice_id, "invoice_no": invoice_no, "message": "Invoice PDF saved"}

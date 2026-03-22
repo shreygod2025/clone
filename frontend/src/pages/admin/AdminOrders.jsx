@@ -202,10 +202,30 @@ const AdminOrders = () => {
       const response = await axios.get(`${API}/orders/${activeTab}-payments`, {
         headers: getAuthHeaders()
       });
-      setPayments(response.data);
+      const data = response.data;
+      setPayments(data);
+      // Load saved invoice statuses for all school payments
+      if (activeTab === 'school' && Array.isArray(data)) {
+        const statusMap = {};
+        await Promise.all(data.map(async (p) => {
+          try {
+            const r = await axios.get(`${API}/orders/${p.id}/invoice-status`, { headers: getAuthHeaders() });
+            if (r.data.exists) {
+              statusMap[p.id] = {
+                saved: true,
+                invoice_no: r.data.invoice_no,
+                sent_at: r.data.last_sent_at || null,
+                email_type: null,
+              };
+            }
+          } catch { /* ignore */ }
+        }));
+        if (Object.keys(statusMap).length > 0) {
+          setInvoiceSentMap(prev => ({ ...prev, ...statusMap }));
+        }
+      }
     } catch (error) {
       console.error('Error fetching payments:', error);
-      // Initialize with empty array if endpoint doesn't exist yet
       setPayments([]);
     } finally {
       setLoading(false);
@@ -509,8 +529,28 @@ const AdminOrders = () => {
         schoolData = res.data;
         schoolDataCache.current[payment.school_id] = schoolData;
       }
-      await generateInvoicePDF(payment, schoolData);
-      toast.success('Invoice PDF downloaded');
+      // Generate, download, and get base64 back
+      const { invoiceNo, base64 } = await generateInvoicePDF(payment, schoolData);
+
+      // Save to invoices collection so Send Email uses the same PDF
+      try {
+        await axios.post(`${API}/orders/save-invoice-pdf`, {
+          payment_id: payment.id,
+          school_id: payment.school_id,
+          tranche_index: payment.tranche_index ?? 0,
+          invoice_no: invoiceNo,
+          pdf_base64: base64,
+          amount: payment.amount,
+          due_date: payment.due_date || '',
+          status: payment.status || 'pending',
+          tranche_info: payment.tranche_info || `Tranche ${(payment.tranche_index ?? 0) + 1}`,
+        }, { headers: getAuthHeaders() });
+        setInvoiceSentMap(prev => ({ ...prev, [payment.id]: { invoice_no: invoiceNo, saved: true } }));
+        toast.success(`Invoice ${invoiceNo} downloaded & saved`);
+      } catch {
+        // Save failed silently — download still succeeded
+        toast.success('Invoice PDF downloaded');
+      }
     } catch (error) {
       console.error('Invoice generation error:', error);
       toast.error('Failed to generate invoice');
@@ -545,7 +585,7 @@ const AdminOrders = () => {
       }, { headers: getAuthHeaders() });
       const { email_type, sent_to, invoice_no, is_resend } = res.data;
       toast.success(`${is_resend ? 'Invoice resent' : 'Invoice generated &'} emailed to ${sent_to.length} contact(s) — #${invoice_no}`);
-      setInvoiceSentMap(prev => ({ ...prev, [payment.id]: { sent_at: new Date().toISOString(), email_type } }));
+      setInvoiceSentMap(prev => ({ ...prev, [payment.id]: { ...prev[payment.id], sent_at: new Date().toISOString(), email_type, invoice_no } }));
       setSendEmailModal(null);
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Failed to send invoice email');
@@ -1144,11 +1184,13 @@ const AdminOrders = () => {
                                   size="sm"
                                   onClick={(e) => { e.stopPropagation(); handleGenerateInvoice(group.tranches[0]); }}
                                   disabled={generatingInvoice === group.tranches[0].id}
-                                  className="border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:border-indigo-300"
+                                  className={`${invoiceSentMap[group.tranches[0].id]?.saved ? 'border-emerald-200 text-emerald-700 hover:bg-emerald-50' : 'border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:border-indigo-300'}`}
                                   data-testid={`generate-invoice-${group.tranches[0].id}`}
+                                  title={invoiceSentMap[group.tranches[0].id]?.saved ? `Saved: ${invoiceSentMap[group.tranches[0].id].invoice_no}` : 'Generate Invoice'}
                                 >
-                                  <FilePlus className="w-3.5 h-3.5 mr-1" />
-                                  {generatingInvoice === group.tranches[0].id ? 'Generating...' : 'Invoice'}
+                                  {invoiceSentMap[group.tranches[0].id]?.saved
+                                    ? <><CheckCircle2 className="w-3.5 h-3.5 mr-1" />{generatingInvoice === group.tranches[0].id ? 'Saving...' : 'Invoice'}</>
+                                    : <><FilePlus className="w-3.5 h-3.5 mr-1" />{generatingInvoice === group.tranches[0].id ? 'Generating...' : 'Invoice'}</>}
                                 </Button>
                               )}
                               {group.tranches.length === 1 && (
@@ -1156,11 +1198,11 @@ const AdminOrders = () => {
                                   variant="outline"
                                   size="sm"
                                   onClick={(e) => { e.stopPropagation(); setSendEmailModal({ payment: group.tranches[0], group }); }}
-                                  className={`${invoiceSentMap[group.tranches[0].id] ? 'border-green-200 text-green-700 hover:bg-green-50' : 'border-teal-200 text-teal-600 hover:bg-teal-50 hover:border-teal-300'}`}
+                                  className={`${invoiceSentMap[group.tranches[0].id]?.sent_at ? 'border-green-200 text-green-700 hover:bg-green-50' : 'border-teal-200 text-teal-600 hover:bg-teal-50 hover:border-teal-300'}`}
                                   data-testid={`send-invoice-email-${group.tranches[0].id}`}
                                 >
                                   <Mail className="w-3.5 h-3.5 mr-1" />
-                                  {invoiceSentMap[group.tranches[0].id] ? 'Resend' : 'Send Email'}
+                                  {invoiceSentMap[group.tranches[0].id]?.sent_at ? 'Resend' : 'Send Email'}
                                 </Button>
                               )}
                               {group.tranches.length === 1 && (
@@ -1243,21 +1285,23 @@ const AdminOrders = () => {
                                   size="sm"
                                   onClick={() => handleGenerateInvoice(payment)}
                                   disabled={generatingInvoice === payment.id}
-                                  className="border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+                                  className={`${invoiceSentMap[payment.id]?.saved ? 'border-emerald-200 text-emerald-700 hover:bg-emerald-50' : 'border-indigo-200 text-indigo-600 hover:bg-indigo-50'}`}
                                   data-testid={`generate-invoice-${payment.id}`}
+                                  title={invoiceSentMap[payment.id]?.saved ? `Saved: ${invoiceSentMap[payment.id].invoice_no}` : 'Generate Invoice'}
                                 >
-                                  <FilePlus className="w-3.5 h-3.5 mr-1" />
-                                  {generatingInvoice === payment.id ? '...' : 'Invoice'}
+                                  {invoiceSentMap[payment.id]?.saved
+                                    ? <><CheckCircle2 className="w-3.5 h-3.5 mr-1" />{generatingInvoice === payment.id ? '...' : 'Invoice'}</>
+                                    : <><FilePlus className="w-3.5 h-3.5 mr-1" />{generatingInvoice === payment.id ? '...' : 'Invoice'}</>}
                                 </Button>
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   onClick={() => setSendEmailModal({ payment, group })}
-                                  className={`${invoiceSentMap[payment.id] ? 'border-green-200 text-green-700 hover:bg-green-50' : 'border-teal-200 text-teal-600 hover:bg-teal-50'}`}
+                                  className={`${invoiceSentMap[payment.id]?.sent_at ? 'border-green-200 text-green-700 hover:bg-green-50' : 'border-teal-200 text-teal-600 hover:bg-teal-50'}`}
                                   data-testid={`send-invoice-email-${payment.id}`}
                                 >
                                   <Mail className="w-3.5 h-3.5 mr-1" />
-                                  {invoiceSentMap[payment.id] ? 'Resend' : 'Send Email'}
+                                  {invoiceSentMap[payment.id]?.sent_at ? 'Resend' : 'Send Email'}
                                 </Button>
                                 <Button
                                   variant="outline"
@@ -2305,7 +2349,12 @@ const AdminOrders = () => {
                     <p className="text-xs text-slate-500 mt-0.5">
                       Invoice PDF will be generated &amp; attached. Sent to Accounts &amp; Principal contacts.
                     </p>
-                    {invoiceSentMap[payment.id] && (
+                    {invoiceSentMap[payment.id]?.saved && !invoiceSentMap[payment.id]?.sent_at && (
+                      <p className="text-xs text-indigo-700 mt-1 font-medium flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> Invoice already generated — same PDF will be sent.
+                      </p>
+                    )}
+                    {invoiceSentMap[payment.id]?.sent_at && (
                       <p className="text-xs text-green-700 mt-1 font-medium">Previously sent — this will resend the same invoice.</p>
                     )}
                   </div>
