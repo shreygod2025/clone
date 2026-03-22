@@ -334,14 +334,61 @@ const AdminOrders = () => {
 
   const handleUpdatePayment = async () => {
     if (!showPaymentModal) return;
-    
+    const isPaymentConfirm = ['paid', 'partial'].includes(paymentUpdate.status) && activeTab === 'school';
     try {
       await axios.patch(`${API}/orders/${showPaymentModal.id}`, {
         ...paymentUpdate,
         type: activeTab
       }, { headers: getAuthHeaders() });
-      
+
       toast.success('Payment updated successfully');
+
+      // Auto-send confirmation email if paid or partial
+      if (isPaymentConfirm) {
+        try {
+          // Silently generate & save invoice if not already saved
+          if (!invoiceSentMap[showPaymentModal.id]?.saved) {
+            let schoolData = schoolDataCache.current[showPaymentModal.school_id];
+            if (!schoolData) {
+              const r = await axios.get(`${API}/orders/school-details/${showPaymentModal.school_id}`, { headers: getAuthHeaders() });
+              schoolData = r.data;
+              schoolDataCache.current[showPaymentModal.school_id] = schoolData;
+            }
+            const { invoiceNo, base64 } = await generateInvoicePDF(showPaymentModal, schoolData, { skipDownload: true });
+            await axios.post(`${API}/orders/save-invoice-pdf`, {
+              payment_id: showPaymentModal.id,
+              school_id: showPaymentModal.school_id,
+              tranche_index: showPaymentModal.tranche_index ?? 0,
+              invoice_no: invoiceNo,
+              pdf_base64: base64,
+              amount: showPaymentModal.amount,
+              due_date: showPaymentModal.due_date || '',
+              status: paymentUpdate.status,
+              tranche_info: showPaymentModal.tranche_info || `Tranche ${(showPaymentModal.tranche_index ?? 0) + 1}`,
+            }, { headers: getAuthHeaders() });
+            setInvoiceSentMap(prev => ({ ...prev, [showPaymentModal.id]: { ...prev[showPaymentModal.id], invoice_no: invoiceNo, saved: true } }));
+          }
+          // Send confirmation email
+          const sentAmount = paymentUpdate.status === 'partial'
+            ? (paymentUpdate.paid_amount || showPaymentModal.amount)
+            : showPaymentModal.amount;
+          const res = await axios.post(`${API}/orders/send-invoice-email`, {
+            school_id: showPaymentModal.school_id,
+            payment_id: showPaymentModal.id,
+            tranche_index: showPaymentModal.tranche_index,
+            amount: sentAmount,
+            due_date: showPaymentModal.due_date || '',
+            status: paymentUpdate.status,
+            tranche_info: showPaymentModal.tranche_info || `Tranche ${(showPaymentModal.tranche_index ?? 0) + 1}`,
+          }, { headers: getAuthHeaders() });
+          toast.success(`Confirmation email sent to ${res.data.sent_to.length} contact(s)`);
+          setInvoiceSentMap(prev => ({ ...prev, [showPaymentModal.id]: { ...prev[showPaymentModal.id], sent_at: new Date().toISOString(), invoice_no: res.data.invoice_no } }));
+        } catch (emailErr) {
+          console.error('Confirmation email failed:', emailErr);
+          toast.warning('Payment saved but confirmation email failed to send');
+        }
+      }
+
       setShowPaymentModal(null);
       setPaymentUpdate({ status: '', payment_date: '', transaction_id: '', notes: '', invoice_url: '', receipt_url: '', gst_type: '', paid_amount: 0 });
       fetchPayments();
@@ -1704,6 +1751,12 @@ const AdminOrders = () => {
                   <option value="paid">Paid</option>
                   <option value="cancelled">Cancelled</option>
                 </select>
+                {['paid', 'partial'].includes(paymentUpdate.status) && activeTab === 'school' && (
+                  <p className="text-xs text-green-700 mt-1.5 flex items-center gap-1">
+                    <Mail className="w-3 h-3" />
+                    A payment confirmation email will be sent automatically to school contacts.
+                  </p>
+                )}
               </div>
 
               {/* GST Type */}
@@ -1772,9 +1825,41 @@ const AdminOrders = () => {
                 </div>
               )}
 
-              {/* Invoice Upload */}
+              {/* Invoice Section */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Invoice</label>
+
+                {/* System-generated invoice (if saved) */}
+                {invoiceSentMap[showPaymentModal?.id]?.saved && (
+                  <div className="mb-2 p-3 bg-indigo-50 rounded-lg border border-indigo-100 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-indigo-700">
+                          System Invoice #{invoiceSentMap[showPaymentModal.id].invoice_no}
+                        </p>
+                        {invoiceSentMap[showPaymentModal.id]?.sent_at && (
+                          <p className="text-xs text-indigo-500">
+                            Emailed {format(new Date(invoiceSentMap[showPaymentModal.id].sent_at), 'MMM d, h:mm a')}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleGenerateInvoice(showPaymentModal)}
+                      disabled={generatingInvoice === showPaymentModal?.id}
+                      className="text-xs border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+                    >
+                      <Download className="w-3.5 h-3.5 mr-1" />
+                      {generatingInvoice === showPaymentModal?.id ? 'Downloading...' : 'Download'}
+                    </Button>
+                  </div>
+                )}
+
+                {/* Manual invoice upload */}
                 {paymentUpdate.invoice_url ? (
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-green-600 flex items-center gap-1">

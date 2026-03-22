@@ -100,7 +100,7 @@ def generate_invoice_pdf(school_name: str, tranche: dict, invoice_no: str) -> by
     pdf.ln(12)
     pdf.set_font("Helvetica", "", 9)
     pdf.set_text_color(100, 116, 139)
-    pdf.multi_cell(0, 6, "For queries contact: accounts@oll.co | +91 98921 50714\nBank: HDFC Bank | A/C: XXXXXXXXXXXX | IFSC: HDFC0000000")
+    pdf.multi_cell(0, 6, "For queries contact: accounts@clonefutura.com | +91 98921 50714\nBank: HDFC Bank | A/C: XXXXXXXXXXXX | IFSC: HDFC0000000")
 
     return bytes(pdf.output())
 
@@ -408,7 +408,7 @@ async def send_payment_email(school_id: str, data: dict, user: dict = Depends(ge
           <tfoot><tr><td colspan="2" style="padding:10px;font-weight:700;text-align:right;border:1px solid #e2e8f0">Total Due</td>
             <td style="padding:10px;border:1px solid #e2e8f0;text-align:right;font-weight:700;color:#1E3A5F">{amount_str}</td></tr></tfoot>
         </table>
-        <p style="color:#475569;font-size:14px">Please process the payment by <strong>{due_date}</strong>. For any queries, contact us at accounts@oll.co.</p>"""
+        <p style="color:#475569;font-size:14px">Please process the payment by <strong>{due_date}</strong>. For any queries, contact us at accounts@clonefutura.com.</p>"""
 
     elif email_type == "reminder":
         subject = f"Friendly Reminder — Payment Due {due_date} | {school_name}"
@@ -417,7 +417,7 @@ async def send_payment_email(school_id: str, data: dict, user: dict = Depends(ge
         <div style="background:#fef3c7;border-radius:8px;padding:14px;margin:16px 0;border-left:4px solid #d97706">
           <p style="margin:0;color:#92400e;font-size:14px">Amount Due: <strong>{amount_str}</strong> by {due_date}</p>
         </div>
-        <p style="color:#475569;font-size:14px">Please ensure timely payment to avoid service disruption. Contact accounts@oll.co for any questions.</p>"""
+        <p style="color:#475569;font-size:14px">Please ensure timely payment to avoid service disruption. Contact accounts@clonefutura.com for any questions.</p>"""
 
     else:  # overdue
         subject = f"Action Required — Payment Overdue | {school_name}"
@@ -615,7 +615,7 @@ async def send_order_invoice_email(data: dict, user: dict = Depends(get_current_
             <td style="padding:10px;border:1px solid #e2e8f0;text-align:right;font-weight:700;color:#1E3A5F">{amount_str}</td>
           </tr></tfoot>
         </table>
-        <p style="color:#475569;font-size:14px">Please process the payment by <strong>{due_date or 'the due date'}</strong>. For queries, contact accounts@oll.co.</p>"""
+        <p style="color:#475569;font-size:14px">Please process the payment by <strong>{due_date or 'the due date'}</strong>. For queries, contact accounts@clonefutura.com.</p>"""
 
     elif email_type == "overdue":
         subject = f"Action Required — Payment Overdue | {school_name}"
