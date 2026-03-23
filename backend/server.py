@@ -6073,169 +6073,236 @@ async def bulk_import_educators(file: UploadFile = File(...), user: dict = Depen
     }
 
 # PDF Generation Helper Functions
+
+# Branded asset URLs (OLL vertical logo and signature)
+_OLL_LOGO_URL = "https://customer-assets.emergentagent.com/job_9d6a9928-5e77-45f3-ad7f-05d2ff27ef55/artifacts/8m4bz68i_OLL-vertical-logo--skills.png"
+_SHREYAAN_SIGN_URL = "https://customer-assets.emergentagent.com/job_9d6a9928-5e77-45f3-ad7f-05d2ff27ef55/artifacts/3iqpdsgr_Shreyaan%20Sign.png"
+_img_cache: dict = {}
+
+def _fetch_image_bytes(url: str):
+    """Download image bytes with in-memory cache. Returns None on failure."""
+    if url in _img_cache:
+        return _img_cache[url]
+    try:
+        resp = httpx.get(url, timeout=10, follow_redirects=True)
+        if resp.status_code == 200:
+            _img_cache[url] = resp.content
+            return resp.content
+    except Exception:
+        pass
+    return None
+
+def _make_circular_png(img_bytes: bytes) -> BytesIO:
+    """Apply circular mask to image bytes and return PNG BytesIO."""
+    try:
+        from PIL import ImageDraw
+        img = Image.open(BytesIO(img_bytes)).convert("RGBA")
+        s = min(img.size)
+        img = img.crop(((img.width - s) // 2, (img.height - s) // 2,
+                        (img.width + s) // 2, (img.height + s) // 2))
+        mask = Image.new("L", (s, s), 0)
+        ImageDraw.Draw(mask).ellipse((0, 0, s, s), fill=255)
+        result = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+        result.paste(img, mask=mask)
+        out = BytesIO()
+        result.save(out, format='PNG')
+        out.seek(0)
+        return out
+    except Exception:
+        return None
+
 def generate_id_card_pdf(educator_data, onboarding_data) -> BytesIO:
-    """Generate ID Card PDF based on OLL template"""
+    """Generate branded ID Card PDF with OLL logo and educator profile photo."""
     from reportlab.lib.utils import ImageReader
-    
+
     buffer = BytesIO()
-    
-    # ID Card dimensions (similar to credit card - 3.375 x 2.125 inches, scaled up)
     width, height = 400, 550
     c = canvas.Canvas(buffer, pagesize=(width, height))
-    
-    # Colors
+
     dark_blue = HexColor('#1E3A5F')
     red = HexColor('#D63031')
-    
+
     # Background
     c.setFillColor(white)
     c.rect(0, 0, width, height, fill=1)
-    
+
     # Left blue border
     c.setFillColor(dark_blue)
     c.rect(0, 0, 15, height, fill=1)
-    
-    # Bottom curved section
+
+    # Bottom section
     c.setFillColor(dark_blue)
     c.rect(0, 0, width, 60, fill=1)
-    
-    # Red accent in corner
+
+    # Red accent circle in bottom corner
     c.setFillColor(red)
     c.circle(30, 30, 15, fill=1)
-    
-    # OLL Logo at top right
-    c.setFillColor(dark_blue)
-    c.setFont("Helvetica-Bold", 32)
-    c.drawRightString(width - 30, height - 50, "OLL")
-    
-    # Profile photo placeholder circle
-    c.setStrokeColor(dark_blue)
-    c.setLineWidth(3)
-    c.circle(width/2, height - 180, 70, stroke=1, fill=0)
-    
-    # Add text inside placeholder
-    c.setFillColor(HexColor('#CCCCCC'))
-    c.setFont("Helvetica", 10)
-    c.drawCentredString(width/2, height - 185, "Photo")
-    
+
+    # OLL Logo (top right) — actual image
+    logo_bytes = _fetch_image_bytes(_OLL_LOGO_URL)
+    if logo_bytes:
+        c.drawImage(ImageReader(BytesIO(logo_bytes)),
+                    width - 90, height - 80,
+                    width=65, height=60,
+                    preserveAspectRatio=True, mask='auto')
+    else:
+        c.setFillColor(dark_blue)
+        c.setFont("Helvetica-Bold", 28)
+        c.drawRightString(width - 20, height - 50, "OLL")
+
+    # Profile photo (circular)
+    profile_url = educator_data.get('profile_photo') or (onboarding_data or {}).get('profile_photo')
+    cx, cy, r = width / 2, height - 180, 70
+    if profile_url:
+        photo_bytes = _fetch_image_bytes(profile_url)
+        if photo_bytes:
+            circ_buf = _make_circular_png(photo_bytes)
+            if circ_buf:
+                c.drawImage(ImageReader(circ_buf), cx - r, cy - r,
+                            width=r * 2, height=r * 2, mask='auto')
+            else:
+                _draw_id_photo_placeholder(c, cx, cy, r, dark_blue)
+        else:
+            _draw_id_photo_placeholder(c, cx, cy, r, dark_blue)
+    else:
+        _draw_id_photo_placeholder(c, cx, cy, r, dark_blue)
+
     # Name
     c.setFillColor(black)
     c.setFont("Helvetica-Bold", 22)
     name = educator_data.get('name', 'Educator Name')
-    c.drawCentredString(width/2, height - 280, name)
-    
-    # Title/Role
+    c.drawCentredString(width / 2, height - 280, name)
+
+    # Role
     c.setFont("Helvetica", 16)
     c.setFillColor(red)
-    c.drawCentredString(width/2, height - 305, "OLL Educator")
-    
-    # Phone number
-    c.setFillColor(black)
+    c.drawCentredString(width / 2, height - 305, "OLL Educator")
+
+    # Phone & ID
+    c.setFillColor(white)
     c.setFont("Helvetica", 12)
     phone = educator_data.get('phone', '')
-    c.drawString(40, 130, f"Phone: +91 {phone}")
-    
-    # ID Number
+    c.drawString(25, 38, f"Phone: +91 {phone}")
     educator_id = educator_data.get('id', '')[:8].upper()
-    c.drawString(40, 105, f"ID: {educator_id}")
-    
-    # Generate QR Code and save to temp file
+    c.drawString(25, 20, f"ID: {educator_id}")
+
+    # QR Code
     qr = qrcode.QRCode(version=1, box_size=3, border=1)
     qr.add_data(f"OLL-EDU-{educator_id}")
     qr.make(fit=True)
     qr_img = qr.make_image(fill_color="black", back_color="white")
-    
-    # Save QR to temp file
     qr_temp_path = UPLOAD_DIR / f"qr_temp_{educator_id}.png"
     qr_img.save(str(qr_temp_path))
-    
-    # Draw QR code
-    c.drawImage(str(qr_temp_path), width - 100, 85, width=70, height=70)
-    
-    # Clean up temp file
+    c.drawImage(str(qr_temp_path), width - 88, 2, width=65, height=65)
     try:
         os.remove(qr_temp_path)
-    except:
+    except Exception:
         pass
-    
+
     c.save()
     buffer.seek(0)
     return buffer
 
+def _draw_id_photo_placeholder(c, cx, cy, r, color):
+    """Draw a placeholder circle when profile photo is unavailable."""
+    c.setStrokeColor(color)
+    c.setLineWidth(3)
+    c.setFillColor(HexColor('#E8EEF5'))
+    c.circle(cx, cy, r, stroke=1, fill=1)
+    c.setFillColor(HexColor('#8899AA'))
+    c.setFont("Helvetica", 9)
+    c.drawCentredString(cx, cy - 4, "No Photo")
+
 def generate_certificate_pdf(educator_data) -> BytesIO:
-    """Generate Certificate of Completion PDF"""
+    """Generate branded Certificate of Completion PDF with OLL logo and signature."""
+    from reportlab.lib.utils import ImageReader
+
     buffer = BytesIO()
-    
-    # A4 Landscape
     width, height = landscape(A4)
     c = canvas.Canvas(buffer, pagesize=(width, height))
-    
-    # Colors
+
     dark_blue = HexColor('#1E3A5F')
     red = HexColor('#D63031')
-    
+
     # White background
     c.setFillColor(white)
     c.rect(0, 0, width, height, fill=1)
-    
+
     # Decorative border
     c.setStrokeColor(dark_blue)
     c.setLineWidth(8)
-    c.rect(30, 30, width-60, height-60, stroke=1, fill=0)
-    
-    # Inner border
+    c.rect(30, 30, width - 60, height - 60, stroke=1, fill=0)
     c.setLineWidth(2)
-    c.rect(40, 40, width-80, height-80, stroke=1, fill=0)
-    
-    # OLL Logo at top center
+    c.rect(40, 40, width - 80, height - 80, stroke=1, fill=0)
+
+    # OLL Logo at top center — actual image
+    logo_bytes = _fetch_image_bytes(_OLL_LOGO_URL)
+    if logo_bytes:
+        logo_w, logo_h = 90, 80
+        c.drawImage(ImageReader(BytesIO(logo_bytes)),
+                    (width - logo_w) / 2, height - 105,
+                    width=logo_w, height=logo_h,
+                    preserveAspectRatio=True, mask='auto')
+    else:
+        c.setFillColor(dark_blue)
+        c.setFont("Helvetica-Bold", 36)
+        c.drawCentredString(width / 2, height - 100, "OLL")
+
+    # Certificate Title
     c.setFillColor(dark_blue)
-    c.setFont("Helvetica-Bold", 36)
-    c.drawCentredString(width/2, height - 100, "OLL")
-    
-    # Title
     c.setFont("Helvetica-Bold", 32)
-    c.drawCentredString(width/2, height - 160, "CERTIFICATE OF COMPLETION")
-    
+    c.drawCentredString(width / 2, height - 165, "CERTIFICATE OF COMPLETION")
+
     # Subtitle
     c.setFillColor(HexColor('#666666'))
     c.setFont("Helvetica", 14)
-    c.drawCentredString(width/2, height - 190, "This is to certify that")
-    
+    c.drawCentredString(width / 2, height - 195, "This is to certify that")
+
     # Recipient Name
     c.setFillColor(black)
     c.setFont("Helvetica-Bold", 40)
     name = educator_data.get('name', 'Educator Name')
-    c.drawCentredString(width/2, height - 250, name)
-    
-    # Role/Title in Red
+    c.drawCentredString(width / 2, height - 255, name)
+
+    # Role in Red
     c.setFillColor(red)
     c.setFont("Helvetica-Bold", 20)
-    c.drawCentredString(width/2, height - 290, "OLL Educator")
-    
+    c.drawCentredString(width / 2, height - 295, "OLL Educator")
+
     # Description
     c.setFillColor(black)
     c.setFont("Helvetica", 14)
     today = datetime.now().strftime("%d %B %Y")
-    c.drawCentredString(width/2, height - 330, 
-        f"Has successfully completed the OLL Educator Training Program")
-    c.drawCentredString(width/2, height - 355,
-        f"and is hereby certified as an official OLL Educator.")
-    
+    c.drawCentredString(width / 2, height - 335,
+                        "Has successfully completed the OLL Educator Training Program")
+    c.drawCentredString(width / 2, height - 360,
+                        "and is hereby certified as an official OLL Educator.")
+
     # Date
     c.setFont("Helvetica", 12)
-    c.drawCentredString(width/2, height - 390, f"Date: {today}")
-    
-    # Signature section
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(width - 250, 100, "SHREYAAN DAGA")
-    c.setFont("Helvetica", 12)
-    c.drawString(width - 250, 80, "Cofounder - OLL")
-    
+    c.drawCentredString(width / 2, height - 395, f"Date: {today}")
+
+    # Signature image (above the line)
+    sign_bytes = _fetch_image_bytes(_SHREYAAN_SIGN_URL)
+    sig_x = width - 280
+    if sign_bytes:
+        c.drawImage(ImageReader(BytesIO(sign_bytes)),
+                    sig_x, 115,
+                    width=140, height=65,
+                    preserveAspectRatio=True, mask='auto')
+
     # Signature line
     c.setStrokeColor(black)
     c.setLineWidth(1)
-    c.line(width - 280, 115, width - 150, 115)
-    
+    c.line(sig_x, 115, sig_x + 150, 115)
+
+    # Signatory name + title
+    c.setFillColor(black)
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(sig_x + 5, 100, "SHREYAAN DAGA")
+    c.setFont("Helvetica", 12)
+    c.drawString(sig_x + 5, 82, "Cofounder - OLL")
+
     c.save()
     buffer.seek(0)
     return buffer

@@ -722,7 +722,7 @@ const PublicReports = () => {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <StatCard title="Total Tickets" value={support?.total || 0} icon={MessageSquare} color="blue" />
         <StatCard title="Open" value={support?.open || 0} icon={AlertCircle} color="blue" />
-        <StatCard title="In Progress" value={support?.in_progress || 0} icon={Clock} color="orange" />
+        <StatCard title="Overdue (>48h)" value={support?.overdue || 0} icon={Clock} color="red" />
         <StatCard title="Resolved" value={support?.resolved || 0} icon={Target} color="green" />
         <StatCard 
           title="Resolution Rate" 
@@ -805,18 +805,10 @@ const PublicReports = () => {
         <div className="bg-white rounded-2xl border border-slate-100 p-5">
           <h3 className="font-semibold text-slate-800 mb-4">Ticket Status Distribution</h3>
           <div className="space-y-3">
-            {support?.stages?.map((stage, idx) => (
-              <ProgressBar
-                key={idx}
-                label={stage.name?.replace(/_/g, ' ')}
-                value={stage.count}
-                total={support?.total || 1}
-                color={
-                  stage.name === 'resolved' || stage.name === 'closed' ? '#22c55e' :
-                  stage.name === 'in_progress' ? '#f97316' : '#3b82f6'
-                }
-              />
-            ))}
+            <ProgressBar label="Open" value={support?.open || 0} total={support?.total || 1} color="#3b82f6" />
+            <ProgressBar label="Overdue Queries (>48h)" value={support?.overdue || 0} total={support?.total || 1} color="#ef4444" />
+            <ProgressBar label="Resolved" value={support?.resolved || 0} total={support?.total || 1} color="#22c55e" />
+            <ProgressBar label="Closed" value={(support?.total || 0) - (support?.open || 0) - (support?.in_progress || 0) - (support?.resolved || 0)} total={support?.total || 1} color="#64748b" />
           </div>
         </div>
       </div>

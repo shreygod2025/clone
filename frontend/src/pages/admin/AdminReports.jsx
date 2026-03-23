@@ -1061,10 +1061,10 @@ const AdminReports = () => {
         <h2 className="text-lg font-semibold text-[#1E3A5F]">Support Center Analytics</h2>
         
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <StatCard title="Total Tickets" value={supportInsights?.total_queries || support?.total || 0} icon={MessageSquare} color="blue" />
-          <StatCard title="Pending" value={supportInsights?.pending || support?.open || 0} icon={Clock} color="orange" />
-          <StatCard title="In Progress" value={support?.in_progress || 0} icon={UserCheck} color="purple" />
-          <StatCard title="Resolved" value={supportInsights?.resolved || support?.resolved || 0} icon={Target} color="green" />
+          <StatCard title="Total Tickets" value={supportInsights?.total_queries || 0} icon={MessageSquare} color="blue" />
+          <StatCard title="Pending" value={supportInsights?.pending || 0} icon={Clock} color="orange" />
+          <StatCard title="Overdue (>48h)" value={supportInsights?.overdue || 0} icon={UserCheck} color="red" />
+          <StatCard title="Resolved" value={supportInsights?.resolved || 0} icon={Target} color="green" />
           <StatCard 
             title="Resolution Rate" 
             value={`${(supportInsights?.total_queries || 0) > 0 ? Math.round(((supportInsights?.resolved || 0) / supportInsights.total_queries) * 100) : 0}%`} 
@@ -1167,10 +1167,10 @@ const AdminReports = () => {
         <div className="bg-white rounded-2xl border border-slate-100 p-5">
           <h3 className="font-semibold text-[#1E3A5F] mb-4">Ticket Status Breakdown</h3>
           <div className="space-y-3">
-            <ProgressBar label="Open" value={support?.open || 0} total={support?.total || 1} color="#3b82f6" />
-            <ProgressBar label="In Progress" value={support?.in_progress || 0} total={support?.total || 1} color="#f97316" />
-            <ProgressBar label="Resolved" value={support?.resolved || 0} total={support?.total || 1} color="#22c55e" />
-            <ProgressBar label="Closed" value={support?.closed || 0} total={support?.total || 1} color="#64748b" />
+            <ProgressBar label="Open" value={supportInsights?.status_breakdown?.find(s => s.name === 'open')?.count || 0} total={supportInsights?.total_queries || 1} color="#3b82f6" />
+            <ProgressBar label="Overdue Queries (>48h)" value={supportInsights?.overdue || 0} total={supportInsights?.total_queries || 1} color="#ef4444" />
+            <ProgressBar label="Resolved" value={supportInsights?.status_breakdown?.find(s => s.name === 'resolved')?.count || 0} total={supportInsights?.total_queries || 1} color="#22c55e" />
+            <ProgressBar label="Closed" value={supportInsights?.status_breakdown?.find(s => s.name === 'closed')?.count || 0} total={supportInsights?.total_queries || 1} color="#64748b" />
           </div>
         </div>
       </div>

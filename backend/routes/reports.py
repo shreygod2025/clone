@@ -919,23 +919,32 @@ async def get_support_insights(
         else:
             status_counts['open'] += 1
     
-    # Calculate resolution times
+    # Calculate resolution times (use resolved_at, fallback to updated_at)
     resolution_times = []
     for q in queries:
-        if q.get('status') in ['resolved', 'closed'] and q.get('resolved_at'):
+        if q.get('status') in ['resolved', 'closed']:
             created = parse_date_field(q.get('created_at'))
-            resolved = parse_date_field(q.get('resolved_at'))
-            if created and resolved:
+            resolved = parse_date_field(q.get('resolved_at') or q.get('updated_at'))
+            if created and resolved and resolved > created:
                 delta = (resolved - created).total_seconds() / 3600  # Hours
                 resolution_times.append(delta)
-    
+
     avg_resolution_time = round(sum(resolution_times) / len(resolution_times), 1) if resolution_times else 0
-    
+
+    # Overdue: open/in_progress queries older than 48 hours
+    now = datetime.now(timezone.utc)
+    overdue_count = 0
+    for q in queries:
+        if q.get('status') in ['new', 'open', 'in_progress']:
+            created = parse_date_field(q.get('created_at'))
+            if created and (now - created).total_seconds() > 48 * 3600:
+                overdue_count += 1
+
     # Team member performance
     team_performance = {}
     team_users = await db.team_users.find({}, {"_id": 0}).to_list(1000)
     user_names = {u['id']: u.get('name', 'Unknown') for u in team_users}
-    
+
     for q in queries:
         assigned = q.get('assigned_to')
         if assigned:
@@ -944,7 +953,7 @@ async def get_support_insights(
             team_performance[assigned]['total'] += 1
             if q.get('status') in ['resolved', 'closed']:
                 team_performance[assigned]['resolved'] += 1
-    
+
     # Calculate resolution rates for each team member
     team_stats = []
     for uid, data in team_performance.items():
@@ -957,7 +966,7 @@ async def get_support_insights(
             'resolution_rate': resolution_rate
         })
     team_stats.sort(key=lambda x: -x['resolved'])
-    
+
     # Priority breakdown
     priority_counts = {'high': 0, 'medium': 0, 'low': 0}
     for q in queries:
@@ -966,17 +975,18 @@ async def get_support_insights(
             priority_counts[priority] += 1
         else:
             priority_counts['medium'] += 1
-    
+
     # Source breakdown
     source_counts = {}
     for q in queries:
         source = q.get('source') or q.get('user_type') or 'Unknown'
         source_counts[source] = source_counts.get(source, 0) + 1
-    
+
     return {
         "total_queries": len(queries),
         "resolved": status_counts['resolved'] + status_counts['closed'],
         "pending": status_counts['open'] + status_counts['in_progress'],
+        "overdue": overdue_count,
         "avg_resolution_time_hours": avg_resolution_time,
         "query_types": [{"name": k, "count": v} for k, v in sorted(query_types.items(), key=lambda x: -x[1])],
         "status_breakdown": [{"name": k, "count": v} for k, v in status_counts.items()],
@@ -1334,17 +1344,26 @@ async def get_public_report_data(
         else:
             support_priority['medium'] += 1
     
-    # Calculate resolution time (for queries with resolved_at)
+    # Calculate resolution time (use resolved_at, fallback to updated_at)
     resolution_times = []
     for q in support:
-        if q.get('status') in ['resolved', 'closed'] and q.get('resolved_at'):
+        if q.get('status') in ['resolved', 'closed']:
             created = parse_date_field(q.get('created_at'))
-            resolved = parse_date_field(q.get('resolved_at'))
-            if created and resolved:
+            resolved = parse_date_field(q.get('resolved_at') or q.get('updated_at'))
+            if created and resolved and resolved > created:
                 delta = (resolved - created).total_seconds() / 3600
                 resolution_times.append(delta)
-    
+
     avg_resolution_time = round(sum(resolution_times) / len(resolution_times), 1) if resolution_times else 0
+
+    # Overdue: open/in_progress older than 48 hours
+    now_utc = datetime.now(timezone.utc)
+    support_overdue = sum(
+        1 for q in support
+        if q.get('status') in ['new', 'open', 'in_progress']
+        and parse_date_field(q.get('created_at'))
+        and (now_utc - parse_date_field(q.get('created_at'))).total_seconds() > 48 * 3600
+    )
     
     # Expense metrics
     total_expenses = sum(float(e.get('amount') or 0) for e in expenses)
@@ -1431,6 +1450,7 @@ async def get_public_report_data(
             "pending": support_total - support_resolved,
             "open": support_open,
             "in_progress": support_in_progress,
+            "overdue": support_overdue,
             "query_types": [{"name": k, "count": v} for k, v in sorted(support_query_types.items(), key=lambda x: -x[1])],
             "priority_breakdown": [{"name": k, "count": v} for k, v in support_priority.items()],
             "avg_resolution_time_hours": avg_resolution_time,
