@@ -7,7 +7,7 @@ import {
   UserCheck, Clock, MessageSquare, Target, BarChart3,
   Briefcase, Handshake, Wallet, Receipt, TrendingDown,
   FileText, Plus, Edit2, Trash2, X, ChevronDown, ChevronRight, Link, Copy, Eye, EyeOff, ExternalLink, Lock,
-  PieChart, AlertCircle, Send, MessageCircle
+  PieChart, AlertCircle, Send, MessageCircle, MapPin
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -18,7 +18,7 @@ import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subM
 import axios from 'axios';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  LineChart, Line, Area, AreaChart
+  LineChart, Line, Area, AreaChart, PieChart as RechartsPie, Pie, Cell
 } from 'recharts';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -902,7 +902,23 @@ const AdminReports = () => {
 
     return (
     <div className="space-y-6">
-      <h2 className="text-lg font-semibold text-[#1E3A5F]">B2B - School Sales</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-[#1E3A5F]">B2B - School Sales</h2>
+        {/* B2B Year-Only Filter */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-slate-500">Year:</span>
+          <select
+            value={selectedYear}
+            onChange={(e) => { setSelectedYear(e.target.value); setDateFilterType('year'); }}
+            className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-medium"
+            data-testid="b2b-year-filter"
+          >
+            {YEAR_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       {/* Row 1: 5 Key KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -1002,7 +1018,96 @@ const AdminReports = () => {
         </div>
       </div>
 
-      {/* Row 4: Merged Lost Reasons + Stage Distribution */}
+      {/* Row 4: New vs Renewal Pie + City Division */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* New Schools vs Renewal Schools Pie Chart */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
+            <PieChart className="w-5 h-5 text-purple-500" />
+            New Schools vs Renewals
+          </h3>
+          {(() => {
+            const newCount = b2bInsights?.new_vs_renewal?.new || 0;
+            const renewalCount = b2bInsights?.new_vs_renewal?.renewal || 0;
+            const total = newCount + renewalCount;
+            if (total === 0) return <p className="text-sm text-slate-400 py-4 text-center">No data available</p>;
+            const pieData = [
+              { name: 'New Schools', value: newCount },
+              { name: 'Renewals', value: renewalCount }
+            ];
+            const COLORS = ['#3b82f6', '#22c55e'];
+            return (
+              <div className="flex items-center gap-4">
+                <ResponsiveContainer width="50%" height={180}>
+                  <RechartsPie>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={45}
+                      outerRadius={75}
+                      paddingAngle={3}
+                      dataKey="value"
+                    >
+                      {pieData.map((entry, index) => (
+                        <Cell key={index} fill={COLORS[index]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => [value, '']} />
+                  </RechartsPie>
+                </ResponsiveContainer>
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-blue-500" />
+                    <span className="text-sm text-slate-600">New Schools</span>
+                    <span className="ml-auto font-bold text-blue-600">{newCount}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-green-500" />
+                    <span className="text-sm text-slate-600">Renewals</span>
+                    <span className="ml-auto font-bold text-green-600">{renewalCount}</span>
+                  </div>
+                  <div className="pt-2 border-t border-slate-100">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500">Total</span>
+                      <span className="font-bold text-[#1E3A5F]">{total}</span>
+                    </div>
+                    <div className="flex justify-between text-sm mt-1">
+                      <span className="text-slate-500">Renewal Rate</span>
+                      <span className="font-bold text-green-600">{total > 0 ? Math.round(renewalCount / total * 100) : 0}%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* City Division of Customers */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
+            <MapPin className="w-5 h-5 text-orange-500" />
+            City Division of Customers
+          </h3>
+          {(!b2bInsights?.customer_cities?.length) ? (
+            <p className="text-sm text-slate-400 py-4 text-center">No city data available</p>
+          ) : (
+            <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+              {b2bInsights.customer_cities.map((city, i) => (
+                <ProgressBar
+                  key={i}
+                  label={city.name}
+                  value={city.count}
+                  total={b2bInsights.customer_cities.reduce((s, x) => s + x.count, 0)}
+                  color={['#f97316','#3b82f6','#9333ea','#22c55e','#06b6d4','#ec4899','#eab308','#14b8a6','#8b5cf6','#f43f5e'][i % 10]}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Row 5: Merged Lost Reasons + Stage Distribution */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <SimplePieChart
           title="Lost Reasons (All)"
@@ -1739,8 +1844,8 @@ const AdminReports = () => {
         })}
       </div>
       
-      {/* Date Filter */}
-      {renderDateFilter()}
+      {/* Date Filter - hide for B2B (has its own year filter) */}
+      {activeTab !== 'b2b' && renderDateFilter()}
 
       {/* Content */}
       <div className="mt-6">

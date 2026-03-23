@@ -218,6 +218,13 @@ const AdminSupportUnified = () => {
   const [autocompleteSuggestions, setAutocompleteSuggestions] = useState([]);
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [autocompleteField, setAutocompleteField] = useState('');
+  
+  // School contact picker states
+  const [schoolSearchQuery, setSchoolSearchQuery] = useState('');
+  const [schoolSearchResults, setSchoolSearchResults] = useState([]);
+  const [showSchoolDropdown, setShowSchoolDropdown] = useState(false);
+  const [selectedSchool, setSelectedSchool] = useState(null);
+  const [schoolContacts, setSchoolContacts] = useState([]);
 
   useEffect(() => {
     fetchAllQueries();
@@ -353,6 +360,55 @@ const AdminSupportUnified = () => {
       inquiry_type: suggestion.type === 'school' ? 'school' : suggestion.type === 'educator' ? 'teacher' : 'student',
     });
     setShowAutocomplete(false);
+  };
+
+  // School search for ticket creation
+  const searchSchools = async (query) => {
+    setSchoolSearchQuery(query);
+    if (!query || query.length < 2) {
+      setSchoolSearchResults([]);
+      setShowSchoolDropdown(false);
+      return;
+    }
+    try {
+      const response = await axios.get(`${API}/schools/inquiries`, {
+        headers: getAuthHeaders()
+      });
+      const allSchools = response.data?.inquiries || response.data || [];
+      const filtered = allSchools.filter(s => 
+        s.school_name?.toLowerCase().includes(query.toLowerCase()) ||
+        s.contact_name?.toLowerCase().includes(query.toLowerCase())
+      ).slice(0, 10);
+      setSchoolSearchResults(filtered);
+      setShowSchoolDropdown(filtered.length > 0);
+    } catch (error) {
+      console.error('School search error:', error);
+    }
+  };
+
+  const selectSchool = (school) => {
+    setSelectedSchool(school);
+    setSchoolSearchQuery(school.school_name || '');
+    setShowSchoolDropdown(false);
+    // Extract contacts from onboarding_data
+    const contacts = school.onboarding_data?.school_contacts || [];
+    // Also include the main contact
+    const mainContact = { name: school.contact_name, phone: school.phone, email: school.email, role: 'Main Contact' };
+    const allContacts = [mainContact, ...contacts].filter(c => c.name || c.phone);
+    setSchoolContacts(allContacts);
+    // If only one contact, auto-select it
+    if (allContacts.length === 1) {
+      selectSchoolContact(allContacts[0]);
+    }
+  };
+
+  const selectSchoolContact = (contact) => {
+    setNewTicket({
+      ...newTicket,
+      name: contact.name || '',
+      phone: contact.phone || '',
+      email: contact.email || '',
+    });
   };
 
   // Initial effect handled above
@@ -581,6 +637,8 @@ const AdminSupportUnified = () => {
             name: user.name,
             phone: user.phone,
             email: user.email || '',
+            school_name: selectedSchool?.school_name || '',
+            school_id: selectedSchool?.id || '',
             attachments: allAttachments
           }, {
             headers: getAuthHeaders()
@@ -605,6 +663,9 @@ const AdminSupportUnified = () => {
       setAudioBlob(null);
       setAudioUrl(null);
       setRecordingTime(0);
+      setSelectedSchool(null);
+      setSchoolContacts([]);
+      setSchoolSearchQuery('');
       fetchAllQueries();
     } catch (error) {
       toast.error('Failed to create ticket');
@@ -1580,6 +1641,13 @@ const AdminSupportUnified = () => {
                           query_type: defaults.query_type,
                           related_to: defaults.related_to
                         });
+                        // Reset school picker when switching types
+                        if (type.value !== 'school') {
+                          setSelectedSchool(null);
+                          setSchoolContacts([]);
+                          setSchoolSearchQuery('');
+                          setShowSchoolDropdown(false);
+                        }
                       }}
                       className={`p-3 rounded-lg border text-center transition-all ${
                         newTicket.inquiry_type === type.value
@@ -1594,6 +1662,72 @@ const AdminSupportUnified = () => {
                 })}
               </div>
             </div>
+            
+            {/* School Picker - shown when School type is selected */}
+            {newTicket.inquiry_type === 'school' && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
+                <label className="block text-sm font-medium text-[#1E3A5F]">School Name *</label>
+                <div className="relative">
+                  <Input
+                    value={schoolSearchQuery}
+                    onChange={(e) => searchSchools(e.target.value)}
+                    placeholder="Search school by name..."
+                    className="w-full"
+                    data-testid="school-search-input"
+                  />
+                  {showSchoolDropdown && schoolSearchResults.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {schoolSearchResults.map((school, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => selectSchool(school)}
+                          className="w-full px-3 py-2 text-left hover:bg-amber-50 border-b last:border-b-0"
+                          data-testid={`school-option-${idx}`}
+                        >
+                          <p className="font-medium text-sm">{school.school_name}</p>
+                          <p className="text-xs text-slate-500">{school.location || school.address || ''} {school.status ? `(${school.status})` : ''}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
+                {/* School Contacts */}
+                {selectedSchool && schoolContacts.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-[#1E3A5F] mb-2">
+                      Select Contact ({schoolContacts.length})
+                    </label>
+                    <div className="space-y-2 max-h-[140px] overflow-y-auto">
+                      {schoolContacts.map((contact, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => selectSchoolContact(contact)}
+                          className={`w-full p-2.5 rounded-lg border text-left transition-all ${
+                            newTicket.phone === contact.phone && newTicket.name === contact.name
+                              ? 'border-[#1E3A5F] bg-blue-50 shadow-sm'
+                              : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'
+                          }`}
+                          data-testid={`school-contact-${idx}`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium text-sm text-[#1E3A5F]">{contact.name || 'N/A'}</p>
+                              <p className="text-xs text-slate-500">{contact.phone || ''} {contact.email ? `| ${contact.email}` : ''}</p>
+                            </div>
+                            {contact.role && (
+                              <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full">{contact.role}</span>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             
             {/* Auto-fill hint */}
             <div className="bg-blue-50 text-blue-700 text-xs p-2 rounded-lg">

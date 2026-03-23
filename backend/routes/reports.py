@@ -896,6 +896,19 @@ async def get_b2b_insights(
         src_clean = src.replace('_', ' ').title()
         source_counts[src_clean] = source_counts.get(src_clean, 0) + 1
     
+    # New Schools vs Renewal Schools (all-time)
+    new_schools_count = len([s for s in all_schools if s.get('status') in ['converted', 'active'] and not s.get('onboarding_data', {}).get('renewal_date')])
+    renewal_schools_count = actual_renewed + len([s for s in all_schools if s.get('status') in ['converted', 'active'] and s.get('onboarding_data', {}).get('renewal_date')])
+    
+    # Customer city division (active + converted + renewed schools)
+    customer_cities = {}
+    for s in all_schools:
+        if s.get('status') in ['converted', 'active', 'renewed']:
+            city = s.get('location') or s.get('city') or s.get('address', '').split(',')[-1].strip() or 'Unknown'
+            if city:
+                city = city.strip().title()
+            customer_cities[city] = customer_cities.get(city, 0) + 1
+    
     return {
         "total_schools": len(schools),
         "revenue": school_revenue,
@@ -914,6 +927,8 @@ async def get_b2b_insights(
         "cities": [{"name": k, "count": v} for k, v in sorted(cities.items(), key=lambda x: -x[1])[:10]],
         "boards": [{"name": k, "count": v} for k, v in sorted(boards.items(), key=lambda x: -x[1])],
         "school_types": [{"name": k, "count": v} for k, v in sorted(types.items(), key=lambda x: -x[1])],
+        "new_vs_renewal": {"new": new_schools_count, "renewal": renewal_schools_count},
+        "customer_cities": [{"name": k, "count": v} for k, v in sorted(customer_cities.items(), key=lambda x: -x[1])[:15]],
         "period": {"start": start.isoformat(), "end": end.isoformat()}
     }
 
