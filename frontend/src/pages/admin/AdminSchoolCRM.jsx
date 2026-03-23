@@ -3929,6 +3929,78 @@ ${FOOTER}</div></body></html>`
       </button>
     );
 
+    // Raise Ticket button - available across ALL stages
+    const raiseTicketButton = (
+      <button
+        onClick={() => {
+          setShowRaiseTicketModal(inquiry);
+          setTicketData({
+            query_type: '',
+            related_to: '',
+            subject: '',
+            description: '',
+            priority: 'medium',
+            source: 'school_crm',
+            user_type: 'school',
+            contact_name: inquiry.contact_name,
+            contact_phone: inquiry.phone,
+            contact_email: inquiry.email
+          });
+          setTicketAttachments([]);
+          setTicketAudioBlob(null);
+          setTicketAudioUrl(null);
+        }}
+        className="text-xs px-2.5 py-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-700 flex items-center gap-1 font-medium"
+        data-testid={`raise-ticket-${inquiry.id}`}
+      >
+        <Ticket className="w-3 h-3" />
+        Ticket
+      </button>
+    );
+
+    // Change Stage (rollback) dropdown - move back one step
+    const stageRollbackMap = {
+      'meeting_done': [{ value: 'new', label: 'New Lead' }],
+      'converted': [{ value: 'meeting_done', label: 'Meeting Done' }],
+      'active': [{ value: 'converted', label: 'Converted' }],
+      'renewal_meeting': [{ value: 'active', label: 'Active' }],
+      'renewed': [{ value: 'active', label: 'Active' }, { value: 'renewal_meeting', label: 'Renewal Meeting' }],
+    };
+    const rollbackOptions = stageRollbackMap[inquiry.status] || [];
+    const changeStageButton = rollbackOptions.length > 0 && (
+      <div className="relative group/stage">
+        <button
+          className="text-xs px-2.5 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center gap-1 font-medium"
+          data-testid={`change-stage-${inquiry.id}`}
+        >
+          <History className="w-3 h-3" />
+          Move Back
+          {rollbackOptions.length > 1 && <ChevronDown className="w-3 h-3" />}
+        </button>
+        <div className="absolute z-50 hidden group-hover/stage:block top-full left-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg min-w-[160px]">
+          {rollbackOptions.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => {
+                if (window.confirm(`Move "${inquiry.school_name}" back to ${opt.label}?`)) {
+                  handleStatusChange(inquiry, opt.value, {
+                    notes: inquiry.notes 
+                      ? `${inquiry.notes}\n\n--- Moved back to ${opt.label} (${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}) ---`
+                      : `--- Moved back to ${opt.label} (${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}) ---`
+                  });
+                }
+              }}
+              className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
+              data-testid={`move-to-${opt.value}-${inquiry.id}`}
+            >
+              <RefreshCcw className="w-4 h-4 text-gray-500" />
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+
     switch (inquiry.status) {
       case 'new':
         return (
@@ -3960,6 +4032,7 @@ ${FOOTER}</div></body></html>`
               <CalendarClock className="w-3 h-3" />
               {inquiry.meeting_date ? 'Reschedule' : 'Schedule Meeting'}
             </button>
+            {raiseTicketButton}
             {followupButton}
             {documentsButton}
             {baseButtons}
@@ -3993,6 +4066,8 @@ ${FOOTER}</div></body></html>`
               <CheckCircle2 className="w-3 h-3" />
               Convert
             </button>
+            {changeStageButton}
+            {raiseTicketButton}
             {followupButton}
             {documentsButton}
             {baseButtons}
@@ -4034,31 +4109,8 @@ ${FOOTER}</div></body></html>`
               <UserPlus className="w-3 h-3" />
               {inquiry.relationship_manager_name ? 'Change RM' : 'Assign RM'}
             </button>
-            <button
-              onClick={() => {
-                setShowRaiseTicketModal(inquiry);
-                setTicketData({
-                  query_type: '',
-                  related_to: '',
-                  subject: '',
-                  description: '',
-                  priority: 'medium',
-                  source: 'school_crm',
-                  user_type: 'school',
-                  contact_name: inquiry.contact_name,
-                  contact_phone: inquiry.phone,
-                  contact_email: inquiry.email
-                });
-                setTicketAttachments([]);
-                setTicketAudioBlob(null);
-                setTicketAudioUrl(null);
-              }}
-              className="text-xs px-2.5 py-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-700 flex items-center gap-1 font-medium"
-              data-testid={`raise-ticket-${inquiry.id}`}
-            >
-              <AlertCircle className="w-3 h-3" />
-              Ticket
-            </button>
+            {changeStageButton}
+            {raiseTicketButton}
             {documentsButton}
             {baseButtons}
           </div>
@@ -4109,31 +4161,8 @@ ${FOOTER}</div></body></html>`
                 </button>
               </div>
             </div>
-            <button
-              onClick={() => {
-                setShowRaiseTicketModal(inquiry);
-                setTicketData({
-                  query_type: '',
-                  related_to: '',
-                  subject: '',
-                  description: '',
-                  priority: 'medium',
-                  source: 'school_crm',
-                  user_type: 'school',
-                  contact_name: inquiry.contact_name,
-                  contact_phone: inquiry.phone,
-                  contact_email: inquiry.email
-                });
-                setTicketAttachments([]);
-                setTicketAudioBlob(null);
-                setTicketAudioUrl(null);
-              }}
-              className="text-xs px-2.5 py-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-700 flex items-center gap-1 font-medium"
-              data-testid={`raise-ticket-${inquiry.id}`}
-            >
-              <AlertCircle className="w-3 h-3" />
-              Ticket
-            </button>
+            {changeStageButton}
+            {raiseTicketButton}
             <button
               onClick={() => openLostReasonModal(inquiry)}
               className="text-xs px-2.5 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 font-medium"
@@ -4158,6 +4187,8 @@ ${FOOTER}</div></body></html>`
               <CheckCircle className="w-3 h-3" />
               Renewed
             </button>
+            {changeStageButton}
+            {raiseTicketButton}
             <button
               onClick={() => setShowFollowupModal(inquiry)}
               className="text-xs px-2.5 py-1.5 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-700 flex items-center gap-1 font-medium"
@@ -4190,6 +4221,8 @@ ${FOOTER}</div></body></html>`
               <Edit className="w-3 h-3" />
               Edit
             </button>
+            {changeStageButton}
+            {raiseTicketButton}
             <button
               onClick={() => openLostReasonModal(inquiry)}
               className="text-xs px-2.5 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 font-medium"
@@ -4216,13 +4249,14 @@ ${FOOTER}</div></body></html>`
               <RefreshCw className="w-3 h-3" />
               {inquiry.status === 'lost_lead' ? 'Restore to Lead' : 'Reactivate'}
             </button>
+            {raiseTicketButton}
             {documentsButton}
             {baseButtons}
           </div>
         );
       
       case 'archived':
-        return <div className="flex gap-1.5 flex-wrap items-center">{followupButton}{documentsButton}{baseButtons}</div>;
+        return <div className="flex gap-1.5 flex-wrap items-center">{raiseTicketButton}{followupButton}{documentsButton}{baseButtons}</div>;
       
       default:
         return null;
