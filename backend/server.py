@@ -8068,7 +8068,127 @@ async def add_query_reply(query_id: str, data: dict, user: dict = Depends(get_cu
         update["$set"]["status"] = "in_progress"
     
     await db.support_queries.update_one({"id": query_id}, update)
+    
+    # Send email notifications to assignee and viewers (fire-and-forget)
+    if query:
+        try:
+            task = asyncio.create_task(_send_reply_notifications(query, reply, user))
+            task.add_done_callback(lambda t: print(f"[REPLY_NOTIFY] Task done: {t.exception() if t.exception() else 'OK'}") if t.done() else None)
+        except Exception as e:
+            print(f"[REPLY_NOTIFY] Failed to create notification task: {e}")
+    
     return {"message": "Reply added successfully", "reply": reply}
+
+
+async def _send_reply_notifications(query: dict, reply: dict, replier: dict):
+    """Send email notifications to assignee and viewers about a new reply"""
+    try:
+        await ensure_resend_api_key()
+        if not resend.api_key:
+            print("[REPLY_NOTIFY] Resend API key not configured, skipping email")
+            return
+        
+        # Collect recipient emails (exclude the person who wrote the reply)
+        replier_id = replier.get("id", replier.get("email"))
+        recipients = []
+        
+        # Re-fetch query to get latest assigned_to (may have been updated just before reply)
+        fresh_query = await db.support_queries.find_one({"id": query.get("id")}, {"_id": 0})
+        if fresh_query:
+            query = fresh_query
+        
+        # 1. Get assignee email
+        assigned_to = query.get("assigned_to")
+        if assigned_to and assigned_to != replier_id:
+            assignee = await db.team_users.find_one({"id": assigned_to}, {"_id": 0})
+            if not assignee:
+                assignee = await db.admins.find_one({"id": assigned_to}, {"_id": 0})
+            if assignee and assignee.get("email"):
+                recipients.append({"email": assignee["email"], "name": assignee.get("name", "Team Member"), "role": "Assignee"})
+        
+        # 2. Get viewer emails
+        viewer_ids = query.get("viewers", [])
+        for vid in viewer_ids:
+            if vid == replier_id:
+                continue
+            # Skip if already added as assignee
+            if vid == assigned_to:
+                continue
+            viewer = await db.team_users.find_one({"id": vid}, {"_id": 0})
+            if not viewer:
+                viewer = await db.admins.find_one({"id": vid}, {"_id": 0})
+            if viewer and viewer.get("email"):
+                recipients.append({"email": viewer["email"], "name": viewer.get("name", "Team Member"), "role": "Viewer"})
+        
+        if not recipients:
+            print(f"[REPLY_NOTIFY] No recipients for query {query.get('id', '')[:8]}")
+            return
+        
+        # Build email
+        query_type = query.get("query_type", "Support Request").replace("_", " ").title()
+        customer_name = query.get("name", "Customer")
+        ticket_id = query.get("id", "")[:8].upper()
+        reply_text = reply.get("text", "No text")
+        reply_by = reply.get("by", "Team")
+        reply_time = reply.get("created_at", "")[:16].replace("T", " ")
+        subject_line = query.get("subject", query_type)
+        attachment_info = ""
+        if reply.get("attachment"):
+            att = reply["attachment"]
+            attachment_info = f"""
+            <div style="background: #e8f4fd; padding: 10px; border-radius: 6px; margin-top: 10px;">
+                <p style="margin: 0; font-size: 13px; color: #1E3A5F;">
+                    <strong>Attachment:</strong> {att.get('original_name', att.get('filename', 'File'))}
+                </p>
+            </div>
+            """
+        
+        to_emails = [r["email"] for r in recipients]
+        
+        html_content = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #1E3A5F 0%, #2d5a87 100%); padding: 20px 30px; border-radius: 10px 10px 0 0;">
+                <h2 style="color: white; margin: 0; font-size: 20px;">New Reply on Ticket #{ticket_id}</h2>
+                <p style="color: #b0c4de; margin: 5px 0 0; font-size: 13px;">{subject_line}</p>
+            </div>
+            <div style="background: #ffffff; padding: 25px 30px; border: 1px solid #e5e7eb; border-top: none;">
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #1E3A5F; margin-bottom: 20px;">
+                    <p style="margin: 0 0 8px; font-size: 13px; color: #6b7280;">
+                        <strong style="color: #1E3A5F;">{reply_by}</strong> replied on {reply_time}
+                    </p>
+                    <p style="margin: 0; font-size: 14px; color: #374151; line-height: 1.6; white-space: pre-wrap;">{reply_text}</p>
+                    {attachment_info}
+                </div>
+                <div style="background: #f0f0f0; padding: 12px 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <p style="margin: 0; font-size: 12px; color: #6b7280;">
+                        <strong>Customer:</strong> {customer_name} &nbsp;|&nbsp;
+                        <strong>Type:</strong> {query_type} &nbsp;|&nbsp;
+                        <strong>Priority:</strong> {query.get('priority', 'normal').upper()}
+                    </p>
+                </div>
+                <p style="margin: 0; font-size: 13px; color: #6b7280;">
+                    Log in to the <a href="https://oll.co/admin/support" style="color: #1E3A5F; text-decoration: underline;">Support Center</a> to view the full conversation and respond.
+                </p>
+            </div>
+            <div style="background: #f8f9fa; padding: 15px 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
+                <p style="margin: 0; font-size: 11px; color: #9ca3af; text-align: center;">OLL Team &mdash; Support Notification</p>
+            </div>
+        </div>
+        """
+        
+        email_params = {
+            "from": SENDER_EMAIL,
+            "to": to_emails,
+            "subject": f"New Reply: Ticket #{ticket_id} - {subject_line}",
+            "html": html_content,
+            "reply_to": "info@oll.co"
+        }
+        
+        result = await asyncio.to_thread(resend.Emails.send, email_params)
+        print(f"[REPLY_NOTIFY] Email sent to {to_emails} for query {ticket_id}: {result}")
+        
+    except Exception as e:
+        print(f"[REPLY_NOTIFY] Failed to send notification: {e}")
 
 @api_router.get("/support/queries/{query_id}/history")
 async def get_query_history(query_id: str, user: dict = Depends(get_current_user)):

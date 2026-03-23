@@ -73,6 +73,13 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - Backend `GET /api/admin/reports/b2b-insights` now returns `new_vs_renewal` and `customer_cities` fields.
 - **Test results:** 10/10 backend tests pass, all frontend charts verified.
 
+#### Support Query Reply Email Notifications (RESOLVED)
+- When a reply is added to a support query, email notifications are sent to the **assignee** and all **viewers** (excluding the person who wrote the reply).
+- Email contains: reply text, reply author, timestamp, customer name, query type, priority, and attachment info.
+- Branded HTML email template with OLL styling.
+- Uses Resend API, sent as fire-and-forget background task via `asyncio.create_task`.
+- **Tested:** Verified email sent to both assignee (`john@oll.co`) and viewer (`shreybro@gmail.com`).
+
 #### School Renewal Popup Fixes (RESOLVED)
 - **Bug Fix:** Improved error handling in `handleRenewalConvert` to show actual validation error details instead of generic "Failed to renew school" message. Added `model_config = ConfigDict(extra="ignore")` to `SchoolInquiryUpdate`.
 - **Added `latitude`, `longitude`, `geofence_radius`** to both `SchoolInquiry` (response model) and `SchoolInquiryUpdate` (request model) so map/address data persists through renewals.
