@@ -47,6 +47,24 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+### March 23, 2026 (Session 2)
+
+#### Reports – Week Filter with Specific Week Selector
+- Added "Week" filter with dropdown to pick any of the last 13 weeks (e.g., "Mar 17 – Mar 23, 2026")
+- Support Timeline auto-detects day granularity for ≤14-day ranges
+
+#### B2B Reports — Full Overhaul
+- **Top KPI cards** (5): Revenue Generated, Conversions, Conversion Ratio, Value Pipeline, Lost Value
+- **Conversion Rate section** moved to top row, side-by-side with Revenue Overview
+- **Renewal Rate fixed**: `renewedSchools / (active + renewed)` → 55.6%
+- **Source of Leads section** added — Manual, Website, Admin Created, etc. with progress bars
+- **Merged Lost Reasons**: single combined pie chart
+- Backend: `pipeline_value`, `conversion_ratio`, `lead_source_breakdown`, fixed `renewal_ratio` in `b2b-insights`
+
+#### P&L Report — Cashflow Section
+- New Cashflow section: Receivables, Payables, Net Cashflow
+- Backend: `GET /api/admin/reports/cashflow`
+
 ### March 23, 2026
 
 #### Branded ID Cards & Certificates (P0 Complete)

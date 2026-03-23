@@ -62,6 +62,23 @@ const generateYearOptions = () => {
 const MONTH_OPTIONS = generateMonthOptions();
 const YEAR_OPTIONS = generateYearOptions();
 
+// Generate week options (last 13 weeks)
+const generateWeekOptions = () => {
+  const weeks = [];
+  const today = new Date();
+  for (let i = 0; i < 13; i++) {
+    const weekEnd = subDays(today, i * 7);
+    const weekStart = subDays(weekEnd, 6);
+    weeks.push({
+      value: format(weekStart, 'yyyy-MM-dd'),
+      end: format(weekEnd, 'yyyy-MM-dd'),
+      label: `${format(weekStart, 'MMM d')} – ${format(weekEnd, 'MMM d, yyyy')}`,
+    });
+  }
+  return weeks;
+};
+const WEEK_OPTIONS = generateWeekOptions();
+
 // Stat Card Component
 const StatCard = ({ title, value, subtitle, icon: Icon, color = 'blue', trend, small = false }) => {
   const colorClasses = {
@@ -249,6 +266,7 @@ const AdminReports = () => {
   const [customDateRange, setCustomDateRange] = useState({ start: '', end: '' });
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [selectedYear, setSelectedYear] = useState(String(new Date().getFullYear()));
+  const [selectedWeek, setSelectedWeek] = useState(WEEK_OPTIONS[0]?.value || '');
   
   // Team member filter
   const [teamMembers, setTeamMembers] = useState([]);
@@ -286,9 +304,10 @@ const AdminReports = () => {
     if (dateFilterType === 'custom' && customDateRange.start && customDateRange.end) {
       params = { start_date: customDateRange.start, end_date: customDateRange.end };
     } else if (dateFilterType === 'week') {
-      const end = new Date();
-      const start = subDays(end, 6); // last 7 days
-      params = { start_date: format(start, 'yyyy-MM-dd'), end_date: format(end, 'yyyy-MM-dd') };
+      const weekOpt = WEEK_OPTIONS.find(w => w.value === selectedWeek) || WEEK_OPTIONS[0];
+      if (weekOpt) {
+        params = { start_date: weekOpt.value, end_date: weekOpt.end };
+      }
     } else if (dateFilterType === 'month' && selectedMonth) {
       const [year, month] = selectedMonth.split('-');
       const start = startOfMonth(new Date(parseInt(year), parseInt(month) - 1));
@@ -352,7 +371,7 @@ const AdminReports = () => {
     const headers = getAuthHeaders();
     
     try {
-      const [overviewRes, studentFunnelRes, schoolFunnelRes, educatorRes, supportRes, stagesRes, expensesRes, categoriesRes, b2cInsightsRes, b2bInsightsRes, supportInsightsRes, supportTimelineRes] = await Promise.all([
+      const [overviewRes, studentFunnelRes, schoolFunnelRes, educatorRes, supportRes, stagesRes, expensesRes, categoriesRes, b2cInsightsRes, b2bInsightsRes, supportInsightsRes, supportTimelineRes, cashflowRes] = await Promise.all([
         axios.get(`${API}/admin/reports/overview`, { params, headers }).catch(() => ({ data: null })),
         axios.get(`${API}/admin/reports/sales-funnel`, { params: { ...params, user_type: 'students' }, headers }).catch(() => ({ data: null })),
         axios.get(`${API}/admin/reports/sales-funnel`, { params: { ...params, user_type: 'schools' }, headers }).catch(() => ({ data: null })),
@@ -365,6 +384,7 @@ const AdminReports = () => {
         axios.get(`${API}/admin/reports/b2b-insights`, { params, headers }).catch(() => ({ data: null })),
         axios.get(`${API}/admin/reports/support-insights`, { params, headers }).catch(() => ({ data: null })),
         axios.get(`${API}/admin/reports/support-timeline`, { params, headers }).catch(() => ({ data: null })),
+        axios.get(`${API}/admin/reports/cashflow`, { headers }).catch(() => ({ data: null })),
       ]);
       
       setReportData({
@@ -377,6 +397,7 @@ const AdminReports = () => {
         b2cInsights: b2cInsightsRes.data,
         b2bInsights: b2bInsightsRes.data,
         supportInsights: supportInsightsRes.data,
+        cashflow: cashflowRes.data,
       });
       setSupportTimeline(supportTimelineRes.data?.timeline || []);
       setExpenses(expensesRes.data?.expenses || []);
@@ -504,17 +525,17 @@ const AdminReports = () => {
   };
 
   // Calculate derived metrics
-  const { overview, studentFunnel, schoolFunnel, educator, support, stages } = reportData;
-  
+  const { overview, studentFunnel, schoolFunnel, educator, support, stages, b2cInsights, b2bInsights, supportInsights, cashflow } = reportData;
+
   // School metrics
   const totalSchools = overview?.schools?.total || 0;
   const convertedSchools = overview?.schools?.converted || 0;
-  const activeSchools = stages?.schools?.stages?.find(s => s.name === 'active')?.count || 0;
-  const renewedSchools = stages?.schools?.stages?.find(s => s.name === 'renewed')?.count || 0;
+  const activeSchools = b2bInsights?.active_schools ?? (stages?.schools?.stages?.find(s => s.name === 'active')?.count || 0);
+  const renewedSchools = b2bInsights?.renewed ?? (stages?.schools?.stages?.find(s => s.name === 'renewed')?.count || 0);
   const lostSchools = stages?.schools?.stages?.find(s => s.name === 'lost')?.count || 0;
-  const renewalRatio = (activeSchools + renewedSchools + lostSchools) > 0 
-    ? Math.round((renewedSchools / (activeSchools + renewedSchools + lostSchools)) * 100) 
-    : 0;
+  const renewalRatio = b2bInsights?.renewal_ratio ?? ((activeSchools + renewedSchools) > 0
+    ? Math.round((renewedSchools / (activeSchools + renewedSchools)) * 100)
+    : 0);
   
   // Team metrics
   const teamTotal = stages?.team?.total || 0;
@@ -559,6 +580,19 @@ const AdminReports = () => {
         ))}
       </div>
       
+      {/* Week Selector */}
+      {dateFilterType === 'week' && (
+        <select
+          value={selectedWeek}
+          onChange={(e) => setSelectedWeek(e.target.value)}
+          className="px-3 py-2 border border-slate-200 rounded-lg text-sm"
+        >
+          {WEEK_OPTIONS.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      )}
+
       {/* Month Selector */}
       {dateFilterType === 'month' && (
         <select
@@ -853,23 +887,99 @@ const AdminReports = () => {
     );
   };
 
-  const renderB2BTab = () => (
+  const renderB2BTab = () => {
+    // Merged lost reasons
+    const mergedLostReasons = (() => {
+      const m = {};
+      (stages?.schools?.lost_lead_reasons || []).forEach(r => { m[r.name] = (m[r.name] || 0) + r.count; });
+      (stages?.schools?.lost_customer_reasons || []).forEach(r => { m[r.name] = (m[r.name] || 0) + r.count; });
+      return Object.entries(m).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
+    })();
+
+    const pipelineValue = b2bInsights?.pipeline_value || 0;
+    const totalLostValue = b2bInsights?.total_lost_value || stages?.schools?.total_lost_value || 0;
+    const conversionRatio = b2bInsights?.conversion_ratio || schoolFunnel?.conversion_rates?.overall_conversion || 0;
+
+    return (
     <div className="space-y-6">
       <h2 className="text-lg font-semibold text-[#1E3A5F]">B2B - School Sales</h2>
-      
-      {/* Key Metrics - Row 1 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-        <StatCard title="Total Leads" value={totalSchools} icon={Building2} color="purple" small />
-        <StatCard title="Meeting Done" value={stages?.schools?.meeting_done || 0} icon={Calendar} color="blue" small />
-        <StatCard title="Converted" value={convertedSchools} icon={Target} color="orange" small />
-        <StatCard title="Active" value={activeSchools} icon={UserCheck} color="green" small />
-        <StatCard title="Renewal Meeting" value={stages?.schools?.renewal_meeting || 0} icon={RefreshCw} color="cyan" small />
-        <StatCard title="Renewed" value={renewedSchools} icon={RefreshCw} color="blue" small />
-        <StatCard title="Total Lost" value={lostSchools} icon={TrendingDown} color="red" small />
+
+      {/* Row 1: 5 Key KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <StatCard title="Revenue Generated" value={`₹${schoolRevenue.toLocaleString()}`} icon={DollarSign} color="green" />
+        <StatCard title="Conversions" value={activeSchools + renewedSchools + convertedSchools} subtitle="converted + active + renewed" icon={Target} color="orange" />
+        <StatCard title="Conversion Ratio" value={`${conversionRatio}%`} subtitle="of total leads" icon={TrendingUp} color="blue" />
+        <StatCard title="Value Pipeline" value={`₹${pipelineValue.toLocaleString()}`} subtitle="in-progress deals" icon={Briefcase} color="purple" />
+        <StatCard title="Lost Value" value={`₹${totalLostValue.toLocaleString()}`} subtitle="leads + customers" icon={TrendingDown} color="red" />
       </div>
 
-      {/* Lost Breakdown & Revenue Overview */}
+      {/* Row 2: Revenue Overview + School Conversion Rates */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
+            <DollarSign className="w-5 h-5 text-green-500" />
+            Revenue Overview
+          </h3>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+              <span className="text-slate-600">Total School Revenue</span>
+              <span className="text-xl font-bold text-green-600">₹{schoolRevenue.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+              <span className="text-slate-600">Avg. Deal Size</span>
+              <span className="text-xl font-bold text-blue-600">
+                ₹{(activeSchools + renewedSchools + convertedSchools) > 0 ? Math.round(schoolRevenue / (activeSchools + renewedSchools + convertedSchools)).toLocaleString() : 0}
+              </span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
+              <span className="text-slate-600">Active Schools</span>
+              <span className="text-xl font-bold text-purple-600">{activeSchools}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-emerald-50 rounded-lg">
+              <span className="text-slate-600">Renewal Rate</span>
+              <span className="text-xl font-bold text-emerald-600">{renewalRatio}%</span>
+            </div>
+            <p className="text-xs text-slate-400 text-right">{renewedSchools} renewed / {activeSchools + renewedSchools} total active</p>
+          </div>
+        </div>
+
+        <ConversionCard
+          title="School Conversion Rates"
+          icon={Building2}
+          color="#9333ea"
+          totalLeads={totalSchools}
+          rates={[
+            { label: 'Lead → Meeting', value: schoolFunnel?.conversion_rates?.lead_to_demo || 0, color: '#9333ea' },
+            { label: 'Meeting → Convert', value: schoolFunnel?.conversion_rates?.demo_to_conversion || 0, color: '#f97316' },
+            { label: 'Overall', value: conversionRatio, color: '#22c55e' },
+          ]}
+        />
+      </div>
+
+      {/* Row 3: Source of Leads + Pipeline Stage distribution */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
+            <Handshake className="w-5 h-5 text-blue-500" />
+            Source of Leads
+          </h3>
+          {(!b2bInsights?.lead_source_breakdown?.length) ? (
+            <p className="text-sm text-slate-400 py-4 text-center">No source data available</p>
+          ) : (
+            <div className="space-y-2">
+              {b2bInsights.lead_source_breakdown.map((src, i) => (
+                <ProgressBar
+                  key={i}
+                  label={src.name}
+                  value={src.count}
+                  total={b2bInsights.lead_source_breakdown.reduce((s, x) => s + x.count, 0)}
+                  color={['#3b82f6','#9333ea','#f97316','#22c55e','#06b6d4','#ec4899'][i % 6]}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="bg-white rounded-2xl border border-slate-100 p-5">
           <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
             <TrendingDown className="w-5 h-5 text-red-500" />
@@ -884,97 +994,40 @@ const AdminReports = () => {
               <span className="text-slate-600">Lost Customers</span>
               <span className="text-xl font-bold text-red-600">{stages?.schools?.lost_customers || 0}</span>
             </div>
-            <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg border border-orange-200">
-              <span className="text-slate-600">Potential Value Lost (Leads)</span>
-              <span className="text-lg font-bold text-orange-600">₹{(stages?.schools?.lost_lead_value || 0).toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between items-center p-3 bg-red-100 rounded-lg border border-red-200">
-              <span className="text-slate-600">Revenue Lost (Customers)</span>
-              <span className="text-lg font-bold text-red-700">₹{(stages?.schools?.lost_customer_value || 0).toLocaleString()}</span>
-            </div>
             <div className="flex justify-between items-center p-4 bg-red-200 rounded-lg border border-red-300">
               <span className="font-medium text-red-800">Total Lost Value</span>
-              <span className="text-xl font-bold text-red-800">₹{(stages?.schools?.total_lost_value || 0).toLocaleString()}</span>
+              <span className="text-xl font-bold text-red-800">₹{totalLostValue.toLocaleString()}</span>
             </div>
           </div>
         </div>
+      </div>
 
+      {/* Row 4: Merged Lost Reasons + Stage Distribution */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <SimplePieChart
+          title="Lost Reasons (All)"
+          icon={PieChart}
+          data={mergedLostReasons}
+          emptyMessage="No lost records"
+        />
         <div className="bg-white rounded-2xl border border-slate-100 p-5">
-          <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
-            <DollarSign className="w-5 h-5 text-green-500" />
-            Revenue Overview
-          </h3>
+          <h3 className="font-semibold text-[#1E3A5F] mb-4">Complete Stage Distribution</h3>
           <div className="space-y-3">
-            <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-              <span className="text-slate-600">Total School Revenue</span>
-              <span className="text-xl font-bold text-green-600">₹{schoolRevenue.toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-              <span className="text-slate-600">Avg. Deal Size</span>
-              <span className="text-xl font-bold text-blue-600">
-                ₹{convertedSchools > 0 ? Math.round(schoolRevenue / convertedSchools).toLocaleString() : 0}
-              </span>
-            </div>
-            <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
-              <span className="text-slate-600">Active Schools</span>
-              <span className="text-xl font-bold text-purple-600">{activeSchools}</span>
-            </div>
-            <div className="flex justify-between items-center p-3 bg-emerald-50 rounded-lg">
-              <span className="text-slate-600">Renewal Rate</span>
-              <span className="text-xl font-bold text-emerald-600">{renewalRatio}%</span>
-            </div>
+            {stages?.schools?.stages?.map((stage, idx) => (
+              <ProgressBar
+                key={idx}
+                label={stage.name?.replace(/_/g, ' ')}
+                value={stage.count}
+                total={stages?.schools?.total || 1}
+                color={['#9333ea', '#3b82f6', '#f97316', '#22c55e', '#10b981', '#06b6d4', '#ef4444', '#f43f5e', '#64748b'][idx % 9]}
+              />
+            ))}
           </div>
-        </div>
-      </div>
-
-      {/* Lost Reason Pie Charts */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <SimplePieChart 
-          title="Lost Lead Reasons" 
-          icon={PieChart}
-          data={stages?.schools?.lost_lead_reasons || []}
-          emptyMessage="No lost leads recorded"
-        />
-        <SimplePieChart 
-          title="Lost Customer Reasons" 
-          icon={PieChart}
-          data={stages?.schools?.lost_customer_reasons || []}
-          emptyMessage="No lost customers recorded"
-        />
-      </div>
-
-      {/* Conversion Rates */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <ConversionCard
-          title="School Conversion Rates"
-          icon={Building2}
-          color="#9333ea"
-          totalLeads={totalSchools}
-          rates={[
-            { label: 'Lead → Meeting', value: schoolFunnel?.conversion_rates?.lead_to_demo || 0, color: '#9333ea' },
-            { label: 'Meeting → Convert', value: schoolFunnel?.conversion_rates?.demo_to_conversion || 0, color: '#f97316' },
-            { label: 'Overall', value: schoolFunnel?.conversion_rates?.overall_conversion || 0, color: '#22c55e' },
-          ]}
-        />
-      </div>
-      
-      {/* Stage Distribution */}
-      <div className="bg-white rounded-2xl border border-slate-100 p-5">
-        <h3 className="font-semibold text-[#1E3A5F] mb-4">Complete Stage Distribution</h3>
-        <div className="space-y-3">
-          {stages?.schools?.stages?.map((stage, idx) => (
-            <ProgressBar
-              key={idx}
-              label={stage.name?.replace(/_/g, ' ')}
-              value={stage.count}
-              total={stages?.schools?.total || 1}
-              color={['#9333ea', '#3b82f6', '#f97316', '#22c55e', '#10b981', '#06b6d4', '#ef4444', '#f43f5e', '#64748b'][idx % 9]}
-            />
-          ))}
         </div>
       </div>
     </div>
   );
+  };
 
   const renderHRTeamTab = () => (
     <div className="space-y-6">
@@ -1597,6 +1650,67 @@ const AdminReports = () => {
             </table>
           </div>
         )}
+      </div>
+
+      {/* Cashflow Section */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-5">
+        <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
+          <Wallet className="w-5 h-5 text-indigo-500" />
+          Cashflow
+        </h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+          <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
+            <p className="text-xs text-emerald-600 font-medium uppercase tracking-wide mb-1">Receivables</p>
+            <p className="text-2xl font-bold text-emerald-700">₹{(cashflow?.receivables?.total || 0).toLocaleString()}</p>
+            <p className="text-xs text-emerald-500 mt-1">{cashflow?.receivables?.count || 0} pending school payments</p>
+          </div>
+          <div className="p-4 bg-rose-50 rounded-xl border border-rose-200 text-center">
+            <p className="text-xs text-rose-600 font-medium uppercase tracking-wide mb-1">Payables</p>
+            <p className="text-2xl font-bold text-rose-700">₹{(cashflow?.payables?.total || 0).toLocaleString()}</p>
+            <p className="text-xs text-rose-500 mt-1">{cashflow?.payables?.count || 0} pending expense payments</p>
+          </div>
+          <div className={`p-4 rounded-xl border text-center ${(cashflow?.net_cashflow || 0) >= 0 ? 'bg-blue-50 border-blue-200' : 'bg-amber-50 border-amber-200'}`}>
+            <p className={`text-xs font-medium uppercase tracking-wide mb-1 ${(cashflow?.net_cashflow || 0) >= 0 ? 'text-blue-600' : 'text-amber-600'}`}>Net Cashflow</p>
+            <p className={`text-2xl font-bold ${(cashflow?.net_cashflow || 0) >= 0 ? 'text-blue-700' : 'text-amber-700'}`}>
+              {(cashflow?.net_cashflow || 0) >= 0 ? '+' : ''}₹{Math.abs(cashflow?.net_cashflow || 0).toLocaleString()}
+            </p>
+            <p className={`text-xs mt-1 ${(cashflow?.net_cashflow || 0) >= 0 ? 'text-blue-500' : 'text-amber-500'}`}>receivables − payables</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <h4 className="text-sm font-semibold text-slate-700 mb-3">Receivables by School</h4>
+            {(!cashflow?.receivables?.items?.length) ? (
+              <p className="text-sm text-slate-400 py-3 text-center">No receivables recorded</p>
+            ) : (
+              <div className="space-y-2 max-h-52 overflow-y-auto">
+                {cashflow.receivables.items.map((item, i) => (
+                  <div key={i} className="flex justify-between items-center py-2 border-b border-slate-100 last:border-0 text-sm">
+                    <span className="text-slate-600 truncate max-w-[60%]">{item.name}</span>
+                    <span className="font-semibold text-emerald-600">₹{item.amount.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div>
+            <h4 className="text-sm font-semibold text-slate-700 mb-3">Payables by Category</h4>
+            {(!cashflow?.payables?.breakdown?.length) ? (
+              <p className="text-sm text-slate-400 py-3 text-center">No outstanding payables</p>
+            ) : (
+              <div className="space-y-2 max-h-52 overflow-y-auto">
+                {cashflow.payables.breakdown.map((item, i) => (
+                  <div key={i} className="flex justify-between items-center py-2 border-b border-slate-100 last:border-0 text-sm">
+                    <span className="text-slate-600">{item.category}</span>
+                    <span className="font-semibold text-rose-600">₹{item.amount.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

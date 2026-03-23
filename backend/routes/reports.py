@@ -861,22 +861,54 @@ async def get_b2b_insights(
         school_type = s.get('school_type') or s.get('type') or 'Unknown'
         types[school_type] = types.get(school_type, 0) + 1
     
-    # Calculate revenue
+    # Calculate revenue (converted/active/renewed)
     school_revenue = sum(float(s.get('conversion_amount', 0) or s.get('quoted_price', 0) or 0) for s in all_schools if s.get('status') in ['converted', 'active', 'renewed'])
-    
-    # Calculate renewal ratio: Renewed / (Active + Renewed + Lost)
-    renewal_base = active_count + renewed_count + lost_count
-    renewal_ratio = round((renewed_count / renewal_base * 100) if renewal_base > 0 else 0, 1)
+
+    # Fix renewal_ratio = renewed / (active + renewed)
+    actual_active = len([s for s in all_schools if s.get('status') == 'active'])
+    actual_renewed = len([s for s in all_schools if s.get('status') == 'renewed'])
+    renewal_base = actual_active + actual_renewed
+    renewal_ratio = round((actual_renewed / renewal_base * 100) if renewal_base > 0 else 0, 1)
+
+    # Conversion ratio = converted / total leads (non-archived)
+    total_leads = len([s for s in all_schools if s.get('status') not in ['archived']])
+    total_converted = len([s for s in all_schools if s.get('status') in ['converted', 'active', 'renewed']])
+    conversion_ratio = round((total_converted / total_leads * 100) if total_leads > 0 else 0, 1)
+
+    # Pipeline value — schools in active pursuit stages with quoted amounts
+    pipeline_statuses = ['new', 'meeting_done', 'followup', 'renewal_meeting', 'contacted',
+                         'meeting_scheduled', 'proposal_sent', 'negotiation', 'demo_done']
+    pipeline_schools = [s for s in all_schools if s.get('status') in pipeline_statuses]
+    pipeline_value = sum(float(s.get('conversion_amount') or s.get('quoted_price') or 0) for s in pipeline_schools)
+
+    # Lost value
+    lost_schools = [s for s in all_schools if s.get('status') in ['lost_lead', 'lost_customer', 'lost']]
+    total_lost_value = sum(
+        float(s.get('conversion_amount') or s.get('quoted_price') or (s.get('onboarding_data') or {}).get('total_amount') or 0)
+        for s in lost_schools
+    )
+
+    # Lead source breakdown (all-time, not filtered by date)
+    source_counts = {}
+    for s in all_schools:
+        src = s.get('source') or 'Direct'
+        # Clean up source labels
+        src_clean = src.replace('_', ' ').title()
+        source_counts[src_clean] = source_counts.get(src_clean, 0) + 1
     
     return {
         "total_schools": len(schools),
         "revenue": school_revenue,
-        "active_schools": active_count,
+        "active_schools": actual_active,
         "renewal_meeting": renewal_meeting_count,
-        "renewed": renewed_count,
+        "renewed": actual_renewed,
         "lost": lost_count,
         "converted": converted_count,
         "renewal_ratio": renewal_ratio,
+        "conversion_ratio": conversion_ratio,
+        "pipeline_value": pipeline_value,
+        "total_lost_value": total_lost_value,
+        "lead_source_breakdown": [{"name": k, "count": v} for k, v in sorted(source_counts.items(), key=lambda x: -x[1])],
         "status_breakdown": [{"name": k, "count": v} for k, v in sorted(status_counts.items(), key=lambda x: -x[1])],
         "offerings": [{"name": k, "count": v} for k, v in sorted(offerings.items(), key=lambda x: -x[1])[:10]],
         "cities": [{"name": k, "count": v} for k, v in sorted(cities.items(), key=lambda x: -x[1])[:10]],
@@ -884,6 +916,47 @@ async def get_b2b_insights(
         "school_types": [{"name": k, "count": v} for k, v in sorted(types.items(), key=lambda x: -x[1])],
         "period": {"start": start.isoformat(), "end": end.isoformat()}
     }
+
+@router.get("/admin/reports/cashflow")
+async def get_cashflow(
+    user: dict = Depends(get_current_user)
+):
+    """Cashflow snapshot: receivables (owed to OLL) and payables (owed by OLL)."""
+    # Receivables — converted schools with outstanding conversion_amount
+    all_schools = await db.school_inquiries.find({}, {"_id": 0}).to_list(10000)
+    receivable_schools = [
+        s for s in all_schools
+        if s.get('status') == 'converted' and s.get('conversion_amount')
+    ]
+    total_receivables = sum(float(s.get('conversion_amount', 0)) for s in receivable_schools)
+    receivable_items = sorted(
+        [{'name': s.get('school_name', 'Unknown'), 'amount': float(s.get('conversion_amount', 0))} for s in receivable_schools],
+        key=lambda x: -x['amount']
+    )
+
+    # Payables — expenses not yet paid/cleared
+    all_expenses = await db.expenses.find({}, {"_id": 0}).to_list(10000)
+    payable_expenses = [e for e in all_expenses if e.get('status', '') not in ['paid', 'cleared']]
+    total_payables = sum(float(e.get('amount', 0)) for e in payable_expenses)
+    payable_by_cat = {}
+    for e in payable_expenses:
+        cat = (e.get('category') or 'Other').replace('_', ' ').title()
+        payable_by_cat[cat] = payable_by_cat.get(cat, 0) + float(e.get('amount', 0))
+
+    return {
+        "receivables": {
+            "total": total_receivables,
+            "count": len(receivable_items),
+            "items": receivable_items[:20],
+        },
+        "payables": {
+            "total": total_payables,
+            "count": len(payable_expenses),
+            "breakdown": [{"category": k, "amount": v} for k, v in sorted(payable_by_cat.items(), key=lambda x: -x[1])],
+        },
+        "net_cashflow": total_receivables - total_payables,
+    }
+
 
 @router.get("/admin/reports/support-insights")
 async def get_support_insights(
