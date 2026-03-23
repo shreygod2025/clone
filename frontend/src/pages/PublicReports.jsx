@@ -4,7 +4,7 @@ import {
   TrendingUp, Users, GraduationCap, Building2, DollarSign, 
   Calendar, RefreshCw, Lock, Eye, EyeOff, BarChart3,
   Briefcase, Handshake, Wallet, MessageSquare, Target,
-  TrendingDown, ArrowUpRight, ArrowDownRight, PieChart, AlertCircle
+  TrendingDown, ArrowUpRight, ArrowDownRight, PieChart, AlertCircle, Clock
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -718,9 +718,11 @@ const PublicReports = () => {
     <div className="space-y-6">
       <h2 className="text-lg font-semibold text-slate-800">Support Center Analytics</h2>
       
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Key Metrics */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <StatCard title="Total Tickets" value={support?.total || 0} icon={MessageSquare} color="blue" />
-        <StatCard title="Pending" value={support?.pending || 0} icon={Calendar} color="orange" />
+        <StatCard title="Open" value={support?.open || 0} icon={AlertCircle} color="blue" />
+        <StatCard title="In Progress" value={support?.in_progress || 0} icon={Clock} color="orange" />
         <StatCard title="Resolved" value={support?.resolved || 0} icon={Target} color="green" />
         <StatCard 
           title="Resolution Rate" 
@@ -729,19 +731,93 @@ const PublicReports = () => {
           color={support?.total > 0 && (support?.resolved / support?.total) >= 0.7 ? 'green' : 'orange'} 
         />
       </div>
-      
-      <div className="bg-white rounded-2xl border border-slate-100 p-5">
-        <h3 className="font-semibold text-slate-800 mb-4">Ticket Status Distribution</h3>
-        <div className="space-y-3">
-          {support?.stages?.map((stage, idx) => (
-            <ProgressBar
-              key={idx}
-              label={stage.name}
-              value={stage.count}
-              total={support?.total || 1}
-              color={['#3b82f6', '#f97316', '#22c55e', '#64748b'][idx % 4]}
-            />
-          ))}
+
+      {/* Resolution Time & Query Types */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Resolution Time Card */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+            <Clock className="w-5 h-5 text-indigo-500" />
+            Avg Resolution Time
+          </h3>
+          <div className="text-center py-6">
+            <p className="text-4xl font-bold text-indigo-600">{support?.avg_resolution_time_hours || 0}</p>
+            <p className="text-sm text-slate-500 mt-1">hours</p>
+          </div>
+          {(support?.avg_resolution_time_hours || 0) === 0 && (
+            <p className="text-xs text-slate-400 text-center mt-2">
+              No resolution time data available yet
+            </p>
+          )}
+        </div>
+
+        {/* Query Types Breakdown */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-blue-500" />
+            Tickets by Category
+          </h3>
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+            {support?.query_types?.length > 0 ? (
+              support.query_types.map((item, idx) => (
+                <div key={idx} className="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
+                  <span className="text-slate-600 capitalize">{item.name?.replace(/_/g, ' ') || 'Unknown'}</span>
+                  <span className="font-medium text-blue-600">{item.count}</span>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-slate-400 text-center py-4">No category data</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Priority & Status Distribution */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Priority Breakdown */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-slate-800 mb-4">Tickets by Priority</h3>
+          <div className="space-y-3">
+            {support?.priority_breakdown?.map((item, idx) => (
+              <div key={idx} className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <span className={`w-3 h-3 rounded-full ${
+                    item.name === 'high' ? 'bg-red-500' : 
+                    item.name === 'medium' ? 'bg-orange-500' : 'bg-green-500'
+                  }`}></span>
+                  <span className="text-slate-600 capitalize">{item.name}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-slate-800">{item.count}</span>
+                  <span className="text-xs text-slate-400">
+                    ({support?.total > 0 ? Math.round((item.count / support.total) * 100) : 0}%)
+                  </span>
+                </div>
+              </div>
+            ))}
+            {(!support?.priority_breakdown?.length) && (
+              <p className="text-sm text-slate-400 text-center py-4">No priority data</p>
+            )}
+          </div>
+        </div>
+
+        {/* Status Distribution */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-slate-800 mb-4">Ticket Status Distribution</h3>
+          <div className="space-y-3">
+            {support?.stages?.map((stage, idx) => (
+              <ProgressBar
+                key={idx}
+                label={stage.name?.replace(/_/g, ' ')}
+                value={stage.count}
+                total={support?.total || 1}
+                color={
+                  stage.name === 'resolved' || stage.name === 'closed' ? '#22c55e' :
+                  stage.name === 'in_progress' ? '#f97316' : '#3b82f6'
+                }
+              />
+            ))}
+          </div>
         </div>
       </div>
     </div>

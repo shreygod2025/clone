@@ -912,6 +912,8 @@ async def get_support_insights(
     status_counts = {'open': 0, 'in_progress': 0, 'resolved': 0, 'closed': 0}
     for q in queries:
         status = q.get('status', 'open').lower()
+        if status == 'new':
+            status = 'open'  # Treat 'new' as 'open'
         if status in status_counts:
             status_counts[status] += 1
         else:
@@ -1311,9 +1313,38 @@ async def get_public_report_data(
     gp_total = len(gps)
     gp_converted = len([g for g in gps if g.get('status') == 'converted'])
     
-    # Support metrics
+    # Support metrics with detailed breakdown
     support_total = len(support)
     support_resolved = len([q for q in support if q.get('status') in ['resolved', 'closed']])
+    support_open = len([q for q in support if q.get('status') in ['open', 'new']])
+    support_in_progress = len([q for q in support if q.get('status') == 'in_progress'])
+    
+    # Support query type breakdown
+    support_query_types = {}
+    for q in support:
+        qtype = q.get('query_type') or q.get('type') or q.get('category') or 'General'
+        support_query_types[qtype] = support_query_types.get(qtype, 0) + 1
+    
+    # Support priority breakdown
+    support_priority = {'high': 0, 'medium': 0, 'low': 0}
+    for q in support:
+        priority = (q.get('priority') or 'medium').lower()
+        if priority in support_priority:
+            support_priority[priority] += 1
+        else:
+            support_priority['medium'] += 1
+    
+    # Calculate resolution time (for queries with resolved_at)
+    resolution_times = []
+    for q in support:
+        if q.get('status') in ['resolved', 'closed'] and q.get('resolved_at'):
+            created = parse_date_field(q.get('created_at'))
+            resolved = parse_date_field(q.get('resolved_at'))
+            if created and resolved:
+                delta = (resolved - created).total_seconds() / 3600
+                resolution_times.append(delta)
+    
+    avg_resolution_time = round(sum(resolution_times) / len(resolution_times), 1) if resolution_times else 0
     
     # Expense metrics
     total_expenses = sum(float(e.get('amount') or 0) for e in expenses)
@@ -1398,6 +1429,11 @@ async def get_public_report_data(
             "stages": get_stage_breakdown(support, 'open'),
             "resolved": support_resolved,
             "pending": support_total - support_resolved,
+            "open": support_open,
+            "in_progress": support_in_progress,
+            "query_types": [{"name": k, "count": v} for k, v in sorted(support_query_types.items(), key=lambda x: -x[1])],
+            "priority_breakdown": [{"name": k, "count": v} for k, v in support_priority.items()],
+            "avg_resolution_time_hours": avg_resolution_time,
         },
         "expenses": {
             "total": total_expenses,
