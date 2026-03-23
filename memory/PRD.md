@@ -47,6 +47,14 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+### March 23, 2026 (Session 3)
+
+#### P0 FIX: Server Crash During Payment Sync (RESOLVED)
+- **Root Cause:** All 18 synchronous Cashfree SDK calls (`PGFetchOrder`, `PGOrderFetchPayments`, `PGCreateOrder`, `PGOrderCreateRefund`) were blocking the FastAPI async event loop in `routes/payments.py`. During bulk sync, this blocked the entire server for seconds/minutes.
+- **Fix:** Wrapped all 18 Cashfree SDK calls with `asyncio.to_thread()` so they execute in a thread pool without blocking the event loop.
+- **Affected functions:** `scheduled_payment_sync`, `sync_single_payment_status`, `sync_all_pending_payments`, `create_payment_order`, payment verification endpoints, refund endpoint.
+- **Result:** `POST /api/payments/sync-all` and `POST /api/payments/sync-single/{order_id}` now return immediately. Server stays responsive during sync. Background scheduler no longer crashes the app.
+
 ### March 23, 2026 (Session 2)
 
 #### Reports – Week Filter with Specific Week Selector

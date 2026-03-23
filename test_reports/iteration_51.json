@@ -47,7 +47,7 @@
   "test_credentials": {
     "admin_login": "admin@oll.co / admin123",
     "public_report_password": "demo123",
-    "public_report_url": "https://oll-branding-docs.preview.emergentagent.com/reports/31dc973d"
+    "public_report_url": "https://oll-education-crm.preview.emergentagent.com/reports/31dc973d"
   },
   "seed_data_creation": "None - used existing public report link with token 31dc973d",
   "retest_needed": false,

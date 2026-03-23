@@ -95,7 +95,7 @@ async def scheduled_payment_sync():
             results["student_payments"]["checked"] += 1
             
             try:
-                api_response = get_cashfree_client().PGFetchOrder(
+                api_response = await asyncio.to_thread(get_cashfree_client().PGFetchOrder,
                     CASHFREE_API_VERSION,
                     order_id,
                     None
@@ -108,7 +108,7 @@ async def scheduled_payment_sync():
                         cf_payment_id = None
                         payment_method = "Cashfree"
                         try:
-                            payments_response = get_cashfree_client().PGOrderFetchPayments(
+                            payments_response = await asyncio.to_thread(get_cashfree_client().PGOrderFetchPayments,
                                 CASHFREE_API_VERSION, order_id, None
                             )
                             if payments_response.data and len(payments_response.data) > 0:
@@ -167,7 +167,7 @@ async def scheduled_payment_sync():
             results["school_payments"]["checked"] += 1
             
             try:
-                api_response = get_cashfree_client().PGFetchOrder(
+                api_response = await asyncio.to_thread(get_cashfree_client().PGFetchOrder,
                     CASHFREE_API_VERSION,
                     order_id,
                     None
@@ -180,7 +180,7 @@ async def scheduled_payment_sync():
                         cf_payment_id = None
                         payment_method = "Cashfree"
                         try:
-                            payments_response = get_cashfree_client().PGOrderFetchPayments(
+                            payments_response = await asyncio.to_thread(get_cashfree_client().PGOrderFetchPayments,
                                 CASHFREE_API_VERSION, order_id, None
                             )
                             if payments_response.data and len(payments_response.data) > 0:
@@ -273,7 +273,7 @@ async def create_payment_order(data: StudentPaymentRequest, user: dict = Depends
         )
         
         # Get frontend URL for return
-        frontend_url = os.getenv("FRONTEND_URL", "https://oll-branding-docs.preview.emergentagent.com")
+        frontend_url = os.getenv("FRONTEND_URL", "https://oll-education-crm.preview.emergentagent.com")
         
         # Create order meta
         order_meta = OrderMeta(
@@ -292,7 +292,7 @@ async def create_payment_order(data: StudentPaymentRequest, user: dict = Depends
         
         # Create order via Cashfree using globally initialized credentials
         logging.info(f"Creating student payment - Order: {order_id}, Amount: {data.amount}")
-        api_response = get_cashfree_client().PGCreateOrder(
+        api_response = await asyncio.to_thread(get_cashfree_client().PGCreateOrder,
             CASHFREE_API_VERSION,
             create_order_request,
             None,
@@ -465,7 +465,7 @@ async def create_payment_session(student_id: str):
         )
         
         # Get frontend URL for return
-        frontend_url = os.getenv("FRONTEND_URL", "https://oll-branding-docs.preview.emergentagent.com")
+        frontend_url = os.getenv("FRONTEND_URL", "https://oll-education-crm.preview.emergentagent.com")
         backend_url = os.getenv("REACT_APP_BACKEND_URL", frontend_url)
         
         # Create order meta
@@ -486,7 +486,7 @@ async def create_payment_session(student_id: str):
         
         # Create order via Cashfree using globally initialized credentials
         logging.info(f"Creating public student payment - Order: {order_id}, Amount: {amount}")
-        api_response = get_cashfree_client().PGCreateOrder(
+        api_response = await asyncio.to_thread(get_cashfree_client().PGCreateOrder,
             CASHFREE_API_VERSION,
             create_order_request,
             None,
@@ -718,7 +718,7 @@ async def verify_payment(order_id: str):
         
         # Fetch order status from Cashfree
         logging.info(f"[PAYMENT_VERIFY] Calling Cashfree PGFetchOrder for order_id: {fetch_order_id}")
-        api_response = get_cashfree_client().PGFetchOrder(
+        api_response = await asyncio.to_thread(get_cashfree_client().PGFetchOrder,
             CASHFREE_API_VERSION,
             fetch_order_id,
             None
@@ -732,7 +732,7 @@ async def verify_payment(order_id: str):
             cf_payment_id = None
             payment_method = "Cashfree"
             try:
-                payments_response = get_cashfree_client().PGOrderFetchPayments(
+                payments_response = await asyncio.to_thread(get_cashfree_client().PGOrderFetchPayments,
                     CASHFREE_API_VERSION,
                     fetch_order_id,  # Use the same order ID we used for fetch
                     None
@@ -1019,7 +1019,7 @@ async def create_school_student_payment_session(data: dict):
         logging.info(f"Creating school payment - Order: {order_id}, Amount: {amount}, School: {school.get('school_name')}")
         
         # Use globally initialized Cashfree - credentials already set at startup
-        api_response = get_cashfree_client().PGCreateOrder(
+        api_response = await asyncio.to_thread(get_cashfree_client().PGCreateOrder,
             CASHFREE_API_VERSION, 
             order_request, 
             None, 
@@ -1137,7 +1137,7 @@ async def verify_school_student_payment(order_id: str):
         logging.info(f"Verifying school payment - Order ID: {order_id}")
         
         # Use globally initialized Cashfree - credentials already set at startup
-        api_response = get_cashfree_client().PGFetchOrder(
+        api_response = await asyncio.to_thread(get_cashfree_client().PGFetchOrder,
             CASHFREE_API_VERSION,
             order_id,  # Use our order_id, not cf_order_id
             None
@@ -1153,7 +1153,7 @@ async def verify_school_student_payment(order_id: str):
             cf_payment_id = None
             payment_method = "Cashfree"
             try:
-                payments_response = get_cashfree_client().PGOrderFetchPayments(
+                payments_response = await asyncio.to_thread(get_cashfree_client().PGOrderFetchPayments,
                     CASHFREE_API_VERSION,
                     order_id,  # Use our order_id
                     None
@@ -1367,7 +1367,7 @@ async def initiate_cashfree_refund(payment_id: str, data: dict, user: dict = Dep
             refund_note=refund_note,
             refund_speed="STANDARD"
         )
-        api_response = get_cashfree_client().PGOrderCreateRefund(
+        api_response = await asyncio.to_thread(get_cashfree_client().PGOrderCreateRefund,
             CASHFREE_API_VERSION,
             order_id,
             refund_request,
@@ -1428,7 +1428,7 @@ async def sync_single_payment_status(order_id: str, user: dict = Depends(get_cur
         logging.info(f"[SYNC] Syncing payment {order_id} from {collection_name}, current status: {old_status}")
         
         # Fetch from Cashfree
-        api_response = get_cashfree_client().PGFetchOrder(
+        api_response = await asyncio.to_thread(get_cashfree_client().PGFetchOrder,
             CASHFREE_API_VERSION,
             order_id,
             None
@@ -1451,7 +1451,7 @@ async def sync_single_payment_status(order_id: str, user: dict = Depends(get_cur
         cf_payment_id = None
         payment_method = "Cashfree"
         try:
-            payments_response = get_cashfree_client().PGOrderFetchPayments(
+            payments_response = await asyncio.to_thread(get_cashfree_client().PGOrderFetchPayments,
                 CASHFREE_API_VERSION,
                 order_id,
                 None
@@ -1562,7 +1562,7 @@ async def sync_all_pending_payments(
             results["student_payments"]["checked"] += 1
             
             try:
-                api_response = get_cashfree_client().PGFetchOrder(
+                api_response = await asyncio.to_thread(get_cashfree_client().PGFetchOrder,
                     CASHFREE_API_VERSION,
                     order_id,
                     None
@@ -1576,7 +1576,7 @@ async def sync_all_pending_payments(
                         cf_payment_id = None
                         payment_method = "Cashfree"
                         try:
-                            payments_response = get_cashfree_client().PGOrderFetchPayments(
+                            payments_response = await asyncio.to_thread(get_cashfree_client().PGOrderFetchPayments,
                                 CASHFREE_API_VERSION, order_id, None
                             )
                             if payments_response.data and len(payments_response.data) > 0:
@@ -1641,7 +1641,7 @@ async def sync_all_pending_payments(
             results["school_payments"]["checked"] += 1
             
             try:
-                api_response = get_cashfree_client().PGFetchOrder(
+                api_response = await asyncio.to_thread(get_cashfree_client().PGFetchOrder,
                     CASHFREE_API_VERSION,
                     order_id,
                     None
@@ -1654,7 +1654,7 @@ async def sync_all_pending_payments(
                         cf_payment_id = None
                         payment_method = "Cashfree"
                         try:
-                            payments_response = get_cashfree_client().PGOrderFetchPayments(
+                            payments_response = await asyncio.to_thread(get_cashfree_client().PGOrderFetchPayments,
                                 CASHFREE_API_VERSION, order_id, None
                             )
                             if payments_response.data and len(payments_response.data) > 0:

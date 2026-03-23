@@ -1,138 +1,130 @@
-<analysis>**original_problem_statement**: Build a high-conversion, multi-user skill-education platform for OLL with separate funnels for Students/Parents, Educators, and Schools. The platform must include a powerful backend admin panel and CRM system. 
-PRODUCT REQUIREMENTS: 
+<analysis>**original_problem_statement**: Build a high-conversion, multi-user skill-education platform for OLL with separate funnels for Students/Parents, Educators, and Schools. The platform must include a powerful backend admin panel and CRM system.
+PRODUCT REQUIREMENTS:
 - Global Structure: Landing Page, Learner Funnel, Educator Funnel, School Funnel, Admin Panel.
 - Orders & Invoicing: Seamless jsPDF generation, saving to database, and email delivery.
-- Admin CRM: Map-based geolocation, dynamic onboarding workflows, and detailed Expense Management.
+- Admin CRM: Map-based geolocation, dynamic onboarding workflows, and detailed Analytics/Reports.
 
 **User's preferred language**: English (INSTRUCT next agent to respond in English only)
 
 **what currently exists?** 
-A full-stack React + FastAPI application with MongoDB. The platform features an extensive Admin CRM (, , ). It includes complete onboarding portals for Educators with step-by-step trackers, Cloudinary integration for file uploads, and a Leaflet-based map picker. Recent updates heavily stabilized the Educator Onboarding data synchronization and revamped the Admin Expenses tracking.
+A full-stack React + FastAPI application with MongoDB. The platform features robust Admin CRM panels (Schools, Educators, Support, Expenses) and extensive Analytics using Recharts. It handles Cashfree payment integrations for school and student payments. Recent additions include branded ID/Certificate generation, advanced B2B/Support reporting timelines, and a manual payment sync mechanism on the admin tracker. 
 
 **Last working item**:
-    - Last item agent was working: Enhancing the School CRM () to handle Lost states better. Specifically: adding a Lost Lead action button (with a reason prompt) under the New Lead and Meeting Done sections, and dividing the Lost tab into two distinct sections: Lost Leads and Lost Customers.
-    - Status: IN PROGRESS (Agent just started viewing file ranges in  and identifying the status mapping. No code changes made yet).
+    - Last item agent was working: Fixing a critical production crash where the entire website hangs/crashes when the Admin clicks Sync Pending or when the background payment sync job runs. Agent diagnosed the root cause: synchronous Cashfree API calls are being executed directly inside async FastAPI routes/event loops in , blocking the entire server.
+    - Status: IN PROGRESS
     - Agent Testing Done: N
-    - Which testing method agent to use? Frontend testing agent or manual screenshot tool to verify UI tabs and modals, followed by curl/db checks to ensure status updates correctly.
+    - Which testing method agent to use? Both (Backend curl to verify the endpoint no longer blocks the server + Frontend screenshot tool to verify the sync UI works).
     - User Testing Done: N
 
 **All Pending/In progress Issue list**:  
-  Issue 1: (P0) School CRM Lost State Enhancements
-     - Attempted fixes: Agent only executed bash and view_file commands to analyze . No code written.
+  - Issue 1: (P0) FASTAPI SERVER CRASH DURING PAYMENT SYNC
+     - Attempted fixes: Agent investigated the backend logs and identified the root cause ( on frontend, 404/Timeout on backend). Found that the Cashfree SDK/requests in  are synchronous and are blocking the async event loop. Implementation to fix this was not started.
      - Next debug checklist: 
-       1. Modify  status enums/tabs to split  into  and .
-       2. Update the  function for  and  statuses to include a Lost Lead button.
-       3. Open the existing  when this new button is clicked, ensuring it passes the correct new status ().
-       4. Ensure backend  (or routing files) accepts these new statuses without validation errors.
-     - Why fix this issue and what will be achieved with the fix? Requested by user to provide better granular tracking of why and when school acquisitions fail.
+       1. Check  (specifically  and ).
+       2. Wrap all synchronous Cashfree SDK calls in  or , OR replace them with async  calls.
+       3. Ensure the background scheduler  is also not blocking the main loop.
+     - Why fix this issue and what will be achieved with the fix? This is causing the entire production application to crash and become unresponsive whenever a payment sync is triggered. Fixing it restores platform stability.
      - Status: IN PROGRESS
      - Is recurring issue? N
      - Should Test frontend/backend/both after fix? Both
      - Blocked on other issue: None
 
 **In progress Task List**:
-  Task 1:  Refactoring (Extracting Routes)
+  - Task 1:  Refactoring (Extracting Routes)
      - Where to resume: Extracting the remaining , , and  CRM routes out of  into dedicated routing files in .
      - What will be achieved with this? Reducing the monolithic  footprint for better maintainability.
      - Status: NOT STARTED (in this session)
      - Should Test frontend/backend/both after fix? Backend
-     - Blocked on something: Must finish the P0 School CRM Lost Leads issue first.
+     - Blocked on something: Complete the P0 Crash Issue first.
 
 **Upcoming and Future Tasks**
     Upcoming Tasks:
-    - P0: Complete  refactoring (Extract Schools, Support, Educator routes).
     - P1: CSV Export: Add a CSV Export button to all major data tables (Expenses, Schools, Orders).
     - P2: Add a Report Settings UI panel to let admins change daily report times, recipients, and toggle categories without touching code.
 
     Future Tasks:
+    - Implement a real-time Cashfree Webhook handler to replace/supplement the polling sync mechanism.
     - Enforce backend RBAC permissions.
     - Audit logging for sensitive operations.
 
 **Completed work in this session**
-- Overhauled Admin Expenses Page: Added multiline descriptions, expense breakup, conditional partial payment tracking, expected payment dates, Cloudinary invoice uploads, and a searchable school dropdown (DONE).
-- Fixed Admin Expenses Load Speed: Parallelized API calls using  and created a lightweight  endpoint dropping load time from ~4s to ~1.4s (DONE).
-- Fixed Admin Expenses Save Error: Removed MongoDB  () from response dictionaries (DONE).
-- Disabled external vendor PO auto-sync in expenses as per user request (DONE).
-- Fixed Educator Direct Onboarding: Mapped backend status correctly to , migrated old  records, and moved the UI progress tracker inside the educator cards (DONE).
-- Fixed Educator Portal Race Condition: Prevented double-toasts and step-reset loops by separating form data from step progression and adding a  guard state (DONE).
-- Fixed Educator Data Sync: Handled DB upserts properly with , popped  on auto-create to prevent 500 errors, and backfilled missing  DB records for 6 existing educators (DONE).
-- Fixed Admin Educator Progress Visibility: Adjusted  endpoint to fetch *all* onboarding records regardless of the educator's active/archived status, fixing the N/A modal bug (DONE).
+- Branded ID Cards & Certificates: Added OLL logo, user profile photo (cropped to circle via Pillow), and signature embedding to educator PDF generation (DONE).
+- Support Reports Enhancements: Added resolution time fallback (), overdue queries tracking, Sub-category drill-down panel with chat replies, and Week/Month/Year timeline charts using Recharts (DONE).
+- B2B & P&L Reports Enhancements: Added week selector dropdown, new top KPIs (pipeline value, conversions, lost value), fixed renewal rate calculation, merged lost reasons pie chart, lead source breakdown, and added P&L Cashflow section (Receivables vs Payables) (DONE).
+- School Payment Tracker UX: Added Sync Pending header button, per-row Verify (ShieldCheck) button for pending payments, and merged Cashfree Refund / Mark Refunded actions into a single unified modal with tabs (DONE).
 
 **Earlier issues found/mentioned but not fixed**
 None.
 
 **Known issue recurrence from previous fork**
   - Issue recurrence in previous fork: Returning MongoDB  () in JSON responses.
-  - Recurrence count: 2 (Happened in Expenses insert, and Educator Onboarding auto-create).
+  - Recurrence count: 2
   - Status: RESOLVED
-  - Note: Next agent MUST pause and verify  is called anytime  or  is used before returning the dictionary to FastAPI.
+  - Note: Always remember to use  before returning dictionaries from PyMongo to avoid 500 JSON serialization errors.
 
 **Code Architecture**
 
 
 **Key Technical Concepts**
-- Frontend: React, Tailwind, Shadcn UI
-- Backend: FastAPI, Motor (Async MongoDB), apscheduler
-- File Uploads: Cloudinary ( endpoint in )
+- Frontend: React, Tailwind, Shadcn UI, Recharts
+- Backend: FastAPI, Motor (Async MongoDB), ReportLab/Pillow (for PDF/Image manipulation)
+- Integrations: Cashfree Payment Gateway (SDK usage is currently synchronous)
 
 **key DB schema**
-  - : Core educator profile ( tracks macro state: , , , ).
-  - : Tracks granular step-by-step progress (, , forms).
-  - : Tracks school CRM stages. (Needs schema enum update for  and ).
+  -  & : Fields updated based on sync (, , ).
+  - : Handled via categories/subcategories for new drill-down UI.
 
 **changes in tech stack**
-  - Cloudinary is now actively used for document uploads in Expenses and Onboarding.
+  - Introduced  heavily into  for timeline data visualization.
 
 **All files of reference** 
-  1.  (CURRENT FOCUS)
+  1.  (Lines 1395-1650 -  & )
   2. 
   3. 
-  4. 
-  5. 
 
 **Areas that need refactoring**: 
-- : Highly monolithic. Extracting routes is an active P0/P1 task in the backlog.
+- : Continues to need route extraction (P1 task).
+- : Synchronous external API calls need to be made async or pushed to threadpool to avoid event loop blocking.
 
 **key api endpoints**
-- 
--  (New lightweight endpoint for dropdowns)
--  (Cloudinary)
+-  (Crashing the server)
+-  (Crashing the server)
+-  (New)
+-  (Updated)
 
 **Critical Info for New Agent** 
-- **Two Auth Contexts**: Ensure you know which context you are working in. Admins use  (), while Educators/Users use  (). Mixing these up will cause token verification failures.
-- **MongoDB ObjectIds**: PyMongo mutates dictionaries passed to  by adding an  field. You MUST pop this field () before returning it in a FastAPI response, otherwise Pydantic/FastAPI will throw a 500 JSON serialization error.
-- **Upserts**: When using  with  in MongoDB, always use  to apply default values so new documents aren't created with missing base schemas.
+- **CRASH ROOT CAUSE**: In , the agent identified that the Cashfree SDK API calls are synchronous. Because they are placed directly inside  endpoints, they block the FastAPI event loop for seconds (or minutes during a bulk sync). You MUST refactor these calls using  or .
+- **Payment Tracker UI**: The frontend UI for the tracker is complete. You only need to fix the backend stability issue so the Sync Pending button works without taking the site down.
 
 **documents and test reports created in this job**
-  -  (Updated)
+  -  (Updated with new feature completions)
 
 **Last 10 User Messages and any pending HUMAN messages** 
- 1. User: Please use ask_human tool and confirm your plan now.
- 2. User: p0 (Approved working on Expenses features).
- 3. User: It's still showing no school found... expenses page takes 3-4 seconds to load please fix.
- 4. User: It fails to save expense... get rid of api which takes from vendor panel.
- 5. User: In educators onboarding when i direct onboard it's not getting added in the list. Also not able to login. Put onboarding progress tracker inside the card.
- 6. User: From educator perspective the toast notification comes twice but it still doesn't move to next step automatically.
- 7. User: Whatever i'm updating from teachers side isn't getting saved and updating in the admin - the steps progress is also not getting updated.
- 8. User: In frontend progress is there, but in admin there's no updates - please fix this recurring error.
- 9. **User (LATEST/PENDING)**: In school crm under new lead and meeting done also add action button of lost lead - with reason. Shift to lost section, divide lost section in two - lost leads, lost customers.
+ 1. User: in report section in support i want a new section for tickets by sub categories and count... (Resolved).
+ 2. User: Add one more time filter Week, alongside month and year... graph showing queries count and breakdown... graph of average resolution time... (Resolved).
+ 3. User: in week also add select option to select a specefic week... in b2b reports put school conversion rate section back on top... Add cashflow section Recievables / Payables (Resolved).
+ 4. User: the payment has been made, its showing sucess on cashfree - but showing pending on admin" (Partially Resolved - UI added but backend sync is problematic).
+ 5. User: "verify icon looks very similar to refund icon, please change also merge both refund icons in one popup - in that two tabs refund using cashfree - refunded change status" (Resolved).
+ 6. **User (LATEST/PENDING)**: "its showing sync failed then whole website is crashed. 
+ 7. **User (LATEST/PENDING)**: Continue (Agent was about to implement the threadpool fix for the blocking Cashfree calls).
 
 **Project Health Check:**
-- Broken: None
+- Broken:  and  (Blocks event loop, crashes app).
 - Mocked: None
 
 **3rd Party Integrations** 
-  • Cashfree (Payments) — requires User API Key
+  • Cashfree (Payments) — requires User API Key (SDK currently blocking async loop)
   • Resend (Emails) — requires User API Key 
   • Cloudinary (File Storage) — requires User API Key
-  • Photon API (Geocoding) — Free/No Key
-  • Leaflet/OpenStreetMap (Maps) — Free/No Key
 
 **Testing status**
-  - Testing agent used after significant changes: YES (Used initially for the 6 Expenses features).
+  - Testing agent used after significant changes: YES (Earlier in session for PDF generation).
   - Troubleshoot agent used after agent stuck in loop: NO
-  - Test files created: None
-  - Known regressions: None currently known.
+  - Test files created: None this session.
+  - Known regressions: Payment sync crashes the server due to event loop blocking.
+
+**Credentials to test flow:**
+- Admin:  / 
 
 **What agent forgot to execute**
-The agent did not use the testing subagent for the cascading Educator Onboarding fixes, relying purely on manual bash scripts and UI screenshots. Ensure comprehensive end-to-end testing when manipulating core CRM stages.</analysis>
+The agent correctly identified the server crash root cause (synchronous requests in async endpoints in ) but ran out of context before writing the code to wrap them in threadpools. You need to apply this fix immediately as P0.</analysis>
