@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, Filter, Search, Users, CreditCard, TrendingUp, Check, Clock, Copy, FileSpreadsheet, Edit2, RefreshCw, X, Save, RotateCcw, AlertTriangle, FileText } from 'lucide-react';
+import { ArrowLeft, Download, Filter, Search, Users, CreditCard, TrendingUp, Check, Clock, Copy, FileSpreadsheet, Edit2, RefreshCw, X, Save, RotateCcw, AlertTriangle, FileText, ShieldCheck, Undo2 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
@@ -32,14 +32,16 @@ const SchoolPaymentTracker = () => {
   const [editData, setEditData] = useState({ student_name: '', grade: '', division: '' });
   const [saving, setSaving] = useState(false);
 
-  // Refund modal
-  const [refundModal, setRefundModal] = useState(null); // payment object
+  // Unified refund modal
+  const [refundModal, setRefundModal] = useState(null); // payment object (Cashfree refund)
   const [refundAmount, setRefundAmount] = useState('');
   const [refundNote, setRefundNote] = useState('');
   const [refunding, setRefunding] = useState(false);
 
-  // Mark refunded confirm
-  const [markRefundedModal, setMarkRefundedModal] = useState(null);
+  // Unified refund modal state
+  const [unifiedRefundModal, setUnifiedRefundModal] = useState(null); // payment object
+  const [refundTab, setRefundTab] = useState('cashfree'); // 'cashfree' | 'manual'
+  const [refundPlatform, setRefundPlatform] = useState('Cashfree');
   const [markingRefunded, setMarkingRefunded] = useState(false);
 
   const [syncingAll, setSyncingAll] = useState(false);
@@ -212,17 +214,18 @@ const SchoolPaymentTracker = () => {
     }
   };
 
-  // Mark as refunded (status change only)
+  // Mark as refunded — status update only, with platform info
   const handleMarkRefunded = async () => {
     setMarkingRefunded(true);
     try {
       const token = localStorage.getItem('oll_token');
-      await axios.patch(`${API}/api/school-payment/status/${markRefundedModal.id}`, { status: 'REFUNDED' }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      toast.success('Payment marked as Refunded');
-      setMarkRefundedModal(null);
-      setPayments(prev => prev.map(p => p.id === markRefundedModal.id ? { ...p, status: 'REFUNDED' } : p));
+      await axios.patch(`${API}/api/school-payment/status/${unifiedRefundModal.id}`,
+        { status: 'REFUNDED', refund_platform: refundPlatform },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success(`Marked as Refunded (via ${refundPlatform})`);
+      setUnifiedRefundModal(null);
+      setPayments(prev => prev.map(p => p.id === unifiedRefundModal.id ? { ...p, status: 'REFUNDED' } : p));
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to update status');
     } finally {
@@ -236,25 +239,33 @@ const SchoolPaymentTracker = () => {
       toast.error('Please enter a valid refund amount');
       return;
     }
-    if (parseFloat(refundAmount) > refundModal.amount) {
+    if (parseFloat(refundAmount) > unifiedRefundModal.amount) {
       toast.error('Refund amount cannot exceed original payment amount');
       return;
     }
     setRefunding(true);
     try {
       const token = localStorage.getItem('oll_token');
-      const res = await axios.post(`${API}/api/school-payment/refund/${refundModal.id}`, {
+      const res = await axios.post(`${API}/api/school-payment/refund/${unifiedRefundModal.id}`, {
         refund_amount: parseFloat(refundAmount),
         refund_note: refundNote || 'Admin initiated refund'
       }, { headers: { Authorization: `Bearer ${token}` } });
-      toast.success(`Refund of ₹${refundAmount} initiated successfully! Refund ID: ${res.data.refund_id}`);
-      setRefundModal(null);
-      setPayments(prev => prev.map(p => p.id === refundModal.id ? { ...p, status: 'REFUNDED' } : p));
+      toast.success(`Refund of ₹${refundAmount} initiated! Refund ID: ${res.data.refund_id}`);
+      setUnifiedRefundModal(null);
+      setPayments(prev => prev.map(p => p.id === unifiedRefundModal.id ? { ...p, status: 'REFUNDED' } : p));
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Refund failed');
     } finally {
       setRefunding(false);
     }
+  };
+
+  const openRefundModal = (payment) => {
+    setUnifiedRefundModal(payment);
+    setRefundTab('cashfree');
+    setRefundAmount(String(payment.amount));
+    setRefundNote('');
+    setRefundPlatform('Cashfree');
   };
 
   const getStatusBadge = (status) => {
@@ -492,18 +503,18 @@ const SchoolPaymentTracker = () => {
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
-                          {/* Mark Refunded (for PAID) */}
+                          {/* Single Refund button for PAID — opens unified modal */}
                           {payment.status === 'PAID' && (
                             <button
-                              onClick={() => setMarkRefundedModal(payment)}
-                              className="p-1.5 rounded hover:bg-purple-100 text-purple-600 transition-colors"
-                              title="Mark as Refunded"
-                              data-testid="mark-refunded-btn"
+                              onClick={() => openRefundModal(payment)}
+                              className="p-1.5 rounded hover:bg-red-100 text-red-600 transition-colors"
+                              title="Refund options"
+                              data-testid="refund-btn"
                             >
-                              <RotateCcw className="w-3.5 h-3.5" />
+                              <Undo2 className="w-3.5 h-3.5" />
                             </button>
                           )}
-                          {/* Verify / Force-sync PENDING payments */}
+                          {/* Verify / Force-sync PENDING payments — ShieldCheck is distinct */}
                           {payment.status !== 'PAID' && payment.status !== 'REFUNDED' && payment.status !== 'CANCELLED' && (
                             <button
                               onClick={() => handleVerifyPayment(payment.id)}
@@ -512,18 +523,9 @@ const SchoolPaymentTracker = () => {
                               title="Verify payment status with Cashfree"
                               data-testid={`verify-payment-${payment.id}`}
                             >
-                              <RefreshCw className={`w-3.5 h-3.5 ${syncingPayment === payment.id ? 'animate-spin' : ''}`} />
-                            </button>
-                          )}
-                          {/* Initiate Cashfree Refund (for PAID) */}
-                          {payment.status === 'PAID' && (
-                            <button
-                              onClick={() => { setRefundModal(payment); setRefundAmount(String(payment.amount)); setRefundNote(''); }}
-                              className="p-1.5 rounded hover:bg-red-100 text-red-600 transition-colors"
-                              title="Initiate refund via Cashfree"
-                              data-testid="initiate-refund-btn"
-                            >
-                              <RefreshCw className="w-3.5 h-3.5" />
+                              {syncingPayment === payment.id
+                                ? <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                                : <ShieldCheck className="w-3.5 h-3.5" />}
                             </button>
                           )}
                         </div>
@@ -592,101 +594,114 @@ const SchoolPaymentTracker = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Mark Refunded Modal */}
-      <Dialog open={!!markRefundedModal} onOpenChange={() => setMarkRefundedModal(null)}>
+      {/* Unified Refund Modal */}
+      <Dialog open={!!unifiedRefundModal} onOpenChange={() => setUnifiedRefundModal(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <RotateCcw className="w-5 h-5 text-purple-600" />
-              Mark as Refunded
+              <Undo2 className="w-5 h-5 text-red-600" />
+              Refund Payment
             </DialogTitle>
           </DialogHeader>
-          <div className="py-2">
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-4">
-              <p className="text-sm text-purple-800">
-                This will <strong>only update the status</strong> in your records to "Refunded". It will NOT initiate an actual refund via Cashfree. To initiate a real refund, use the <strong>Cashfree Refund</strong> button instead.
-              </p>
-            </div>
-            {markRefundedModal && (
-              <div className="text-sm text-slate-600 space-y-1">
-                <p><span className="font-medium">Student:</span> {markRefundedModal.student_name}</p>
-                <p><span className="font-medium">Amount:</span> ₹{markRefundedModal.amount}</p>
-                <p><span className="font-medium">Transaction ID:</span> {markRefundedModal.transaction_id || 'N/A'}</p>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setMarkRefundedModal(null)}>Cancel</Button>
-            <Button
-              onClick={handleMarkRefunded}
-              disabled={markingRefunded}
-              className="gap-2 bg-purple-600 hover:bg-purple-700"
-              data-testid="confirm-mark-refunded-btn"
-            >
-              <RotateCcw className="w-4 h-4" />
-              {markingRefunded ? 'Updating...' : 'Mark as Refunded'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
-      {/* Initiate Cashfree Refund Modal */}
-      <Dialog open={!!refundModal} onOpenChange={() => setRefundModal(null)}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <RefreshCw className="w-5 h-5 text-red-600" />
-              Initiate Cashfree Refund
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-              <div className="flex items-start gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                <p className="text-xs text-amber-800">This will initiate a real refund via Cashfree. The amount will be credited back to the student's original payment method within 5-7 business days.</p>
-              </div>
+          {/* Student Info */}
+          {unifiedRefundModal && (
+            <div className="text-sm text-slate-600 bg-slate-50 rounded-lg px-4 py-3 space-y-1">
+              <p><span className="font-medium">Student:</span> {unifiedRefundModal.student_name}</p>
+              <p><span className="font-medium">Amount:</span> ₹{unifiedRefundModal.amount}</p>
+              <p><span className="font-medium">Order ID:</span> <span className="font-mono text-xs">{unifiedRefundModal.id}</span></p>
             </div>
-            {refundModal && (
-              <div className="text-sm text-slate-600 bg-slate-50 rounded-lg p-3 space-y-1">
-                <p><span className="font-medium">Student:</span> {refundModal.student_name}</p>
-                <p><span className="font-medium">Original Amount:</span> ₹{refundModal.amount}</p>
-                <p><span className="font-medium">Order ID:</span> <span className="font-mono text-xs">{refundModal.id}</span></p>
-              </div>
-            )}
-            <div>
-              <label className="text-sm font-medium text-slate-700 block mb-1">Refund Amount (₹)</label>
-              <Input
-                type="number"
-                value={refundAmount}
-                onChange={(e) => setRefundAmount(e.target.value)}
-                placeholder="Enter refund amount"
-                max={refundModal?.amount}
-                data-testid="refund-amount-input"
-              />
-              <p className="text-xs text-slate-500 mt-1">Max: ₹{refundModal?.amount}</p>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-slate-700 block mb-1">Refund Note (optional)</label>
-              <Input
-                value={refundNote}
-                onChange={(e) => setRefundNote(e.target.value)}
-                placeholder="Reason for refund"
-                data-testid="refund-note-input"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRefundModal(null)}>Cancel</Button>
-            <Button
-              onClick={handleInitiateRefund}
-              disabled={refunding}
-              className="gap-2 bg-red-600 hover:bg-red-700"
-              data-testid="confirm-refund-btn"
+          )}
+
+          {/* Tabs */}
+          <div className="flex border-b border-slate-200 mt-1">
+            <button
+              onClick={() => setRefundTab('cashfree')}
+              className={`flex-1 py-2.5 text-sm font-medium border-b-2 transition-colors ${refundTab === 'cashfree' ? 'border-red-500 text-red-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+              data-testid="tab-cashfree-refund"
             >
-              <RefreshCw className="w-4 h-4" />
-              {refunding ? 'Processing...' : 'Initiate Refund'}
-            </Button>
-          </DialogFooter>
+              Refund via Cashfree
+            </button>
+            <button
+              onClick={() => setRefundTab('manual')}
+              className={`flex-1 py-2.5 text-sm font-medium border-b-2 transition-colors ${refundTab === 'manual' ? 'border-purple-500 text-purple-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+              data-testid="tab-manual-refund"
+            >
+              Mark as Refunded
+            </button>
+          </div>
+
+          {/* Tab: Cashfree Refund */}
+          {refundTab === 'cashfree' && (
+            <div className="space-y-4 pt-2">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-amber-800">This initiates a real refund via Cashfree. Amount credited back within 5-7 business days.</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700 block mb-1">Refund Amount (₹)</label>
+                <input
+                  type="number"
+                  value={refundAmount}
+                  onChange={(e) => setRefundAmount(e.target.value)}
+                  placeholder="Enter refund amount"
+                  max={unifiedRefundModal?.amount}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                  data-testid="refund-amount-input"
+                />
+                <p className="text-xs text-slate-500 mt-1">Max: ₹{unifiedRefundModal?.amount}</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700 block mb-1">Refund Note (optional)</label>
+                <input
+                  value={refundNote}
+                  onChange={(e) => setRefundNote(e.target.value)}
+                  placeholder="Reason for refund"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400"
+                  data-testid="refund-note-input"
+                />
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setUnifiedRefundModal(null)}>Cancel</Button>
+                <Button onClick={handleInitiateRefund} disabled={refunding} className="gap-2 bg-red-600 hover:bg-red-700" data-testid="confirm-cashfree-refund-btn">
+                  <Undo2 className="w-4 h-4" />
+                  {refunding ? 'Processing...' : 'Initiate Refund'}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+
+          {/* Tab: Mark as Refunded */}
+          {refundTab === 'manual' && (
+            <div className="space-y-4 pt-2">
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                <p className="text-xs text-purple-800">This <strong>only updates the status</strong> in your records. Use this when the refund was processed outside of Cashfree (e.g., cash, bank transfer).</p>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700 block mb-1">Platform / Method Used</label>
+                <select
+                  value={refundPlatform}
+                  onChange={(e) => setRefundPlatform(e.target.value)}
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  data-testid="refund-platform-select"
+                >
+                  <option value="Cashfree">Cashfree (processed externally)</option>
+                  <option value="Cash">Cash</option>
+                  <option value="Bank Transfer">Bank Transfer / NEFT / RTGS</option>
+                  <option value="UPI">UPI</option>
+                  <option value="Cheque">Cheque</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setUnifiedRefundModal(null)}>Cancel</Button>
+                <Button onClick={handleMarkRefunded} disabled={markingRefunded} className="gap-2 bg-purple-600 hover:bg-purple-700" data-testid="confirm-mark-refunded-btn">
+                  <RotateCcw className="w-4 h-4" />
+                  {markingRefunded ? 'Updating...' : 'Mark as Refunded'}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
