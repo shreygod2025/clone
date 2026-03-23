@@ -55,6 +55,14 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - **Affected functions:** `scheduled_payment_sync`, `sync_single_payment_status`, `sync_all_pending_payments`, `create_payment_order`, payment verification endpoints, refund endpoint.
 - **Result:** `POST /api/payments/sync-all` and `POST /api/payments/sync-single/{order_id}` now return immediately. Server stays responsive during sync. Background scheduler no longer crashes the app.
 
+#### School Renewal Popup Fixes (RESOLVED)
+- **Bug Fix:** Improved error handling in `handleRenewalConvert` to show actual validation error details instead of generic "Failed to renew school" message. Added `model_config = ConfigDict(extra="ignore")` to `SchoolInquiryUpdate`.
+- **Added `latitude`, `longitude`, `geofence_radius`** to both `SchoolInquiry` (response model) and `SchoolInquiryUpdate` (request model) so map/address data persists through renewals.
+- **Added `address` initialization** in `openRenewalConvertModal` to pre-populate from existing school data.
+- **Added "Generate MOU" button** in the renewal modal footer (matching the converted popup layout).
+- **Added "Save as Draft" button** that saves all renewal onboarding data without changing the school status.
+- **Test results:** 14/14 backend tests pass, frontend UI verified with all 4 buttons (Cancel, Generate MOU, Save as Draft, Complete Renewal).
+
 ### March 23, 2026 (Session 2)
 
 #### Reports – Week Filter with Specific Week Selector
