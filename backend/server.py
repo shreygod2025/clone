@@ -2242,6 +2242,9 @@ class SchoolInquiry(BaseModel):
     fee_range: str
     board: str = ""
     address: str = ""  # Full school address
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    geofence_radius: Optional[int] = None
     programs_interested: List[str]
     support_needed: List[str]
     status: str = "new"  # new, meeting_done, converted, active, renewal_meeting, renewed, lost, lost_lead, lost_customer, archived
@@ -2303,6 +2306,7 @@ class SchoolInquiryCreate(BaseModel):
     notes: str = ""
 
 class SchoolInquiryUpdate(BaseModel):
+    model_config = ConfigDict(extra="ignore")
     status: Optional[str] = None
     school_name: Optional[str] = None
     contact_name: Optional[str] = None
@@ -2311,6 +2315,9 @@ class SchoolInquiryUpdate(BaseModel):
     location: Optional[str] = None
     board: Optional[str] = None
     address: Optional[str] = None  # Full school address
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    geofence_radius: Optional[int] = None
     model: Optional[str] = None
     total_students: Optional[int] = None
     school_size: Optional[str] = None

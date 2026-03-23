@@ -1701,6 +1701,10 @@ ${FOOTER}</div></body></html>`
       contract_start: '',
       contract_end: '',
       mou_url: '',
+      address: inquiry.address || existingData.address || '',
+      latitude: inquiry.latitude || existingData.latitude || null,
+      longitude: inquiry.longitude || existingData.longitude || null,
+      geofence_radius: inquiry.geofence_radius || existingData.geofence_radius || 500,
       parent_circular_url: existingData.parent_circular_url || '',
       payment_link: existingData.payment_link || '',
       school_share_type: existingData.school_share_type || 'none',
@@ -1894,7 +1898,111 @@ ${FOOTER}</div></body></html>`
       fetchInquiries();
     } catch (error) {
       console.error('Renewal error:', error.response?.data || error.message);
-      toast.error(error.response?.data?.detail || 'Failed to renew school');
+      const errDetail = error.response?.data?.detail;
+      const errMsg = Array.isArray(errDetail) 
+        ? errDetail.map(e => e.msg || e.message || JSON.stringify(e)).join(', ')
+        : (typeof errDetail === 'string' ? errDetail : null);
+      toast.error(errMsg || 'Failed to renew school. Please check all fields and try again.');
+    }
+  };
+
+  // Save Renewal as Draft - saves all renewal data without changing status
+  const handleRenewalSaveDraft = async () => {
+    try {
+      let totalStudents = 0;
+      let totalAmount = 0;
+      
+      if (renewalConvertData.pricing_type === 'per_student' || renewalConvertData.pricing_type === 'both') {
+        totalStudents = renewalConvertData.grade_pricing.reduce((sum, g) => sum + (parseInt(g.students) || 0), 0);
+        totalAmount = renewalConvertData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
+      }
+      if (renewalConvertData.pricing_type === 'fixed' || renewalConvertData.pricing_type === 'both') {
+        totalAmount += parseFloat(renewalConvertData.fixed_price) || 0;
+      }
+
+      const contractStart = renewalConvertData.contract_start 
+        ? (typeof renewalConvertData.contract_start === 'string' 
+            ? renewalConvertData.contract_start 
+            : format(renewalConvertData.contract_start, 'yyyy-MM-dd'))
+        : '';
+      const contractEnd = renewalConvertData.contract_end 
+        ? (typeof renewalConvertData.contract_end === 'string'
+            ? renewalConvertData.contract_end 
+            : format(renewalConvertData.contract_end, 'yyyy-MM-dd'))
+        : '';
+
+      const formattedContacts = renewalConvertData.school_contacts
+        .filter(c => c.name && c.phone_number)
+        .map(c => ({
+          name: String(c.name || ''),
+          phone: String((c.country_code || '+91') + (c.phone_number || '')),
+          email: String(c.email || ''),
+          role: String(c.role || '')
+        }));
+
+      const formattedTranches = renewalConvertData.payment_tranches
+        .filter(t => t.amount || t.percentage)
+        .map(t => ({
+          percentage: String(t.percentage || ''),
+          amount: String(t.amount || ''),
+          date: String(t.date || ''),
+          notes: String(t.notes || '')
+        }));
+
+      const finalAmount = totalAmount > 0 ? totalAmount : (renewalConvertData.total_amount || 0);
+
+      await axios.patch(`${API}/schools/inquiry/${showRenewalConvertModal.id}`, {
+        address: renewalConvertData.address,
+        latitude: renewalConvertData.latitude || null,
+        longitude: renewalConvertData.longitude || null,
+        geofence_radius: renewalConvertData.geofence_radius || 500,
+        onboarding_data: {
+          ...(showRenewalConvertModal.onboarding_data || {}),
+          offering: renewalConvertData.offering,
+          model: renewalConvertData.model,
+          kit_type: renewalConvertData.kit_type,
+          lab_kit_count: renewalConvertData.kit_type === 'lab_setup' ? renewalConvertData.lab_kit_count : '',
+          course_type: renewalConvertData.course_type,
+          book_type: renewalConvertData.book_type,
+          training_type: renewalConvertData.training_type,
+          pricing_type: renewalConvertData.pricing_type,
+          fixed_price: renewalConvertData.fixed_price,
+          total_students: totalStudents > 0 ? totalStudents : renewalConvertData.total_students,
+          total_amount: finalAmount,
+          grade_pricing: renewalConvertData.grade_pricing.filter(g => g.grade),
+          contract_start: contractStart,
+          contract_end: contractEnd,
+          mou_url: renewalConvertData.mou_url,
+          school_contacts: formattedContacts,
+          payment_mode: renewalConvertData.payment_mode,
+          payment_method: renewalConvertData.payment_mode === 'online' ? 'student' : renewalConvertData.payment_method,
+          payment_tranches: renewalConvertData.payment_mode === 'online' ? [] : formattedTranches,
+          gst_type: renewalConvertData.gst_type || '',
+          deadline_date: renewalConvertData.deadline_date,
+          parent_circular_url: renewalConvertData.parent_circular_url,
+          payment_link: renewalConvertData.payment_link,
+          draft_renewal: true,
+          draft_saved_at: new Date().toISOString(),
+          school_share_type: renewalConvertData.school_share_type,
+          school_share_calc: renewalConvertData.school_share_calc,
+          school_share_value: renewalConvertData.school_share_value,
+          gp_share_type: renewalConvertData.gp_share_type,
+          gp_share_calc: renewalConvertData.gp_share_calc,
+          gp_share_value: renewalConvertData.gp_share_value,
+        },
+        notes: showRenewalConvertModal.notes 
+          ? `${showRenewalConvertModal.notes}\n\n--- Renewal Draft Saved (${format(new Date(), 'dd MMM yyyy')}) ---`
+          : `--- Renewal Draft Saved (${format(new Date(), 'dd MMM yyyy')}) ---`
+      }, {
+        headers: getAuthHeaders()
+      });
+
+      toast.success('Renewal draft saved successfully!');
+      setShowRenewalConvertModal(null);
+      fetchInquiries();
+    } catch (error) {
+      console.error('Draft save error:', error.response?.data || error.message);
+      toast.error('Failed to save draft');
     }
   };
 
@@ -6825,9 +6933,31 @@ ${FOOTER}</div></body></html>`
               </div>
             </div>
 
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-3 pt-2 flex-wrap">
               <Button variant="outline" onClick={() => setShowRenewalConvertModal(null)} className="flex-1">
                 Cancel
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => generateMOUPDF(showRenewalConvertModal, renewalConvertData)}
+                disabled={generatingMOU}
+                className="flex-1 border-[#1E3A5F] text-[#1E3A5F] hover:bg-[#1E3A5F]/10"
+                data-testid="renewal-generate-mou-footer"
+              >
+                {generatingMOU ? (
+                  <><RefreshCw className="w-4 h-4 mr-1 animate-spin" /> Generating...</>
+                ) : (
+                  <><FileText className="w-4 h-4 mr-1" /> Generate MOU</>
+                )}
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={handleRenewalSaveDraft} 
+                className="flex-1 border-amber-300 text-amber-700 hover:bg-amber-50"
+                data-testid="renewal-save-draft"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                Save as Draft
               </Button>
               <Button 
                 onClick={handleRenewalConvert} 
