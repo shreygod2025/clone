@@ -42,7 +42,59 @@ const SchoolPaymentTracker = () => {
   const [markRefundedModal, setMarkRefundedModal] = useState(null);
   const [markingRefunded, setMarkingRefunded] = useState(false);
 
-  const grades = [...new Set(payments.map(p => p.grade))].filter(Boolean).sort();
+  const [syncingAll, setSyncingAll] = useState(false);
+  const [syncingPayment, setSyncingPayment] = useState(null); // payment id being synced
+
+  const handleSyncPending = async () => {
+    setSyncingAll(true);
+    const toastId = toast.loading('Syncing pending payments with Cashfree...');
+    try {
+      const token = localStorage.getItem('oll_token');
+      const res = await axios.post(
+        `${API}/api/payments/sync-all?payment_type=school`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const { summary } = res.data;
+      toast.dismiss(toastId);
+      if (summary.total_updated > 0) {
+        toast.success(`${summary.total_updated} payment(s) updated!`);
+        fetchPayments();
+      } else if (summary.total_errors > 0) {
+        toast.warning(`Sync ran but ${summary.total_errors} errors. Check Admin Orders for details.`);
+      } else {
+        toast.info(`${summary.total_checked} payments checked — all in sync.`);
+      }
+    } catch (err) {
+      toast.dismiss(toastId);
+      toast.error(err.response?.data?.detail || 'Sync failed');
+    } finally {
+      setSyncingAll(false);
+    }
+  };
+
+  const handleVerifyPayment = async (paymentId) => {
+    setSyncingPayment(paymentId);
+    try {
+      const token = localStorage.getItem('oll_token');
+      const res = await axios.post(
+        `${API}/api/payments/sync-single/${paymentId}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const { status_changed, old_status, new_status } = res.data;
+      if (status_changed) {
+        toast.success(`Payment updated: ${old_status} → ${new_status}`);
+        fetchPayments();
+      } else {
+        toast.info(`Status unchanged: ${new_status}`);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Verification failed');
+    } finally {
+      setSyncingPayment(null);
+    }
+  };
 
   useEffect(() => {
     if (schoolId && !hasFetched.current) {
@@ -230,6 +282,8 @@ const SchoolPaymentTracker = () => {
     );
   });
 
+  const grades = [...new Set(payments.map(p => p.grade))].filter(Boolean).sort();
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -254,6 +308,16 @@ const SchoolPaymentTracker = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={handleSyncPending}
+                disabled={syncingAll}
+                className="text-sm border-amber-300 text-amber-700 hover:bg-amber-50"
+                data-testid="sync-pending-payments-btn"
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${syncingAll ? 'animate-spin' : ''}`} />
+                {syncingAll ? 'Syncing...' : 'Sync Pending'}
+              </Button>
               <Button variant="outline" onClick={copyPaymentLink} className="text-sm">
                 <Copy className="w-4 h-4 mr-2" />Copy Payment Link
               </Button>
@@ -437,6 +501,18 @@ const SchoolPaymentTracker = () => {
                               data-testid="mark-refunded-btn"
                             >
                               <RotateCcw className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {/* Verify / Force-sync PENDING payments */}
+                          {payment.status !== 'PAID' && payment.status !== 'REFUNDED' && payment.status !== 'CANCELLED' && (
+                            <button
+                              onClick={() => handleVerifyPayment(payment.id)}
+                              disabled={syncingPayment === payment.id}
+                              className="p-1.5 rounded hover:bg-amber-100 text-amber-600 transition-colors disabled:opacity-50"
+                              title="Verify payment status with Cashfree"
+                              data-testid={`verify-payment-${payment.id}`}
+                            >
+                              <RefreshCw className={`w-3.5 h-3.5 ${syncingPayment === payment.id ? 'animate-spin' : ''}`} />
                             </button>
                           )}
                           {/* Initiate Cashfree Refund (for PAID) */}
