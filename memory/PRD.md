@@ -55,6 +55,11 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - **Affected functions:** `scheduled_payment_sync`, `sync_single_payment_status`, `sync_all_pending_payments`, `create_payment_order`, payment verification endpoints, refund endpoint.
 - **Result:** `POST /api/payments/sync-all` and `POST /api/payments/sync-single/{order_id}` now return immediately. Server stays responsive during sync. Background scheduler no longer crashes the app.
 
+#### School CRM: Stage Rollback & Universal Raise Ticket (RESOLVED)
+- **Move Back (Stage Rollback)**: Added "Move Back" dropdown button to meeting_done, converted, active, renewal_meeting, and renewed stages. Each stage shows appropriate previous stage options (e.g., converted→meeting_done, renewed→active/renewal_meeting). Uses confirmation dialog and logs the change in notes.
+- **Raise Ticket across ALL stages**: Added reusable "Ticket" button to every stage (new, meeting_done, converted, active, renewal_meeting, renewed, lost/lost_lead/lost_customer, archived). Opens full ticket modal with query type, subject, description, priority, attachments. Tickets are saved to `support_queries` collection and appear in Support Center.
+- **Test results:** 16/16 backend tests pass, all frontend UI elements verified across all stages.
+
 #### School Renewal Popup Fixes (RESOLVED)
 - **Bug Fix:** Improved error handling in `handleRenewalConvert` to show actual validation error details instead of generic "Failed to renew school" message. Added `model_config = ConfigDict(extra="ignore")` to `SchoolInquiryUpdate`.
 - **Added `latitude`, `longitude`, `geofence_radius`** to both `SchoolInquiry` (response model) and `SchoolInquiryUpdate` (request model) so map/address data persists through renewals.
