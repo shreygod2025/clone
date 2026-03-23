@@ -60,6 +60,19 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - **Raise Ticket across ALL stages**: Added reusable "Ticket" button to every stage (new, meeting_done, converted, active, renewal_meeting, renewed, lost/lost_lead/lost_customer, archived). Opens full ticket modal with query type, subject, description, priority, attachments. Tickets are saved to `support_queries` collection and appear in Support Center.
 - **Test results:** 16/16 backend tests pass, all frontend UI elements verified across all stages.
 
+#### Support Center: School Contact Picker (RESOLVED)
+- When creating a ticket with "School" type, a **School Name search** input appears.
+- Searching shows a dropdown of matching schools. Selecting one displays **all contacts** (main contact + onboarding contacts) with name, phone, email, and role.
+- Clicking a contact **auto-fills** the Name, Phone, Email fields. School name and school_id are included in the ticket payload.
+- **Test results:** 10/10 backend tests pass, all frontend UI elements verified.
+
+#### B2B Reports: Year Filter, New vs Renewal Pie, City Division (RESOLVED)
+- **Year-only filter**: Global date filter (Week/Month/Custom) is hidden when B2B tab is active. B2B has its own year-only dropdown.
+- **New Schools vs Renewals pie chart**: Donut chart showing new school count vs renewal count with renewal rate percentage.
+- **City Division of Customers**: Progress bar chart showing customer breakdown by city (top 15 cities).
+- Backend `GET /api/admin/reports/b2b-insights` now returns `new_vs_renewal` and `customer_cities` fields.
+- **Test results:** 10/10 backend tests pass, all frontend charts verified.
+
 #### School Renewal Popup Fixes (RESOLVED)
 - **Bug Fix:** Improved error handling in `handleRenewalConvert` to show actual validation error details instead of generic "Failed to renew school" message. Added `model_config = ConfigDict(extra="ignore")` to `SchoolInquiryUpdate`.
 - **Added `latitude`, `longitude`, `geofence_radius`** to both `SchoolInquiry` (response model) and `SchoolInquiryUpdate` (request model) so map/address data persists through renewals.
