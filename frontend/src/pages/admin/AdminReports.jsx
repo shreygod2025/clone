@@ -6,8 +6,8 @@ import {
   Calendar, RefreshCw, ArrowUpRight, ArrowDownRight,
   UserCheck, Clock, MessageSquare, Target, BarChart3,
   Briefcase, Handshake, Wallet, Receipt, TrendingDown,
-  FileText, Plus, Edit2, Trash2, X, ChevronDown, Link, Copy, Eye, EyeOff, ExternalLink, Lock,
-  PieChart, AlertCircle
+  FileText, Plus, Edit2, Trash2, X, ChevronDown, ChevronRight, Link, Copy, Eye, EyeOff, ExternalLink, Lock,
+  PieChart, AlertCircle, Send, MessageCircle
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -270,6 +270,12 @@ const AdminReports = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [publicLinkLoading, setPublicLinkLoading] = useState(false);
 
+  // Sub-category drill-down state
+  const [selectedSubcategory, setSelectedSubcategory] = useState(null);
+  const [subcategoryTickets, setSubcategoryTickets] = useState([]);
+  const [subcategoryLoading, setSubcategoryLoading] = useState(false);
+  const [expandedReplies, setExpandedReplies] = useState({});
+
   const getDateParams = () => {
     let params = {};
     if (dateFilterType === 'custom' && customDateRange.start && customDateRange.end) {
@@ -305,6 +311,32 @@ const AdminReports = () => {
     fetchTeamMembers();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const fetchSubcategoryTickets = async (subcategory) => {
+    setSubcategoryLoading(true);
+    setExpandedReplies({});
+    try {
+      const params = { ...getDateParams(), subcategory };
+      const res = await axios.get(`${API}/admin/reports/support-subcategory-tickets`, {
+        params, headers: getAuthHeaders()
+      });
+      setSubcategoryTickets(res.data?.tickets || []);
+    } catch (e) {
+      toast.error('Failed to load tickets');
+      setSubcategoryTickets([]);
+    } finally {
+      setSubcategoryLoading(false);
+    }
+  };
+
+  const handleSubcategoryClick = (name) => {
+    setSelectedSubcategory(name);
+    fetchSubcategoryTickets(name);
+  };
+
+  const toggleReplies = (ticketId) => {
+    setExpandedReplies(prev => ({ ...prev, [ticketId]: !prev[ticketId] }));
+  };
 
   const fetchAllData = async () => {
     setLoading(true);
@@ -1173,6 +1205,185 @@ const AdminReports = () => {
             <ProgressBar label="Closed" value={supportInsights?.status_breakdown?.find(s => s.name === 'closed')?.count || 0} total={supportInsights?.total_queries || 1} color="#64748b" />
           </div>
         </div>
+
+        {/* Tickets by Sub-Category (clickable drill-down) */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
+            <MessageCircle className="w-5 h-5 text-blue-500" />
+            Tickets by Sub-Category
+          </h3>
+          {(!supportInsights?.subcategory_breakdown?.length) ? (
+            <p className="text-sm text-slate-400">No data for the selected period</p>
+          ) : (
+            <div className="space-y-1">
+              {supportInsights.subcategory_breakdown.map((item, i) => (
+                <button
+                  key={i}
+                  data-testid={`subcategory-row-${item.name}`}
+                  onClick={() => handleSubcategoryClick(item.name)}
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-blue-50 transition-colors group text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 rounded-full bg-blue-400 group-hover:bg-blue-600 transition-colors" />
+                    <span className="text-sm text-slate-700 capitalize group-hover:text-blue-700 font-medium">
+                      {item.name.replace(/_/g, ' ')}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                      {item.count}
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-500 transition-colors" />
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Sub-Category Ticket Drill-Down Panel */}
+        {selectedSubcategory && (
+          <div className="fixed inset-0 z-50 flex" onClick={() => setSelectedSubcategory(null)}>
+            <div className="flex-1 bg-black/40" />
+            <div
+              className="bg-white w-full max-w-2xl h-full overflow-y-auto shadow-2xl flex flex-col"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between z-10">
+                <div>
+                  <h2 className="text-lg font-bold text-[#1E3A5F] capitalize">
+                    {selectedSubcategory.replace(/_/g, ' ')} Tickets
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {subcategoryLoading ? 'Loading...' : `${subcategoryTickets.length} ticket${subcategoryTickets.length !== 1 ? 's' : ''}`}
+                  </p>
+                </div>
+                <button
+                  data-testid="close-subcategory-panel"
+                  onClick={() => setSelectedSubcategory(null)}
+                  className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+                >
+                  <X className="w-5 h-5 text-slate-500" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="flex-1 p-5 space-y-3">
+                {subcategoryLoading ? (
+                  <div className="flex items-center justify-center py-20">
+                    <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full" />
+                  </div>
+                ) : subcategoryTickets.length === 0 ? (
+                  <div className="text-center py-16 text-slate-400">No tickets found</div>
+                ) : (
+                  subcategoryTickets.map((ticket) => {
+                    const name = ticket.contact_name || ticket.name || 'Unknown';
+                    const details = ticket.details || ticket.message || ticket.query_details || '';
+                    const replies = ticket.replies || [];
+                    const isExpanded = expandedReplies[ticket.id];
+                    const statusColors = {
+                      resolved: 'bg-green-100 text-green-700',
+                      closed: 'bg-slate-100 text-slate-600',
+                      open: 'bg-blue-100 text-blue-700',
+                      new: 'bg-blue-100 text-blue-700',
+                      in_progress: 'bg-orange-100 text-orange-700',
+                    };
+                    const statusColor = statusColors[ticket.status] || 'bg-slate-100 text-slate-600';
+                    const priorityColors = { high: 'text-red-600', medium: 'text-orange-500', low: 'text-green-600', normal: 'text-slate-500' };
+                    const priorityColor = priorityColors[ticket.priority] || 'text-slate-500';
+
+                    return (
+                      <div
+                        key={ticket.id}
+                        data-testid={`ticket-card-${ticket.id}`}
+                        className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden"
+                      >
+                        {/* Ticket Header */}
+                        <div className="px-4 py-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-slate-800 text-sm">{name}</span>
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${statusColor}`}>
+                                  {ticket.status?.replace(/_/g, ' ')}
+                                </span>
+                                {ticket.priority && (
+                                  <span className={`text-xs font-medium capitalize ${priorityColor}`}>
+                                    {ticket.priority} priority
+                                  </span>
+                                )}
+                              </div>
+                              {ticket.phone && (
+                                <p className="text-xs text-slate-500 mt-0.5">{ticket.phone}</p>
+                              )}
+                              {ticket.email && (
+                                <p className="text-xs text-slate-500">{ticket.email}</p>
+                              )}
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <p className="text-xs text-slate-400">
+                                {ticket.created_at ? new Date(ticket.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                              </p>
+                            </div>
+                          </div>
+                          {details && (
+                            <p className="text-sm text-slate-600 mt-2 line-clamp-2 leading-relaxed">
+                              {details}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* View Replies Toggle */}
+                        <div className="border-t border-slate-200 px-4 py-2 flex items-center justify-between bg-white">
+                          <button
+                            data-testid={`view-replies-${ticket.id}`}
+                            onClick={() => toggleReplies(ticket.id)}
+                            className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            {replies.length > 0
+                              ? `${isExpanded ? 'Hide' : 'View'} ${replies.length} repl${replies.length !== 1 ? 'ies' : 'y'}`
+                              : 'No replies yet'}
+                          </button>
+                          {ticket.admin_notes && (
+                            <span className="text-xs text-slate-400 italic truncate max-w-[200px]">
+                              Note: {ticket.admin_notes}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Replies Thread */}
+                        {isExpanded && replies.length > 0 && (
+                          <div className="border-t border-slate-200 bg-slate-50/80 px-4 py-3 space-y-2.5">
+                            {replies.map((reply, ri) => {
+                              const isAdmin = reply.role === 'admin' || reply.by?.toLowerCase().includes('admin');
+                              return (
+                                <div key={reply.id || ri} className={`flex gap-2 ${isAdmin ? 'flex-row-reverse' : ''}`}>
+                                  <div className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white ${isAdmin ? 'bg-[#1E3A5F]' : 'bg-slate-400'}`}>
+                                    {(reply.by || 'U').charAt(0).toUpperCase()}
+                                  </div>
+                                  <div className={`max-w-[80%] ${isAdmin ? 'items-end' : 'items-start'} flex flex-col`}>
+                                    <div className={`px-3 py-2 rounded-xl text-sm ${isAdmin ? 'bg-[#1E3A5F] text-white rounded-tr-sm' : 'bg-white border border-slate-200 text-slate-700 rounded-tl-sm'}`}>
+                                      {reply.text}
+                                    </div>
+                                    <span className="text-xs text-slate-400 mt-0.5 px-1">
+                                      {reply.by} · {reply.created_at ? new Date(reply.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : ''}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   };

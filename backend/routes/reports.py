@@ -982,6 +982,16 @@ async def get_support_insights(
         source = q.get('source') or q.get('user_type') or 'Unknown'
         source_counts[source] = source_counts.get(source, 0) + 1
 
+    # Sub-category breakdown (category → query_type → main_category)
+    def get_subcat(q):
+        return (q.get('category') or q.get('query_type') or q.get('main_category') or 'general').strip().lower()
+
+    subcat_counts = {}
+    for q in queries:
+        sc = get_subcat(q)
+        if sc:
+            subcat_counts[sc] = subcat_counts.get(sc, 0) + 1
+
     return {
         "total_queries": len(queries),
         "resolved": status_counts['resolved'] + status_counts['closed'],
@@ -992,10 +1002,38 @@ async def get_support_insights(
         "status_breakdown": [{"name": k, "count": v} for k, v in status_counts.items()],
         "priority_breakdown": [{"name": k, "count": v} for k, v in priority_counts.items()],
         "source_breakdown": [{"name": k, "count": v} for k, v in sorted(source_counts.items(), key=lambda x: -x[1])],
+        "subcategory_breakdown": [{"name": k, "count": v} for k, v in sorted(subcat_counts.items(), key=lambda x: -x[1])],
         "team_performance": team_stats[:10],
         "period": {"start": start.isoformat(), "end": end.isoformat()}
     }
 
+
+
+
+@router.get("/admin/reports/support-subcategory-tickets")
+async def get_support_subcategory_tickets(
+    subcategory: str,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    period: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    """Return full ticket details for a specific sub-category within the date range."""
+    start, end = get_date_range(start_date, end_date, period)
+
+    def get_subcat(q):
+        return (q.get('category') or q.get('query_type') or q.get('main_category') or 'general').strip().lower()
+
+    all_queries = await db.support_queries.find({}, {"_id": 0}).to_list(10000)
+    tickets = []
+    for q in all_queries:
+        created = parse_date_field(q.get('created_at'))
+        if created and start <= created <= end:
+            if get_subcat(q) == subcategory.strip().lower():
+                tickets.append(q)
+
+    tickets.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+    return {"subcategory": subcategory, "tickets": tickets, "total": len(tickets)}
 
 
 

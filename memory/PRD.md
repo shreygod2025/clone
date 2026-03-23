@@ -47,9 +47,31 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
-### March 22, 2026
+### March 23, 2026
 
-#### Public Reports Link Feature
+#### Branded ID Cards & Certificates (P0 Complete)
+**Feature:** Educator ID cards and certificates now include OLL branding.
+- **ID Card:** OLL vertical logo embedded (top right), educator's profile photo (circular crop) using Pillow
+- **Certificate:** OLL vertical logo (top center), Shreyaan Daga's signature image embedded above signatory line
+- **Image delivery:** CDN URLs fetched via httpx with in-memory caching (`_img_cache`)
+- **Fallback:** Graceful placeholder if profile photo unavailable
+- **Modified:** `server.py` — `generate_id_card_pdf`, `generate_certificate_pdf`, `_fetch_image_bytes`, `_make_circular_png`, `_draw_id_photo_placeholder`
+
+#### Support Reports Fixes
+- **Resolution Time:** Was always 0. Fixed to use `updated_at` as fallback when `resolved_at` absent. Now showing actual hours (e.g., 165.9h)
+- **Overdue Queries:** New metric — queries in open/in_progress state for >48 hours. Shown as stat card and in Ticket Status Breakdown (replaced "In Progress")
+- **Ticket Status Breakdown:** Was showing all 0% (wrong data path). Fixed to use `supportInsights.status_breakdown`
+- **Modified:** `routes/reports.py` — `get_support_insights`, public reports endpoint; `AdminReports.jsx`, `PublicReports.jsx`
+
+#### Tickets by Sub-Category with Reply Viewer
+**Feature:** New section in Support Reports tab with drill-down into ticket details and replies.
+- **Sub-Category List:** Clickable rows showing category name + count
+- **Slide-in Panel:** Opens on click showing all tickets for that category with contact info, status badge, priority, date, message preview
+- **Reply Thread:** Expandable chat-style conversation — admin replies (dark blue, right-aligned), user messages (white, left-aligned)
+- **Backend:** `GET /api/admin/reports/support-subcategory-tickets?subcategory=&period=`
+- **Modified:** `routes/reports.py`, `AdminReports.jsx`
+
+### March 22, 2026 (continued)
 **Feature Implemented:**
 
 Created a password-protected public shareable link for the Reports page, allowing external stakeholders to view reports without admin access.
