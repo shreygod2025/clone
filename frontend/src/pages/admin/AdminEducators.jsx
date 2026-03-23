@@ -1619,6 +1619,114 @@ const AdminEducators = () => {
                     </div>
                   )}
 
+                  {/* Profile Details - For Active/Onboarded educators with profile data */}
+                  {(viewEducator.status === 'active' || viewEducator.status === 'onboarded') && (viewEducator.profile_photo || viewEducator.bio || viewEducator.bank_name || viewEducator.aadhar_number) && (
+                    <div className="border-t pt-4">
+                      <h4 className="font-semibold text-[#1E3A5F] mb-3">Profile Details</h4>
+                      <div className="space-y-3">
+                        {/* Profile Photo & Bio */}
+                        <div className="flex gap-3">
+                          {viewEducator.profile_photo ? (
+                            <img src={viewEducator.profile_photo} alt="Profile" className="w-16 h-16 rounded-lg object-cover" />
+                          ) : (
+                            <div className="w-16 h-16 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400">
+                              <User className="w-6 h-6" />
+                            </div>
+                          )}
+                          <div className="flex-1">
+                            <p className="text-sm text-slate-700">{viewEducator.bio || 'No bio provided'}</p>
+                          </div>
+                        </div>
+                        
+                        {/* Personal Details */}
+                        <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 rounded-lg p-3">
+                          <div>
+                            <span className="text-slate-500">T-Shirt Size:</span>
+                            <span className="ml-1 font-medium">{viewEducator.tshirt_size || 'N/A'}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500">Available:</span>
+                            <span className={`ml-1 font-medium ${viewEducator.is_available !== false ? 'text-green-600' : 'text-red-600'}`}>
+                              {viewEducator.is_available !== false ? 'Yes' : 'No'}
+                            </span>
+                          </div>
+                          {viewEducator.address_line1 && (
+                            <div className="col-span-2">
+                              <span className="text-slate-500">Address:</span>
+                              <span className="ml-1 font-medium">
+                                {viewEducator.address_line1}{viewEducator.address_line2 && `, ${viewEducator.address_line2}`}, {viewEducator.city}, {viewEducator.state} - {viewEducator.pincode}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Emergency Contact */}
+                        {viewEducator.emergency_contact_name && (
+                          <div className="grid grid-cols-3 gap-2 text-xs bg-red-50 rounded-lg p-3">
+                            <div>
+                              <span className="text-red-400">Emergency Name:</span>
+                              <span className="ml-1 font-medium text-red-700">{viewEducator.emergency_contact_name}</span>
+                            </div>
+                            <div>
+                              <span className="text-red-400">Phone:</span>
+                              <span className="ml-1 font-medium text-red-700">{viewEducator.emergency_contact_phone}</span>
+                            </div>
+                            <div>
+                              <span className="text-red-400">Relation:</span>
+                              <span className="ml-1 font-medium text-red-700">{viewEducator.emergency_contact_relation}</span>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Bank Details */}
+                        {viewEducator.bank_name && (
+                          <div className="grid grid-cols-2 gap-2 text-xs bg-green-50 rounded-lg p-3">
+                            <div>
+                              <span className="text-green-500">Bank:</span>
+                              <span className="ml-1 font-medium text-green-700">{viewEducator.bank_name}</span>
+                            </div>
+                            <div>
+                              <span className="text-green-500">Account Holder:</span>
+                              <span className="ml-1 font-medium text-green-700">{viewEducator.account_holder_name}</span>
+                            </div>
+                            <div>
+                              <span className="text-green-500">Account No:</span>
+                              <span className="ml-1 font-medium text-green-700">{viewEducator.account_number ? '****' + viewEducator.account_number.slice(-4) : 'N/A'}</span>
+                            </div>
+                            <div>
+                              <span className="text-green-500">IFSC:</span>
+                              <span className="ml-1 font-medium text-green-700">{viewEducator.ifsc_code}</span>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Documents */}
+                        <div className="grid grid-cols-2 gap-2 text-xs bg-blue-50 rounded-lg p-3">
+                          <div>
+                            <span className="text-blue-500">Aadhar:</span>
+                            <span className="ml-1 font-medium text-blue-700">{viewEducator.aadhar_number ? '****' + viewEducator.aadhar_number.slice(-4) : 'N/A'}</span>
+                          </div>
+                          <div>
+                            <span className="text-blue-500">PAN:</span>
+                            <span className="ml-1 font-medium text-blue-700">{viewEducator.pan_number || 'N/A'}</span>
+                          </div>
+                          <div>
+                            <span className="text-blue-500">Docs Verified:</span>
+                            <span className={`ml-1 font-medium ${viewEducator.documents_verified ? 'text-green-600' : 'text-orange-600'}`}>
+                              {viewEducator.documents_verified ? 'Yes' : 'Pending'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-blue-500">Contract:</span>
+                            <span className={`ml-1 font-medium ${viewEducator.contract_accepted ? 'text-green-600' : 'text-orange-600'}`}>
+                              {viewEducator.contract_accepted ? 'Accepted' : 'Pending'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Comments Section */}
                   <div className="border-t pt-4">
                     <h4 className="font-semibold text-[#1E3A5F] mb-3 flex items-center gap-2">

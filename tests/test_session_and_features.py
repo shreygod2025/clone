@@ -9,7 +9,7 @@ import pytest
 import requests
 import os
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://skill-edu-admin.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://oll-branding-docs.preview.emergentagent.com').rstrip('/')
 
 # Test credentials
 TEST_STUDENT_PHONE = "9999999999"

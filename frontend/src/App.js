@@ -37,6 +37,7 @@ const MyBookingsPage = lazy(() => import("./pages/MyBookingsPage"));
 const InquiryPage = lazy(() => import("./pages/InquiryPage"));
 const GrowthPartnerPage = lazy(() => import("./pages/GrowthPartnerPage"));
 const EducatorDashboard = lazy(() => import("./pages/EducatorDashboard"));
+const EducatorProfile = lazy(() => import("./pages/EducatorProfile"));
 const EducatorOnboarding = lazy(() => import("./pages/EducatorOnboarding"));
 const JoinTeamPage = lazy(() => import("./pages/JoinTeamPage"));
 const OfferingsPage = lazy(() => import("./pages/OfferingsPage"));
@@ -171,6 +172,7 @@ function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/my-bookings" element={<MyBookingsPage />} />
               <Route path="/educator-dashboard" element={<EducatorDashboard />} />
+              <Route path="/educator-profile" element={<EducatorProfile />} />
               <Route path="/educator-onboarding" element={<EducatorOnboarding />} />
               <Route path="/add" element={<InquiryPage />} />
               <Route path="/add/:username" element={<InquiryPage />} />

@@ -2356,7 +2356,7 @@ class EducatorApplication(BaseModel):
     demo_ready: bool = False
     requirement_id: Optional[str] = None
     requirement_title: Optional[str] = None
-    status: str = "new"  # new, demo_scheduled, hr_done, tech_scheduled, demo_completed, onboarded, archived
+    status: str = "new"  # new, demo_scheduled, hr_done, tech_scheduled, demo_completed, onboarded, active, archived
     notes: str = ""
     comments: List[dict] = []
     demo_date: Optional[str] = None
@@ -2371,6 +2371,45 @@ class EducatorApplication(BaseModel):
     source: str = "website"
     added_by: str = ""
     assigned_to: str = ""
+    
+    # Profile fields (populated from onboarding when moved to active)
+    profile_photo: str = ""
+    bio: str = ""
+    tshirt_size: str = ""
+    address_line1: str = ""
+    address_line2: str = ""
+    state: str = ""
+    pincode: str = ""
+    emergency_contact_name: str = ""
+    emergency_contact_phone: str = ""
+    emergency_contact_relation: str = ""
+    aadhar_number: str = ""
+    aadhar_document: str = ""
+    pan_number: str = ""
+    pan_document: str = ""
+    id_verification_document: str = ""
+    
+    # Bank details
+    bank_name: str = ""
+    account_holder_name: str = ""
+    account_number: str = ""
+    ifsc_code: str = ""
+    bank_document: str = ""
+    
+    # Contract
+    contract_accepted: bool = False
+    contract_accepted_at: Optional[str] = None
+    digital_signature: str = ""
+    
+    # Training & Certification
+    id_card_generated: bool = False
+    certificate_generated: bool = ""
+    documents_verified: bool = False
+    documents_verified_at: Optional[str] = None
+    
+    # Availability toggle
+    is_available: bool = True
+    
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -5567,6 +5606,36 @@ async def update_educator_application(
     
     update_data = {k: v for k, v in data.model_dump().items() if v is not None}
     update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    # If status is changing to 'active', copy onboarding data to educator profile
+    new_status = data.status
+    if new_status == "active" and old_status != "active":
+        # Fetch onboarding data
+        onboarding = await db.educator_onboarding.find_one({"educator_id": app_id}, {"_id": 0})
+        if onboarding:
+            # Copy profile fields from onboarding to educator application
+            profile_fields = [
+                'profile_photo', 'bio', 'tshirt_size', 
+                'address_line1', 'address_line2', 'city', 'state', 'pincode',
+                'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relation',
+                'aadhar_number', 'aadhar_document', 'pan_number', 'pan_document', 'id_verification_document',
+                'bank_name', 'account_holder_name', 'account_number', 'ifsc_code', 'bank_document',
+                'contract_accepted', 'contract_accepted_at', 'digital_signature',
+                'id_card_generated', 'certificate_generated', 'documents_verified', 'documents_verified_at'
+            ]
+            for field in profile_fields:
+                if onboarding.get(field):
+                    update_data[field] = onboarding[field]
+            
+            # Mark onboarding as completed
+            await db.educator_onboarding.update_one(
+                {"educator_id": app_id},
+                {"$set": {
+                    "status": "completed",
+                    "completed_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+    
     await db.educator_applications.update_one({"id": app_id}, {"$set": update_data})
     application = await db.educator_applications.find_one({"id": app_id}, {"_id": 0})
     if isinstance(application.get('created_at'), str):
@@ -5575,7 +5644,6 @@ async def update_educator_application(
         application['updated_at'] = datetime.fromisoformat(application['updated_at'])
     
     # Send email notifications based on status changes
-    new_status = data.status
     if new_status and new_status != old_status:
         if new_status == "demo_scheduled" and (data.demo_date or data.demo_time):
             await send_educator_demo_scheduled_email(application)
@@ -6792,6 +6860,164 @@ async def educator_notify_student_not_joined(inquiry_id: str, user: dict = Depen
     
     return {"message": "Student has been notified that they haven't joined yet"}
 
+# ========================
+# EDUCATOR PROFILE ENDPOINTS
+# ========================
+
+@api_router.get("/educator/profile")
+async def get_educator_profile(user: dict = Depends(get_current_user)):
+    """Get educator's complete profile including onboarding data"""
+    educator_id = user.get("educator_id") or user.get("id")
+    
+    if not educator_id:
+        raise HTTPException(status_code=403, detail="Educator not found")
+    
+    # Get educator application with all fields
+    educator = await db.educator_applications.find_one({"id": educator_id}, {"_id": 0})
+    if not educator:
+        raise HTTPException(status_code=404, detail="Educator not found")
+    
+    # If educator is in onboarding/active and doesn't have profile data, check onboarding collection
+    if educator.get("status") in ["onboarded", "onboarding"] and not educator.get("profile_photo"):
+        onboarding = await db.educator_onboarding.find_one({"educator_id": educator_id}, {"_id": 0})
+        if onboarding:
+            # Merge onboarding data with educator data for response
+            profile_fields = [
+                'profile_photo', 'bio', 'tshirt_size', 
+                'address_line1', 'address_line2', 'city', 'state', 'pincode',
+                'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relation',
+                'aadhar_number', 'aadhar_document', 'pan_number', 'pan_document', 'id_verification_document',
+                'bank_name', 'account_holder_name', 'account_number', 'ifsc_code', 'bank_document',
+                'contract_accepted', 'contract_accepted_at', 'digital_signature'
+            ]
+            for field in profile_fields:
+                if onboarding.get(field) and not educator.get(field):
+                    educator[field] = onboarding[field]
+    
+    # Mask sensitive info for security (only show last 4 digits)
+    if educator.get("account_number"):
+        acc_num = educator["account_number"]
+        educator["account_number_masked"] = f"****{acc_num[-4:]}" if len(acc_num) > 4 else "****"
+    if educator.get("aadhar_number"):
+        aadhar = educator["aadhar_number"]
+        educator["aadhar_number_masked"] = f"****{aadhar[-4:]}" if len(aadhar) > 4 else "****"
+    
+    return educator
+
+@api_router.patch("/educator/profile")
+async def update_educator_profile(data: dict, user: dict = Depends(get_current_user)):
+    """Update educator's profile - allows updating personal info, bio, address, etc."""
+    educator_id = user.get("educator_id") or user.get("id")
+    
+    if not educator_id:
+        raise HTTPException(status_code=403, detail="Educator not found")
+    
+    # Fields that educators can update themselves
+    allowed_fields = [
+        'name', 'bio', 'profile_photo', 'tshirt_size',
+        'address_line1', 'address_line2', 'city', 'state', 'pincode',
+        'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relation',
+        'skills', 'experience', 'grades_comfortable', 'teaching_mode', 'availability',
+        'is_available'
+    ]
+    
+    # Filter only allowed fields
+    update_data = {k: v for k, v in data.items() if k in allowed_fields and v is not None}
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+    
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    # Update educator application
+    result = await db.educator_applications.update_one(
+        {"id": educator_id},
+        {"$set": update_data}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Educator not found or no changes made")
+    
+    # Also update onboarding record if exists
+    await db.educator_onboarding.update_one(
+        {"educator_id": educator_id},
+        {"$set": {k: v for k, v in update_data.items() if k in ['bio', 'profile_photo', 'tshirt_size', 
+            'address_line1', 'address_line2', 'city', 'state', 'pincode',
+            'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relation']}},
+        upsert=False
+    )
+    
+    # Return updated educator
+    educator = await db.educator_applications.find_one({"id": educator_id}, {"_id": 0})
+    return {"success": True, "message": "Profile updated successfully", "educator": educator}
+
+@api_router.patch("/educator/profile/bank-details")
+async def update_educator_bank_details(data: dict, user: dict = Depends(get_current_user)):
+    """Update educator's bank details - requires verification"""
+    educator_id = user.get("educator_id") or user.get("id")
+    
+    if not educator_id:
+        raise HTTPException(status_code=403, detail="Educator not found")
+    
+    # Bank detail fields
+    bank_fields = ['bank_name', 'account_holder_name', 'account_number', 'ifsc_code', 'bank_document']
+    update_data = {k: v for k, v in data.items() if k in bank_fields and v is not None}
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No valid bank fields to update")
+    
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    update_data['bank_details_updated_at'] = datetime.now(timezone.utc).isoformat()
+    update_data['bank_details_verified'] = False  # Mark as unverified after update
+    
+    # Update educator application
+    await db.educator_applications.update_one(
+        {"id": educator_id},
+        {"$set": update_data}
+    )
+    
+    # Also update onboarding record if exists
+    await db.educator_onboarding.update_one(
+        {"educator_id": educator_id},
+        {"$set": update_data},
+        upsert=False
+    )
+    
+    return {"success": True, "message": "Bank details updated. They will be verified soon."}
+
+@api_router.patch("/educator/profile/documents")
+async def update_educator_documents(data: dict, user: dict = Depends(get_current_user)):
+    """Update educator's documents (Aadhar, PAN, etc.)"""
+    educator_id = user.get("educator_id") or user.get("id")
+    
+    if not educator_id:
+        raise HTTPException(status_code=403, detail="Educator not found")
+    
+    # Document fields
+    doc_fields = ['aadhar_number', 'aadhar_document', 'pan_number', 'pan_document', 'id_verification_document']
+    update_data = {k: v for k, v in data.items() if k in doc_fields and v is not None}
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No valid document fields to update")
+    
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    update_data['documents_verified'] = False  # Mark as unverified after update
+    
+    # Update educator application
+    await db.educator_applications.update_one(
+        {"id": educator_id},
+        {"$set": update_data}
+    )
+    
+    # Also update onboarding record if exists
+    await db.educator_onboarding.update_one(
+        {"educator_id": educator_id},
+        {"$set": update_data},
+        upsert=False
+    )
+    
+    return {"success": True, "message": "Documents updated. They will be verified soon."}
+
 @api_router.post("/admin/notify-not-joined/{inquiry_id}")
 async def admin_notify_not_joined(inquiry_id: str, data: dict, user: dict = Depends(get_current_user)):
     """Admin notifies student or educator that they haven't joined"""
@@ -7082,7 +7308,7 @@ async def notify_educators_new_requirement(requirement: dict):
             return
 
         req_id = requirement.get("id", "")
-        frontend_url = os.environ.get("FRONTEND_URL", "https://skill-edu-admin.preview.emergentagent.com")
+        frontend_url = os.environ.get("FRONTEND_URL", "https://oll-branding-docs.preview.emergentagent.com")
         apply_link = f"{frontend_url}/educator/apply/{req_id}"
 
         pay_text = ""
