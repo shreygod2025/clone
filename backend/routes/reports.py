@@ -1010,6 +1010,83 @@ async def get_support_insights(
 
 
 
+@router.get("/admin/reports/support-timeline")
+async def get_support_timeline(
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    period: Optional[str] = None,
+    user: dict = Depends(get_current_user)
+):
+    """Time-series of support queries: count by status + avg resolution per bucket.
+    Granularity auto-detected: <=14 days → day, <=62 days → week, else → month.
+    """
+    start, end = get_date_range(start_date, end_date, period)
+    delta_days = (end - start).days
+
+    if delta_days <= 14:
+        granularity = 'day'
+    elif delta_days <= 62:
+        granularity = 'week'
+    else:
+        granularity = 'month'
+
+    buckets = []
+    current = start.replace(hour=0, minute=0, second=0, microsecond=0)
+    cap = end.replace(hour=23, minute=59, second=59, microsecond=0)
+
+    if granularity == 'day':
+        while current <= cap:
+            nxt = current + timedelta(days=1)
+            buckets.append({'start': current, 'end': nxt, 'label': current.strftime('%a %-d')})
+            current = nxt
+    elif granularity == 'week':
+        w = 1
+        while current <= cap:
+            nxt = min(current + timedelta(weeks=1), cap + timedelta(seconds=1))
+            buckets.append({'start': current, 'end': nxt, 'label': f'Week {w}'})
+            current = nxt
+            w += 1
+    else:
+        while current <= cap:
+            nxt = current.replace(month=current.month % 12 + 1, day=1) if current.month < 12 \
+                  else current.replace(year=current.year + 1, month=1, day=1)
+            buckets.append({'start': current, 'end': nxt, 'label': current.strftime('%b %Y')})
+            current = nxt
+
+    all_queries = await db.support_queries.find({}, {"_id": 0}).to_list(10000)
+
+    result = []
+    for bucket in buckets:
+        b_start, b_end = bucket['start'], bucket['end']
+        bq = [q for q in all_queries
+              if q.get('created_at') and b_start <= parse_date_field(q['created_at']) < b_end]
+
+        sc = {'open': 0, 'in_progress': 0, 'resolved': 0, 'closed': 0}
+        rt = []
+        for q in bq:
+            status = q.get('status', 'open').lower()
+            if status == 'new':
+                status = 'open'
+            sc[status] = sc.get(status, 0) + 1
+            if status in ['resolved', 'closed']:
+                created = parse_date_field(q.get('created_at'))
+                resolved = parse_date_field(q.get('resolved_at') or q.get('updated_at'))
+                if created and resolved and resolved > created:
+                    rt.append((resolved - created).total_seconds() / 3600)
+
+        result.append({
+            'label': bucket['label'],
+            'total': len(bq),
+            'open': sc['open'],
+            'in_progress': sc['in_progress'],
+            'resolved': sc['resolved'],
+            'closed': sc['closed'],
+            'avg_resolution_hours': round(sum(rt) / len(rt), 1) if rt else 0,
+        })
+
+    return {'timeline': result, 'granularity': granularity}
+
+
 @router.get("/admin/reports/support-subcategory-tickets")
 async def get_support_subcategory_tickets(
     subcategory: str,

@@ -14,8 +14,12 @@ import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { toast } from 'sonner';
-import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from 'date-fns';
 import axios from 'axios';
+import {
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  LineChart, Line, Area, AreaChart
+} from 'recharts';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -241,7 +245,7 @@ const AdminReports = () => {
   const [activeTab, setActiveTab] = useState('overview');
   
   // Date filter states
-  const [dateFilterType, setDateFilterType] = useState('month'); // 'custom', 'month', 'year'
+  const [dateFilterType, setDateFilterType] = useState('month'); // 'custom', 'week', 'month', 'year'
   const [customDateRange, setCustomDateRange] = useState({ start: '', end: '' });
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [selectedYear, setSelectedYear] = useState(String(new Date().getFullYear()));
@@ -275,11 +279,16 @@ const AdminReports = () => {
   const [subcategoryTickets, setSubcategoryTickets] = useState([]);
   const [subcategoryLoading, setSubcategoryLoading] = useState(false);
   const [expandedReplies, setExpandedReplies] = useState({});
+  const [supportTimeline, setSupportTimeline] = useState([]);
 
   const getDateParams = () => {
     let params = {};
     if (dateFilterType === 'custom' && customDateRange.start && customDateRange.end) {
       params = { start_date: customDateRange.start, end_date: customDateRange.end };
+    } else if (dateFilterType === 'week') {
+      const end = new Date();
+      const start = subDays(end, 6); // last 7 days
+      params = { start_date: format(start, 'yyyy-MM-dd'), end_date: format(end, 'yyyy-MM-dd') };
     } else if (dateFilterType === 'month' && selectedMonth) {
       const [year, month] = selectedMonth.split('-');
       const start = startOfMonth(new Date(parseInt(year), parseInt(month) - 1));
@@ -290,7 +299,6 @@ const AdminReports = () => {
       const end = endOfYear(new Date(parseInt(selectedYear), 0));
       params = { start_date: format(start, 'yyyy-MM-dd'), end_date: format(end, 'yyyy-MM-dd') };
     }
-    // Add team member filter if selected
     if (selectedTeamMember) {
       params.assigned_to = selectedTeamMember;
     }
@@ -344,7 +352,7 @@ const AdminReports = () => {
     const headers = getAuthHeaders();
     
     try {
-      const [overviewRes, studentFunnelRes, schoolFunnelRes, educatorRes, supportRes, stagesRes, expensesRes, categoriesRes, b2cInsightsRes, b2bInsightsRes, supportInsightsRes] = await Promise.all([
+      const [overviewRes, studentFunnelRes, schoolFunnelRes, educatorRes, supportRes, stagesRes, expensesRes, categoriesRes, b2cInsightsRes, b2bInsightsRes, supportInsightsRes, supportTimelineRes] = await Promise.all([
         axios.get(`${API}/admin/reports/overview`, { params, headers }).catch(() => ({ data: null })),
         axios.get(`${API}/admin/reports/sales-funnel`, { params: { ...params, user_type: 'students' }, headers }).catch(() => ({ data: null })),
         axios.get(`${API}/admin/reports/sales-funnel`, { params: { ...params, user_type: 'schools' }, headers }).catch(() => ({ data: null })),
@@ -356,6 +364,7 @@ const AdminReports = () => {
         axios.get(`${API}/admin/reports/b2c-insights`, { params, headers }).catch(() => ({ data: null })),
         axios.get(`${API}/admin/reports/b2b-insights`, { params, headers }).catch(() => ({ data: null })),
         axios.get(`${API}/admin/reports/support-insights`, { params, headers }).catch(() => ({ data: null })),
+        axios.get(`${API}/admin/reports/support-timeline`, { params, headers }).catch(() => ({ data: null })),
       ]);
       
       setReportData({
@@ -369,6 +378,7 @@ const AdminReports = () => {
         b2bInsights: b2bInsightsRes.data,
         supportInsights: supportInsightsRes.data,
       });
+      setSupportTimeline(supportTimelineRes.data?.timeline || []);
       setExpenses(expensesRes.data?.expenses || []);
       setExpenseCategories(categoriesRes.data || { categories: [], subcategories: {} });
     } catch (error) {
@@ -532,6 +542,7 @@ const AdminReports = () => {
       {/* Filter Type Selector */}
       <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
         {[
+          { value: 'week', label: 'Week' },
           { value: 'month', label: 'Month' },
           { value: 'year', label: 'Year' },
           { value: 'custom', label: 'Custom' },
@@ -1204,6 +1215,79 @@ const AdminReports = () => {
             <ProgressBar label="Resolved" value={supportInsights?.status_breakdown?.find(s => s.name === 'resolved')?.count || 0} total={supportInsights?.total_queries || 1} color="#22c55e" />
             <ProgressBar label="Closed" value={supportInsights?.status_breakdown?.find(s => s.name === 'closed')?.count || 0} total={supportInsights?.total_queries || 1} color="#64748b" />
           </div>
+        </div>
+
+        {/* Query Volume & Status Over Time */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-[#1E3A5F] mb-1 flex items-center gap-2">
+            <BarChart3 className="w-5 h-5 text-blue-500" />
+            Query Volume & Status Breakdown
+          </h3>
+          <p className="text-xs text-slate-400 mb-4">
+            {dateFilterType === 'week' ? 'By day (last 7 days)'
+              : dateFilterType === 'year' ? 'By month'
+              : 'By week'}
+          </p>
+          {supportTimeline.length === 0 ? (
+            <div className="flex items-center justify-center h-40 text-slate-300 text-sm">No data for selected period</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={supportTimeline} margin={{ top: 4, right: 12, left: -18, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#64748b' }} />
+                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} allowDecimals={false} />
+                <Tooltip
+                  contentStyle={{ borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 12 }}
+                  formatter={(value, name) => [value, name.charAt(0).toUpperCase() + name.slice(1).replace(/_/g, ' ')]}
+                />
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                <Bar dataKey="open" stackId="a" fill="#3b82f6" name="Open" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="in_progress" stackId="a" fill="#f97316" name="In Progress" />
+                <Bar dataKey="resolved" stackId="a" fill="#22c55e" name="Resolved" />
+                <Bar dataKey="closed" stackId="a" fill="#94a3b8" name="Closed" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* Avg Resolution Time Over Time */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-[#1E3A5F] mb-1 flex items-center gap-2">
+            <Clock className="w-5 h-5 text-indigo-500" />
+            Average Resolution Time
+          </h3>
+          <p className="text-xs text-slate-400 mb-4">Hours to resolve per {dateFilterType === 'week' ? 'day' : dateFilterType === 'year' ? 'month' : 'week'}</p>
+          {supportTimeline.length === 0 ? (
+            <div className="flex items-center justify-center h-40 text-slate-300 text-sm">No data for selected period</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={supportTimeline} margin={{ top: 4, right: 12, left: -18, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="resTimeGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#64748b' }} />
+                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} unit="h" />
+                <Tooltip
+                  contentStyle={{ borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 12 }}
+                  formatter={(v) => [`${v}h`, 'Avg Resolution Time']}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="avg_resolution_hours"
+                  stroke="#6366f1"
+                  strokeWidth={2.5}
+                  fill="url(#resTimeGrad)"
+                  dot={{ r: 4, fill: '#6366f1', strokeWidth: 2, stroke: '#fff' }}
+                  activeDot={{ r: 6 }}
+                  name="Avg Resolution"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
         </div>
 
         {/* Tickets by Sub-Category (clickable drill-down) */}
