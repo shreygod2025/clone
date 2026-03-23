@@ -6284,12 +6284,17 @@ async def direct_onboard_educator(data: dict, user: dict = Depends(get_current_u
     if user.get("role") not in ["admin", "team_member"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
+    # Handle skills - convert from string if necessary
+    skills = data.get("skills", [])
+    if isinstance(skills, str):
+        skills = [s.strip() for s in skills.split(',') if s.strip()]
+    
     # Create educator application with onboarding status
     educator = EducatorApplication(
         name=data.get("name", ""),
         email=data.get("email", ""),
         phone=data.get("phone", ""),
-        skills=data.get("skills", []),
+        skills=skills,
         city=data.get("city", ""),
         experience=data.get("experience", ""),
         status="onboarded",

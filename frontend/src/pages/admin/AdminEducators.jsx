@@ -322,7 +322,9 @@ const AdminEducators = () => {
       toast.success('Educator added and onboarding started!');
       setShowDirectOnboardModal(false);
       setDirectOnboardForm({ name: '', email: '', phone: '', skills: '', city: '', experience: '' });
-      fetchEducators();
+      // Refresh both educators list AND onboarding data so the new educator appears in Onboarding tab
+      await fetchEducators();
+      await fetchOnboardingProgress();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to add educator');
     }
@@ -755,6 +757,10 @@ const AdminEducators = () => {
     }
     if (status === 'requirements') {
       return requirements.length;
+    }
+    if (status === 'onboarded') {
+      // Count educators that have onboarding records
+      return onboardingData.length;
     }
     return educators.filter(e => e.status === status).length;
   };
