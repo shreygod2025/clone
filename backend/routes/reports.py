@@ -508,6 +508,40 @@ async def get_user_stages_report(
         stage = s.get('status', 'new')
         school_stages[stage] = school_stages.get(stage, 0) + 1
     
+    # Lost lead/customer breakdown with reasons
+    lost_leads = [s for s in all_schools if s.get('status') == 'lost_lead']
+    lost_customers = [s for s in all_schools if s.get('status') == 'lost_customer']
+    legacy_lost = [s for s in all_schools if s.get('status') == 'lost']
+    
+    lost_lead_count = len(lost_leads)
+    lost_customer_count = len(lost_customers) + len(legacy_lost)
+    
+    # Lost lead reasons breakdown
+    lost_lead_reasons = {}
+    lost_lead_value = 0
+    for s in lost_leads:
+        reason = s.get('lost_reason', 'Unknown')
+        if reason.startswith('custom:'):
+            reason = 'Other'
+        lost_lead_reasons[reason] = lost_lead_reasons.get(reason, 0) + 1
+        lost_lead_value += float(s.get('quoted_price') or s.get('expected_value') or 0)
+    
+    # Lost customer reasons breakdown
+    lost_customer_reasons = {}
+    lost_customer_value = 0
+    for s in (lost_customers + legacy_lost):
+        reason = s.get('lost_reason', 'Unknown')
+        if reason.startswith('custom:'):
+            reason = 'Other'
+        lost_customer_reasons[reason] = lost_customer_reasons.get(reason, 0) + 1
+        lost_customer_value += float(s.get('conversion_amount') or (s.get('onboarding_data') or {}).get('total_amount') or 0)
+    
+    total_lost_value = lost_lead_value + lost_customer_value
+    
+    # Additional school metrics
+    meeting_done_count = len([s for s in all_schools if s.get('status') == 'meeting_done'])
+    renewal_meeting_count = len([s for s in all_schools if s.get('status') == 'renewal_meeting'])
+    
     # Educators
     all_educators = await db.educator_applications.find({}, {"_id": 0}).to_list(10000)
     educators = [e for e in all_educators if is_in_range(e)]
@@ -542,7 +576,16 @@ async def get_user_stages_report(
         },
         "schools": {
             "total": len(schools),
-            "stages": [{"name": k, "count": v} for k, v in sorted(school_stages.items(), key=lambda x: -x[1])]
+            "stages": [{"name": k, "count": v} for k, v in sorted(school_stages.items(), key=lambda x: -x[1])],
+            "meeting_done": meeting_done_count,
+            "renewal_meeting": renewal_meeting_count,
+            "lost_leads": lost_lead_count,
+            "lost_customers": lost_customer_count,
+            "lost_lead_reasons": [{"name": k, "count": v} for k, v in sorted(lost_lead_reasons.items(), key=lambda x: -x[1])],
+            "lost_customer_reasons": [{"name": k, "count": v} for k, v in sorted(lost_customer_reasons.items(), key=lambda x: -x[1])],
+            "lost_lead_value": lost_lead_value,
+            "lost_customer_value": lost_customer_value,
+            "total_lost_value": total_lost_value,
         },
         "educators": {
             "total": len(educators),
@@ -1219,7 +1262,41 @@ async def get_public_report_data(
     converted_schools = len([s for s in schools if s.get('status') == 'converted'])
     active_schools = len([s for s in all_schools if s.get('status') == 'active'])
     renewed_schools = len([s for s in all_schools if s.get('status') == 'renewed'])
-    lost_schools = len([s for s in all_schools if s.get('status') in ['lost', 'lost_lead', 'lost_customer']])
+    renewal_meeting = len([s for s in all_schools if s.get('status') == 'renewal_meeting'])
+    
+    # Lost metrics with detailed breakdown
+    lost_leads = [s for s in all_schools if s.get('status') == 'lost_lead']
+    lost_customers = [s for s in all_schools if s.get('status') == 'lost_customer']
+    legacy_lost = [s for s in all_schools if s.get('status') == 'lost']
+    
+    lost_lead_count = len(lost_leads)
+    lost_customer_count = len(lost_customers) + len(legacy_lost)
+    lost_schools = lost_lead_count + lost_customer_count
+    
+    # Lost lead reasons breakdown
+    lost_lead_reasons = {}
+    lost_lead_value = 0
+    for s in lost_leads:
+        reason = s.get('lost_reason', 'Unknown')
+        if reason.startswith('custom:'):
+            reason = 'Other'
+        lost_lead_reasons[reason] = lost_lead_reasons.get(reason, 0) + 1
+        # Estimate value from quoted_price or expected deal size
+        lost_lead_value += float(s.get('quoted_price') or s.get('expected_value') or 0)
+    
+    # Lost customer reasons breakdown
+    lost_customer_reasons = {}
+    lost_customer_value = 0
+    for s in (lost_customers + legacy_lost):
+        reason = s.get('lost_reason', 'Unknown')
+        if reason.startswith('custom:'):
+            reason = 'Other'
+        lost_customer_reasons[reason] = lost_customer_reasons.get(reason, 0) + 1
+        # Get actual revenue that was lost
+        lost_customer_value += float(s.get('conversion_amount') or (s.get('onboarding_data') or {}).get('total_amount') or 0)
+    
+    total_lost_value = lost_lead_value + lost_customer_value
+    
     school_revenue = sum(float(s.get('conversion_amount') or (s.get('onboarding_data') or {}).get('total_amount') or 0) for s in all_schools if s.get('status') in ['converted', 'active', 'renewed'])
     
     # Educator metrics
@@ -1286,8 +1363,17 @@ async def get_public_report_data(
             "meeting_done": len([s for s in schools if s.get('status') == 'meeting_done']),
             "converted": converted_schools,
             "active": active_schools,
+            "renewal_meeting": renewal_meeting,
             "renewed": renewed_schools,
             "lost": lost_schools,
+            "lost_leads": lost_lead_count,
+            "lost_customers": lost_customer_count,
+            "lost_lead_reasons": [{"name": k, "count": v} for k, v in sorted(lost_lead_reasons.items(), key=lambda x: -x[1])],
+            "lost_customer_reasons": [{"name": k, "count": v} for k, v in sorted(lost_customer_reasons.items(), key=lambda x: -x[1])],
+            "lost_lead_value": lost_lead_value,
+            "lost_customer_value": lost_customer_value,
+            "total_lost_value": total_lost_value,
+            "revenue": school_revenue,
         },
         "educators": {
             "total": total_educators,

@@ -4,7 +4,7 @@ import {
   TrendingUp, Users, GraduationCap, Building2, DollarSign, 
   Calendar, RefreshCw, Lock, Eye, EyeOff, BarChart3,
   Briefcase, Handshake, Wallet, MessageSquare, Target,
-  TrendingDown, ArrowUpRight, ArrowDownRight
+  TrendingDown, ArrowUpRight, ArrowDownRight, PieChart, AlertCircle
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -131,6 +131,79 @@ const FunnelCard = ({ title, icon: Icon, color, stages, total }) => {
           />
         ))}
       </div>
+    </div>
+  );
+};
+
+// Simple Pie Chart Component (CSS-based)
+const SimplePieChart = ({ title, icon: Icon, data, emptyMessage = "No data" }) => {
+  const total = data?.reduce((sum, item) => sum + (item.count || 0), 0) || 0;
+  
+  // Colors for pie slices
+  const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b'];
+  
+  // Calculate percentages and angles
+  let cumulativePercent = 0;
+  const slices = data?.map((item, idx) => {
+    const percent = total > 0 ? (item.count / total) * 100 : 0;
+    const startPercent = cumulativePercent;
+    cumulativePercent += percent;
+    return {
+      ...item,
+      percent,
+      startPercent,
+      color: COLORS[idx % COLORS.length]
+    };
+  }) || [];
+
+  // Generate conic gradient for pie chart
+  const gradientStops = slices.map((slice, idx) => {
+    const start = slice.startPercent;
+    const end = start + slice.percent;
+    return `${slice.color} ${start}% ${end}%`;
+  }).join(', ');
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 p-5">
+      <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+        {Icon && <Icon className="w-5 h-5 text-red-500" />}
+        {title}
+      </h3>
+      
+      {total === 0 ? (
+        <div className="text-center py-8 text-slate-400">
+          <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+          <p className="text-sm">{emptyMessage}</p>
+        </div>
+      ) : (
+        <div className="flex flex-col md:flex-row items-center gap-6">
+          {/* Pie Chart */}
+          <div 
+            className="w-32 h-32 rounded-full flex-shrink-0"
+            style={{
+              background: gradientStops ? `conic-gradient(${gradientStops})` : '#e2e8f0'
+            }}
+          />
+          
+          {/* Legend */}
+          <div className="flex-1 space-y-2">
+            {slices.map((slice, idx) => (
+              <div key={idx} className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <span 
+                    className="w-3 h-3 rounded-full flex-shrink-0" 
+                    style={{ backgroundColor: slice.color }}
+                  />
+                  <span className="text-slate-600 truncate">{slice.name?.replace(/_/g, ' ') || 'Unknown'}</span>
+                </div>
+                <span className="font-medium text-slate-800 ml-2">
+                  {slice.count} ({Math.round(slice.percent)}%)
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -452,17 +525,99 @@ const PublicReports = () => {
     <div className="space-y-6">
       <h2 className="text-lg font-semibold text-slate-800">B2B - School Sales</h2>
       
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <StatCard title="Total Leads" value={schools?.total || 0} icon={Building2} color="purple" />
-        <StatCard title="Converted" value={schools?.converted || 0} icon={Target} color="orange" />
-        <StatCard title="Active" value={schools?.active || 0} icon={TrendingUp} color="green" />
-        <StatCard title="Renewed" value={schools?.renewed || 0} icon={RefreshCw} color="blue" />
-        <StatCard title="Lost" value={schools?.lost || 0} icon={TrendingDown} color="red" />
+      {/* Key Metrics - Row 1 */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+        <StatCard title="Total Leads" value={schools?.total || 0} icon={Building2} color="purple" small />
+        <StatCard title="Meeting Done" value={schools?.meeting_done || 0} icon={Calendar} color="blue" small />
+        <StatCard title="Converted" value={schools?.converted || 0} icon={Target} color="orange" small />
+        <StatCard title="Active" value={schools?.active || 0} icon={TrendingUp} color="green" small />
+        <StatCard title="Renewal Meeting" value={schools?.renewal_meeting || 0} icon={RefreshCw} color="cyan" small />
+        <StatCard title="Renewed" value={schools?.renewed || 0} icon={RefreshCw} color="blue" small />
+        <StatCard title="Total Lost" value={schools?.lost || 0} icon={TrendingDown} color="red" small />
+      </div>
+
+      {/* Lost Breakdown */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+            <TrendingDown className="w-5 h-5 text-red-500" />
+            Lost Overview
+          </h3>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
+              <span className="text-slate-600">Lost Leads</span>
+              <span className="text-xl font-bold text-red-500">{schools?.lost_leads || 0}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-red-100 rounded-lg">
+              <span className="text-slate-600">Lost Customers</span>
+              <span className="text-xl font-bold text-red-600">{schools?.lost_customers || 0}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg border border-orange-200">
+              <span className="text-slate-600">Potential Value Lost (Leads)</span>
+              <span className="text-lg font-bold text-orange-600">₹{(schools?.lost_lead_value || 0).toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-red-100 rounded-lg border border-red-200">
+              <span className="text-slate-600">Revenue Lost (Customers)</span>
+              <span className="text-lg font-bold text-red-700">₹{(schools?.lost_customer_value || 0).toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between items-center p-4 bg-red-200 rounded-lg border border-red-300">
+              <span className="font-medium text-red-800">Total Lost Value</span>
+              <span className="text-xl font-bold text-red-800">₹{(schools?.total_lost_value || 0).toLocaleString()}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+            <DollarSign className="w-5 h-5 text-green-500" />
+            Revenue Overview
+          </h3>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+              <span className="text-slate-600">Total School Revenue</span>
+              <span className="text-xl font-bold text-green-600">₹{(schools?.revenue || 0).toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+              <span className="text-slate-600">Avg. Deal Size</span>
+              <span className="text-xl font-bold text-blue-600">
+                ₹{schools?.converted > 0 ? Math.round((schools?.revenue || 0) / schools.converted).toLocaleString() : 0}
+              </span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
+              <span className="text-slate-600">Active Schools</span>
+              <span className="text-xl font-bold text-purple-600">{schools?.active || 0}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-emerald-50 rounded-lg">
+              <span className="text-slate-600">Renewal Rate</span>
+              <span className="text-xl font-bold text-emerald-600">
+                {((schools?.active || 0) + (schools?.renewed || 0) + (schools?.lost_customers || 0)) > 0 
+                  ? Math.round(((schools?.renewed || 0) / ((schools?.active || 0) + (schools?.renewed || 0) + (schools?.lost_customers || 0))) * 100)
+                  : 0}%
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Lost Reason Pie Charts */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <SimplePieChart 
+          title="Lost Lead Reasons" 
+          icon={PieChart}
+          data={schools?.lost_lead_reasons || []}
+          emptyMessage="No lost leads recorded"
+        />
+        <SimplePieChart 
+          title="Lost Customer Reasons" 
+          icon={PieChart}
+          data={schools?.lost_customer_reasons || []}
+          emptyMessage="No lost customers recorded"
+        />
       </div>
       
       {/* Stage Distribution */}
       <div className="bg-white rounded-2xl border border-slate-100 p-5">
-        <h3 className="font-semibold text-slate-800 mb-4">School Stage Distribution</h3>
+        <h3 className="font-semibold text-slate-800 mb-4">Complete Stage Distribution</h3>
         <div className="space-y-3">
           {schools?.stages?.map((stage, idx) => (
             <ProgressBar
@@ -470,7 +625,7 @@ const PublicReports = () => {
               label={stage.name}
               value={stage.count}
               total={schools?.total || 1}
-              color={['#9333ea', '#3b82f6', '#f97316', '#22c55e', '#10b981', '#ef4444', '#64748b'][idx % 7]}
+              color={['#9333ea', '#3b82f6', '#f97316', '#22c55e', '#10b981', '#06b6d4', '#ef4444', '#f43f5e', '#64748b'][idx % 9]}
             />
           ))}
         </div>
