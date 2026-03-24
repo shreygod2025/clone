@@ -42,10 +42,55 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - `student_payments` - Individual student payments
 - `school_student_payments` - School-based student payments
 - `school_onboarding` - Detailed onboarding records
+- `team_applications` - Team member applications (HR Pipeline)
 
 ---
 
 ## CHANGELOG
+
+### March 24, 2026
+
+#### P0: Team Member Applications Workflow Overhaul - Step 1 (COMPLETED)
+**New HR Pipeline:** `Applicant → Candidate → Onboarding → Active → Past Member / Rejected`
+
+**Backend Changes (server.py):**
+- Updated `TeamApplication` model with new statuses: `applicant`, `candidate`, `onboarding`, `active`, `past_member`, `rejected`
+- Added new pipeline fields:
+  - `telephonic_round`: Tracks telephonic interview (completed, outcome, reject_reason, notes)
+  - `hr_interview`: Tracks HR interview (scheduled, scheduled_at, completed, outcome, email_sent)
+  - `dept_head_interview`: Tracks dept head selection (assigned, dept_head_id, dept_head_name, notification_sent)
+  - `trial_period`: Tracks trial (duration: 1_week/1_month, start_date, end_date, extended, status)
+  - Onboarding fields: `welcome_email_sent`, `admin_account_created`, `admin_role_id`, `offer_letter_generated`, `offer_letter_url`
+  - Exit fields: `exit_date`, `exit_reason`, `account_deactivated`, `whatsapp_group_added`
+- New endpoints:
+  - `POST /api/team-applications/bulk-upload` - CSV bulk upload with validation
+  - `POST /api/team-applications/{id}/send-hr-interview-email` - HR interview notification
+  - `POST /api/team-applications/{id}/notify-dept-head` - Dept head assignment notification
+  - `POST /api/team-applications/{id}/send-welcome-email` - Welcome email for onboarding
+  - `POST /api/team-applications/{id}/create-account` - Create OLL admin account
+  - `POST /api/team-applications/{id}/generate-offer-letter` - Generate offer letter (placeholder)
+  - `POST /api/team-applications/{id}/whatsapp-group-notification` - WhatsApp group addition
+  - `POST /api/team-applications/{id}/deactivate-account` - Deactivate on exit
+
+**Frontend Changes (JoinTeamPage.jsx):**
+- Made Resume and City fields mandatory
+- Added validation errors: "Please upload your resume" and "Please select your city"
+
+**Frontend Changes (AdminTeamApplications.jsx):**
+- New status tabs: Applicants, Candidates, Onboarding, Active, Past Members, Rejected
+- Backward compatibility for legacy statuses (new, hired, interviewed, etc.)
+- New action buttons per stage:
+  - **Applicant:** Telephonic Round, Call, Reject
+  - **Candidate:** Schedule HR Interview, Select Dept Head, Move to Onboarding, Reject
+  - **Onboarding:** Send Welcome Email, Create OLL Account, Generate Offer, Start Trial, Extend Trial, Activate Member, Reject
+  - **Active:** Add to WhatsApp Group, Exit/Discontinue
+  - **Past Member/Rejected:** Restore to Applicant
+- New modals: Telephonic Round, HR Interview, Dept Head Selection, Welcome Email, Create Account, Offer Letter, Trial Period, Extend Trial, Bulk Upload
+- Template download button for CSV bulk upload
+
+**Testing:** 24/24 tests pass (iteration_55.json)
+
+---
 
 ### March 23, 2026 (Session 3)
 
