@@ -108,7 +108,18 @@ const JoinTeamPage = () => {
     e.preventDefault();
     
     if (!form.name || !form.email || !form.phone) {
-      toast.error('Please fill in all required fields');
+      toast.error('Please fill in all required fields (Name, Email, Phone)');
+      return;
+    }
+    
+    // Resume and City are now mandatory
+    if (!form.resume_url) {
+      toast.error('Please upload your resume');
+      return;
+    }
+    
+    if (!form.city) {
+      toast.error('Please select your city');
       return;
     }
 
@@ -339,7 +350,7 @@ const JoinTeamPage = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">City</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">City *</label>
                   <CitySearch
                     value={form.city}
                     onChange={(city) => setForm({ ...form, city })}
@@ -387,7 +398,7 @@ const JoinTeamPage = () => {
 
               {/* Resume Upload */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Resume</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Resume *</label>
                 {resumeFile || form.resume_url ? (
                   <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                     <FileText className="w-5 h-5 text-green-600" />

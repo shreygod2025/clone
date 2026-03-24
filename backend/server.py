@@ -1902,12 +1902,78 @@ class TeamApplication(BaseModel):
     resume_url: str = ""
     applied_position_id: str = ""
     message: str = ""
-    status: str = "new"  # new, contacted, interview_scheduled, interviewed, hired, rejected, archived
+    # Updated pipeline: applicant -> candidate -> onboarding -> active -> past_member / rejected
+    status: str = "applicant"  # applicant, candidate, onboarding, active, past_member, rejected
     comments: List[dict] = []
     notes: List[dict] = []
     source: str = "about_page"
     added_by: str = ""
     assigned_to: str = ""
+    
+    # Applicant Stage Fields (Telephonic Round)
+    telephonic_round: dict = Field(default_factory=lambda: {
+        "completed": False,
+        "completed_at": None,
+        "completed_by": None,
+        "outcome": None,  # "accepted", "rejected"
+        "reject_reason": None,
+        "notes": None
+    })
+    
+    # Candidate Stage Fields (HR Interview + Dept Head)
+    hr_interview: dict = Field(default_factory=lambda: {
+        "scheduled": False,
+        "scheduled_at": None,
+        "scheduled_by": None,
+        "completed": False,
+        "completed_at": None,
+        "outcome": None,  # "passed", "failed"
+        "notes": None,
+        "email_sent": False
+    })
+    dept_head_interview: dict = Field(default_factory=lambda: {
+        "assigned": False,
+        "dept_head_id": None,
+        "dept_head_name": None,
+        "scheduled_at": None,
+        "completed": False,
+        "completed_at": None,
+        "outcome": None,  # "selected", "not_selected"
+        "notes": None,
+        "notification_sent": False
+    })
+    
+    # Onboarding Stage Fields
+    welcome_email_sent: bool = False
+    welcome_email_sent_at: Optional[str] = None
+    admin_account_created: bool = False
+    admin_role_id: str = ""
+    admin_role_name: str = ""
+    offer_letter_generated: bool = False
+    offer_letter_url: str = ""
+    offer_letter_sent: bool = False
+    
+    # Trial Period Fields
+    trial_period: dict = Field(default_factory=lambda: {
+        "duration": "1_week",  # "1_week", "1_month"
+        "start_date": None,
+        "end_date": None,
+        "extended": False,
+        "extension_date": None,
+        "extension_reason": None,
+        "status": None  # "ongoing", "passed", "failed"
+    })
+    
+    # Activation Fields
+    whatsapp_group_added: bool = False
+    whatsapp_group_added_at: Optional[str] = None
+    activated_at: Optional[str] = None
+    
+    # Exit Fields (for past_member status)
+    exit_date: Optional[str] = None
+    exit_reason: str = ""
+    account_deactivated: bool = False
+    
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -1937,6 +2003,39 @@ class TeamApplicationUpdate(BaseModel):
     portfolio: Optional[str] = None
     resume_url: Optional[str] = None
     availability: Optional[str] = None
+    city: Optional[str] = None
+    role: Optional[str] = None
+    experience: Optional[str] = None
+    
+    # Applicant Stage
+    telephonic_round: Optional[dict] = None
+    
+    # Candidate Stage
+    hr_interview: Optional[dict] = None
+    dept_head_interview: Optional[dict] = None
+    
+    # Onboarding Stage
+    welcome_email_sent: Optional[bool] = None
+    welcome_email_sent_at: Optional[str] = None
+    admin_account_created: Optional[bool] = None
+    admin_role_id: Optional[str] = None
+    admin_role_name: Optional[str] = None
+    offer_letter_generated: Optional[bool] = None
+    offer_letter_url: Optional[str] = None
+    offer_letter_sent: Optional[bool] = None
+    
+    # Trial Period
+    trial_period: Optional[dict] = None
+    
+    # Activation
+    whatsapp_group_added: Optional[bool] = None
+    whatsapp_group_added_at: Optional[str] = None
+    activated_at: Optional[str] = None
+    
+    # Exit
+    exit_date: Optional[str] = None
+    exit_reason: Optional[str] = None
+    account_deactivated: Optional[bool] = None
 
 # Team Onboarding Model (for hired team members)
 class TeamOnboarding(BaseModel):
@@ -4535,6 +4634,412 @@ async def update_team_application(
     await db.team_applications.update_one({"id": application_id}, {"$set": update_data})
     application = await db.team_applications.find_one({"id": application_id}, {"_id": 0})
     return application
+
+# ========================
+# TEAM APPLICATION BULK UPLOAD
+# ========================
+
+@api_router.post("/team-applications/bulk-upload")
+async def bulk_upload_team_applications(
+    file: UploadFile = File(...),
+    user: dict = Depends(get_current_user)
+):
+    """Bulk upload team applications from CSV file"""
+    import csv
+    import io
+    
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="Only CSV files are supported")
+    
+    content = await file.read()
+    try:
+        decoded = content.decode('utf-8')
+    except UnicodeDecodeError:
+        decoded = content.decode('latin-1')
+    
+    reader = csv.DictReader(io.StringIO(decoded))
+    
+    success_count = 0
+    failed_count = 0
+    errors = []
+    
+    for row_num, row in enumerate(reader, start=2):  # Start at 2 to account for header row
+        try:
+            # Map CSV columns to application fields
+            name = row.get('Name*', row.get('Name', '')).strip()
+            email = row.get('Email*', row.get('Email', '')).strip()
+            phone = row.get('Phone*', row.get('Phone', '')).strip()
+            city = row.get('City*', row.get('City', '')).strip()
+            role = row.get('Role', '').strip()
+            experience = row.get('Experience', '').strip()
+            availability = row.get('Availability', '').strip()
+            linkedin = row.get('LinkedIn', '').strip()
+            portfolio = row.get('Portfolio', '').strip()
+            message = row.get('Message', '').strip()
+            
+            # Validate required fields
+            if not name:
+                errors.append(f"Row {row_num}: Name is required")
+                failed_count += 1
+                continue
+            if not email:
+                errors.append(f"Row {row_num}: Email is required")
+                failed_count += 1
+                continue
+            if not phone:
+                errors.append(f"Row {row_num}: Phone is required")
+                failed_count += 1
+                continue
+            if not city:
+                errors.append(f"Row {row_num}: City is required")
+                failed_count += 1
+                continue
+            
+            # Create application
+            application = TeamApplication(
+                name=name,
+                email=email,
+                phone=phone,
+                city=city,
+                role=role,
+                experience=experience,
+                availability=availability,
+                linkedin=linkedin,
+                portfolio=portfolio,
+                message=message,
+                source='bulk_upload',
+                added_by=user.get('id', '')
+            )
+            
+            doc = application.model_dump()
+            doc['created_at'] = doc['created_at'].isoformat()
+            doc['updated_at'] = doc['updated_at'].isoformat()
+            await db.team_applications.insert_one(doc)
+            success_count += 1
+            
+        except Exception as e:
+            errors.append(f"Row {row_num}: {str(e)}")
+            failed_count += 1
+    
+    return {
+        "success_count": success_count,
+        "failed_count": failed_count,
+        "errors": errors[:10]  # Limit errors to first 10
+    }
+
+# ========================
+# NEW PIPELINE ENDPOINTS
+# ========================
+
+@api_router.post("/team-applications/{application_id}/send-hr-interview-email")
+async def send_hr_interview_email(
+    application_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Send HR interview notification email"""
+    application = await db.team_applications.find_one({"id": application_id}, {"_id": 0})
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    if not application.get('email'):
+        raise HTTPException(status_code=400, detail="No email address for this application")
+    
+    scheduled_at = data.get('scheduled_at', '')
+    notes = data.get('notes', '')
+    
+    # Format date for email
+    try:
+        dt = datetime.fromisoformat(scheduled_at.replace('Z', '+00:00'))
+        formatted_date = dt.strftime('%B %d, %Y at %I:%M %p')
+    except:
+        formatted_date = scheduled_at
+    
+    # Send email using Resend
+    api_key = await ensure_resend_api_key()
+    if not api_key:
+        raise HTTPException(status_code=500, detail="Email service not configured")
+    
+    html_content = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #1E3A5F, #2C5282); padding: 30px; text-align: center;">
+            <h1 style="color: white; margin: 0;">HR Interview Scheduled</h1>
+        </div>
+        <div style="padding: 30px; background: #f8fafc;">
+            <p>Dear <strong>{application.get('name', 'Candidate')}</strong>,</p>
+            <p>We are pleased to inform you that your HR interview has been scheduled.</p>
+            <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <p><strong>Date & Time:</strong> {formatted_date}</p>
+                {f'<p><strong>Notes:</strong> {notes}</p>' if notes else ''}
+            </div>
+            <p>Please be available at the scheduled time. If you need to reschedule, please contact us.</p>
+            <p>Best regards,<br>OLL HR Team</p>
+        </div>
+    </div>
+    """
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {api_key}"},
+                json={
+                    "from": "OLL <info@oll.co>",
+                    "to": [application['email']],
+                    "subject": f"HR Interview Scheduled - {formatted_date}",
+                    "html": html_content,
+                    "reply_to": "info@oll.co"
+                }
+            )
+        return {"message": "Email sent", "status": response.status_code}
+    except Exception as e:
+        return {"message": "Email failed", "error": str(e)}
+
+@api_router.post("/team-applications/{application_id}/notify-dept-head")
+async def notify_dept_head(
+    application_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Notify department head about candidate interview"""
+    application = await db.team_applications.find_one({"id": application_id}, {"_id": 0})
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    dept_head_email = data.get('dept_head_email', '')
+    dept_head_name = data.get('dept_head_name', '')
+    applicant_name = data.get('applicant_name', application.get('name', ''))
+    role = data.get('role', application.get('role', ''))
+    
+    if not dept_head_email:
+        raise HTTPException(status_code=400, detail="Dept head email required")
+    
+    api_key = await ensure_resend_api_key()
+    if not api_key:
+        raise HTTPException(status_code=500, detail="Email service not configured")
+    
+    html_content = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #1E3A5F, #2C5282); padding: 30px; text-align: center;">
+            <h1 style="color: white; margin: 0;">Interview Assignment</h1>
+        </div>
+        <div style="padding: 30px; background: #f8fafc;">
+            <p>Dear <strong>{dept_head_name}</strong>,</p>
+            <p>You have been assigned to conduct a department interview for a candidate.</p>
+            <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <p><strong>Candidate:</strong> {applicant_name}</p>
+                <p><strong>Position:</strong> {role}</p>
+                <p><strong>Email:</strong> {application.get('email', 'N/A')}</p>
+                <p><strong>Phone:</strong> {application.get('phone', 'N/A')}</p>
+            </div>
+            <p>Please review the candidate's profile and schedule the interview at your convenience.</p>
+            <p>Best regards,<br>OLL HR Team</p>
+        </div>
+    </div>
+    """
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {api_key}"},
+                json={
+                    "from": "OLL <info@oll.co>",
+                    "to": [dept_head_email],
+                    "subject": f"Interview Assignment: {applicant_name} - {role}",
+                    "html": html_content,
+                    "reply_to": "info@oll.co"
+                }
+            )
+        return {"message": "Notification sent", "status": response.status_code}
+    except Exception as e:
+        return {"message": "Notification failed", "error": str(e)}
+
+@api_router.post("/team-applications/{application_id}/send-welcome-email")
+async def send_welcome_email(
+    application_id: str,
+    user: dict = Depends(get_current_user)
+):
+    """Send welcome email to new team member"""
+    application = await db.team_applications.find_one({"id": application_id}, {"_id": 0})
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    if not application.get('email'):
+        raise HTTPException(status_code=400, detail="No email address")
+    
+    api_key = await ensure_resend_api_key()
+    if not api_key:
+        raise HTTPException(status_code=500, detail="Email service not configured")
+    
+    html_content = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #1E3A5F, #2C5282); padding: 30px; text-align: center;">
+            <h1 style="color: white; margin: 0;">Welcome to OLL!</h1>
+        </div>
+        <div style="padding: 30px; background: #f8fafc;">
+            <p>Dear <strong>{application.get('name', 'Team Member')}</strong>,</p>
+            <p>Welcome aboard! We're thrilled to have you join the OLL team.</p>
+            <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: #1E3A5F; margin-top: 0;">Next Steps:</h3>
+                <ol>
+                    <li>Complete your onboarding documentation</li>
+                    <li>Set up your OLL admin account (credentials will be shared separately)</li>
+                    <li>Review the company policies and guidelines</li>
+                    <li>Connect with your team lead</li>
+                </ol>
+            </div>
+            <p>If you have any questions, feel free to reach out to the HR team.</p>
+            <p>We look forward to working with you!</p>
+            <p>Best regards,<br>OLL HR Team</p>
+        </div>
+        <div style="background: #1E3A5F; padding: 15px; text-align: center;">
+            <p style="color: white; margin: 0; font-size: 12px;">
+                OLL - Empowering India's Youth with Future-Ready Skills
+            </p>
+        </div>
+    </div>
+    """
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {api_key}"},
+                json={
+                    "from": "OLL <info@oll.co>",
+                    "to": [application['email']],
+                    "subject": "Welcome to OLL - Your Onboarding Journey Begins!",
+                    "html": html_content,
+                    "reply_to": "info@oll.co"
+                }
+            )
+        return {"message": "Welcome email sent", "status": response.status_code}
+    except Exception as e:
+        return {"message": "Email failed", "error": str(e)}
+
+@api_router.post("/team-applications/{application_id}/create-account")
+async def create_team_member_account(
+    application_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Create OLL admin account for team member"""
+    application = await db.team_applications.find_one({"id": application_id}, {"_id": 0})
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    role_id = data.get('role_id')
+    if not role_id:
+        raise HTTPException(status_code=400, detail="Role ID required")
+    
+    # Check if account already exists
+    existing = await db.team_users.find_one({"email": application.get('email')})
+    if existing:
+        raise HTTPException(status_code=400, detail="Account already exists for this email")
+    
+    # Get role details
+    role = await db.roles.find_one({"id": role_id}, {"_id": 0})
+    
+    # Generate username
+    username = application.get('email', '').split('@')[0] or application.get('name', '').lower().replace(' ', '_')
+    existing_username = await db.team_users.find_one({"username": username})
+    if existing_username:
+        username = f"{username}_{str(uuid.uuid4())[:4]}"
+    
+    # Generate temporary password
+    temp_password = str(uuid.uuid4())[:8]
+    
+    team_user = {
+        "id": str(uuid.uuid4()),
+        "email": application.get('email', f"{username}@oll.co"),
+        "name": application.get('name', ''),
+        "username": username,
+        "password_hash": bcrypt.hashpw(temp_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
+        "role_id": role_id,
+        "role_name": role.get('name', '') if role else '',
+        "city": application.get('city', ''),
+        "phone": application.get('phone', ''),
+        "permissions": role.get('permissions', []) if role else [],
+        "is_active": True,
+        "team_application_id": application_id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    
+    await db.team_users.insert_one(team_user)
+    
+    return {
+        "message": "Account created",
+        "team_user_id": team_user['id'],
+        "username": username,
+        "temp_password": temp_password
+    }
+
+@api_router.post("/team-applications/{application_id}/generate-offer-letter")
+async def generate_offer_letter(
+    application_id: str,
+    user: dict = Depends(get_current_user)
+):
+    """Generate offer letter PDF (placeholder - returns success)"""
+    application = await db.team_applications.find_one({"id": application_id}, {"_id": 0})
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    # TODO: Implement actual PDF generation with ReportLab
+    # For now, return success status
+    return {
+        "message": "Offer letter generation initiated",
+        "url": None  # Would be Cloudinary URL in full implementation
+    }
+
+@api_router.post("/team-applications/{application_id}/whatsapp-group-notification")
+async def send_whatsapp_group_notification(
+    application_id: str,
+    user: dict = Depends(get_current_user)
+):
+    """Send WhatsApp notification about group addition"""
+    application = await db.team_applications.find_one({"id": application_id}, {"_id": 0})
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    phone = application.get('phone', '')
+    if not phone:
+        raise HTTPException(status_code=400, detail="No phone number")
+    
+    # Send WhatsApp notification
+    try:
+        await send_whatsapp_notification(
+            phone,
+            "team_group_addition",
+            {
+                "name": application.get('name', 'Team Member'),
+                "role": application.get('role', 'Team Member')
+            }
+        )
+        return {"message": "WhatsApp notification sent"}
+    except Exception as e:
+        return {"message": "Notification failed", "error": str(e)}
+
+@api_router.post("/team-applications/{application_id}/deactivate-account")
+async def deactivate_team_account(
+    application_id: str,
+    user: dict = Depends(get_current_user)
+):
+    """Deactivate team user account when member exits"""
+    application = await db.team_applications.find_one({"id": application_id}, {"_id": 0})
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    # Find and deactivate team user by email
+    email = application.get('email', '')
+    if email:
+        await db.team_users.update_one(
+            {"email": email},
+            {"$set": {"is_active": False, "deactivated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+    
+    return {"message": "Account deactivated"}
 
 # ========================
 # TEAM ONBOARDING ENDPOINTS
@@ -7382,7 +7887,7 @@ async def notify_educators_new_requirement(requirement: dict):
             return
 
         req_id = requirement.get("id", "")
-        frontend_url = os.environ.get("FRONTEND_URL", "https://oll-education-crm.preview.emergentagent.com")
+        frontend_url = os.environ.get("FRONTEND_URL", "https://team-onboarding-hub-1.preview.emergentagent.com")
         apply_link = f"{frontend_url}/educator/apply/{req_id}"
 
         pay_text = ""
