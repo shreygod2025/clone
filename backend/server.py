@@ -254,7 +254,7 @@ async def send_whatsapp_notification(
             "apiKey": AISENSY_API_KEY,
             "campaignName": campaign_name,
             "destination": phone_number,
-            "userName": user_name or "Clone Futura Live Solutions Ltd",
+            "userName": "Clone Futura Live Solutions Ltd",
             "templateParams": params or [],
             "source": "OLL Platform",
             "media": {},
@@ -266,6 +266,8 @@ async def send_whatsapp_notification(
                 "FirstName": "user"
             }
         }
+        
+        print(f"[WhatsApp] Sending {template_key} to {phone_number} - Campaign: {campaign_name} - Params: {params}")
         
         async with httpx.AsyncClient() as http_client:
             response = await http_client.post(
@@ -8451,24 +8453,28 @@ async def assign_support_query(query_id: str, data: dict, user: dict = Depends(g
         
         # Send WhatsApp notification
         # The support_ticket_added template expects: [Name, TicketID, Subject, Priority, CustomerName]
-        if assignee_phone:
+        if assignee_phone and assignee_phone not in ['None', '', 'null']:
             try:
                 ticket_id = query_id[:8].upper()
                 subject = query.get("query_type", "Support Request")
                 priority = query.get("priority", "normal").upper()
                 customer_name = query.get("name", "Customer")
                 
+                print(f"[ASSIGN] Sending WhatsApp to {assignee_phone} with params: [{assignee_name}, {ticket_id}, {subject}, {priority}, {customer_name}]")
+                
                 result = await send_whatsapp_notification(
                     assignee_phone,
                     "ticket_assigned",
                     params=[assignee_name, ticket_id, subject, priority, customer_name],
-                    user_name=assignee_name
+                    user_name="Clone Futura Live Solutions Ltd"
                 )
                 print(f"[ASSIGN] WhatsApp result: {result}")
             except Exception as e:
                 print(f"[ASSIGN] Failed to send WhatsApp: {e}")
+                import traceback
+                traceback.print_exc()
         else:
-            print(f"[ASSIGN] No phone number for {assignee_name}, skipping WhatsApp")
+            print(f"[ASSIGN] Skipping WhatsApp - no phone for {assignee_name} (phone={assignee_phone})")
         
         # Send Email notification using resend
         if assignee_email and resend.api_key:
