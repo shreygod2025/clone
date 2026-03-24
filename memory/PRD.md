@@ -90,6 +90,28 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 **Testing:** 24/24 tests pass (iteration_55.json)
 
+#### P0: Team Member Applications Workflow Overhaul - Step 2 (COMPLETED)
+**Candidate Stage Interview Outcome Tracking**
+
+**Frontend Changes (AdminTeamApplications.jsx):**
+- **HR Interview Outcome Modal:** Passed/Failed buttons with auto-reject warning for failed
+- **Dept Head Interview Outcome Modal:** Selected/Not Selected buttons with auto-reject warning for not_selected
+- **Status Indicators:** 
+  - Green checkmark with "HR: Passed" or "Dept: Selected" for positive outcomes
+  - Red X with "HR: Failed" or "Dept: Not Selected" for negative outcomes
+- **"Move to Onboarding" Button:** Only appears when BOTH HR Interview passed AND Dept Head selected
+- **Auto-Rejection:** Marking HR as "Failed" or Dept Head as "Not Selected" automatically moves application to "rejected" status
+
+**New State Variables:**
+- `showHROutcomeModal`, `hrOutcomeData` - For HR interview result modal
+- `showDeptHeadOutcomeModal`, `deptHeadOutcomeData` - For Dept Head interview result modal
+
+**Handler Functions:**
+- `handleHROutcome()` - Updates hr_interview.completed, hr_interview.outcome, auto-rejects if failed
+- `handleDeptHeadOutcome()` - Updates dept_head_interview.completed, dept_head_interview.outcome, auto-rejects if not_selected
+
+**Testing:** 11/11 tests pass (iteration_56.json)
+
 ---
 
 ### March 23, 2026 (Session 3)
