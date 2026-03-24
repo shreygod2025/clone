@@ -134,6 +134,7 @@ const AdminEducators = () => {
     fetchEducators();
     fetchTeamUsers();
     fetchRequirements();
+    fetchOnboardingProgress(); // Pre-fetch so Onboarding tab count is correct on initial load
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1341,10 +1342,10 @@ const AdminEducators = () => {
                     HR Round Done — Pending Tech Demo
                   </p>
                 )}
-                {educator.onboarding_date && (
+                {educator.onboarding_date && ['onboarded', 'active', 'onboarding'].includes(educator.status) && (
                   <p className="flex items-center gap-1 text-green-600 font-medium">
                     <CheckCircle2 className="w-3 h-3" />
-                    Onboarded: {educator.onboarding_date}
+                    Onboarded: {educator.onboarding_date?.split('T')[0]}
                   </p>
                 )}
               </div>

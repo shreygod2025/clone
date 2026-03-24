@@ -911,3 +911,10 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 - server.py: 17,907 → 15,704 lines (−2,203 lines, −12.3%)
 - All routes registered (315 total). Tested: 37/37 backend tests pass (iteration_48). All 4 module groups verified HTTP 200.
 
+### 2026-03-24 — Educator List Rendering Bug Fix
+- **Fixed P0 bug**: Onboarding tab count was showing 0 on initial page load
+- **Root cause**: `fetchOnboardingProgress()` was only called when the Onboarding tab was clicked, so `onboardingData` was empty `[]` on first render. Badge count used `onboardingData.length` which returned 0.
+- **Fix 1**: Added `fetchOnboardingProgress()` to the initial `useEffect` (component mount) in `AdminEducators.jsx` — now Onboarding count shows correctly (19) on page load.
+- **Fix 2**: Added status guard to "Onboarded: date" label — only shown for educators with status `onboarded`/`active`/`onboarding` (was incorrectly showing on `new` status applicants)
+- **Fix 3**: Format `onboarding_date` using `?.split('T')[0]` to handle both date-only and full ISO datetime strings
+
