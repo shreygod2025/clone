@@ -292,6 +292,10 @@ const PublicReports = () => {
   const [customDateRange, setCustomDateRange] = useState({ start: '', end: '' });
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [selectedYear, setSelectedYear] = useState(String(new Date().getFullYear()));
+  const [selectedWeek, setSelectedWeek] = useState(format(new Date(), "yyyy-'W'ww"));
+  
+  // B2B year filter (separate from main filter)
+  const [b2bYear, setB2bYear] = useState(String(new Date().getFullYear()));
 
   // Check for existing access token
   useEffect(() => {
@@ -307,6 +311,20 @@ const PublicReports = () => {
     let params = {};
     if (dateFilterType === 'custom' && customDateRange.start && customDateRange.end) {
       params = { start_date: customDateRange.start, end_date: customDateRange.end };
+    } else if (dateFilterType === 'week' && selectedWeek) {
+      // Parse week format YYYY-Www
+      const [yearStr, weekStr] = selectedWeek.split('-W');
+      const year = parseInt(yearStr);
+      const week = parseInt(weekStr);
+      // Calculate start of week (Monday)
+      const jan1 = new Date(year, 0, 1);
+      const daysOffset = (week - 1) * 7;
+      const dayOfWeek = jan1.getDay();
+      const startOffset = dayOfWeek <= 4 ? 1 - dayOfWeek : 8 - dayOfWeek;
+      const startDate = new Date(year, 0, 1 + startOffset + daysOffset);
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + 6);
+      params = { start_date: format(startDate, 'yyyy-MM-dd'), end_date: format(endDate, 'yyyy-MM-dd') };
     } else if (dateFilterType === 'month' && selectedMonth) {
       const [year, month] = selectedMonth.split('-');
       const start = startOfMonth(new Date(parseInt(year), parseInt(month) - 1));
@@ -318,7 +336,7 @@ const PublicReports = () => {
       params = { start_date: format(start, 'yyyy-MM-dd'), end_date: format(end, 'yyyy-MM-dd') };
     }
     return params;
-  }, [dateFilterType, customDateRange, selectedMonth, selectedYear]);
+  }, [dateFilterType, customDateRange, selectedMonth, selectedYear, selectedWeek]);
 
   const fetchData = useCallback(async () => {
     if (!accessToken) return;
@@ -370,6 +388,7 @@ const PublicReports = () => {
       {/* Filter Type Selector */}
       <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
         {[
+          { value: 'week', label: 'Week' },
           { value: 'month', label: 'Month' },
           { value: 'year', label: 'Year' },
           { value: 'custom', label: 'Custom' },
@@ -385,6 +404,16 @@ const PublicReports = () => {
           </button>
         ))}
       </div>
+      
+      {/* Week Selector */}
+      {dateFilterType === 'week' && (
+        <input
+          type="week"
+          value={selectedWeek}
+          onChange={(e) => setSelectedWeek(e.target.value)}
+          className="px-3 py-2 border border-slate-200 rounded-lg text-sm"
+        />
+      )}
       
       {/* Month Selector */}
       {dateFilterType === 'month' && (
@@ -521,196 +550,222 @@ const PublicReports = () => {
     </div>
   );
 
-  const renderB2BTab = () => (
-    <div className="space-y-6">
-      <h2 className="text-lg font-semibold text-slate-800">B2B - School Sales</h2>
-      
-      {/* Key Metrics - Row 1 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-        <StatCard title="Total Leads" value={schools?.total || 0} icon={Building2} color="purple" small />
-        <StatCard title="Meeting Done" value={schools?.meeting_done || 0} icon={Calendar} color="blue" small />
-        <StatCard title="Converted" value={schools?.converted || 0} icon={Target} color="orange" small />
-        <StatCard title="Active" value={schools?.active || 0} icon={TrendingUp} color="green" small />
-        <StatCard title="Renewal Meeting" value={schools?.renewal_meeting || 0} icon={RefreshCw} color="cyan" small />
-        <StatCard title="Renewed" value={schools?.renewed || 0} icon={RefreshCw} color="blue" small />
-        <StatCard title="Total Lost" value={schools?.lost || 0} icon={TrendingDown} color="red" small />
-      </div>
+  const renderB2BTab = () => {
+    // Calculate KPI values
+    const schoolRevenue = schools?.revenue || 0;
+    const conversions = (schools?.converted || 0) + (schools?.active || 0) + (schools?.renewed || 0);
+    const totalLeads = schools?.total || 0;
+    const conversionRatio = totalLeads > 0 ? Math.round((conversions / totalLeads) * 100) : 0;
+    const pipelineValue = (schools?.meeting_done || 0) * 50000; // Estimated pipeline
+    const totalLostValue = schools?.total_lost_value || 0;
+    
+    return (
+      <div className="space-y-6">
+        {/* Header with Year Filter */}
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-semibold text-slate-800">B2B - School Sales</h2>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-slate-500">Year:</span>
+            <select
+              value={b2bYear}
+              onChange={(e) => setB2bYear(e.target.value)}
+              className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-medium"
+            >
+              {YEAR_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
 
-      {/* New vs Renewal + City Division */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* New Schools vs Renewal Pie Chart */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-5">
-          <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-            <PieChart className="w-5 h-5 text-purple-500" />
-            New Schools vs Renewals
-          </h3>
-          {(() => {
-            const newCount = schools?.new_vs_renewal?.new || 0;
-            const renewalCount = schools?.new_vs_renewal?.renewal || 0;
-            const total = newCount + renewalCount;
-            if (total === 0) return <p className="text-sm text-slate-400 py-4 text-center">No data available</p>;
-            
-            // Calculate percentages for CSS pie
-            const newPercent = (newCount / total) * 100;
-            const renewalPercent = (renewalCount / total) * 100;
-            
-            return (
-              <div className="flex items-center gap-6">
-                {/* CSS Pie Chart */}
-                <div 
-                  className="w-32 h-32 rounded-full flex-shrink-0"
-                  style={{
-                    background: `conic-gradient(#3b82f6 0% ${newPercent}%, #22c55e ${newPercent}% 100%)`
-                  }}
-                />
-                {/* Legend */}
-                <div className="flex-1 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-blue-500" />
-                    <span className="text-sm text-slate-600">New Schools</span>
-                    <span className="ml-auto font-bold text-blue-600">{newCount}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-green-500" />
-                    <span className="text-sm text-slate-600">Renewals</span>
-                    <span className="ml-auto font-bold text-green-600">{renewalCount}</span>
-                  </div>
-                  <div className="pt-2 border-t border-slate-100">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-500">Total</span>
-                      <span className="font-bold text-slate-800">{total}</span>
+        {/* Row 1: 5 Key KPI Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <StatCard title="Revenue Generated" value={`₹${schoolRevenue.toLocaleString()}`} icon={DollarSign} color="green" />
+          <StatCard title="Conversions" value={conversions} subtitle="converted + active + renewed" icon={Target} color="orange" />
+          <StatCard title="Conversion Ratio" value={`${conversionRatio}%`} subtitle="of total leads" icon={TrendingUp} color="blue" />
+          <StatCard title="Value Pipeline" value={`₹${pipelineValue.toLocaleString()}`} subtitle="in-progress deals" icon={Briefcase} color="purple" />
+          <StatCard title="Lost Value" value={`₹${totalLostValue.toLocaleString()}`} subtitle="leads + customers" icon={TrendingDown} color="red" />
+        </div>
+
+        {/* Row 2: Stage Distribution Metrics */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+          <StatCard title="Total Leads" value={schools?.total || 0} icon={Building2} color="purple" small />
+          <StatCard title="Meeting Done" value={schools?.meeting_done || 0} icon={Calendar} color="blue" small />
+          <StatCard title="Converted" value={schools?.converted || 0} icon={Target} color="orange" small />
+          <StatCard title="Active" value={schools?.active || 0} icon={TrendingUp} color="green" small />
+          <StatCard title="Renewal Meeting" value={schools?.renewal_meeting || 0} icon={RefreshCw} color="cyan" small />
+          <StatCard title="Renewed" value={schools?.renewed || 0} icon={RefreshCw} color="blue" small />
+          <StatCard title="Total Lost" value={schools?.lost || 0} icon={TrendingDown} color="red" small />
+        </div>
+
+        {/* New vs Renewal + City Division */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* New Schools vs Renewal Pie Chart */}
+          <div className="bg-white rounded-2xl border border-slate-100 p-5">
+            <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+              <PieChart className="w-5 h-5 text-purple-500" />
+              New Schools vs Renewals
+            </h3>
+            {(() => {
+              const newCount = schools?.new_vs_renewal?.new || 0;
+              const renewalCount = schools?.new_vs_renewal?.renewal || 0;
+              const total = newCount + renewalCount;
+              if (total === 0) return <p className="text-sm text-slate-400 py-4 text-center">No data available</p>;
+              
+              const newPercent = (newCount / total) * 100;
+              
+              return (
+                <div className="flex items-center gap-6">
+                  <div 
+                    className="w-32 h-32 rounded-full flex-shrink-0"
+                    style={{
+                      background: `conic-gradient(#3b82f6 0% ${newPercent}%, #22c55e ${newPercent}% 100%)`
+                    }}
+                  />
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-blue-500" />
+                      <span className="text-sm text-slate-600">New Schools</span>
+                      <span className="ml-auto font-bold text-blue-600">{newCount}</span>
                     </div>
-                    <div className="flex justify-between text-sm mt-1">
-                      <span className="text-slate-500">Renewal Rate</span>
-                      <span className="font-bold text-green-600">{total > 0 ? Math.round(renewalCount / total * 100) : 0}%</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-green-500" />
+                      <span className="text-sm text-slate-600">Renewals</span>
+                      <span className="ml-auto font-bold text-green-600">{renewalCount}</span>
+                    </div>
+                    <div className="pt-2 border-t border-slate-100">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-slate-500">Total</span>
+                        <span className="font-bold text-slate-800">{total}</span>
+                      </div>
+                      <div className="flex justify-between text-sm mt-1">
+                        <span className="text-slate-500">Renewal Rate</span>
+                        <span className="font-bold text-green-600">{total > 0 ? Math.round(renewalCount / total * 100) : 0}%</span>
+                      </div>
                     </div>
                   </div>
                 </div>
+              );
+            })()}
+          </div>
+
+          {/* City Division of Customers */}
+          <div className="bg-white rounded-2xl border border-slate-100 p-5">
+            <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-orange-500" />
+              City Division of Customers
+            </h3>
+            {(!schools?.customer_cities?.length) ? (
+              <p className="text-sm text-slate-400 py-4 text-center">No city data available</p>
+            ) : (
+              <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+                {schools.customer_cities.map((city, i) => (
+                  <ProgressBar
+                    key={i}
+                    label={city.name}
+                    value={city.count}
+                    total={schools.customer_cities.reduce((s, x) => s + x.count, 0)}
+                    color={['#f97316','#3b82f6','#9333ea','#22c55e','#06b6d4','#ec4899','#eab308','#14b8a6','#8b5cf6','#f43f5e'][i % 10]}
+                  />
+                ))}
               </div>
-            );
-          })()}
+            )}
+          </div>
         </div>
 
-        {/* City Division of Customers */}
-        <div className="bg-white rounded-2xl border border-slate-100 p-5">
-          <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-            <MapPin className="w-5 h-5 text-orange-500" />
-            City Division of Customers
-          </h3>
-          {(!schools?.customer_cities?.length) ? (
-            <p className="text-sm text-slate-400 py-4 text-center">No city data available</p>
-          ) : (
-            <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
-              {schools.customer_cities.map((city, i) => (
-                <ProgressBar
-                  key={i}
-                  label={city.name}
-                  value={city.count}
-                  total={schools.customer_cities.reduce((s, x) => s + x.count, 0)}
-                  color={['#f97316','#3b82f6','#9333ea','#22c55e','#06b6d4','#ec4899','#eab308','#14b8a6','#8b5cf6','#f43f5e'][i % 10]}
-                />
-              ))}
+        {/* Revenue + Lost Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="bg-white rounded-2xl border border-slate-100 p-5">
+            <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+              <DollarSign className="w-5 h-5 text-green-500" />
+              Revenue Overview
+            </h3>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                <span className="text-slate-600">Total School Revenue</span>
+                <span className="text-xl font-bold text-green-600">₹{schoolRevenue.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                <span className="text-slate-600">Avg. Deal Size</span>
+                <span className="text-xl font-bold text-blue-600">
+                  ₹{conversions > 0 ? Math.round(schoolRevenue / conversions).toLocaleString() : 0}
+                </span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
+                <span className="text-slate-600">Active Schools</span>
+                <span className="text-xl font-bold text-purple-600">{schools?.active || 0}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-emerald-50 rounded-lg">
+                <span className="text-slate-600">Renewal Rate</span>
+                <span className="text-xl font-bold text-emerald-600">
+                  {((schools?.active || 0) + (schools?.renewed || 0) + (schools?.lost_customers || 0)) > 0 
+                    ? Math.round(((schools?.renewed || 0) / ((schools?.active || 0) + (schools?.renewed || 0) + (schools?.lost_customers || 0))) * 100)
+                    : 0}%
+                </span>
+              </div>
             </div>
-          )}
-        </div>
-      </div>
+          </div>
 
-      {/* Lost Breakdown */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white rounded-2xl border border-slate-100 p-5">
-          <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-            <TrendingDown className="w-5 h-5 text-red-500" />
-            Lost Overview
-          </h3>
-          <div className="space-y-3">
-            <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
-              <span className="text-slate-600">Lost Leads</span>
-              <span className="text-xl font-bold text-red-500">{schools?.lost_leads || 0}</span>
-            </div>
-            <div className="flex justify-between items-center p-3 bg-red-100 rounded-lg">
-              <span className="text-slate-600">Lost Customers</span>
-              <span className="text-xl font-bold text-red-600">{schools?.lost_customers || 0}</span>
-            </div>
-            <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg border border-orange-200">
-              <span className="text-slate-600">Potential Value Lost (Leads)</span>
-              <span className="text-lg font-bold text-orange-600">₹{(schools?.lost_lead_value || 0).toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between items-center p-3 bg-red-100 rounded-lg border border-red-200">
-              <span className="text-slate-600">Revenue Lost (Customers)</span>
-              <span className="text-lg font-bold text-red-700">₹{(schools?.lost_customer_value || 0).toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between items-center p-4 bg-red-200 rounded-lg border border-red-300">
-              <span className="font-medium text-red-800">Total Lost Value</span>
-              <span className="text-xl font-bold text-red-800">₹{(schools?.total_lost_value || 0).toLocaleString()}</span>
+          <div className="bg-white rounded-2xl border border-slate-100 p-5">
+            <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+              <TrendingDown className="w-5 h-5 text-red-500" />
+              Lost Overview
+            </h3>
+            <div className="space-y-3">
+              <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
+                <span className="text-slate-600">Lost Leads</span>
+                <span className="text-xl font-bold text-red-500">{schools?.lost_leads || 0}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-red-100 rounded-lg">
+                <span className="text-slate-600">Lost Customers</span>
+                <span className="text-xl font-bold text-red-600">{schools?.lost_customers || 0}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg border border-orange-200">
+                <span className="text-slate-600">Potential Value Lost (Leads)</span>
+                <span className="text-lg font-bold text-orange-600">₹{(schools?.lost_lead_value || 0).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-red-100 rounded-lg border border-red-200">
+                <span className="text-slate-600">Revenue Lost (Customers)</span>
+                <span className="text-lg font-bold text-red-700">₹{(schools?.lost_customer_value || 0).toLocaleString()}</span>
+              </div>
             </div>
           </div>
         </div>
 
+        {/* Lost Reason Pie Charts */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <SimplePieChart 
+            title="Lost Lead Reasons" 
+            icon={PieChart}
+            data={schools?.lost_lead_reasons || []}
+            emptyMessage="No lost leads recorded"
+          />
+          <SimplePieChart 
+            title="Lost Customer Reasons" 
+            icon={PieChart}
+            data={schools?.lost_customer_reasons || []}
+            emptyMessage="No lost customers recorded"
+          />
+        </div>
+        
+        {/* Stage Distribution */}
         <div className="bg-white rounded-2xl border border-slate-100 p-5">
-          <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-            <DollarSign className="w-5 h-5 text-green-500" />
-            Revenue Overview
-          </h3>
+          <h3 className="font-semibold text-slate-800 mb-4">Complete Stage Distribution</h3>
           <div className="space-y-3">
-            <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-              <span className="text-slate-600">Total School Revenue</span>
-              <span className="text-xl font-bold text-green-600">₹{(schools?.revenue || 0).toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-              <span className="text-slate-600">Avg. Deal Size</span>
-              <span className="text-xl font-bold text-blue-600">
-                ₹{schools?.converted > 0 ? Math.round((schools?.revenue || 0) / schools.converted).toLocaleString() : 0}
-              </span>
-            </div>
-            <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
-              <span className="text-slate-600">Active Schools</span>
-              <span className="text-xl font-bold text-purple-600">{schools?.active || 0}</span>
-            </div>
-            <div className="flex justify-between items-center p-3 bg-emerald-50 rounded-lg">
-              <span className="text-slate-600">Renewal Rate</span>
-              <span className="text-xl font-bold text-emerald-600">
-                {((schools?.active || 0) + (schools?.renewed || 0) + (schools?.lost_customers || 0)) > 0 
-                  ? Math.round(((schools?.renewed || 0) / ((schools?.active || 0) + (schools?.renewed || 0) + (schools?.lost_customers || 0))) * 100)
-                  : 0}%
-              </span>
-            </div>
+            {schools?.stages?.map((stage, idx) => (
+              <ProgressBar
+                key={idx}
+                label={stage.name}
+                value={stage.count}
+                total={schools?.total || 1}
+                color={['#9333ea', '#3b82f6', '#f97316', '#22c55e', '#10b981', '#06b6d4', '#ef4444', '#f43f5e', '#64748b'][idx % 9]}
+              />
+            ))}
           </div>
         </div>
       </div>
-
-      {/* Lost Reason Pie Charts */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <SimplePieChart 
-          title="Lost Lead Reasons" 
-          icon={PieChart}
-          data={schools?.lost_lead_reasons || []}
-          emptyMessage="No lost leads recorded"
-        />
-        <SimplePieChart 
-          title="Lost Customer Reasons" 
-          icon={PieChart}
-          data={schools?.lost_customer_reasons || []}
-          emptyMessage="No lost customers recorded"
-        />
-      </div>
-      
-      {/* Stage Distribution */}
-      <div className="bg-white rounded-2xl border border-slate-100 p-5">
-        <h3 className="font-semibold text-slate-800 mb-4">Complete Stage Distribution</h3>
-        <div className="space-y-3">
-          {schools?.stages?.map((stage, idx) => (
-            <ProgressBar
-              key={idx}
-              label={stage.name}
-              value={stage.count}
-              total={schools?.total || 1}
-              color={['#9333ea', '#3b82f6', '#f97316', '#22c55e', '#10b981', '#06b6d4', '#ef4444', '#f43f5e', '#64748b'][idx % 9]}
-            />
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const renderHRTeamTab = () => (
     <div className="space-y-6">
