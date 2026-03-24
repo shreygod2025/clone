@@ -14153,10 +14153,20 @@ app.include_router(api_router)
 # Note: Static files mount removed - files are now served from MongoDB via /api/files/{filename}
 # For backward compatibility, /api/uploads/{filename} redirects to /api/files/{filename}
 
+# CORS: when env is '*' use allow_origin_regex so it works with allow_credentials=True
+_cors_origins_raw = os.environ.get('CORS_ORIGINS', '*').strip().strip('"\'')
+if _cors_origins_raw == '*':
+    _allow_origins = []
+    _allow_origin_regex = r'.*'
+else:
+    _allow_origins = [o.strip() for o in _cors_origins_raw.split(',')]
+    _allow_origin_regex = None
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=_allow_origins,
+    allow_origin_regex=_allow_origin_regex,
     allow_methods=["*"],
     allow_headers=["*"],
 )
