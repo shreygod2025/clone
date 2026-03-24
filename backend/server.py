@@ -233,15 +233,20 @@ async def send_whatsapp_notification(
     Returns:
         dict with success status and message
     """
+    # Validate phone number first
+    if not phone or str(phone).strip() in ['', 'None', 'null', 'undefined']:
+        print(f"[WhatsApp] Skipped {template_key} - invalid phone: {phone}")
+        return {"success": False, "message": "Invalid or missing phone number"}
+    
     AISENSY_API_KEY = os.environ.get("AISENSY_API_KEY", "")
     
     if not AISENSY_API_KEY:
-        print("WhatsApp notification skipped - API key not configured")
+        print("[WhatsApp] Skipped - API key not configured")
         return {"success": False, "message": "API key not configured"}
     
     campaign_name = WHATSAPP_TEMPLATES.get(template_key)
     if not campaign_name:
-        print(f"Unknown template key: {template_key}")
+        print(f"[WhatsApp] Unknown template key: {template_key}")
         return {"success": False, "message": f"Unknown template: {template_key}"}
     
     try:
