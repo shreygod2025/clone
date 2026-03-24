@@ -537,6 +537,143 @@ async def send_school_meeting_reminder_2h(school: dict, sales_manager: dict):
 
 
 # ========================
+# SCHEDULED CHECK FUNCTIONS
+# ========================
+
+async def check_overdue_tickets():
+    """Check for support tickets that are overdue (>48 hours) and send notifications"""
+    print("[SCHEDULER] Checking for overdue support tickets...")
+    try:
+        from datetime import datetime, timezone, timedelta
+        
+        # Find tickets that are:
+        # 1. Status is not 'resolved' or 'closed'
+        # 2. Created more than 48 hours ago
+        # 3. Not already marked as overdue_notified
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=48)
+        
+        overdue_tickets = await db.support_queries.find({
+            "status": {"$nin": ["resolved", "closed"]},
+            "created_at": {"$lt": cutoff_time.isoformat()},
+            "overdue_notified": {"$ne": True}
+        }).to_list(100)
+        
+        print(f"[SCHEDULER] Found {len(overdue_tickets)} overdue tickets")
+        
+        # Get admin phones for admin notifications
+        admin_phones_doc = await db.settings.find_one({"key": "admin_notification_phones"})
+        admin_phones = admin_phones_doc.get("value", []) if admin_phones_doc else []
+        
+        for ticket in overdue_tickets:
+            ticket.pop('_id', None)
+            
+            # Send notification to assignee
+            if ticket.get("assigned_to"):
+                assignee = await db.team_users.find_one({"id": ticket["assigned_to"]}, {"_id": 0})
+                if assignee:
+                    await send_ticket_overdue_notification(ticket, assignee)
+            
+            # Send notification to admins
+            if admin_phones:
+                await send_ticket_overdue_admin_notification(ticket, admin_phones)
+            
+            # Mark as notified
+            await db.support_queries.update_one(
+                {"id": ticket["id"]},
+                {"$set": {"overdue_notified": True, "overdue_notified_at": datetime.now(timezone.utc).isoformat()}}
+            )
+        
+        print(f"[SCHEDULER] Overdue ticket check complete - {len(overdue_tickets)} notified")
+    except Exception as e:
+        print(f"[SCHEDULER] Error checking overdue tickets: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+async def check_school_meeting_reminders():
+    """Check for upcoming school meetings and send reminders"""
+    print("[SCHEDULER] Checking for school meeting reminders...")
+    try:
+        from datetime import datetime, timezone, timedelta
+        
+        now = datetime.now(timezone.utc)
+        
+        # Check for meetings in the next 24-25 hours (for 24h reminder)
+        reminder_24h_start = now + timedelta(hours=23)
+        reminder_24h_end = now + timedelta(hours=25)
+        
+        # Check for meetings in the next 1.5-2.5 hours (for 2h reminder)
+        reminder_2h_start = now + timedelta(hours=1, minutes=30)
+        reminder_2h_end = now + timedelta(hours=2, minutes=30)
+        
+        # Find schools with meetings scheduled
+        schools_with_meetings = await db.school_inquiries.find({
+            "meeting_scheduled": True,
+            "status": {"$nin": ["converted", "lost", "renewed"]},
+            "meeting_date": {"$exists": True, "$ne": None, "$ne": ""}
+        }).to_list(500)
+        
+        print(f"[SCHEDULER] Found {len(schools_with_meetings)} schools with scheduled meetings")
+        
+        for school in schools_with_meetings:
+            school.pop('_id', None)
+            
+            try:
+                # Parse meeting date and time
+                meeting_date_str = school.get("meeting_date", "")
+                meeting_time_str = school.get("meeting_time", "10:00")
+                
+                if not meeting_date_str:
+                    continue
+                
+                # Parse the meeting datetime
+                if "T" in meeting_date_str:
+                    meeting_dt = datetime.fromisoformat(meeting_date_str.replace('Z', '+00:00'))
+                else:
+                    # Combine date and time
+                    meeting_dt = datetime.strptime(f"{meeting_date_str} {meeting_time_str}", "%Y-%m-%d %H:%M")
+                    meeting_dt = meeting_dt.replace(tzinfo=timezone.utc)
+                
+                # Get sales manager
+                sales_manager = None
+                if school.get("assigned_to"):
+                    sales_manager = await db.team_users.find_one({"id": school["assigned_to"]}, {"_id": 0})
+                
+                if not sales_manager:
+                    continue
+                
+                # Check if 24h reminder needed
+                if reminder_24h_start <= meeting_dt <= reminder_24h_end:
+                    if not school.get("reminder_24h_sent"):
+                        await send_school_meeting_reminder_24h(school, sales_manager)
+                        await db.school_inquiries.update_one(
+                            {"id": school["id"]},
+                            {"$set": {"reminder_24h_sent": True, "reminder_24h_sent_at": now.isoformat()}}
+                        )
+                        print(f"[SCHEDULER] Sent 24h reminder for {school.get('school_name', 'Unknown')}")
+                
+                # Check if 2h reminder needed
+                if reminder_2h_start <= meeting_dt <= reminder_2h_end:
+                    if not school.get("reminder_2h_sent"):
+                        await send_school_meeting_reminder_2h(school, sales_manager)
+                        await db.school_inquiries.update_one(
+                            {"id": school["id"]},
+                            {"$set": {"reminder_2h_sent": True, "reminder_2h_sent_at": now.isoformat()}}
+                        )
+                        print(f"[SCHEDULER] Sent 2h reminder for {school.get('school_name', 'Unknown')}")
+                        
+            except Exception as e:
+                print(f"[SCHEDULER] Error processing school {school.get('id')}: {e}")
+                continue
+        
+        print("[SCHEDULER] School meeting reminder check complete")
+    except Exception as e:
+        print(f"[SCHEDULER] Error checking school meeting reminders: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+# ========================
 # EMAIL NOTIFICATION SYSTEM (Gmail SMTP)
 # ========================
 
@@ -13956,6 +14093,41 @@ async def verify_external_api_key(api_key: str = Header(None, alias="X-API-Key")
 
 # NOTE: /admin_keys routes moved to routes/admin_keys.py
 # NOTE: /reports routes moved to routes/reports.py
+
+# ========================
+# MANUAL TRIGGER ENDPOINTS (For Testing)
+# ========================
+
+@api_router.post("/admin/trigger/overdue-check")
+async def trigger_overdue_check(user: dict = Depends(get_current_user)):
+    """Manually trigger overdue ticket check"""
+    await check_overdue_tickets()
+    return {"message": "Overdue ticket check triggered"}
+
+@api_router.post("/admin/trigger/meeting-reminders")
+async def trigger_meeting_reminders(user: dict = Depends(get_current_user)):
+    """Manually trigger school meeting reminders check"""
+    await check_school_meeting_reminders()
+    return {"message": "Meeting reminders check triggered"}
+
+@api_router.post("/admin/test/whatsapp")
+async def test_whatsapp_notification(
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Test WhatsApp notification - send any template"""
+    phone = data.get("phone", "")
+    template = data.get("template", "support_overdue_48hours")
+    params = data.get("params", [])
+    
+    result = await send_whatsapp_notification(
+        phone=phone,
+        template_key=template,
+        params=params,
+        user_name="Test"
+    )
+    return result
+
 # Include router and middleware
 # Import and include extracted route modules
 from routes.payments import router as payments_router, scheduled_payment_sync, scheduler, PAYMENT_SYNC_ENABLED, PAYMENT_SYNC_INTERVAL_MINUTES
@@ -14094,6 +14266,27 @@ async def startup_db_client():
         name="Daily Category Reports",
         replace_existing=True
     )
+    
+    # Schedule overdue ticket check every 30 minutes
+    scheduler.add_job(
+        check_overdue_tickets,
+        trigger=IntervalTrigger(minutes=30),
+        id="overdue_ticket_check_job",
+        name="Check Overdue Support Tickets",
+        replace_existing=True
+    )
+    print("[STARTUP] Overdue ticket check scheduled — runs every 30 minutes")
+    
+    # Schedule school meeting reminders every 15 minutes
+    scheduler.add_job(
+        check_school_meeting_reminders,
+        trigger=IntervalTrigger(minutes=15),
+        id="school_meeting_reminder_job",
+        name="School Meeting Reminders",
+        replace_existing=True
+    )
+    print("[STARTUP] School meeting reminders scheduled — runs every 15 minutes")
+    
     if not scheduler.running:
         scheduler.start()
     print("[STARTUP] Daily report emailer scheduled — fires at 8:00 PM IST (14:30 UTC)")
