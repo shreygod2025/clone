@@ -1953,6 +1953,10 @@ class TeamApplication(BaseModel):
     offer_letter_url: str = ""
     offer_letter_sent: bool = False
     
+    # NEW: Simplified Onboarding Steps
+    razorpay_setup_done: bool = False
+    training_done: bool = False
+    
     # Trial Period Fields
     trial_period: dict = Field(default_factory=lambda: {
         "duration": "1_week",  # "1_week", "1_month"
@@ -2023,6 +2027,10 @@ class TeamApplicationUpdate(BaseModel):
     offer_letter_generated: Optional[bool] = None
     offer_letter_url: Optional[str] = None
     offer_letter_sent: Optional[bool] = None
+    
+    # NEW: Simplified Onboarding Steps
+    razorpay_setup_done: Optional[bool] = None
+    training_done: Optional[bool] = None
     
     # Trial Period
     trial_period: Optional[dict] = None
@@ -4860,7 +4868,7 @@ async def send_welcome_email(
     application_id: str,
     user: dict = Depends(get_current_user)
 ):
-    """Send welcome email to new team member"""
+    """Send welcome email to new team member with Team Member Handbook"""
     application = await db.team_applications.find_one({"id": application_id}, {"_id": 0})
     if not application:
         raise HTTPException(status_code=404, detail="Application not found")
@@ -4872,6 +4880,9 @@ async def send_welcome_email(
     if not api_key:
         raise HTTPException(status_code=500, detail="Email service not configured")
     
+    # Team Member Handbook PDF URL
+    handbook_url = "https://customer-assets.emergentagent.com/job_158d09fa-bd08-407b-8f91-2a6e86e5f9fd/artifacts/td39jrre_OLL%20-%20Team%20Member%20Handbook%20-%202025_-compressed.pdf"
+    
     html_content = f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: linear-gradient(135deg, #1E3A5F, #2C5282); padding: 30px; text-align: center;">
@@ -4880,18 +4891,29 @@ async def send_welcome_email(
         <div style="padding: 30px; background: #f8fafc;">
             <p>Dear <strong>{application.get('name', 'Team Member')}</strong>,</p>
             <p>Welcome aboard! We're thrilled to have you join the OLL team.</p>
+            
+            <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: #1E3A5F; margin-top: 0;">📘 Team Member Handbook</h3>
+                <p style="margin-bottom: 15px;">Please read through our Team Member Handbook to understand our policies, guidelines, and culture.</p>
+                <a href="{handbook_url}" 
+                   style="display: inline-block; background: #D63031; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                    Download Handbook (PDF)
+                </a>
+            </div>
+            
             <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
                 <h3 style="color: #1E3A5F; margin-top: 0;">Next Steps:</h3>
-                <ol>
-                    <li>Complete your onboarding documentation</li>
-                    <li>Set up your OLL admin account (credentials will be shared separately)</li>
-                    <li>Review the company policies and guidelines</li>
-                    <li>Connect with your team lead</li>
+                <ol style="margin: 0; padding-left: 20px;">
+                    <li style="margin-bottom: 8px;">Read the Team Member Handbook attached above</li>
+                    <li style="margin-bottom: 8px;">Complete your Razorpay setup for payments</li>
+                    <li style="margin-bottom: 8px;">Attend the training session</li>
+                    <li style="margin-bottom: 8px;">Connect with your team lead</li>
                 </ol>
             </div>
+            
             <p>If you have any questions, feel free to reach out to the HR team.</p>
             <p>We look forward to working with you!</p>
-            <p>Best regards,<br>OLL HR Team</p>
+            <p>Best regards,<br><strong>OLL HR Team</strong></p>
         </div>
         <div style="background: #1E3A5F; padding: 15px; text-align: center;">
             <p style="color: white; margin: 0; font-size: 12px;">

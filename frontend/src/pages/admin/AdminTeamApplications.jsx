@@ -524,6 +524,24 @@ const AdminTeamApplications = () => {
     }
   };
 
+  // ONBOARDING STAGE: Toggle Razorpay Setup / Training checkboxes
+  const handleToggleOnboardingStep = async (application, field) => {
+    try {
+      const currentValue = application[field] || false;
+      await axios.patch(`${API}/team-applications/${application.id}`, {
+        [field]: !currentValue
+      }, { headers: getAuthHeaders() });
+      
+      toast.success(currentValue 
+        ? `${field === 'razorpay_setup_done' ? 'Razorpay Setup' : 'Training'} unmarked` 
+        : `${field === 'razorpay_setup_done' ? 'Razorpay Setup' : 'Training'} completed!`);
+      fetchApplications();
+    } catch (error) {
+      console.error('Toggle step error:', error);
+      toast.error('Failed to update step');
+    }
+  };
+
   // ONBOARDING STAGE: Start Trial Period
   const handleStartTrialPeriod = async () => {
     if (!showTrialPeriodModal || !trialPeriodData.start_date) {
@@ -1150,7 +1168,7 @@ const AdminTeamApplications = () => {
         {/* ONBOARDING STAGE ACTIONS */}
         {status === 'onboarding' && (
           <>
-            {/* Welcome Email */}
+            {/* Welcome Email with Handbook */}
             {!application.welcome_email_sent && (
               <button
                 onClick={() => setShowWelcomeEmailModal(application)}
@@ -1162,79 +1180,50 @@ const AdminTeamApplications = () => {
               </button>
             )}
             {application.welcome_email_sent && (
-              <span className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-600">✓ Welcome Sent</span>
+              <span className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" />
+                Welcome Sent
+              </span>
             )}
             
-            {/* Create OLL Account */}
-            {!application.admin_account_created && (
-              <button
-                onClick={() => {
-                  setSelectedRoleId('');
-                  setShowCreateAccountModal(application);
-                }}
-                className="text-xs px-3 py-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 flex items-center gap-1 font-medium"
-                data-testid={`create-account-${application.id}`}
-              >
-                <UserPlus className="w-3 h-3" />
-                Create OLL Account
-              </button>
-            )}
-            {application.admin_account_created && (
-              <span className="text-xs px-2 py-1 rounded bg-indigo-50 text-indigo-600">✓ Account: {application.admin_role_name || 'Created'}</span>
-            )}
+            {/* Razorpay Setup Checkbox */}
+            <button
+              onClick={() => handleToggleOnboardingStep(application, 'razorpay_setup')}
+              className={`text-xs px-3 py-1.5 rounded-lg flex items-center gap-2 font-medium transition-all ${
+                application.razorpay_setup_done
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+              }`}
+              data-testid={`razorpay-setup-${application.id}`}
+            >
+              {application.razorpay_setup_done ? (
+                <CheckCircle2 className="w-4 h-4" />
+              ) : (
+                <div className="w-4 h-4 border-2 border-slate-400 rounded" />
+              )}
+              Razorpay Setup
+            </button>
             
-            {/* Generate Offer Letter */}
-            {!application.offer_letter_generated && (
-              <button
-                onClick={() => setShowOfferLetterModal(application)}
-                className="text-xs px-3 py-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-700 flex items-center gap-1 font-medium"
-                data-testid={`offer-letter-${application.id}`}
-              >
-                <FileText className="w-3 h-3" />
-                Generate Offer
-              </button>
-            )}
-            {application.offer_letter_generated && (
-              <span className="text-xs px-2 py-1 rounded bg-orange-50 text-orange-600">✓ Offer Generated</span>
-            )}
+            {/* Training Checkbox */}
+            <button
+              onClick={() => handleToggleOnboardingStep(application, 'training_done')}
+              className={`text-xs px-3 py-1.5 rounded-lg flex items-center gap-2 font-medium transition-all ${
+                application.training_done
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+              }`}
+              data-testid={`training-${application.id}`}
+            >
+              {application.training_done ? (
+                <CheckCircle2 className="w-4 h-4" />
+              ) : (
+                <div className="w-4 h-4 border-2 border-slate-400 rounded" />
+              )}
+              Training
+            </button>
             
-            {/* Start Trial Period */}
-            {!application.trial_period?.start_date && (
-              <button
-                onClick={() => {
-                  setTrialPeriodData({ duration: '1_week', start_date: new Date().toISOString().split('T')[0] });
-                  setShowTrialPeriodModal(application);
-                }}
-                className="text-xs px-3 py-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-700 flex items-center gap-1 font-medium"
-                data-testid={`start-trial-${application.id}`}
-              >
-                <Play className="w-3 h-3" />
-                Start Trial
-              </button>
-            )}
-            {/* Trial Period Status */}
-            {application.trial_period?.start_date && application.trial_period?.status === 'ongoing' && (
-              <>
-                <span className="text-xs px-2 py-1 rounded bg-emerald-50 text-emerald-600 flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  Trial: {application.trial_period.duration === '1_week' ? '1 Week' : '1 Month'}
-                </span>
-                <button
-                  onClick={() => {
-                    setExtendTrialData({ extension_date: '', reason: '' });
-                    setShowExtendTrialModal(application);
-                  }}
-                  className="text-xs px-2 py-1 rounded bg-yellow-100 hover:bg-yellow-200 text-yellow-700 flex items-center gap-1"
-                  data-testid={`extend-trial-${application.id}`}
-                >
-                  <Pause className="w-3 h-3" />
-                  Extend
-                </button>
-              </>
-            )}
-            
-            {/* Complete Onboarding / Activate */}
-            {application.welcome_email_sent && application.admin_account_created && application.trial_period?.start_date && (
+            {/* Activate Member - Only shows when Razorpay & Training are both done */}
+            {application.razorpay_setup_done && application.training_done && (
               <button
                 onClick={() => handleStatusChange(application, 'active')}
                 className="text-xs px-3 py-1.5 rounded-lg bg-green-500 hover:bg-green-600 text-white flex items-center gap-1 font-medium"
@@ -1392,156 +1381,22 @@ const AdminTeamApplications = () => {
         ))}
       </div>
 
-      {/* Applications List / Onboarding List */}
+      {/* Applications List */}
       {loading ? (
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D63031] mx-auto"></div>
         </div>
-      ) : ['onboarding', 'active', 'discontinued'].includes(activeSection) ? (
-        /* Team Onboarding Content */
-        filteredOnboardings.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">
-            <User className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-            <p className="text-slate-500">
-              {activeSection === 'onboarding' ? 'No team members in onboarding. Hire applicants to start onboarding.' :
-               activeSection === 'active' ? 'No active team members yet.' : 'No discontinued team members.'}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {filteredOnboardings.map((member) => (
-              <div key={member.id} className="bg-white rounded-2xl border border-slate-100 p-4 hover:shadow-md transition-shadow">
-                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold text-[#1E3A5F]">{member.name}</h3>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        member.status === 'onboarding' ? 'bg-orange-100 text-orange-700' :
-                        member.status === 'active' ? 'bg-green-100 text-green-700' :
-                        'bg-slate-100 text-slate-700'
-                      }`}>
-                        {member.status === 'onboarding' ? 'Onboarding' :
-                         member.status === 'active' ? 'Active' : 'Discontinued'}
-                      </span>
-                      {member.role && (
-                        <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
-                          {member.role}
-                        </span>
-                      )}
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-3 text-sm text-slate-600">
-                      {member.phone && <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" /> {member.phone}</span>}
-                      {member.email && <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5" /> {member.email}</span>}
-                      {member.city && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {member.city}</span>}
-                    </div>
-
-                    {/* Progress for onboarding */}
-                    {member.status === 'onboarding' && (
-                      <div className="mt-3">
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-orange-500 transition-all"
-                              style={{ width: `${(getCompletedSteps(member.steps) / 4) * 100}%` }}
-                            />
-                          </div>
-                          <span className="text-xs text-slate-500">{getCompletedSteps(member.steps)}/4 steps</span>
-                        </div>
-                        <div className="flex gap-2 flex-wrap">
-                          {ONBOARDING_STEPS.map(step => {
-                            const isCompleted = member.steps?.[step.key]?.completed;
-                            const Icon = step.icon;
-                            return (
-                              <button
-                                key={step.key}
-                                onClick={() => {
-                                  if (!isCompleted) {
-                                    setShowStepModal({ onboardingId: member.id, step: step.key, stepLabel: step.label });
-                                    setStepData({});
-                                  }
-                                }}
-                                data-testid={`step-${step.key}-${member.id}`}
-                                className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${
-                                  isCompleted 
-                                    ? 'bg-green-100 text-green-700 cursor-default' 
-                                    : 'bg-slate-100 text-slate-600 hover:bg-orange-100 hover:text-orange-700'
-                                }`}
-                              >
-                                {isCompleted ? <CheckCircle2 className="w-3 h-3" /> : <Icon className="w-3 h-3" />}
-                                {step.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Discontinued info */}
-                    {member.status === 'discontinued' && member.discontinued_reason && (
-                      <div className="mt-3 p-2 bg-red-50 rounded-lg">
-                        <p className="text-xs text-red-600"><strong>Reason:</strong> {member.discontinued_reason}</p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex gap-2 flex-wrap">
-                    {member.status === 'onboarding' && (
-                      <>
-                        <button
-                          onClick={() => copyTrackingLink(member.tracking_token)}
-                          className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1"
-                          data-testid={`copy-link-${member.id}`}
-                        >
-                          <Copy className="w-3 h-3" /> Copy Link
-                        </button>
-                        {getCompletedSteps(member.steps) === 4 && (
-                          <button
-                            onClick={() => setShowActivateModal(member)}
-                            className="text-xs px-3 py-1.5 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 flex items-center gap-1 font-medium"
-                            data-testid={`activate-${member.id}`}
-                          >
-                            <UserPlus className="w-3 h-3" /> Activate
-                          </button>
-                        )}
-                      </>
-                    )}
-                    {member.status === 'active' && (
-                      <>
-                        <button
-                          onClick={() => fetchTeamMemberReport(member)}
-                          className="text-xs px-3 py-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 flex items-center gap-1"
-                          data-testid={`reports-${member.id}`}
-                        >
-                          <BarChart3 className="w-3 h-3" /> Reports
-                        </button>
-                        <button
-                          onClick={() => setShowDiscontinueModal(member)}
-                          className="text-xs px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1"
-                          data-testid={`discontinue-${member.id}`}
-                        >
-                          <UserX className="w-3 h-3" /> Discontinue
-                        </button>
-                      </>
-                    )}
-                    <button
-                      onClick={() => setViewApplication(applications.find(a => a.id === member.application_id) || member)}
-                      className="text-xs px-3 py-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 flex items-center gap-1"
-                      data-testid={`view-onboarding-${member.id}`}
-                    >
-                      <Eye className="w-3 h-3" /> View
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )
       ) : filteredApplications.length === 0 ? (
-        <div className="text-center py-12 bg-slate-50 rounded-2xl">
-          <User className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <p className="text-slate-500">No applications found</p>
+        <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">
+          <User className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+          <p className="text-slate-500">
+            {activeSection === 'applicant' ? 'No new applicants.' :
+             activeSection === 'candidate' ? 'No candidates in interview process.' :
+             activeSection === 'onboarding' ? 'No team members in onboarding. Move candidates here after interviews pass.' :
+             activeSection === 'active' ? 'No active team members yet.' :
+             activeSection === 'past_member' ? 'No past members.' :
+             'No rejected applications.'}
+          </p>
         </div>
       ) : (
         <div className="space-y-4">
