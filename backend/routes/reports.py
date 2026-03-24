@@ -1514,6 +1514,17 @@ async def get_public_report_data(
     
     school_revenue = sum(float(s.get('conversion_amount') or (s.get('onboarding_data') or {}).get('total_amount') or 0) for s in all_schools if s.get('status') in ['converted', 'active', 'renewed'])
     
+    # NEW: New vs Renewal breakdown
+    new_schools = len([s for s in schools if s.get('status') == 'converted' and not s.get('is_renewal')])
+    renewal_schools = len([s for s in schools if s.get('status') == 'renewed' or s.get('is_renewal')])
+    
+    # NEW: City Division of Customers (for converted/active/renewed schools)
+    customer_cities = {}
+    for s in all_schools:
+        if s.get('status') in ['converted', 'active', 'renewed']:
+            city = s.get('city') or s.get('location') or 'Unknown'
+            customer_cities[city] = customer_cities.get(city, 0) + 1
+    
     # Educator metrics
     total_educators = len(educators)
     active_educators = len([e for e in educators if e.get('status') == 'active'])
@@ -1627,6 +1638,13 @@ async def get_public_report_data(
             "lost_customer_value": lost_customer_value,
             "total_lost_value": total_lost_value,
             "revenue": school_revenue,
+            # NEW: New vs Renewal breakdown
+            "new_vs_renewal": {
+                "new": new_schools,
+                "renewal": renewal_schools
+            },
+            # NEW: City Division of Customers
+            "customer_cities": [{"name": k, "count": v} for k, v in sorted(customer_cities.items(), key=lambda x: -x[1])[:15]],
         },
         "educators": {
             "total": total_educators,

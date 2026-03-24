@@ -4,7 +4,7 @@ import {
   TrendingUp, Users, GraduationCap, Building2, DollarSign, 
   Calendar, RefreshCw, Lock, Eye, EyeOff, BarChart3,
   Briefcase, Handshake, Wallet, MessageSquare, Target,
-  TrendingDown, ArrowUpRight, ArrowDownRight, PieChart, AlertCircle, Clock
+  TrendingDown, ArrowUpRight, ArrowDownRight, PieChart, AlertCircle, Clock, MapPin
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -534,6 +534,85 @@ const PublicReports = () => {
         <StatCard title="Renewal Meeting" value={schools?.renewal_meeting || 0} icon={RefreshCw} color="cyan" small />
         <StatCard title="Renewed" value={schools?.renewed || 0} icon={RefreshCw} color="blue" small />
         <StatCard title="Total Lost" value={schools?.lost || 0} icon={TrendingDown} color="red" small />
+      </div>
+
+      {/* New vs Renewal + City Division */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* New Schools vs Renewal Pie Chart */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+            <PieChart className="w-5 h-5 text-purple-500" />
+            New Schools vs Renewals
+          </h3>
+          {(() => {
+            const newCount = schools?.new_vs_renewal?.new || 0;
+            const renewalCount = schools?.new_vs_renewal?.renewal || 0;
+            const total = newCount + renewalCount;
+            if (total === 0) return <p className="text-sm text-slate-400 py-4 text-center">No data available</p>;
+            
+            // Calculate percentages for CSS pie
+            const newPercent = (newCount / total) * 100;
+            const renewalPercent = (renewalCount / total) * 100;
+            
+            return (
+              <div className="flex items-center gap-6">
+                {/* CSS Pie Chart */}
+                <div 
+                  className="w-32 h-32 rounded-full flex-shrink-0"
+                  style={{
+                    background: `conic-gradient(#3b82f6 0% ${newPercent}%, #22c55e ${newPercent}% 100%)`
+                  }}
+                />
+                {/* Legend */}
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-blue-500" />
+                    <span className="text-sm text-slate-600">New Schools</span>
+                    <span className="ml-auto font-bold text-blue-600">{newCount}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-green-500" />
+                    <span className="text-sm text-slate-600">Renewals</span>
+                    <span className="ml-auto font-bold text-green-600">{renewalCount}</span>
+                  </div>
+                  <div className="pt-2 border-t border-slate-100">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500">Total</span>
+                      <span className="font-bold text-slate-800">{total}</span>
+                    </div>
+                    <div className="flex justify-between text-sm mt-1">
+                      <span className="text-slate-500">Renewal Rate</span>
+                      <span className="font-bold text-green-600">{total > 0 ? Math.round(renewalCount / total * 100) : 0}%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* City Division of Customers */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+            <MapPin className="w-5 h-5 text-orange-500" />
+            City Division of Customers
+          </h3>
+          {(!schools?.customer_cities?.length) ? (
+            <p className="text-sm text-slate-400 py-4 text-center">No city data available</p>
+          ) : (
+            <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+              {schools.customer_cities.map((city, i) => (
+                <ProgressBar
+                  key={i}
+                  label={city.name}
+                  value={city.count}
+                  total={schools.customer_cities.reduce((s, x) => s + x.count, 0)}
+                  color={['#f97316','#3b82f6','#9333ea','#22c55e','#06b6d4','#ec4899','#eab308','#14b8a6','#8b5cf6','#f43f5e'][i % 10]}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Lost Breakdown */}
