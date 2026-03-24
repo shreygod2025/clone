@@ -782,21 +782,7 @@ export async function generateMOUDocument(school, data, { API, getAuthHeaders, u
     }, { headers: getAuthHeaders() });
     setOnboardData(prev => ({ ...prev, mou_url: fileUrl }));
     fetchInquiries();
-    toast.success('MOU saved to documents!');
-
-    // Send MOU email with PDF attachment
-    try {
-      const emailRes = await axios.post(`${API}/schools/${school.id}/send-mou-email`, {
-        mou_url: fileUrl,
-        file_name: fileName,
-      }, { headers: getAuthHeaders() });
-      if (emailRes.data.success) {
-        toast.success(`MOU emailed to ${emailRes.data.recipients?.join(', ')}`);
-      }
-    } catch (emailErr) {
-      console.error('MOU email error:', emailErr);
-      toast.error('MOU saved but email failed: ' + (emailErr.response?.data?.detail || emailErr.message));
-    }
+    toast.success('MOU generated and saved!');
   } catch (uploadErr) {
     console.error('MOU upload/save error:', uploadErr);
     toast.error('Failed to save MOU: ' + (uploadErr.response?.data?.detail || uploadErr.message));

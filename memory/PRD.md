@@ -73,6 +73,9 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - Backend `GET /api/admin/reports/b2b-insights` now returns `new_vs_renewal` and `customer_cities` fields.
 - **Test results:** 10/10 backend tests pass, all frontend charts verified.
 
+#### MOU Auto-Email Removed (RESOLVED)
+- **Fix:** Removed automatic email sending from `generateMOUDocument()` in `mouPdfGenerator.js`. Previously, generating an MOU would auto-send it via email. Now "Generate MOU" only creates, downloads, uploads, and saves the PDF. Email is only sent when explicitly clicking "Send MOU Email" button.
+
 #### Support Query Reply Email Notifications (RESOLVED)
 - When a reply is added to a support query, email notifications are sent to the **assignee** and all **viewers** (excluding the person who wrote the reply).
 - Email contains: reply text, reply author, timestamp, customer name, query type, priority, and attachment info.
