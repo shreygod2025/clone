@@ -70,6 +70,12 @@ const AdminTeamApplications = () => {
   const [showDeptHeadModal, setShowDeptHeadModal] = useState(null);
   const [deptHeadData, setDeptHeadData] = useState({ dept_head_id: '', scheduled_at: '', notes: '' });
   
+  // Candidate Stage - Interview Outcome Modals
+  const [showHROutcomeModal, setShowHROutcomeModal] = useState(null);
+  const [hrOutcomeData, setHROutcomeData] = useState({ outcome: '', notes: '' });
+  const [showDeptHeadOutcomeModal, setShowDeptHeadOutcomeModal] = useState(null);
+  const [deptHeadOutcomeData, setDeptHeadOutcomeData] = useState({ outcome: '', notes: '' });
+  
   // Onboarding Stage
   const [showWelcomeEmailModal, setShowWelcomeEmailModal] = useState(null);
   const [showOfferLetterModal, setShowOfferLetterModal] = useState(null);
@@ -354,6 +360,84 @@ const AdminTeamApplications = () => {
     } catch (error) {
       console.error('Dept head selection error:', error);
       toast.error('Failed to assign department head');
+    }
+  };
+
+  // CANDIDATE STAGE: Mark HR Interview Outcome
+  const handleHROutcome = async () => {
+    if (!showHROutcomeModal || !hrOutcomeData.outcome) {
+      toast.error('Please select an outcome');
+      return;
+    }
+    
+    try {
+      const updateData = {
+        hr_interview: {
+          ...showHROutcomeModal.hr_interview,
+          completed: true,
+          completed_at: new Date().toISOString(),
+          outcome: hrOutcomeData.outcome, // 'passed' or 'failed'
+          notes: hrOutcomeData.notes || showHROutcomeModal.hr_interview?.notes || null
+        }
+      };
+      
+      // If failed, automatically reject
+      if (hrOutcomeData.outcome === 'failed') {
+        updateData.status = 'rejected';
+      }
+      
+      await axios.patch(`${API}/team-applications/${showHROutcomeModal.id}`, updateData, {
+        headers: getAuthHeaders()
+      });
+      
+      toast.success(hrOutcomeData.outcome === 'passed' 
+        ? 'HR Interview passed!' 
+        : 'HR Interview failed - Application rejected');
+      setShowHROutcomeModal(null);
+      setHROutcomeData({ outcome: '', notes: '' });
+      fetchApplications();
+    } catch (error) {
+      console.error('HR outcome error:', error);
+      toast.error('Failed to update HR interview outcome');
+    }
+  };
+
+  // CANDIDATE STAGE: Mark Dept Head Interview Outcome
+  const handleDeptHeadOutcome = async () => {
+    if (!showDeptHeadOutcomeModal || !deptHeadOutcomeData.outcome) {
+      toast.error('Please select an outcome');
+      return;
+    }
+    
+    try {
+      const updateData = {
+        dept_head_interview: {
+          ...showDeptHeadOutcomeModal.dept_head_interview,
+          completed: true,
+          completed_at: new Date().toISOString(),
+          outcome: deptHeadOutcomeData.outcome, // 'selected' or 'not_selected'
+          notes: deptHeadOutcomeData.notes || showDeptHeadOutcomeModal.dept_head_interview?.notes || null
+        }
+      };
+      
+      // If not selected, automatically reject
+      if (deptHeadOutcomeData.outcome === 'not_selected') {
+        updateData.status = 'rejected';
+      }
+      
+      await axios.patch(`${API}/team-applications/${showDeptHeadOutcomeModal.id}`, updateData, {
+        headers: getAuthHeaders()
+      });
+      
+      toast.success(deptHeadOutcomeData.outcome === 'selected' 
+        ? 'Candidate selected by department!' 
+        : 'Candidate not selected - Application rejected');
+      setShowDeptHeadOutcomeModal(null);
+      setDeptHeadOutcomeData({ outcome: '', notes: '' });
+      fetchApplications();
+    } catch (error) {
+      console.error('Dept head outcome error:', error);
+      toast.error('Failed to update department interview outcome');
     }
   };
 
@@ -965,13 +1049,35 @@ const AdminTeamApplications = () => {
                 Schedule HR Interview
               </button>
             )}
-            {/* HR Interview Completed indicator */}
+            {/* HR Interview Scheduled - Mark Outcome */}
             {application.hr_interview?.scheduled && !application.hr_interview?.completed && (
-              <span className="text-xs px-3 py-1.5 rounded-lg bg-purple-50 text-purple-600 flex items-center gap-1">
+              <button
+                onClick={() => {
+                  setHROutcomeData({ outcome: '', notes: '' });
+                  setShowHROutcomeModal(application);
+                }}
+                className="text-xs px-3 py-1.5 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-700 flex items-center gap-1 font-medium"
+                data-testid={`hr-outcome-${application.id}`}
+              >
                 <Clock className="w-3 h-3" />
-                HR Interview: {format(new Date(application.hr_interview.scheduled_at), 'MMM d')}
+                HR: {format(new Date(application.hr_interview.scheduled_at), 'MMM d')} - Mark Result
+              </button>
+            )}
+            {/* HR Interview Completed indicator */}
+            {application.hr_interview?.completed && (
+              <span className={`text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 ${
+                application.hr_interview.outcome === 'passed' 
+                  ? 'bg-green-50 text-green-600' 
+                  : 'bg-red-50 text-red-600'
+              }`}>
+                {application.hr_interview.outcome === 'passed' ? (
+                  <><CheckCircle2 className="w-3 h-3" /> HR: Passed</>
+                ) : (
+                  <><X className="w-3 h-3" /> HR: Failed</>
+                )}
               </span>
             )}
+            
             {/* Select Dept Head */}
             {!application.dept_head_interview?.assigned && (
               <button
@@ -986,18 +1092,43 @@ const AdminTeamApplications = () => {
                 Select Dept Head
               </button>
             )}
-            {/* Dept Head indicator */}
-            {application.dept_head_interview?.assigned && (
-              <span className="text-xs px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 flex items-center gap-1">
+            {/* Dept Head Assigned - Mark Outcome */}
+            {application.dept_head_interview?.assigned && !application.dept_head_interview?.completed && (
+              <button
+                onClick={() => {
+                  setDeptHeadOutcomeData({ outcome: '', notes: '' });
+                  setShowDeptHeadOutcomeModal(application);
+                }}
+                className="text-xs px-3 py-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 flex items-center gap-1 font-medium"
+                data-testid={`depthead-outcome-${application.id}`}
+              >
                 <UserCheck className="w-3 h-3" />
-                Dept Head: {application.dept_head_interview.dept_head_name || 'Assigned'}
+                {application.dept_head_interview.dept_head_name || 'Dept Head'} - Mark Result
+              </button>
+            )}
+            {/* Dept Head Interview Completed indicator */}
+            {application.dept_head_interview?.completed && (
+              <span className={`text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 ${
+                application.dept_head_interview.outcome === 'selected' 
+                  ? 'bg-green-50 text-green-600' 
+                  : 'bg-red-50 text-red-600'
+              }`}>
+                {application.dept_head_interview.outcome === 'selected' ? (
+                  <><CheckCircle2 className="w-3 h-3" /> Dept: Selected</>
+                ) : (
+                  <><X className="w-3 h-3" /> Dept: Not Selected</>
+                )}
               </span>
             )}
-            {/* Move to Onboarding (if both interviews are complete) */}
-            {application.hr_interview?.completed && application.dept_head_interview?.completed && (
+            
+            {/* Move to Onboarding (if both interviews passed) */}
+            {application.hr_interview?.completed && 
+             application.hr_interview?.outcome === 'passed' &&
+             application.dept_head_interview?.completed && 
+             application.dept_head_interview?.outcome === 'selected' && (
               <button
                 onClick={() => handleStatusChange(application, 'onboarding')}
-                className="text-xs px-3 py-1.5 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 flex items-center gap-1 font-medium"
+                className="text-xs px-3 py-1.5 rounded-lg bg-green-500 hover:bg-green-600 text-white flex items-center gap-1 font-medium"
                 data-testid={`move-onboarding-${application.id}`}
               >
                 <ChevronRight className="w-3 h-3" />
@@ -2420,6 +2551,180 @@ const AdminTeamApplications = () => {
                 data-testid="dept-head-submit"
               >
                 Assign & Notify
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* HR Interview Outcome Modal */}
+      <Dialog open={!!showHROutcomeModal} onOpenChange={() => setShowHROutcomeModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-purple-600" />
+              HR Interview Result - {showHROutcomeModal?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-purple-50 p-4 rounded-lg">
+              <p className="font-medium">{showHROutcomeModal?.name}</p>
+              <p className="text-sm text-slate-600">{showHROutcomeModal?.role} • {showHROutcomeModal?.email}</p>
+              {showHROutcomeModal?.hr_interview?.scheduled_at && (
+                <p className="text-sm text-purple-600 mt-1">
+                  Interview Date: {format(new Date(showHROutcomeModal.hr_interview.scheduled_at), 'PPp')}
+                </p>
+              )}
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Interview Outcome *</label>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setHROutcomeData({...hrOutcomeData, outcome: 'passed'})}
+                  className={`flex-1 py-3 px-4 rounded-lg border-2 transition-all ${
+                    hrOutcomeData.outcome === 'passed'
+                      ? 'border-green-500 bg-green-50 text-green-700'
+                      : 'border-slate-200 hover:border-green-300'
+                  }`}
+                  data-testid="hr-outcome-passed"
+                >
+                  <CheckCircle2 className="w-5 h-5 mx-auto mb-1" />
+                  <span className="text-sm font-medium">Passed</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHROutcomeData({...hrOutcomeData, outcome: 'failed'})}
+                  className={`flex-1 py-3 px-4 rounded-lg border-2 transition-all ${
+                    hrOutcomeData.outcome === 'failed'
+                      ? 'border-red-500 bg-red-50 text-red-700'
+                      : 'border-slate-200 hover:border-red-300'
+                  }`}
+                  data-testid="hr-outcome-failed"
+                >
+                  <X className="w-5 h-5 mx-auto mb-1" />
+                  <span className="text-sm font-medium">Failed</span>
+                </button>
+              </div>
+            </div>
+            
+            {hrOutcomeData.outcome === 'failed' && (
+              <div className="bg-red-50 p-3 rounded-lg">
+                <p className="text-sm text-red-700">
+                  <AlertTriangle className="w-4 h-4 inline mr-1" />
+                  Marking as "Failed" will automatically reject this application.
+                </p>
+              </div>
+            )}
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+              <Textarea
+                value={hrOutcomeData.notes}
+                onChange={(e) => setHROutcomeData({...hrOutcomeData, notes: e.target.value})}
+                placeholder="Interview feedback, observations..."
+                className="min-h-[80px]"
+                data-testid="hr-outcome-notes"
+              />
+            </div>
+            
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => setShowHROutcomeModal(null)} className="flex-1">Cancel</Button>
+              <Button 
+                onClick={handleHROutcome} 
+                disabled={!hrOutcomeData.outcome}
+                className={`flex-1 ${hrOutcomeData.outcome === 'passed' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
+                data-testid="hr-outcome-submit"
+              >
+                {hrOutcomeData.outcome === 'passed' ? 'Mark as Passed' : 'Mark as Failed'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dept Head Interview Outcome Modal */}
+      <Dialog open={!!showDeptHeadOutcomeModal} onOpenChange={() => setShowDeptHeadOutcomeModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Award className="w-5 h-5 text-indigo-600" />
+              Department Interview Result - {showDeptHeadOutcomeModal?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-indigo-50 p-4 rounded-lg">
+              <p className="font-medium">{showDeptHeadOutcomeModal?.name}</p>
+              <p className="text-sm text-slate-600">{showDeptHeadOutcomeModal?.role}</p>
+              {showDeptHeadOutcomeModal?.dept_head_interview?.dept_head_name && (
+                <p className="text-sm text-indigo-600 mt-1">
+                  Interviewed by: {showDeptHeadOutcomeModal.dept_head_interview.dept_head_name}
+                </p>
+              )}
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Interview Outcome *</label>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDeptHeadOutcomeData({...deptHeadOutcomeData, outcome: 'selected'})}
+                  className={`flex-1 py-3 px-4 rounded-lg border-2 transition-all ${
+                    deptHeadOutcomeData.outcome === 'selected'
+                      ? 'border-green-500 bg-green-50 text-green-700'
+                      : 'border-slate-200 hover:border-green-300'
+                  }`}
+                  data-testid="depthead-outcome-selected"
+                >
+                  <UserCheck className="w-5 h-5 mx-auto mb-1" />
+                  <span className="text-sm font-medium">Selected</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeptHeadOutcomeData({...deptHeadOutcomeData, outcome: 'not_selected'})}
+                  className={`flex-1 py-3 px-4 rounded-lg border-2 transition-all ${
+                    deptHeadOutcomeData.outcome === 'not_selected'
+                      ? 'border-red-500 bg-red-50 text-red-700'
+                      : 'border-slate-200 hover:border-red-300'
+                  }`}
+                  data-testid="depthead-outcome-not-selected"
+                >
+                  <UserX className="w-5 h-5 mx-auto mb-1" />
+                  <span className="text-sm font-medium">Not Selected</span>
+                </button>
+              </div>
+            </div>
+            
+            {deptHeadOutcomeData.outcome === 'not_selected' && (
+              <div className="bg-red-50 p-3 rounded-lg">
+                <p className="text-sm text-red-700">
+                  <AlertTriangle className="w-4 h-4 inline mr-1" />
+                  Marking as "Not Selected" will automatically reject this application.
+                </p>
+              </div>
+            )}
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+              <Textarea
+                value={deptHeadOutcomeData.notes}
+                onChange={(e) => setDeptHeadOutcomeData({...deptHeadOutcomeData, notes: e.target.value})}
+                placeholder="Department head's feedback, recommendations..."
+                className="min-h-[80px]"
+                data-testid="depthead-outcome-notes"
+              />
+            </div>
+            
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => setShowDeptHeadOutcomeModal(null)} className="flex-1">Cancel</Button>
+              <Button 
+                onClick={handleDeptHeadOutcome} 
+                disabled={!deptHeadOutcomeData.outcome}
+                className={`flex-1 ${deptHeadOutcomeData.outcome === 'selected' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
+                data-testid="depthead-outcome-submit"
+              >
+                {deptHeadOutcomeData.outcome === 'selected' ? 'Mark as Selected' : 'Mark as Not Selected'}
               </Button>
             </div>
           </div>
