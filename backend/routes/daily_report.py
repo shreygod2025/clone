@@ -166,14 +166,24 @@ async def fetch_support_data(start, end):
                 pass
     avg_res = round(sum(res_times) / len(res_times), 1) if res_times else None
 
-    # Resolution rate = resolved / (resolved + open) for all-time
+    # Resolution rate = resolved / total all-time
     all_resolved = await db.support_queries.count_documents({"status": "resolved"})
     all_total = await db.support_queries.count_documents({})
     resolution_rate = pct(all_resolved, all_total)
 
+    # For breakdown tables: use today's data if available, else fall back to 7-day rolling window
+    breakdown_source = today
+    breakdown_label = "Today"
+    if not today:
+        week_start = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+        breakdown_source = await db.support_queries.find(
+            {"created_at": {"$gte": week_start}}, {"_id": 0}
+        ).to_list(5000)
+        breakdown_label = "Last 7 Days"
+
     # B2B vs B2C user type based on school_name presence
     user_types = defaultdict(int)
-    for q in today:
+    for q in breakdown_source:
         user_types["B2B (School)" if q.get("school_name") else "B2C (Student/Parent)"] += 1
 
     return dict(
@@ -183,10 +193,10 @@ async def fetch_support_data(start, end):
         solved_today=len(solved_today),
         avg_resolution_hrs=avg_res,
         resolution_rate=resolution_rate,
-        # Use actual DB field names
-        categories=count_by(today, "main_category"),
-        sub_categories=count_by(today, "category"),
-        detail_categories=count_by(today, "sub_category"),
+        breakdown_label=breakdown_label,
+        categories=count_by(breakdown_source, "main_category"),
+        sub_categories=count_by(breakdown_source, "category"),
+        detail_categories=count_by(breakdown_source, "sub_category"),
         user_types=dict(sorted(user_types.items(), key=lambda x: -x[1])),
     )
 
@@ -275,6 +285,7 @@ async def fetch_educator_data(start, end):
 
 def build_support_email(d, date_str):
     avg_res = f"{d['avg_resolution_hrs']}h" if d['avg_resolution_hrs'] else "—"
+    lbl = d.get('breakdown_label', 'Today')
     body = f"""
     <div class="kpi-grid">
       {kpi(d['new_queries'], "New Queries Today")}
@@ -285,6 +296,7 @@ def build_support_email(d, date_str):
       {kpi(d['resolution_rate'], "Overall Resolution Rate")}
     </div>
     <hr class="divider">
+    <p style="color:#888;font-size:12px;margin:0 0 8px;">Breakdown: <strong>{lbl}</strong></p>
     {breakdown_table(d['categories'], "Query Categories")}
     {breakdown_table(d['sub_categories'], "Sub-Categories")}
     {breakdown_table(d['detail_categories'], "Detail Categories")}
@@ -410,12 +422,28 @@ async def _send(subject: str, html: str, api_key: str):
 
 
 async def send_daily_reports():
-    """Main entry — gather all data and fire 7 category emails."""
+    """Main entry — gather all data and fire 7 category emails. Uses a MongoDB lock to prevent duplicate sends in multi-worker environments."""
     logger.info("[DailyReport] Starting daily report generation...")
     api_key = await get_resend_api_key()
     if not api_key:
         logger.warning("[DailyReport] No Resend API key — skipping emails.")
         return
+
+    # ── Distributed daily lock ─────────────────────────────────────
+    # Prevents duplicate sends when multiple uvicorn workers each run APScheduler
+    today_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    lock_result = await db.daily_report_locks.find_one_and_update(
+        {"date": today_key},
+        {"$setOnInsert": {"date": today_key, "locked_at": datetime.now(timezone.utc).isoformat()}},
+        upsert=True,
+        return_document=False  # returns the document BEFORE update (None = was just inserted)
+    )
+    if lock_result is not None:
+        # Document already existed → another worker already sent today
+        logger.info(f"[DailyReport] Lock exists for {today_key} — skipping duplicate send.")
+        return
+    logger.info(f"[DailyReport] Acquired lock for {today_key} — proceeding.")
+    # ───────────────────────────────────────────────────────────────
 
     start, end = day_range()
     date_str = fmt_date()
@@ -432,6 +460,8 @@ async def send_daily_reports():
         )
     except Exception as e:
         logger.error(f"[DailyReport] Data fetch error: {e}")
+        # Release lock on failure so it can retry
+        await db.daily_report_locks.delete_one({"date": today_key})
         return
 
     emails = [

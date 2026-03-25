@@ -911,6 +911,10 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 - server.py: 17,907 → 15,704 lines (−2,203 lines, −12.3%)
 - All routes registered (315 total). Tested: 37/37 backend tests pass (iteration_48). All 4 module groups verified HTTP 200.
 
+### 2026-03-25 — Report Email Duplicate & No-Data Fix
+- **Duplicate emails fix**: Multiple uvicorn workers each ran their own APScheduler, causing all report emails to send twice. Added a MongoDB-based distributed daily lock (`daily_report_locks` collection). Uses `find_one_and_update` with `$setOnInsert` + `upsert=True` — atomically creates the lock only once. Second worker finds the existing doc and skips.
+- **Support "No data" fix**: When 0 queries created today, breakdown tables were all empty. Added 7-day rolling fallback — if `today = []`, fetch last 7 days for breakdowns. Email now shows "Breakdown: Last 7 Days" label when using fallback data.
+
 ### 2026-03-25 — Support Report Email Fix
 - **Root cause**: `fetch_support_data` used non-existent field names: `query_type` (→ `main_category`), `related_to` (→ `category`), `user_type` and `source` (neither field exists in the schema).
 - **Fixes**: Corrected all field names. Replaced `user_type`/`source` with actual useful data: `detail_categories` (from `sub_category` field) and `user_types` (B2B vs B2C based on `school_name` presence).
