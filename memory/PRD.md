@@ -939,7 +939,17 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 - **Admin test endpoint**: `GET /api/admin/api-keys/{key_id}/test` — lets admin verify any key is working without needing the full raw key. Returns school count + 3 sample records.
 - **Settings UI**: Added "How to Use the API" documentation panel showing exact endpoint URL, required header, all response field names, and a "Test API Key" button that uses the admin endpoint to verify the key and preview sample data.
 
-### 2026-03-25 — School CRM Improvements
+### 2026-03-25 — Checkin API Sessions Fix + CSV Export
+- **Sessions modal bug fixed (P0)**: Backend endpoint `/api/schools/{school_id}/checkin-sessions` now filters by `timetable_id` (fetched from school's `checkin_timetable_id` field) instead of unreliable `school_name` param. Schools without a timetable return 0 sessions with a clear message.
+- **Educator name in Sessions modal (P2)**: Fixed educator column to show `full_name` from `/api/schools/checkin/educators` list, instead of truncated UUID. `fetchCheckinEducators()` is now also called when Sessions modal opens.
+- **CSV Export (P1)**: Added "Export CSV" button to 4 major admin data tables:
+  - `AdminExpenses.jsx` → exports filtered expense rows (testid: `export-expenses-csv-btn`)
+  - `AdminOrders.jsx` → exports filtered payments for current tab (testid: `export-payments-csv-btn`)
+  - `AdminTeamApplications.jsx` → exports team applications (testid: `export-applications-csv-btn`)
+  - `AdminSchoolCRM.jsx` → exports filtered school leads (testid: `export-schools-csv-btn`)
+- All CSV exports respect current search/filter state and show toast confirmation with count.
+
+
 - **Followup filter**: Removed converted/active/archived schools from "Upcoming Followups (7 Days)" dashboard. Now only `new` and `meeting_done` status schools appear in the followup list.
 - **Unarchive button**: Added blue "Unarchive" button to all archived school cards — restores lead back to `new` status.
 - **Lost lead value**: Added optional "Lead Value (₹)" input field to the Mark as Lost modal. Value is saved as `lead_value` on the school record and reflected in all 3 reports endpoints (`user-stages`, `b2b-insights`, public reports).
