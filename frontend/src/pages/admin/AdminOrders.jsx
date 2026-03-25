@@ -794,6 +794,51 @@ const AdminOrders = () => {
     }
   };
 
+  const exportPaymentsToCSV = () => {
+    const data = activeTab === 'school-students' ? schoolStudentPayments : sortedPayments;
+    let headers, rows;
+    if (activeTab === 'school') {
+      headers = ['School Name', 'Contact', 'Amount (₹)', 'Status', 'Due Date', 'Payment Date', 'Payment Method'];
+      rows = data.map(p => [
+        p.school_name || p.name || '',
+        p.contact_name || p.contact || '',
+        p.amount || 0,
+        p.status || '',
+        p.due_date ? format(parseISO(p.due_date), 'dd MMM yyyy') : '',
+        p.payment_date ? format(parseISO(p.payment_date), 'dd MMM yyyy') : '',
+        p.payment_method || '',
+      ]);
+    } else if (activeTab === 'student') {
+      headers = ['Student Name', 'Parent Name', 'Course', 'Amount (₹)', 'Status', 'Due Date'];
+      rows = data.map(p => [
+        p.student_name || p.name || '',
+        p.parent_name || '',
+        p.course_name || p.program || '',
+        p.amount || 0,
+        p.status || '',
+        p.due_date ? format(parseISO(p.due_date), 'dd MMM yyyy') : '',
+      ]);
+    } else {
+      headers = ['School', 'Student', 'Amount (₹)', 'Status', 'Date'];
+      rows = data.map(p => [
+        p.school_name || '',
+        p.student_name || p.name || '',
+        p.amount || 0,
+        p.status || '',
+        p.created_at ? format(new Date(p.created_at), 'dd MMM yyyy') : '',
+      ]);
+    }
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `payments_${activeTab}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${data.length} records`);
+  };
+
   return (
     <AdminLayout title="Orders & Payments">
       <div className="space-y-6">
@@ -835,6 +880,17 @@ const AdminOrders = () => {
             <CreditCard className="w-4 h-4" />
             School Student Payments (Online)
           </button>
+          <div className="ml-auto flex items-center pb-1">
+            <Button
+              variant="outline"
+              onClick={exportPaymentsToCSV}
+              className="text-green-700 border-green-300 hover:bg-green-50 text-sm h-8 px-3"
+              data-testid="export-payments-csv-btn"
+            >
+              <Download className="w-3.5 h-3.5 mr-1.5" />
+              Export CSV
+            </Button>
+          </div>
         </div>
 
         {/* Payment Sync Panel - For managing Cashfree payment status sync */}

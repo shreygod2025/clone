@@ -3642,6 +3642,34 @@ ${FOOTER}</div></body></html>`
     return inquiries.filter(i => i.status === status).length;
   };
 
+  const exportSchoolsToCSV = () => {
+    const headers = ['School Name', 'Contact Name', 'Phone', 'City', 'Board', 'Status', 'Source', 'Assigned To', 'Lead Value (₹)', 'Created At'];
+    const rows = filteredInquiries.map(inq => {
+      const assignedUser = teamUsers.find(u => u.id === inq.assigned_to);
+      return [
+        inq.school_name || '',
+        inq.contact_name || '',
+        inq.phone || '',
+        inq.city || '',
+        inq.board || '',
+        inq.status || '',
+        inq.source || '',
+        assignedUser?.name || inq.assigned_to || '',
+        inq.lead_value || 0,
+        inq.created_at ? new Date(inq.created_at).toLocaleDateString('en-IN') : '',
+      ];
+    });
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `schools_${activeSection}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${filteredInquiries.length} schools`);
+  };
+
   // Helper function to render a school card
   const renderSchoolCard = (inquiry) => (
     <div 
@@ -4229,6 +4257,7 @@ ${FOOTER}</div></body></html>`
                 setSessionsData([]);
                 setSessionsFilter({ status: '', start_date: '', end_date: '' });
                 fetchSchoolSessions(inquiry);
+                fetchCheckinEducators();
               }}
               className="text-xs px-2.5 py-1.5 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-700 flex items-center gap-1 font-medium"
               data-testid={`sessions-${inquiry.id}`}
@@ -4562,6 +4591,14 @@ ${FOOTER}</div></body></html>`
                   <FileSpreadsheet className="w-4 h-4" /> <span className="hidden sm:inline">Bulk</span> Import
                 </Button>
               )}
+              <Button
+                variant="outline"
+                onClick={exportSchoolsToCSV}
+                className="flex items-center gap-2 flex-1 sm:flex-none justify-center border-green-300 text-green-700 hover:bg-green-50"
+                data-testid="export-schools-csv-btn"
+              >
+                <Download className="w-4 h-4" /> <span className="hidden sm:inline">Export</span> CSV
+              </Button>
               <Button
                 onClick={() => setShowAddForm(true)}
                 className="btn-primary flex items-center gap-2 flex-1 sm:flex-none justify-center"
@@ -11796,7 +11833,10 @@ ${FOOTER}</div></body></html>`
                           <td className="py-2 pr-3 whitespace-nowrap">
                             {session.start_time?.slice(0,5)} – {session.end_time?.slice(0,5)}
                           </td>
-                          <td className="py-2 pr-3">{session.educator_id?.toString().slice(0,8)}...</td>
+                          <td className="py-2 pr-3">
+                            {checkinEducators.find(e => e.id === session.educator_id)?.full_name
+                              || (session.educator_id ? session.educator_id.toString().slice(0,8) + '...' : '—')}
+                          </td>
                           <td className="py-2 pr-3 capitalize">{session.mode || '—'}</td>
                           <td className="py-2 pr-3">
                             {isEditing ? (

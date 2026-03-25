@@ -152,27 +152,77 @@ async def get_school_sessions(
     per_page: int = 50,
     user: dict = Depends(get_current_user)
 ):
-    """List sessions for this school from the checkin API."""
+    """
+    List sessions for this school from the checkin API.
+    Uses timetable_id filter (the only working filter) to correctly scope sessions
+    to this school only.
+    """
     school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0, "school_name": 1, "checkin_timetable_id": 1})
     if not school:
         raise HTTPException(status_code=404, detail="School not found")
 
-    params: dict = {"page": page, "per_page": per_page}
-    if school.get("school_name"):
-        params["school_name"] = school["school_name"]
-    if status:
-        params["status"] = status
-    if start_date:
-        params["start_date"] = start_date
-    if end_date:
-        params["end_date"] = end_date
+    school_name = school.get("school_name") or ""
 
-    data = await _checkin_get("/sessions", params)
+    # ── Resolve timetable_id(s) for this school ───────────────────
+    # Priority 1: use the stored checkin_timetable_id on the school record
+    timetable_ids = []
+    stored_id = school.get("checkin_timetable_id")
+    if stored_id:
+        timetable_ids = [stored_id]
+    else:
+        # Priority 2: search all timetables and match by exact school_name
+        # The external API's school_name filter is broken — fetch all and filter client-side
+        all_timetables: list = []
+        t_page = 1
+        while True:
+            resp = await _checkin_get("/timetables", {"page": t_page, "per_page": 100})
+            batch = resp.get("data", [])
+            all_timetables.extend(batch)
+            meta = resp.get("meta", {})
+            if len(all_timetables) >= meta.get("total", 0) or not batch:
+                break
+            t_page += 1
+
+        # Exact school name match (case-insensitive)
+        matched = [t["id"] for t in all_timetables if (t.get("school_name") or "").strip().lower() == school_name.strip().lower()]
+        timetable_ids = matched
+
+    if not timetable_ids:
+        return {
+            "sessions": [],
+            "meta": {"total": 0},
+            "school_name": school_name,
+            "timetable_id": stored_id,
+            "note": "No timetable linked to this school yet. Create one from the onboarding workflow."
+        }
+
+    # ── Fetch sessions for each timetable_id ─────────────────────
+    # If multiple timetables, fetch for each and merge
+    all_sessions: list = []
+    for tid in timetable_ids:
+        params: dict = {"timetable_id": tid, "page": page, "per_page": per_page}
+        if status:
+            params["status"] = status
+        if start_date:
+            params["start_date"] = start_date
+        if end_date:
+            params["end_date"] = end_date
+        data = await _checkin_get("/sessions", params)
+        all_sessions.extend(data.get("data", []))
+
+    # Sort by session_date desc
+    all_sessions.sort(key=lambda s: s.get("session_date", "") or "", reverse=True)
+
+    total = len(all_sessions)
+    # Simple pagination on merged result
+    start_idx = (page - 1) * per_page
+    paginated = all_sessions[start_idx: start_idx + per_page]
+
     return {
-        "sessions": data.get("data", []),
-        "meta": data.get("meta", {}),
-        "school_name": school.get("school_name"),
-        "timetable_id": school.get("checkin_timetable_id"),
+        "sessions": paginated,
+        "meta": {"total": total, "page": page, "per_page": per_page},
+        "school_name": school_name,
+        "timetable_id": timetable_ids[0] if len(timetable_ids) == 1 else timetable_ids,
     }
 
 

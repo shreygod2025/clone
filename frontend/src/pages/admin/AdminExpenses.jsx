@@ -279,6 +279,31 @@ const AdminExpenses = () => {
     );
   });
 
+  const exportExpensesToCSV = () => {
+    const headers = ['Date', 'School', 'PO Number', 'Category', 'Description', 'Vendor', 'Subtotal', 'GST', 'Total', 'Status'];
+    const rows = filteredExpenses.map(exp => [
+      exp.expense_date ? format(new Date(exp.expense_date), 'dd MMM yyyy') : '',
+      exp.school_name || '',
+      exp.po_number || '',
+      exp.category_name || '',
+      exp.description || '',
+      exp.vendor_name || '',
+      exp.subtotal || 0,
+      exp.gst_amount || 0,
+      exp.total_amount || exp.total || 0,
+      exp.status || '',
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `expenses_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${filteredExpenses.length} expenses`);
+  };
+
   return (
     <AdminLayout title="Expenses">
       <div className="space-y-6">
@@ -292,6 +317,16 @@ const AdminExpenses = () => {
             <p className="text-slate-600 text-sm mt-1">Track and manage expenses for each school</p>
           </div>
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={exportExpensesToCSV}
+              className="text-green-700 border-green-300 hover:bg-green-50"
+              data-testid="export-expenses-csv-btn"
+              title="Export current view to CSV"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
+            </Button>
             <Button
               variant="outline"
               onClick={handleCleanDuplicates}

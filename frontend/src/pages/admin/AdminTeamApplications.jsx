@@ -1309,6 +1309,37 @@ const AdminTeamApplications = () => {
     );
   };
 
+  const exportApplicationsToCSV = () => {
+    const filtered = applications.filter(app => {
+      const matchesSearch = !searchQuery ||
+        app.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        app.phone?.includes(searchQuery) ||
+        app.role?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSection = activeSection === 'all' || app.status === activeSection;
+      return matchesSearch && matchesSection;
+    });
+    const headers = ['Name', 'Email', 'Phone', 'Role', 'Status', 'Applied On', 'City', 'Experience'];
+    const rows = filtered.map(app => [
+      app.name || '',
+      app.email || '',
+      app.phone || '',
+      app.role || '',
+      app.status || '',
+      app.created_at ? new Date(app.created_at).toLocaleDateString('en-IN') : '',
+      app.city || '',
+      app.experience || '',
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `team_applications_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${filtered.length} applications`);
+  };
+
   return (
     <AdminLayout title="Team Applications" subtitle="Manage team member applications">
       {/* Header Actions */}
@@ -1332,6 +1363,16 @@ const AdminTeamApplications = () => {
         >
           <Download className="w-4 h-4 mr-2" />
           Template
+        </Button>
+        {/* Export CSV Button */}
+        <Button 
+          variant="outline" 
+          onClick={exportApplicationsToCSV}
+          className="border-green-300 text-green-700 hover:bg-green-50"
+          data-testid="export-applications-csv-btn"
+        >
+          <Download className="w-4 h-4 mr-2" />
+          Export CSV
         </Button>
         {/* Bulk Upload Button */}
         <Button 
