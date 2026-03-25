@@ -123,6 +123,42 @@ async def update_external_api_key(key_id: str, data: dict, user: dict = Depends(
     return {"message": "API key updated successfully"}
 
 
+@router.get("/admin/api-keys/{key_id}/test")
+async def test_external_api_key(key_id: str, user: dict = Depends(get_current_user)):
+    """Test an external API key by fetching sample school data with it"""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    key_doc = await db.external_api_keys.find_one({"id": key_id}, {"_id": 0})
+    if not key_doc:
+        raise HTTPException(status_code=404, detail="API key not found")
+    if not key_doc.get("is_active"):
+        return {"success": False, "error": "API key is inactive"}
+    
+    # Fetch sample active schools using the key
+    schools = await db.school_inquiries.find(
+        {"status": {"$in": ["active", "converted", "renewed"]}},
+        {"_id": 0, "school_name": 1, "address": 1, "location": 1, "latitude": 1, "longitude": 1, "contact_name": 1, "phone": 1}
+    ).limit(3).to_list(3)
+
+    sample = [{
+        "school_name": s.get("school_name") or "",
+        "address": s.get("address") or "",
+        "city": s.get("location") or "",
+        "latitude": s.get("latitude"),
+        "longitude": s.get("longitude"),
+        "contact_person": s.get("contact_name") or "",
+        "contact_phone": s.get("phone") or "",
+    } for s in schools]
+
+    return {
+        "success": True,
+        "key_name": key_doc.get("name"),
+        "count_active_schools": await db.school_inquiries.count_documents({"status": {"$in": ["active", "converted", "renewed"]}}),
+        "sample": sample
+    }
+
+
 @router.delete("/admin/api-keys/{key_id}")
 async def delete_external_api_key(key_id: str, user: dict = Depends(get_current_user)):
     """Delete an external API key"""
@@ -364,6 +400,73 @@ async def external_get_schools(
     }
 
 
+@router.get("/external/schools/stats/summary")
+async def external_get_schools_stats(
+    api_key_data: dict = Depends(verify_external_api_key)
+):
+    """Get summary statistics of schools"""
+    pipeline = [
+        {"$group": {"_id": "$status", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}}
+    ]
+    
+    status_counts = await db.school_inquiries.aggregate(pipeline).to_list(20)
+    
+    total = sum([s["count"] for s in status_counts])
+    
+    return {
+        "total_schools": total,
+        "by_status": {s["_id"]: s["count"] for s in status_counts if s["_id"]},
+        "generated_at": datetime.now(timezone.utc).isoformat()
+    }
+
+
+@router.get("/external/schools/active")
+async def external_get_active_schools_flat(
+    city: Optional[str] = None,
+    limit: int = 500,
+    api_key_data: dict = Depends(verify_external_api_key)
+):
+    """
+    Simplified flat-format endpoint returning active OLL partner schools.
+
+    Headers required:
+        X-API-Key: your_api_key
+
+    Returns a flat list with:
+        school_name, address, latitude, longitude,
+        contact_person, contact_phone, city, status
+    """
+    query: dict = {"status": {"$in": ["active", "converted", "renewed"]}}
+    if city:
+        query["location"] = {"$regex": city, "$options": "i"}
+
+    limit = min(limit, 1000)
+    schools = await db.school_inquiries.find(query, {"_id": 0}).limit(limit).to_list(limit)
+
+    result = []
+    for s in schools:
+        result.append({
+            "school_name": s.get("school_name") or "",
+            "address": s.get("address") or "",
+            "city": s.get("location") or s.get("city") or "",
+            "state": s.get("state") or "",
+            "latitude": s.get("latitude"),
+            "longitude": s.get("longitude"),
+            "contact_person": s.get("contact_name") or "",
+            "contact_phone": s.get("phone") or "",
+            "contact_email": s.get("email") or "",
+            "board": s.get("board") or "",
+            "status": s.get("status") or "",
+        })
+
+    return {
+        "count": len(result),
+        "schools": result,
+        "generated_at": datetime.now(timezone.utc).isoformat()
+    }
+
+
 @router.get("/external/schools/{school_id}")
 async def external_get_school_by_id(
     school_id: str,
@@ -396,10 +499,12 @@ async def external_get_school_by_id(
         },
         
         "location": {
-            "city": school.get("location"),  # 'location' field contains city
+            "city": school.get("location"),
             "state": school.get("state"),
             "address": school.get("address"),
             "area": school.get("city"),
+            "latitude": school.get("latitude"),
+            "longitude": school.get("longitude"),
         },
         
         "relationship_manager": {
@@ -423,28 +528,6 @@ async def external_get_school_by_id(
     }
 
 
-@router.get("/external/schools/stats/summary")
-async def external_get_schools_stats(
-    api_key_data: dict = Depends(verify_external_api_key)
-):
-    """Get summary statistics of schools"""
-    pipeline = [
-        {"$group": {"_id": "$status", "count": {"$sum": 1}}},
-        {"$sort": {"count": -1}}
-    ]
-    
-    status_counts = await db.school_inquiries.aggregate(pipeline).to_list(20)
-    
-    total = sum([s["count"] for s in status_counts])
-    
-    return {
-        "total_schools": total,
-        "by_status": {s["_id"]: s["count"] for s in status_counts if s["_id"]},
-        "generated_at": datetime.now(timezone.utc).isoformat()
-    }
-
-
-# ========================
 
 
 

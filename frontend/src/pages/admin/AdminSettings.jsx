@@ -42,6 +42,8 @@ const AdminSettings = () => {
   const [currentIP, setCurrentIP] = useState(null);
   const [ipToWhitelist, setIpToWhitelist] = useState('');
   const [whitelistingIP, setWhitelistingIP] = useState(false);
+  const [testingApiKey, setTestingApiKey] = useState(false);
+  const [apiTestResult, setApiTestResult] = useState(null);
   
   // Service API Keys state
   const [resendApiKey, setResendApiKey] = useState('');
@@ -214,6 +216,21 @@ const AdminSettings = () => {
       toast.error('Failed to revoke API key');
     } finally {
       setRevokingKey(null);
+    }
+  };
+
+  const handleTestApiKey = async (keyId) => {
+    setTestingApiKey(true);
+    setApiTestResult(null);
+    try {
+      const res = await axios.get(`${API}/admin/api-keys/${keyId}/test`, {
+        headers: getAuthHeaders()
+      });
+      setApiTestResult({ success: true, count: res.data.count_active_schools, sample: res.data.sample, key_name: res.data.key_name });
+    } catch (err) {
+      setApiTestResult({ success: false, error: err.response?.data?.detail || err.message });
+    } finally {
+      setTestingApiKey(false);
     }
   };
 
@@ -993,6 +1010,94 @@ const AdminSettings = () => {
                 </table>
               </div>
             )}
+
+            {/* API Documentation Panel */}
+            <div className="bg-white rounded-xl shadow-sm p-6 mt-4 border border-slate-100">
+              <h3 className="font-semibold text-lg text-[#1E3A5F] mb-1 flex items-center gap-2">
+                How to Use the API
+              </h3>
+              <p className="text-sm text-slate-500 mb-4">Use your API key to fetch school data from any external app or integration.</p>
+
+              <div className="space-y-4">
+                {/* Endpoint */}
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Endpoint (Active Schools — flat format)</p>
+                  <code className="block bg-slate-900 text-green-400 rounded-lg px-4 py-3 text-sm font-mono break-all select-all">
+                    GET {process.env.REACT_APP_BACKEND_URL}/api/external/schools/active
+                  </code>
+                </div>
+
+                {/* Header */}
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Required Header</p>
+                  <code className="block bg-slate-900 text-yellow-300 rounded-lg px-4 py-3 text-sm font-mono">
+                    X-API-Key: oll_sk_your_key_here
+                  </code>
+                </div>
+
+                {/* Response fields */}
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Response Fields</p>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {['school_name', 'address', 'city', 'latitude', 'longitude', 'contact_person', 'contact_phone', 'contact_email', 'board', 'status'].map(f => (
+                      <code key={f} className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-mono">{f}</code>
+                    ))}
+                  </div>
+                </div>
+
+                {/* All schools endpoint */}
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Full CRM Endpoint (all statuses, paginated)</p>
+                  <code className="block bg-slate-900 text-green-400 rounded-lg px-4 py-3 text-sm font-mono break-all">
+                    GET {process.env.REACT_APP_BACKEND_URL}/api/external/schools?status=active&limit=100
+                  </code>
+                </div>
+
+                {/* Test button */}
+                {apiKeys.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Test your key</p>
+                    <button
+                      onClick={() => {
+                        const activeKey = apiKeys.find(k => k.is_active !== false);
+                        if (activeKey?.id) {
+                          handleTestApiKey(activeKey.id);
+                        } else {
+                          toast.error('No active API key found — generate one first');
+                        }
+                      }}
+                      disabled={testingApiKey}
+                      className="flex items-center gap-2 px-4 py-2 bg-[#1E3A5F] hover:bg-[#152d4a] text-white rounded-lg text-sm font-medium transition-all disabled:opacity-50"
+                      data-testid="test-api-key-btn"
+                    >
+                      {testingApiKey ? (
+                        <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Testing...</>
+                      ) : (
+                        <>Test API Key</>
+                      )}
+                    </button>
+
+                    {apiTestResult && (
+                      <div className={`mt-3 rounded-lg p-3 text-sm ${apiTestResult.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}
+                           data-testid="api-test-result">
+                        {apiTestResult.success ? (
+                          <div>
+                            <p className="text-green-700 font-medium mb-2">API key working — {apiTestResult.count} active school(s) found</p>
+                            {apiTestResult.sample?.map((s, i) => (
+                              <div key={i} className="bg-white rounded p-2 mb-1 text-xs text-slate-700 font-mono">
+                                <span className="font-semibold">{s.school_name}</span> | {s.city} | lat: {s.latitude ?? 'N/A'} | lng: {s.longitude ?? 'N/A'} | {s.contact_person} | {s.contact_phone}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-red-700">Error: {apiTestResult.error}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
 
             {/* Service API Keys Section */}
             <div className="bg-white rounded-xl shadow-sm p-6 mt-6">

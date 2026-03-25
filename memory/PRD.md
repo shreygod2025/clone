@@ -911,6 +911,11 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 - server.py: 17,907 → 15,704 lines (−2,203 lines, −12.3%)
 - All routes registered (315 total). Tested: 37/37 backend tests pass (iteration_48). All 4 module groups verified HTTP 200.
 
+### 2026-03-25 — External API Fix (Settings)
+- **New endpoint**: `GET /api/external/schools/active` — flat format returning: `school_name, address, city, latitude, longitude, contact_person, contact_phone, contact_email, board, status`. Fixed route ordering so `/active` is defined before `/{school_id}` (was returning 404).
+- **Admin test endpoint**: `GET /api/admin/api-keys/{key_id}/test` — lets admin verify any key is working without needing the full raw key. Returns school count + 3 sample records.
+- **Settings UI**: Added "How to Use the API" documentation panel showing exact endpoint URL, required header, all response field names, and a "Test API Key" button that uses the admin endpoint to verify the key and preview sample data.
+
 ### 2026-03-25 — School CRM Improvements
 - **Followup filter**: Removed converted/active/archived schools from "Upcoming Followups (7 Days)" dashboard. Now only `new` and `meeting_done` status schools appear in the followup list.
 - **Unarchive button**: Added blue "Unarchive" button to all archived school cards — restores lead back to `new` status.
