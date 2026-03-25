@@ -7867,11 +7867,13 @@ ${FOOTER}</div></body></html>`
 
             <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-700">
               <strong>Reply-to:</strong> info@oll.co &nbsp;|&nbsp; <strong>From:</strong> OLL Team
-              {emailModalType === 'proposal' && lastProposalPDF?.schoolId === showEmailModal?.id && (
-                <span className="ml-2 text-green-700 font-semibold">&#10003; Proposal PDF will be attached</span>
+              {emailModalType === 'proposal' && (
+                lastProposalPDF?.schoolId === showEmailModal?.id
+                  ? <span className="ml-2 text-green-700 font-semibold">&#10003; Proposal PDF will be attached (cached)</span>
+                  : <span className="ml-2 text-blue-600">PDF will be auto-generated &amp; attached on send</span>
               )}
-              {emailModalType === 'proposal' && lastProposalPDF?.schoolId !== showEmailModal?.id && (
-                <span className="ml-2 text-amber-600">&#9888; Generate the proposal first to attach PDF</span>
+              {emailModalType === 'mou' && (
+                <span className="ml-2 text-blue-600">MOU PDF will be auto-generated &amp; attached on send</span>
               )}
             </div>
 
@@ -7887,8 +7889,36 @@ ${FOOTER}</div></body></html>`
                   }
                   setEmailModalSending(true);
                   try {
-                    // Include proposal PDF if available for this school and type is 'proposal'
-                    const hasPDF = emailModalType === 'proposal' && lastProposalPDF?.schoolId === showEmailModal?.id;
+                    let pdfAttachment = {};
+
+                    // Auto-generate and attach Proposal PDF
+                    if (emailModalType === 'proposal') {
+                      const proposalData = showEmailModal.proposal_data || showEmailModal.onboarding_data || {};
+                      if (lastProposalPDF?.schoolId === showEmailModal?.id) {
+                        // Already generated in this session — use cached
+                        pdfAttachment = { pdf_base64: lastProposalPDF.base64, pdf_filename: lastProposalPDF.filename };
+                      } else {
+                        // Auto-generate silently (no download, no upload)
+                        const result = await generateProposalDocument(showEmailModal, proposalData, {
+                          API, getAuthHeaders, user, toast: () => {}, noDownload: true
+                        });
+                        if (result?.base64) {
+                          pdfAttachment = { pdf_base64: result.base64, pdf_filename: result.filename };
+                        }
+                      }
+                    }
+
+                    // Auto-generate and attach MOU PDF
+                    if (emailModalType === 'mou') {
+                      const mouData = showEmailModal.onboarding_data || showEmailModal.proposal_data || {};
+                      const result = await generateMOUDocument(showEmailModal, mouData, {
+                        API, getAuthHeaders, user, toast: () => {}, noDownload: true
+                      });
+                      if (result?.base64) {
+                        pdfAttachment = { pdf_base64: result.base64, pdf_filename: result.filename };
+                      }
+                    }
+
                     await axios.post(`${API}/schools/${showEmailModal.id}/send-crm-email`, {
                       email_type: emailModalType,
                       to_email: emailModalToEmail,
@@ -7897,9 +7927,10 @@ ${FOOTER}</div></body></html>`
                       meeting_time: showEmailModal.meeting_time,
                       meeting_mode: showEmailModal.meeting_type,
                       task_id: emailModalTaskId || undefined,
-                      ...(hasPDF ? { pdf_base64: lastProposalPDF.base64, pdf_filename: lastProposalPDF.filename } : {})
+                      ...pdfAttachment,
                     }, { headers: getAuthHeaders() });
-                    toast.success(`Email sent to ${emailModalToEmail}${hasPDF ? ' with PDF attached!' : ''}`);
+                    const attached = Object.keys(pdfAttachment).length > 0;
+                    toast.success(`Email sent to ${emailModalToEmail}${attached ? ' with PDF attached!' : ''}`);
                     setShowEmailModal(null);
                     setEmailModalTaskId(null);
                     fetchInquiries();

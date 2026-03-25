@@ -8,9 +8,10 @@ import { OLL_LOGO_B64 } from './ollAssets';
  * Generates, downloads, uploads and saves an MOU PDF for a school.
  * @param {object} school - The school inquiry object
  * @param {object} data   - The onboarding data
- * @param {object} ctx    - Context: { API, getAuthHeaders, user, toast, fetchInquiries, setOnboardData }
+ * @param {object} ctx    - Context: { API, getAuthHeaders, user, toast, fetchInquiries, setOnboardData, noDownload }
+ * @returns {{ base64, filename }} always — caller can use for email attachment
  */
-export async function generateMOUDocument(school, data, { API, getAuthHeaders, user, toast, fetchInquiries, setOnboardData }) {
+export async function generateMOUDocument(school, data, { API, getAuthHeaders, user, toast, fetchInquiries, setOnboardData, noDownload } = {}) {
   const PW = 210, PH = 297, M = 15;
   const CW = PW - M * 2;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -760,31 +761,39 @@ export async function generateMOUDocument(school, data, { API, getAuthHeaders, u
 
   // ── DOWNLOAD ───────────────────────────────────────────────
   const fileName = `MOU_${(schoolName || 'School').replace(/\s+/g, '_')}_${format(new Date(), 'ddMMMyyyy')}.pdf`;
-  doc.save(fileName);
+  const pdfBase64 = doc.output('datauristring').split(',')[1];
+
+  if (!noDownload) {
+    doc.save(fileName);
+  }
 
   // ── UPLOAD & STORE IN DOCUMENTS ───────────────────────────
-  try {
-    const pdfBlob = doc.output('blob');
-    const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
-    const formData = new FormData();
-    formData.append('file', pdfFile);
-    const uploadRes = await axios.post(`${API}/upload`, formData, {
-      headers: getAuthHeaders(),
-    });
-    const fileUrl = uploadRes.data.url;
-    if (!fileUrl) throw new Error('Upload returned no URL');
+  if (!noDownload) {
+    try {
+      const pdfBlob = doc.output('blob');
+      const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+      const formData = new FormData();
+      formData.append('file', pdfFile);
+      const uploadRes = await axios.post(`${API}/upload`, formData, {
+        headers: getAuthHeaders(),
+      });
+      const fileUrl = uploadRes.data.url;
+      if (!fileUrl) throw new Error('Upload returned no URL');
 
-    // Atomically append to documents (avoids stale state overwrite)
-    await axios.post(`${API}/schools/${school.id}/add-document`, {
-      type: 'MOU',
-      url: fileUrl,
-      name: fileName,
-    }, { headers: getAuthHeaders() });
-    setOnboardData(prev => ({ ...prev, mou_url: fileUrl }));
-    fetchInquiries();
-    toast.success('MOU generated and saved!');
-  } catch (uploadErr) {
-    console.error('MOU upload/save error:', uploadErr);
-    toast.error('Failed to save MOU: ' + (uploadErr.response?.data?.detail || uploadErr.message));
+      // Atomically append to documents (avoids stale state overwrite)
+      await axios.post(`${API}/schools/${school.id}/add-document`, {
+        type: 'MOU',
+        url: fileUrl,
+        name: fileName,
+      }, { headers: getAuthHeaders() });
+      if (setOnboardData) setOnboardData(prev => ({ ...prev, mou_url: fileUrl }));
+      if (fetchInquiries) fetchInquiries();
+      if (toast) toast.success('MOU generated and saved!');
+    } catch (uploadErr) {
+      console.error('MOU upload/save error:', uploadErr);
+      if (toast) toast.error('Failed to save MOU: ' + (uploadErr.response?.data?.detail || uploadErr.message));
+    }
   }
+
+  return { base64: pdfBase64, filename: fileName };
 }

@@ -8,9 +8,10 @@ import { OLL_LOGO_B64, OLL_LOGO_HORIZONTAL } from './ollAssets';
  * Generates, downloads, uploads and saves a Proposal PDF for a school.
  * @param {object} school - The school inquiry object
  * @param {object} data   - The proposal/onboarding data
- * @param {object} ctx    - Context: { API, getAuthHeaders, user, toast, fetchInquiries, setLastProposalPDF }
+ * @param {object} ctx    - Context: { API, getAuthHeaders, user, toast, fetchInquiries, setLastProposalPDF, noDownload }
+ * @returns {{ base64, filename }} always — caller can use for email attachment
  */
-export async function generateProposalDocument(school, data, { API, getAuthHeaders, user, toast, fetchInquiries, setLastProposalPDF }) {
+export async function generateProposalDocument(school, data, { API, getAuthHeaders, user, toast, fetchInquiries, setLastProposalPDF, noDownload } = {}) {
   const PW = 210, PH = 297, M = 15;
   const CW = PW - M * 2;
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -59,8 +60,16 @@ export async function generateProposalDocument(school, data, { API, getAuthHeade
 
   // ── INTRODUCTION ─────────────────────────────────────────────
   doc.setFontSize(10); doc.setTextColor(0, 0, 0);
-  const grades = (data?.grade_pricing || []).map(g => parseInt(g.grade)).filter(g => !isNaN(g)).sort((a, b) => a - b);
-  const gradeRange = grades.length > 0 ? `Grades ${grades[0]} to ${grades[grades.length - 1]}` : 'Grades 1 to 10';
+  // Use grades_from/grades_to (ordinal form) if set; fallback to grade_pricing range
+  let gradeRange;
+  if (data.grades_from && data.grades_to) {
+    gradeRange = `${data.grades_from} to ${data.grades_to}`;
+  } else {
+    const gradeNums = (data?.grade_pricing || []).map(g => parseInt(g.grade)).filter(g => !isNaN(g)).sort((a, b) => a - b);
+    gradeRange = gradeNums.length > 1
+      ? `Grades ${gradeNums[0]} to ${gradeNums[gradeNums.length - 1]}`
+      : gradeNums.length === 1 ? `Grade ${gradeNums[0]}` : 'Grades 1 to 10';
+  }
   const introText = `We are delighted to share our OLL's Robotics & AI Lab Setup for the upcoming academic year for your school. Designed for students from ${gradeRange}, this program has already been successfully implemented in 400+ schools across India, with remarkable achievements.`;
   const introLines = doc.splitTextToSize(introText, CW);
   introLines.forEach((line, idx) => { doc.text(line, M, y + (idx * 7)); });
@@ -180,33 +189,39 @@ export async function generateProposalDocument(school, data, { API, getAuthHeade
 
   // ── DOWNLOAD ─────────────────────────────────────────────────
   const fileName = `Proposal_${(schoolName).replace(/\s+/g, '_')}_${format(new Date(), 'ddMMMyyyy')}.pdf`;
+  const pdfBase64 = doc.output('datauristring').split(',')[1];
 
   // Store base64 for email attachment if setter is provided
   if (setLastProposalPDF) {
-    const pdfBase64 = doc.output('datauristring').split(',')[1];
     setLastProposalPDF({ base64: pdfBase64, filename: fileName, schoolId: school.id });
   }
 
-  doc.save(fileName);
-
-  // ── UPLOAD & STORE (atomically) ───────────────────────────────
-  try {
-    const pdfBlob = doc.output('blob');
-    const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
-    const formData = new FormData();
-    formData.append('file', pdfFile);
-    const uploadRes = await axios.post(`${API}/upload`, formData, { headers: getAuthHeaders() });
-    const fileUrl = uploadRes.data.url;
-    if (fileUrl) {
-      await axios.post(`${API}/schools/${school.id}/add-document`, {
-        type: 'Proposal', url: fileUrl, name: fileName,
-        uploaded_at: new Date().toISOString(),
-        uploaded_by: user?.name || user?.email || 'Admin',
-      }, { headers: getAuthHeaders() });
-      if (fetchInquiries) fetchInquiries();
-    }
-    toast.success('Proposal generated, downloaded & saved!');
-  } catch {
-    toast.success('Proposal downloaded!');
+  if (!noDownload) {
+    doc.save(fileName);
   }
+
+  // ── UPLOAD & STORE (only when not in noDownload/email-only mode) ──
+  if (!noDownload) {
+    try {
+      const pdfBlob = doc.output('blob');
+      const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+      const formData = new FormData();
+      formData.append('file', pdfFile);
+      const uploadRes = await axios.post(`${API}/upload`, formData, { headers: getAuthHeaders() });
+      const fileUrl = uploadRes.data.url;
+      if (fileUrl) {
+        await axios.post(`${API}/schools/${school.id}/add-document`, {
+          type: 'Proposal', url: fileUrl, name: fileName,
+          uploaded_at: new Date().toISOString(),
+          uploaded_by: user?.name || user?.email || 'Admin',
+        }, { headers: getAuthHeaders() });
+        if (fetchInquiries) fetchInquiries();
+      }
+      if (toast) toast.success('Proposal generated, downloaded & saved!');
+    } catch {
+      if (toast) toast.success('Proposal downloaded!');
+    }
+  }
+
+  return { base64: pdfBase64, filename: fileName };
 }
