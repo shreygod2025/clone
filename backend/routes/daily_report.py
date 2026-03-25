@@ -47,13 +47,18 @@ def fmt_date():
 def count_by(items, field):
     counts = defaultdict(int)
     for item in items:
-        val = item.get(field) or "Unknown"
+        val = item.get(field)
+        # Treat None and empty string as "Not Categorized"
+        if val is None or val == "":
+            val = "Not Categorized"
         if isinstance(val, list):
             for v in val:
-                counts[v or "Unknown"] += 1
+                counts[v or "Not Categorized"] += 1
         else:
             counts[str(val)] += 1
-    return dict(sorted(counts.items(), key=lambda x: -x[1]))
+    # Remove "Not Categorized" if it's the only entry (no useful data)
+    result = dict(sorted(counts.items(), key=lambda x: -x[1]))
+    return result
 
 
 def pct(a, b):
@@ -136,13 +141,16 @@ def email_wrap(color, icon_char, title, date_str, body_html):
 async def fetch_support_data(start, end):
     query = {"created_at": {"$gte": start, "$lt": end}}
     today = await db.support_queries.find(query, {"_id": 0}).to_list(2000)
-    all_open = await db.support_queries.find({"status": {"$in": ["open", "in_progress"]}}, {"_id": 0}).to_list(2000)
+    all_open = await db.support_queries.find(
+        {"status": {"$in": ["open", "in_progress", "new"]}}, {"_id": 0}
+    ).to_list(2000)
     overdue = await db.support_queries.find({
-        "status": {"$in": ["open", "in_progress"]},
+        "status": {"$in": ["open", "in_progress", "new"]},
         "created_at": {"$lt": (datetime.now(timezone.utc) - timedelta(hours=48)).isoformat()}
     }, {"_id": 0}).to_list(500)
     solved_today = [q for q in today if q.get("status") == "resolved"]
-    # Avg resolution time in hours for today's solved
+
+    # Avg resolution time — use resolved_at, fall back to updated_at
     res_times = []
     for q in solved_today:
         c = q.get("created_at") or ""
@@ -151,20 +159,35 @@ async def fetch_support_data(start, end):
             try:
                 dt_c = datetime.fromisoformat(c.replace("Z", "+00:00"))
                 dt_r = datetime.fromisoformat(r.replace("Z", "+00:00"))
-                res_times.append((dt_r - dt_c).total_seconds() / 3600)
+                diff = (dt_r - dt_c).total_seconds() / 3600
+                if diff >= 0:
+                    res_times.append(diff)
             except Exception:
                 pass
     avg_res = round(sum(res_times) / len(res_times), 1) if res_times else None
+
+    # Resolution rate = resolved / (resolved + open) for all-time
+    all_resolved = await db.support_queries.count_documents({"status": "resolved"})
+    all_total = await db.support_queries.count_documents({})
+    resolution_rate = pct(all_resolved, all_total)
+
+    # B2B vs B2C user type based on school_name presence
+    user_types = defaultdict(int)
+    for q in today:
+        user_types["B2B (School)" if q.get("school_name") else "B2C (Student/Parent)"] += 1
+
     return dict(
         new_queries=len(today),
-        categories=count_by(today, "query_type"),
-        sub_categories=count_by(today, "related_to"),
-        user_types=count_by(today, "user_type"),
-        sources=count_by(today, "source"),
         open_total=len(all_open),
         overdue=len(overdue),
         solved_today=len(solved_today),
         avg_resolution_hrs=avg_res,
+        resolution_rate=resolution_rate,
+        # Use actual DB field names
+        categories=count_by(today, "main_category"),
+        sub_categories=count_by(today, "category"),
+        detail_categories=count_by(today, "sub_category"),
+        user_types=dict(sorted(user_types.items(), key=lambda x: -x[1])),
     )
 
 
@@ -259,12 +282,13 @@ def build_support_email(d, date_str):
       {kpi(d['overdue'], "Overdue", "> 48h open")}
       {kpi(d['solved_today'], "Resolved Today")}
       {kpi(avg_res, "Avg Resolution Time")}
+      {kpi(d['resolution_rate'], "Overall Resolution Rate")}
     </div>
     <hr class="divider">
     {breakdown_table(d['categories'], "Query Categories")}
     {breakdown_table(d['sub_categories'], "Sub-Categories")}
+    {breakdown_table(d['detail_categories'], "Detail Categories")}
     {breakdown_table(d['user_types'], "User Type Division")}
-    {breakdown_table(d['sources'], "Source Division")}
     """
     return email_wrap(COLORS["support"], "🎧", "Support Report", date_str, body)
 

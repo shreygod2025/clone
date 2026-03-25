@@ -911,6 +911,14 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 - server.py: 17,907 → 15,704 lines (−2,203 lines, −12.3%)
 - All routes registered (315 total). Tested: 37/37 backend tests pass (iteration_48). All 4 module groups verified HTTP 200.
 
+### 2026-03-25 — Support Report Email Fix
+- **Root cause**: `fetch_support_data` used non-existent field names: `query_type` (→ `main_category`), `related_to` (→ `category`), `user_type` and `source` (neither field exists in the schema).
+- **Fixes**: Corrected all field names. Replaced `user_type`/`source` with actual useful data: `detail_categories` (from `sub_category` field) and `user_types` (B2B vs B2C based on `school_name` presence).
+- **"Unknown" → "Not Categorized"**: Changed fallback label from "Unknown" to "Not Categorized" for empty/null fields.
+- **Open count fix**: Added `"new"` to the open status filter (was missing `new` tickets from the count).
+- **New KPI**: Added "Overall Resolution Rate" (all-time resolved ÷ total) to the support email.
+- **Resolution rate**: Added `resolution_rate` field (21% in test data).
+
 ### 2026-03-25 — External API Fix (Settings)
 - **New endpoint**: `GET /api/external/schools/active` — flat format returning: `school_name, address, city, latitude, longitude, contact_person, contact_phone, contact_email, board, status`. Fixed route ordering so `/active` is defined before `/{school_id}` (was returning 404).
 - **Admin test endpoint**: `GET /api/admin/api-keys/{key_id}/test` — lets admin verify any key is working without needing the full raw key. Returns school count + 3 sample records.
