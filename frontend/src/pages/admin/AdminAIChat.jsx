@@ -7,7 +7,7 @@ import { generateMOUDocument } from '../../utils/mouPdfGenerator';
 import {
   Send, Plus, Bot, CheckCircle, XCircle,
   Download, FileText, Building2, Mail, Tag, StickyNote,
-  UserCheck, Ticket, Loader2, Sparkles, Trash2
+  UserCheck, Ticket, Loader2, Sparkles, Trash2, Calendar, CalendarCheck
 } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -19,16 +19,18 @@ function getAuthHeaders() {
 
 // ── Action type config ────────────────────────────────────────────────────
 const ACTION_CFG = {
-  create_lead:       { label: 'Lead Created',    Icon: Building2,  cls: 'bg-emerald-50 border-emerald-200 text-emerald-800' },
-  update_lead:       { label: 'Lead Updated',    Icon: Building2,  cls: 'bg-blue-50 border-blue-200 text-blue-800' },
-  delete_lead:       { label: 'Lead Deleted',    Icon: Building2,  cls: 'bg-red-50 border-red-200 text-red-800' },
-  change_status:     { label: 'Status Changed',  Icon: Tag,        cls: 'bg-violet-50 border-violet-200 text-violet-800' },
-  add_note:          { label: 'Note Added',      Icon: StickyNote, cls: 'bg-amber-50 border-amber-200 text-amber-800' },
-  convert_lead:      { label: 'Lead Converted',  Icon: UserCheck,  cls: 'bg-emerald-50 border-emerald-200 text-emerald-800' },
-  send_email:        { label: 'Email Sent',      Icon: Mail,       cls: 'bg-sky-50 border-sky-200 text-sky-800' },
-  raise_ticket:      { label: 'Ticket Raised',   Icon: Ticket,     cls: 'bg-orange-50 border-orange-200 text-orange-800' },
-  generate_proposal: { label: 'Proposal PDF',    Icon: FileText,   cls: 'bg-indigo-50 border-indigo-200 text-indigo-800' },
-  generate_mou:      { label: 'MOU PDF',         Icon: FileText,   cls: 'bg-purple-50 border-purple-200 text-purple-800' },
+  create_lead:       { label: 'Lead Created',        Icon: Building2,     cls: 'bg-emerald-50 border-emerald-200 text-emerald-800' },
+  update_lead:       { label: 'Lead Updated',        Icon: Building2,     cls: 'bg-blue-50 border-blue-200 text-blue-800' },
+  delete_lead:       { label: 'Lead Deleted',        Icon: Building2,     cls: 'bg-red-50 border-red-200 text-red-800' },
+  change_status:     { label: 'Status Changed',      Icon: Tag,           cls: 'bg-violet-50 border-violet-200 text-violet-800' },
+  add_note:          { label: 'Note Added',          Icon: StickyNote,    cls: 'bg-amber-50 border-amber-200 text-amber-800' },
+  convert_lead:      { label: 'Lead Converted',      Icon: UserCheck,     cls: 'bg-emerald-50 border-emerald-200 text-emerald-800' },
+  send_email:        { label: 'Email Sent',          Icon: Mail,          cls: 'bg-sky-50 border-sky-200 text-sky-800' },
+  raise_ticket:      { label: 'Ticket Raised',       Icon: Ticket,        cls: 'bg-orange-50 border-orange-200 text-orange-800' },
+  generate_proposal: { label: 'Proposal PDF',        Icon: FileText,      cls: 'bg-indigo-50 border-indigo-200 text-indigo-800' },
+  generate_mou:      { label: 'MOU PDF',             Icon: FileText,      cls: 'bg-purple-50 border-purple-200 text-purple-800' },
+  schedule_meeting:  { label: 'Meeting Scheduled',   Icon: Calendar,      cls: 'bg-teal-50 border-teal-200 text-teal-800' },
+  schedule_followup: { label: 'Follow-up Scheduled', Icon: CalendarCheck, cls: 'bg-cyan-50 border-cyan-200 text-cyan-800' },
 };
 
 function ActionCard({ action, onGeneratePDF }) {

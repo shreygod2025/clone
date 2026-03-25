@@ -605,6 +605,10 @@ async def check_school_meeting_reminders():
         # Check for meetings in the next 1.5-2.5 hours (for 2h reminder)
         reminder_2h_start = now + timedelta(hours=1, minutes=30)
         reminder_2h_end = now + timedelta(hours=2, minutes=30)
+
+        # Check for meetings in the next 45-75 minutes (for 1h reminder)
+        reminder_1h_start = now + timedelta(minutes=45)
+        reminder_1h_end = now + timedelta(minutes=75)
         
         # Find schools with meetings scheduled
         schools_with_meetings = await db.school_inquiries.find({
@@ -661,6 +665,16 @@ async def check_school_meeting_reminders():
                             {"$set": {"reminder_2h_sent": True, "reminder_2h_sent_at": now.isoformat()}}
                         )
                         print(f"[SCHEDULER] Sent 2h reminder for {school.get('school_name', 'Unknown')}")
+
+                # Check if 1h reminder needed
+                if reminder_1h_start <= meeting_dt <= reminder_1h_end:
+                    if not school.get("reminder_1h_sent"):
+                        await send_school_meeting_reminder_2h(school, sales_manager)  # reuse 2h template
+                        await db.school_inquiries.update_one(
+                            {"id": school["id"]},
+                            {"$set": {"reminder_1h_sent": True, "reminder_1h_sent_at": now.isoformat()}}
+                        )
+                        print(f"[SCHEDULER] Sent 1h reminder for {school.get('school_name', 'Unknown')}")
                         
             except Exception as e:
                 print(f"[SCHEDULER] Error processing school {school.get('id')}: {e}")
@@ -733,6 +747,116 @@ async def send_email_gmail(to_email: str, subject: str, html_content: str):
     except Exception as e:
         logging.error(f"Failed to send email: {str(e)}")
         return {"success": False, "error": str(e)}
+
+
+# ─────────────────────────────────────────────────────────────────
+# SCHOOL CRM — DAILY DIGEST (email tomorrow's meetings + follow-ups)
+# ─────────────────────────────────────────────────────────────────
+async def send_school_crm_daily_digest():
+    """Send a daily digest email listing tomorrow's meetings and follow-ups."""
+    print("[SCHEDULER] Building School CRM daily digest...")
+    try:
+        from datetime import timedelta
+        now = datetime.now(timezone.utc)
+        # Use IST (UTC+5:30) for "tomorrow" calculation so it lines up with admin's day
+        ist_now = now + timedelta(hours=5, minutes=30)
+        tomorrow = (ist_now + timedelta(days=1)).strftime('%Y-%m-%d')
+        today = ist_now.strftime('%Y-%m-%d')
+
+        # Meetings tomorrow
+        meetings = await db.school_inquiries.find(
+            {"meeting_date": tomorrow},
+            {"_id": 0, "school_name": 1, "meeting_date": 1, "meeting_time": 1,
+             "meeting_mode": 1, "contact_name": 1, "phone": 1, "status": 1}
+        ).to_list(200)
+
+        # Follow-ups tomorrow or follow_up status updated today/yesterday
+        followups = await db.school_inquiries.find(
+            {"followup_date": tomorrow},
+            {"_id": 0, "school_name": 1, "followup_date": 1, "followup_comment": 1,
+             "contact_name": 1, "phone": 1, "status": 1}
+        ).to_list(200)
+
+        if not meetings and not followups:
+            print("[SCHEDULER] No meetings or follow-ups tomorrow — digest not sent.")
+            return
+
+        # Build email rows
+        def meeting_rows(items):
+            rows = ""
+            for m in items:
+                rows += f"""
+                <tr>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-weight:600;color:#1a1a1a">{m.get('school_name','—')}</td>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;color:#333">{m.get('meeting_time','TBD')}</td>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;color:#555">{(m.get('meeting_mode') or '').title() or '—'}</td>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;color:#555">{m.get('contact_name','—')} · {m.get('phone','')}</td>
+                </tr>"""
+            return rows
+
+        def followup_rows(items):
+            rows = ""
+            for f in items:
+                rows += f"""
+                <tr>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-weight:600;color:#1a1a1a">{f.get('school_name','—')}</td>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;color:#555">{f.get('followup_comment','') or '—'}</td>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;color:#555">{f.get('contact_name','—')} · {f.get('phone','')}</td>
+                </tr>"""
+            return rows
+
+        meetings_section = ""
+        if meetings:
+            meetings_section = f"""
+            <h3 style="color:#075E54;margin:20px 0 8px 0">Meetings Tomorrow ({len(meetings)})</h3>
+            <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;border:1px solid #e5e5e5">
+              <thead><tr style="background:#075E54;color:#fff">
+                <th style="padding:9px 12px;text-align:left;font-weight:600">School</th>
+                <th style="padding:9px 12px;text-align:left;font-weight:600">Time</th>
+                <th style="padding:9px 12px;text-align:left;font-weight:600">Mode</th>
+                <th style="padding:9px 12px;text-align:left;font-weight:600">Contact</th>
+              </tr></thead>
+              <tbody>{meeting_rows(meetings)}</tbody>
+            </table>"""
+
+        followups_section = ""
+        if followups:
+            followups_section = f"""
+            <h3 style="color:#1E3A5F;margin:20px 0 8px 0">Follow-ups Tomorrow ({len(followups)})</h3>
+            <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;border:1px solid #e5e5e5">
+              <thead><tr style="background:#1E3A5F;color:#fff">
+                <th style="padding:9px 12px;text-align:left;font-weight:600">School</th>
+                <th style="padding:9px 12px;text-align:left;font-weight:600">Comment</th>
+                <th style="padding:9px 12px;text-align:left;font-weight:600">Contact</th>
+              </tr></thead>
+              <tbody>{followup_rows(followups)}</tbody>
+            </table>"""
+
+        html = f"""
+        <div style="font-family:Arial,sans-serif;max-width:680px;margin:0 auto;padding:20px">
+          <div style="background:#075E54;padding:24px;border-radius:10px 10px 0 0;text-align:center">
+            <h1 style="color:#fff;margin:0;font-size:22px">OLL School CRM — Daily Digest</h1>
+            <p style="color:#b2dfdb;margin:6px 0 0 0">{tomorrow}</p>
+          </div>
+          <div style="background:#f9f9f9;padding:24px;border:1px solid #e0e0e0;border-top:none;border-radius:0 0 10px 10px">
+            <p style="color:#555;margin:0 0 16px 0">Here's your schedule for <strong>tomorrow</strong>. You have <strong>{len(meetings)} meeting(s)</strong> and <strong>{len(followups)} follow-up(s)</strong>.</p>
+            {meetings_section}
+            {followups_section}
+            <p style="color:#888;font-size:12px;margin-top:24px">This digest is auto-generated by OLL CRM AI. Manage your schedule in the AI Chat tab.</p>
+          </div>
+        </div>"""
+
+        admin_email = GMAIL_EMAIL
+        subject = f"OLL CRM Digest — {len(meetings)} Meetings, {len(followups)} Follow-ups for {tomorrow}"
+        result = await send_email_gmail(admin_email, subject, html)
+        if result.get("success"):
+            print(f"[SCHEDULER] Daily digest sent to {admin_email}")
+        else:
+            print(f"[SCHEDULER] Digest email failed: {result.get('error')}")
+
+    except Exception as exc:
+        print(f"[SCHEDULER] Daily digest error: {exc}")
+        import traceback; traceback.print_exc()
 
 # Email Templates for Educators
 EMAIL_TEMPLATES = {
@@ -8086,7 +8210,7 @@ async def notify_educators_new_requirement(requirement: dict):
             return
 
         req_id = requirement.get("id", "")
-        frontend_url = os.environ.get("FRONTEND_URL", "https://skill-education-hub-2.preview.emergentagent.com")
+        frontend_url = os.environ.get("FRONTEND_URL", "https://admin-ai-suite.preview.emergentagent.com")
         apply_link = f"{frontend_url}/educator/apply/{req_id}"
 
         pay_text = ""
@@ -14143,6 +14267,12 @@ async def trigger_meeting_reminders(user: dict = Depends(get_current_user)):
     await check_school_meeting_reminders()
     return {"message": "Meeting reminders check triggered"}
 
+@api_router.post("/admin/trigger/daily-digest")
+async def trigger_daily_digest(user: dict = Depends(get_current_user)):
+    """Manually trigger School CRM daily digest email"""
+    await send_school_crm_daily_digest()
+    return {"message": "Daily digest triggered"}
+
 @api_router.post("/admin/test/whatsapp")
 async def test_whatsapp_notification(
     data: dict,
@@ -14333,6 +14463,16 @@ async def startup_db_client():
         replace_existing=True
     )
     print("[STARTUP] School meeting reminders scheduled — runs every 15 minutes")
+
+    # Schedule School CRM daily digest — fires at 8:30 AM IST (03:00 UTC)
+    scheduler.add_job(
+        send_school_crm_daily_digest,
+        trigger=CronTrigger(hour=3, minute=0, timezone="UTC"),
+        id="school_crm_daily_digest_job",
+        name="School CRM Daily Digest Email",
+        replace_existing=True
+    )
+    print("[STARTUP] School CRM daily digest scheduled — fires at 8:30 AM IST (03:00 UTC)")
     
     if not scheduler.running:
         scheduler.start()

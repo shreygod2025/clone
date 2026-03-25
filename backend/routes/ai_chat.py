@@ -44,6 +44,18 @@ You are a fast, decisive AI operator for the OLL School CRM. Your job is to GET 
 - raise_ticket: { type, title, description, priority, school_id?, school_name? }
 - generate_proposal: { type, school_id, school_name, data: { grade_pricing: [{grade, students, price_per_student}] } }
 - generate_mou: { type, school_id, school_name, data: { grade_pricing: [{grade, students, price_per_student}], program_start_date? } }
+- schedule_meeting: { type, school_id, school_name, meeting_date, meeting_time?, meeting_type?, meeting_mode? }
+  meeting_date format → YYYY-MM-DD (e.g. "2025-07-18"). meeting_time → "HH:MM" 24h format (e.g. "14:00"). meeting_type → optional label. meeting_mode → "online" | "offline". ALWAYS set change_status to "meeting_done" alongside this action.
+- schedule_followup: { type, school_id, school_name, followup_date, followup_comment? }
+  followup_date format → YYYY-MM-DD. ALWAYS set change_status to "follow_up" alongside this action.
+
+## DATE INTERPRETATION RULES (critical for scheduling):
+- "tomorrow" → today's date + 1 day, formatted as YYYY-MM-DD
+- "next Monday/Tuesday/etc" → next occurrence of that weekday
+- "this Friday" → the Friday of the current week
+- "2 PM" → "14:00", "3:30 PM" → "15:30", "10 AM" → "10:00"
+- If only a time is given for meeting, assume today's date
+- If only a date is given, default time to "11:00"
 
 ## RESPONSE FORMAT — always return valid JSON, no markdown fences:
 {"message": "...", "actions": [...]}
@@ -265,6 +277,53 @@ async def _execute(action: dict, user: dict) -> dict:
                 "updated_at": now,
             })
             return {"status": "success", "detail": "Ticket raised", "ticket_id": ticket_id}
+
+        # ── SCHEDULE MEETING ─────────────────────────────────────────
+        elif t == "schedule_meeting":
+            if not sid:
+                return {"status": "error", "detail": "school_id required"}
+            fields = {"updated_at": now, "meeting_scheduled": True}
+            if action.get("meeting_date"):
+                fields["meeting_date"] = action["meeting_date"]
+            if action.get("meeting_time"):
+                fields["meeting_time"] = action["meeting_time"]
+            if action.get("meeting_type"):
+                fields["meeting_type"] = action["meeting_type"]
+            if action.get("meeting_mode"):
+                fields["meeting_mode"] = action["meeting_mode"]
+            # Reset reminder flags so new reminders can fire
+            fields["reminder_24h_sent"] = False
+            fields["reminder_2h_sent"] = False
+            detail = f"Meeting scheduled on {action.get('meeting_date', '?')} at {action.get('meeting_time', 'TBD')}"
+            res = await db.school_inquiries.update_one(
+                {"id": sid},
+                {"$set": fields,
+                 "$push": {"activity_log": log(detail + " via AI Chat")}}
+            )
+            if res.matched_count == 0:
+                return {"status": "error", "detail": "School not found"}
+            return {"status": "success", "detail": detail}
+
+        # ── SCHEDULE FOLLOW-UP ───────────────────────────────────────
+        elif t == "schedule_followup":
+            if not sid:
+                return {"status": "error", "detail": "school_id required"}
+            fields = {"updated_at": now}
+            if action.get("followup_date"):
+                fields["followup_date"] = action["followup_date"]
+            if action.get("followup_comment"):
+                fields["followup_comment"] = action["followup_comment"]
+            detail = f"Follow-up scheduled on {action.get('followup_date', '?')}"
+            if action.get("followup_comment"):
+                detail += f" — {action['followup_comment']}"
+            res = await db.school_inquiries.update_one(
+                {"id": sid},
+                {"$set": fields,
+                 "$push": {"activity_log": log(detail + " via AI Chat")}}
+            )
+            if res.matched_count == 0:
+                return {"status": "error", "detail": "School not found"}
+            return {"status": "success", "detail": detail}
 
         # ── FRONTEND ACTIONS (generate_proposal / generate_mou) ─────
         elif t in ("generate_proposal", "generate_mou"):

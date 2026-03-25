@@ -547,6 +547,9 @@ const RaiseQueryButton = () => {
 
   // Use location.pathname to get current path reactively
   const currentPath = location.pathname;
+
+  // Hide on AI Chat page — prevents floating button from overlapping the chat send button
+  if (currentPath === '/admin/ai-chat') return null;
   
   // Check auth state
   const checkAuth = () => {
