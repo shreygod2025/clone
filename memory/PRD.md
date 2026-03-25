@@ -980,3 +980,21 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 - **Fix 2**: Added status guard to "Onboarded: date" label — only shown for educators with status `onboarded`/`active`/`onboarding` (was incorrectly showing on `new` status applicants)
 - **Fix 3**: Format `onboarding_date` using `?.split('T')[0]` to handle both date-only and full ISO datetime strings
 
+### 2026-03-25 — AI Chat P0 Fixes
+
+#### Fix 1: "Need Help?" Button Overlap Resolved
+- **Root cause**: `<RaiseQueryButton />` was rendered globally in `App.js` with `fixed bottom-6 right-6 z-50`, overlapping the AI Chat send button.
+- **Fix**: Added early return `null` in `RaiseQueryButton.jsx` when `location.pathname === '/admin/ai-chat'`. Button is still visible on all other pages.
+
+#### Fix 2: AI Meeting & Follow-up Scheduling Tools
+- **Added** `schedule_meeting` tool to `ai_chat.py`: sets `meeting_date`, `meeting_time`, `meeting_mode`, resets reminder flags so scheduler fires again.
+- **Added** `schedule_followup` tool: sets `followup_date`, `followup_comment`.
+- **Updated** AI system prompt with date interpretation rules (e.g. "tomorrow" → YYYY-MM-DD, "2 PM" → "14:00").
+- **Updated** `AdminAIChat.jsx` `ACTION_CFG` with teal "Meeting Scheduled" and cyan "Follow-up Scheduled" action cards with Calendar/CalendarCheck icons.
+
+#### Fix 3: Automated Reminders
+- **Added** `send_school_crm_daily_digest()` in `server.py`: queries tomorrow's meetings + follow-ups from `school_inquiries`, builds HTML email, sends via Gmail SMTP to admin.
+- **Scheduler job**: `school_crm_daily_digest_job` runs daily at 03:00 UTC (8:30 AM IST).
+- **1-hour reminder**: Added `reminder_1h_start/end` window (45–75 min) to `check_school_meeting_reminders()`.
+- **Manual trigger**: `POST /api/admin/trigger/daily-digest` to test on demand.
+
