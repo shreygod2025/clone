@@ -524,7 +524,8 @@ async def get_user_stages_report(
         if reason.startswith('custom:'):
             reason = 'Other'
         lost_lead_reasons[reason] = lost_lead_reasons.get(reason, 0) + 1
-        lost_lead_value += float(s.get('quoted_price') or s.get('expected_value') or 0)
+        # Use explicit lead_value if set, else fall back to quoted_price / expected_value
+        lost_lead_value += float(s.get('lead_value') or s.get('quoted_price') or s.get('expected_value') or 0)
     
     # Lost customer reasons breakdown
     lost_customer_reasons = {}
@@ -534,7 +535,8 @@ async def get_user_stages_report(
         if reason.startswith('custom:'):
             reason = 'Other'
         lost_customer_reasons[reason] = lost_customer_reasons.get(reason, 0) + 1
-        lost_customer_value += float(s.get('conversion_amount') or (s.get('onboarding_data') or {}).get('total_amount') or 0)
+        # Use explicit lead_value if set, else fall back to conversion_amount / onboarding total
+        lost_customer_value += float(s.get('lead_value') or s.get('conversion_amount') or (s.get('onboarding_data') or {}).get('total_amount') or 0)
     
     total_lost_value = lost_lead_value + lost_customer_value
     
@@ -881,10 +883,10 @@ async def get_b2b_insights(
     pipeline_schools = [s for s in all_schools if s.get('status') in pipeline_statuses]
     pipeline_value = sum(float(s.get('conversion_amount') or s.get('quoted_price') or 0) for s in pipeline_schools)
 
-    # Lost value
+    # Lost value — use explicit lead_value if set, else fall back to conversion amounts
     lost_schools = [s for s in all_schools if s.get('status') in ['lost_lead', 'lost_customer', 'lost']]
     total_lost_value = sum(
-        float(s.get('conversion_amount') or s.get('quoted_price') or (s.get('onboarding_data') or {}).get('total_amount') or 0)
+        float(s.get('lead_value') or s.get('conversion_amount') or s.get('quoted_price') or (s.get('onboarding_data') or {}).get('total_amount') or 0)
         for s in lost_schools
     )
 
@@ -1496,8 +1498,8 @@ async def get_public_report_data(
         if reason.startswith('custom:'):
             reason = 'Other'
         lost_lead_reasons[reason] = lost_lead_reasons.get(reason, 0) + 1
-        # Estimate value from quoted_price or expected deal size
-        lost_lead_value += float(s.get('quoted_price') or s.get('expected_value') or 0)
+        # Use explicit lead_value if set, else fall back to quoted_price / expected_value
+        lost_lead_value += float(s.get('lead_value') or s.get('quoted_price') or s.get('expected_value') or 0)
     
     # Lost customer reasons breakdown
     lost_customer_reasons = {}
@@ -1507,8 +1509,8 @@ async def get_public_report_data(
         if reason.startswith('custom:'):
             reason = 'Other'
         lost_customer_reasons[reason] = lost_customer_reasons.get(reason, 0) + 1
-        # Get actual revenue that was lost
-        lost_customer_value += float(s.get('conversion_amount') or (s.get('onboarding_data') or {}).get('total_amount') or 0)
+        # Use explicit lead_value if set, else fall back to conversion_amount / onboarding total
+        lost_customer_value += float(s.get('lead_value') or s.get('conversion_amount') or (s.get('onboarding_data') or {}).get('total_amount') or 0)
     
     total_lost_value = lost_lead_value + lost_customer_value
     

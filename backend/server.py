@@ -2526,7 +2526,7 @@ class SchoolInquiry(BaseModel):
     renewal_meeting_link: Optional[str] = None
     renewal_meeting_address: Optional[str] = None
     lost_reason: Optional[str] = None
-    documents: Optional[List[dict]] = None
+    lead_value: Optional[float] = None  # Value of the lost lead/customer (for reports)
     followup_tasks: Optional[List[dict]] = None  # Auto-scheduled followup email tasks
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
@@ -2589,6 +2589,7 @@ class SchoolInquiryUpdate(BaseModel):
     programs_interested: Optional[list] = None
     # Lost reason
     lost_reason: Optional[str] = None
+    lead_value: Optional[float] = None  # Value of lost lead/customer
     # Renewal meeting fields
     renewal_meeting_date: Optional[str] = None
     renewal_meeting_time: Optional[str] = None

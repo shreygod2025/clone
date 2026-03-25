@@ -911,6 +911,11 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 - server.py: 17,907 → 15,704 lines (−2,203 lines, −12.3%)
 - All routes registered (315 total). Tested: 37/37 backend tests pass (iteration_48). All 4 module groups verified HTTP 200.
 
+### 2026-03-25 — School CRM Improvements
+- **Followup filter**: Removed converted/active/archived schools from "Upcoming Followups (7 Days)" dashboard. Now only `new` and `meeting_done` status schools appear in the followup list.
+- **Unarchive button**: Added blue "Unarchive" button to all archived school cards — restores lead back to `new` status.
+- **Lost lead value**: Added optional "Lead Value (₹)" input field to the Mark as Lost modal. Value is saved as `lead_value` on the school record and reflected in all 3 reports endpoints (`user-stages`, `b2b-insights`, public reports).
+
 ### 2026-03-25 — Educator List 500 Error Fix (Production)
 - **Root cause 1**: `EducatorApplication` Pydantic model had `certificate_generated: bool = ""` (wrong type — `str` with `bool` annotation). Pydantic v2 rejects `""` or `None` for `bool` fields → 500 on all production educator API calls.
 - **Root cause 2**: `email: EmailStr` failed validation for legacy production records with non-standard emails.

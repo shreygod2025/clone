@@ -541,6 +541,7 @@ const AdminSchoolCRM = () => {
   const [showMeetingDoneModal, setShowMeetingDoneModal] = useState(null);
   const [showLostReasonModal, setShowLostReasonModal] = useState(null);
   const [lostReason, setLostReason] = useState('');
+  const [lostLeadValue, setLostLeadValue] = useState('');
   const [lostTargetStatus, setLostTargetStatus] = useState('lost'); // 'lost_lead' or 'lost_customer'
   const [showEditLeadModal, setShowEditLeadModal] = useState(null);
   const [generatingProposal, setGeneratingProposal] = useState(false);
@@ -950,8 +951,11 @@ const AdminSchoolCRM = () => {
       .sort((a, b) => new Date(a.meeting_date) - new Date(b.meeting_date));
 
     // Legacy followups (from followup_date field) - use next 7 days
+    // Only include new leads and meeting_done; exclude converted/active/archived etc.
+    const followupStatuses = ['new', 'meeting_done'];
     const legacyFollowups = inquiries.filter(i => {
       if (!i.followup_date) return false;
+      if (!followupStatuses.includes(i.status)) return false;
       const followupDate = new Date(i.followup_date);
       return followupDate >= startOfToday && followupDate <= endOfNext7Days;
     }).map(i => ({
@@ -964,6 +968,8 @@ const AdminSchoolCRM = () => {
     const scheduledFollowups = [];
     const taskLabels = { followup_1: 'F1: OLL Program', followup_2: 'F2: Partner Schools', followup_3: 'F3: Admissions +15%', followup_4: 'F4: Last Note' };
     inquiries.forEach(i => {
+      // Only include new leads and meeting_done
+      if (!followupStatuses.includes(i.status)) return;
       if (i.followup_tasks && Array.isArray(i.followup_tasks)) {
         i.followup_tasks.forEach(task => {
           if (task.status === 'pending') {
@@ -1591,6 +1597,7 @@ ${FOOTER}</div></body></html>`
     const defaultTarget = ['new', 'meeting_done'].includes(inquiry.status) ? 'lost_lead' : 'lost_customer';
     setShowLostReasonModal(inquiry);
     setLostReason('');
+    setLostLeadValue('');
     setLostTargetStatus(targetStatus || defaultTarget);
   };
 
@@ -1601,18 +1608,23 @@ ${FOOTER}</div></body></html>`
     }
     try {
       const lostLabel = lostTargetStatus === 'lost_lead' ? 'Lost Lead' : 'Lost Customer';
-      await axios.patch(`${API}/schools/inquiry/${showLostReasonModal.id}`, { 
+      const updatePayload = { 
         status: lostTargetStatus,
         lost_reason: lostReason,
         notes: showLostReasonModal.notes 
           ? `${showLostReasonModal.notes}\n\n--- ${lostLabel} Reason (${format(new Date(), 'dd MMM yyyy')}) ---\n${lostReason}`
           : `--- ${lostLabel} Reason (${format(new Date(), 'dd MMM yyyy')}) ---\n${lostReason}`
-      }, {
+      };
+      if (lostLeadValue && !isNaN(parseFloat(lostLeadValue))) {
+        updatePayload.lead_value = parseFloat(lostLeadValue);
+      }
+      await axios.patch(`${API}/schools/inquiry/${showLostReasonModal.id}`, updatePayload, {
         headers: getAuthHeaders()
       });
       toast.success(`School marked as ${lostLabel.toLowerCase()}`);
       setShowLostReasonModal(null);
       setLostReason('');
+      setLostLeadValue('');
       setLostTargetStatus('lost');
       fetchInquiries();
     } catch (error) {
@@ -3651,6 +3663,11 @@ ${FOOTER}</div></body></html>`
           <p className="text-xs text-red-700">
             {inquiry.lost_reason.startsWith('custom:') ? inquiry.lost_reason.replace('custom:', '') : inquiry.lost_reason}
           </p>
+          {inquiry.lead_value > 0 && (
+            <p className="text-xs text-red-600 font-semibold mt-1">
+              Lead Value: ₹{Number(inquiry.lead_value).toLocaleString('en-IN')}
+            </p>
+          )}
         </div>
       )}
 
@@ -4256,7 +4273,19 @@ ${FOOTER}</div></body></html>`
         );
       
       case 'archived':
-        return <div className="flex gap-1.5 flex-wrap items-center">{raiseTicketButton}{followupButton}{documentsButton}{baseButtons}</div>;
+        return (
+          <div className="flex gap-1.5 flex-wrap items-center">
+            <button
+              onClick={() => handleStatusChange(inquiry, 'new')}
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white flex items-center gap-1 font-medium"
+              data-testid={`unarchive-${inquiry.id}`}
+            >
+              <RefreshCw className="w-3 h-3" />
+              Unarchive
+            </button>
+            {raiseTicketButton}{followupButton}{documentsButton}{baseButtons}
+          </div>
+        );
       
       default:
         return null;
@@ -6016,6 +6045,21 @@ ${FOOTER}</div></body></html>`
                   data-testid="lost-reason-custom"
                 />
               )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Lead Value (₹) <span className="text-slate-400 font-normal">— optional</span>
+              </label>
+              <input
+                type="number"
+                min="0"
+                placeholder="e.g. 150000"
+                value={lostLeadValue}
+                onChange={(e) => setLostLeadValue(e.target.value)}
+                className="w-full h-10 px-4 border border-slate-200 rounded-lg bg-white text-sm"
+                data-testid="lost-lead-value"
+              />
+              <p className="text-xs text-slate-400 mt-1">This value will be included in lost pipeline reports.</p>
             </div>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setShowLostReasonModal(null)} className="flex-1">
