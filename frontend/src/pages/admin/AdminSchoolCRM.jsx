@@ -1693,7 +1693,7 @@ ${FOOTER}</div></body></html>`
   // Renewal Conversion Modal handlers
   const openRenewalConvertModal = (inquiry) => {
     // Pre-fill with existing onboarding data
-    const existingData = inquiry.onboarding_data || {};
+    const existingData = inquiry.onboarding_data || inquiry.proposal_data || {};
     setShowRenewalConvertModal(inquiry);
     setRenewalConvertData({
       offering: existingData.offering || '',

@@ -42,8 +42,10 @@ You are a fast, decisive AI operator for the OLL School CRM. Your job is to GET 
 - send_email: { type, school_id, school_name, email_type, to_email? }
   email_type → introduction | meeting_confirmation | proposal | mou | followup
 - raise_ticket: { type, title, description, priority, school_id?, school_name? }
-- generate_proposal: { type, school_id, school_name, data: { grade_pricing: [{grade, students, price_per_student}] } }
-- generate_mou: { type, school_id, school_name, data: { grade_pricing: [{grade, students, price_per_student}], program_start_date? } }
+- generate_proposal: { type, school_id, school_name, data: { grade_pricing: [{grade, students, price_per_student}], grades_from?, grades_to?, min_students?, pricing_type?, program_type? } }
+  IMPORTANT: grades_from/grades_to must be in ordinal form e.g. "1st", "8th". If user says "grade 1-8", set grades_from="1st" grades_to="8th". If single range, set both from and to accordingly.
+  min_students → total students across all grades (integer). pricing_type → "per_student" (default) | "fixed" | "both".
+- generate_mou: { type, school_id, school_name, data: { grade_pricing: [{grade, students, price_per_student}], grades_from?, grades_to?, min_students?, program_start_date?, program_type? } }
 - schedule_meeting: { type, school_id, school_name, meeting_date, meeting_time?, meeting_type?, meeting_mode? }
   meeting_date format → YYYY-MM-DD (e.g. "2025-07-18"). meeting_time → "HH:MM" 24h format (e.g. "14:00"). meeting_type → optional label. meeting_mode → "online" | "offline".
   IMPORTANT: Do NOT add change_status unless the user explicitly asks to change the status.
@@ -53,6 +55,8 @@ You are a fast, decisive AI operator for the OLL School CRM. Your job is to GET 
 
 ## CHAINED ACTIONS (create + schedule in one message):
 - If user says "add school X and schedule meeting tomorrow at 2 PM", emit create_lead FIRST, then schedule_meeting with school_name matching exactly. The backend will automatically link the new school_id to subsequent actions in the same batch — do NOT worry about school_id for newly created leads.
+- For "create renewal meeting for X", emit change_status(renewal_meeting) + schedule_meeting together.
+- For "renew X school", emit change_status(renewed) + update_lead if pricing data provided.
 
 ## DATE INTERPRETATION RULES (critical for scheduling):
 - "tomorrow" → today's date + 1 day, formatted as YYYY-MM-DD
@@ -345,10 +349,97 @@ async def _execute(action: dict, user: dict) -> dict:
                 return {"status": "error", "detail": "School not found"}
             return {"status": "success", "detail": detail}
 
-        # ── FRONTEND ACTIONS (generate_proposal / generate_mou) ─────
-        elif t in ("generate_proposal", "generate_mou"):
+        # ── GENERATE PROPOSAL — save data to DB, then trigger frontend PDF ──
+        elif t == "generate_proposal":
+            sid = await _resolve_school_id(sid, action.get("school_name"))
+            proposal_raw = action.get("data") or {}
+            grade_pricing = proposal_raw.get("grade_pricing", [])
+
+            if sid and grade_pricing:
+                # Derive ordinal grades_from / grades_to if not given
+                def _ordinal(n):
+                    try:
+                        i = int(str(n).strip().split("-")[0])
+                        sfx = "th" if 11 <= i % 100 <= 13 else {1:"st",2:"nd",3:"rd"}.get(i%10,"th")
+                        return f"{i}{sfx}"
+                    except Exception:
+                        return str(n)
+
+                all_grades = [str(g.get("grade","")).strip() for g in grade_pricing if g.get("grade")]
+                grades_from = proposal_raw.get("grades_from") or (_ordinal(all_grades[0]) if all_grades else "1st")
+                grades_to   = proposal_raw.get("grades_to")   or (_ordinal(all_grades[-1]) if all_grades else "8th")
+                min_students = proposal_raw.get("min_students") or sum(int(g.get("students",0) or 0) for g in grade_pricing) or 800
+
+                proposal_data = {
+                    "grade_pricing":   grade_pricing,
+                    "grades_from":     grades_from,
+                    "grades_to":       grades_to,
+                    "min_students":    min_students,
+                    "pricing_type":    proposal_raw.get("pricing_type", "per_student"),
+                    "program_type":    proposal_raw.get("program_type", "lab_setup"),
+                    "updated_via_ai":  True,
+                }
+                # Fetch current onboarding_data to merge grade_pricing into it too
+                existing = await db.school_inquiries.find_one({"id": sid}, {"_id": 0, "onboarding_data": 1})
+                merged_onboard = dict(existing.get("onboarding_data") or {})
+                merged_onboard["grade_pricing"] = grade_pricing
+
+                await db.school_inquiries.update_one(
+                    {"id": sid},
+                    {"$set": {
+                        "proposal_data":  proposal_data,
+                        "onboarding_data": merged_onboard,
+                        "updated_at": now,
+                    },
+                    "$push": {"activity_log": log(f"Proposal data saved via AI: {grades_from} to {grades_to}, {len(grade_pricing)} grade(s)")}}
+                )
             return {"status": "frontend_action",
-                    "detail": "PDF will be generated in your browser"}
+                    "detail": f"Proposal data saved. PDF will be generated in your browser.",
+                    "school_id": sid}
+
+        # ── GENERATE MOU — save data to DB, then trigger frontend PDF ────
+        elif t == "generate_mou":
+            sid = await _resolve_school_id(sid, action.get("school_name"))
+            mou_raw = action.get("data") or {}
+            grade_pricing = mou_raw.get("grade_pricing", [])
+
+            if sid and grade_pricing:
+                def _ordinal(n):
+                    try:
+                        i = int(str(n).strip().split("-")[0])
+                        sfx = "th" if 11 <= i % 100 <= 13 else {1:"st",2:"nd",3:"rd"}.get(i%10,"th")
+                        return f"{i}{sfx}"
+                    except Exception:
+                        return str(n)
+
+                all_grades = [str(g.get("grade","")).strip() for g in grade_pricing if g.get("grade")]
+                grades_from = mou_raw.get("grades_from") or (_ordinal(all_grades[0]) if all_grades else "1st")
+                grades_to   = mou_raw.get("grades_to")   or (_ordinal(all_grades[-1]) if all_grades else "8th")
+                min_students = mou_raw.get("min_students") or sum(int(g.get("students",0) or 0) for g in grade_pricing) or 800
+
+                existing = await db.school_inquiries.find_one({"id": sid}, {"_id": 0, "onboarding_data": 1})
+                merged = dict(existing.get("onboarding_data") or {})
+                merged.update({
+                    "grade_pricing":    grade_pricing,
+                    "grades_from":      grades_from,
+                    "grades_to":        grades_to,
+                    "min_students":     min_students,
+                    "pricing_type":     mou_raw.get("pricing_type", "per_student"),
+                    "program_type":     mou_raw.get("program_type", "lab_setup"),
+                    "program_start_date": mou_raw.get("program_start_date", ""),
+                    "updated_via_ai":   True,
+                })
+                await db.school_inquiries.update_one(
+                    {"id": sid},
+                    {"$set": {
+                        "onboarding_data": merged,
+                        "updated_at": now,
+                    },
+                    "$push": {"activity_log": log(f"MOU data saved via AI: {grades_from} to {grades_to}, {len(grade_pricing)} grade(s)")}}
+                )
+            return {"status": "frontend_action",
+                    "detail": "MOU data saved. PDF will be generated in your browser.",
+                    "school_id": sid}
 
         else:
             return {"status": "skipped", "detail": f"Unknown action: {t}"}
