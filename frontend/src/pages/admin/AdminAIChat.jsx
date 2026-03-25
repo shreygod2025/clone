@@ -126,10 +126,11 @@ const SUGGESTIONS = [
 
 // ─────────────────────────────────────────────────────────────────────────────
 export default function AdminAIChat() {
-  const [sessionId, setSessionId] = useState(() => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+  const [sessionId, setSessionId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [userInfo, setUserInfo] = useState(null);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
@@ -145,6 +146,35 @@ export default function AdminAIChat() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
+
+  // On mount: restore last session or start fresh
+  useEffect(() => {
+    const restore = async () => {
+      setHistoryLoading(true);
+      try {
+        // Try to get the most recent session for this user
+        const res = await axios.get(`${API}/ai-chat/sessions`, { headers: getAuthHeaders() });
+        const sessions = res.data.sessions || [];
+        if (sessions.length > 0) {
+          const latest = sessions[0]; // already sorted by updated_at desc
+          setSessionId(latest.session_id);
+          // Load its messages
+          const histRes = await axios.get(`${API}/ai-chat/history/${latest.session_id}`, { headers: getAuthHeaders() });
+          setMessages(histRes.data.messages || []);
+        } else {
+          // No previous sessions — start fresh
+          setSessionId(`${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+          setMessages([]);
+        }
+      } catch {
+        setSessionId(`${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+        setMessages([]);
+      } finally {
+        setHistoryLoading(false);
+      }
+    };
+    restore();
+  }, []);
 
   const startNewChat = useCallback(() => {
     const newId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -222,7 +252,7 @@ export default function AdminAIChat() {
     }
   };
 
-  const isEmpty = messages.length === 0 && !loading;
+  const isEmpty = messages.length === 0 && !loading && !historyLoading;
 
   return (
     <AdminLayout title="AI Chat">
@@ -280,8 +310,15 @@ export default function AdminAIChat() {
             </div>
           )}
 
+          {/* History loading spinner */}
+          {historyLoading && (
+            <div className="flex justify-center items-center h-full">
+              <Loader2 className="w-5 h-5 text-slate-400 animate-spin" />
+            </div>
+          )}
+
           {/* Message list */}
-          {messages.map(msg =>
+          {!historyLoading && messages.map(msg =>
             msg.role === 'user'
               ? <UserBubble key={msg.id} msg={msg} />
               : <AIBubble key={msg.id} msg={msg} onGeneratePDF={handleGeneratePDF} />
