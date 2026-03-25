@@ -14171,6 +14171,7 @@ from routes.expenses import router as expenses_router, transform_tracking_url, f
 from routes.admin_keys import router as admin_keys_router
 from routes.daily_report import router as daily_report_router, send_daily_reports
 from routes.school_emails import router as school_emails_router
+from routes.checkin_api import router as checkin_router
 
 api_router.include_router(reports_router)
 api_router.include_router(jobs_router)
@@ -14180,6 +14181,7 @@ api_router.include_router(payments_router)
 api_router.include_router(gp_onboarding_router)
 api_router.include_router(daily_report_router)
 api_router.include_router(school_emails_router)
+api_router.include_router(checkin_router)
 
 app.include_router(api_router)
 

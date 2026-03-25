@@ -911,6 +911,17 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 - server.py: 17,907 → 15,704 lines (−2,203 lines, −12.3%)
 - All routes registered (315 total). Tested: 37/37 backend tests pass (iteration_48). All 4 module groups verified HTTP 200.
 
+### 2026-03-25 — Checkin API Integration (Timetable + Sessions)
+- **New backend** `/app/backend/routes/checkin_api.py` — proxy routes for the external Supabase checkin API:
+  - `GET /schools/checkin/educators` — 64 educators from checkin system
+  - `POST /schools/{id}/timetable` — create/update timetable (maps short day names to full, normalises time_slots format)
+  - `GET /schools/{id}/timetable` — fetch timetable by stored `checkin_timetable_id`
+  - `GET /schools/{id}/checkin-sessions` — sessions with status/date filters
+  - `PUT /schools/{id}/checkin-sessions/{session_id}` — update session status/completed
+- **Timetable builder updated** — added educator dropdown (fetches 64 educators from checkin API). Save button now calls `/api/schools/{id}/timetable` → creates real timetable in checkin system. `checkin_timetable_id` stored on school record.
+- **Sessions button** added to all active school cards. Opens modal showing all sessions (4,731+ for test school). Includes status filter, date range filter, per-row inline editing (status + completed), total count, "Edit Timetable" link.
+- **Credentials**: `CHECKIN_API_KEY` + `CHECKIN_PROJECT_ID` stored in backend `.env`.
+
 ### 2026-03-25 — Report Email Duplicate & No-Data Fix
 - **Duplicate emails fix**: Multiple uvicorn workers each ran their own APScheduler, causing all report emails to send twice. Added a MongoDB-based distributed daily lock (`daily_report_locks` collection). Uses `find_one_and_update` with `$setOnInsert` + `upsert=True` — atomically creates the lock only once. Second worker finds the existing doc and skips.
 - **Support "No data" fix**: When 0 queries created today, breakdown tables were all empty. Added 7-day rolling fallback — if `today = []`, fetch last 7 days for breakdowns. Email now shows "Breakdown: Last 7 Days" label when using fallback data.

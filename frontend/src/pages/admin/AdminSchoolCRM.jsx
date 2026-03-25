@@ -702,8 +702,18 @@ const AdminSchoolCRM = () => {
   const [showTimetableBuilder, setShowTimetableBuilder] = useState(null); // schoolId when open
   const [timetableFormLocal, setTimetableFormLocal] = useState({
     session_mode: 'offline', start_date: '', end_date: '',
-    days_of_week: [], time_slots: {}, sessions_per_week: '', timetable_status: 'active', notes: ''
+    days_of_week: [], time_slots: {}, sessions_per_week: '', timetable_status: 'active', notes: '', educator_id: ''
   });
+  const [checkinEducators, setCheckinEducators] = useState([]);
+  const [checkinEducatorsLoading, setCheckinEducatorsLoading] = useState(false);
+  const [savingTimetable, setSavingTimetable] = useState(false);
+  const [showSessionsModal, setShowSessionsModal] = useState(null);
+  const [sessionsData, setSessionsData] = useState([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [sessionsMeta, setSessionsMeta] = useState({});
+  const [sessionsFilter, setSessionsFilter] = useState({ status: '', start_date: '', end_date: '' });
+  const [editingSession, setEditingSession] = useState(null);
+  const [sessionEditForm, setSessionEditForm] = useState({});
   // Contact Management Filters
   const [contactCityFilter, setContactCityFilter] = useState('all');
   const [contactRoleFilter, setContactRoleFilter] = useState('all');
@@ -2941,6 +2951,75 @@ ${FOOTER}</div></body></html>`
   };
 
   // Update an onboarding step
+  // ── Checkin API handlers ──────────────────────────────────────────────────
+  const fetchCheckinEducators = async () => {
+    if (checkinEducators.length > 0) return; // already loaded
+    setCheckinEducatorsLoading(true);
+    try {
+      const res = await axios.get(`${API}/schools/checkin/educators`, { headers: getAuthHeaders() });
+      setCheckinEducators(res.data.educators || []);
+    } catch {
+      toast.error('Could not load educators from checkin system');
+    } finally {
+      setCheckinEducatorsLoading(false);
+    }
+  };
+
+  const saveTimetableToCheckin = async (schoolId) => {
+    if (!timetableFormLocal.start_date || !timetableFormLocal.end_date || !(timetableFormLocal.days_of_week || []).length) {
+      toast.error('Please fill Start Date, End Date, and select at least one day');
+      return;
+    }
+    if (!timetableFormLocal.educator_id) {
+      toast.error('Please select an educator');
+      return;
+    }
+    setSavingTimetable(true);
+    try {
+      const res = await axios.post(`${API}/schools/${schoolId}/timetable`, timetableFormLocal, { headers: getAuthHeaders() });
+      const timetableId = res.data.timetable_id;
+      // Also save locally to onboarding step
+      await handleUpdateOnboardingStep(schoolId, 'timetable_finalization', {
+        data: { ...timetableFormLocal, timetable_created: true, checkin_timetable_id: timetableId }
+      });
+      toast.success(`Timetable ${timetableId ? 'saved to Checkin system' : 'saved locally'}`);
+      setShowTimetableBuilder(null);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to save timetable');
+    } finally {
+      setSavingTimetable(false);
+    }
+  };
+
+  const fetchSchoolSessions = async (school, filters = {}) => {
+    setSessionsLoading(true);
+    try {
+      const params = new URLSearchParams({ per_page: 30, ...filters });
+      Object.keys(filters).forEach(k => { if (!filters[k]) params.delete(k); });
+      const res = await axios.get(`${API}/schools/${school.id}/checkin-sessions?${params}`, { headers: getAuthHeaders() });
+      setSessionsData(res.data.sessions || []);
+      setSessionsMeta(res.data.meta || {});
+    } catch {
+      toast.error('Failed to load sessions');
+      setSessionsData([]);
+    } finally {
+      setSessionsLoading(false);
+    }
+  };
+
+  const updateSession = async (sessionId) => {
+    try {
+      await axios.put(`${API}/schools/${showSessionsModal.id}/checkin-sessions/${sessionId}`, sessionEditForm, { headers: getAuthHeaders() });
+      toast.success('Session updated');
+      setEditingSession(null);
+      setSessionEditForm({});
+      fetchSchoolSessions(showSessionsModal, sessionsFilter);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to update session');
+    }
+  };
+  // ─────────────────────────────────────────────────────────────────────────
+
   const handleUpdateOnboardingStep = async (schoolId, stepKey, data) => {
     try {
       await axios.patch(`${API}/schools/${schoolId}/onboarding-step/${stepKey}`, data, {
@@ -4143,6 +4222,19 @@ ${FOOTER}</div></body></html>`
             >
               <Edit className="w-3 h-3" />
               Edit
+            </button>
+            <button
+              onClick={() => {
+                setShowSessionsModal(inquiry);
+                setSessionsData([]);
+                setSessionsFilter({ status: '', start_date: '', end_date: '' });
+                fetchSchoolSessions(inquiry);
+              }}
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-700 flex items-center gap-1 font-medium"
+              data-testid={`sessions-${inquiry.id}`}
+            >
+              <CalendarDays className="w-3 h-3" />
+              Sessions
             </button>
             <button
               onClick={() => setShowAssignRMModal(inquiry)}
@@ -10848,8 +10940,10 @@ ${FOOTER}</div></body></html>`
                                   sessions_per_week: step.data?.sessions_per_week || '',
                                   timetable_status: step.data?.timetable_status || 'active',
                                   notes: step.data?.notes || '',
+                                  educator_id: step.data?.educator_id || '',
                                 });
                                 setShowTimetableBuilder(showOnboardingWorkflowModal.id);
+                                fetchCheckinEducators();
                               }
                             }}
                             className={`text-xs ${step.data?.timetable_created ? 'border-indigo-200 text-indigo-600 hover:bg-indigo-50' : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'}`}
@@ -10863,6 +10957,21 @@ ${FOOTER}</div></body></html>`
                           {showTimetableBuilder === showOnboardingWorkflowModal.id && (
                             <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 space-y-3">
                               <p className="text-xs font-semibold text-slate-700">Timetable Configuration</p>
+
+                              {/* Educator selector */}
+                              <div>
+                                <label className="text-xs text-slate-500 mb-1 block">Educator *</label>
+                                <select
+                                  value={timetableFormLocal.educator_id}
+                                  onChange={(e) => setTimetableFormLocal(prev => ({ ...prev, educator_id: e.target.value }))}
+                                  className="w-full h-8 px-2 border border-slate-200 rounded-lg text-xs bg-white"
+                                >
+                                  <option value="">{checkinEducatorsLoading ? 'Loading educators...' : '— Select Educator —'}</option>
+                                  {checkinEducators.map(e => (
+                                    <option key={e.id} value={e.id}>{e.full_name || e.email}</option>
+                                  ))}
+                                </select>
+                              </div>
 
                               {/* School + Mode */}
                               <div className="grid grid-cols-2 gap-2">
@@ -10982,17 +11091,15 @@ ${FOOTER}</div></body></html>`
                               <div className="flex gap-2 pt-1">
                                 <Button type="button" variant="outline" size="sm" onClick={() => setShowTimetableBuilder(null)} className="text-xs">Cancel</Button>
                                 <Button type="button" size="sm"
-                                  onClick={() => {
-                                    if (!timetableFormLocal.start_date || !timetableFormLocal.end_date || !(timetableFormLocal.days_of_week||[]).length) {
-                                      toast.error('Please fill Start Date, End Date, and select at least one day');
-                                      return;
-                                    }
-                                    handleUpdateOnboardingStep(showOnboardingWorkflowModal.id, 'timetable_finalization', { data: { ...timetableFormLocal, timetable_created: true } });
-                                    setShowTimetableBuilder(null);
-                                  }}
+                                  onClick={() => saveTimetableToCheckin(showOnboardingWorkflowModal.id)}
+                                  disabled={savingTimetable}
                                   className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-xs"
                                   data-testid="save-timetable-btn">
-                                  <CalendarDays className="w-3.5 h-3.5 mr-1" />Save Timetable
+                                  {savingTimetable ? (
+                                    <><span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin mr-1" />Saving...</>
+                                  ) : (
+                                    <><CalendarDays className="w-3.5 h-3.5 mr-1" />Save Timetable to Checkin</>
+                                  )}
                                 </Button>
                               </div>
                             </div>
@@ -11602,6 +11709,163 @@ ${FOOTER}</div></body></html>`
           onSent={() => setEmailModal(null)}
         />
       )}
+      {/* ── Sessions Modal ────────────────────────────────────────────────── */}
+      {showSessionsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-t-2xl">
+              <div>
+                <h2 className="text-lg font-bold">{showSessionsModal.school_name}</h2>
+                <p className="text-xs text-purple-200">Check-in Sessions</p>
+              </div>
+              <button onClick={() => { setShowSessionsModal(null); setEditingSession(null); }} className="p-2 hover:bg-white/20 rounded-full">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Filters */}
+            <div className="px-5 py-3 border-b bg-slate-50 flex flex-wrap gap-3 items-end">
+              <div>
+                <label className="text-xs text-slate-500 block mb-1">Status</label>
+                <select className="h-8 px-2 border border-slate-200 rounded-lg text-xs bg-white"
+                  value={sessionsFilter.status}
+                  onChange={e => { const f = {...sessionsFilter, status: e.target.value}; setSessionsFilter(f); fetchSchoolSessions(showSessionsModal, f); }}>
+                  <option value="">All</option>
+                  {['scheduled','ontime','late','absent','holiday','cancelled','paused'].map(s => (
+                    <option key={s} value={s}>{s.charAt(0).toUpperCase()+s.slice(1)}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-slate-500 block mb-1">From</label>
+                <input type="date" className="h-8 px-2 border border-slate-200 rounded-lg text-xs bg-white"
+                  value={sessionsFilter.start_date}
+                  onChange={e => { const f = {...sessionsFilter, start_date: e.target.value}; setSessionsFilter(f); fetchSchoolSessions(showSessionsModal, f); }} />
+              </div>
+              <div>
+                <label className="text-xs text-slate-500 block mb-1">To</label>
+                <input type="date" className="h-8 px-2 border border-slate-200 rounded-lg text-xs bg-white"
+                  value={sessionsFilter.end_date}
+                  onChange={e => { const f = {...sessionsFilter, end_date: e.target.value}; setSessionsFilter(f); fetchSchoolSessions(showSessionsModal, f); }} />
+              </div>
+              <button onClick={() => fetchSchoolSessions(showSessionsModal, sessionsFilter)}
+                className="h-8 px-3 bg-purple-600 text-white text-xs rounded-lg hover:bg-purple-700 flex items-center gap-1 ml-auto">
+                <RefreshCw className="w-3 h-3" /> Refresh
+              </button>
+            </div>
+
+            {/* Sessions Table */}
+            <div className="overflow-y-auto flex-1 px-4 py-3">
+              {sessionsLoading ? (
+                <div className="flex items-center justify-center h-32 text-slate-400 text-sm">Loading sessions...</div>
+              ) : sessionsData.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-32 text-slate-400">
+                  <CalendarDays className="w-10 h-10 mb-2 opacity-40" />
+                  <p className="text-sm">No sessions found</p>
+                  <p className="text-xs mt-1">Create a timetable first in the onboarding workflow</p>
+                </div>
+              ) : (
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="text-slate-500 border-b border-slate-200">
+                      <th className="text-left py-2 pr-3 font-medium">Date</th>
+                      <th className="text-left py-2 pr-3 font-medium">Time</th>
+                      <th className="text-left py-2 pr-3 font-medium">Educator</th>
+                      <th className="text-left py-2 pr-3 font-medium">Mode</th>
+                      <th className="text-left py-2 pr-3 font-medium">Status</th>
+                      <th className="text-left py-2 pr-3 font-medium">Completed</th>
+                      <th className="text-left py-2 font-medium">Edit</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sessionsData.map(session => {
+                      const statusColors = {
+                        scheduled: 'bg-blue-100 text-blue-700',
+                        ontime:    'bg-green-100 text-green-700',
+                        late:      'bg-yellow-100 text-yellow-700',
+                        absent:    'bg-red-100 text-red-700',
+                        holiday:   'bg-purple-100 text-purple-700',
+                        cancelled: 'bg-slate-100 text-slate-600',
+                        paused:    'bg-orange-100 text-orange-700',
+                      };
+                      const isEditing = editingSession === session.id;
+                      return (
+                        <tr key={session.id} className={`border-b border-slate-100 hover:bg-slate-50 ${isEditing ? 'bg-blue-50' : ''}`}>
+                          <td className="py-2 pr-3">{session.session_date || '—'}</td>
+                          <td className="py-2 pr-3 whitespace-nowrap">
+                            {session.start_time?.slice(0,5)} – {session.end_time?.slice(0,5)}
+                          </td>
+                          <td className="py-2 pr-3">{session.educator_id?.toString().slice(0,8)}...</td>
+                          <td className="py-2 pr-3 capitalize">{session.mode || '—'}</td>
+                          <td className="py-2 pr-3">
+                            {isEditing ? (
+                              <select className="h-7 px-1 border border-slate-200 rounded text-xs"
+                                value={sessionEditForm.status || session.status}
+                                onChange={e => setSessionEditForm(p => ({...p, status: e.target.value}))}>
+                                {['scheduled','ontime','late','absent','holiday','cancelled','paused'].map(s => (
+                                  <option key={s} value={s}>{s}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusColors[session.status] || 'bg-slate-100 text-slate-600'}`}>
+                                {session.status || 'scheduled'}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2 pr-3">
+                            {isEditing ? (
+                              <input type="checkbox" checked={!!sessionEditForm.iscompleted}
+                                onChange={e => setSessionEditForm(p => ({...p, iscompleted: e.target.checked}))} />
+                            ) : (
+                              <span className={session.iscompleted ? 'text-green-600 font-semibold' : 'text-slate-400'}>
+                                {session.iscompleted ? 'Yes' : 'No'}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2">
+                            {isEditing ? (
+                              <div className="flex gap-1">
+                                <button onClick={() => updateSession(session.id)} className="text-[10px] px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700">Save</button>
+                                <button onClick={() => { setEditingSession(null); setSessionEditForm({}); }} className="text-[10px] px-2 py-1 bg-slate-200 text-slate-700 rounded">Cancel</button>
+                              </div>
+                            ) : (
+                              <button onClick={() => { setEditingSession(session.id); setSessionEditForm({ status: session.status, iscompleted: session.iscompleted }); }}
+                                className="text-[10px] px-2 py-1 bg-slate-100 text-slate-600 rounded hover:bg-slate-200 flex items-center gap-1">
+                                <Edit className="w-2.5 h-2.5" /> Edit
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* Footer with timetable edit link */}
+            <div className="px-5 py-3 border-t bg-slate-50 flex items-center justify-between">
+              <p className="text-xs text-slate-400">
+                {sessionsMeta.total ? `${sessionsMeta.total} session(s) total` : `${sessionsData.length} session(s) shown`}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    const school = inquiries.find(i => i.id === showSessionsModal.id);
+                    if (school) handleEditOnboarding(school);
+                    setShowSessionsModal(null);
+                  }}
+                  className="text-xs px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-1"
+                >
+                  <Edit className="w-3 h-3" /> Edit Timetable
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ─────────────────────────────────────────────────────────────────── */}
     </AdminLayout>
   );
 };
