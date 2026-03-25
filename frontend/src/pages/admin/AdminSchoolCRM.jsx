@@ -2994,6 +2994,21 @@ ${FOOTER}</div></body></html>`
   const fetchSchoolSessions = async (school, filters = {}) => {
     setSessionsLoading(true);
     try {
+      // Always ensure educators are loaded BEFORE sessions so name lookup works immediately
+      let eduList = checkinEducators;
+      if (eduList.length === 0) {
+        try {
+          setCheckinEducatorsLoading(true);
+          const eduRes = await axios.get(`${API}/schools/checkin/educators`, { headers: getAuthHeaders() });
+          eduList = eduRes.data.educators || [];
+          setCheckinEducators(eduList);
+        } catch {
+          // non-critical — fall back to UUID
+        } finally {
+          setCheckinEducatorsLoading(false);
+        }
+      }
+
       const params = new URLSearchParams({ per_page: 30, ...filters });
       Object.keys(filters).forEach(k => { if (!filters[k]) params.delete(k); });
       const res = await axios.get(`${API}/schools/${school.id}/checkin-sessions?${params}`, { headers: getAuthHeaders() });
@@ -4257,7 +4272,6 @@ ${FOOTER}</div></body></html>`
                 setSessionsData([]);
                 setSessionsFilter({ status: '', start_date: '', end_date: '' });
                 fetchSchoolSessions(inquiry);
-                fetchCheckinEducators();
               }}
               className="text-xs px-2.5 py-1.5 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-700 flex items-center gap-1 font-medium"
               data-testid={`sessions-${inquiry.id}`}
