@@ -80,6 +80,7 @@ const AdminDataCenter = lazy(() => import("./pages/admin/AdminDataCenter"));
 const AdminBlogs = lazy(() => import("./pages/admin/AdminBlogs"));
 const CenterDashboard = lazy(() => import("./pages/admin/CenterDashboard"));
 const SchoolPaymentTracker = lazy(() => import("./pages/admin/SchoolPaymentTracker"));
+const AdminAIChat = lazy(() => import("./pages/admin/AdminAIChat"));
 
 // Auth Context
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -202,6 +203,7 @@ function App() {
               <Route path="/admin/data-center" element={<ProtectedRoute><AdminDataCenter /></ProtectedRoute>} />
               <Route path="/admin/blogs" element={<ProtectedRoute><AdminBlogs /></ProtectedRoute>} />
               <Route path="/admin/settings" element={<ProtectedRoute><AdminSettings /></ProtectedRoute>} />
+              <Route path="/admin/ai-chat" element={<ProtectedRoute><AdminAIChat /></ProtectedRoute>} />
               <Route path="/center" element={<ProtectedRoute><CenterDashboard /></ProtectedRoute>} />
               
               {/* 404 Not Found - Must be last */}

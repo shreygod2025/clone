@@ -14172,6 +14172,7 @@ from routes.admin_keys import router as admin_keys_router
 from routes.daily_report import router as daily_report_router, send_daily_reports
 from routes.school_emails import router as school_emails_router
 from routes.checkin_api import router as checkin_router
+from routes.ai_chat import router as ai_chat_router
 
 api_router.include_router(reports_router)
 api_router.include_router(jobs_router)
@@ -14182,6 +14183,7 @@ api_router.include_router(gp_onboarding_router)
 api_router.include_router(daily_report_router)
 api_router.include_router(school_emails_router)
 api_router.include_router(checkin_router)
+api_router.include_router(ai_chat_router)
 
 app.include_router(api_router)
 
