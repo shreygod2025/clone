@@ -939,7 +939,18 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 - **Admin test endpoint**: `GET /api/admin/api-keys/{key_id}/test` — lets admin verify any key is working without needing the full raw key. Returns school count + 3 sample records.
 - **Settings UI**: Added "How to Use the API" documentation panel showing exact endpoint URL, required header, all response field names, and a "Test API Key" button that uses the admin endpoint to verify the key and preview sample data.
 
-### 2026-03-25 — Checkin API Sessions Fix + CSV Export
+### 2026-03-25 — AI Chat (Agentic CRM Assistant)
+- New admin tab "AI Chat" added at `/admin/ai-chat` — WhatsApp-style full page chat UI
+- **Agentic capabilities**: create leads, edit leads, delete leads, change statuses, add notes, send emails, convert customers, raise tickets, generate proposals/MOU PDFs
+- **AI model**: GPT-5.2 via Emergent LLM key (emergentintegrations)
+- **Action cards**: Each CRM action shows a colored detail card (amber=Note, violet=Status, emerald=Created/Converted, sky=Email, orange=Ticket, indigo=Proposal, purple=MOU)
+- **PDF generation**: Proposal/MOU PDF download buttons appear inline in chat, using existing `generateProposalDocument`/`generateMOUDocument` frontend utilities
+- **Context-aware**: AI sees all 150 latest school leads on each message for intelligent decision-making
+- **Session management**: Multiple chat sessions with history persistence (MongoDB `ai_chat_sessions` collection)
+- Backend: `/app/backend/routes/ai_chat.py`, Frontend: `/app/frontend/src/pages/admin/AdminAIChat.jsx`
+- Test result: 15/15 backend tests ✅, all frontend features ✅ (iteration_58.json)
+
+
 - **Sessions modal bug fixed (P0)**: Backend endpoint `/api/schools/{school_id}/checkin-sessions` now filters by `timetable_id` (fetched from school's `checkin_timetable_id` field) instead of unreliable `school_name` param. Schools without a timetable return 0 sessions with a clear message.
 - **Educator name in Sessions modal (P2)**: Fixed educator column to show `full_name` from `/api/schools/checkin/educators` list, instead of truncated UUID. `fetchCheckinEducators()` is now also called when Sessions modal opens.
 - **CSV Export (P1)**: Added "Export CSV" button to 4 major admin data tables:

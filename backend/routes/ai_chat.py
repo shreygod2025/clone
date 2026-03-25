@@ -176,6 +176,7 @@ async def _execute(action: dict, user: dict) -> dict:
             if not sid:
                 return {"status": "error", "detail": "school_id required"}
             note = action.get("note", "")
+            # Append note to both notes field and activity log
             res = await db.school_inquiries.update_one(
                 {"id": sid},
                 {"$set": {"notes": note, "updated_at": now},

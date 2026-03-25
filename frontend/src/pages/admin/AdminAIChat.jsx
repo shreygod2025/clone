@@ -379,7 +379,7 @@ export default function AdminAIChat() {
             style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'40\' height=\'40\' viewBox=\'0 0 40 40\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23e8efe8\' fill-opacity=\'0.4\' fill-rule=\'evenodd\'%3E%3Cpath d=\'M0 40L40 0H20L0 20M40 40V20L20 40\'/%3E%3C/g%3E%3C/svg%3E")', backgroundColor: '#efeae2' }}
           >
             {/* Empty state / Welcome */}
-            {!activeSessionId && messages.length === 0 && (
+            {messages.length === 0 && !historyLoading && (
               <div className="flex flex-col items-center justify-center h-full px-4 text-center">
                 <div className="w-16 h-16 rounded-full bg-indigo-600 flex items-center justify-center mb-4 shadow-lg">
                   <Sparkles className="w-8 h-8 text-white" />
