@@ -45,9 +45,14 @@ You are a fast, decisive AI operator for the OLL School CRM. Your job is to GET 
 - generate_proposal: { type, school_id, school_name, data: { grade_pricing: [{grade, students, price_per_student}] } }
 - generate_mou: { type, school_id, school_name, data: { grade_pricing: [{grade, students, price_per_student}], program_start_date? } }
 - schedule_meeting: { type, school_id, school_name, meeting_date, meeting_time?, meeting_type?, meeting_mode? }
-  meeting_date format → YYYY-MM-DD (e.g. "2025-07-18"). meeting_time → "HH:MM" 24h format (e.g. "14:00"). meeting_type → optional label. meeting_mode → "online" | "offline". ALWAYS set change_status to "meeting_done" alongside this action.
+  meeting_date format → YYYY-MM-DD (e.g. "2025-07-18"). meeting_time → "HH:MM" 24h format (e.g. "14:00"). meeting_type → optional label. meeting_mode → "online" | "offline".
+  IMPORTANT: Do NOT add change_status unless the user explicitly asks to change the status.
 - schedule_followup: { type, school_id, school_name, followup_date, followup_comment? }
-  followup_date format → YYYY-MM-DD. ALWAYS set change_status to "follow_up" alongside this action.
+  followup_date format → YYYY-MM-DD.
+  IMPORTANT: Do NOT add change_status unless the user explicitly asks to change the status.
+
+## CHAINED ACTIONS (create + schedule in one message):
+- If user says "add school X and schedule meeting tomorrow at 2 PM", emit create_lead FIRST, then schedule_meeting with school_name matching exactly. The backend will automatically link the new school_id to subsequent actions in the same batch — do NOT worry about school_id for newly created leads.
 
 ## DATE INTERPRETATION RULES (critical for scheduling):
 - "tomorrow" → today's date + 1 day, formatted as YYYY-MM-DD
@@ -140,6 +145,18 @@ async def _execute(action: dict, user: dict) -> dict:
     t = action.get("type", "")
     sid = action.get("school_id")
     now = datetime.now(timezone.utc).isoformat()
+
+    async def _resolve_school_id(school_id, school_name):
+        """Return school_id; if missing, look up by name in DB."""
+        if school_id:
+            return school_id
+        if school_name:
+            doc = await db.school_inquiries.find_one(
+                {"school_name": {"$regex": re.escape(school_name.strip()), "$options": "i"}},
+                {"_id": 0, "id": 1}
+            )
+            return doc["id"] if doc else None
+        return None
 
     def log(description):
         return {"id": str(uuid.uuid4()), "action": t, "description": description,
@@ -280,8 +297,9 @@ async def _execute(action: dict, user: dict) -> dict:
 
         # ── SCHEDULE MEETING ─────────────────────────────────────────
         elif t == "schedule_meeting":
+            sid = await _resolve_school_id(sid, action.get("school_name"))
             if not sid:
-                return {"status": "error", "detail": "school_id required"}
+                return {"status": "error", "detail": "school_id required (school not found by name either)"}
             fields = {"updated_at": now, "meeting_scheduled": True}
             if action.get("meeting_date"):
                 fields["meeting_date"] = action["meeting_date"]
@@ -294,6 +312,7 @@ async def _execute(action: dict, user: dict) -> dict:
             # Reset reminder flags so new reminders can fire
             fields["reminder_24h_sent"] = False
             fields["reminder_2h_sent"] = False
+            fields["reminder_1h_sent"] = False
             detail = f"Meeting scheduled on {action.get('meeting_date', '?')} at {action.get('meeting_time', 'TBD')}"
             res = await db.school_inquiries.update_one(
                 {"id": sid},
@@ -306,8 +325,9 @@ async def _execute(action: dict, user: dict) -> dict:
 
         # ── SCHEDULE FOLLOW-UP ───────────────────────────────────────
         elif t == "schedule_followup":
+            sid = await _resolve_school_id(sid, action.get("school_name"))
             if not sid:
-                return {"status": "error", "detail": "school_id required"}
+                return {"status": "error", "detail": "school_id required (school not found by name either)"}
             fields = {"updated_at": now}
             if action.get("followup_date"):
                 fields["followup_date"] = action["followup_date"]
@@ -369,11 +389,24 @@ async def chat_message(payload: dict, user: dict = Depends(get_current_user)):
     message = parsed.get("message", raw)
     actions = parsed.get("actions", [])
 
-    # Execute backend actions
+    # Execute backend actions, chaining school_id from create_lead to subsequent actions
     results = []
+    created_ids: dict = {}  # school_name.lower() → school_id, for newly created leads
     for action in actions:
+        # Inject school_id for actions following a create_lead in the same batch
+        if not action.get("school_id") and action.get("school_name"):
+            name_key = action["school_name"].lower().strip()
+            if name_key in created_ids:
+                action = {**action, "school_id": created_ids[name_key]}
+
         exec_result = await _execute(action, user)
         results.append({**action, "execution": exec_result})
+
+        # Track newly created school IDs so later actions in this batch can use them
+        if action.get("type") == "create_lead" and exec_result.get("status") == "success":
+            name_key = action.get("school_name", "").lower().strip()
+            if name_key and exec_result.get("school_id"):
+                created_ids[name_key] = exec_result["school_id"]
 
     # Save to DB for UI history
     now = datetime.now(timezone.utc).isoformat()
