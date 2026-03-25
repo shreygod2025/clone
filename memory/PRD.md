@@ -911,6 +911,14 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 - server.py: 17,907 → 15,704 lines (−2,203 lines, −12.3%)
 - All routes registered (315 total). Tested: 37/37 backend tests pass (iteration_48). All 4 module groups verified HTTP 200.
 
+### 2026-03-25 — Educator List 500 Error Fix (Production)
+- **Root cause 1**: `EducatorApplication` Pydantic model had `certificate_generated: bool = ""` (wrong type — `str` with `bool` annotation). Pydantic v2 rejects `""` or `None` for `bool` fields → 500 on all production educator API calls.
+- **Root cause 2**: `email: EmailStr` failed validation for legacy production records with non-standard emails.
+- **Root cause 3**: `skills: List[str]` without default failed when field was `None` in older records.
+- **Fix**: Added `@model_validator(mode='before')` sanitizer that coerces None/wrong-type values for all str/list/bool fields. Changed `certificate_generated: bool = ""` → `str = ""`. Changed `email: EmailStr` → `str`. All fields now have safe defaults.
+- **CORS Fix**: `allow_origins=['*'] + allow_credentials=True` is an invalid CORS spec combination. Changed to `allow_origin_regex='.*'` — correctly echoes back requesting origin with credentials.
+- Both endpoints `/api/educators/applications` and `/api/educators/applications?for_assignment=true` now return 200.
+
 ### 2026-03-24 — Educator List Rendering Bug Fix
 - **Fixed P0 bug**: Onboarding tab count was showing 0 on initial page load
 - **Root cause**: `fetchOnboardingProgress()` was only called when the Onboarding tab was clicked, so `onboardingData` was empty `[]` on first render. Badge count used `onboardingData.length` which returned 0.

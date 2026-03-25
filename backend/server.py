@@ -9,7 +9,7 @@ import os
 import logging
 import asyncio
 from pathlib import Path
-from pydantic import BaseModel, Field, EmailStr, ConfigDict
+from pydantic import BaseModel, Field, EmailStr, ConfigDict, model_validator
 from typing import List, Optional, Union
 import uuid
 from datetime import datetime, timezone, timedelta
@@ -2602,19 +2602,19 @@ class SchoolInquiryUpdate(BaseModel):
 class EducatorApplication(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    name: str
-    email: EmailStr
-    phone: str
-    skills: List[str]
+    name: str = ""
+    email: str = ""          # str instead of EmailStr to avoid validation failures on legacy data
+    phone: str = ""
+    skills: List[str] = []
     experience: str = ""
     grades_comfortable: List[str] = []
     city: str = ""
-    teaching_mode: str = ""  # online, offline_home, offline_center
+    teaching_mode: str = ""
     availability: str = ""
     demo_ready: bool = False
     requirement_id: Optional[str] = None
     requirement_title: Optional[str] = None
-    status: str = "new"  # new, demo_scheduled, hr_done, tech_scheduled, demo_completed, onboarded, active, archived
+    status: str = "new"
     notes: str = ""
     comments: List[dict] = []
     demo_date: Optional[str] = None
@@ -2624,12 +2624,11 @@ class EducatorApplication(BaseModel):
     meeting_link: str = ""
     phone_verified: bool = False
     onboarding_date: Optional[str] = None
-    # Demo rating fields
-    demo_rating: Optional[dict] = None  # Stores rating data when demo completed
+    demo_rating: Optional[dict] = None
     source: str = "website"
     added_by: str = ""
     assigned_to: str = ""
-    
+
     # Profile fields (populated from onboarding when moved to active)
     profile_photo: str = ""
     bio: str = ""
@@ -2646,30 +2645,63 @@ class EducatorApplication(BaseModel):
     pan_number: str = ""
     pan_document: str = ""
     id_verification_document: str = ""
-    
+
     # Bank details
     bank_name: str = ""
     account_holder_name: str = ""
     account_number: str = ""
     ifsc_code: str = ""
     bank_document: str = ""
-    
+
     # Contract
     contract_accepted: bool = False
     contract_accepted_at: Optional[str] = None
     digital_signature: str = ""
-    
+
     # Training & Certification
     id_card_generated: bool = False
-    certificate_generated: bool = ""
+    certificate_generated: str = ""   # str, not bool — stores URL or empty string
     documents_verified: bool = False
     documents_verified_at: Optional[str] = None
-    
+
     # Availability toggle
     is_available: bool = True
-    
+
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    @model_validator(mode='before')
+    @classmethod
+    def sanitize_nullable_fields(cls, values):
+        """Coerce None/wrong-type values from legacy DB records so validation never fails."""
+        str_fields = [
+            'name', 'email', 'phone', 'experience', 'city', 'teaching_mode',
+            'availability', 'notes', 'meeting_link', 'source', 'added_by',
+            'assigned_to', 'profile_photo', 'bio', 'tshirt_size',
+            'address_line1', 'address_line2', 'state', 'pincode',
+            'emergency_contact_name', 'emergency_contact_phone',
+            'emergency_contact_relation', 'aadhar_number', 'aadhar_document',
+            'pan_number', 'pan_document', 'id_verification_document',
+            'bank_name', 'account_holder_name', 'account_number', 'ifsc_code',
+            'bank_document', 'digital_signature', 'certificate_generated',
+            'status', 'onboarding_date',
+        ]
+        for f in str_fields:
+            if values.get(f) is None:
+                values[f] = ""
+        list_fields = ['skills', 'grades_comfortable', 'comments']
+        for f in list_fields:
+            if not isinstance(values.get(f), list):
+                values[f] = []
+        bool_fields = ['demo_ready', 'phone_verified', 'contract_accepted',
+                       'id_card_generated', 'documents_verified', 'is_available']
+        for f in bool_fields:
+            v = values.get(f)
+            if v is None or v == "":
+                values[f] = False
+            elif not isinstance(v, bool):
+                values[f] = bool(v)
+        return values
 
 class EducatorApplicationCreate(BaseModel):
     name: str
