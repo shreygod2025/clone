@@ -310,27 +310,67 @@ export default function AdminAIChat() {
 
   // ── Speech-to-text ───────────────────────────────────────────────
   const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef(null);
+  const recognitionRef  = useRef(null);
+  const transcriptRef   = useRef('');
+  const silenceTimerRef = useRef(null);
 
   const startListening = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { toast.error('Speech recognition not supported in this browser'); return; }
+
+    // Tap again while listening → stop immediately and send what we have
     if (isListening) {
+      clearTimeout(silenceTimerRef.current);
       recognitionRef.current?.stop();
       setIsListening(false);
       return;
     }
+
     const rec = new SR();
-    rec.lang = 'en-IN';
-    rec.interimResults = false;
-    rec.maxAlternatives = 1;
+    rec.lang             = 'en-IN';
+    rec.continuous       = true;   // keep listening through pauses
+    rec.interimResults   = true;   // show live text as user speaks
+    rec.maxAlternatives  = 1;
+
+    transcriptRef.current = '';
+
     rec.onresult = (e) => {
-      const transcript = e.results[0][0].transcript;
-      setIsListening(false);
-      sendMessage(transcript);   // auto-send immediately
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) {
+          transcriptRef.current += e.results[i][0].transcript + ' ';
+        } else {
+          interim += e.results[i][0].transcript;
+        }
+      }
+      // Show live transcript in the input box
+      setInput((transcriptRef.current + interim).trimStart());
+
+      // Auto-stop and send after 2 s of silence once we have final text
+      clearTimeout(silenceTimerRef.current);
+      if (transcriptRef.current.trim()) {
+        silenceTimerRef.current = setTimeout(() => {
+          rec.stop();
+        }, 2000);
+      }
     };
-    rec.onerror = () => setIsListening(false);
-    rec.onend   = () => setIsListening(false);
+
+    rec.onerror = (err) => {
+      console.error('STT error:', err.error);
+      clearTimeout(silenceTimerRef.current);
+      setIsListening(false);
+    };
+
+    rec.onend = () => {
+      clearTimeout(silenceTimerRef.current);
+      setIsListening(false);
+      const text = transcriptRef.current.trim();
+      if (text) {
+        setInput('');
+        sendMessage(text);   // auto-send accumulated transcript
+      }
+    };
+
     rec.start();
     recognitionRef.current = rec;
     setIsListening(true);
