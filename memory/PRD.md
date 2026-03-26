@@ -1039,3 +1039,17 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 #### Pre-deployment test (Iteration 60): 10/10 backend + 6/6 frontend PASS
 - AI Chat tests blocked only by LLM budget exhaustion (billing, not code bug)
 
+
+
+#### Fix: GST Type visibility & Invoice PDF per-grade rows (Iteration 61) — Mar 2026
+- **`AdminSchoolCRM.jsx`**: Added `gst_type` to `showEditOnboardingModal` (Edit School popup for converted/active schools):
+  - `handleEditOnboarding` now includes `gst_type` in all 3 code paths (direct onboard_data, API fetch, empty fallback)
+  - `handleSaveEditOnboarding` now saves `gst_type` to `onboarding_data` via PATCH
+  - GST Type dropdown (inclusive_18, exclusive_18, book_gst_0) added to Payment Details section of the modal
+- **`invoicePdfGenerator.js`**: Comprehensive fix:
+  - `gstType` now reads from `schoolData.onboarding_data.gst_type` (was `payment.gst_type`)
+  - `calculateGST` now handles new values: `'book_gst_0'`, `'inclusive_18'`, `'exclusive_18'`
+  - Invoice table now generates **one row per grade** from `grade_pricing[]` array (was one combined row)
+  - Per-row CGST/SGST/IGST amounts calculated proportionally (scales tranche amounts across grades)
+  - Fallback single-row preserved when no grade_pricing data available
+- Testing: 6/6 frontend tests PASSED (Iteration 61)
