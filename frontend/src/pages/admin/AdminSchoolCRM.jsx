@@ -10130,15 +10130,7 @@ ${FOOTER}</div></body></html>`
               {/* Payment Details */}
               <div className="bg-green-50 rounded-lg p-4">
                 <h4 className="font-medium text-green-800 mb-3">Payment Details</h4>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="text-sm font-medium text-slate-700">Total Amount (₹)</label>
-                    <Input
-                      type="number"
-                      value={editOnboardData.total_amount || ''}
-                      onChange={(e) => setEditOnboardData(prev => ({ ...prev, total_amount: parseFloat(e.target.value) || 0 }))}
-                    />
-                  </div>
+                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-sm font-medium text-slate-700">Payment Mode</label>
                     <select
@@ -10285,9 +10277,12 @@ ${FOOTER}</div></body></html>`
                           onChange={(e) => {
                             const newTranches = [...(editOnboardData.payment_tranches || [])];
                             newTranches[idx] = { ...newTranches[idx], percentage: e.target.value };
-                            // Auto-calculate amount if total_amount is set
-                            if (editOnboardData.total_amount && e.target.value) {
-                              newTranches[idx].amount = Math.round((editOnboardData.total_amount * parseFloat(e.target.value)) / 100);
+                            // Auto-calculate amount from grade pricing grand total
+                            const editGradeTotal = editOnboardData.pricing_type === 'fixed'
+                              ? parseFloat(editOnboardData.fixed_price || 0)
+                              : (editOnboardData.grade_pricing || []).reduce((s, g) => s + (parseInt(g.students || 0) * parseFloat(g.price_per_student || 0)), 0);
+                            if (editGradeTotal > 0 && e.target.value) {
+                              newTranches[idx].amount = Math.round((editGradeTotal * parseFloat(e.target.value)) / 100);
                             }
                             setEditOnboardData(prev => ({ ...prev, payment_tranches: newTranches }));
                           }}
