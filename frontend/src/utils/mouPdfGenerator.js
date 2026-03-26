@@ -87,7 +87,7 @@ export async function generateMOUDocument(school, data, { API, getAuthHeaders, u
   const schoolAddress = data.school_address || school?.location || school?.address || '';
   const contacts = data.school_contacts || [];
   const principal = contacts.find(c => c.role === 'principal') || contacts[0] || {};
-  const coordinator = contacts.find(c => ['coordinator', 'program_coordinator', 'teacher'].includes(c.role)) || contacts[1] || {};
+  const coordinator = contacts.find(c => ['coordinator', 'program_coordinator'].includes(c.role)) || {};
   const accountsCoord = contacts.find(c => ['accounts', 'accountant', 'admin'].includes(c.role)) || contacts[2] || {};
 
   const courseTypeLabel = { only_robotics: 'Only Robotics', robotics_coding_ai: 'Robotics, Coding & AI' };
@@ -684,8 +684,7 @@ export async function generateMOUDocument(school, data, { API, getAuthHeaders, u
 
   renderContact(
     'Program Coordinator Details (From School):',
-    coordinator.name ? coordinator : principal,
-    school?.contact_name, school?.phone, school?.email
+    coordinator
   );
   renderContact('Accounts Coordinator Details (From School):', accountsCoord);
   renderContact(

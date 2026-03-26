@@ -10624,7 +10624,17 @@ ${FOOTER}</div></body></html>`
               
               {/* Steps Grid */}
               <div className="space-y-4">
-                {Object.entries(showOnboardingWorkflowModal.onboarding_workflow.steps || {}).map(([key, step]) => (
+                {Object.entries(showOnboardingWorkflowModal.onboarding_workflow.steps || {}).map(([key, step]) => {
+                  // For student_training schools, the teacher_training step is renamed
+                  const trainingType = showOnboardingWorkflowModal.onboarding_data?.training_type;
+                  const isStudentTraining = trainingType === 'student_training';
+                  const displayTitle = (key === 'teacher_training' && isStudentTraining)
+                    ? 'Teacher Allocation and School Approval'
+                    : step.title;
+                  const displayDesc = (key === 'teacher_training' && isStudentTraining)
+                    ? 'School allocates teachers and provides formal approval for program execution'
+                    : step.description;
+                  return (
                   <div 
                     key={key}
                     className={`border rounded-xl p-4 ${step.completed ? 'bg-green-50 border-green-200' : 'bg-white border-slate-200'}`}
@@ -10647,9 +10657,9 @@ ${FOOTER}</div></body></html>`
                         </button>
                         <div>
                           <h4 className={`font-medium ${step.completed ? 'text-green-800' : 'text-slate-800'}`}>
-                            {step.title}
+                            {displayTitle}
                           </h4>
-                          <p className="text-sm text-slate-500">{step.description}</p>
+                          <p className="text-sm text-slate-500">{displayDesc}</p>
                           {step.completed_date && (
                             <p className="text-xs text-green-600 mt-1">
                               Completed: {format(new Date(step.completed_date), 'MMM d, yyyy h:mm a')}
@@ -11502,7 +11512,7 @@ ${FOOTER}</div></body></html>`
                       )}
                     </div>
                   </div>
-                ))}
+                );})}
               </div>
               
               {/* Timeline */}
