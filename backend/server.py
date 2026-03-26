@@ -2609,19 +2609,19 @@ class SchoolInquiry(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     school_name: str
-    contact_name: str
-    email: EmailStr
-    phone: str
-    location: str
-    school_size: str
-    fee_range: str
+    contact_name: str = ""
+    email: Optional[str] = ""          # made optional — AI-created leads may have no email
+    phone: str = ""
+    location: str = ""
+    school_size: str = ""
+    fee_range: str = ""
     board: str = ""
     address: str = ""  # Full school address
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     geofence_radius: Optional[int] = None
-    programs_interested: List[str]
-    support_needed: List[str]
+    programs_interested: List[str] = []
+    support_needed: List[str] = []
     status: str = "new"  # new, meeting_done, converted, active, renewal_meeting, renewed, lost, lost_lead, lost_customer, archived
     notes: str = ""
     comments: List[dict] = []
@@ -5901,9 +5901,9 @@ async def get_school_inquiry(inquiry_id: str, user: dict = Depends(get_current_u
         raise HTTPException(status_code=404, detail="Inquiry not found")
     return doc
 
-@api_router.patch("/schools/inquiry/{inquiry_id}", response_model=SchoolInquiry)
+@api_router.patch("/schools/inquiry/{inquiry_id}")
 async def update_school_inquiry(
-    inquiry_id: str, 
+    inquiry_id: str,
     data: SchoolInquiryUpdate,
     user: dict = Depends(get_current_user)
 ):
