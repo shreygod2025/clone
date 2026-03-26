@@ -176,14 +176,11 @@ export async function generateMOUDocument(school, data, { API, getAuthHeaders, u
   sectionTitle('1. PROGRAM DETAILS');
 
   const progFields = [
-    ['Course Name', data.offering],
     ['Course Type', courseTypeLabel[data.course_type] || data.course_type],
-    ['Model', data.model || 'Compulsory / Optional'],
     ['Kit', kitTypeLabel[data.kit_type] || data.kit_type || 'Individual / Lab Setup'],
     ...(data.kit_type === 'lab_setup' ? [['No. of Lab Kits', String(data.lab_kit_count || '')]] : []),
     ['Mode', 'Offline'],
     ['Type of Training', trainingLabel[data.training_type] || 'Teacher Training / Student Training'],
-    ['Assistant Educator Required', 'Yes / No'],
   ];
   progFields.forEach(([lbl, val]) => inlineField(lbl, val));
   y += 3;
@@ -197,8 +194,12 @@ export async function generateMOUDocument(school, data, { API, getAuthHeaders, u
   y += 6;
 
   const trainingStart = '_____ / _____ / _____';
+  const isStudentTraining = data.training_type === 'student_training';
+  const trainingDateLabel = isStudentTraining
+    ? 'Student Training Start Date'
+    : 'Teacher Training Start Date (if teacher training)';
   [
-    ['Teacher Training Start Date (if teacher training)', trainingStart],
+    [trainingDateLabel, trainingStart],
     ['Kit Delivery Date', '_____ / _____ / _____'],
     ['Kit Distribution Date', '_____ / _____ / _____'],
   ].forEach(([lbl, val]) => {
@@ -577,7 +578,7 @@ export async function generateMOUDocument(school, data, { API, getAuthHeaders, u
     'Grade-specific individual textbooks will be provided.',
     ...(kitDeliverableLine ? [kitDeliverableLine] : []),
     '16 projects-based curriculum will be delivered.',
-    'Teacher training will be provided.',
+    isStudentTraining ? 'Student training will be provided.' : 'Teacher training will be provided.',
     'STEM certificates will be awarded to each participating child.',
   ].forEach(item => bullet(item));
   y += 3;
