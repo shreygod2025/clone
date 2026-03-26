@@ -1053,3 +1053,12 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
   - Per-row CGST/SGST/IGST amounts calculated proportionally (scales tranche amounts across grades)
   - Fallback single-row preserved when no grade_pricing data available
 - Testing: 6/6 frontend tests PASSED (Iteration 61)
+
+#### Feature: Generate MOU from Edit School popup — Mar 2026
+- Added `generateEditMOUPDF()` handler that reuses `generateMOUDocument` with `setEditOnboardData` as state setter
+- Added `generatingEditMOU` state for loading indicator
+- Edit School modal MOU section now shows:
+  - When MOU exists: "MOU uploaded" + View / Remove / Regenerate links
+  - When no MOU: "Generate MOU" primary button + "or upload existing" file input fallback
+- Generated MOU auto-saves `mou_url` to `editOnboardData` and adds to school's Docs collection
+

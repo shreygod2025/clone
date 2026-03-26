@@ -763,6 +763,7 @@ const AdminSchoolCRM = () => {
   const [offerings, setOfferings] = useState([]);
   const [uploadingMOU, setUploadingMOU] = useState(false);
   const [generatingMOU, setGeneratingMOU] = useState(false);
+  const [generatingEditMOU, setGeneratingEditMOU] = useState(false);
   const [generatingParentCircular, setGeneratingParentCircular] = useState(false);
   const lastOnboardInquiryId = useRef(null);
   // Email modal states
@@ -2415,6 +2416,25 @@ ${FOOTER}</div></body></html>`
       toast.error('Failed to generate MOU: ' + (err.message || 'Unknown error'));
     } finally {
       setGeneratingMOU(false);
+    }
+  };
+
+  // Generate MOU from the Edit School popup (showEditOnboardingModal)
+  const generateEditMOUPDF = async () => {
+    const school = showEditOnboardingModal;
+    if (!school) return;
+    setGeneratingEditMOU(true);
+    try {
+      // Pass setEditOnboardData as setOnboardData so the URL is saved into the edit modal state
+      await generateMOUDocument(school, editOnboardData, {
+        API, getAuthHeaders, user, toast, fetchInquiries,
+        setOnboardData: setEditOnboardData,
+      });
+    } catch (err) {
+      console.error('Edit MOU generation error:', err);
+      toast.error('Failed to generate MOU: ' + (err.message || 'Unknown error'));
+    } finally {
+      setGeneratingEditMOU(false);
     }
   };
 
@@ -9642,7 +9662,7 @@ ${FOOTER}</div></body></html>`
                 </div>
               </div>
 
-              {/* MOU Upload */}
+              {/* MOU Upload / Generate */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <label className="text-sm font-medium text-blue-800 flex items-center gap-2">
                   <Upload className="w-4 h-4" />
@@ -9650,7 +9670,7 @@ ${FOOTER}</div></body></html>`
                 </label>
                 <div className="mt-2">
                   {editOnboardData.mou_url ? (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       <span className="text-sm text-green-700 flex items-center gap-1">
                         <CheckCircle2 className="w-4 h-4" />
                         MOU uploaded
@@ -9669,29 +9689,55 @@ ${FOOTER}</div></body></html>`
                       >
                         Remove
                       </button>
+                      <button
+                        onClick={generateEditMOUPDF}
+                        disabled={generatingEditMOU}
+                        className="text-xs text-blue-700 underline"
+                      >
+                        {generatingEditMOU ? 'Regenerating...' : 'Regenerate'}
+                      </button>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="file"
-                        accept=".pdf,.doc,.docx,image/*"
-                        onChange={async (e) => {
-                          const file = e.target.files[0];
-                          if (!file) return;
-                          const formData = new FormData();
-                          formData.append('file', file);
-                          try {
-                            const response = await axios.post(`${API}/upload`, formData, {
-                              headers: getAuthHeaders()
-                            });
-                            setEditOnboardData(prev => ({ ...prev, mou_url: response.data.url }));
-                            toast.success('MOU uploaded');
-                          } catch (error) {
-                            toast.error('Failed to upload MOU');
-                          }
-                        }}
-                        className="text-sm"
-                      />
+                    <div className="space-y-2">
+                      {/* Primary: Generate button */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={generateEditMOUPDF}
+                        disabled={generatingEditMOU}
+                        className="border-[#1E3A5F] text-[#1E3A5F] hover:bg-[#1E3A5F]/10 w-full"
+                        data-testid="edit-generate-mou-btn"
+                      >
+                        {generatingEditMOU ? (
+                          <><RefreshCw className="w-4 h-4 mr-1 animate-spin" /> Generating MOU...</>
+                        ) : (
+                          <><FileText className="w-4 h-4 mr-1" /> Generate MOU</>
+                        )}
+                      </Button>
+                      {/* Alternative: Upload existing */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-500">or upload existing:</span>
+                        <Input
+                          type="file"
+                          accept=".pdf,.doc,.docx,image/*"
+                          onChange={async (e) => {
+                            const file = e.target.files[0];
+                            if (!file) return;
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            try {
+                              const response = await axios.post(`${API}/upload`, formData, {
+                                headers: getAuthHeaders()
+                              });
+                              setEditOnboardData(prev => ({ ...prev, mou_url: response.data.url }));
+                              toast.success('MOU uploaded');
+                            } catch (error) {
+                              toast.error('Failed to upload MOU');
+                            }
+                          }}
+                          className="text-sm"
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
