@@ -5893,6 +5893,14 @@ async def delete_growth_partner_application(application_id: str, user: dict = De
         raise HTTPException(status_code=404, detail="Application not found")
     return {"message": "Application deleted successfully"}
 
+@api_router.get("/schools/inquiry/{inquiry_id}")
+async def get_school_inquiry(inquiry_id: str, user: dict = Depends(get_current_user)):
+    """Get a single school inquiry by ID."""
+    doc = await db.school_inquiries.find_one({"id": inquiry_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Inquiry not found")
+    return doc
+
 @api_router.patch("/schools/inquiry/{inquiry_id}", response_model=SchoolInquiry)
 async def update_school_inquiry(
     inquiry_id: str, 

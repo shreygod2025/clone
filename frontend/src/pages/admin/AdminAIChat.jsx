@@ -37,16 +37,24 @@ function ActionCard({ action, onGeneratePDF }) {
   const cfg = ACTION_CFG[action.type] || { label: action.type, Icon: CheckCircle, cls: 'bg-slate-50 border-slate-200 text-slate-700' };
   const { Icon } = cfg;
   const exec = action.execution || {};
+  const isPendingPdf = exec.status === 'pending_pdf_send';
   const isError = exec.status === 'error';
+
+  // Override label for proposal/MOU email
+  const cardLabel = isPendingPdf
+    ? (exec.email_type === 'proposal' ? 'Sending Proposal Email…' : 'Sending MOU Email…')
+    : cfg.label;
 
   return (
     <div className={`mt-2 rounded-xl border px-3 py-2.5 text-xs ${cfg.cls}`}>
       <div className="flex items-center gap-2 font-semibold">
         {isError
           ? <XCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
-          : <CheckCircle className="w-3.5 h-3.5 shrink-0" />}
+          : isPendingPdf
+            ? <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin" />
+            : <CheckCircle className="w-3.5 h-3.5 shrink-0" />}
         <Icon className="w-3.5 h-3.5 shrink-0" />
-        <span>{cfg.label}</span>
+        <span>{cardLabel}</span>
         {action.school_name && <span className="font-normal opacity-70">— {action.school_name}</span>}
       </div>
       {exec.detail && <p className="opacity-70 pl-6 mt-0.5">{exec.detail}</p>}
@@ -216,6 +224,49 @@ export default function AdminAIChat() {
         timestamp: new Date().toISOString(),
       };
       setMessages(prev => [...prev, aiMsg]);
+
+      // ── Handle pending_pdf_send actions (proposal/MOU email with attachment) ──
+      const pendingPdfSends = (res.data.actions || []).filter(
+        a => a.execution?.status === 'pending_pdf_send'
+      );
+      for (const a of pendingPdfSends) {
+        const { email_type, school_id, to_email } = a.execution;
+        if (!to_email || !school_id) continue;
+        try {
+          // Fetch full school data for PDF generation
+          const schoolRes = await axios.get(`${API}/schools/inquiry/${school_id}`, { headers: getAuthHeaders() });
+          const school = schoolRes.data;
+          const proposalData = school.proposal_data || school.onboarding_data || {};
+          const pdfCtx = { API, getAuthHeaders, user: userInfo, toast: () => {}, noDownload: true };
+          let pdfResult;
+          if (email_type === 'proposal') {
+            pdfResult = await generateProposalDocument(school, proposalData, pdfCtx);
+          } else {
+            pdfResult = await generateMOUDocument(school, proposalData, pdfCtx);
+          }
+          if (pdfResult?.base64) {
+            await axios.post(`${API}/schools/${school_id}/send-crm-email`, {
+              email_type,
+              to_email,
+              pdf_base64: pdfResult.base64,
+              pdf_filename: pdfResult.filename,
+            }, { headers: getAuthHeaders() });
+            toast.success(`${email_type === 'proposal' ? 'Proposal' : 'MOU'} email sent to ${to_email} with PDF attached!`);
+            // Update the action card to show success
+            setMessages(prev => prev.map(m => m.id === aiMsg.id ? {
+              ...m,
+              actions: m.actions.map(act =>
+                act.execution?.status === 'pending_pdf_send' && act.execution?.email_type === email_type
+                  ? { ...act, execution: { ...act.execution, status: 'success', detail: `Email sent to ${to_email} with PDF` } }
+                  : act
+              )
+            } : m));
+          }
+        } catch (pdfErr) {
+          console.error('PDF email error:', pdfErr);
+          toast.error(`Failed to send ${email_type} email with PDF`);
+        }
+      }
     } catch (err) {
       const errMsg = {
         id: `e-${Date.now()}`,

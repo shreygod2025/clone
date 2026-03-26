@@ -267,11 +267,25 @@ async def _execute(action: dict, user: dict) -> dict:
         elif t == "send_email":
             if not sid:
                 return {"status": "error", "detail": "school_id required"}
+            email_type = action.get("email_type", "introduction")
+            to_email = action.get("to_email")
+
+            # For proposal/MOU emails, signal frontend to generate and attach PDF
+            if email_type in ("proposal", "mou"):
+                school = await db.school_inquiries.find_one({"id": sid}, {"_id": 0})
+                to_email = to_email or (school.get("email") if school else None)
+                return {
+                    "status": "pending_pdf_send",
+                    "email_type": email_type,
+                    "school_id": sid,
+                    "school_name": action.get("school_name") or (school.get("school_name") if school else ""),
+                    "to_email": to_email,
+                    "detail": f"{'Proposal' if email_type == 'proposal' else 'MOU'} PDF will be generated & emailed by your browser",
+                }
+
+            # All other email types — send directly from backend
             from server import send_crm_email_for_school
-            email_data = {
-                "email_type": action.get("email_type", "introduction"),
-                "to_email": action.get("to_email"),
-            }
+            email_data = {"email_type": email_type, "to_email": to_email}
             try:
                 result = await send_crm_email_for_school(sid, email_data, user)
                 return {"status": "success", "detail": result.get("message", "Email sent")}
@@ -283,21 +297,49 @@ async def _execute(action: dict, user: dict) -> dict:
         # ── RAISE TICKET ─────────────────────────────────────────────
         elif t == "raise_ticket":
             ticket_id = str(uuid.uuid4())
-            await db.support_tickets.insert_one({
-                "id": ticket_id,
-                "subject": action.get("title", "Support Request"),
-                "description": action.get("description", ""),
-                "priority": action.get("priority", "medium"),
-                "status": "open",
-                "source": "ai_chat",
-                "school_id": action.get("school_id"),
-                "school_name": action.get("school_name", ""),
-                "created_by": user.get("id"),
+
+            # Enrich with school contact info if school is referenced
+            school = None
+            if action.get("school_id"):
+                school = await db.school_inquiries.find_one({"id": action["school_id"]}, {"_id": 0})
+            elif action.get("school_name"):
+                school = await db.school_inquiries.find_one(
+                    {"school_name": {"$regex": re.escape(action.get("school_name","").strip()), "$options": "i"}},
+                    {"_id": 0}
+                )
+
+            contact_name  = (school.get("contact_name") or school.get("school_name") or "") if school else action.get("school_name", "")
+            contact_phone = school.get("phone", "") if school else ""
+            contact_email = school.get("email", "") if school else ""
+
+            query_doc = {
+                "id":              ticket_id,
+                "name":            contact_name,
+                "phone":           contact_phone,
+                "email":           contact_email,
+                "query_type":      "other",
+                "related_to":      "",
+                "inquiry_type":    "school" if school else "other",
+                "message":         action.get("description", ""),
+                "query_details":   action.get("description", ""),
+                "subject":         action.get("title", "Support Request"),
+                "priority":        action.get("priority", "medium"),
+                "status":          "open",
+                "source":          "ai_chat",
+                "school_id":       school.get("id") if school else action.get("school_id"),
+                "school_name":     school.get("school_name") if school else action.get("school_name", ""),
+                "created_by":      user.get("id"),
                 "created_by_name": user.get("name", "Admin"),
-                "created_at": now,
-                "updated_at": now,
-            })
-            return {"status": "success", "detail": "Ticket raised", "ticket_id": ticket_id}
+                "viewers":         [],
+                "comments":        [],
+                "assigned_to":     school.get("assigned_to") if school else None,
+                "created_at":      now,
+                "updated_at":      now,
+            }
+            await db.support_queries.insert_one(query_doc)
+            return {"status": "success",
+                    "detail": f"Ticket raised: \"{action.get('title', 'Support Request')}\"",
+                    "ticket_id": ticket_id}
 
         # ── SCHEDULE MEETING ─────────────────────────────────────────
         elif t == "schedule_meeting":
