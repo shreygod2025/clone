@@ -1791,17 +1791,24 @@ ${FOOTER}</div></body></html>`
           role: String(c.role || '')
         }));
       
-      // Format payment tranches
+      // Format payment tranches — recalculate amounts from percentages if total changes
+      const _effectiveAmountForTranches = totalAmount > 0 ? totalAmount : (renewalConvertData.total_amount || 0);
       const formattedTranches = renewalConvertData.payment_tranches
         .filter(t => t.amount || t.percentage)
-        .map(t => ({
-          percentage: String(t.percentage || ''),
-          amount: String(t.amount || ''),
-          date: String(t.date || ''),
-          notes: String(t.notes || '')
-        }));
+        .map(t => {
+          const pct = parseFloat(t.percentage) || 0;
+          const recalcAmount = pct > 0 && _effectiveAmountForTranches > 0
+            ? String(Math.round(_effectiveAmountForTranches * pct / 100))
+            : String(t.amount || '');
+          return {
+            percentage: String(t.percentage || ''),
+            amount: recalcAmount,
+            date: String(t.date || ''),
+            notes: String(t.notes || '')
+          };
+        });
       
-      const finalAmount = totalAmount > 0 ? totalAmount : (renewalConvertData.total_amount || 0);
+      const finalAmount = _effectiveAmountForTranches;
       
       // Calculate school share
       let schoolShareAmount = 0;
@@ -1968,16 +1975,23 @@ ${FOOTER}</div></body></html>`
           role: String(c.role || '')
         }));
 
+      const _draftEffectiveAmount = totalAmount > 0 ? totalAmount : (renewalConvertData.total_amount || 0);
       const formattedTranches = renewalConvertData.payment_tranches
         .filter(t => t.amount || t.percentage)
-        .map(t => ({
-          percentage: String(t.percentage || ''),
-          amount: String(t.amount || ''),
-          date: String(t.date || ''),
-          notes: String(t.notes || '')
-        }));
+        .map(t => {
+          const pct = parseFloat(t.percentage) || 0;
+          const recalcAmount = pct > 0 && _draftEffectiveAmount > 0
+            ? String(Math.round(_draftEffectiveAmount * pct / 100))
+            : String(t.amount || '');
+          return {
+            percentage: String(t.percentage || ''),
+            amount: recalcAmount,
+            date: String(t.date || ''),
+            notes: String(t.notes || '')
+          };
+        });
 
-      const finalAmount = totalAmount > 0 ? totalAmount : (renewalConvertData.total_amount || 0);
+      const finalAmount = _draftEffectiveAmount;
 
       await axios.patch(`${API}/schools/inquiry/${showRenewalConvertModal.id}`, {
         address: renewalConvertData.address,
@@ -3632,7 +3646,14 @@ ${FOOTER}</div></body></html>`
         school_contacts: editOnboardData.school_contacts,
         payment_mode: editOnboardData.payment_mode,
         payment_method: editOnboardData.payment_mode === 'online' ? 'student' : editOnboardData.payment_method,
-        payment_tranches: editOnboardData.payment_mode === 'online' ? [] : editOnboardData.payment_tranches,
+        payment_tranches: editOnboardData.payment_mode === 'online' ? [] : (editOnboardData.payment_tranches || []).map(t => {
+          const pct = parseFloat(t.percentage) || 0;
+          // Recalculate tranche amount from percentage if total_amount changed
+          if (pct > 0 && calculatedTotalAmount > 0) {
+            return { ...t, amount: String(Math.round(calculatedTotalAmount * pct / 100)) };
+          }
+          return t;
+        }),
         deadline_date: editOnboardData.deadline_date,
         contract_start: editOnboardData.contract_start,
         contract_end: editOnboardData.contract_end,

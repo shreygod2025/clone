@@ -328,13 +328,15 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
       const rateRaw = parseFloat(g.price_per_student) || 0;
       // Proportionally scaled base amount for this grade in the invoice
       const rowBase = students * rateRaw * scalingFactor;
+      // Scale the rate so that Qty × scaledRate = rowBase (consistent math on invoice)
+      const scaledRate = students > 0 ? rowBase / students : rateRaw * scalingFactor;
       const rowCGST = rowBase * gst.cgstRate / 100;
       const rowSGST = rowBase * gst.sgstRate / 100;
       const rowIGST = rowBase * gst.igstRate / 100;
       const desc = idx === 0 && payment.tranche_info
         ? `Grade ${g.grade} (${payment.tranche_info})`
         : `Grade ${g.grade}`;
-      return { idx, desc, students, rateRaw, rowBase, rowCGST, rowSGST, rowIGST };
+      return { idx, desc, students, scaledRate, rowBase, rowCGST, rowSGST, rowIGST };
     });
   }
 
@@ -367,7 +369,7 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
       5: { halign: 'right', cellWidth: 28 },
     };
     tableBody = useGradeRows
-      ? gradeRows.map(r => [String(r.idx + 1), r.desc, HSN_SAC, String(r.students), formatINR(r.rateRaw), formatINR(r.rowBase)])
+      ? gradeRows.map(r => [String(r.idx + 1), r.desc, HSN_SAC, String(r.students), formatINR(r.scaledRate), formatINR(r.rowBase)])
       : [['1', fallback.desc, HSN_SAC, fallback.qtyStr, fallback.rateStr, formatINR(gst.baseAmount)]];
 
   } else if (gst.isIntraState) {
@@ -386,7 +388,7 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
     };
     tableBody = useGradeRows
       ? gradeRows.map(r => [
-          String(r.idx + 1), r.desc, HSN_SAC, String(r.students), formatINR(r.rateRaw),
+          String(r.idx + 1), r.desc, HSN_SAC, String(r.students), formatINR(r.scaledRate),
           `${gst.cgstRate}%`, formatINR(r.rowCGST),
           `${gst.sgstRate}%`, formatINR(r.rowSGST),
           formatINR(r.rowBase),
@@ -410,7 +412,7 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
     };
     tableBody = useGradeRows
       ? gradeRows.map(r => [
-          String(r.idx + 1), r.desc, HSN_SAC, String(r.students), formatINR(r.rateRaw),
+          String(r.idx + 1), r.desc, HSN_SAC, String(r.students), formatINR(r.scaledRate),
           `${gst.igstRate}%`, formatINR(r.rowIGST),
           formatINR(r.rowBase),
         ])
