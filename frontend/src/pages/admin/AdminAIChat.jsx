@@ -7,7 +7,8 @@ import { generateMOUDocument } from '../../utils/mouPdfGenerator';
 import {
   Send, Plus, Bot, CheckCircle, XCircle,
   Download, FileText, Building2, Mail, Tag, StickyNote,
-  UserCheck, Ticket, Loader2, Sparkles, Trash2, Calendar, CalendarCheck
+  UserCheck, Ticket, Loader2, Sparkles, Trash2, Calendar, CalendarCheck,
+  Mic, MicOff
 } from 'lucide-react';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -307,9 +308,38 @@ export default function AdminAIChat() {
 
   const isEmpty = messages.length === 0 && !loading && !historyLoading;
 
+  // ── Speech-to-text ───────────────────────────────────────────────
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef(null);
+
+  const startListening = () => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { toast.error('Speech recognition not supported in this browser'); return; }
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+    const rec = new SR();
+    rec.lang = 'en-IN';
+    rec.interimResults = false;
+    rec.maxAlternatives = 1;
+    rec.onresult = (e) => {
+      const transcript = e.results[0][0].transcript;
+      setIsListening(false);
+      sendMessage(transcript);   // auto-send immediately
+    };
+    rec.onerror = () => setIsListening(false);
+    rec.onend   = () => setIsListening(false);
+    rec.start();
+    recognitionRef.current = rec;
+    setIsListening(true);
+  };
+
   return (
     <AdminLayout title="AI Chat">
-      <div className="flex flex-col h-[calc(100vh-64px)] bg-white overflow-hidden rounded-xl border border-slate-200 shadow-sm">
+      {/* Full screen on mobile (no nav overhead), calc height on desktop */}
+      <div className="flex flex-col h-[100dvh] md:h-[calc(100vh-64px)] bg-white overflow-hidden md:rounded-xl md:border md:border-slate-200 md:shadow-sm">
 
         {/* ── Header ─────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-5 py-3 bg-[#075E54] shrink-0">
@@ -391,12 +421,26 @@ export default function AdminAIChat() {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask me anything about your CRM..."
+              placeholder={isListening ? 'Listening…' : 'Ask me anything about your CRM...'}
               rows={1}
               className="flex-1 text-sm text-slate-800 bg-transparent outline-none resize-none max-h-28 leading-5 placeholder:text-slate-400"
               data-testid="ai-chat-input"
             />
           </div>
+          {/* Mic button */}
+          <button
+            onClick={startListening}
+            disabled={loading}
+            title={isListening ? 'Stop listening' : 'Speak to send'}
+            className={`w-10 h-10 rounded-full flex items-center justify-center text-white transition-all shadow-sm shrink-0
+              ${isListening
+                ? 'bg-red-500 animate-pulse ring-2 ring-red-400 ring-offset-1'
+                : 'bg-slate-400 hover:bg-slate-500 disabled:bg-slate-300'}`}
+            data-testid="ai-chat-mic-btn"
+          >
+            {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+          </button>
+          {/* Send button */}
           <button
             onClick={() => sendMessage()}
             disabled={!input.trim() || loading}
