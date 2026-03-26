@@ -1,0 +1,58 @@
+{
+  "summary": "Iteration 61: Frontend-only testing of GST Type dropdown fix in Edit School modal and invoice PDF generator. All 6 feature tests PASSED. GST Type dropdown correctly added to Edit School modal (showEditOnboardingModal), and invoice generator correctly handles all gst_type values with per-grade row generation.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/test_reports/iteration_61.json"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "invoicePdfGenerator.js line 308: gstType correctly reads from schoolData.onboarding_data.gst_type with fallback to payment.gst_type and 'exclusive_18' default — correct pattern.",
+    "AdminSchoolCRM.jsx line 3500: handleEditOnboarding correctly includes gst_type: existingOnboardData.gst_type || '' — correctly populated when modal opens.",
+    "AdminSchoolCRM.jsx line 3650: handleSaveEditOnboarding correctly sends gst_type: editOnboardData.gst_type || '' in PATCH payload — confirmed working end-to-end."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "N/A (frontend-only testing)",
+    "frontend": "100% (6/6 features verified)"
+  },
+  "test_credentials": "admin@oll.co / Dagaji03@",
+  "seed_data_creation": "Followup Test 2 school's gst_type updated to 'exclusive_18' during testing (PATCH /api/schools/inquiry/99730d3f-b41a-4ff3-aa8b-fab452a0227f). 2 invoice PDFs generated: OLL2026/274521 and OLL2026/217621.",
+  "features_verified": {
+    "test_1_gst_type_edit_modal": {
+      "result": "PASS",
+      "details": "GST Type dropdown (data-testid='edit-onboard-gst-type') is visible in Payment Details section of 'Edit School: [Name]' modal (showEditOnboardingModal). All options present: Select GST type, GST Inclusive @ 18% (inclusive_18), GST Exclusive @ 18% (exclusive_18), Book GST = 0% (book_gst_0)."
+    },
+    "test_2_gst_type_renewal_convert_modal": {
+      "result": "PASS",
+      "details": "GST Type dropdown exists in Renewal Convert modal ('Renew School - tt'). Options: '', 'inclusive_18', 'exclusive_18', 'book_gst_0'. Triggered via Active Schools > Renewal dropdown > Direct Renewal (Skip Meeting)."
+    },
+    "test_3_gst_type_onboard_modal": {
+      "result": "PASS",
+      "details": "GST Type dropdown exists in Onboarding modal ('Conversion Details: Durganand High School'). Options: '', 'inclusive_18', 'exclusive_18', 'book_gst_0'. Triggered from Meeting Done filter > Convert button."
+    },
+    "test_4_gst_type_save_persists": {
+      "result": "PASS",
+      "details": "Selecting 'exclusive_18' and clicking Save Changes: (1) PATCH request sent to /api/schools/inquiry/99730d3f-b41a-4ff3-aa8b-fab452a0227f (2) Toast: 'School details updated successfully' (3) On re-open, value shows 'exclusive_18' — data persisted correctly."
+    },
+    "test_5_orders_generate_invoice_button": {
+      "result": "PASS",
+      "details": "Orders page (/admin/orders) shows 7 Invoice buttons for school payments. Invoice buttons are clickable and trigger PDF generation."
+    },
+    "test_6_invoice_generator_gst_handling": {
+      "result": "PASS",
+      "details": "Invoice generator correctly handles gst_type values. Tested exclusive_18 (ABC School — Invoice OLL2026/274521) and inclusive_18 (TEST_Offerings school — Invoice OLL2026/217621). Both generated successfully with toast notifications. Code review confirms: line 308 reads from onboarding_data.gst_type, line 117 handles book_gst_0/book_gst, line 134 handles inclusive_18/inclusive, lines 312-419 generate per-grade rows from grade_pricing array."
+    }
+  },
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All 6 features from this iteration are verified. GST Type dropdown is now in all 3 modals: Edit School (NEW - lines 10087-10101), Renewal Convert (existing - lines 6996-7008), Onboarding Convert (existing - lines 9069-9081). Invoice generator uses correct field path (onboarding_data.gst_type) and handles all 3 gst_type values. Followup Test 2 school (id: 99730d3f) now has gst_type=exclusive_18 from the test.",
+  "rca_of_issue": null
+}

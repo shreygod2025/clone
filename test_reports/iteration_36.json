@@ -70,7 +70,7 @@
     ]
   },
   "expected_cashfree_error_explanation": {
-    "error_message": "Broken Link! https://admin-ai-suite.preview.emergentagent.com/ is not enabled or approved.",
+    "error_message": "Broken Link! https://crm-enhancement-10.preview.emergentagent.com/ is not enabled or approved.",
     "reason": "Preview domain not whitelisted in Cashfree merchant dashboard",
     "is_code_bug": false,
     "user_action_required": "Whitelist production domain at merchant.cashfree.com > developers > Merchant Dashboard Whitelisting Page"

@@ -114,7 +114,7 @@ function generateInvoiceNumber(payment) {
 // ──────────────────────────────────────────────
 function calculateGST(amount, gstType, schoolState) {
   // Book GST = no GST applicable
-  if (gstType === 'book_gst') {
+  if (gstType === 'book_gst_0' || gstType === 'book_gst') {
     return {
       baseAmount: amount,
       totalWithGST: amount,
@@ -130,10 +130,12 @@ function calculateGST(amount, gstType, schoolState) {
   const halfRate = gstRate / 2;
   let baseAmount, gstAmount;
 
-  if (gstType === 'inclusive') {
+  // inclusive_18: price already includes GST — extract base
+  if (gstType === 'inclusive_18' || gstType === 'inclusive') {
     baseAmount = amount / (1 + gstRate / 100);
     gstAmount = amount - baseAmount;
   } else {
+    // exclusive_18 (default): GST is added on top of base
     baseAmount = amount;
     gstAmount = amount * gstRate / 100;
   }
@@ -205,8 +207,8 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
   doc.text(`GSTIN: ${COMPANY.gstin}  |  ${COMPANY.website}`, companyX, y + 24);
 
   // TAX INVOICE title (no "TAX" prefix for book_gst)
-  const gstType = payment.gst_type || 'exclusive';
-  const invoiceTitle = gstType === 'book_gst' ? 'INVOICE' : 'TAX INVOICE';
+  const headerGstType = schoolData?.onboarding_data?.gst_type || payment.gst_type || 'exclusive_18';
+  const invoiceTitle = (headerGstType === 'book_gst_0' || headerGstType === 'book_gst') ? 'INVOICE' : 'TAX INVOICE';
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 58, 95);
@@ -302,30 +304,60 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
   y += 28;
 
   // ─── Items Table ───
+  // gst_type is stored in onboarding_data; fall back to payment field for legacy records
+  const gstType = schoolData?.onboarding_data?.gst_type || payment.gst_type || 'exclusive_18';
   const gst = calculateGST(payment.amount || 0, gstType, schoolState);
 
-  const gradePricing = schoolData?.onboarding_data?.grade_pricing || [];
-  const totalStudents = schoolData?.onboarding_data?.total_students || payment.qty || '';
-  let itemDesc = schoolName;
-  if (gradePricing.length > 0) {
-    const grades = gradePricing.map(g => g.grade).join(', ');
-    itemDesc += ` - ${grades}`;
-  }
-  if (payment.tranche_info) {
-    itemDesc += ` (${payment.tranche_info})`;
+  // Build per-grade rows from grade_pricing[]
+  const rawGrades = (schoolData?.onboarding_data?.grade_pricing || [])
+    .filter(g => g.grade && g.students && g.price_per_student);
+
+  // Sum of (students × rate) across all grades — the full contract base
+  const rawContractTotal = rawGrades.reduce(
+    (sum, g) => sum + (parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0),
+    0
+  );
+
+  // Scaling factor: distributes tranche amounts proportionally across grades
+  const scalingFactor = rawContractTotal > 0 ? gst.baseAmount / rawContractTotal : 1;
+
+  // Helper: build one row per grade with per-row GST split
+  function buildGradeRows() {
+    return rawGrades.map((g, idx) => {
+      const students = parseInt(g.students) || 0;
+      const rateRaw = parseFloat(g.price_per_student) || 0;
+      // Proportionally scaled base amount for this grade in the invoice
+      const rowBase = students * rateRaw * scalingFactor;
+      const rowCGST = rowBase * gst.cgstRate / 100;
+      const rowSGST = rowBase * gst.sgstRate / 100;
+      const rowIGST = rowBase * gst.igstRate / 100;
+      const desc = idx === 0 && payment.tranche_info
+        ? `Grade ${g.grade} (${payment.tranche_info})`
+        : `Grade ${g.grade}`;
+      return { idx, desc, students, rateRaw, rowBase, rowCGST, rowSGST, rowIGST };
+    });
   }
 
-  const pricePerStudent = totalStudents ? (gst.baseAmount / Number(totalStudents)) : gst.baseAmount;
-  const qtyStr = totalStudents ? String(totalStudents) : '1';
-  const rateStr = formatINR(totalStudents ? pricePerStudent : gst.baseAmount);
+  // Fallback single-row data (when no detailed grade_pricing)
+  function buildFallbackRow(desc) {
+    const totalStudents = schoolData?.onboarding_data?.total_students || payment.qty || '';
+    const pricePerStudent = totalStudents ? (gst.baseAmount / Number(totalStudents)) : gst.baseAmount;
+    return {
+      desc: desc + (payment.tranche_info ? ` (${payment.tranche_info})` : ''),
+      qtyStr: totalStudents ? String(totalStudents) : '1',
+      rateStr: formatINR(totalStudents ? pricePerStudent : gst.baseAmount),
+    };
+  }
+
+  const useGradeRows = rawGrades.length > 0;
+  const gradeRows = useGradeRows ? buildGradeRows() : [];
+  const fallback = !useGradeRows ? buildFallbackRow(schoolName) : null;
 
   // Table layout depends on GST type
   let tableHeaders, tableBody, columnStyles;
 
   if (gst.isBookGST) {
-    // No GST columns for Book GST
     tableHeaders = [['#', 'Item & Description', 'HSN/SAC', 'Qty', 'Rate', 'Amount']];
-    tableBody = [['1', itemDesc, HSN_SAC, qtyStr, rateStr, formatINR(gst.baseAmount)]];
     columnStyles = {
       0: { halign: 'center', cellWidth: 10 },
       1: { cellWidth: 'auto' },
@@ -334,13 +366,12 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
       4: { halign: 'right', cellWidth: 28 },
       5: { halign: 'right', cellWidth: 28 },
     };
+    tableBody = useGradeRows
+      ? gradeRows.map(r => [String(r.idx + 1), r.desc, HSN_SAC, String(r.students), formatINR(r.rateRaw), formatINR(r.rowBase)])
+      : [['1', fallback.desc, HSN_SAC, fallback.qtyStr, fallback.rateStr, formatINR(gst.baseAmount)]];
+
   } else if (gst.isIntraState) {
     tableHeaders = [['#', 'Item & Description', 'HSN/SAC', 'Qty', 'Rate', 'CGST %', 'CGST Amt', 'SGST %', 'SGST Amt', 'Amount']];
-    tableBody = [['1', itemDesc, HSN_SAC, qtyStr, rateStr,
-      `${gst.cgstRate}%`, formatINR(gst.cgstAmount),
-      `${gst.sgstRate}%`, formatINR(gst.sgstAmount),
-      formatINR(gst.baseAmount),
-    ]];
     columnStyles = {
       0: { halign: 'center', cellWidth: 8 },
       1: { cellWidth: 'auto' },
@@ -353,12 +384,20 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
       8: { halign: 'right', cellWidth: 18 },
       9: { halign: 'right', cellWidth: 20 },
     };
+    tableBody = useGradeRows
+      ? gradeRows.map(r => [
+          String(r.idx + 1), r.desc, HSN_SAC, String(r.students), formatINR(r.rateRaw),
+          `${gst.cgstRate}%`, formatINR(r.rowCGST),
+          `${gst.sgstRate}%`, formatINR(r.rowSGST),
+          formatINR(r.rowBase),
+        ])
+      : [['1', fallback.desc, HSN_SAC, fallback.qtyStr, fallback.rateStr,
+          `${gst.cgstRate}%`, formatINR(gst.cgstAmount),
+          `${gst.sgstRate}%`, formatINR(gst.sgstAmount),
+          formatINR(gst.baseAmount)]];
+
   } else {
     tableHeaders = [['#', 'Item & Description', 'HSN/SAC', 'Qty', 'Rate', 'IGST %', 'IGST Amt', 'Amount']];
-    tableBody = [['1', itemDesc, HSN_SAC, qtyStr, rateStr,
-      `${gst.igstRate}%`, formatINR(gst.igstAmount),
-      formatINR(gst.baseAmount),
-    ]];
     columnStyles = {
       0: { halign: 'center', cellWidth: 10 },
       1: { cellWidth: 'auto' },
@@ -369,6 +408,15 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
       6: { halign: 'right', cellWidth: 22 },
       7: { halign: 'right', cellWidth: 24 },
     };
+    tableBody = useGradeRows
+      ? gradeRows.map(r => [
+          String(r.idx + 1), r.desc, HSN_SAC, String(r.students), formatINR(r.rateRaw),
+          `${gst.igstRate}%`, formatINR(r.rowIGST),
+          formatINR(r.rowBase),
+        ])
+      : [['1', fallback.desc, HSN_SAC, fallback.qtyStr, fallback.rateStr,
+          `${gst.igstRate}%`, formatINR(gst.igstAmount),
+          formatINR(gst.baseAmount)]];
   }
 
   doc.autoTable({

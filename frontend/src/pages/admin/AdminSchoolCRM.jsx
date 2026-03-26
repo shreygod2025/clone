@@ -3497,6 +3497,7 @@ ${FOOTER}</div></body></html>`
         gp_share_calc: existingOnboardData.gp_share_calc || 'lumpsum',
         gp_share_value: existingOnboardData.gp_share_value || '',
         gp_share_amount: existingOnboardData.gp_share_amount || 0,
+        gst_type: existingOnboardData.gst_type || '',
       });
       setShowEditOnboardingModal(school);
       return;
@@ -3529,6 +3530,7 @@ ${FOOTER}</div></body></html>`
         gp_share_calc: response.data.gp_share_calc || 'lumpsum',
         gp_share_value: response.data.gp_share_value || '',
         gp_share_amount: response.data.gp_share_amount || 0,
+        gst_type: response.data.gst_type || '',
       });
       setShowEditOnboardingModal(school);
     } catch (error) {
@@ -3569,6 +3571,7 @@ ${FOOTER}</div></body></html>`
         gp_share_calc: 'lumpsum',
         gp_share_value: '',
         gp_share_amount: 0,
+        gst_type: '',
       });
       setShowEditOnboardingModal(school);
     }
@@ -3644,6 +3647,7 @@ ${FOOTER}</div></body></html>`
         gp_share_calc: editOnboardData.gp_share_calc,
         gp_share_value: editOnboardData.gp_share_value,
         gp_share_amount: calculatedGpShareAmount,
+        gst_type: editOnboardData.gst_type || '',
       };
 
       // Update school inquiry basic info AND onboarding_data for renewed/converted schools
@@ -10080,6 +10084,22 @@ ${FOOTER}</div></body></html>`
                   )}
                 </div>
                 
+                {/* GST Type */}
+                <div>
+                  <label className="text-sm font-medium text-slate-700">GST Type</label>
+                  <select
+                    value={editOnboardData.gst_type || ''}
+                    onChange={(e) => setEditOnboardData(prev => ({ ...prev, gst_type: e.target.value }))}
+                    className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white"
+                    data-testid="edit-onboard-gst-type"
+                  >
+                    <option value="">Select GST type</option>
+                    <option value="inclusive_18">GST Inclusive @ 18%</option>
+                    <option value="exclusive_18">GST Exclusive @ 18%</option>
+                    <option value="book_gst_0">Book GST = 0%</option>
+                  </select>
+                </div>
+
                 {/* Online Student Payment Info */}
                 {editOnboardData.payment_mode === 'online' && (
                   <div className="bg-green-100 border border-green-300 rounded-lg p-3 mt-3">
