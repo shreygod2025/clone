@@ -572,6 +572,10 @@ const AdminSchoolCRM = () => {
   const [loadingPoData, setLoadingPoData] = useState(false);
   const [syncingExpenses, setSyncingExpenses] = useState(false);
   const [showRaisePODialog, setShowRaisePODialog] = useState(false);
+  const [poPreviewProducts, setPoPreviewProducts] = useState([]);
+  const [loadingPoPreview, setLoadingPoPreview] = useState(false);
+  const [poPreviewLoaded, setPoPreviewLoaded] = useState(false);
+  const [newPoProduct, setNewPoProduct] = useState({ product_name: '', quantity: '' });
   const [poDeliveryDate, setPoDeliveryDate] = useState('');
   const [raisingPO, setRaisingPO] = useState(false);
   const [renewalConvertData, setRenewalConvertData] = useState({
@@ -3249,6 +3253,20 @@ ${FOOTER}</div></body></html>`
   };
 
   // Raise PO Request to Vendor Panel
+  const handlePoPreview = async () => {
+    if (!poDeliveryDate) { toast.error('Please select a delivery date'); return; }
+    setLoadingPoPreview(true);
+    try {
+      const res = await axios.post(`${API}/schools/${showOnboardingWorkflowModal.id}/po-preview`, {}, { headers: getAuthHeaders() });
+      setPoPreviewProducts((res.data.products || []).map((p, i) => ({ ...p, _id: i })));
+      setPoPreviewLoaded(true);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to load product preview');
+    } finally {
+      setLoadingPoPreview(false);
+    }
+  };
+
   const handleRaisePO = async () => {
     if (!poDeliveryDate) {
       toast.error('Please select a delivery date');
@@ -3257,11 +3275,15 @@ ${FOOTER}</div></body></html>`
     setRaisingPO(true);
     try {
       const res = await axios.post(`${API}/schools/${showOnboardingWorkflowModal.id}/raise-po`, {
-        delivery_date: poDeliveryDate
+        delivery_date: poDeliveryDate,
+        products: poPreviewLoaded ? poPreviewProducts : undefined,
       }, { headers: getAuthHeaders() });
       toast.success(res.data.message || 'PO raised successfully!');
       setShowRaisePODialog(false);
       setPoDeliveryDate('');
+      setPoPreviewProducts([]);
+      setPoPreviewLoaded(false);
+      setNewPoProduct({ product_name: '', quantity: '' });
       // Refresh school data
       fetchInquiries();
       // Refresh the modal data
@@ -10871,7 +10893,7 @@ ${FOOTER}</div></body></html>`
                                   </div>
                                 )}
                                 <button
-                                  onClick={() => { setShowRaisePODialog(true); setPoDeliveryDate(''); }}
+                                  onClick={() => { setShowRaisePODialog(true); setPoDeliveryDate(''); setPoPreviewProducts([]); setPoPreviewLoaded(false); setNewPoProduct({ product_name: '', quantity: '' }); }}
                                   className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white text-xs rounded-lg hover:bg-indigo-700 transition-colors font-medium"
                                   data-testid="raise-po-btn"
                                 >
@@ -11538,47 +11560,170 @@ ${FOOTER}</div></body></html>`
       </Dialog>
 
       {/* Raise PO Delivery Date Dialog */}
-      <Dialog open={showRaisePODialog} onOpenChange={setShowRaisePODialog}>
-        <DialogContent className="max-w-md">
+      <Dialog open={showRaisePODialog} onOpenChange={(open) => {
+        setShowRaisePODialog(open);
+        if (!open) { setPoPreviewProducts([]); setPoPreviewLoaded(false); setNewPoProduct({ product_name: '', quantity: '' }); }
+      }}>
+        <DialogContent className={poPreviewLoaded ? 'max-w-2xl' : 'max-w-md'}>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Package className="w-5 h-5 text-indigo-600" />
-              Raise PO Request
+              {poPreviewLoaded ? 'Review & Approve PO' : 'Raise PO Request'}
             </DialogTitle>
           </DialogHeader>
+
           <div className="space-y-4">
+            {/* School summary — always visible */}
             <div className="bg-slate-50 p-3 rounded-lg text-sm">
               <p className="font-medium text-slate-800">{showOnboardingWorkflowModal?.school_name}</p>
-              <div className="mt-2 space-y-1 text-xs text-slate-600">
-                <p>Course: {showOnboardingWorkflowModal?.onboarding_data?.course_type === 'robotics_coding_ai' ? 'Robotics, Coding & AI' : 'Only Robotics'}</p>
-                <p>Kit: {showOnboardingWorkflowModal?.onboarding_data?.kit_type === 'lab_setup' ? `Lab Setup (${showOnboardingWorkflowModal?.onboarding_data?.lab_kit_count || 0} kits)` : 'Individual Kit'}</p>
-                <p>Books: {showOnboardingWorkflowModal?.onboarding_data?.book_type === 'individual_books' ? 'Individual Books' : 'No Books'}</p>
-                <p>Students: {showOnboardingWorkflowModal?.onboarding_data?.total_students || '-'}</p>
+              <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-slate-600">
+                <span>Course: {showOnboardingWorkflowModal?.onboarding_data?.course_type === 'robotics_coding_ai' ? 'Robotics, Coding & AI' : 'Only Robotics'}</span>
+                <span>Kit: {showOnboardingWorkflowModal?.onboarding_data?.kit_type === 'lab_setup' ? `Lab Setup (${showOnboardingWorkflowModal?.onboarding_data?.lab_kit_count || 0} kits)` : 'Individual'}</span>
+                <span>Books: {showOnboardingWorkflowModal?.onboarding_data?.book_type === 'individual_books' ? 'Individual Books' : 'No Books'}</span>
+                <span>Students: {showOnboardingWorkflowModal?.onboarding_data?.total_students || '-'}</span>
               </div>
             </div>
+
+            {/* Delivery date */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700">Delivery Date *</label>
               <Input
                 type="date"
                 value={poDeliveryDate}
-                onChange={(e) => setPoDeliveryDate(e.target.value)}
+                onChange={(e) => { setPoDeliveryDate(e.target.value); setPoPreviewLoaded(false); setPoPreviewProducts([]); }}
                 min={new Date().toISOString().split('T')[0]}
                 data-testid="po-delivery-date"
               />
             </div>
-            <div className="flex gap-3 pt-2">
-              <Button variant="outline" onClick={() => setShowRaisePODialog(false)} className="flex-1">
-                Cancel
-              </Button>
-              <Button
-                onClick={handleRaisePO}
-                disabled={raisingPO || !poDeliveryDate}
-                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
-                data-testid="confirm-raise-po"
-              >
-                {raisingPO ? 'Raising PO...' : 'Confirm & Raise PO'}
-              </Button>
-            </div>
+
+            {/* ── STEP 1: Preview Products button ── */}
+            {!poPreviewLoaded && (
+              <div className="flex gap-3 pt-1">
+                <Button variant="outline" onClick={() => setShowRaisePODialog(false)} className="flex-1">
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handlePoPreview}
+                  disabled={loadingPoPreview || !poDeliveryDate}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+                  data-testid="po-preview-btn"
+                >
+                  {loadingPoPreview ? (
+                    <><RefreshCw className="w-4 h-4 mr-1 animate-spin" /> Loading Products...</>
+                  ) : (
+                    <><Eye className="w-4 h-4 mr-1" /> Preview Products</>
+                  )}
+                </Button>
+              </div>
+            )}
+
+            {/* ── STEP 2: Editable product table ── */}
+            {poPreviewLoaded && (
+              <>
+                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-100 text-slate-700">
+                      <tr>
+                        <th className="text-left px-3 py-2 font-medium">Product Name</th>
+                        <th className="text-center px-3 py-2 font-medium w-24">Qty</th>
+                        <th className="w-12"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {poPreviewProducts.length === 0 && (
+                        <tr><td colSpan={3} className="text-center py-4 text-slate-400 text-xs">No products. Add items below.</td></tr>
+                      )}
+                      {poPreviewProducts.map((p, idx) => (
+                        <tr key={p._id ?? idx} className="border-t border-slate-100">
+                          <td className="px-3 py-1.5">
+                            <Input
+                              value={p.product_name}
+                              onChange={(e) => setPoPreviewProducts(prev => prev.map((x, i) => i === idx ? { ...x, product_name: e.target.value } : x))}
+                              className="h-8 text-sm"
+                              data-testid={`po-product-name-${idx}`}
+                            />
+                          </td>
+                          <td className="px-3 py-1.5">
+                            <Input
+                              type="number"
+                              min="1"
+                              value={p.quantity}
+                              onChange={(e) => setPoPreviewProducts(prev => prev.map((x, i) => i === idx ? { ...x, quantity: parseInt(e.target.value) || 1 } : x))}
+                              className="h-8 text-sm text-center"
+                              data-testid={`po-product-qty-${idx}`}
+                            />
+                          </td>
+                          <td className="px-2 py-1.5 text-center">
+                            <button
+                              onClick={() => setPoPreviewProducts(prev => prev.filter((_, i) => i !== idx))}
+                              className="text-red-500 hover:text-red-700"
+                              data-testid={`po-delete-product-${idx}`}
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Add product row */}
+                <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg p-2">
+                  <Input
+                    placeholder="Product name"
+                    value={newPoProduct.product_name}
+                    onChange={(e) => setNewPoProduct(prev => ({ ...prev, product_name: e.target.value }))}
+                    className="h-8 text-sm flex-1"
+                    data-testid="po-new-product-name"
+                  />
+                  <Input
+                    type="number"
+                    min="1"
+                    placeholder="Qty"
+                    value={newPoProduct.quantity}
+                    onChange={(e) => setNewPoProduct(prev => ({ ...prev, quantity: e.target.value }))}
+                    className="h-8 text-sm w-20 text-center"
+                    data-testid="po-new-product-qty"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 border-green-600 text-green-700 hover:bg-green-100 whitespace-nowrap"
+                    onClick={() => {
+                      if (!newPoProduct.product_name.trim() || !newPoProduct.quantity) return;
+                      setPoPreviewProducts(prev => [...prev, { product_name: newPoProduct.product_name.trim(), quantity: parseInt(newPoProduct.quantity) || 1, _id: Date.now() }]);
+                      setNewPoProduct({ product_name: '', quantity: '' });
+                    }}
+                    data-testid="po-add-product-btn"
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" /> Add
+                  </Button>
+                </div>
+
+                <div className="flex gap-3 pt-1">
+                  <Button
+                    variant="outline"
+                    onClick={() => { setPoPreviewLoaded(false); setPoPreviewProducts([]); }}
+                    className="flex-1"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    onClick={handleRaisePO}
+                    disabled={raisingPO || poPreviewProducts.length === 0}
+                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+                    data-testid="confirm-raise-po"
+                  >
+                    {raisingPO ? (
+                      <><RefreshCw className="w-4 h-4 mr-1 animate-spin" /> Raising PO...</>
+                    ) : (
+                      <><CheckCircle2 className="w-4 h-4 mr-1" /> Approve and Raise PO</>
+                    )}
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
