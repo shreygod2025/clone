@@ -965,9 +965,16 @@ const AdminSettings = () => {
                               {maskApiKey(apiKey.key)}
                             </code>
                             <button
-                              onClick={() => copyToClipboard(apiKey.key)}
+                              onClick={async () => {
+                                try {
+                                  const res = await axios.get(`${API}/admin/api-keys/${apiKey.id}/reveal`, { headers: getAuthHeaders() });
+                                  copyToClipboard(res.data.key);
+                                } catch (e) {
+                                  toast.error('Failed to reveal key');
+                                }
+                              }}
                               className="p-1 hover:bg-slate-200 rounded text-slate-500"
-                              title="Copy full key"
+                              title="Reveal & copy full key"
                               data-testid={`copy-api-key-${apiKey.id}`}
                             >
                               <Copy className="w-4 h-4" />
@@ -1022,17 +1029,40 @@ const AdminSettings = () => {
                 {/* Endpoint */}
                 <div>
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Endpoint (Active Schools — flat format)</p>
-                  <code className="block bg-slate-900 text-green-400 rounded-lg px-4 py-3 text-sm font-mono break-all select-all">
-                    GET {process.env.REACT_APP_BACKEND_URL}/api/external/schools/active
-                  </code>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 block bg-slate-900 text-green-400 rounded-lg px-4 py-3 text-sm font-mono break-all select-all">
+                      GET {process.env.REACT_APP_BACKEND_URL}/api/external/schools/active
+                    </code>
+                    <button
+                      onClick={() => copyToClipboard(`${process.env.REACT_APP_BACKEND_URL}/api/external/schools/active`)}
+                      className="shrink-0 p-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white"
+                      title="Copy URL"
+                    ><Copy className="w-4 h-4" /></button>
+                  </div>
+                  <p className="text-xs text-amber-600 mt-1">⚠️ The URL must include <code className="bg-amber-50 px-1 rounded">/api</code> — requests without it return the website HTML, not data.</p>
                 </div>
 
                 {/* Header */}
                 <div>
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Required Header</p>
-                  <code className="block bg-slate-900 text-yellow-300 rounded-lg px-4 py-3 text-sm font-mono">
-                    X-API-Key: oll_sk_your_key_here
-                  </code>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 block bg-slate-900 text-yellow-300 rounded-lg px-4 py-3 text-sm font-mono">
+                      X-API-Key: oll_sk_your_key_here
+                    </code>
+                    <button
+                      onClick={() => {
+                        if (apiKeys.length > 0) {
+                          // Reveal and copy the first active key
+                          axios.get(`${API}/admin/api-keys/${apiKeys[0].id}/reveal`, { headers: getAuthHeaders() })
+                            .then(r => copyToClipboard(`X-API-Key: ${r.data.key}`))
+                            .catch(() => toast.error('Could not reveal key'));
+                        }
+                      }}
+                      className="shrink-0 p-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white"
+                      title="Copy header with your key"
+                    ><Copy className="w-4 h-4" /></button>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">Click the copy button on any key above to get your full unmasked key.</p>
                 </div>
 
                 {/* Response fields */}
@@ -1048,9 +1078,16 @@ const AdminSettings = () => {
                 {/* All schools endpoint */}
                 <div>
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Full CRM Endpoint (all statuses, paginated)</p>
-                  <code className="block bg-slate-900 text-green-400 rounded-lg px-4 py-3 text-sm font-mono break-all">
-                    GET {process.env.REACT_APP_BACKEND_URL}/api/external/schools?status=active&limit=100
-                  </code>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 block bg-slate-900 text-green-400 rounded-lg px-4 py-3 text-sm font-mono break-all select-all">
+                      GET {process.env.REACT_APP_BACKEND_URL}/api/external/schools?status=active&limit=100
+                    </code>
+                    <button
+                      onClick={() => copyToClipboard(`${process.env.REACT_APP_BACKEND_URL}/api/external/schools?status=active&limit=100`)}
+                      className="shrink-0 p-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white"
+                      title="Copy URL"
+                    ><Copy className="w-4 h-4" /></button>
+                  </div>
                 </div>
 
                 {/* Test button */}

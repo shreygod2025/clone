@@ -159,6 +159,17 @@ async def test_external_api_key(key_id: str, user: dict = Depends(get_current_us
     }
 
 
+@router.get("/admin/api-keys/{key_id}/reveal")
+async def reveal_external_api_key(key_id: str, user: dict = Depends(get_current_user)):
+    """Return the full unmasked API key so the admin can re-copy it."""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admin only")
+    key_doc = await db.external_api_keys.find_one({"id": key_id}, {"_id": 0, "key": 1, "name": 1})
+    if not key_doc:
+        raise HTTPException(status_code=404, detail="API key not found")
+    return {"key": key_doc["key"], "name": key_doc.get("name", "")}
+
+
 @router.delete("/admin/api-keys/{key_id}")
 async def delete_external_api_key(key_id: str, user: dict = Depends(get_current_user)):
     """Delete an external API key"""
