@@ -48,6 +48,34 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+### March 26, 2026
+
+#### P0: Student Payment Email Receipt (COMPLETED)
+**Automated Thank-You/Receipt Email to School Students on Payment**
+
+**Backend Changes (`/app/backend/routes/payments.py`):**
+- Added missing imports: `json`, `hmac`, `hashlib`, `time`, `base64`, `resend`
+- Added `_build_receipt_html()` — styled HTML email template with:
+  - Student name, school, grade/division, program, amount, transaction ID, order ID
+  - Green success bar, receipt summary table, support contact box
+  - Strictly follows rules: NO "OLL" full form, support `9920188188`, email `info@oll.co`
+- Added `send_school_student_receipt_email()` — async function using Resend API
+  - Only sends if `student_email` is present; logs & skips otherwise
+  - Only sends once (guarded by `email_receipt_sent` flag in DB)
+- Updated `create_school_student_payment_session` to accept optional `email` / `student_email` and store in payment record with `email_receipt_sent: False`
+- Updated `school_payment_webhook` to trigger email on `PAYMENT_SUCCESS_WEBHOOK`
+- Updated `verify_school_student_payment` to trigger email when `order_status == "PAID"`
+- Added `POST /api/school-payment/send-receipt/{order_id}` — admin endpoint to manually send/re-send receipt (with optional email body override)
+
+**Frontend Changes (`/app/frontend/src/pages/SchoolStudentPayment.jsx`):**
+- Added optional **Email Address** input field (with Mail icon, "(optional – for receipt)" tag)
+- Email passed in `create-session` API call payload
+- Success page footer: shows "A confirmation email has been sent to {email}" when email provided, else shows phone message
+
+**Testing:** Email confirmed sent to `shreyaan@oll.co` via Resend API (HTTP 200, `email_receipt_sent: True` in DB)
+
+---
+
 ### March 24, 2026
 
 #### P0: Team Member Applications Workflow Overhaul - Step 1 (COMPLETED)

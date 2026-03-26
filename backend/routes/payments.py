@@ -10,6 +10,12 @@ import uuid
 import asyncio
 import os
 import logging
+import json
+import hmac
+import hashlib
+import time
+from base64 import b64encode
+import resend
 
 try:
     from cashfree_pg.models.create_order_request import CreateOrderRequest
@@ -67,6 +73,155 @@ def set_cached(key: str, value, ttl: int = 300):
     return value
 
 router = APIRouter()
+
+# ── Student Payment Receipt Email ────────────────────────────────────────────
+
+RECEIPT_FROM_EMAIL = "OLL <skills@oll.co>"
+
+def _build_receipt_html(student_name: str, school_name: str, grade: str, division: str,
+                         skill: str, amount: float, transaction_id: str, order_id: str) -> str:
+    """Build a styled HTML payment receipt for school students."""
+    paid_at = datetime.now(timezone.utc).strftime("%d %b %Y, %I:%M %p IST")
+    amount_str = f"₹{int(amount):,}"
+    txn_row = ""
+    if transaction_id:
+        txn_row = f"""
+        <tr>
+          <td style="padding:10px 0;color:#64748b;font-size:13px;border-bottom:1px solid #f1f5f9">Transaction ID</td>
+          <td style="padding:10px 0;text-align:right;font-family:monospace;font-size:12px;color:#334155;border-bottom:1px solid #f1f5f9">{transaction_id}</td>
+        </tr>"""
+    return f"""<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif">
+<div style="max-width:580px;margin:30px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.09)">
+
+  <!-- Header -->
+  <div style="background:linear-gradient(135deg,#1E3A5F 0%,#2d5a8e 100%);padding:32px;text-align:center">
+    <h1 style="margin:0 0 6px;color:#fff;font-size:24px;font-weight:700">Payment Confirmed!</h1>
+    <p style="margin:0;color:rgba(255,255,255,0.8);font-size:14px">Your fee payment has been received</p>
+  </div>
+
+  <!-- Green success bar -->
+  <div style="background:#22c55e;padding:12px 32px;display:flex;align-items:center;justify-content:center">
+    <span style="color:#fff;font-size:13px;font-weight:600">&#10003; &nbsp; Amount Paid: {amount_str}</span>
+  </div>
+
+  <!-- Body -->
+  <div style="padding:32px">
+    <p style="color:#334155;font-size:15px;margin:0 0 24px">Dear <strong>{student_name}</strong>,</p>
+    <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 24px">
+      Thank you for your payment. Your enrollment is confirmed. Please keep this email as your payment receipt for future reference.
+    </p>
+
+    <!-- Receipt Summary Box -->
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-bottom:24px">
+      <div style="background:#1E3A5F;padding:12px 20px">
+        <p style="margin:0;color:#fff;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Payment Receipt</p>
+      </div>
+      <div style="padding:16px 20px">
+        <table style="width:100%;border-collapse:collapse">
+          <tr>
+            <td style="padding:10px 0;color:#64748b;font-size:13px;border-bottom:1px solid #f1f5f9">Student Name</td>
+            <td style="padding:10px 0;text-align:right;font-weight:600;color:#1e293b;font-size:13px;border-bottom:1px solid #f1f5f9">{student_name}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 0;color:#64748b;font-size:13px;border-bottom:1px solid #f1f5f9">School</td>
+            <td style="padding:10px 0;text-align:right;font-weight:600;color:#1e293b;font-size:13px;border-bottom:1px solid #f1f5f9">{school_name}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 0;color:#64748b;font-size:13px;border-bottom:1px solid #f1f5f9">Grade &amp; Division</td>
+            <td style="padding:10px 0;text-align:right;font-weight:600;color:#1e293b;font-size:13px;border-bottom:1px solid #f1f5f9">Grade {grade}{' - ' + division if division else ''}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 0;color:#64748b;font-size:13px;border-bottom:1px solid #f1f5f9">Program</td>
+            <td style="padding:10px 0;text-align:right;font-weight:600;color:#1e293b;font-size:13px;border-bottom:1px solid #f1f5f9">{skill}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 0;color:#64748b;font-size:13px;border-bottom:1px solid #f1f5f9">Payment Date</td>
+            <td style="padding:10px 0;text-align:right;color:#334155;font-size:13px;border-bottom:1px solid #f1f5f9">{paid_at}</td>
+          </tr>
+          <tr>
+            <td style="padding:10px 0;color:#64748b;font-size:13px;border-bottom:1px solid #f1f5f9">Order ID</td>
+            <td style="padding:10px 0;text-align:right;font-family:monospace;font-size:11px;color:#334155;border-bottom:1px solid #f1f5f9">{order_id}</td>
+          </tr>
+          {txn_row}
+          <tr>
+            <td style="padding:14px 0 0;color:#1E3A5F;font-size:15px;font-weight:700">Total Paid</td>
+            <td style="padding:14px 0 0;text-align:right;color:#22c55e;font-size:18px;font-weight:800">{amount_str}</td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <p style="color:#475569;font-size:14px;line-height:1.7;margin:0 0 20px">
+      If you have any questions about your payment or enrollment, please reach out to us.
+    </p>
+
+    <!-- Support box -->
+    <div style="background:#eff6ff;border-left:4px solid #1E3A5F;border-radius:8px;padding:16px 20px;margin-bottom:24px">
+      <p style="margin:0 0 4px;color:#1E3A5F;font-size:13px;font-weight:600">Need Help?</p>
+      <p style="margin:0;color:#334155;font-size:13px">
+        Call: <a href="tel:+919920188188" style="color:#1E3A5F;font-weight:600">9920188188</a>
+        &nbsp;|&nbsp;
+        Email: <a href="mailto:info@oll.co" style="color:#1E3A5F;font-weight:600">info@oll.co</a>
+      </p>
+    </div>
+
+    <p style="color:#94a3b8;font-size:13px;margin:0">
+      Warm regards,<br>
+      <strong style="color:#334155">The OLL Team</strong>
+    </p>
+  </div>
+
+  <!-- Footer -->
+  <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 32px;text-align:center">
+    <p style="margin:0;color:#94a3b8;font-size:11px">
+      OLL &nbsp;·&nbsp; skills@oll.co &nbsp;·&nbsp; www.oll.co
+    </p>
+  </div>
+
+</div>
+</body>
+</html>"""
+
+
+async def send_school_student_receipt_email(payment: dict) -> bool:
+    """Send a payment receipt email to the school student. Returns True on success."""
+    student_email = payment.get("student_email") or payment.get("email")
+    if not student_email:
+        logging.info(f"[RECEIPT_EMAIL] No email for order {payment.get('id')} — skipping")
+        return False
+
+    resend_api_key = os.environ.get("RESEND_API_KEY", "")
+    if not resend_api_key:
+        logging.warning("[RECEIPT_EMAIL] RESEND_API_KEY not configured — skipping email")
+        return False
+
+    try:
+        resend.api_key = resend_api_key
+        html = _build_receipt_html(
+            student_name=payment.get("student_name", "Student"),
+            school_name=payment.get("school_name", ""),
+            grade=payment.get("grade", ""),
+            division=payment.get("division", ""),
+            skill=payment.get("skill", "Program"),
+            amount=float(payment.get("amount", 0)),
+            transaction_id=payment.get("transaction_id") or payment.get("cf_payment_id", ""),
+            order_id=payment.get("id", "")
+        )
+        params = {
+            "from": RECEIPT_FROM_EMAIL,
+            "to": [student_email],
+            "subject": f"Payment Confirmed – {payment.get('school_name', 'School')} | OLL",
+            "html": html
+        }
+        await asyncio.to_thread(resend.Emails.send, params)
+        logging.info(f"[RECEIPT_EMAIL] Receipt sent to {student_email} for order {payment.get('id')}")
+        return True
+    except Exception as e:
+        logging.error(f"[RECEIPT_EMAIL] Failed to send receipt to {student_email}: {e}")
+        return False
+
 
 # ── Scheduled Payment Sync (background task) ─────────────────────────────
 async def scheduled_payment_sync():
@@ -273,7 +428,7 @@ async def create_payment_order(data: StudentPaymentRequest, user: dict = Depends
         )
         
         # Get frontend URL for return
-        frontend_url = os.getenv("FRONTEND_URL", "https://crm-enhancement-10.preview.emergentagent.com")
+        frontend_url = os.getenv("FRONTEND_URL", "https://payment-thanks-email.preview.emergentagent.com")
         
         # Create order meta
         order_meta = OrderMeta(
@@ -465,7 +620,7 @@ async def create_payment_session(student_id: str):
         )
         
         # Get frontend URL for return
-        frontend_url = os.getenv("FRONTEND_URL", "https://crm-enhancement-10.preview.emergentagent.com")
+        frontend_url = os.getenv("FRONTEND_URL", "https://payment-thanks-email.preview.emergentagent.com")
         backend_url = os.getenv("REACT_APP_BACKEND_URL", frontend_url)
         
         # Create order meta
@@ -958,6 +1113,7 @@ async def create_school_student_payment_session(data: dict):
     phone = data.get("phone", "").strip()
     grade = data.get("grade", "").strip()
     division = data.get("division", "").strip()
+    student_email = data.get("email", "").strip() or data.get("student_email", "").strip()
     amount = data.get("amount", 0)
     
     if not all([school_id, student_name, phone, grade, amount]):
@@ -1038,6 +1194,7 @@ async def create_school_student_payment_session(data: dict):
                 "school_name": school.get("school_name", ""),
                 "student_name": student_name,
                 "phone": phone,
+                "student_email": student_email if student_email else None,
                 "grade": grade,
                 "division": division,
                 "skill": skill,
@@ -1045,6 +1202,7 @@ async def create_school_student_payment_session(data: dict):
                 "cf_order_id": cf_order_id,
                 "payment_session_id": payment_session_id,
                 "status": "PENDING",
+                "email_receipt_sent": False,
                 "created_at": datetime.now(timezone.utc).isoformat()
             }
             
@@ -1105,7 +1263,18 @@ async def school_payment_webhook(request: Request):
                 {"id": order_id},
                 {"$set": update_data}
             )
-            
+
+            # Send receipt email on first successful payment (webhook path)
+            if (payment_status == "SUCCESS" or event_type == "PAYMENT_SUCCESS_WEBHOOK"):
+                if existing and not existing.get("email_receipt_sent"):
+                    updated_payment = {**existing, **update_data}
+                    email_sent = await send_school_student_receipt_email(updated_payment)
+                    if email_sent:
+                        await db.school_student_payments.update_one(
+                            {"id": order_id},
+                            {"$set": {"email_receipt_sent": True}}
+                        )
+
         return {"status": "success"}
     except Exception as e:
         logging.error(f"School payment webhook error: {str(e)}")
@@ -1182,6 +1351,16 @@ async def verify_school_student_payment(order_id: str):
                 {"id": order_id},
                 {"$set": update_data}
             )
+
+            # Send receipt email on first successful verification
+            if order_status == "PAID" and not payment.get("email_receipt_sent"):
+                receipt_data = {**payment, **update_data}
+                email_sent = await send_school_student_receipt_email(receipt_data)
+                if email_sent:
+                    await db.school_student_payments.update_one(
+                        {"id": order_id},
+                        {"$set": {"email_receipt_sent": True}}
+                    )
             
             return {
                 "order_id": order_id,
@@ -1788,3 +1967,33 @@ async def trigger_manual_sync(user: dict = Depends(get_current_user)):
     return {"message": "Payment sync triggered", "status": "running"}
 
 
+
+
+# ── School Student Payment Receipt (manual send / test) ──────────────────────
+
+@router.post("/school-payment/send-receipt/{order_id}")
+async def resend_school_student_receipt(order_id: str, data: dict = {}, user: dict = Depends(get_current_user)):
+    """Admin: Manually send (or re-send) the payment receipt email for a school student payment.
+    Optionally override the email via { "email": "..." } in the body.
+    """
+    payment = await db.school_student_payments.find_one({"id": order_id}, {"_id": 0})
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment record not found")
+
+    # Allow overriding email from request body (useful for test sends)
+    override_email = data.get("email", "").strip() if data else ""
+    if override_email:
+        payment = {**payment, "student_email": override_email}
+
+    if not (payment.get("student_email") or payment.get("email")):
+        raise HTTPException(status_code=400, detail="No email address on file for this payment. Provide one in the request body.")
+
+    email_sent = await send_school_student_receipt_email(payment)
+    if email_sent:
+        await db.school_student_payments.update_one(
+            {"id": order_id},
+            {"$set": {"email_receipt_sent": True}}
+        )
+        return {"success": True, "message": f"Receipt email sent to {payment.get('student_email') or override_email}"}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to send receipt email. Check server logs.")

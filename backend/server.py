@@ -8218,7 +8218,7 @@ async def notify_educators_new_requirement(requirement: dict):
             return
 
         req_id = requirement.get("id", "")
-        frontend_url = os.environ.get("FRONTEND_URL", "https://crm-enhancement-10.preview.emergentagent.com")
+        frontend_url = os.environ.get("FRONTEND_URL", "https://payment-thanks-email.preview.emergentagent.com")
         apply_link = f"{frontend_url}/educator/apply/{req_id}"
 
         pay_text = ""

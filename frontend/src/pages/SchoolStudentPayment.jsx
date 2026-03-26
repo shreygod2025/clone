@@ -21,6 +21,7 @@ const SchoolStudentPayment = () => {
   // Form state
   const [studentName, setStudentName] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [grade, setGrade] = useState('');
   const [division, setDivision] = useState('');
   const [selectedAmount, setSelectedAmount] = useState(0);
@@ -133,6 +134,7 @@ const SchoolStudentPayment = () => {
         school_id: schoolId,
         student_name: studentName.trim(),
         phone: phone.trim(),
+        email: email.trim() || undefined,
         grade: grade,
         division: division.trim(),
         amount: selectedAmount
@@ -228,7 +230,7 @@ const SchoolStudentPayment = () => {
       setProcessingPayment(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cashfreeReady, schoolId, studentName, phone, grade, division, selectedAmount]);
+  }, [cashfreeReady, schoolId, studentName, phone, email, grade, division, selectedAmount]);
 
   // Get program name (skill) or default
   const programName = schoolInfo?.skill || 'Program';
@@ -421,7 +423,10 @@ const SchoolStudentPayment = () => {
               {/* Receipt Footer */}
               <div className="bg-slate-50 px-6 py-4">
                 <p className="text-xs text-slate-500 text-center">
-                  A confirmation message will be sent to <span className="font-medium">{phone}</span>
+                  {email.trim()
+                    ? <>A confirmation email has been sent to <span className="font-medium">{email.trim()}</span></>
+                    : <>A confirmation message will be sent to <span className="font-medium">{phone}</span></>
+                  }
                 </p>
               </div>
             </div>
@@ -535,6 +540,23 @@ const SchoolStudentPayment = () => {
                     />
                   </div>
                   <p className="text-xs text-slate-500 mt-1">Payment receipt will be sent to this number</p>
+                </div>
+
+                {/* Email (optional) */}
+                <div>
+                  <Label className="text-slate-700 flex items-center gap-2 mb-2 font-medium">
+                    <Mail className="w-4 h-4" />
+                    Email Address <span className="text-slate-400 font-normal text-xs">(optional – for receipt)</span>
+                  </Label>
+                  <Input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="parent@example.com"
+                    className="h-12 border-slate-200 focus:border-[#C53030] focus:ring-[#C53030]"
+                    data-testid="email-input"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">A payment confirmation will be emailed here</p>
                 </div>
 
                 {/* Grade Selection - Without amount in dropdown */}
