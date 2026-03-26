@@ -333,9 +333,7 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
       const rowCGST = rowBase * gst.cgstRate / 100;
       const rowSGST = rowBase * gst.sgstRate / 100;
       const rowIGST = rowBase * gst.igstRate / 100;
-      const desc = idx === 0 && payment.tranche_info
-        ? `Grade ${g.grade} (${payment.tranche_info})`
-        : `Grade ${g.grade}`;
+      const desc = `Grade ${g.grade}`;
       return { idx, desc, students, scaledRate, rowBase, rowCGST, rowSGST, rowIGST };
     });
   }
