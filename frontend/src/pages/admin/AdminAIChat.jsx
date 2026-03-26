@@ -310,27 +310,24 @@ export default function AdminAIChat() {
 
   // ── Speech-to-text ───────────────────────────────────────────────
   const [isListening, setIsListening] = useState(false);
-  const recognitionRef  = useRef(null);
-  const transcriptRef   = useRef('');
-  const silenceTimerRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const transcriptRef  = useRef('');
 
   const startListening = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { toast.error('Speech recognition not supported in this browser'); return; }
 
-    // Tap again while listening → stop immediately and send what we have
+    // Tap again while listening → stop recording, keep text in input for manual send
     if (isListening) {
-      clearTimeout(silenceTimerRef.current);
       recognitionRef.current?.stop();
       setIsListening(false);
       return;
     }
 
     const rec = new SR();
-    rec.lang             = 'en-IN';
-    rec.continuous       = true;   // keep listening through pauses
-    rec.interimResults   = true;   // show live text as user speaks
-    rec.maxAlternatives  = 1;
+    rec.lang           = 'en-IN';
+    rec.continuous     = true;   // keep running until user taps mic again
+    rec.interimResults = true;   // show live text as user speaks
 
     transcriptRef.current = '';
 
@@ -343,33 +340,16 @@ export default function AdminAIChat() {
           interim += e.results[i][0].transcript;
         }
       }
-      // Show live transcript in the input box
+      // Show live text in input — user sends manually with the Send button
       setInput((transcriptRef.current + interim).trimStart());
-
-      // Auto-stop and send after 2 s of silence once we have final text
-      clearTimeout(silenceTimerRef.current);
-      if (transcriptRef.current.trim()) {
-        silenceTimerRef.current = setTimeout(() => {
-          rec.stop();
-        }, 2000);
-      }
     };
 
     rec.onerror = (err) => {
       console.error('STT error:', err.error);
-      clearTimeout(silenceTimerRef.current);
       setIsListening(false);
     };
 
-    rec.onend = () => {
-      clearTimeout(silenceTimerRef.current);
-      setIsListening(false);
-      const text = transcriptRef.current.trim();
-      if (text) {
-        setInput('');
-        sendMessage(text);   // auto-send accumulated transcript
-      }
-    };
+    rec.onend = () => setIsListening(false);
 
     rec.start();
     recognitionRef.current = rec;
