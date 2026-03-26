@@ -11598,6 +11598,14 @@ async def get_school_payments(
                 total_amount = float(onboarding_data.get("total_amount") or 0)
                 amount = total_amount * float(tranche.get("percentage") or 0) / 100
             
+            school_gst_type = onboarding_data.get("gst_type", "")
+            gst_type = existing_payment.get("gst_type") if existing_payment else (tranche.get("gst_type") or school_gst_type)
+            # Compute gst_amount from gst_type and tranche amount
+            gst_amount = 0
+            if gst_type in ("exclusive_18", "exclusive"):
+                gst_amount = round(amount * 18 / 118, 2) if amount else 0  # extract 18% from inclusive total
+            elif gst_type in ("inclusive_18", "inclusive"):
+                gst_amount = round(amount - amount / 1.18, 2) if amount else 0
             payment = {
                 "id": existing_payment.get("id") if existing_payment else f"pay-{school.get('id')}-{idx}",
                 "school_id": school.get("id"),
@@ -11608,7 +11616,8 @@ async def get_school_payments(
                 "amount": amount or 0,
                 "due_date": tranche.get("date") or None,
                 "status": existing_payment.get("status", tranche.get("status", "pending")) if existing_payment else tranche.get("status", "pending"),
-                "gst_type": existing_payment.get("gst_type") if existing_payment else tranche.get("gst_type"),
+                "gst_type": gst_type,
+                "gst_amount": gst_amount,
                 "payment_date": existing_payment.get("payment_date") if existing_payment else None,
                 "transaction_id": existing_payment.get("transaction_id") if existing_payment else None,
                 "invoice_url": existing_payment.get("invoice_url") if existing_payment else None,

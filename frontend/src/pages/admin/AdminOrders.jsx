@@ -18,6 +18,20 @@ import { generateInvoicePDF } from '../../utils/invoicePdfGenerator';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+// Normalize gst_type values (support both old and new format)
+const getGstLabel = (gst) => {
+  if (!gst) return null;
+  if (gst === 'book_gst_0' || gst === 'book_gst') return 'Book GST';
+  if (gst === 'inclusive_18' || gst === 'inclusive') return 'Inclusive';
+  if (gst === 'exclusive_18' || gst === 'exclusive') return 'Exclusive';
+  return null;
+};
+const getGstColorClass = (gst) => {
+  if (gst === 'book_gst_0' || gst === 'book_gst') return 'bg-blue-100 text-blue-700';
+  if (gst === 'inclusive_18' || gst === 'inclusive') return 'bg-emerald-100 text-emerald-700';
+  return 'bg-orange-100 text-orange-700';
+};
+
 // Helper function to get absolute URL for uploads
 const getAbsoluteUrl = (url) => {
   if (!url) return '';
@@ -1227,13 +1241,9 @@ const AdminOrders = () => {
                                   </div>
                                 </div>
                               )}
-                              {group.tranches[0]?.gst_type && group.tranches.length === 1 && (
-                                <span className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full font-medium ${
-                                  group.tranches[0].gst_type === 'book_gst' ? 'bg-blue-100 text-blue-700' :
-                                  group.tranches[0].gst_type === 'inclusive' ? 'bg-emerald-100 text-emerald-700' :
-                                  'bg-amber-100 text-amber-700'
-                                }`}>
-                                  {group.tranches[0].gst_type === 'book_gst' ? 'Book GST' : group.tranches[0].gst_type === 'inclusive' ? 'Inclusive' : 'Exclusive'}
+                              {group.tranches[0]?.gst_type && group.tranches.length === 1 && getGstLabel(group.tranches[0].gst_type) && (
+                                <span className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full font-medium ${getGstColorClass(group.tranches[0].gst_type)}`}>
+                                  {getGstLabel(group.tranches[0].gst_type)}
                                 </span>
                               )}
                             </div>
@@ -1367,16 +1377,11 @@ const AdminOrders = () => {
                                 {payment.gst_amount > 0 && (
                                   <p className="text-xs text-slate-500 mt-0.5">
                                     GST: ₹{(payment.gst_amount || 0).toLocaleString()}
-                                    {payment.gst_rate && ` @ ${payment.gst_rate}%`}
                                   </p>
                                 )}
-                                {payment.gst_type && (
-                                  <span className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full font-medium ${
-                                    payment.gst_type === 'book_gst' ? 'bg-blue-100 text-blue-700' :
-                                    payment.gst_type === 'inclusive' ? 'bg-emerald-100 text-emerald-700' :
-                                    'bg-amber-100 text-amber-700'
-                                  }`}>
-                                    {payment.gst_type === 'book_gst' ? 'Book GST' : payment.gst_type === 'inclusive' ? 'Inclusive' : 'Exclusive'}
+                                {payment.gst_type && getGstLabel(payment.gst_type) && (
+                                  <span className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full font-medium ${getGstColorClass(payment.gst_type)}`}>
+                                    {getGstLabel(payment.gst_type)}
                                   </span>
                                 )}
                               </div>
@@ -1475,14 +1480,12 @@ const AdminOrders = () => {
                       <td className="px-6 py-5">
                         <div>
                           <p className="font-bold text-lg text-slate-800">₹{(payment.amount || 0).toLocaleString()}</p>
-                          {payment.gst_type && (
-                            <span className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full font-medium ${
-                              payment.gst_type === 'book_gst' ? 'bg-blue-100 text-blue-700' :
-                              payment.gst_type === 'inclusive' ? 'bg-emerald-100 text-emerald-700' :
-                              'bg-amber-100 text-amber-700'
-                            }`}>
-                              {payment.gst_type === 'book_gst' ? 'Book GST' :
-                               payment.gst_type === 'inclusive' ? 'Inclusive' : 'Exclusive'}
+                          {payment.gst_amount > 0 && (
+                            <p className="text-xs text-slate-500 mt-0.5">GST: ₹{(payment.gst_amount || 0).toLocaleString()}</p>
+                          )}
+                          {payment.gst_type && getGstLabel(payment.gst_type) && (
+                            <span className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full font-medium ${getGstColorClass(payment.gst_type)}`}>
+                              {getGstLabel(payment.gst_type)}
                             </span>
                           )}
                         </div>
@@ -2395,19 +2398,14 @@ const AdminOrders = () => {
               </div>
 
               {/* GST Info */}
-              {showViewModal.gst_type && (
+              {showViewModal.gst_type && getGstLabel(showViewModal.gst_type) && (
                 <div className="bg-blue-50 rounded-lg p-4">
                   <h4 className="text-sm font-semibold text-blue-700 mb-3">GST Information</h4>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <p className="text-xs text-slate-500">GST Type</p>
-                      <span className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full font-medium ${
-                        showViewModal.gst_type === 'book_gst' ? 'bg-blue-100 text-blue-700' :
-                        showViewModal.gst_type === 'inclusive' ? 'bg-emerald-100 text-emerald-700' :
-                        'bg-amber-100 text-amber-700'
-                      }`}>
-                        {showViewModal.gst_type === 'book_gst' ? 'Book GST' : 
-                         showViewModal.gst_type === 'inclusive' ? 'Inclusive' : 'Exclusive'}
+                      <span className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full font-medium ${getGstColorClass(showViewModal.gst_type)}`}>
+                        {getGstLabel(showViewModal.gst_type)}
                       </span>
                     </div>
                     {showViewModal.gst_amount > 0 && (

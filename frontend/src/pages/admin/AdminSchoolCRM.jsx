@@ -3650,7 +3650,7 @@ ${FOOTER}</div></body></html>`
         calculatedTotalAmount += parseFloat(editOnboardData.fixed_price) || 0;
       }
 
-      // Recalculate school_share_amount from current share type/calc/value
+      // Recalculate school_share_amount on BASE (pre-GST) amount
       const calcShareAmount = (shareType, shareCalc, shareValue, totalStudents, totalAmount) => {
         if (!shareType || shareType === 'none' || !shareValue) return 0;
         const val = parseFloat(shareValue) || 0;
@@ -3658,7 +3658,6 @@ ${FOOTER}</div></body></html>`
           const base = shareCalc === 'per_student' ? totalStudents : totalAmount;
           return shareCalc === 'per_student' ? val * base : (val / 100) * base;
         }
-        // fixed amount
         return shareCalc === 'per_student' ? val * totalStudents : val;
       };
 
@@ -3670,6 +3669,11 @@ ${FOOTER}</div></body></html>`
         editOnboardData.gp_share_type, editOnboardData.gp_share_calc,
         editOnboardData.gp_share_value, calculatedTotalStudents, calculatedTotalAmount
       );
+
+      // Apply GST on top of base for exclusive type — this is the amount schools actually pay
+      if (editOnboardData.gst_type === 'exclusive_18') {
+        calculatedTotalAmount = Math.round(calculatedTotalAmount * 1.18);
+      }
       
       // Build the onboarding data object with recalculated values
       const onboardingData = {
@@ -9879,21 +9883,46 @@ ${FOOTER}</div></body></html>`
               </div>
               )}
 
-              {/* Grand Total */}
-              <div className="p-3 bg-emerald-100 rounded-lg border border-emerald-200">
-                <span className="font-semibold text-emerald-800">Grand Total: ₹</span>
-                <span className="font-bold text-emerald-900 text-lg">
-                  {(() => {
-                    let total = 0;
-                    if (editOnboardData.pricing_type === 'per_student' || editOnboardData.pricing_type === 'both') {
-                      total += (editOnboardData.grade_pricing || []).reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
-                    }
-                    if (editOnboardData.pricing_type === 'fixed' || editOnboardData.pricing_type === 'both') {
-                      total += parseFloat(editOnboardData.fixed_price) || 0;
-                    }
-                    return total.toLocaleString();
-                  })()}
-                </span>
+              {/* Grand Total with GST */}
+              <div className="p-3 bg-emerald-100 rounded-lg border border-emerald-200 space-y-1">
+                {(() => {
+                  let base = 0;
+                  if (editOnboardData.pricing_type === 'per_student' || editOnboardData.pricing_type === 'both') {
+                    base += (editOnboardData.grade_pricing || []).reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
+                  }
+                  if (editOnboardData.pricing_type === 'fixed' || editOnboardData.pricing_type === 'both') {
+                    base += parseFloat(editOnboardData.fixed_price) || 0;
+                  }
+                  const isExclusive = editOnboardData.gst_type === 'exclusive_18';
+                  const gstAmt = isExclusive ? Math.round(base * 0.18) : 0;
+                  const total = base + gstAmt;
+                  return (
+                    <>
+                      {isExclusive && (
+                        <>
+                          <div className="flex justify-between text-sm text-emerald-700">
+                            <span>Base Amount:</span>
+                            <span>₹{base.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between text-sm text-orange-700">
+                            <span>GST @ 18% (Exclusive):</span>
+                            <span>+ ₹{gstAmt.toLocaleString()}</span>
+                          </div>
+                          <div className="border-t border-emerald-300 pt-1 flex justify-between">
+                            <span className="font-semibold text-emerald-800">Grand Total (incl. GST):</span>
+                            <span className="font-bold text-emerald-900 text-lg">₹{total.toLocaleString()}</span>
+                          </div>
+                        </>
+                      )}
+                      {!isExclusive && (
+                        <div className="flex justify-between">
+                          <span className="font-semibold text-emerald-800">Grand Total:</span>
+                          <span className="font-bold text-emerald-900 text-lg">₹{base.toLocaleString()}</span>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
 
               {/* School Share */}
@@ -10278,9 +10307,12 @@ ${FOOTER}</div></body></html>`
                             const newTranches = [...(editOnboardData.payment_tranches || [])];
                             newTranches[idx] = { ...newTranches[idx], percentage: e.target.value };
                             // Auto-calculate amount from grade pricing grand total
-                            const editGradeTotal = editOnboardData.pricing_type === 'fixed'
+                            // Auto-calculate amount: base × GST multiplier × percentage%
+                            const editGradeBase = editOnboardData.pricing_type === 'fixed'
                               ? parseFloat(editOnboardData.fixed_price || 0)
                               : (editOnboardData.grade_pricing || []).reduce((s, g) => s + (parseInt(g.students || 0) * parseFloat(g.price_per_student || 0)), 0);
+                            const editGSTMul = editOnboardData.gst_type === 'exclusive_18' ? 1.18 : 1;
+                            const editGradeTotal = Math.round(editGradeBase * editGSTMul);
                             if (editGradeTotal > 0 && e.target.value) {
                               newTranches[idx].amount = Math.round((editGradeTotal * parseFloat(e.target.value)) / 100);
                             }
