@@ -998,3 +998,44 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 - **1-hour reminder**: Added `reminder_1h_start/end` window (45–75 min) to `check_school_meeting_reminders()`.
 - **Manual trigger**: `POST /api/admin/trigger/daily-digest` to test on demand.
 
+
+
+### 2026-03-26 — CRM Pipeline & AI Chat Bug Fixes
+
+#### Fix: create_lead + schedule_meeting chain injection
+- When AI creates a lead and schedules a meeting in the same message, `school_id` from `create_lead` is now injected into subsequent actions in the same batch
+- Added `_resolve_school_id()` helper: fallback name-based MongoDB lookup if `school_id` missing
+
+#### Fix: schedule_meeting no longer auto-changes status
+- Removed "ALWAYS set change_status to meeting_done" from system prompt
+- schedule_meeting only sets date/time fields; status changes only when explicitly requested
+
+#### Fix: generate_proposal/generate_mou saves to MongoDB
+- Both executors now save `proposal_data` (and `onboarding_data.grade_pricing`) to the school before returning `frontend_action`
+- Proposal popup and converted/renewal popups now load correctly pre-filled
+
+#### Fix: Proposal PDF grade range shows correctly
+- Fixed "Grades 1 to 1" bug: now uses `grades_from`/`grades_to` (ordinal form) when set
+- Falls back to grade_pricing range; single-grade shows "Grade X" not "Grades X to X"
+
+#### Fix: Proposal/MOU email PDF attachment (School CRM modal)
+- Email modal now auto-generates PDF with `noDownload: true` before sending
+- Hint updated from "Generate proposal first" to "PDF will be auto-generated & attached"
+- `mouPdfGenerator.js` and `proposalPdfGenerator.js` both support `noDownload` flag and return `{ base64, filename }`
+
+#### Fix: Proposal/MOU email PDF attachment (AI Chat)
+- `send_email` executor returns `pending_pdf_send` for proposal/MOU types
+- `AdminAIChat.jsx` intercepts this, generates PDF, calls `send-crm-email` with base64
+
+#### Fix: Raise Ticket goes to wrong collection
+- Was writing to `support_tickets`; changed to `support_queries`
+- Now includes `name`, `phone`, `query_type`, `message`, `viewers`, `comments`
+
+#### Fix: PATCH /schools/inquiry returns 500 for AI-created leads
+- Made `email`, `location`, `school_size`, `fee_range`, `programs_interested`, `support_needed` optional in `SchoolInquiry` Pydantic model
+- Removed `response_model=SchoolInquiry` from PATCH endpoint
+- Added `GET /api/schools/inquiry/{id}` endpoint
+
+#### Pre-deployment test (Iteration 60): 10/10 backend + 6/6 frontend PASS
+- AI Chat tests blocked only by LLM budget exhaustion (billing, not code bug)
+
