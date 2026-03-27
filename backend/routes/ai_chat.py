@@ -27,7 +27,7 @@ You are a fast, decisive AI operator for the OLL School CRM. Your job is to GET 
 4. **ONE-QUESTION RULE** — only ask ONE thing when you have absolute zero information (e.g., user says "create a lead" with no school name). Otherwise, assume and act.
 5. **TEMPORAL QUERIES** — Today's date and "this week" range are always injected at the top of the CRM context. Use them directly. NEVER ask "what date range?" — always use Mon–Sun of the current week. "This week's meetings" = schools with MeetingDate within this week. "This week's follow-ups" = schools with FollowupDate this week OR status=follow_up and updated this week. "Today's" = exact date match.
 6. **MEETINGS definition** — any school with status `meeting_done` OR has a `MeetingDate` field.
-7. **PROPOSALS/MOUs** — use any pricing info given. Default: grade "All", students 500, ₹500/student. Never ask for grade info.
+7. **PROPOSALS/MOUs** — use any pricing info given by the user. If the school already has grade_pricing set in CRM, the backend will use it automatically — do NOT invent or apply default pricing in that case. Only use defaults (grade "All", students 500, ₹500/student) when the school has NO existing pricing. Never ask for grade info.
 8. **NEVER show UUIDs** — use school names in all responses.
 9. **MULTI-ACTION** — "follow up with X" → change_status=follow_up + add_note. Do it all at once.
 
@@ -88,6 +88,7 @@ async def _crm_context() -> str:
          "notes": 1, "meeting_date": 1, "meeting_time": 1, "meeting_type": 1,
          "followup_date": 1, "followup_comment": 1,
          "renewal_meeting_date": 1, "renewal_meeting_time": 1,
+         "onboarding_data": 1,
          "updated_at": 1, "created_at": 1}
     ).sort("created_at", -1).limit(150).to_list(length=150)
 
@@ -114,6 +115,17 @@ async def _crm_context() -> str:
             f"Phone:{s.get('phone','')}",
             f"Email:{s.get('email','')}"
         ]
+        # Include grade pricing summary if already configured
+        od = s.get("onboarding_data") or {}
+        gp = od.get("grade_pricing") or []
+        has_pricing = any(float(g.get("price_per_student") or g.get("price") or 0) > 0 for g in gp) if gp else False
+        if has_pricing:
+            total_students = sum(int(g.get("students") or 0) for g in gp)
+            pricing_summary = ", ".join(
+                f"Gr{g.get('grade')}:{g.get('students',0)}stu@₹{g.get('price_per_student') or g.get('price',0)}"
+                for g in gp[:4]
+            )
+            parts.append(f"Pricing:[{pricing_summary}{', ...' if len(gp) > 4 else ''}] TotalStudents:{total_students}")
         if s.get("meeting_date"):
             parts.append(f"MeetingDate:{s['meeting_date']} {s.get('meeting_time','')}")
         if s.get("followup_date"):
@@ -395,46 +407,64 @@ async def _execute(action: dict, user: dict) -> dict:
         elif t == "generate_proposal":
             sid = await _resolve_school_id(sid, action.get("school_name"))
             proposal_raw = action.get("data") or {}
-            grade_pricing = proposal_raw.get("grade_pricing", [])
+            ai_grade_pricing = proposal_raw.get("grade_pricing", [])
 
-            if sid and grade_pricing:
-                # Derive ordinal grades_from / grades_to if not given
-                def _ordinal(n):
-                    try:
-                        i = int(str(n).strip().split("-")[0])
-                        sfx = "th" if 11 <= i % 100 <= 13 else {1:"st",2:"nd",3:"rd"}.get(i%10,"th")
-                        return f"{i}{sfx}"
-                    except Exception:
-                        return str(n)
-
-                all_grades = [str(g.get("grade","")).strip() for g in grade_pricing if g.get("grade")]
-                grades_from = proposal_raw.get("grades_from") or (_ordinal(all_grades[0]) if all_grades else "1st")
-                grades_to   = proposal_raw.get("grades_to")   or (_ordinal(all_grades[-1]) if all_grades else "8th")
-                min_students = proposal_raw.get("min_students") or sum(int(g.get("students",0) or 0) for g in grade_pricing) or 800
-
-                proposal_data = {
-                    "grade_pricing":   grade_pricing,
-                    "grades_from":     grades_from,
-                    "grades_to":       grades_to,
-                    "min_students":    min_students,
-                    "pricing_type":    proposal_raw.get("pricing_type", "per_student"),
-                    "program_type":    proposal_raw.get("program_type", "lab_setup"),
-                    "updated_via_ai":  True,
-                }
-                # Fetch current onboarding_data to merge grade_pricing into it too
+            if sid:
+                # Always fetch existing school data first
                 existing = await db.school_inquiries.find_one({"id": sid}, {"_id": 0, "onboarding_data": 1})
                 merged_onboard = dict(existing.get("onboarding_data") or {})
-                merged_onboard["grade_pricing"] = grade_pricing
 
-                await db.school_inquiries.update_one(
-                    {"id": sid},
-                    {"$set": {
-                        "proposal_data":  proposal_data,
-                        "onboarding_data": merged_onboard,
-                        "updated_at": now,
-                    },
-                    "$push": {"activity_log": log(f"Proposal data saved via AI: {grades_from} to {grades_to}, {len(grade_pricing)} grade(s)")}}
-                )
+                # Protect existing grade_pricing: only use AI-provided pricing if no pricing exists yet
+                existing_gp = merged_onboard.get("grade_pricing") or []
+                has_real_pricing = any(
+                    float(g.get("price_per_student") or g.get("price") or 0) > 0
+                    for g in existing_gp
+                ) if existing_gp else False
+
+                if has_real_pricing:
+                    # Use the school's already-configured pricing — don't overwrite
+                    grade_pricing = existing_gp
+                else:
+                    # No existing pricing — use what AI provided (may be defaults)
+                    grade_pricing = ai_grade_pricing
+
+                if grade_pricing:
+                    # Derive ordinal grades_from / grades_to if not given
+                    def _ordinal(n):
+                        try:
+                            i = int(str(n).strip().split("-")[0])
+                            sfx = "th" if 11 <= i % 100 <= 13 else {1:"st",2:"nd",3:"rd"}.get(i%10,"th")
+                            return f"{i}{sfx}"
+                        except Exception:
+                            return str(n)
+
+                    all_grades = [str(g.get("grade","")).strip() for g in grade_pricing if g.get("grade")]
+                    grades_from = proposal_raw.get("grades_from") or (_ordinal(all_grades[0]) if all_grades else "1st")
+                    grades_to   = proposal_raw.get("grades_to")   or (_ordinal(all_grades[-1]) if all_grades else "8th")
+                    min_students = proposal_raw.get("min_students") or sum(int(g.get("students",0) or 0) for g in grade_pricing) or 800
+
+                    proposal_data = {
+                        "grade_pricing":   grade_pricing,
+                        "grades_from":     grades_from,
+                        "grades_to":       grades_to,
+                        "min_students":    min_students,
+                        "pricing_type":    proposal_raw.get("pricing_type", "per_student"),
+                        "program_type":    proposal_raw.get("program_type", "lab_setup"),
+                        "updated_via_ai":  True,
+                    }
+                    # Only write grade_pricing back if we're NOT overwriting existing data
+                    if not has_real_pricing:
+                        merged_onboard["grade_pricing"] = grade_pricing
+
+                    await db.school_inquiries.update_one(
+                        {"id": sid},
+                        {"$set": {
+                            "proposal_data":  proposal_data,
+                            "onboarding_data": merged_onboard,
+                            "updated_at": now,
+                        },
+                        "$push": {"activity_log": log(f"Proposal data saved via AI: {grades_from} to {grades_to}, {len(grade_pricing)} grade(s), existing_pricing_preserved={has_real_pricing}")}}
+                    )
             return {"status": "frontend_action",
                     "detail": f"Proposal data saved. PDF will be generated in your browser.",
                     "school_id": sid}
@@ -443,42 +473,60 @@ async def _execute(action: dict, user: dict) -> dict:
         elif t == "generate_mou":
             sid = await _resolve_school_id(sid, action.get("school_name"))
             mou_raw = action.get("data") or {}
-            grade_pricing = mou_raw.get("grade_pricing", [])
+            ai_grade_pricing = mou_raw.get("grade_pricing", [])
 
-            if sid and grade_pricing:
-                def _ordinal(n):
-                    try:
-                        i = int(str(n).strip().split("-")[0])
-                        sfx = "th" if 11 <= i % 100 <= 13 else {1:"st",2:"nd",3:"rd"}.get(i%10,"th")
-                        return f"{i}{sfx}"
-                    except Exception:
-                        return str(n)
-
-                all_grades = [str(g.get("grade","")).strip() for g in grade_pricing if g.get("grade")]
-                grades_from = mou_raw.get("grades_from") or (_ordinal(all_grades[0]) if all_grades else "1st")
-                grades_to   = mou_raw.get("grades_to")   or (_ordinal(all_grades[-1]) if all_grades else "8th")
-                min_students = mou_raw.get("min_students") or sum(int(g.get("students",0) or 0) for g in grade_pricing) or 800
-
+            if sid:
+                # Always fetch existing school data first
                 existing = await db.school_inquiries.find_one({"id": sid}, {"_id": 0, "onboarding_data": 1})
                 merged = dict(existing.get("onboarding_data") or {})
-                merged.update({
-                    "grade_pricing":    grade_pricing,
-                    "grades_from":      grades_from,
-                    "grades_to":        grades_to,
-                    "min_students":     min_students,
-                    "pricing_type":     mou_raw.get("pricing_type", "per_student"),
-                    "program_type":     mou_raw.get("program_type", "lab_setup"),
-                    "program_start_date": mou_raw.get("program_start_date", ""),
-                    "updated_via_ai":   True,
-                })
-                await db.school_inquiries.update_one(
-                    {"id": sid},
-                    {"$set": {
-                        "onboarding_data": merged,
-                        "updated_at": now,
-                    },
-                    "$push": {"activity_log": log(f"MOU data saved via AI: {grades_from} to {grades_to}, {len(grade_pricing)} grade(s)")}}
-                )
+
+                # Protect existing grade_pricing: only use AI-provided pricing if no pricing exists yet
+                existing_gp = merged.get("grade_pricing") or []
+                has_real_pricing = any(
+                    float(g.get("price_per_student") or g.get("price") or 0) > 0
+                    for g in existing_gp
+                ) if existing_gp else False
+
+                if has_real_pricing:
+                    grade_pricing = existing_gp
+                else:
+                    grade_pricing = ai_grade_pricing
+
+                if grade_pricing:
+                    def _ordinal(n):
+                        try:
+                            i = int(str(n).strip().split("-")[0])
+                            sfx = "th" if 11 <= i % 100 <= 13 else {1:"st",2:"nd",3:"rd"}.get(i%10,"th")
+                            return f"{i}{sfx}"
+                        except Exception:
+                            return str(n)
+
+                    all_grades = [str(g.get("grade","")).strip() for g in grade_pricing if g.get("grade")]
+                    grades_from = mou_raw.get("grades_from") or (_ordinal(all_grades[0]) if all_grades else "1st")
+                    grades_to   = mou_raw.get("grades_to")   or (_ordinal(all_grades[-1]) if all_grades else "8th")
+                    min_students = mou_raw.get("min_students") or sum(int(g.get("students",0) or 0) for g in grade_pricing) or 800
+
+                    merged.update({
+                        "grades_from":      grades_from,
+                        "grades_to":        grades_to,
+                        "min_students":     min_students,
+                        "pricing_type":     mou_raw.get("pricing_type", "per_student"),
+                        "program_type":     mou_raw.get("program_type", "lab_setup"),
+                        "program_start_date": mou_raw.get("program_start_date", ""),
+                        "updated_via_ai":   True,
+                    })
+                    # Only write grade_pricing back if we're NOT overwriting existing data
+                    if not has_real_pricing:
+                        merged["grade_pricing"] = grade_pricing
+
+                    await db.school_inquiries.update_one(
+                        {"id": sid},
+                        {"$set": {
+                            "onboarding_data": merged,
+                            "updated_at": now,
+                        },
+                        "$push": {"activity_log": log(f"MOU data saved via AI: {grades_from} to {grades_to}, {len(grade_pricing)} grade(s), existing_pricing_preserved={has_real_pricing}")}}
+                    )
             return {"status": "frontend_action",
                     "detail": "MOU data saved. PDF will be generated in your browser.",
                     "school_id": sid}
