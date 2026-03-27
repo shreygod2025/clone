@@ -48,6 +48,26 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+### March 27, 2026
+
+#### Bug Fix: AI Chat Training Type + Invoice Features
+
+**1. Training Type Change Fix**
+- `update_lead` handler now normalizes camelCase → snake_case (e.g., `TrainingType` → `training_type`, `ProgramType` → `program_type`)
+- When `training_type` is updated, it's synced to both `school_inquiries.training_type` AND `school_inquiries.onboarding_data.training_type`
+- System prompt updated with explicit instruction: use `training_type` (snake_case), valid values: `student_training | teacher_training | both`
+
+**2. Invoice Generation in AI Chat**
+- New `generate_invoice` action in AI chat system prompt + backend handler
+- Backend generates server-side PDF using existing `generate_invoice_pdf()` function, encodes as base64
+- Saves to `invoices` collection
+- Frontend `AdminAIChat.jsx`: new "Invoice Generated" action card with green "Download Invoice PDF" button
+- `handleGeneratePDF` handles `generate_invoice` type: decodes base64 → creates Blob → triggers browser download
+- If `send_email=true`: sends PDF as email attachment via Resend to school contacts
+- AI context now includes tranche summary for converted/active schools
+
+---
+
 ### March 26, 2026
 
 #### P0: Student Payment Email Receipt (COMPLETED)

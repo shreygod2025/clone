@@ -30,6 +30,7 @@ const ACTION_CFG = {
   raise_ticket:      { label: 'Ticket Raised',       Icon: Ticket,        cls: 'bg-orange-50 border-orange-200 text-orange-800' },
   generate_proposal: { label: 'Proposal PDF',        Icon: FileText,      cls: 'bg-indigo-50 border-indigo-200 text-indigo-800' },
   generate_mou:      { label: 'MOU PDF',             Icon: FileText,      cls: 'bg-purple-50 border-purple-200 text-purple-800' },
+  generate_invoice:  { label: 'Invoice Generated',   Icon: FileText,      cls: 'bg-green-50 border-green-200 text-green-800' },
   schedule_meeting:  { label: 'Meeting Scheduled',   Icon: Calendar,      cls: 'bg-teal-50 border-teal-200 text-teal-800' },
   schedule_followup: { label: 'Follow-up Scheduled', Icon: CalendarCheck, cls: 'bg-cyan-50 border-cyan-200 text-cyan-800' },
 };
@@ -68,6 +69,16 @@ function ActionCard({ action, onGeneratePDF }) {
         >
           <Download className="w-3 h-3" />
           Download {action.type === 'generate_proposal' ? 'Proposal' : 'MOU'} PDF
+        </button>
+      )}
+      {action.type === 'generate_invoice' && exec.pdf_base64 && (
+        <button
+          onClick={() => onGeneratePDF(action)}
+          className="mt-2 ml-6 inline-flex items-center gap-1.5 px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg text-[11px] font-medium transition-colors"
+          data-testid="download-invoice-btn"
+        >
+          <Download className="w-3 h-3" />
+          Download Invoice PDF
         </button>
       )}
     </div>
@@ -292,10 +303,31 @@ export default function AdminAIChat() {
   };
 
   const handleGeneratePDF = async (action) => {
-    const school = { id: action.school_id, school_name: action.school_name };
-    const data = action.data || {};
-    const ctx = { API, getAuthHeaders, user: userInfo, toast };
     try {
+      if (action.type === 'generate_invoice') {
+        // Invoice PDF is already generated server-side — just download it
+        const b64 = action.execution?.pdf_base64;
+        const filename = action.execution?.pdf_filename || `${action.execution?.invoice_no || 'invoice'}.pdf`;
+        if (!b64) { toast.error('Invoice PDF not available'); return; }
+        const byteChars = atob(b64);
+        const byteArr = new Uint8Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
+        const blob = new Blob([byteArr], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast.success('Invoice downloaded!');
+        return;
+      }
+
+      const school = { id: action.school_id, school_name: action.school_name };
+      const data = action.data || {};
+      const ctx = { API, getAuthHeaders, user: userInfo, toast };
       if (action.type === 'generate_proposal') {
         await generateProposalDocument(school, data, ctx);
       } else {

@@ -5,7 +5,7 @@ GET  /api/ai-chat/history/{sid}  — full message history for a session
 GET  /api/ai-chat/sessions       — list sessions for sidebar
 DELETE /api/ai-chat/session/{sid}— delete a session
 """
-import os, uuid, json, re
+import os, uuid, json, re, logging, asyncio
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from database import db
@@ -30,10 +30,14 @@ You are a fast, decisive AI operator for the OLL School CRM. Your job is to GET 
 7. **PROPOSALS/MOUs** — use any pricing info given by the user. If the school already has grade_pricing set in CRM, the backend will use it automatically — do NOT invent or apply default pricing in that case. Only use defaults (grade "All", students 500, ₹500/student) when the school has NO existing pricing. Never ask for grade info.
 8. **NEVER show UUIDs** — use school names in all responses.
 9. **MULTI-ACTION** — "follow up with X" → change_status=follow_up + add_note. Do it all at once.
+10. **TRAINING TYPE** — when user asks to set training type use update_lead with fields: {"training_type": "<value>"}. Valid values: student_training | teacher_training | both. Always use snake_case field names. NEVER use camelCase like TrainingType or ProgramType.
+11. **INVOICES** — use generate_invoice to create and download invoice PDF. Use generate_invoice with send_email=true to also email it to the school's contacts. For "send invoice" requests, add send_email=true.
 
 ## CAPABILITIES — produce actions in the "actions" array:
 - create_lead: { type, school_name, city?, board?, contact_name?, phone?, email?, source?, notes? }
 - update_lead: { type, school_id, school_name, fields: {} }
+  IMPORTANT: always use snake_case field names: training_type (not TrainingType), program_type (not ProgramType)
+  training_type valid values: student_training | teacher_training | both
 - delete_lead: { type, school_id, school_name }
 - change_status: { type, school_id, school_name, status }
   statuses → new | meeting_done | converted | active | renewal_meeting | renewed | lost | lost_lead | archived | follow_up
@@ -46,6 +50,10 @@ You are a fast, decisive AI operator for the OLL School CRM. Your job is to GET 
   IMPORTANT: grades_from/grades_to must be in ordinal form e.g. "1st", "8th". If user says "grade 1-8", set grades_from="1st" grades_to="8th". If single range, set both from and to accordingly.
   min_students → total students across all grades (integer). pricing_type → "per_student" (default) | "fixed" | "both".
 - generate_mou: { type, school_id, school_name, data: { grade_pricing: [{grade, students, price_per_student}], grades_from?, grades_to?, min_students?, program_start_date?, program_type? } }
+- generate_invoice: { type, school_id, school_name, tranche_index?, send_email? }
+  tranche_index → 0-based index of payment tranche (default 0, first tranche). Use 1 for second tranche etc.
+  send_email → true to also email the invoice to school contacts. Default false.
+  Use this when user says "generate invoice", "give invoice", "send invoice", "invoice for tranche X"
 - schedule_meeting: { type, school_id, school_name, meeting_date, meeting_time?, meeting_type?, meeting_mode? }
   meeting_date format → YYYY-MM-DD (e.g. "2025-07-18"). meeting_time → "HH:MM" 24h format (e.g. "14:00"). meeting_type → optional label. meeting_mode → "online" | "offline".
   IMPORTANT: Do NOT add change_status unless the user explicitly asks to change the status.
@@ -126,6 +134,14 @@ async def _crm_context() -> str:
                 for g in gp[:4]
             )
             parts.append(f"Pricing:[{pricing_summary}{', ...' if len(gp) > 4 else ''}] TotalStudents:{total_students}")
+        # Include payment tranches summary for converted/active schools
+        tranches = od.get("payment_tranches") or []
+        if tranches and s.get("status") in ("converted", "active", "renewed"):
+            tranche_summary = ", ".join(
+                f"T{i+1}:₹{int(float(tr.get('amount') or 0)):,}({tr.get('status','pending')})"
+                for i, tr in enumerate(tranches[:4])
+            )
+            parts.append(f"Tranches:[{tranche_summary}{', ...' if len(tranches) > 4 else ''}]")
         if s.get("meeting_date"):
             parts.append(f"MeetingDate:{s['meeting_date']} {s.get('meeting_time','')}")
         if s.get("followup_date"):
@@ -205,16 +221,38 @@ async def _execute(action: dict, user: dict) -> dict:
         elif t == "update_lead":
             if not sid:
                 return {"status": "error", "detail": "school_id required"}
-            fields = {**action.get("fields", {}), "updated_at": now}
+            raw_fields = action.get("fields", {})
+
+            # Normalize common camelCase → snake_case mistakes by AI
+            field_aliases = {
+                "TrainingType": "training_type",
+                "ProgramType": "program_type",
+                "SchoolName": "school_name",
+                "ContactName": "contact_name",
+                "SkillType": "skill_type",
+            }
+            raw_fields = {field_aliases.get(k, k): v for k, v in raw_fields.items()}
+
+            fields = {**raw_fields, "updated_at": now}
+
+            # If training_type is being updated, also sync it into onboarding_data
+            extra_set = {}
+            if "training_type" in raw_fields:
+                extra_set["onboarding_data.training_type"] = raw_fields["training_type"]
+            if "program_type" in raw_fields:
+                extra_set["onboarding_data.program_type"] = raw_fields["program_type"]
+            if extra_set:
+                fields.update(extra_set)
+
             res = await db.school_inquiries.update_one(
                 {"id": sid},
                 {"$set": fields,
-                 "$push": {"activity_log": log(f"Fields updated via AI Chat: {', '.join(k for k in fields if k != 'updated_at')}")}}
+                 "$push": {"activity_log": log(f"Fields updated via AI Chat: {', '.join(k for k in raw_fields)}")}}
             )
             if res.matched_count == 0:
                 return {"status": "error", "detail": "School not found"}
             return {"status": "success",
-                    "detail": f"Updated: {', '.join(k for k in fields if k != 'updated_at')}"}
+                    "detail": f"Updated: {', '.join(k for k in raw_fields)}"}
 
         # ── DELETE LEAD ──────────────────────────────────────────────
         elif t == "delete_lead":
@@ -530,6 +568,112 @@ async def _execute(action: dict, user: dict) -> dict:
             return {"status": "frontend_action",
                     "detail": "MOU data saved. PDF will be generated in your browser.",
                     "school_id": sid}
+
+        # ── GENERATE INVOICE — server-side PDF → base64 for frontend download ──
+        elif t == "generate_invoice":
+            sid = await _resolve_school_id(sid, action.get("school_name"))
+            if not sid:
+                return {"status": "error", "detail": "Could not find school"}
+
+            school = await db.school_inquiries.find_one({"id": sid}, {"_id": 0})
+            if not school:
+                return {"status": "error", "detail": "School not found"}
+
+            od = school.get("onboarding_data") or {}
+            tranches = od.get("payment_tranches") or []
+            tranche_index = int(action.get("tranche_index") or 0)
+            send_email = bool(action.get("send_email", False))
+
+            if not tranches:
+                return {"status": "error", "detail": f"{school.get('school_name')} has no payment tranches configured"}
+            if tranche_index >= len(tranches):
+                tranche_index = 0  # fallback to first tranche
+
+            tranche = tranches[tranche_index]
+            school_name = school.get("school_name", "School")
+            invoice_no = f"OLL-{sid[:6].upper()}-{tranche_index + 1:02d}"
+
+            # Generate server-side PDF using existing generator
+            try:
+                from routes.school_emails import generate_invoice_pdf
+                pdf_bytes = generate_invoice_pdf(school_name, tranche, invoice_no)
+                import base64
+                pdf_b64 = base64.b64encode(pdf_bytes).decode("utf-8")
+            except Exception as pdf_err:
+                logging.error(f"Invoice PDF generation error: {pdf_err}")
+                return {"status": "error", "detail": f"Failed to generate invoice PDF: {pdf_err}"}
+
+            # Save to invoices collection
+            payment_id = f"pay-{sid}-{tranche_index}"
+            existing_inv = await db.invoices.find_one({"payment_id": payment_id}, {"_id": 0})
+            invoice_doc = {
+                "payment_id": payment_id,
+                "school_id": sid,
+                "school_name": school_name,
+                "invoice_no": invoice_no,
+                "tranche_index": tranche_index,
+                "amount": tranche.get("amount", 0),
+                "pdf_base64": pdf_b64,
+                "generated_at": now,
+                "generated_via": "ai_chat",
+            }
+            if existing_inv:
+                await db.invoices.update_one({"payment_id": payment_id}, {"$set": invoice_doc})
+            else:
+                await db.invoices.insert_one(invoice_doc)
+
+            # Optionally send email
+            email_sent_to = None
+            if send_email:
+                try:
+                    contacts = od.get("contacts") or []
+                    emails = [c.get("email") for c in contacts if c.get("email")]
+                    if not emails:
+                        emails = [school.get("email")] if school.get("email") else []
+                    if emails:
+                        from routes.school_emails import _send_email, get_resend_api_key
+                        resend_key = await get_resend_api_key()
+                        import resend as _resend
+                        _resend.api_key = resend_key
+                        amount = float(tranche.get("amount") or 0)
+                        label = tranche.get("label") or tranche.get("description") or f"Tranche {tranche_index + 1}"
+                        html = f"""<div style='font-family:Arial,sans-serif;padding:20px'>
+                            <h2>Invoice from OLL</h2>
+                            <p>Dear Team,</p>
+                            <p>Please find the invoice for <strong>{label}</strong> amounting to <strong>₹{int(amount):,}</strong> attached.</p>
+                            <p>Invoice No: <strong>{invoice_no}</strong></p>
+                            <p>For any queries contact us at <a href='mailto:info@oll.co'>info@oll.co</a> or call <a href='tel:9920188188'>9920188188</a>.</p>
+                            <p>Regards,<br>OLL Team</p>
+                        </div>"""
+                        import base64 as _b64
+                        await asyncio.to_thread(_resend.Emails.send, {
+                            "from": "OLL <skills@oll.co>",
+                            "to": emails[:2],
+                            "subject": f"Invoice {invoice_no} – {school_name} | OLL",
+                            "html": html,
+                            "attachments": [{"filename": f"{invoice_no}.pdf", "content": list(pdf_bytes)}]
+                        })
+                        email_sent_to = ", ".join(emails[:2])
+                except Exception as mail_err:
+                    logging.error(f"Invoice email error: {mail_err}")
+
+            await db.school_inquiries.update_one(
+                {"id": sid},
+                {"$push": {"activity_log": log(f"Invoice {invoice_no} generated via AI Chat{' and emailed to ' + email_sent_to if email_sent_to else ''}")}}
+            )
+
+            result = {
+                "status": "frontend_action",
+                "detail": f"Invoice {invoice_no} generated for {school_name}, Tranche {tranche_index + 1}" + (f" — email sent to {email_sent_to}" if email_sent_to else ""),
+                "school_id": sid,
+                "invoice_no": invoice_no,
+                "pdf_base64": pdf_b64,
+                "pdf_filename": f"{invoice_no}.pdf",
+                "amount": tranche.get("amount", 0),
+            }
+            if email_sent_to:
+                result["email_sent_to"] = email_sent_to
+            return result
 
         else:
             return {"status": "skipped", "detail": f"Unknown action: {t}"}
