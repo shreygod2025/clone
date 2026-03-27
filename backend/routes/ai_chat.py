@@ -569,7 +569,7 @@ async def _execute(action: dict, user: dict) -> dict:
                     "detail": "MOU data saved. PDF will be generated in your browser.",
                     "school_id": sid}
 
-        # ── GENERATE INVOICE — server-side PDF → base64 for frontend download ──
+        # ── GENERATE INVOICE — return payment data for frontend to generate with same Orders PDF ──
         elif t == "generate_invoice":
             sid = await _resolve_school_id(sid, action.get("school_name"))
             if not sid:
@@ -591,89 +591,35 @@ async def _execute(action: dict, user: dict) -> dict:
 
             tranche = tranches[tranche_index]
             school_name = school.get("school_name", "School")
-            invoice_no = f"OLL-{sid[:6].upper()}-{tranche_index + 1:02d}"
 
-            # Generate server-side PDF using existing generator
-            try:
-                from routes.school_emails import generate_invoice_pdf
-                pdf_bytes = generate_invoice_pdf(school_name, tranche, invoice_no)
-                import base64
-                pdf_b64 = base64.b64encode(pdf_bytes).decode("utf-8")
-            except Exception as pdf_err:
-                logging.error(f"Invoice PDF generation error: {pdf_err}")
-                return {"status": "error", "detail": f"Failed to generate invoice PDF: {pdf_err}"}
-
-            # Save to invoices collection
+            # Build the payment-like object the frontend invoice generator expects
             payment_id = f"pay-{sid}-{tranche_index}"
-            existing_inv = await db.invoices.find_one({"payment_id": payment_id}, {"_id": 0})
-            invoice_doc = {
-                "payment_id": payment_id,
+            payment = {
+                "id": payment_id,
                 "school_id": sid,
                 "school_name": school_name,
-                "invoice_no": invoice_no,
                 "tranche_index": tranche_index,
-                "amount": tranche.get("amount", 0),
-                "pdf_base64": pdf_b64,
-                "generated_at": now,
-                "generated_via": "ai_chat",
+                "tranche_info": f"Tranche {tranche_index + 1}" + (f" ({tranche.get('percentage')}%)" if tranche.get("percentage") else ""),
+                "amount": float(tranche.get("amount") or 0),
+                "due_date": tranche.get("date") or None,
+                "status": tranche.get("status", "pending"),
+                "gst_type": tranche.get("gst_type") or od.get("gst_type") or "exclusive_18",
+                "notes": tranche.get("notes", ""),
             }
-            if existing_inv:
-                await db.invoices.update_one({"payment_id": payment_id}, {"$set": invoice_doc})
-            else:
-                await db.invoices.insert_one(invoice_doc)
-
-            # Optionally send email
-            email_sent_to = None
-            if send_email:
-                try:
-                    contacts = od.get("contacts") or []
-                    emails = [c.get("email") for c in contacts if c.get("email")]
-                    if not emails:
-                        emails = [school.get("email")] if school.get("email") else []
-                    if emails:
-                        from routes.school_emails import _send_email, get_resend_api_key
-                        resend_key = await get_resend_api_key()
-                        import resend as _resend
-                        _resend.api_key = resend_key
-                        amount = float(tranche.get("amount") or 0)
-                        label = tranche.get("label") or tranche.get("description") or f"Tranche {tranche_index + 1}"
-                        html = f"""<div style='font-family:Arial,sans-serif;padding:20px'>
-                            <h2>Invoice from OLL</h2>
-                            <p>Dear Team,</p>
-                            <p>Please find the invoice for <strong>{label}</strong> amounting to <strong>₹{int(amount):,}</strong> attached.</p>
-                            <p>Invoice No: <strong>{invoice_no}</strong></p>
-                            <p>For any queries contact us at <a href='mailto:info@oll.co'>info@oll.co</a> or call <a href='tel:9920188188'>9920188188</a>.</p>
-                            <p>Regards,<br>OLL Team</p>
-                        </div>"""
-                        import base64 as _b64
-                        await asyncio.to_thread(_resend.Emails.send, {
-                            "from": "OLL <skills@oll.co>",
-                            "to": emails[:2],
-                            "subject": f"Invoice {invoice_no} – {school_name} | OLL",
-                            "html": html,
-                            "attachments": [{"filename": f"{invoice_no}.pdf", "content": list(pdf_bytes)}]
-                        })
-                        email_sent_to = ", ".join(emails[:2])
-                except Exception as mail_err:
-                    logging.error(f"Invoice email error: {mail_err}")
 
             await db.school_inquiries.update_one(
                 {"id": sid},
-                {"$push": {"activity_log": log(f"Invoice {invoice_no} generated via AI Chat{' and emailed to ' + email_sent_to if email_sent_to else ''}")}}
+                {"$push": {"activity_log": log(f"Invoice generation triggered via AI Chat for Tranche {tranche_index + 1}")}}
             )
 
-            result = {
+            return {
                 "status": "frontend_action",
-                "detail": f"Invoice {invoice_no} generated for {school_name}, Tranche {tranche_index + 1}" + (f" — email sent to {email_sent_to}" if email_sent_to else ""),
+                "detail": f"Invoice ready for {school_name}, Tranche {tranche_index + 1}",
                 "school_id": sid,
-                "invoice_no": invoice_no,
-                "pdf_base64": pdf_b64,
-                "pdf_filename": f"{invoice_no}.pdf",
-                "amount": tranche.get("amount", 0),
+                "school_name": school_name,
+                "payment": payment,
+                "send_email": send_email,
             }
-            if email_sent_to:
-                result["email_sent_to"] = email_sent_to
-            return result
 
         else:
             return {"status": "skipped", "detail": f"Unknown action: {t}"}

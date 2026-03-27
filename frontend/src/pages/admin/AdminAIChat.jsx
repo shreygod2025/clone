@@ -4,6 +4,7 @@ import axios from 'axios';
 import { toast } from 'sonner';
 import { generateProposalDocument } from '../../utils/proposalPdfGenerator';
 import { generateMOUDocument } from '../../utils/mouPdfGenerator';
+import { generateInvoicePDF } from '../../utils/invoicePdfGenerator';
 import {
   Send, Plus, Bot, CheckCircle, XCircle,
   Download, FileText, Building2, Mail, Tag, StickyNote,
@@ -71,14 +72,14 @@ function ActionCard({ action, onGeneratePDF }) {
           Download {action.type === 'generate_proposal' ? 'Proposal' : 'MOU'} PDF
         </button>
       )}
-      {action.type === 'generate_invoice' && exec.pdf_base64 && (
+      {action.type === 'generate_invoice' && exec.payment && (
         <button
           onClick={() => onGeneratePDF(action)}
           className="mt-2 ml-6 inline-flex items-center gap-1.5 px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg text-[11px] font-medium transition-colors"
           data-testid="download-invoice-btn"
         >
           <Download className="w-3 h-3" />
-          Download Invoice PDF
+          {exec.send_email ? 'Generate & Email Invoice' : 'Download Invoice PDF'}
         </button>
       )}
     </div>
@@ -279,6 +280,51 @@ export default function AdminAIChat() {
           toast.error(`Failed to send ${email_type} email with PDF`);
         }
       }
+
+      // ── Handle generate_invoice with send_email=true (auto-generate + email) ──
+      const invoiceEmailActions = (res.data.actions || []).filter(
+        a => a.type === 'generate_invoice' && a.execution?.send_email && a.execution?.payment
+      );
+      for (const a of invoiceEmailActions) {
+        const { school_id, school_name, payment } = a.execution;
+        if (!payment || !school_id) continue;
+        try {
+          let schoolData;
+          try {
+            const r = await axios.get(`${API}/orders/school-details/${school_id}`, { headers: getAuthHeaders() });
+            schoolData = r.data;
+          } catch { schoolData = { id: school_id, school_name }; }
+          const { invoiceNo, base64 } = await generateInvoicePDF(payment, schoolData, { skipDownload: true });
+          await axios.post(`${API}/orders/save-invoice-pdf`, {
+            payment_id: payment.id,
+            school_id: payment.school_id,
+            tranche_index: payment.tranche_index ?? 0,
+            invoice_no: invoiceNo,
+            pdf_base64: base64,
+            amount: payment.amount,
+            due_date: payment.due_date || '',
+            status: payment.status || 'pending',
+            tranche_info: payment.tranche_info || `Tranche ${(payment.tranche_index ?? 0) + 1}`,
+          }, { headers: getAuthHeaders() });
+          await axios.post(`${API}/orders/send-invoice-email`, {
+            payment_id: payment.id,
+            email_type: 'invoice',
+          }, { headers: getAuthHeaders() });
+          toast.success(`Invoice ${invoiceNo} generated and emailed to ${school_name}!`);
+          // Update action card detail
+          setMessages(prev => prev.map(m => m.id === aiMsg.id ? {
+            ...m,
+            actions: m.actions.map(act =>
+              act.type === 'generate_invoice' && act.execution?.payment?.id === payment.id
+                ? { ...act, execution: { ...act.execution, detail: `Invoice ${invoiceNo} generated & emailed to ${school_name}` } }
+                : act
+            )
+          } : m));
+        } catch (invErr) {
+          console.error('Invoice email error:', invErr);
+          toast.error(`Failed to email invoice for ${school_name}`);
+        }
+      }
     } catch (err) {
       const errMsg = {
         id: `e-${Date.now()}`,
@@ -305,23 +351,63 @@ export default function AdminAIChat() {
   const handleGeneratePDF = async (action) => {
     try {
       if (action.type === 'generate_invoice') {
-        // Invoice PDF is already generated server-side — just download it
-        const b64 = action.execution?.pdf_base64;
-        const filename = action.execution?.pdf_filename || `${action.execution?.invoice_no || 'invoice'}.pdf`;
-        if (!b64) { toast.error('Invoice PDF not available'); return; }
-        const byteChars = atob(b64);
-        const byteArr = new Uint8Array(byteChars.length);
-        for (let i = 0; i < byteChars.length; i++) byteArr[i] = byteChars.charCodeAt(i);
-        const blob = new Blob([byteArr], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        toast.success('Invoice downloaded!');
+        const exec = action.execution || {};
+        const payment = exec.payment;
+        const schoolId = exec.school_id;
+        if (!payment || !schoolId) { toast.error('Invoice data not available'); return; }
+
+        // Fetch full school data — same as Orders page
+        let schoolData;
+        try {
+          const res = await axios.get(`${API}/orders/school-details/${schoolId}`, { headers: getAuthHeaders() });
+          schoolData = res.data;
+        } catch {
+          schoolData = { id: schoolId, school_name: exec.school_name };
+        }
+
+        const sendEmail = exec.send_email;
+
+        if (sendEmail) {
+          // Generate PDF without download, then save + email (same flow as Orders "Send Email")
+          toast.info('Generating invoice and sending email…');
+          const { invoiceNo, base64 } = await generateInvoicePDF(payment, schoolData, { skipDownload: true });
+          // Save to invoices collection
+          await axios.post(`${API}/orders/save-invoice-pdf`, {
+            payment_id: payment.id,
+            school_id: payment.school_id,
+            tranche_index: payment.tranche_index ?? 0,
+            invoice_no: invoiceNo,
+            pdf_base64: base64,
+            amount: payment.amount,
+            due_date: payment.due_date || '',
+            status: payment.status || 'pending',
+            tranche_info: payment.tranche_info || `Tranche ${(payment.tranche_index ?? 0) + 1}`,
+          }, { headers: getAuthHeaders() });
+          // Send invoice email
+          await axios.post(`${API}/orders/send-invoice-email`, {
+            payment_id: payment.id,
+            email_type: 'invoice',
+          }, { headers: getAuthHeaders() });
+          toast.success(`Invoice ${invoiceNo} generated and emailed!`);
+        } else {
+          // Download immediately — same as Orders "Invoice" button
+          const { invoiceNo, base64 } = await generateInvoicePDF(payment, schoolData);
+          // Save a copy too
+          try {
+            await axios.post(`${API}/orders/save-invoice-pdf`, {
+              payment_id: payment.id,
+              school_id: payment.school_id,
+              tranche_index: payment.tranche_index ?? 0,
+              invoice_no: invoiceNo,
+              pdf_base64: base64,
+              amount: payment.amount,
+              due_date: payment.due_date || '',
+              status: payment.status || 'pending',
+              tranche_info: payment.tranche_info || `Tranche ${(payment.tranche_index ?? 0) + 1}`,
+            }, { headers: getAuthHeaders() });
+          } catch { /* save failure is silent */ }
+          toast.success(`Invoice ${invoiceNo} downloaded!`);
+        }
         return;
       }
 
