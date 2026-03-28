@@ -51,10 +51,15 @@ You are a fast, decisive AI operator for the OLL School CRM. Your job is to GET 
 - send_email: { type, school_id, school_name, email_type, to_email? }
   email_type → introduction | meeting_confirmation | proposal | mou | followup
 - raise_ticket: { type, title, description, priority, school_id?, school_name? }
-- generate_proposal: { type, school_id, school_name, data: { grade_pricing: [{grade, students, price_per_student}], grades_from?, grades_to?, min_students?, pricing_type?, program_type? } }
+- generate_proposal: { type, school_id, school_name, data: { grade_pricing: [{grade, students, price_per_student}], grades_from?, grades_to?, min_students?, pricing_type?, program_type?, training_type? } }
   IMPORTANT: grades_from/grades_to must be in ordinal form e.g. "1st", "8th". If user says "grade 1-8", set grades_from="1st" grades_to="8th". If single range, set both from and to accordingly.
+  DEFAULT GRADES: If no grades mentioned by user, always default to grades_from="Jr. Kg" grades_to="10th" (NOT "All").
   min_students → total students across all grades (integer). pricing_type → "per_student" (default) | "fixed" | "both".
-- generate_mou: { type, school_id, school_name, data: { grade_pricing: [{grade, students, price_per_student}], grades_from?, grades_to?, min_students?, program_start_date?, program_type? } }
+  program_type → "lab_setup" (lab setup / lab kit model) | "per_student" (individual kit model). "individual kit" = per_student. "lab setup" = lab_setup.
+  training_type → "student_training" | "teacher_training" | "both" (default: "both")
+  ALWAYS include training_type and program_type in the data object. Never omit them.
+- generate_mou: { type, school_id, school_name, data: { grade_pricing: [{grade, students, price_per_student}], grades_from?, grades_to?, min_students?, program_start_date?, program_type?, training_type? } }
+  Same rules as generate_proposal for grades defaults, program_type and training_type.
 - generate_invoice: { type, school_id, school_name, tranche_index?, send_email? }
   tranche_index → 0-based index of payment tranche (default 0, first tranche). Use 1 for second tranche etc.
   send_email → true to also email the invoice to school contacts. Default false.
@@ -471,8 +476,11 @@ async def _execute(action: dict, user: dict) -> dict:
                     # No existing pricing — use what AI provided (may be defaults)
                     grade_pricing = ai_grade_pricing
 
+                # Default grades to Jr. Kg – 10th when not specified or only "All"
+                all_grade_labels = [str(g.get("grade","")).strip().lower() for g in grade_pricing]
+                is_default_all = (not grade_pricing) or (all_grade_labels == ["all"])
+
                 if grade_pricing:
-                    # Derive ordinal grades_from / grades_to if not given
                     def _ordinal(n):
                         try:
                             i = int(str(n).strip().split("-")[0])
@@ -482,9 +490,19 @@ async def _execute(action: dict, user: dict) -> dict:
                             return str(n)
 
                     all_grades = [str(g.get("grade","")).strip() for g in grade_pricing if g.get("grade")]
-                    grades_from = proposal_raw.get("grades_from") or (_ordinal(all_grades[0]) if all_grades else "1st")
-                    grades_to   = proposal_raw.get("grades_to")   or (_ordinal(all_grades[-1]) if all_grades else "8th")
+
+                    if is_default_all:
+                        grades_from = proposal_raw.get("grades_from") or "Jr. Kg"
+                        grades_to   = proposal_raw.get("grades_to")   or "10th"
+                    else:
+                        grades_from = proposal_raw.get("grades_from") or (_ordinal(all_grades[0]) if all_grades else "Jr. Kg")
+                        grades_to   = proposal_raw.get("grades_to")   or (_ordinal(all_grades[-1]) if all_grades else "10th")
+
                     min_students = proposal_raw.get("min_students") or sum(int(g.get("students",0) or 0) for g in grade_pricing) or 800
+
+                    # Extract training type and program type from AI data
+                    training_type = proposal_raw.get("training_type") or merged_onboard.get("training_type") or "both"
+                    program_type  = proposal_raw.get("program_type")  or merged_onboard.get("program_type")  or "lab_setup"
 
                     proposal_data = {
                         "grade_pricing":   grade_pricing,
@@ -492,25 +510,37 @@ async def _execute(action: dict, user: dict) -> dict:
                         "grades_to":       grades_to,
                         "min_students":    min_students,
                         "pricing_type":    proposal_raw.get("pricing_type", "per_student"),
-                        "program_type":    proposal_raw.get("program_type", "lab_setup"),
+                        "program_type":    program_type,
+                        "training_type":   training_type,
                         "updated_via_ai":  True,
                     }
-                    # Only write grade_pricing back if we're NOT overwriting existing data
+
+                    # Update onboarding_data with training_type, program_type, and grades
                     if not has_real_pricing:
                         merged_onboard["grade_pricing"] = grade_pricing
+                    # Always sync these fields to onboarding_data so Edit popup picks them up
+                    merged_onboard["training_type"] = training_type
+                    merged_onboard["program_type"]  = program_type
+                    merged_onboard["grades_from"]   = grades_from
+                    merged_onboard["grades_to"]     = grades_to
 
                     await db.school_inquiries.update_one(
                         {"id": sid},
                         {"$set": {
                             "proposal_data":  proposal_data,
                             "onboarding_data": merged_onboard,
+                            "training_type":   training_type,
                             "updated_at": now,
                         },
-                        "$push": {"activity_log": log(f"Proposal data saved via AI: {grades_from} to {grades_to}, {len(grade_pricing)} grade(s), existing_pricing_preserved={has_real_pricing}")}}
+                        "$push": {"activity_log": log(f"Proposal data saved via AI: {grades_from} to {grades_to}, {len(grade_pricing)} grade(s), training={training_type}, program={program_type}, existing_pricing_preserved={has_real_pricing}")}}
                     )
+            else:
+                proposal_data = {}
+
             return {"status": "frontend_action",
                     "detail": f"Proposal data saved. PDF will be generated in your browser.",
-                    "school_id": sid}
+                    "school_id": sid,
+                    "proposal_data": proposal_data if sid else {}}
 
         # ── GENERATE MOU — save data to DB, then trigger frontend PDF ────
         elif t == "generate_mou":
@@ -545,18 +575,30 @@ async def _execute(action: dict, user: dict) -> dict:
                             return str(n)
 
                     all_grades = [str(g.get("grade","")).strip() for g in grade_pricing if g.get("grade")]
-                    grades_from = mou_raw.get("grades_from") or (_ordinal(all_grades[0]) if all_grades else "1st")
-                    grades_to   = mou_raw.get("grades_to")   or (_ordinal(all_grades[-1]) if all_grades else "8th")
+                    all_grade_labels_mou = [str(g.get("grade","")).strip().lower() for g in grade_pricing]
+                    is_default_all_mou = (all_grade_labels_mou == ["all"])
+
+                    if is_default_all_mou:
+                        grades_from = mou_raw.get("grades_from") or "Jr. Kg"
+                        grades_to   = mou_raw.get("grades_to")   or "10th"
+                    else:
+                        grades_from = mou_raw.get("grades_from") or (_ordinal(all_grades[0]) if all_grades else "Jr. Kg")
+                        grades_to   = mou_raw.get("grades_to")   or (_ordinal(all_grades[-1]) if all_grades else "10th")
+
                     min_students = mou_raw.get("min_students") or sum(int(g.get("students",0) or 0) for g in grade_pricing) or 800
 
+                    training_type_mou = mou_raw.get("training_type") or merged.get("training_type") or "both"
+                    program_type_mou  = mou_raw.get("program_type")  or merged.get("program_type")  or "lab_setup"
+
                     merged.update({
-                        "grades_from":      grades_from,
-                        "grades_to":        grades_to,
-                        "min_students":     min_students,
-                        "pricing_type":     mou_raw.get("pricing_type", "per_student"),
-                        "program_type":     mou_raw.get("program_type", "lab_setup"),
+                        "grades_from":        grades_from,
+                        "grades_to":          grades_to,
+                        "min_students":       min_students,
+                        "pricing_type":       mou_raw.get("pricing_type", "per_student"),
+                        "program_type":       program_type_mou,
+                        "training_type":      training_type_mou,
                         "program_start_date": mou_raw.get("program_start_date", ""),
-                        "updated_via_ai":   True,
+                        "updated_via_ai":     True,
                     })
                     # Only write grade_pricing back if we're NOT overwriting existing data
                     if not has_real_pricing:

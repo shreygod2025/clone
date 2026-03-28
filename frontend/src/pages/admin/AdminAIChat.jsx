@@ -412,7 +412,9 @@ export default function AdminAIChat() {
       }
 
       const school = { id: action.school_id, school_name: action.school_name };
-      const data = action.data || {};
+      // Use the full proposal_data returned from backend (includes training_type, program_type, etc.)
+      // Fall back to action.data only if execution doesn't have it
+      const data = action.execution?.proposal_data || action.data || {};
       const ctx = { API, getAuthHeaders, user: userInfo, toast };
       if (action.type === 'generate_proposal') {
         await generateProposalDocument(school, data, ctx);

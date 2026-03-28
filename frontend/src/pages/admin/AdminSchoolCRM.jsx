@@ -1159,9 +1159,9 @@ const AdminSchoolCRM = () => {
     
     setEditLeadData({
       offering: existingData.offering || inquiry.selected_offerings?.[0] || '',
-      training_type: existingData.training_type || 'teacher_training',
-      grades_from: existingData.grades_from || '1st',
-      grades_to: existingData.grades_to || '8th',
+      training_type: existingData.training_type || 'both',
+      grades_from: existingData.grades_from || 'Jr. Kg',
+      grades_to: existingData.grades_to || '10th',
       program_type: existingData.program_type || 'lab_setup',
       lab_kit_count: existingData.lab_kit_count || 30,
       kit_ratio: existingData.kit_ratio || '1:2',
