@@ -795,8 +795,9 @@ const AdminSchoolCRM = () => {
     notes: '',
     quoted_price: '',
     selected_offerings: [],
-    assign_option: 'self', // 'self' or 'admin'
-    sendIntroEmail: false
+    assign_option: 'self',
+    sendIntroEmail: false,
+    school_contacts: [{ name: '', role: '', phone_number: '', country_code: '+91', email: '' }]
   });
 
   useEffect(() => {
@@ -2739,6 +2740,18 @@ ${FOOTER}</div></body></html>`
     return { progress: Math.min(progress, 100), steps };
   };
 
+  const addNewLeadContact = () => setNewLead(prev => ({
+    ...prev, school_contacts: [...prev.school_contacts, { name: '', role: '', phone_number: '', country_code: '+91', email: '' }]
+  }));
+  const removeNewLeadContact = (idx) => setNewLead(prev => ({
+    ...prev, school_contacts: prev.school_contacts.filter((_, i) => i !== idx)
+  }));
+  const updateNewLeadContact = (idx, field, val) => setNewLead(prev => {
+    const updated = [...prev.school_contacts];
+    updated[idx] = { ...updated[idx], [field]: val };
+    return { ...prev, school_contacts: updated };
+  });
+
   const handleAddLead = async () => {
     if (!newLead.school_name || !newLead.contact_name || !newLead.phone) {
       toast.error('School name, contact name and phone are required');
@@ -2773,7 +2786,8 @@ ${FOOTER}</div></body></html>`
         selected_offerings: newLead.selected_offerings,
         assign_option: newLead.assign_option,
         added_by: user?.id || user?.email,
-        added_by_name: user?.name || 'Admin'
+        added_by_name: user?.name || 'Admin',
+        school_contacts: newLead.school_contacts.filter(c => c.name)
       }, {
         headers: getAuthHeaders()
       });
@@ -2818,7 +2832,8 @@ ${FOOTER}</div></body></html>`
         quoted_price: '',
         selected_offerings: [],
         assign_option: 'self',
-        sendIntroEmail: false
+        sendIntroEmail: false,
+        school_contacts: [{ name: '', role: '', phone_number: '', country_code: '+91', email: '' }]
       });
       fetchInquiries();
     } catch (error) {
@@ -7645,6 +7660,64 @@ ${FOOTER}</div></body></html>`
               </div>
             </div>
             
+            {/* School Team Contacts */}
+            <div className="border-t pt-4 mt-4">
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-medium text-slate-700">School Team Contacts</label>
+                <Button variant="ghost" size="sm" onClick={addNewLeadContact} className="text-blue-600 h-7 text-xs">
+                  <Plus className="w-3 h-3 mr-1" /> Add Contact
+                </Button>
+              </div>
+              <div className="space-y-3">
+                {newLead.school_contacts.map((contact, idx) => (
+                  <div key={idx} className="bg-slate-50 p-3 rounded-lg space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        placeholder="Name *"
+                        value={contact.name}
+                        onChange={(e) => updateNewLeadContact(idx, 'name', e.target.value)}
+                        data-testid={`new-contact-name-${idx}`}
+                      />
+                      <select
+                        value={contact.role}
+                        onChange={(e) => updateNewLeadContact(idx, 'role', e.target.value)}
+                        className="h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white"
+                        data-testid={`new-contact-role-${idx}`}
+                      >
+                        <option value="">Select Role</option>
+                        <option value="principal">Principal</option>
+                        <option value="vice_principal">Vice Principal</option>
+                        <option value="trustee_owner">Trustee/Owner</option>
+                        <option value="director">Director</option>
+                        <option value="coordinator">Coordinator</option>
+                        <option value="accounts">Accounts</option>
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <PhoneInput
+                        value={contact.phone_number || ''}
+                        onChange={(val) => updateNewLeadContact(idx, 'phone_number', val)}
+                        countryCode={contact.country_code || '+91'}
+                        onCountryCodeChange={(code) => updateNewLeadContact(idx, 'country_code', code)}
+                        placeholder="Phone"
+                      />
+                      <Input
+                        placeholder="Email"
+                        value={contact.email}
+                        onChange={(e) => updateNewLeadContact(idx, 'email', e.target.value)}
+                        data-testid={`new-contact-email-${idx}`}
+                      />
+                    </div>
+                    {newLead.school_contacts.length > 1 && (
+                      <button type="button" onClick={() => removeNewLeadContact(idx)} className="text-xs text-red-500 hover:text-red-700">
+                        Remove Contact
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* Meeting Type */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Preferred Meeting Type</label>

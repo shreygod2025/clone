@@ -2819,6 +2819,7 @@ class SchoolInquiry(BaseModel):
     lost_reason: Optional[str] = None
     lead_value: Optional[float] = None  # Value of the lost lead/customer (for reports)
     followup_tasks: Optional[List[dict]] = None  # Auto-scheduled followup email tasks
+    school_contacts: Optional[List[dict]] = []  # School team contacts
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -2846,6 +2847,7 @@ class SchoolInquiryCreate(BaseModel):
     assigned_to: str = ""
     assign_option: str = "admin"  # 'self' or 'admin'
     notes: str = ""
+    school_contacts: Optional[List[dict]] = []  # School team contacts added at creation
 
 class SchoolInquiryUpdate(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -10418,13 +10420,26 @@ async def send_crm_email_for_school(
         )
 
         if result.get("success"):
-            # Log this email in the school's activity log
+            # Human-friendly email type labels
+            email_labels = {
+                "introduction":          "Introduction email sent",
+                "proposal":              "Proposal email sent",
+                "mou":                   "MOU email sent",
+                "meeting_confirmation":  "Meeting confirmation email sent",
+                "followup":              "Follow-up email sent",
+                "followup_1":            "Follow-up 1 email sent",
+                "followup_2":            "Follow-up 2 email sent",
+                "followup_3":            "Follow-up 3 email sent",
+                "followup_4":            "Follow-up 4 email sent",
+            }
+            label = email_labels.get(email_type, f"{email_type.replace('_', ' ').title()} email sent")
+            pdf_note = " (with PDF)" if data.get("pdf_base64") else ""
             await db.school_inquiries.update_one(
                 {"id": school_id},
                 {"$push": {"activity_log": {
                     "id": str(uuid.uuid4()),
                     "action": f"email_sent_{email_type}",
-                    "description": f"Email sent ({email_type.replace('_', ' ').title()}) to {to_email}",
+                    "description": f"{label} to {to_email}{pdf_note}",
                     "performed_by": user.get("name", "Admin"),
                     "performed_at": datetime.now(timezone.utc).isoformat()
                 }}}
