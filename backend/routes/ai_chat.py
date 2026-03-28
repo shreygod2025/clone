@@ -494,6 +494,10 @@ async def _execute(action: dict, user: dict) -> dict:
                     if is_default_all:
                         grades_from = proposal_raw.get("grades_from") or "Jr. Kg"
                         grades_to   = proposal_raw.get("grades_to")   or "10th"
+                        # Replace "All" grade label with proper range in the fee table
+                        price_per_student = grade_pricing[0].get("price_per_student", 500) if grade_pricing else 500
+                        students = grade_pricing[0].get("students", 500) if grade_pricing else 500
+                        grade_pricing = [{"grade": "Jr. Kg - 10th", "students": students, "price_per_student": price_per_student}]
                     else:
                         grades_from = proposal_raw.get("grades_from") or (_ordinal(all_grades[0]) if all_grades else "Jr. Kg")
                         grades_to   = proposal_raw.get("grades_to")   or (_ordinal(all_grades[-1]) if all_grades else "10th")
@@ -581,6 +585,9 @@ async def _execute(action: dict, user: dict) -> dict:
                     if is_default_all_mou:
                         grades_from = mou_raw.get("grades_from") or "Jr. Kg"
                         grades_to   = mou_raw.get("grades_to")   or "10th"
+                        price_per_student_mou = grade_pricing[0].get("price_per_student", 500) if grade_pricing else 500
+                        students_mou = grade_pricing[0].get("students", 500) if grade_pricing else 500
+                        grade_pricing = [{"grade": "Jr. Kg - 10th", "students": students_mou, "price_per_student": price_per_student_mou}]
                     else:
                         grades_from = mou_raw.get("grades_from") or (_ordinal(all_grades[0]) if all_grades else "Jr. Kg")
                         grades_to   = mou_raw.get("grades_to")   or (_ordinal(all_grades[-1]) if all_grades else "10th")
