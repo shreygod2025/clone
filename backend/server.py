@@ -1326,27 +1326,194 @@ SCHOOL_PROPOSAL_EMAIL_TEMPLATE = """
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px;">
-<div style="max-width: 620px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.12);">
+<div style="max-width: 640px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.12);">
     {header}
     <div style="padding: 36px 32px;">
+
         <h2 style="color: #1E3A5F; margin-top: 0; font-size: 22px;">Dear {contact_name},</h2>
-        <p style="color: #333; line-height: 1.7;">
-            Thank you for your time and interest in OLL's programs. As discussed, please find attached the <strong>detailed proposal</strong> for implementing the OLL Robotics & AI program at <strong>{school_name}</strong>.
+        <p style="color: #333; font-size: 15px; line-height: 1.8; margin-bottom: 8px;">
+            Thank you for your time and interest in OLL's programs. As discussed, please find attached the <strong>detailed proposal</strong> for implementing the OLL Robotics &amp; AI program at <strong>{school_name}</strong>.
         </p>
-        <div style="background: #fff8e1; border-left: 4px solid #f39c12; padding: 20px; border-radius: 0 10px 10px 0; margin: 24px 0;">
-            <h3 style="color: #856404; margin: 0 0 12px 0; font-size: 15px;">Proposal Highlights</h3>
-            <ul style="color: #444; line-height: 1.9; padding-left: 18px; margin: 0; font-size: 14px;">
-                <li>Robotics & AI lab setup with complete kit supply</li>
-                <li>Trained educator support for every batch</li>
-                <li>CBSE/ICSE-aligned curriculum for Grades 1–12</li>
-                <li>Flexible pricing — per student or fixed model</li>
-                <li>Ongoing program support & quarterly assessments</li>
+        <p style="color: #333; font-size: 15px; line-height: 1.8; margin-bottom: 28px;">
+            Below is a snapshot of our <strong>Program Deliverables</strong> — what {school_name} will receive as part of the partnership:
+        </p>
+
+        <!-- Deliverables Header -->
+        <div style="background: #1E3A5F; color: white; padding: 14px 20px; border-radius: 10px 10px 0 0;">
+            <h3 style="margin: 0; font-size: 16px; font-weight: 700; letter-spacing: 0.3px;">Program Deliverables</h3>
+        </div>
+
+        <!-- 1. Curriculum -->
+        <div style="border: 1px solid #dde4ef; border-top: none; padding: 18px 20px;">
+            <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: 700; color: #1E3A5F;">1. Curriculum — 28 Projects / Grade</p>
+            <p style="margin: 0 0 10px 0; font-size: 14px; color: #444; line-height: 1.7;">
+                Robotics, Coding, 3D Designing, DIY Science, Electronics &amp; AI curriculum — designed for Grades Jr. KG to 10th.
+            </p>
+            <div style="text-align: left; margin-top: 10px;">
+                <a href="https://drive.google.com/drive/folders/1nYqvokOCiiaXo5FOs9CjfsEzwonMqdVL?usp=drive_link"
+                   style="display: inline-block; background: #1E3A5F; color: white; text-decoration: none; padding: 9px 18px; border-radius: 6px; font-size: 13px; font-weight: 600;">
+                    View Detailed Curriculum
+                </a>
+            </div>
+        </div>
+
+        <!-- 2. LMS Access -->
+        <div style="border: 1px solid #dde4ef; border-top: none; padding: 18px 20px;">
+            <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: 700; color: #1E3A5F;">2. LMS Access</p>
+            <p style="margin: 0 0 6px 0; font-size: 14px; color: #444; line-height: 1.7;">
+                School gets <strong>syllabus progress updates</strong> &bull; <strong>Personalised tracking</strong> for each child &bull; <strong>Parent reports</strong> shared directly.
+            </p>
+            <div style="text-align: left; margin-top: 10px;">
+                <a href="https://youtu.be/pkMSv6-bpic"
+                   style="display: inline-block; background: #c0392b; color: white; text-decoration: none; padding: 9px 18px; border-radius: 6px; font-size: 13px; font-weight: 600;">
+                    &#9654; Watch LMS Walkthrough
+                </a>
+            </div>
+        </div>
+
+        <!-- 3. Hardcopy Robotics Books -->
+        <div style="border: 1px solid #dde4ef; border-top: none; padding: 18px 20px;">
+            <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: 700; color: #1E3A5F;">3. Hardcopy Robotics Books — Each Student</p>
+            <p style="margin: 0 0 8px 0; font-size: 14px; color: #444; line-height: 1.7;">Each project book includes:</p>
+            <ul style="margin: 0 0 10px 0; padding-left: 20px; font-size: 14px; color: #444; line-height: 1.8;">
+                <li>Problem statement</li>
+                <li>Real life applications</li>
+                <li>Theory behind how it works</li>
+            </ul>
+            <p style="margin: 0 0 10px 0; font-size: 14px; color: #555; line-height: 1.7;">
+                All presented in an <strong>innovative comic-book format</strong> with a storyline — making learning engaging and student-friendly.
+            </p>
+            <div style="text-align: left; margin-top: 10px;">
+                <a href="https://drive.google.com/drive/folders/1OZ95-fWhg_-UhTw0rNimuq9cRwn1zpJw"
+                   style="display: inline-block; background: #1E3A5F; color: white; text-decoration: none; padding: 9px 18px; border-radius: 6px; font-size: 13px; font-weight: 600;">
+                    View Book Samples
+                </a>
+            </div>
+        </div>
+
+        <!-- 4. OLL USP -->
+        <div style="border: 1px solid #dde4ef; border-top: none; padding: 18px 20px;">
+            <p style="margin: 0 0 6px 0; font-size: 15px; font-weight: 700; color: #1E3A5F;">4. OLL's USP</p>
+            <p style="margin: 0; font-size: 14px; color: #444; line-height: 1.7;">
+                <strong>1 Child : 1 Kit Ratio</strong> — Personalised, outcome-driven, hands-on project-based learning for every student.
+            </p>
+        </div>
+
+        <!-- 5. Complimentary Workshops -->
+        <div style="border: 1px solid #dde4ef; border-top: none; padding: 18px 20px;">
+            <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: 700; color: #1E3A5F;">5. Complimentary Workshops Calendar 2026–27</p>
+            <p style="margin: 0 0 8px 0; font-size: 14px; color: #555; line-height: 1.6;">1-day sessions for All students:</p>
+            <table style="width:100%; border-collapse: collapse; font-size: 13px; color: #444;">
+                <tr style="background:#f0f4ff;"><td style="padding: 7px 10px; font-weight:600;">Grade 1 &amp; 2</td><td style="padding: 7px 10px;">3D Pen</td></tr>
+                <tr><td style="padding: 7px 10px; font-weight:600;">Grade 3–5</td><td style="padding: 7px 10px;">VR &amp; AR</td></tr>
+                <tr style="background:#f0f4ff;"><td style="padding: 7px 10px; font-weight:600;">Grade 6–8</td><td style="padding: 7px 10px;">Drone Flying</td></tr>
+                <tr><td style="padding: 7px 10px; font-weight:600;">Grade 9 &amp; 10</td><td style="padding: 7px 10px;">Space &amp; Rocket Building</td></tr>
+                <tr style="background:#f0f4ff;"><td style="padding: 7px 10px; font-weight:600;">Teachers</td><td style="padding: 7px 10px;">AI Tools for Educators</td></tr>
+                <tr><td style="padding: 7px 10px; font-weight:600;">Grandparents</td><td style="padding: 7px 10px;">Cyber Security — How to Stay Safe Online</td></tr>
+            </table>
+            <div style="text-align: left; margin-top: 12px;">
+                <a href="https://www.youtube.com/watch?v=QTE-LC7SL9M"
+                   style="display: inline-block; background: #c0392b; color: white; text-decoration: none; padding: 9px 18px; border-radius: 6px; font-size: 13px; font-weight: 600;">
+                    &#9654; Watch Workshop Video
+                </a>
+            </div>
+        </div>
+
+        <!-- 6. Competitions & Exhibitions -->
+        <div style="border: 1px solid #dde4ef; border-top: none; padding: 18px 20px;">
+            <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: 700; color: #1E3A5F;">6. National Level Competitions &amp; Exhibitions</p>
+            <p style="margin: 0 0 6px 0; font-size: 14px; color: #444; line-height: 1.7;">
+                <strong>Robo Sumo, Robo Race &amp; Robo Football</strong> — at interclass, interschool &amp; national levels (held at IIT Bombay).
+            </p>
+            <p style="margin: 0 0 10px 0; font-size: 14px; color: #444; line-height: 1.7;">
+                <strong>Global Robotics &amp; AI Challenge</strong> — Virtual global competition; winners receive a full scholarship to the UNESCO camp in Washington DC.
+            </p>
+            <div style="text-align: left; margin-top: 4px;">
+                <a href="https://www.youtube.com/watch?v=B0n8-RYegVc&t=45s"
+                   style="display: inline-block; background: #c0392b; color: white; text-decoration: none; padding: 9px 18px; border-radius: 6px; font-size: 13px; font-weight: 600;">
+                    &#9654; IIT Bombay Techfest
+                </a>
+            </div>
+        </div>
+
+        <!-- 7. Assessments -->
+        <div style="border: 1px solid #dde4ef; border-top: none; padding: 18px 20px;">
+            <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: 700; color: #1E3A5F;">7. Assessments</p>
+            <p style="margin: 0 0 6px 0; font-size: 14px; color: #555;">Half-yearly practical assessments — students assessed on:</p>
+            <ul style="margin: 0; padding-left: 20px; font-size: 14px; color: #444; line-height: 1.8;">
+                <li>Creativity</li>
+                <li>Logical Reasoning</li>
+                <li>Problem Solving</li>
             </ul>
         </div>
-        <p style="color: #333; line-height: 1.7;">
-            We would love to discuss the proposal in detail at your convenience. Please feel free to share any feedback or questions — we're happy to customize the proposal as per your school's requirements.
+
+        <!-- 8. Certifications -->
+        <div style="border: 1px solid #dde4ef; border-top: none; padding: 18px 20px;">
+            <p style="margin: 0 0 6px 0; font-size: 15px; font-weight: 700; color: #1E3A5F;">8. International Certifications</p>
+            <p style="margin: 0; font-size: 14px; color: #444; line-height: 1.7;">
+                Hardcopy certifications from <strong>STEM.org</strong> &amp; in collaboration with <strong>UNESCO World Genesis Foundation</strong> — for each child.
+            </p>
+        </div>
+
+        <!-- 9. OLL Support Team -->
+        <div style="border: 1px solid #dde4ef; border-top: none; border-radius: 0 0 10px 10px; padding: 18px 20px; margin-bottom: 28px;">
+            <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: 700; color: #1E3A5F;">9. OLL Support Team</p>
+            <p style="margin: 0 0 8px 0; font-size: 14px; color: #555;">Dedicated Relationship Manager assigned for each school:</p>
+            <ul style="margin: 0; padding-left: 20px; font-size: 14px; color: #444; line-height: 1.8;">
+                <li>Monthly reports for each school</li>
+                <li>48-hour query resolution for School, Parents &amp; Students</li>
+                <li>Backup educator if educator is absent</li>
+                <li>Trainer replacement if educator discontinues</li>
+                <li>24x7 WhatsApp community support for teachers</li>
+            </ul>
+        </div>
+
+        <!-- Watch OLL in Schools -->
+        <div style="background: #f8faff; border: 1px solid #dde4ef; border-radius: 10px; padding: 20px; margin-bottom: 24px;">
+            <p style="margin: 0 0 14px 0; font-size: 15px; font-weight: 700; color: #1E3A5F;">Watch OLL's Program Live in Schools</p>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td style="padding: 4px 8px 4px 0; width: 50%;">
+                        <a href="https://www.youtube.com/watch?v=PC51gxK186c"
+                           style="display:block; background:#c0392b; color:white; text-decoration:none; padding:9px 12px; border-radius:6px; font-size:12px; font-weight:600; text-align:center;">
+                            &#9654; NL Dalmia School
+                        </a>
+                    </td>
+                    <td style="padding: 4px 0 4px 8px; width: 50%;">
+                        <a href="https://www.youtube.com/watch?v=BU3ZjAlI2tQ"
+                           style="display:block; background:#c0392b; color:white; text-decoration:none; padding:9px 12px; border-radius:6px; font-size:12px; font-weight:600; text-align:center;">
+                            &#9654; Jankidevi School
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 8px 0 0; width: 50%;">
+                        <a href="https://www.youtube.com/watch?v=YoIu5akBkr0"
+                           style="display:block; background:#c0392b; color:white; text-decoration:none; padding:9px 12px; border-radius:6px; font-size:12px; font-weight:600; text-align:center;">
+                            &#9654; Greenlawns High School
+                        </a>
+                    </td>
+                    <td style="padding: 8px 0 0 8px; width: 50%;">
+                        <a href="https://www.youtube.com/watch?v=q6mHoHsdmhA"
+                           style="display:block; background:#1E3A5F; color:white; text-decoration:none; padding:9px 12px; border-radius:6px; font-size:12px; font-weight:600; text-align:center;">
+                            &#9654; Lab Setup Tour
+                        </a>
+                    </td>
+                </tr>
+            </table>
+            <div style="text-align: center; margin-top: 12px;">
+                <a href="https://www.youtube.com/watch?v=OavfLmAdprc&t=2s"
+                   style="display: inline-block; background: #27ae60; color: white; text-decoration: none; padding: 10px 24px; border-radius: 6px; font-size: 13px; font-weight: 600;">
+                    &#127897; Principal's Feedback
+                </a>
+            </div>
+        </div>
+
+        <p style="color: #333; font-size: 15px; line-height: 1.8; margin-bottom: 28px;">
+            We would love to discuss the proposal in detail at your convenience. Please feel free to share any feedback or questions — we're happy to customise the proposal as per {school_name}'s requirements.
         </p>
-        <p style="color: #555; line-height: 1.6; margin-top: 24px;">
+
+        <p style="color: #555; font-size: 14px; line-height: 1.6; margin-top: 20px;">
             Warm regards,<br>
             <strong style="color: #1E3A5F;">{sender_name}</strong><br>
             <span style="color: #888; font-size: 13px;">OLL School Partnerships</span>
