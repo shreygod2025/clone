@@ -1330,6 +1330,7 @@ ${FOOTER}</div></body></html>`
       // Save proposal data to inquiry
       const updateData = {
         proposal_data: { ...editLeadData },
+        school_contacts: editLeadData.school_contacts?.filter(c => c.name) || [],
       };
       
       // Also prepare onboarding_data for continuity when moving to Meeting Done
@@ -6200,6 +6201,103 @@ ${FOOTER}</div></body></html>`
                 </div>
               </div>
               )}
+            </div>
+
+            {/* School Team Contacts Section */}
+            <div className="bg-slate-50 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                  <Users className="w-4 h-4" /> School Team Contacts
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setEditLeadData(prev => ({
+                    ...prev,
+                    school_contacts: [...(prev.school_contacts || []), { name: '', role: '', phone_number: '', country_code: '+91', email: '' }]
+                  }))}
+                  className="text-blue-600 h-7 text-xs"
+                >
+                  <Plus className="w-3 h-3 mr-1" /> Add Contact
+                </Button>
+              </div>
+              <div className="space-y-3">
+                {(editLeadData.school_contacts || []).map((contact, idx) => (
+                  <div key={idx} className="bg-white border border-slate-200 p-3 rounded-lg space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        placeholder="Name *"
+                        value={contact.name || ''}
+                        onChange={(e) => setEditLeadData(prev => {
+                          const contacts = [...(prev.school_contacts || [])];
+                          contacts[idx] = { ...contacts[idx], name: e.target.value };
+                          return { ...prev, school_contacts: contacts };
+                        })}
+                        className="h-9 text-sm"
+                        data-testid={`edit-contact-name-${idx}`}
+                      />
+                      <select
+                        value={contact.role || ''}
+                        onChange={(e) => setEditLeadData(prev => {
+                          const contacts = [...(prev.school_contacts || [])];
+                          contacts[idx] = { ...contacts[idx], role: e.target.value };
+                          return { ...prev, school_contacts: contacts };
+                        })}
+                        className="h-9 px-3 border border-slate-200 rounded-lg text-sm bg-white"
+                        data-testid={`edit-contact-role-${idx}`}
+                      >
+                        <option value="">Select Role</option>
+                        <option value="principal">Principal</option>
+                        <option value="vice_principal">Vice Principal</option>
+                        <option value="trustee_owner">Trustee/Owner</option>
+                        <option value="director">Director</option>
+                        <option value="coordinator">Coordinator</option>
+                        <option value="accounts">Accounts</option>
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <PhoneInput
+                        value={contact.phone_number || ''}
+                        onChange={(val) => setEditLeadData(prev => {
+                          const contacts = [...(prev.school_contacts || [])];
+                          contacts[idx] = { ...contacts[idx], phone_number: val };
+                          return { ...prev, school_contacts: contacts };
+                        })}
+                        countryCode={contact.country_code || '+91'}
+                        onCountryCodeChange={(code) => setEditLeadData(prev => {
+                          const contacts = [...(prev.school_contacts || [])];
+                          contacts[idx] = { ...contacts[idx], country_code: code };
+                          return { ...prev, school_contacts: contacts };
+                        })}
+                        placeholder="Phone"
+                      />
+                      <Input
+                        placeholder="Email"
+                        value={contact.email || ''}
+                        onChange={(e) => setEditLeadData(prev => {
+                          const contacts = [...(prev.school_contacts || [])];
+                          contacts[idx] = { ...contacts[idx], email: e.target.value };
+                          return { ...prev, school_contacts: contacts };
+                        })}
+                        className="h-9 text-sm"
+                        data-testid={`edit-contact-email-${idx}`}
+                      />
+                    </div>
+                    {(editLeadData.school_contacts || []).length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setEditLeadData(prev => ({
+                          ...prev,
+                          school_contacts: prev.school_contacts.filter((_, i) => i !== idx)
+                        }))}
+                        className="text-xs text-red-500 hover:text-red-700"
+                      >
+                        Remove Contact
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
 
             {/* Notes Section */}

@@ -29,7 +29,7 @@ You are a fast, decisive AI operator for the OLL School CRM. Your job is to GET 
 6. **MEETINGS definition** — any school with status `meeting_done` OR has a `MeetingDate` field.
 7. **PROPOSALS/MOUs** — use any pricing info given by the user. If the school already has grade_pricing set in CRM, the backend will use it automatically — do NOT invent or apply default pricing in that case. Only use defaults (grade "All", students 500, ₹500/student) when the school has NO existing pricing. Never ask for grade info.
 8. **NEVER show UUIDs** — use school names in all responses.
-9. **MULTI-ACTION** — "follow up with X" → change_status=follow_up + add_note. Do it all at once.
+9. **MULTI-ACTION** — "follow up with X" → schedule_followup + add_note. Do it all at once. NEVER use change_status=follow_up — there is no follow_up status.
 10. **TRAINING TYPE** — when user asks to set training type use update_lead with fields: {"training_type": "<value>"}. Valid values: student_training | teacher_training | both. Always use snake_case field names. NEVER use camelCase like TrainingType or ProgramType.
 11. **INVOICES** — use generate_invoice to create and download invoice PDF. Use generate_invoice with send_email=true to also email it to the school's contacts. For "send invoice" requests, add send_email=true.
 12. **CONVERSATION CONTEXT (CRITICAL)** — You have full access to conversation history. ALWAYS use it to resolve ambiguous references BEFORE asking any question.
@@ -45,7 +45,8 @@ You are a fast, decisive AI operator for the OLL School CRM. Your job is to GET 
   training_type valid values: student_training | teacher_training | both
 - delete_lead: { type, school_id, school_name }
 - change_status: { type, school_id, school_name, status }
-  statuses → new | meeting_done | converted | active | renewal_meeting | renewed | lost | lost_lead | archived | follow_up
+  statuses → new | meeting_done | converted | active | renewal_meeting | renewed | lost | lost_lead | archived
+  IMPORTANT: Do NOT use follow_up as a status — it does NOT exist in the CRM. For follow-up requests, use schedule_followup action instead.
 - add_note: { type, school_id, school_name, note }
 - convert_lead: { type, school_id, school_name, conversion_amount? }
 - send_email: { type, school_id, school_name, email_type, to_email? }
@@ -278,6 +279,9 @@ async def _execute(action: dict, user: dict) -> dict:
             if not sid:
                 return {"status": "error", "detail": "school_id required"}
             new_status = action.get("status", "")
+            VALID_STATUSES = {"new", "meeting_done", "converted", "active", "renewal_meeting", "renewed", "lost", "lost_lead", "archived"}
+            if new_status not in VALID_STATUSES:
+                return {"status": "error", "detail": f"Invalid status '{new_status}'. Valid values: {', '.join(sorted(VALID_STATUSES))}. For follow-ups use schedule_followup instead."}
             res = await db.school_inquiries.update_one(
                 {"id": sid},
                 {"$set": {"status": new_status, "updated_at": now},
