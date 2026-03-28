@@ -32,6 +32,11 @@ You are a fast, decisive AI operator for the OLL School CRM. Your job is to GET 
 9. **MULTI-ACTION** — "follow up with X" → change_status=follow_up + add_note. Do it all at once.
 10. **TRAINING TYPE** — when user asks to set training type use update_lead with fields: {"training_type": "<value>"}. Valid values: student_training | teacher_training | both. Always use snake_case field names. NEVER use camelCase like TrainingType or ProgramType.
 11. **INVOICES** — use generate_invoice to create and download invoice PDF. Use generate_invoice with send_email=true to also email it to the school's contacts. For "send invoice" requests, add send_email=true.
+12. **CONVERSATION CONTEXT (CRITICAL)** — You have full access to conversation history. ALWAYS use it to resolve ambiguous references BEFORE asking any question.
+    - "this", "it", "the same", "that school", "for this one", "do it for this" → the most recently mentioned or acted-upon school in the conversation.
+    - "the lead I just created", "the new one", "same school" → the last school that was created/updated/mentioned.
+    - NEVER ask "which school?" if there was a school mentioned in the last 5 messages. Look back through the conversation and use it.
+    - If someone says "generate proposal for this" right after creating/mentioning a school, that IS the school — act on it immediately.
 
 ## CAPABILITIES — produce actions in the "actions" array:
 - create_lead: { type, school_name, city?, board?, contact_name?, phone?, email?, source?, notes? }
@@ -641,6 +646,50 @@ async def chat_message(payload: dict, user: dict = Depends(get_current_user)):
     if not user_text:
         raise HTTPException(status_code=400, detail="Message cannot be empty")
 
+    # ── Pronoun resolution: inject last-mentioned school into message ──────
+    # When user says "this", "it", "the same", "for this one" etc., look up
+    # the most recently mentioned school from session history and prepend context.
+    PRONOUN_PATTERNS = re.compile(
+        r'\b(this|it|the same|that school|for this|same school|this one|the lead|this lead|this school|same one)\b',
+        re.IGNORECASE
+    )
+    enriched_text = user_text
+    if PRONOUN_PATTERNS.search(user_text):
+        session_doc = await db.ai_chat_sessions.find_one(
+            {"session_id": session_id}, {"_id": 0, "messages": 1}
+        )
+        messages_hist = (session_doc or {}).get("messages", [])
+
+        # Fetch all known school names for content-matching
+        known_schools = await db.school_inquiries.find(
+            {}, {"_id": 0, "school_name": 1}
+        ).to_list(200)
+        known_names = [s.get("school_name", "") for s in known_schools if s.get("school_name")]
+
+        last_school = None
+        for msg in reversed(messages_hist[-20:]):
+            content = msg.get("content", "")
+
+            # 1. Check action cards (most reliable — AI explicitly named the school)
+            for action in (msg.get("actions") or []):
+                sn = action.get("school_name")
+                if sn:
+                    last_school = sn
+                    break
+            if last_school:
+                break
+
+            # 2. Match against known CRM school names in message content
+            for school_name in known_names:
+                if school_name and school_name.lower() in content.lower():
+                    last_school = school_name
+                    break
+            if last_school:
+                break
+
+        if last_school:
+            enriched_text = f'[Context: the user is referring to "{last_school}" based on conversation history]\n{user_text}'
+
     # Build system prompt with live CRM data
     crm_ctx = await _crm_context()
     system = AI_SYSTEM_PROMPT + crm_ctx
@@ -653,7 +702,7 @@ async def chat_message(payload: dict, user: dict = Depends(get_current_user)):
         system_message=system
     ).with_model("openai", "gpt-5.2")
 
-    raw = await chat.send_message(UserMessage(text=user_text))
+    raw = await chat.send_message(UserMessage(text=enriched_text))
 
     # Parse response
     parsed = _parse_response(raw)
@@ -679,7 +728,7 @@ async def chat_message(payload: dict, user: dict = Depends(get_current_user)):
             if name_key and exec_result.get("school_id"):
                 created_ids[name_key] = exec_result["school_id"]
 
-    # Save to DB for UI history
+    # Save to DB for UI history (save original user_text, not enriched)
     now = datetime.now(timezone.utc).isoformat()
     await db.ai_chat_sessions.update_one(
         {"session_id": session_id},
