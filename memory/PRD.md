@@ -1121,3 +1121,25 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 
 **Testing**: Verified via API — PATCH `/api/schools/inquiry/{id}` now correctly accepts, saves, and returns `school_contacts`.
 
+
+
+### 2026-03-29 — Summer Camp 2026 Feature
+
+**What was built**:
+- Summer Camps section on Offerings page (Individuals tab) with "Future Skills Summer Camp 2026" card
+- Age Group Selector Modal: 3 groups — Little Explorers (4-8), Tech Creators (9-12), Future Innovators (13-16)
+- 3 landing pages at `/summer-camp/:ageGroup` (explorers, creators, innovators) — futuristic dark tech theme, live countdown timer, curriculum, schedule with weekday/weekend toggle, centers, pricing, testimonials
+- Booking page at `/summer-camp/book?age=<group>` — 3-step flow: child/parent details → batch+center selection → payment (Cashfree online or cash at center)
+- Success page at `/summer-camp/success`
+- Backend routes in `/app/backend/routes/summer_camp.py`: register, initiate-payment, verify, webhook, bookings, stats
+- Admin Student CRM: Summer Camp tab with stats bar + bookings table (lead vs converted status)
+
+**Key details**:
+- Price: ₹1,999/student, all inclusive
+- 4 batch weeks in May 2026 (weekday Mon-Fri 1hr/day or weekend Sat-Sun 2.5hr/day)
+- Centers: Mira Road, Dombivli Pallava, Andheri West Lokhandwala + Online
+- Payment: Cashfree (online) or cash at center (offline only)
+- DB collection: `summer_camp_bookings`
+- CRM status: `lead` (form filled) or `converted` (paid)
+
+**Testing**: 95% pass rate (16/16 backend tests passed, all frontend flows passed). Batch date bug fixed after testing.

@@ -533,6 +533,7 @@ const OfferingsPage = () => {
                       </div>
                       <button
                         data-testid="summer-camp-cta-btn"
+                        onClick={(e) => { e.stopPropagation(); setShowAgeModal(true); }}
                         style={{
                           display: 'inline-flex', alignItems: 'center', gap: 10,
                           padding: '0.9rem 2rem', borderRadius: '999px',

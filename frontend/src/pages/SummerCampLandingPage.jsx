@@ -71,9 +71,9 @@ const CENTERS = [
 
 const BATCH_DATES = {
   week1: { weekday: 'May 1–5, 2026', weekend: 'May 2–3 & 9–10, 2026' },
-  week2: { weekday: 'May 8–12, 2026', weekend: 'May 16–17 & 23–24, 2026' },
-  week3: { weekday: 'May 15–19, 2026', weekend: 'May 2–3 & 9–10, 2026' },
-  week4: { weekday: 'May 22–26, 2026', weekend: 'May 23–24, 2026' },
+  week2: { weekday: 'May 8–12, 2026', weekend: 'May 9–10 & 16–17, 2026' },
+  week3: { weekday: 'May 15–19, 2026', weekend: 'May 16–17 & 23–24, 2026' },
+  week4: { weekday: 'May 22–26, 2026', weekend: 'May 23–24 & 30–31, 2026' },
 };
 
 const INCLUDES = [
