@@ -1,6 +1,6 @@
 # OLL Schools External API — Integration Guide
 
-**Base URL:** `https://payment-thanks-email.preview.emergentagent.com`  
+**Base URL:** `https://inquiry-edit-bug.preview.emergentagent.com`  
 **Version:** v1  
 **Last Updated:** March 2026
 
@@ -39,7 +39,7 @@ GET /api/external/schools/active
 **Example Request**
 ```bash
 curl -H "X-API-Key: oll_sk_your_key_here" \
-  "https://payment-thanks-email.preview.emergentagent.com/api/external/schools/active"
+  "https://inquiry-edit-bug.preview.emergentagent.com/api/external/schools/active"
 ```
 
 **Example Response**
@@ -102,11 +102,11 @@ GET /api/external/schools
 ```bash
 # Get all active schools
 curl -H "X-API-Key: oll_sk_your_key_here" \
-  "https://payment-thanks-email.preview.emergentagent.com/api/external/schools?status=active&limit=50"
+  "https://inquiry-edit-bug.preview.emergentagent.com/api/external/schools?status=active&limit=50"
 
 # Paginate — next page
 curl -H "X-API-Key: oll_sk_your_key_here" \
-  "https://payment-thanks-email.preview.emergentagent.com/api/external/schools?status=active&limit=50&offset=50"
+  "https://inquiry-edit-bug.preview.emergentagent.com/api/external/schools?status=active&limit=50&offset=50"
 ```
 
 **Example Response**
@@ -177,7 +177,7 @@ GET /api/external/schools/{school_id}
 **Example Request**
 ```bash
 curl -H "X-API-Key: oll_sk_your_key_here" \
-  "https://payment-thanks-email.preview.emergentagent.com/api/external/schools/09dcd297-f09a-4f16-a8eb-e52747b8d46c"
+  "https://inquiry-edit-bug.preview.emergentagent.com/api/external/schools/09dcd297-f09a-4f16-a8eb-e52747b8d46c"
 ```
 
 **Example Response**
@@ -229,7 +229,7 @@ GET /api/external/schools/stats/summary
 **Example Request**
 ```bash
 curl -H "X-API-Key: oll_sk_your_key_here" \
-  "https://payment-thanks-email.preview.emergentagent.com/api/external/schools/stats/summary"
+  "https://inquiry-edit-bug.preview.emergentagent.com/api/external/schools/stats/summary"
 ```
 
 **Example Response**
@@ -272,7 +272,7 @@ curl -H "X-API-Key: oll_sk_your_key_here" \
 ```python
 import requests
 
-BASE_URL = "https://payment-thanks-email.preview.emergentagent.com"
+BASE_URL = "https://inquiry-edit-bug.preview.emergentagent.com"
 API_KEY  = "oll_sk_your_key_here"   # replace with your actual key
 
 headers = {"X-API-Key": API_KEY}
@@ -291,7 +291,7 @@ for school in data["schools"]:
 ## Quick Start (JavaScript / Node)
 
 ```javascript
-const BASE_URL = "https://payment-thanks-email.preview.emergentagent.com";
+const BASE_URL = "https://inquiry-edit-bug.preview.emergentagent.com";
 const API_KEY  = "oll_sk_your_key_here";   // replace with your actual key
 
 const res = await fetch(`${BASE_URL}/api/external/schools/active`, {

@@ -1174,6 +1174,10 @@ const AdminSchoolCRM = () => {
       pricing_type: existingData.pricing_type || 'per_student',
       fixed_price: existingData.fixed_price || '',
       notes: existingData.notes || '',
+      // Read school_contacts from top-level inquiry field (NOT from proposal_data/onboarding_data)
+      school_contacts: inquiry.school_contacts?.length > 0
+        ? inquiry.school_contacts
+        : [{ name: '', role: '', phone_number: '', country_code: '+91', email: '' }],
     });
     setShowEditLeadModal(inquiry);
   };
@@ -5394,15 +5398,15 @@ ${FOOTER}</div></body></html>`
                       )}
 
                       {/* School Contacts */}
-                      {viewInquiry.onboarding_data.school_contacts?.length > 0 && (
+                      {((viewInquiry.school_contacts?.length > 0 ? viewInquiry.school_contacts : viewInquiry.onboarding_data?.school_contacts) || []).length > 0 && (
                         <div className="border-t border-purple-200 pt-3">
                           <p className="text-xs text-purple-600 mb-2">School Team Contacts</p>
                           <div className="space-y-1">
-                            {viewInquiry.onboarding_data.school_contacts.map((c, idx) => (
+                            {(viewInquiry.school_contacts?.length > 0 ? viewInquiry.school_contacts : viewInquiry.onboarding_data?.school_contacts).map((c, idx) => (
                               <div key={idx} className="text-sm text-purple-800 bg-white/50 px-2 py-1 rounded flex items-center gap-2">
                                 <span className="font-medium">{c.name}</span>
-                                <span className="text-purple-600">({c.role})</span>
-                                <span>{c.phone}</span>
+                                {c.role && <span className="text-purple-600">({c.role})</span>}
+                                <span>{c.phone_number || c.phone}</span>
                                 {c.email && <span className="text-purple-500">{c.email}</span>}
                               </div>
                             ))}

@@ -1,38 +1,29 @@
-<analysis>original_problem_statement: The user requested fixes for GST visibility in the School CRM popups, corrected invoice math and multi-line item generation, MOU generation in the Edit popup, dynamic MOU text and onboarding steps based on training type, a 2-step PO preview flow, and correct GST exclusive total calculations reflecting on the Orders page. Finally, the user requested an automated thank-you/receipt email to be sent to students who pay via the school's online payment link.
+<analysis>**original_problem_statement**: The user requested fixes for GST visibility, corrected invoice math, automated payment receipt emails for online student payments, and extensive improvements to the AI Chat CRM assistant (preventing data overwrites, invoice generation, pronoun resolution, correct proposal defaults, and fixing status changes). The user also requested a complete revamp of the Proposal HTML email template and the ability to track School Team Contacts across lead stages. PRODUCT REQUIREMENTS include seamless multi-action AI chat, accurate PDF generation using existing templates, and detailed activity logging.
 
 **User's preferred language**: English (INSTRUCT next agent to respond in English only)
 
 **what currently exists?** 
-A full-stack React + FastAPI application with MongoDB. The Admin School CRM handles leads, onboarding workflows, PO generation, and document generation (MOU/Invoice). The system has recently been updated to properly calculate and propagate GST types (inclusive/exclusive/book), handle dynamic MOU PDF wording based on training type, and support a 2-step PO Preview & Edit flow. Email sending is currently supported via Resend API.
+A full-stack React + FastAPI application with MongoDB serving as a School CRM and Orders system. The AI Chat acts as an agentic assistant that can create leads, generate proposals, MOUs, and invoices, schedule follow-ups, and send emails. The system uses Resend for emails and jsPDF for frontend document generation. The application now supports automated student payment receipts, robust AI chat context-awareness, and a rich, updated HTML template for proposal emails.
 
 **Last working item**:
-    - Last item agent was working: Sending an automated payment receipt and thank-you email to students after they pay via the school's online payment link. 
-    - Status: IN PROGRESS
-    - Agent Testing Done: N
-    - Which testing method agent to use? backend testing agent (to verify email triggers) or manual testing by triggering a mock student payment / hitting the sync/verify endpoint.
+    - Last item agent was working: Fixing a data initialization bug where School Team Contacts were being erased when a lead was moved from New Lead to Meeting Done via the Edit popup. The agent identified that  was initializing  as , causing it to overwrite existing contacts with an empty array.
+    - Status: IN PROGRESS / USER VERIFICATION PENDING
+    - Agent Testing Done: N (Code was injected via search_replace in message 461, but not yet tested or finalized).
+    - Which testing method agent to use? Frontend manual testing by screenshot tool or manual UI testing (open Edit popup for a lead with contacts, save, and ensure contacts are retained).
     - User Testing Done: N
 
-**All Pending/In progress Issue list**:
-  Issue 1: (P0) Student Online Payment Email Receipt
-     - Attempted fixes: Agent mapped the endpoints ( ->  / ) and Resend email setup but the context window ended before any implementation.
-     - Next debug checklist: 
-        - Check : Identify where a successful student payment is verified (e.g.,  or webhook).
-        - Create an email template function (e.g., in  or ) using Resend API.
-        - Ensure email content rules are strictly followed: DO NOT add the full form of OLL, use support number , use support email . Include a receipt/payment summary.
-        - Send a sample test email to .
-     - Why fix this issue and what will be achieved with the fix? Completes the user request for an automated student-facing transaction receipt.
-     - Status: IN PROGRESS
+**All Pending/In progress Issue list**:  
+  Issue 1: (P0) School Team Contacts overwritten during Edit Lead save
+     - Attempted fixes: The agent applied a  patch to  (around line 1161) to correctly initialize  from  instead of leaving it undefined. 
+     - Next debug checklist: Verify the fix in . Test the Edit Lead modal to ensure saving does not wipe out the contacts array. Check the payload sent to .
+     - Why fix this issue and what will be achieved with the fix? Prevents critical contact data loss when sales team updates lead stages.
+     - Status: TESTING PENDING
      - Is recurring issue? N
-     - Should Test frontend/backend/both after fix? Backend (Email sending functionality)
+     - Should Test frontend/backend/both after fix? Frontend
      - Blocked on other issue: None
 
-**In progress Task List**:
-  Task 1: Email Receipt for Student Payment
-     - Where to resume: 
-     - What will be achieved with this? Students get an immediate email confirmation upon paying.
-     - Status: NOT STARTED (Context gathered only)
-     - Should Test frontend/backend/both after fix? Backend
-     - Blocked on something: None
+**In progress Task List**: 
+  (None - All previous tasks were marked completed prior to the last bug report).
 
 **Upcoming and Future Tasks**
     Upcoming Tasks:
@@ -42,29 +33,28 @@ A full-stack React + FastAPI application with MongoDB. The Admin School CRM hand
 
     Future Tasks:
     - Add markdown rendering to AI responses
-    - Implement a real-time Cashfree Webhook handler (partially relates to current email task)
     - Implement backend Role-Based Access Control (RBAC)
     - Add audit logging for sensitive administrative actions
+    - Refactor  (Urgent: File is >12,000 lines long and highly fragile)
 
 **Completed work in this session**
-- Fixed  to map distinct lines per grade instead of lumping (DONE)
-- Fixed Invoice Math: Rate column shows scaled rate, properly doing  (DONE)
-- Added GST Type dropdown to Edit School popup and fixed missing visibility (DONE)
-- Orders Sync Fix: Tranche amounts now correctly recalculate when  is edited (DONE)
-- Removed tranche info strings from invoice line items (DONE)
-- Added Generate MOU functionality to the Edit School popup () (DONE)
-- Updated MOU text dynamically: 'Student Training' vs 'Teacher Training', removed unused fields, fixed coordinator fallback (DONE)
-- Renamed Teacher Training step to Teacher Allocation and School Approval if  mode is selected (DONE)
-- Built 2-step PO flow: added  endpoint and UI to review/edit PO products before raising (DONE)
-- Removed manual Total Amount field; tranches auto-calculate from GST-inclusive Grand Total (DONE)
-- Updated Orders page to correctly show GST Exclusive amounts and types (DONE)
+- Built Student Payment Email Receipt flow using Resend (frontend email field + backend trigger) (DONE)
+- Fixed AI Chat proposal generation to use existing school  instead of applying defaults (DONE)
+- Enabled AI Chat to change  and sync it properly to  (DONE)
+- Added AI Chat invoice generation using the exact same jsPDF format from the Orders page (DONE)
+- Fixed AI Chat context pronoun resolution (this, the same) by explicitly injecting the last mentioned school name into the prompt (DONE)
+- Fixed AI Chat proposal default grades to Jr. Kg - 10th and mapped individual kit to  program type (DONE)
+- Completely revamped  in  with new deliverables, links, and layout (DONE)
+- Added automatic, human-friendly email communication notes to the lead's  (DONE)
+- Added School Team Contacts fields to Add Lead and Edit Lead popups, modifying  models to support them (DONE)
+- Blocked AI Chat from using a non-existent  status, correctly mapping it to  +  (DONE)
 
 **Earlier issues found/mentioned but not fixed**
-   - Issue 1: LLM Budget Exceeded for Emergent LLM Key.
-   - Debug checklist: litellm budget exceeded errors seen in test reports in earlier sessions.
-   - Why to solve this issue and what will be achieved with this? Allows AI Chat to run automated tests.
-   - Should Test frontend/backend/both after fix: Backend
-   - Is recurring issue? Y (Billing limit)
+   - Issue 1: AdminSchoolCRM.jsx File Size / Complexity
+   - Debug checklist: The file exceeds 12,000 lines. Modals, forms, and helper functions need to be extracted into .
+   - Why to solve this issue and what will be achieved with this? State initialization bugs (like the contacts wipeout) are occurring because state management is too sprawling.
+   - Should Test frontend/backend/both after fix: Frontend
+   - Is recurring issue? Y (Source of multiple data-sync bugs)
 
 **Known issue recurrence from previous fork**
   - None
@@ -73,69 +63,71 @@ A full-stack React + FastAPI application with MongoDB. The Admin School CRM hand
 
 
 **Key Technical Concepts**
-- **Frontend**: React, jsPDF (AutoTable), Tailwind CSS
-- **Backend**: FastAPI, PyMongo, Resend API for emails
-- **Integrations**: Cashfree (Payments), Resend (Emails)
+- **Frontend**: React, Tailwind, jsPDF for local document generation.
+- **Backend**: FastAPI, PyMongo, LLM integrations via Emergent .
+- **AI Chat Architecture**: The LLM determines actions, returns them as JSON to the backend, the backend updates MongoDB and passes a  status back to the client (), which then triggers client-side PDF downloads or UI updates.
 
 **key DB schema**
-  - : Stores individual student payments tied to schools.
-  - : Stores  including , , and .
+  - : Stores lead data,  array, , , and .
+  - : Stores individual student payments, mapped to .
 
 **changes in tech stack**
   - None
 
 **All files of reference**
-  1.  (Current focus for webhook/payment verification)
-  2.  (Updated this session)
-  3.  (Updated this session)
-  4.  (Updated this session)
-  5.  (Updated to handle PO preview and Orders API)
+  1.  (Edited in last step for the contacts initialization bug)
+  2.  (Heavily updated for AI behaviors and pronoun resolution)
+  3.  (Updated Email HTML templates and  notes)
+  4.  (Updated to handle AI invoice generation and email toggles)
+  5.  (Updated with student email receipt triggers)
 
 **Areas that need refactoring**:
--  is getting extremely large (> 12,000 lines). It desperately needs to be broken down into smaller, focused components (e.g., , , etc.) in future iterations.
+-  (Extremely large, causing state collision bugs).
 
 **key api endpoints**
-- : New endpoint built this session to preview products.
-- : Updated to pass  and .
-- : Webhook handler for Cashfree.
-- : Verifies student payments.
+- : Main endpoint for AI Chat. Returns text and an array of executed .
+- : Generates and sends emails, logs activity notes.
+- : Creates a new lead.
+- : Updates a lead (used by Edit popup).
 
 **Critical Info for New Agent**
-- **Resend Email Rules**: User explicitly specified: NO OLL full form anywhere in the email text, use  for support phone, and  for support email.
-- **GST Math**:  now automatically calculates GST if the type is . Do not manually re-add GST on the frontend if you modify tranche generation again.
+- **AI Chat Context**:  now explicitly overrides pronoun references by checking the conversation history and appending  to the user's prompt before it hits the LLM. 
+- **Email Templates**:  handles HTML email generation. It uses  so any CSS styles or HTML properties containing curly braces MUST be double-escaped (e.g.,  and ) or variables must be specifically mapped via single brackets .
+- **PDF Generation**: Invoices generated by the AI Chat are now processed purely on the frontend using  in  to ensure they match the Orders page format exactly. The backend only returns the payment JSON data.
 
 **documents and test reports created in this job**
-  -  (Updated with iteration 61 and 62 changes, and finish summaries)
-  -  (Passed - GST fixes)
-  -  (Passed - PO Sync and Invoice math)
+  -  (Updated throughout the session)
 
 **Last 10 User Messages and any pending HUMAN messages** 
- - 1. User noted Orders price sync issue and Invoice Math  bug. (DONE)
- - 2. User asked to remove Tranche 1 text from invoice line items. (DONE)
- - 3. User requested Generate MOU button in the Edit School popup, functioning identically to the Converted popup. (DONE)
- - 4. User requested MOU text changes: Dynamic Training Date label based on , removing Course Name/Model fields, and preventing coordinator fallback to principal details. (DONE)
- - 5. User asked for a 2-step PO Preview dialog: allow viewing/editing/deleting products before finalizing the PO. (DONE)
- - 6. User asked to remove the Total Amount manual field and auto-calculate tranches using the Grand Total. (DONE)
- - 7. User noted GST Exclusive amounts were missing from Orders page badges and totals. (DONE)
- - 8. (PENDING) User asked to send an automated email receipt + thank you to a student's email when they pay via the school online payment link. Emphasized: NO OLL full form, support number is 9920188188, support email is info@oll.co. Requested a sample email to be sent to .
+ - 1. User requested AI Chat not overwrite existing school pricing/students when generating proposals. (DONE)
+ - 2. User requested AI Chat ability to change training type (student/teacher) and generate/email invoices. (DONE)
+ - 3. User noticed AI invoice was a new format, requested it use the existing invoice format from Orders page. (DONE)
+ - 4. User noted AI chat could not resolve pronouns like this or the same to a previously discussed school. (DONE)
+ - 5. User requested default grades for proposals be Jr Kg - 10th, not All, and mapping updates for individual kit. (DONE)
+ - 6. User noticed grades still saving as Grade All and requested it show Grade Jr Kg - 10th on the PDF table. (DONE)
+ - 7. User provided a highly detailed, updated HTML template for Proposal emails with specific formatting and links. (DONE)
+ - 8. User requested an activity note be added to leads for every communication sent, and requested School Team Contacts in New Lead popup. (DONE)
+ - 9. User requested School Team Contacts in the Edit popup, and noted AI uses an invalid followup stage. (DONE)
+ - 10. *(PENDING)* User reported that moving a lead from New Lead to Meeting Done via the Edit popup erases the School Team Contacts. (Agent patched code but did not test/finish).
 
 **Project Health Check:**
-- **Broken**: None explicitly broken, but  needs the email trigger added.
-- **Mocked**: None.
+- Broken:  Edit Lead data initialization (Patch applied, needs testing).
+- Mocked: None
 
 **3rd Party Integrations**
-- OpenAI GPT-5.4-mini — uses Emergent LLM Key
+- OpenAI GPT-5.4-mini — uses Emergent LLM Key (for AI Chat)
 - AiSensy (WhatsApp) — requires User API Key
 - Resend (Emails) — requires User API Key
 - Cashfree (Payments) — requires User API Key
 
 **Testing status**
-  - Testing agent used after significant changes: YES (Iteration 61 & 62 passed)
+  - Testing agent used after significant changes: NO (Agent self-tested via bash scripts and manual API tests).
   - Troubleshoot agent used after agent stuck in loop: NO
   - Test files created: None
+  - Known regressions: None explicitly known aside from the contacts wipeout on edit.
 
 **Credentials to test flow:**
 - Admin:  / 
 
 **What agent forgot to execute**
-- The agent successfully gathered context on  and the Resend setup, but the session ended before any code was written to implement the student payment email receipt. The new agent must start immediately on this P0 task.</analysis>
+- The agent applied the search/replace patch for the  initialization bug in  in message 461 but the context window ended before the agent could verify the UI, test the fix, and invoke the finish tool. Next agent must start by verifying this exact fix.</analysis>

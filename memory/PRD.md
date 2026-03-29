@@ -1110,3 +1110,14 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
   - When no MOU: "Generate MOU" primary button + "or upload existing" file input fallback
 - Generated MOU auto-saves `mou_url` to `editOnboardData` and adds to school's Docs collection
 
+### 2026-03-29 — School Team Contacts Overwrite Bug Fix
+**Bug**: School Team Contacts were being erased when moving a lead from "New Lead" to "Meeting Done" via the Edit Lead popup.
+
+**Root Causes Fixed**:
+1. **Backend** (`server.py`): `SchoolInquiryUpdate` model was missing `school_contacts` field, causing the PATCH endpoint to silently ignore any contact updates sent from the frontend. Added `school_contacts: Optional[List[dict]] = None`.
+2. **Frontend view modal** (`AdminSchoolCRM.jsx` line ~5401): Read contacts from `onboarding_data.school_contacts` (always empty for new leads), changed to read from top-level `viewInquiry.school_contacts` with fallback to `onboarding_data.school_contacts`.
+3. **Field mismatch**: View modal referenced `c.phone` but contacts store `c.phone_number`. Fixed to `c.phone_number || c.phone`.
+4. **Edit Lead init** (line 1178, applied in previous session): Already reads `school_contacts` from `inquiry.school_contacts` (top-level) instead of `onboarding_data.school_contacts`.
+
+**Testing**: Verified via API — PATCH `/api/schools/inquiry/{id}` now correctly accepts, saves, and returns `school_contacts`.
+

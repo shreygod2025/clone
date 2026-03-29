@@ -2891,6 +2891,8 @@ class SchoolInquiryUpdate(BaseModel):
     renewal_meeting_address: Optional[str] = None
     # Documents (proposal, MOU, parent circular, etc.)
     documents: Optional[list] = None
+    # School team contacts (synced at top-level for quick access)
+    school_contacts: Optional[List[dict]] = None
 
 # Educator Models
 class EducatorApplication(BaseModel):
@@ -8387,7 +8389,7 @@ async def notify_educators_new_requirement(requirement: dict):
             return
 
         req_id = requirement.get("id", "")
-        frontend_url = os.environ.get("FRONTEND_URL", "https://payment-thanks-email.preview.emergentagent.com")
+        frontend_url = os.environ.get("FRONTEND_URL", "https://inquiry-edit-bug.preview.emergentagent.com")
         apply_link = f"{frontend_url}/educator/apply/{req_id}"
 
         pay_text = ""
