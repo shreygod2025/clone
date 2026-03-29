@@ -14553,6 +14553,7 @@ async def test_whatsapp_notification(
 # Include router and middleware
 # Import and include extracted route modules
 from routes.payments import router as payments_router, scheduled_payment_sync, scheduler, PAYMENT_SYNC_ENABLED, PAYMENT_SYNC_INTERVAL_MINUTES
+from routes.summer_camp import router as summer_camp_router
 from routes.gp_onboarding import router as gp_onboarding_router
 from routes.reports import router as reports_router
 from routes.jobs import router as jobs_router
@@ -14568,6 +14569,7 @@ api_router.include_router(jobs_router)
 api_router.include_router(expenses_router)
 api_router.include_router(admin_keys_router)
 api_router.include_router(payments_router)
+api_router.include_router(summer_camp_router)
 api_router.include_router(gp_onboarding_router)
 api_router.include_router(daily_report_router)
 api_router.include_router(school_emails_router)

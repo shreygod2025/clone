@@ -4,7 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { 
   GraduationCap, Building2, ArrowRight, Users, BookOpen, 
   Cpu, Code, Brain, Lightbulb, TrendingUp, Clock, ChevronRight,
-  Play, School, Award, Star, Quote
+  Play, School, Award, Star, Quote, X, Zap
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -223,10 +223,113 @@ const OUR_EVENTS = [
   }
 ];
 
+// Age Group Selector Modal
+const AgeGroupModal = ({ onClose, onSelect }) => {
+  const groups = [
+    {
+      slug: 'explorers', label: 'Little Explorers', ages: '4 – 8',
+      tagline: 'First steps into robotics & coding',
+      color: '#00E5FF', gradient: 'linear-gradient(135deg, rgba(0,229,255,0.15) 0%, rgba(0,153,204,0.08) 100%)',
+      icon: '🚀',
+    },
+    {
+      slug: 'creators', label: 'Tech Creators', ages: '9 – 12',
+      tagline: 'Build robots and write real code',
+      color: '#D63031', gradient: 'linear-gradient(135deg, rgba(214,48,49,0.15) 0%, rgba(255,107,53,0.08) 100%)',
+      icon: '⚙️',
+    },
+    {
+      slug: 'innovators', label: 'Future Innovators', ages: '13 – 16',
+      tagline: 'AI, 3D Design & advanced robotics',
+      color: '#7C3AED', gradient: 'linear-gradient(135deg, rgba(124,58,237,0.15) 0%, rgba(214,48,49,0.08) 100%)',
+      icon: '🤖',
+    },
+  ];
+
+  return (
+    <div
+      data-testid="age-selector-modal"
+      style={{
+        position: 'fixed', inset: 0, zIndex: 9999,
+        background: 'rgba(8,12,22,0.92)', backdropFilter: 'blur(16px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '1.5rem',
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          background: '#0D1829', border: '1px solid rgba(0,229,255,0.2)',
+          borderRadius: '2rem', padding: '2.5rem', maxWidth: 680, width: '100%',
+          boxShadow: '0 0 80px rgba(0,229,255,0.08)',
+          position: 'relative',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          style={{ position: 'absolute', top: '1.25rem', right: '1.25rem', background: 'rgba(255,255,255,0.08)', border: 'none', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8' }}
+        >
+          <X size={16} />
+        </button>
+
+        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+          <p style={{ fontSize: '0.65rem', fontFamily: 'Outfit, sans-serif', letterSpacing: '0.2em', color: '#00E5FF', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem' }}>
+            Future Skills Summer Camp 2026
+          </p>
+          <h2 style={{ fontFamily: 'Unbounded, sans-serif', fontSize: 'clamp(1.2rem, 3vw, 1.6rem)', fontWeight: 900, color: '#F8FAFC', marginBottom: '0.5rem' }}>
+            Select Your Child's Age Group
+          </h2>
+          <p style={{ color: '#94A3B8', fontSize: '0.85rem', fontFamily: 'Outfit, sans-serif' }}>
+            Each camp is designed for that specific age group's learning stage
+          </p>
+        </div>
+
+        <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
+          {groups.map(g => (
+            <button
+              key={g.slug}
+              data-testid={`age-group-${g.slug}`}
+              onClick={() => onSelect(g.slug)}
+              style={{
+                background: g.gradient, border: `1px solid ${g.color}33`,
+                borderRadius: '1.25rem', padding: '1.75rem 1.25rem',
+                cursor: 'pointer', textAlign: 'center',
+                transition: 'all 0.25s', fontFamily: 'Outfit, sans-serif',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = g.color; e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = `0 8px 30px ${g.color}25`; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = `${g.color}33`; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
+            >
+              <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>{g.icon}</div>
+              <div style={{ fontFamily: 'Unbounded, sans-serif', fontWeight: 900, fontSize: '0.85rem', color: g.color, marginBottom: '0.25rem' }}>
+                Ages {g.ages}
+              </div>
+              <div style={{ fontFamily: 'Unbounded, sans-serif', fontWeight: 700, fontSize: '0.9rem', color: '#F8FAFC', marginBottom: '0.5rem' }}>
+                {g.label}
+              </div>
+              <div style={{ fontSize: '0.72rem', color: '#94A3B8', lineHeight: 1.4 }}>
+                {g.tagline}
+              </div>
+              <div style={{ marginTop: '1rem', display: 'inline-flex', alignItems: 'center', gap: 4, color: g.color, fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                Explore <ArrowRight size={12} />
+              </div>
+            </button>
+          ))}
+        </div>
+
+        <p style={{ textAlign: 'center', fontSize: '0.75rem', color: '#64748B', marginTop: '1.5rem', fontFamily: 'Outfit, sans-serif' }}>
+          ₹1,999 per child · May 2026 · Mumbai Centers + Online
+        </p>
+      </div>
+    </div>
+  );
+};
+
 const OfferingsPage = () => {
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState('individuals');
   const [caseStudies, setCaseStudies] = useState([]);
+  const [showAgeModal, setShowAgeModal] = useState(false);
 
   useEffect(() => {
     // Fetch case studies from backend
@@ -345,7 +448,149 @@ const OfferingsPage = () => {
                 </div>
               </div>
             </section>
+
+            {/* SUMMER CAMPS SECTION */}
+            <section className="py-16" style={{ background: 'linear-gradient(180deg, #f8fafc 0%, #0D1829 100%)' }}>
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="text-center mb-10">
+                  <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.7rem', letterSpacing: '0.2em', color: '#D63031', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem' }}>
+                    Exclusive · Limited Seats
+                  </p>
+                  <h2 style={{ fontFamily: 'Unbounded, sans-serif', fontSize: 'clamp(1.5rem, 4vw, 2.5rem)', fontWeight: 900, color: '#0D1829', marginBottom: '0.5rem' }}>
+                    Summer Camps 2026
+                  </h2>
+                  <p style={{ color: '#475569', maxWidth: 480, margin: '0 auto', fontSize: '0.95rem', fontFamily: 'Outfit, sans-serif' }}>
+                    Intensive 2-week camps where kids build real tech projects with expert mentors
+                  </p>
+                </div>
+
+                {/* Summer Camp Card */}
+                <div
+                  data-testid="summer-camp-offering-card"
+                  onClick={() => setShowAgeModal(true)}
+                  style={{
+                    position: 'relative',
+                    background: 'linear-gradient(135deg, #080C16 0%, #1E3A5F 50%, #0D1829 100%)',
+                    border: '1px solid rgba(0,229,255,0.25)',
+                    borderRadius: '2rem',
+                    padding: '3rem',
+                    cursor: 'pointer',
+                    overflow: 'hidden',
+                    transition: 'all 0.4s',
+                    boxShadow: '0 8px 40px rgba(0,0,0,0.3)',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#00E5FF'; e.currentTarget.style.boxShadow = '0 0 60px rgba(0,229,255,0.15), 0 8px 40px rgba(0,0,0,0.3)'; e.currentTarget.style.transform = 'translateY(-4px)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(0,229,255,0.25)'; e.currentTarget.style.boxShadow = '0 8px 40px rgba(0,0,0,0.3)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                >
+                  {/* Circuit pattern */}
+                  <div style={{ position: 'absolute', inset: 0, opacity: 0.15, pointerEvents: 'none' }}>
+                    <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                      <defs>
+                        <pattern id="circuit-card" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
+                          <path d="M60 0 L0 0 0 60" fill="none" stroke="#00E5FF" strokeWidth="0.5" />
+                          <circle cx="0" cy="0" r="2" fill="#00E5FF" />
+                          <path d="M30 0 L30 20 M30 40 L30 60 M0 30 L20 30 M40 30 L60 30" fill="none" stroke="#00E5FF" strokeWidth="0.5" />
+                          <circle cx="30" cy="30" r="3" fill="none" stroke="#00E5FF" strokeWidth="0.8" />
+                        </pattern>
+                      </defs>
+                      <rect width="100%" height="100%" fill="url(#circuit-card)" />
+                    </svg>
+                  </div>
+                  {/* Red glow */}
+                  <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(214,48,49,0.2) 0%, transparent 70%)', pointerEvents: 'none' }} />
+                  {/* Cyan glow */}
+                  <div style={{ position: 'absolute', bottom: '-30px', left: '-30px', width: 200, height: 200, borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,229,255,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
+
+                  <div className="relative grid md:grid-cols-2 gap-8 items-center">
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: '999px', background: 'rgba(214,48,49,0.2)', border: '1px solid #D63031', color: '#FF6B6B', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em', animation: 'pulse 2s infinite' }}>
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#D63031', display: 'inline-block' }} />
+                          Limited Spots
+                        </span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: '999px', background: 'rgba(0,229,255,0.1)', border: '1px solid rgba(0,229,255,0.3)', color: '#00E5FF', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em' }}>
+                          May 2026
+                        </span>
+                      </div>
+                      <h3 style={{ fontFamily: 'Unbounded, sans-serif', fontSize: 'clamp(1.25rem, 3.5vw, 2rem)', fontWeight: 900, color: '#F8FAFC', lineHeight: 1.2, marginBottom: '0.75rem' }}>
+                        Future Skills<br />
+                        <span style={{ color: '#00E5FF' }}>Summer Camp 2026</span>
+                      </h3>
+                      <p style={{ color: '#94A3B8', fontSize: '0.95rem', lineHeight: 1.6, marginBottom: '1.5rem', fontFamily: 'Outfit, sans-serif', maxWidth: 380 }}>
+                        Robotics · Coding · AI · 3D Design — 10 days of hands-on learning for ages 4–16. Online or at Mumbai centers.
+                      </p>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.75rem' }}>
+                        {[
+                          { icon: '🏙️', text: 'Mumbai Centers' },
+                          { icon: '💻', text: 'Online Option' },
+                          { icon: '👨‍👩‍👧', text: '10 Kids/Batch' },
+                          { icon: '📅', text: '4 Batch Weeks' },
+                        ].map(f => (
+                          <span key={f.text} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: '999px', background: 'rgba(255,255,255,0.06)', color: '#CBD5E1', fontSize: '0.78rem', fontFamily: 'Outfit, sans-serif' }}>
+                            {f.icon} {f.text}
+                          </span>
+                        ))}
+                      </div>
+                      <button
+                        data-testid="summer-camp-cta-btn"
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 10,
+                          padding: '0.9rem 2rem', borderRadius: '999px',
+                          background: '#D63031', color: '#fff',
+                          fontFamily: 'Unbounded, sans-serif', fontWeight: 700, fontSize: '0.85rem',
+                          border: 'none', cursor: 'pointer',
+                          boxShadow: '0 0 24px rgba(214,48,49,0.4)',
+                          letterSpacing: '0.05em',
+                          transition: 'all 0.3s',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 40px rgba(255,51,102,0.6)'; e.currentTarget.style.background = '#FF3366'; }}
+                        onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 24px rgba(214,48,49,0.4)'; e.currentTarget.style.background = '#D63031'; }}
+                      >
+                        Book for ₹1,999
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Right: Age group preview */}
+                    <div className="grid grid-cols-3 gap-3">
+                      {[
+                        { ages: '4–8', label: 'Little Explorers', color: '#00E5FF', icon: '🚀' },
+                        { ages: '9–12', label: 'Tech Creators', color: '#D63031', icon: '⚙️' },
+                        { ages: '13–16', label: 'Future Innovators', color: '#7C3AED', icon: '🤖' },
+                      ].map(g => (
+                        <div
+                          key={g.ages}
+                          style={{
+                            background: 'rgba(255,255,255,0.04)',
+                            border: `1px solid ${g.color}33`,
+                            borderRadius: '1rem',
+                            padding: '1.25rem 0.75rem',
+                            textAlign: 'center',
+                          }}
+                        >
+                          <div style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>{g.icon}</div>
+                          <div style={{ fontFamily: 'Unbounded, sans-serif', fontWeight: 900, fontSize: '0.75rem', color: g.color, marginBottom: '0.25rem' }}>Ages {g.ages}</div>
+                          <div style={{ fontSize: '0.65rem', color: '#94A3B8', fontFamily: 'Outfit, sans-serif', lineHeight: 1.3 }}>{g.label}</div>
+                        </div>
+                      ))}
+                      <div style={{ gridColumn: '1 / -1', background: 'rgba(0,229,255,0.05)', border: '1px solid rgba(0,229,255,0.15)', borderRadius: '0.75rem', padding: '0.75rem', textAlign: 'center' }}>
+                        <div style={{ fontFamily: 'Unbounded, sans-serif', fontWeight: 700, fontSize: '1rem', color: '#00E5FF' }}>₹1,999</div>
+                        <div style={{ fontSize: '0.7rem', color: '#94A3B8', fontFamily: 'Outfit, sans-serif' }}>per child · all inclusive</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
           </>
+        )}
+
+        {/* Age Group Modal */}
+        {showAgeModal && (
+          <AgeGroupModal
+            onClose={() => setShowAgeModal(false)}
+            onSelect={(slug) => { setShowAgeModal(false); navigate(`/summer-camp/${slug}`); }}
+          />
         )}
 
         {/* SCHOOLS SECTION */}

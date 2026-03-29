@@ -20,6 +20,7 @@ const STATUS_SECTIONS = [
   { value: 'demo_completed', label: 'Demo Completed', color: 'bg-purple-500' },
   { value: 'converted', label: 'Converted', color: 'bg-green-500' },
   { value: 'archived', label: 'Archived', color: 'bg-slate-400' },
+  { value: 'summer_camp', label: '🏕️ Summer Camp', color: 'bg-orange-500' },
 ];
 
 const SKILLS = ['Robotics', 'Coding', 'AI', 'Entrepreneurship', 'Financial Literacy', 'Other'];
@@ -58,6 +59,9 @@ const AdminStudentCRM = () => {
   const [showOnboardModal, setShowOnboardModal] = useState(null);
   const [showArchiveModal, setShowArchiveModal] = useState(null);
   const [archiveReason, setArchiveReason] = useState('');
+  // Summer Camp
+  const [summerCampBookings, setSummerCampBookings] = useState([]);
+  const [summerCampLoading, setSummerCampLoading] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [onboardedEducators, setOnboardedEducators] = useState([]);
   const [assignTab, setAssignTab] = useState('team'); // 'team' or 'educator'
@@ -122,6 +126,13 @@ const AdminStudentCRM = () => {
     fetchBatches();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (activeSection === 'summer_camp') {
+      fetchSummerCampBookings();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSection]);
 
   const fetchTeamUsers = async () => {
     try {
@@ -208,6 +219,18 @@ const AdminStudentCRM = () => {
       toast.error('Failed to fetch inquiries');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchSummerCampBookings = async () => {
+    setSummerCampLoading(true);
+    try {
+      const response = await axios.get(`${API}/summer-camp/bookings`, { headers: getAuthHeaders() });
+      setSummerCampBookings(response.data);
+    } catch {
+      toast.error('Failed to fetch summer camp bookings');
+    } finally {
+      setSummerCampLoading(false);
     }
   };
 
@@ -746,7 +769,7 @@ const AdminStudentCRM = () => {
     return matchesSearch && matchesSection && matchesAssignee;
   });
 
-  const getCount = (status) => inquiries.filter(i => i.status === status).length;
+  const getCount = (status) => status === 'summer_camp' ? summerCampBookings.length : inquiries.filter(i => i.status === status).length;
 
   // Notify not joined - for student or educator
   const handleNotifyNotJoined = async (inquiry, notifyType) => {
@@ -981,7 +1004,88 @@ const AdminStudentCRM = () => {
       </div>
 
       {/* Lead Cards */}
-      {loading ? (
+      {activeSection === 'summer_camp' ? (
+        <div>
+          {summerCampLoading ? (
+            <div className="text-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto" /></div>
+          ) : (
+            <>
+              {/* Stats Bar */}
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                {[
+                  { label: 'Total Registrations', value: summerCampBookings.length, color: 'bg-blue-50 border-blue-200 text-blue-700' },
+                  { label: 'Leads (Unpaid)', value: summerCampBookings.filter(b => b.crm_status === 'lead').length, color: 'bg-yellow-50 border-yellow-200 text-yellow-700' },
+                  { label: 'Converted (Paid)', value: summerCampBookings.filter(b => b.crm_status === 'converted').length, color: 'bg-green-50 border-green-200 text-green-700' },
+                ].map(s => (
+                  <div key={s.label} className={`rounded-xl border p-4 text-center ${s.color}`}>
+                    <div className="text-2xl font-bold">{s.value}</div>
+                    <div className="text-xs font-medium mt-1">{s.label}</div>
+                  </div>
+                ))}
+              </div>
+
+              {summerCampBookings.length === 0 ? (
+                <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">
+                  <p className="text-slate-500">No summer camp bookings yet</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto bg-white rounded-2xl border border-slate-100">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-100 text-slate-500 text-xs uppercase tracking-wide">
+                        <th className="px-4 py-3 text-left">Ref</th>
+                        <th className="px-4 py-3 text-left">Child</th>
+                        <th className="px-4 py-3 text-left">Parent</th>
+                        <th className="px-4 py-3 text-left">Age Group</th>
+                        <th className="px-4 py-3 text-left">Batch</th>
+                        <th className="px-4 py-3 text-left">Center</th>
+                        <th className="px-4 py-3 text-left">Payment</th>
+                        <th className="px-4 py-3 text-left">Status</th>
+                        <th className="px-4 py-3 text-left">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {summerCampBookings.map(booking => (
+                        <tr key={booking.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors" data-testid={`camp-booking-${booking.id}`}>
+                          <td className="px-4 py-3 font-mono text-xs text-slate-600">{booking.booking_ref}</td>
+                          <td className="px-4 py-3 font-semibold text-[#1E3A5F]">{booking.child_name}</td>
+                          <td className="px-4 py-3">
+                            <div className="text-slate-700">{booking.parent_name}</div>
+                            <div className="text-xs text-slate-400">{booking.parent_phone}</div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="text-xs font-semibold px-2 py-1 rounded-full bg-blue-50 text-blue-700">
+                              {booking.age_group_label} ({booking.age_group_ages})
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="text-xs">{booking.batch_dates}</div>
+                            <div className="text-xs text-slate-400 capitalize">{booking.batch_type}</div>
+                          </td>
+                          <td className="px-4 py-3 text-xs text-slate-600">{booking.center_label}</td>
+                          <td className="px-4 py-3">
+                            <span className={`text-xs px-2 py-1 rounded-full font-semibold ${booking.payment_mode === 'cash' ? 'bg-yellow-50 text-yellow-700' : 'bg-blue-50 text-blue-700'}`}>
+                              {booking.payment_mode === 'cash' ? '💵 Cash' : '💳 Online'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`text-xs px-2 py-1 rounded-full font-bold ${booking.crm_status === 'converted' ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'}`}>
+                              {booking.crm_status === 'converted' ? '✓ Converted' : '○ Lead'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-xs text-slate-400">
+                            {new Date(booking.created_at).toLocaleDateString('en-IN')}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      ) : loading ? (
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D63031] mx-auto"></div>
         </div>
