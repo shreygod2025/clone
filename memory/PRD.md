@@ -1143,3 +1143,11 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 - CRM status: `lead` (form filled) or `converted` (paid)
 
 **Testing**: 95% pass rate (16/16 backend tests passed, all frontend flows passed). Batch date bug fixed after testing.
+
+### 2026-03-29 — Summer Camp 2026 UX Revamp
+
+- **Home page**: Summer Camp banner section with dark gradient, "Book Now" (no price), As Seen on Shark Tank India badge
+- **Single landing page** at `/summer-camp`: Image gallery (6 photos), curriculum tabs for all 3 age groups, press/media section (Shark Tank India, KBC, NDTV, TOI, YourStory etc.), 8 testimonials
+- **Booking flow**: Full-screen question-by-question (age → mode → center if offline → batch → details+pay)
+- **Location**: All centers display "Mumbai" explicitly; routes `/summer-camp` and `/summer-camp/:ageGroup` both work
+

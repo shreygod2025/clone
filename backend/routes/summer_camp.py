@@ -53,9 +53,9 @@ AGE_GROUPS = {
 }
 
 CENTERS = {
-    "mira_road": "Mira Road",
-    "dombivli": "Dombivli - Pallava",
-    "andheri": "Andheri West - Lokhandwala",
+    "mira_road": "Mira Road, Mumbai",
+    "dombivli": "Dombivli – Pallava, Mumbai",
+    "andheri": "Andheri West – Lokhandwala, Mumbai",
     "online": "Online",
 }
 

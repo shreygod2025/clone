@@ -189,6 +189,7 @@ function App() {
               {/* Summer Camp 2026 */}
               <Route path="/summer-camp/book" element={<SummerCampBookingPage />} />
               <Route path="/summer-camp/success" element={<SummerCampSuccessPage />} />
+              <Route path="/summer-camp" element={<SummerCampLandingPage />} />
               <Route path="/summer-camp/:ageGroup" element={<SummerCampLandingPage />} />
               
               {/* Admin Routes */}
