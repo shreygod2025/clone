@@ -1,136 +1,153 @@
 {
-  "design_system": {
-    "identity": {
-      "name": "OLL Platform",
-      "tone": "Professional, Trustworthy, Dynamic, Growth-oriented",
-      "aesthetic": "Modern Glassmorphism with High Contrast",
-      "principles": [
-        "Glassy but Readable: Use glass effects for containers/overlays, but keep text on opaque or high-contrast backgrounds.",
-        "Red for Action, Blue for Trust: Strict color usage rules.",
-        "Mobile-First Funnels: One question per screen on mobile.",
-        "No-Scroll Decision: Landing page must present the 3 user paths immediately."
-      ]
+  "theme": "dark",
+  "archetype": "7 (Electric & Neon)",
+  "rationale": "For 'Future Skills Summer Camp 2026', a standard bright/pastel kids theme feels too childish and generic. To convey 'Future Skills', 'Robotics', and 'AI', we are using Archetype 7 (Electric & Neon) tailored for youth. The base is an ultra-deep Navy instead of black to maintain trust and approachability, paired with high-energy Neon Cyan and vibrant Red. This establishes a premium, futuristic, and exciting mood that appeals to both tech-enthusiast kids and their parents.",
+  "colors": {
+    "background": "#080C16",
+    "surface": "#1E3A5F",
+    "surface_glass": "rgba(30, 58, 95, 0.4)",
+    "primary": "#D63031",
+    "primary_glow": "rgba(214, 48, 49, 0.5)",
+    "secondary": "#00E5FF",
+    "secondary_glow": "rgba(0, 229, 255, 0.4)",
+    "accent": "#FF3366",
+    "text_main": "#F8FAFC",
+    "text_muted": "#94A3B8",
+    "border": "#2A4B7C",
+    "border_glow": "rgba(0, 229, 255, 0.2)"
+  },
+  "css_variables": {
+    "--background": "224 47% 6%",
+    "--foreground": "210 40% 98%",
+    "--card": "214 52% 25%",
+    "--card-foreground": "210 40% 98%",
+    "--popover": "224 47% 6%",
+    "--popover-foreground": "210 40% 98%",
+    "--primary": "360 67% 51%",
+    "--primary-foreground": "210 40% 98%",
+    "--secondary": "188 100% 50%",
+    "--secondary-foreground": "224 47% 6%",
+    "--muted": "215 28% 17%",
+    "--muted-foreground": "215 20% 65%",
+    "--accent": "345 100% 60%",
+    "--accent-foreground": "210 40% 98%",
+    "--destructive": "360 67% 51%",
+    "--destructive-foreground": "210 40% 98%",
+    "--border": "216 49% 33%",
+    "--input": "215 28% 17%",
+    "--ring": "188 100% 50%",
+    "--radius": "1rem"
+  },
+  "typography": {
+    "heading_font": "Unbounded, sans-serif",
+    "body_font": "Outfit, sans-serif",
+    "h1": "text-4xl sm:text-5xl lg:text-6xl font-black tracking-tighter leading-none text-transparent bg-clip-text bg-gradient-to-r from-[#F8FAFC] to-[#94A3B8]",
+    "h2": "text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[#F8FAFC] font-['Unbounded']",
+    "h3": "text-xl sm:text-2xl font-semibold tracking-tight text-[#F8FAFC] font-['Unbounded']",
+    "h4": "text-lg sm:text-xl font-medium tracking-tight text-[#00E5FF] font-['Unbounded']",
+    "body": "text-base font-normal leading-relaxed text-[#94A3B8] font-['Outfit']",
+    "label": "text-xs font-bold tracking-[0.2em] uppercase text-[#00E5FF] font-['Outfit']",
+    "instructions_to_main_agent": "Load 'Unbounded' and 'Outfit' fonts via Google Fonts. Apply them explicitly. Do NOT use Inter for any headings."
+  },
+  "layout_spacing": {
+    "section_padding": "py-24 md:py-32",
+    "container": "max-w-7xl mx-auto px-6 md:px-12",
+    "grid_bento": "grid grid-cols-1 md:grid-cols-8 lg:grid-cols-12 gap-6 md:gap-8",
+    "card_padding": "p-8 md:p-10",
+    "instructions_to_main_agent": "Generous spacing is critical. Use p-8 or p-10 inside cards. Do not cram elements."
+  },
+  "visual_enhancers": {
+    "glassmorphism": "backdrop-blur-2xl bg-[#1E3A5F]/40 border border-[#00E5FF]/20 shadow-[0_8px_32px_rgba(0,0,0,0.6)]",
+    "neon_border": "relative before:absolute before:inset-0 before:p-[1px] before:bg-gradient-to-b before:from-[#00E5FF] before:to-transparent before:-z-10 before:rounded-2xl",
+    "tracing_beam": "Implement framer-motion linear gradient border tracking around pricing/booking cards.",
+    "button_primary": "bg-[#D63031] hover:bg-[#FF3366] text-white font-black py-4 px-8 rounded-full shadow-[0_0_20px_rgba(214,48,49,0.4)] hover:shadow-[0_0_30px_rgba(255,51,102,0.6)] transition-all duration-300 transform hover:-translate-y-1 font-['Unbounded'] tracking-wide",
+    "button_secondary": "bg-[#1E3A5F]/50 backdrop-blur-md border border-[#00E5FF]/50 text-[#00E5FF] hover:bg-[#00E5FF]/10 font-bold py-4 px-8 rounded-full transition-all duration-300 shadow-[0_0_15px_rgba(0,229,255,0.1)] hover:shadow-[0_0_25px_rgba(0,229,255,0.3)]",
+    "badge_urgency": "inline-flex items-center px-4 py-2 rounded-full bg-[#D63031]/20 border border-[#D63031] text-[#FF3366] text-sm font-bold animate-pulse uppercase tracking-widest"
+  },
+  "components": {
+    "offerings_page_card": {
+      "type": "Card/Banner",
+      "layout": "Wide horizontal card or large square component for the main Offerings page.",
+      "styling": "Vibrant, animated banner card. Use the abstract_neon_bg image with a dark gradient overlay (bg-black/60 to bg-black/20). Glowing borders. Hover state: slight scale up (scale-105) and increased border glow shadow-[0_0_30px_rgba(0,229,255,0.4)].",
+      "data_testid": "summer-camp-offering-card"
     },
-    "typography": {
-      "font_family": {
-        "headings": "Manrope, sans-serif",
-        "body": "Inter, sans-serif",
-        "mono": "JetBrains Mono, monospace"
-      },
-      "scale": {
-        "h1": "text-4xl md:text-6xl font-bold tracking-tight",
-        "h2": "text-3xl md:text-4xl font-semibold tracking-tight",
-        "h3": "text-2xl md:text-3xl font-semibold",
-        "body_lg": "text-lg md:text-xl leading-relaxed",
-        "body_base": "text-base leading-relaxed",
-        "caption": "text-sm text-muted-foreground"
-      }
+    "age_selector_modal": {
+      "type": "Dialog/Modal",
+      "layout": "Grid of 3 cards: 'Little Explorers (4-8)', 'Tech Creators (9-12)', 'Future Innovators (13-16)'.",
+      "styling": "Dark glassmorphism overlay. Cards should have hover lift and cyan/red glowing borders on hover. Use abstract images as subtle backgrounds inside the cards.",
+      "data_testid": "age-selector-modal"
     },
-    "colors": {
-      "palette": {
-        "primary": {
-          "DEFAULT": "#D63031",
-          "foreground": "#FFFFFF",
-          "hover": "#B02021"
-        },
-        "secondary": {
-          "DEFAULT": "#1E3A5F",
-          "foreground": "#FFFFFF",
-          "light": "#2C5282"
-        },
-        "background": {
-          "DEFAULT": "#F8FAFC",
-          "dark": "#0F172A"
-        },
-        "glass": {
-          "light": "rgba(255, 255, 255, 0.7)",
-          "dark": "rgba(30, 58, 95, 0.4)",
-          "border": "rgba(255, 255, 255, 0.2)"
-        }
-      },
-      "usage": {
-        "cta_buttons": "bg-[#D63031] hover:bg-[#B02021] text-white shadow-lg shadow-red-500/20",
-        "trust_elements": "text-[#1E3A5F] or bg-[#1E3A5F]",
-        "gradients": "bg-gradient-to-br from-[#1E3A5F] to-[#D63031] (Use sparingly, mostly for text or subtle overlays)"
-      }
+    "hero_section": {
+      "type": "Section",
+      "layout": "Asymmetrical layout. Left: Staggered typography (H1), floating tech badges, Date (May 1), CTA 'Book Your Spot — ₹1,999'. Right: 3D AI Brain floating with framer-motion, glowing backdrop.",
+      "styling": "Deep navy background #080C16 with subtle grid or cyber lines. Ensure hero text has text-shadow for readability.",
+      "data_testid": "camp-hero-section"
     },
-    "layout": {
-      "spacing": {
-        "container": "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8",
-        "section": "py-16 md:py-24",
-        "card_padding": "p-6 md:p-8"
-      },
-      "radius": {
-        "default": "rounded-xl",
-        "button": "rounded-full",
-        "card": "rounded-2xl"
-      },
-      "grids": {
-        "landing_hero": "grid grid-cols-1 md:grid-cols-3 h-screen w-full",
-        "dashboard": "grid grid-cols-1 md:grid-cols-[280px_1fr] min-h-screen"
-      }
+    "subjects_bento": {
+      "type": "Grid Layout",
+      "layout": "Tetris bento grid. 1 Large card (Robotics) col-span-12 md:col-span-8, 1 Tall card (AI) col-span-12 md:col-span-4 md:row-span-2, 2 Small cards (Coding, 3D Design) col-span-12 md:col-span-4.",
+      "styling": "Glassmorphic cards bg-[#1E3A5F]/40, large bold watermark numbers (01, 02) in text-white/5, neon accent icons (Phosphor icons). Embed real kid-coding images in the Robotics/Coding cards with opacity 0.8 and mix-blend-screen or hard-light to merge with the neon theme.",
+      "data_testid": "camp-subjects-bento"
     },
-    "components": {
-      "buttons": {
-        "primary": "h-12 px-8 rounded-full bg-[#D63031] text-white font-semibold hover:scale-105 transition-all shadow-lg shadow-red-500/25",
-        "secondary": "h-12 px-8 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[#1E3A5F] hover:bg-white/20 transition-all",
-        "ghost": "hover:bg-slate-100 text-slate-700"
-      },
-      "cards": {
-        "glass": "bg-white/70 backdrop-blur-xl border border-white/40 shadow-xl shadow-blue-900/5",
-        "solid": "bg-white border border-slate-100 shadow-sm hover:shadow-md transition-shadow"
-      },
-      "inputs": {
-        "default": "h-12 bg-white/50 backdrop-blur-sm border-slate-200 focus:border-[#1E3A5F] focus:ring-[#1E3A5F]/20 rounded-lg"
-      }
+    "schedule_centers": {
+      "type": "Tabs & Cards",
+      "layout": "Tabs for Weekday vs Weekend batches. 4 location cards (Mira Road, Dombivli Pallava, Andheri West, Online) mapped to the selected schedule.",
+      "styling": "Tabs using neon cyan active states. Location cards should use neon-outlined borders. Online should have a distinct 'Live' glowing red dot.",
+      "data_testid": "camp-schedule-centers"
     },
-    "assets": {
-      "images": {
-        "student_hero": "https://images.unsplash.com/photo-1561346745-5db62ae43861?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3MjQyMTd8MHwxfHNlYXJjaHwxfHxoYXBweSUyMHN0dWRlbnQlMjBzdHVkeWluZyUyMGxhcHRvcHxlbnwwfHx8fDE3Njc4OTY2NTF8MA&ixlib=rb-4.1.0&q=85",
-        "educator_hero": "https://images.pexels.com/photos/1181534/pexels-photo-1181534.jpeg",
-        "school_hero": "https://images.pexels.com/photos/159213/hall-congress-architecture-building-159213.jpeg",
-        "abstract_bg": "https://images.pexels.com/photos/7135037/pexels-photo-7135037.jpeg",
-        "logo_placeholder": "https://placehold.co/200x60/1E3A5F/FFFFFF?text=OLL+Platform"
-      },
-      "icons": "Use Lucide React icons. Stroke width 1.5px for elegance."
+    "pricing_urgency": {
+      "type": "Card Section",
+      "layout": "Centered massive pricing block inside a glowing container. List of what's included.",
+      "styling": "Massive text text-[10vw] md:text-8xl for ₹1,999. Use Tracing Beam effect for the container. Include a pulsing red 'Only 10 spots per batch' badge using badge_urgency styles.",
+      "data_testid": "camp-pricing-card"
+    },
+    "booking_form": {
+      "type": "Form Page",
+      "layout": "2-column layout for desktop. Left: Summary of selection (Age group, Batch schedule, Location). Right: Multi-step or long form (Parent Name, Child Name, Phone, Email, Location Select) ending in Payment button.",
+      "styling": "Shadcn Form heavily customized. Inputs with dark backgrounds bg-[#080C16]/50, cyan focus rings focus:ring-[#00E5FF] focus:border-[#00E5FF]. High contrast white text for typed input.",
+      "data_testid": "camp-booking-form"
     }
   },
-  "implementation_guide": {
-    "landing_page": {
-      "structure": "Split Screen / Bento Grid",
-      "sections": [
-        {
-          "name": "Hero Selector",
-          "description": "Three equal-width vertical columns (on desktop) or stacked cards (mobile). Each represents a user type: Student, Educator, School.",
-          "interaction": "Hovering expands the column slightly. Clicking leads to the respective funnel.",
-          "visuals": "High-quality image background with heavy gradient overlay (Navy to Transparent). Large typography."
-        }
-      ]
-    },
-    "funnels": {
-      "structure": "Multi-step Wizard",
-      "layout": "Centered glass card on a subtle animated gradient background.",
-      "features": [
-        "Progress Bar (Top)",
-        "One Question Per Screen",
-        "Big Clickable Options (Cards)",
-        "Smooth Transitions (Framer Motion)"
-      ]
-    },
-    "dashboard": {
-      "structure": "Sidebar Layout",
-      "style": "Glassmorphic Sidebar + Clean White Content Area",
-      "widgets": "Stats cards, Recent Activity list, Calendar view."
+  "animation_specs": {
+    "framer_motion": {
+      "hero_floating": "animate-y: [0, -20, 0], transition: { duration: 4, repeat: Infinity, ease: 'easeInOut' }",
+      "staggered_entrance": "initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 }, staggerChildren: 0.1",
+      "hover_card": "whileHover: { y: -8, scale: 1.02, transition: { duration: 0.2 } }"
     }
   },
-  "universal_guidelines": [
-    "Use 'Manrope' for all headings.",
-    "Use 'Inter' for all body text.",
-    "Primary CTA buttons MUST be Red (#D63031).",
-    "Secondary buttons and Trust elements MUST be Navy Blue (#1E3A5F).",
-    "Glassmorphism: Use 'backdrop-blur-xl' and 'bg-white/70' for overlays.",
-    "All interactive elements must have 'data-testid'.",
-    "Do not use generic gradients. Use the specific Navy-Red brand gradient.",
-    "Ensure mobile responsiveness. Images max-h-[80vh] on mobile."
+  "media": {
+    "hero_3d_ai": {
+      "url": "https://static.prod-images.emergentagent.com/jobs/e671fa7b-2cbc-41ed-868d-a505869e759f/images/ec2726234dc6f8f831ac53a457ff643463d60c654a2bd5eabb6e94f7d0d97a12.png",
+      "description": "3D AI Brain icon for hero section floating element. Use on the right side of the hero."
+    },
+    "kids_robotics_1": {
+      "url": "https://images.unsplash.com/photo-1743677077216-00a458eff9e0?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxNzV8MHwxfHNlYXJjaHwyfHxraWRzJTIwcm9ib3RpY3MlMjBjbGFzc3xlbnwwfHx8fDE3NzQ3NzYwMzR8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Children interacting with large robot. Use inside the Robotics Bento card."
+    },
+    "kids_robotics_2": {
+      "url": "https://images.pexels.com/photos/7750751/pexels-photo-7750751.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Kids collaborating on robotics. Use as social proof or hero background overlay."
+    },
+    "kids_coding": {
+      "url": "https://images.pexels.com/photos/4709290/pexels-photo-4709290.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Boy coding. Use inside the Coding Bento card."
+    },
+    "abstract_neon_bg": {
+      "url": "https://images.pexels.com/photos/29450016/pexels-photo-29450016.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "description": "Luminous 3D geometric shapes. Use as section background with 10-20% opacity and multiply/overlay blend, or for the main Offerings page card."
+    },
+    "abstract_blue_display": {
+      "url": "https://images.unsplash.com/photo-1735713212083-82eafc42bf64?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1MDZ8MHwxfHNlYXJjaHwyfHxuZW9uJTIwY2lyY3VpdCUyMGJhY2tncm91bmQlMjBkYXJrfGVufDB8fHx8MTc3NDc3NjA0OXww&ixlib=rb-4.1.0&q=85",
+      "description": "Futuristic blue digital display. Use as background for Tech Creators / Future Innovators modal cards."
+    }
+  },
+  "icons_library": "@phosphor-icons/react",
+  "instructions_to_main_agent": [
+    "Install and use @phosphor-icons/react for tech icons (Robot, Code, Brain, Cube, MapPin, Calendar, etc).",
+    "Use framer-motion for smooth entrance animations and floating effects on the hero image.",
+    "Implement the UI with pure Tailwind and Shadcn customized to match the dark neon theme. Provide fully developed components.",
+    "Ensure the 'Only 10 spots' text pulses and uses the primary brand red (#D63031) for urgency.",
+    "In the age selector modal, use the abstract backgrounds with heavy backdrop-blur and a #080C16/80 overlay to ensure text readability.",
+    "Make sure forms don't look like generic white SaaS forms; use dark inputs with high contrast white text."
   ]
 }
