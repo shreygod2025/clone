@@ -206,9 +206,10 @@ export default function SummerCampLandingPage() {
         /* ── Typing cursor ── */
         @keyframes cursor-blink { 0%,100%{opacity:1} 50%{opacity:0} }
         .typed-cursor {
-          display:inline-block; width:2px; height:0.85em;
-          background:#D63031; margin-left:3px; border-radius:1px;
+          display:inline-block; width:3px; height:0.9em;
+          background:#00E5FF; margin-left:4px; border-radius:1px;
           vertical-align:text-bottom;
+          box-shadow: 0 0 8px rgba(0,229,255,0.9);
         }
         .typed-cursor-blink { animation: cursor-blink 1s step-end infinite; }
 
@@ -410,9 +411,14 @@ export default function SummerCampLandingPage() {
                 <h1 className="h-title" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 'clamp(2.4rem, 5.5vw, 4.5rem)', fontWeight: 800, lineHeight: 1.08, color: '#F8FAFC', marginBottom: '1.4rem', letterSpacing: '-0.025em' }}>
                   Give Your Child the
                   <br />
-                  <span style={{ color: '#D63031', display: 'inline-block', position: 'relative' }}>
+                  <span style={{
+                    color: '#00E5FF',
+                    display: 'inline-block',
+                    position: 'relative',
+                    textShadow: '0 0 20px rgba(0,229,255,0.9), 0 0 50px rgba(0,229,255,0.45), 0 0 90px rgba(0,229,255,0.2)',
+                  }}>
                     <TypedText text="Summer of the Future" startDelay={900} speed={52} />
-                    <span style={{ position: 'absolute', bottom: '-5px', left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, #D63031, transparent)', borderRadius: 2 }} />
+                    <span style={{ position: 'absolute', bottom: '-5px', left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, #00E5FF, rgba(0,229,255,0.1))', borderRadius: 2 }} />
                   </span>
                 </h1>
 
@@ -435,14 +441,12 @@ export default function SummerCampLandingPage() {
                   ))}
                 </div>
 
-                {/* CTA row */}
-                <div className="h-cta" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
-                  <button className="neon-btn" onClick={() => navigate('/summer-camp/book')} data-testid="hero-book-btn">
-                    Book Now <ArrowRight style={{ width: 17, height: 17 }} />
+                {/* CTA */}
+                <div className="h-cta">
+                  <button className="neon-btn" onClick={() => navigate('/summer-camp/book')} data-testid="hero-book-btn"
+                    style={{ padding: '1.35rem 4rem', fontSize: '1.15rem', borderRadius: '1rem', width: '100%', maxWidth: 360, justifyContent: 'center' }}>
+                    Book Now <ArrowRight style={{ width: 20, height: 20 }} />
                   </button>
-                  <span style={{ color: '#475569', fontSize: '0.82rem' }}>
-                    Starts <span style={{ color: '#00E5FF', fontWeight: 600 }}>May 1, 2026</span> · ₹1,999 per child
-                  </span>
                 </div>
               </div>
 
