@@ -115,7 +115,32 @@ function useScrollReveal() {
   }, []);
 }
 
-// ── Circuit SVG ────────────────────────────────────────────────────────────
+// ── Typed text animation component ─────────────────────────────────────────
+function TypedText({ text, speed = 52, startDelay = 0 }) {
+  const [displayed, setDisplayed] = useState('');
+  const [started, setStarted]     = useState(startDelay === 0);
+  const [done, setDone]           = useState(false);
+
+  useEffect(() => {
+    if (startDelay === 0) return;
+    const t = setTimeout(() => setStarted(true), startDelay);
+    return () => clearTimeout(t);
+  }, [startDelay]);
+
+  useEffect(() => {
+    if (!started || done) return;
+    if (displayed.length >= text.length) { setDone(true); return; }
+    const t = setTimeout(() => setDisplayed(text.slice(0, displayed.length + 1)), speed);
+    return () => clearTimeout(t);
+  }, [displayed, started, done, text, speed]);
+
+  return (
+    <span>
+      {displayed}
+      <span className={`typed-cursor${done ? ' typed-cursor-blink' : ''}`} />
+    </span>
+  );
+}
 function CircuitBg({ opacity = 0.12 }) {
   return (
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', opacity, pointerEvents: 'none' }} aria-hidden>
@@ -169,7 +194,16 @@ export default function SummerCampLandingPage() {
 
       <style>{`
         /* ── Fonts ── */
-        @import url('https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Outfit:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;0,800;1,400&family=Outfit:wght@300;400;500;600;700&display=swap');
+
+        /* ── Typing cursor ── */
+        @keyframes cursor-blink { 0%,100%{opacity:1} 50%{opacity:0} }
+        .typed-cursor {
+          display:inline-block; width:2px; height:0.85em;
+          background:#D63031; margin-left:3px; border-radius:1px;
+          vertical-align:text-bottom;
+        }
+        .typed-cursor-blink { animation: cursor-blink 1s step-end infinite; }
 
         /* ── Animations ── */
         @keyframes fadeUp   { from { opacity:0; transform:translateY(28px); } to { opacity:1; transform:translateY(0); } }
@@ -209,7 +243,7 @@ export default function SummerCampLandingPage() {
           border-radius:10px;
           background:linear-gradient(145deg,rgba(0,229,255,0.12),rgba(0,229,255,0.04));
           border:1px solid rgba(0,229,255,0.35);
-          font-family:'Unbounded',sans-serif; font-weight:900; font-size:1.35rem; color:#00E5FF;
+          font-family:'JetBrains Mono',monospace; font-weight:800; font-size:1.35rem; color:#00E5FF;
           letter-spacing:-0.02em;
           animation: borderGlow 3s ease-in-out infinite;
         }
@@ -232,7 +266,7 @@ export default function SummerCampLandingPage() {
         .neon-btn {
           display:inline-flex; align-items:center; gap:10px;
           background:#D63031; color:#fff;
-          font-family:'Unbounded',sans-serif; font-weight:700; font-size:0.92rem; letter-spacing:0.02em;
+          font-family:'JetBrains Mono',monospace; font-weight:700; font-size:0.88rem; letter-spacing:0.01em;
           padding:1rem 2.25rem; border-radius:999px; border:none; cursor:pointer;
           animation: glowPulse 3s ease-in-out infinite;
           transition: transform 0.2s, background 0.2s;
@@ -301,8 +335,9 @@ export default function SummerCampLandingPage() {
         }
 
         /* ── Prose section label ── */
-        .sec-label { font-family:'Outfit',sans-serif; font-size:0.65rem; letter-spacing:0.22em; text-transform:uppercase; font-weight:700; color:#00E5FF; margin-bottom:0.5rem; }
-        .sec-title { font-family:'Unbounded',sans-serif; font-weight:900; font-size:clamp(1.5rem,4vw,2.5rem); color:#F8FAFC; line-height:1.15; }
+        .sec-label { font-family:'JetBrains Mono',monospace; font-size:0.65rem; letter-spacing:0.18em; text-transform:uppercase; font-weight:700; color:#00E5FF; margin-bottom:0.5rem; }
+        .sec-label::before { content:'// '; opacity:0.5; }
+        .sec-title { font-family:'JetBrains Mono',monospace; font-weight:800; font-size:clamp(1.5rem,4vw,2.5rem); color:#F8FAFC; line-height:1.2; }
       `}</style>
 
       <div style={{ background: '#080C16', minHeight: '100vh', fontFamily: 'Outfit, sans-serif', overflowX: 'hidden' }}>
@@ -334,16 +369,16 @@ export default function SummerCampLandingPage() {
                 </div>
 
                 {/* Eyebrow */}
-                <p className="h-eyebrow" style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.65rem', letterSpacing: '0.25em', color: '#00E5FF', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.9rem' }}>
-                  Future Skills Summer Camp 2026
+                <p className="h-eyebrow" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.68rem', letterSpacing: '0.18em', color: '#00E5FF', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.9rem' }}>
+                  <span style={{ opacity: 0.45 }}>{'>'}</span> future_skills.summer_camp_2026
                 </p>
 
                 {/* H1 */}
-                <h1 className="h-title" style={{ fontFamily: 'Unbounded, sans-serif', fontSize: 'clamp(2.2rem, 5vw, 4rem)', fontWeight: 900, lineHeight: 1.08, color: '#F8FAFC', marginBottom: '1.25rem', letterSpacing: '-0.02em' }}>
+                <h1 className="h-title" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 'clamp(1.9rem, 4.5vw, 3.6rem)', fontWeight: 800, lineHeight: 1.12, color: '#F8FAFC', marginBottom: '1.25rem', letterSpacing: '-0.02em' }}>
                   Give Your Child the
                   <br />
                   <span style={{ color: '#D63031', display: 'inline-block', position: 'relative' }}>
-                    Summer of the Future
+                    <TypedText text="Summer of the Future" startDelay={900} speed={52} />
                     <span style={{ position: 'absolute', bottom: '-4px', left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, #D63031, transparent)', borderRadius: 2 }} />
                   </span>
                 </h1>
@@ -394,7 +429,7 @@ export default function SummerCampLandingPage() {
                 {/* Cyber tag */}
                 <div style={{ position: 'absolute', top: 175, right: 285, background: 'rgba(8,12,22,0.85)', backdropFilter: 'blur(10px)', border: '1px solid rgba(0,229,255,0.3)', borderRadius: '0.75rem', padding: '0.6rem 0.9rem' }}>
                   <div style={{ fontSize: '0.6rem', color: '#00E5FF', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 3 }}>Live Camp</div>
-                  <div style={{ fontSize: '0.82rem', color: '#F8FAFC', fontWeight: 700, fontFamily: 'Unbounded, sans-serif' }}>400+ Schools</div>
+                  <div style={{ fontSize: '0.82rem', color: '#F8FAFC', fontWeight: 700, fontFamily: 'JetBrains Mono, monospace' }}>400+ Schools</div>
                 </div>
               </div>
             </div>
@@ -406,18 +441,18 @@ export default function SummerCampLandingPage() {
                   <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.62rem', letterSpacing: '0.2em', color: '#475569', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.85rem' }}>Camp starts in</p>
                   <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'flex-end' }}>
                     <CUnit value={countdown.days} label="Days" />
-                    <span style={{ color: '#1e3a5f', fontFamily: 'Unbounded, sans-serif', fontSize: '1.25rem', marginBottom: '1.2rem' }}>:</span>
+                    <span style={{ color: '#1e3a5f', fontFamily: 'JetBrains Mono, monospace', fontSize: '1.25rem', marginBottom: '1.2rem' }}>:</span>
                     <CUnit value={countdown.hours} label="Hours" />
-                    <span style={{ color: '#1e3a5f', fontFamily: 'Unbounded, sans-serif', fontSize: '1.25rem', marginBottom: '1.2rem' }}>:</span>
+                    <span style={{ color: '#1e3a5f', fontFamily: 'JetBrains Mono, monospace', fontSize: '1.25rem', marginBottom: '1.2rem' }}>:</span>
                     <CUnit value={countdown.minutes} label="Mins" />
-                    <span style={{ color: '#1e3a5f', fontFamily: 'Unbounded, sans-serif', fontSize: '1.25rem', marginBottom: '1.2rem' }}>:</span>
+                    <span style={{ color: '#1e3a5f', fontFamily: 'JetBrains Mono, monospace', fontSize: '1.25rem', marginBottom: '1.2rem' }}>:</span>
                     <CUnit value={countdown.seconds} label="Secs" />
                   </div>
                 </div>
                 <div className="countdown-stats" style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
                   {[{ v: '₹1,999', s: 'per child' }, { v: '10 kids', s: 'per batch' }, { v: '4 weeks', s: 'May 2026' }, { v: '4 skills', s: 'in 2 weeks' }].map(f => (
                     <div key={f.v} style={{ textAlign: 'center' }}>
-                      <div style={{ fontFamily: 'Unbounded, sans-serif', fontWeight: 900, fontSize: '1.05rem', color: '#F8FAFC' }}>{f.v}</div>
+                      <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 900, fontSize: '1.05rem', color: '#F8FAFC' }}>{f.v}</div>
                       <div style={{ fontSize: '0.65rem', color: '#475569', marginTop: 2, letterSpacing: '0.05em' }}>{f.s}</div>
                     </div>
                   ))}
@@ -508,7 +543,7 @@ export default function SummerCampLandingPage() {
                     onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; }}
                   >
                     {/* Ghost number */}
-                    <div style={{ position: 'absolute', top: '0.75rem', right: '1rem', fontFamily: 'Unbounded, sans-serif', fontWeight: 900, fontSize: '2.75rem', color: 'rgba(255,255,255,0.03)', lineHeight: 1, pointerEvents: 'none' }}>0{i + 1}</div>
+                    <div style={{ position: 'absolute', top: '0.75rem', right: '1rem', fontFamily: 'JetBrains Mono, monospace', fontWeight: 900, fontSize: '2.75rem', color: 'rgba(255,255,255,0.03)', lineHeight: 1, pointerEvents: 'none' }}>0{i + 1}</div>
                     {/* Icon */}
                     <div style={{ width: 44, height: 44, borderRadius: '0.75rem', background: activeCamp.accentBg, border: `1px solid ${activeCamp.color}35`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
                       <Icon style={{ width: 20, height: 20, color: activeCamp.color }} />
@@ -516,7 +551,7 @@ export default function SummerCampLandingPage() {
                     <span style={{ fontSize: '0.58rem', fontFamily: 'Outfit, sans-serif', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', background: activeCamp.accentBg, color: activeCamp.color, padding: '2px 8px', borderRadius: '999px', display: 'inline-block', marginBottom: '0.6rem' }}>
                       {subject.level}
                     </span>
-                    <h3 style={{ fontFamily: 'Unbounded, sans-serif', fontSize: '0.95rem', fontWeight: 700, color: '#F0F4F8', marginBottom: '0.45rem', lineHeight: 1.3 }}>{subject.name}</h3>
+                    <h3 style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.95rem', fontWeight: 700, color: '#F0F4F8', marginBottom: '0.45rem', lineHeight: 1.3 }}>{subject.name}</h3>
                     <p style={{ fontSize: '0.82rem', color: '#5f7a9a', lineHeight: 1.65 }}>{subject.desc}</p>
                   </div>
                 );
@@ -559,7 +594,7 @@ export default function SummerCampLandingPage() {
                   onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; }}
                 >
                   <div style={{ fontSize: '0.6rem', color: '#00E5FF', textTransform: 'uppercase', letterSpacing: '0.18em', fontWeight: 700, marginBottom: '0.4rem' }}>{b.label}</div>
-                  <div style={{ fontFamily: 'Unbounded, sans-serif', fontWeight: 700, fontSize: '0.8rem', color: '#F0F4F8', lineHeight: 1.4 }}>{b[batchType]}</div>
+                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '0.8rem', color: '#F0F4F8', lineHeight: 1.4 }}>{b[batchType]}</div>
                   <div style={{ fontSize: '0.68rem', color: '#334155', marginTop: '0.4rem' }}>10 seats only</div>
                 </div>
               ))}
@@ -575,7 +610,7 @@ export default function SummerCampLandingPage() {
                   <div style={{ width: 32, height: 32, borderRadius: '0.5rem', background: c.id === 'online' ? 'rgba(214,48,49,0.12)' : 'rgba(0,229,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
                     <MapPin style={{ width: 15, height: 15, color: c.id === 'online' ? '#D63031' : '#00E5FF' }} />
                   </div>
-                  <div style={{ fontFamily: 'Unbounded, sans-serif', fontWeight: 700, fontSize: '0.82rem', color: '#F0F4F8', marginBottom: '0.35rem' }}>{c.name}</div>
+                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '0.82rem', color: '#F0F4F8', marginBottom: '0.35rem' }}>{c.name}</div>
                   <div style={{ fontSize: '0.72rem', color: '#475569', lineHeight: 1.45 }}>{c.address}</div>
                 </div>
               ))}
@@ -592,7 +627,7 @@ export default function SummerCampLandingPage() {
             </div>
 
             <div className="sr sr-d1 camp-card" style={{ padding: 'clamp(2rem,5vw,3.25rem)', background: 'linear-gradient(135deg, rgba(8,20,45,0.9) 0%, rgba(8,12,22,0.95) 100%)', border: '1px solid rgba(0,229,255,0.18)', boxShadow: '0 0 60px rgba(0,229,255,0.04), 0 40px 80px rgba(0,0,0,0.4)' }}>
-              <div style={{ fontFamily: 'Unbounded, sans-serif', fontSize: 'clamp(3.5rem,12vw,6rem)', fontWeight: 900, color: '#F8FAFC', lineHeight: 1, letterSpacing: '-0.03em' }}>₹1,999</div>
+              <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 'clamp(3.5rem,12vw,6rem)', fontWeight: 900, color: '#F8FAFC', lineHeight: 1, letterSpacing: '-0.03em' }}>₹1,999</div>
               <div style={{ color: '#475569', marginBottom: '2.5rem', marginTop: '0.5rem', fontSize: '0.88rem', letterSpacing: '0.05em' }}>per child · all inclusive · all age groups</div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.65rem', marginBottom: '2.5rem', textAlign: 'left' }}>
@@ -654,7 +689,7 @@ export default function SummerCampLandingPage() {
           <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 1.5rem', textAlign: 'center', position: 'relative' }}>
             <div className="sr">
               <p className="sec-label">Don't Wait</p>
-              <h2 style={{ fontFamily: 'Unbounded, sans-serif', fontSize: 'clamp(1.75rem, 5vw, 3rem)', fontWeight: 900, color: '#F8FAFC', lineHeight: 1.1, marginBottom: '1rem', letterSpacing: '-0.02em' }}>
+              <h2 style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 'clamp(1.75rem, 5vw, 3rem)', fontWeight: 900, color: '#F8FAFC', lineHeight: 1.1, marginBottom: '1rem', letterSpacing: '-0.02em' }}>
                 Don't Let Your Child Miss<br />
                 <span style={{ color: '#D63031' }}>This Summer</span>
               </h2>
