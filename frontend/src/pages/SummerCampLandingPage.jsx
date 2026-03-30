@@ -141,17 +141,22 @@ function TypedText({ text, speed = 52, startDelay = 0 }) {
     </span>
   );
 }
-function CircuitBg({ opacity = 0.12 }) {
+function CircuitBg({ opacity = 0.18 }) {
   return (
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', opacity, pointerEvents: 'none' }} aria-hidden>
       <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <pattern id="ckt" x="0" y="0" width="80" height="80" patternUnits="userSpaceOnUse">
-            <path d="M80 0L0 0 0 80" fill="none" stroke="#00E5FF" strokeWidth="0.4"/>
-            <path d="M40 0L40 30 M40 50L40 80 M0 40L30 40 M50 40L80 40" fill="none" stroke="#00E5FF" strokeWidth="0.4"/>
-            <circle cx="0"  cy="0"  r="2.5" fill="#00E5FF"/>
-            <circle cx="40" cy="40" r="4"   fill="none" stroke="#00E5FF" strokeWidth="0.8"/>
-            <rect x="37" y="37" width="6" height="6" rx="1" fill="#00E5FF" opacity="0.3"/>
+          <pattern id="ckt" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
+            {/* Grid lines */}
+            <line x1="0" y1="0" x2="100" y2="0" stroke="#00E5FF" strokeWidth="0.5" opacity="0.4"/>
+            <line x1="0" y1="0" x2="0" y2="100" stroke="#00E5FF" strokeWidth="0.5" opacity="0.4"/>
+            {/* Node at each intersection */}
+            <circle cx="0"   cy="0"   r="3" fill="#00E5FF" opacity="0.7"/>
+            {/* Mid-point circuit traces */}
+            <line x1="50" y1="0" x2="50" y2="30" stroke="#00E5FF" strokeWidth="0.5" opacity="0.3"/>
+            <line x1="0" y1="50" x2="30" y2="50" stroke="#00E5FF" strokeWidth="0.5" opacity="0.3"/>
+            <circle cx="50" cy="50" r="4" fill="none" stroke="#00E5FF" strokeWidth="0.8" opacity="0.5"/>
+            <circle cx="50" cy="50" r="1.5" fill="#00E5FF" opacity="0.4"/>
           </pattern>
         </defs>
         <rect width="100%" height="100%" fill="url(#ckt)"/>
@@ -236,18 +241,19 @@ export default function SummerCampLandingPage() {
         .sr-d5 { transition-delay:0.5s; }
 
         /* ── Countdown ── */
-        .cunit { display:flex; flex-direction:column; align-items:center; gap:4px; }
+        .cunit { display:flex; flex-direction:column; align-items:center; gap:6px; }
         .cunit-val {
-          min-width:52px; height:58px;
+          min-width:72px; height:78px;
           display:flex; align-items:center; justify-content:center;
-          border-radius:10px;
-          background:linear-gradient(145deg,rgba(0,229,255,0.12),rgba(0,229,255,0.04));
-          border:1px solid rgba(0,229,255,0.35);
-          font-family:'JetBrains Mono',monospace; font-weight:800; font-size:1.35rem; color:#00E5FF;
+          border-radius:12px;
+          background:linear-gradient(145deg,rgba(0,229,255,0.15),rgba(0,229,255,0.04));
+          border:1px solid rgba(0,229,255,0.4);
+          font-family:'JetBrains Mono',monospace; font-weight:800; font-size:1.75rem; color:#00E5FF;
           letter-spacing:-0.02em;
           animation: borderGlow 3s ease-in-out infinite;
+          box-shadow: 0 0 24px rgba(0,229,255,0.12), inset 0 0 20px rgba(0,229,255,0.05);
         }
-        .cunit-lbl { font-size:0.55rem; color:#475569; text-transform:uppercase; letter-spacing:0.14em; font-family:'Outfit',sans-serif; font-weight:600; }
+        .cunit-lbl { font-size:0.62rem; color:#334155; text-transform:uppercase; letter-spacing:0.18em; font-family:'JetBrains Mono',monospace; font-weight:700; }
 
         /* ── Ticker ── */
         .ticker-wrap { overflow:hidden; mask-image:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent); -webkit-mask-image:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent); }
@@ -255,9 +261,9 @@ export default function SummerCampLandingPage() {
         .ticker-inner:hover { animation-play-state:paused; }
         .ticker-item {
           display:inline-flex; align-items:center; gap:8px;
-          padding:8px 24px; margin:0 6px; border-radius:999px; white-space:nowrap;
+          padding:10px 28px; margin:0 6px; border-radius:999px; white-space:nowrap;
           background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
-          font-family:'Outfit',sans-serif; font-weight:700; font-size:0.82rem; color:#94A3B8;
+          font-family:'JetBrains Mono',monospace; font-weight:700; font-size:0.88rem; color:#94A3B8;
           transition:all 0.2s;
         }
         .ticker-item:hover { color:#F8FAFC; border-color:rgba(255,255,255,0.2); background:rgba(255,255,255,0.08); }
@@ -266,8 +272,8 @@ export default function SummerCampLandingPage() {
         .neon-btn {
           display:inline-flex; align-items:center; gap:10px;
           background:#D63031; color:#fff;
-          font-family:'JetBrains Mono',monospace; font-weight:700; font-size:0.88rem; letter-spacing:0.01em;
-          padding:1rem 2.25rem; border-radius:999px; border:none; cursor:pointer;
+          font-family:'JetBrains Mono',monospace; font-weight:700; font-size:0.98rem; letter-spacing:0.01em;
+          padding:1.1rem 2.6rem; border-radius:999px; border:none; cursor:pointer;
           animation: glowPulse 3s ease-in-out infinite;
           transition: transform 0.2s, background 0.2s;
           position:relative; overflow:hidden;
@@ -293,8 +299,8 @@ export default function SummerCampLandingPage() {
 
         /* ── Tab button ── */
         .age-tab {
-          padding:0.65rem 1.35rem; border-radius:999px; cursor:pointer;
-          font-family:'Outfit',sans-serif; font-weight:600; font-size:0.85rem;
+          padding:0.75rem 1.6rem; border-radius:999px; cursor:pointer;
+          font-family:'JetBrains Mono',monospace; font-weight:700; font-size:0.9rem;
           border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04);
           color:#64748B; transition:all 0.25s; white-space:nowrap;
         }
@@ -310,20 +316,22 @@ export default function SummerCampLandingPage() {
 
         /* ── Mobile responsive ── */
         @media (max-width:640px) {
-          .cunit-val { min-width:44px; height:50px; font-size:1.1rem; }
+          .cunit-val { min-width:56px; height:62px; font-size:1.35rem; }
           .hero-grid { grid-template-columns:1fr !important; }
           .hero-img-col { display:none !important; }
           .countdown-inner { flex-direction:column; gap:1rem; }
           .countdown-stats { justify-content:center; }
           .age-tabs-row { justify-content:flex-start !important; overflow-x:auto; padding-bottom:4px; flex-wrap:nowrap !important; }
-          .age-tab { font-size:0.78rem; padding:0.55rem 1rem; }
+          .age-tab { font-size:0.8rem; padding:0.6rem 1.1rem; }
           .batch-toggle { flex-direction:column; }
-          .neon-btn { font-size:0.82rem; padding:0.9rem 1.75rem; }
+          .neon-btn { font-size:0.85rem; padding:0.95rem 1.9rem; }
           .center-grid { grid-template-columns:1fr 1fr !important; }
+          .stats-row { grid-template-columns:repeat(3,1fr) !important; }
         }
         @media (max-width:400px) {
           .center-grid { grid-template-columns:1fr !important; }
-          .cunit-val { min-width:38px; height:44px; font-size:0.95rem; }
+          .cunit-val { min-width:48px; height:54px; font-size:1.1rem; }
+          .stats-row { grid-template-columns:repeat(2,1fr) !important; }
         }
 
         /* ── Cert 3D flip-in reveal ── */
@@ -369,9 +377,9 @@ export default function SummerCampLandingPage() {
         }
 
         /* ── Prose section label ── */
-        .sec-label { font-family:'JetBrains Mono',monospace; font-size:0.65rem; letter-spacing:0.18em; text-transform:uppercase; font-weight:700; color:#00E5FF; margin-bottom:0.5rem; }
-        .sec-label::before { content:'// '; opacity:0.5; }
-        .sec-title { font-family:'JetBrains Mono',monospace; font-weight:800; font-size:clamp(1.5rem,4vw,2.5rem); color:#F8FAFC; line-height:1.2; }
+        .sec-label { font-family:'JetBrains Mono',monospace; font-size:0.78rem; letter-spacing:0.2em; text-transform:uppercase; font-weight:700; color:#00E5FF; margin-bottom:0.65rem; }
+        .sec-label::before { content:'// '; opacity:0.45; }
+        .sec-title { font-family:'JetBrains Mono',monospace; font-weight:800; font-size:clamp(1.9rem,4.5vw,3rem); color:#F8FAFC; line-height:1.15; }
       `}</style>
 
       <div style={{ background: '#080C16', minHeight: '100vh', fontFamily: 'Outfit, sans-serif', overflowX: 'hidden' }}>
@@ -391,33 +399,22 @@ export default function SummerCampLandingPage() {
 
               {/* Left */}
               <div>
-                {/* Badges */}
-                <div className="h-badge" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: '1.75rem' }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: '999px', background: 'rgba(214,48,49,0.18)', border: '1px solid rgba(214,48,49,0.5)', color: '#FF7675', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em' }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#D63031', display: 'inline-block', boxShadow: '0 0 6px #D63031' }} />
-                    Limited Seats · May 2026
-                  </span>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: '999px', background: 'rgba(0,229,255,0.08)', border: '1px solid rgba(0,229,255,0.28)', color: '#00E5FF', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em' }}>
-                    As Seen on Shark Tank India
-                  </span>
-                </div>
-
                 {/* Eyebrow */}
-                <p className="h-eyebrow" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.68rem', letterSpacing: '0.18em', color: '#00E5FF', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.9rem' }}>
+                <p className="h-eyebrow" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.82rem', letterSpacing: '0.2em', color: '#00E5FF', textTransform: 'uppercase', fontWeight: 700, marginBottom: '1.1rem' }}>
                   <span style={{ opacity: 0.45 }}>{'>'}</span> future_skills.summer_camp_2026
                 </p>
 
                 {/* H1 */}
-                <h1 className="h-title" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 'clamp(1.9rem, 4.5vw, 3.6rem)', fontWeight: 800, lineHeight: 1.12, color: '#F8FAFC', marginBottom: '1.25rem', letterSpacing: '-0.02em' }}>
+                <h1 className="h-title" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 'clamp(2.4rem, 5.5vw, 4.5rem)', fontWeight: 800, lineHeight: 1.08, color: '#F8FAFC', marginBottom: '1.4rem', letterSpacing: '-0.025em' }}>
                   Give Your Child the
                   <br />
                   <span style={{ color: '#D63031', display: 'inline-block', position: 'relative' }}>
                     <TypedText text="Summer of the Future" startDelay={900} speed={52} />
-                    <span style={{ position: 'absolute', bottom: '-4px', left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, #D63031, transparent)', borderRadius: 2 }} />
+                    <span style={{ position: 'absolute', bottom: '-5px', left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, #D63031, transparent)', borderRadius: 2 }} />
                   </span>
                 </h1>
 
-                <p className="h-body" style={{ fontSize: '1.05rem', color: '#8899AA', lineHeight: 1.75, maxWidth: 460, marginBottom: '1.75rem' }}>
+                <p className="h-body" style={{ fontSize: '1.12rem', color: '#8899AA', lineHeight: 1.8, maxWidth: 480, marginBottom: '2rem' }}>
                   Robotics · Coding · AI · 3D Design — 10 days of hands-on learning for{' '}
                   <strong style={{ color: '#CBD5E1', fontWeight: 600 }}>ages 4–16</strong> at Mumbai centers or online. Batches of just{' '}
                   <strong style={{ color: '#CBD5E1', fontWeight: 600 }}>10 students.</strong>
@@ -498,7 +495,7 @@ export default function SummerCampLandingPage() {
 
         {/* ── STATS BAR — OMOTEC style ─────────────────────────────────── */}
         <div style={{ background: 'rgba(8,15,30,0.9)', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)', padding: '2rem 1.5rem' }}>
-          <div style={{ maxWidth: 1100, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1.5rem', textAlign: 'center' }}>
+          <div style={{ maxWidth: 1100, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem', textAlign: 'center' }} className="stats-row">
             {[
               { num: '400+', label: 'Schools Trust OLL' },
               { num: '2,000+', label: 'Kids Trained' },
@@ -507,8 +504,8 @@ export default function SummerCampLandingPage() {
               { num: '98%', label: 'Parents Recommend' },
             ].map(s => (
               <div key={s.num} className="sr">
-                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', color: '#F8FAFC', lineHeight: 1, letterSpacing: '-0.03em' }}>{s.num}</div>
-                <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.72rem', color: '#475569', marginTop: '0.4rem', letterSpacing: '0.06em' }}>{s.label}</div>
+                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, fontSize: 'clamp(1.75rem, 3.5vw, 2.6rem)', color: '#F8FAFC', lineHeight: 1, letterSpacing: '-0.03em' }}>{s.num}</div>
+                <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.78rem', color: '#475569', marginTop: '0.5rem', letterSpacing: '0.06em' }}>{s.label}</div>
               </div>
             ))}
           </div>
