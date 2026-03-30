@@ -486,14 +486,6 @@ export default function SummerCampLandingPage() {
                     <CUnit value={countdown.seconds} label="Secs" />
                   </div>
                 </div>
-                <div className="countdown-stats" style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
-                  {[{ v: '₹1,999', s: 'per child' }, { v: '10 kids', s: 'per batch' }, { v: '4 weeks', s: 'May 2026' }, { v: '4 skills', s: 'in 2 weeks' }].map(f => (
-                    <div key={f.v} style={{ textAlign: 'center' }}>
-                      <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 900, fontSize: '1.05rem', color: '#F8FAFC' }}>{f.v}</div>
-                      <div style={{ fontSize: '0.65rem', color: '#475569', marginTop: 2, letterSpacing: '0.05em' }}>{f.s}</div>
-                    </div>
-                  ))}
-                </div>
               </div>
             </div>
           </div>
@@ -514,20 +506,6 @@ export default function SummerCampLandingPage() {
                 <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.78rem', color: '#475569', marginTop: '0.5rem', letterSpacing: '0.06em' }}>{s.label}</div>
               </div>
             ))}
-          </div>
-        </div>
-
-        {/* ── INFINITE PRESS TICKER ──────────────────────────────────────── */}
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '1.25rem 0', background: 'rgba(255,255,255,0.015)', overflow: 'hidden' }}>
-          <div style={{ marginBottom: '0.5rem', textAlign: 'center' }}>
-            <span style={{ fontSize: '0.58rem', color: '#334155', letterSpacing: '0.22em', textTransform: 'uppercase', fontFamily: 'Outfit, sans-serif', fontWeight: 700 }}>As Seen On</span>
-          </div>
-          <div className="ticker-wrap">
-            <div className="ticker-inner">
-              {[...PRESS_ITEMS, ...PRESS_ITEMS].map((name, i) => (
-                <span key={i} className="ticker-item">{name}</span>
-              ))}
-            </div>
           </div>
         </div>
 
@@ -645,6 +623,20 @@ export default function SummerCampLandingPage() {
                   <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', letterSpacing: '0.18em', color: '#00E5FF', textTransform: 'uppercase', fontWeight: 700, marginBottom: 4 }}>Sony LIV · Season Finale</div>
                   <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '1.05rem', color: '#F8FAFC' }}>Shark Tank India</div>
                   <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.78rem', color: '#8899AA', marginTop: 3 }}>Pitched to India's top investors on national TV</div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── AS SEEN ON ticker — right below the media cards ── */}
+            <div style={{ marginTop: '2.5rem', overflow: 'hidden' }}>
+              <div style={{ marginBottom: '0.75rem', textAlign: 'center' }}>
+                <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.62rem', color: '#2d4060', letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700 }}>// Also covered by</span>
+              </div>
+              <div className="ticker-wrap">
+                <div className="ticker-inner">
+                  {[...PRESS_ITEMS, ...PRESS_ITEMS].map((name, i) => (
+                    <span key={i} className="ticker-item">{name}</span>
+                  ))}
                 </div>
               </div>
             </div>
