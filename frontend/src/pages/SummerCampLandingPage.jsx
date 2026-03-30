@@ -385,12 +385,30 @@ export default function SummerCampLandingPage() {
         .sec-title { font-family:'JetBrains Mono',monospace; font-weight:800; font-size:clamp(1.9rem,4.5vw,3rem); color:#F8FAFC; line-height:1.15; }
       `}</style>
 
-      <div style={{ background: '#080C16', minHeight: '100vh', fontFamily: 'Outfit, sans-serif', overflow: 'clip' }}>
+      <div style={{ background: '#080C16', minHeight: '100vh', fontFamily: 'Outfit, sans-serif', overflow: 'clip', position: 'relative' }}>
+        {/* ── GLOBAL FIXED CIRCUIT BACKGROUND ── */}
+        <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, opacity: 0.22 }} aria-hidden>
+          <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style={{ position: 'sticky', top: 0 }}>
+            <defs>
+              <pattern id="ckt-global" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
+                <rect x="0" y="0" width="100" height="100" fill="none" stroke="#00E5FF" strokeWidth="0.8" opacity="0.35"/>
+                <circle cx="0" cy="0" r="3.5" fill="#00E5FF" opacity="0.9"/>
+                <line x1="50" y1="0" x2="50" y2="36" stroke="#00E5FF" strokeWidth="0.8" opacity="0.4"/>
+                <line x1="50" y1="64" x2="50" y2="100" stroke="#00E5FF" strokeWidth="0.8" opacity="0.4"/>
+                <line x1="0" y1="50" x2="36" y2="50" stroke="#00E5FF" strokeWidth="0.8" opacity="0.4"/>
+                <line x1="64" y1="50" x2="100" y2="50" stroke="#00E5FF" strokeWidth="0.8" opacity="0.4"/>
+                <circle cx="50" cy="50" r="5" fill="none" stroke="#00E5FF" strokeWidth="1" opacity="0.6"/>
+                <circle cx="50" cy="50" r="2" fill="#00E5FF" opacity="0.5"/>
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#ckt-global)"/>
+          </svg>
+        </div>
+
         <Navbar variant="camp" />
 
         {/* ── HERO ─────────────────────────────────────────────────────────── */}
-        <section data-testid="camp-hero" style={{ position: 'relative', overflow: 'hidden', paddingTop: '5rem', paddingBottom: '4rem', minHeight: '92vh', display: 'flex', alignItems: 'center' }}>
-          <CircuitBg opacity={0.28} />
+        <section data-testid="camp-hero" style={{ position: 'relative', zIndex: 1, overflow: 'hidden', paddingTop: '5rem', paddingBottom: '4rem', minHeight: '92vh', display: 'flex', alignItems: 'center' }}>
           <div className="scanline" />
           {/* Orbs */}
           <div style={{ position: 'absolute', top: '-8%', right: '-5%', width: 600, height: 600, borderRadius: '50%', background: 'radial-gradient(circle, rgba(214,48,49,0.12) 0%, transparent 65%)', pointerEvents: 'none' }} />
@@ -510,8 +528,7 @@ export default function SummerCampLandingPage() {
         </div>
 
         {/* ── CERTIFICATIONS ─────────────────────────────────────────────── */}
-        <section data-testid="camp-certifications" style={{ padding: '5.5rem 0', position: 'relative', overflow: 'hidden', background: 'rgba(5,12,28,0.95)' }}>
-          <CircuitBg opacity={0.07} />
+        <section data-testid="camp-certifications" style={{ padding: '5.5rem 0', position: 'relative', zIndex: 1, overflow: 'hidden', background: 'rgba(5,12,28,0.82)' }}>
           {/* Top separator glow */}
           <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '60%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,229,255,0.35), transparent)' }} />
 
@@ -697,7 +714,7 @@ export default function SummerCampLandingPage() {
         </section>
 
         {/* ── CURRICULUM ────────────────────────────────────────────────── */}
-        <section data-testid="camp-curriculum" style={{ padding: '5rem 0' }}>
+        <section data-testid="camp-curriculum" style={{ padding: '6rem 0', position: 'relative', zIndex: 1 }}>
           <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 1.5rem' }}>
             <div className="sr" style={{ textAlign: 'center', marginBottom: '3rem' }}>
               <p className="sec-label">Curriculum</p>
@@ -757,7 +774,7 @@ export default function SummerCampLandingPage() {
         </section>
 
         {/* ── SCHEDULE & CENTERS ────────────────────────────────────────── */}
-        <section data-testid="camp-schedule" style={{ padding: '5rem 0', background: 'rgba(8,15,30,0.8)' }}>
+        <section data-testid="camp-schedule" style={{ padding: '6rem 0', background: 'rgba(8,15,30,0.78)', position: 'relative', zIndex: 1 }}>
           <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 1.5rem' }}>
             <div className="sr" style={{ textAlign: 'center', marginBottom: '3rem' }}>
               <p className="sec-label">Batches & Locations</p>
@@ -815,7 +832,7 @@ export default function SummerCampLandingPage() {
         </section>
 
         {/* ── PRICING ───────────────────────────────────────────────────── */}
-        <section data-testid="camp-pricing" style={{ padding: '5rem 0' }}>
+        <section data-testid="camp-pricing" style={{ padding: '6rem 0', position: 'relative', zIndex: 1 }}>
           <div style={{ maxWidth: 700, margin: '0 auto', padding: '0 1.5rem', textAlign: 'center' }}>
             <div className="sr">
               <p className="sec-label">Investment</p>
@@ -846,7 +863,7 @@ export default function SummerCampLandingPage() {
         </section>
 
         {/* ── TESTIMONIALS ─────────────────────────────────────────────── */}
-        <section data-testid="camp-testimonials" style={{ padding: '5rem 0', background: 'rgba(8,15,30,0.8)' }}>
+        <section data-testid="camp-testimonials" style={{ padding: '6rem 0', background: 'rgba(8,15,30,0.78)', position: 'relative', zIndex: 1 }}>
           <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 1.5rem' }}>
             <div className="sr" style={{ textAlign: 'center', marginBottom: '3rem' }}>
               <p className="sec-label">Parents Love It</p>
@@ -878,7 +895,7 @@ export default function SummerCampLandingPage() {
         </section>
 
         {/* ── FINAL CTA ─────────────────────────────────────────────────── */}
-        <section style={{ padding: '6rem 0', position: 'relative', overflow: 'hidden' }}>
+        <section style={{ padding: '7rem 0', position: 'relative', zIndex: 1, overflow: 'hidden' }}>
           <CircuitBg opacity={0.1} />
           <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at center, rgba(214,48,49,0.07) 0%, transparent 65%)', pointerEvents: 'none' }} />
           <div className="scanline" />

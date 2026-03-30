@@ -34,7 +34,7 @@ const Navbar = ({ showBookDemo = false, onBookDemo, variant = 'default' }) => {
               <img
                 src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png"
                 alt="OLL Logo"
-                style={{ height: 40, width: 'auto', filter: 'brightness(0) invert(1)' }}
+                style={{ height: 52, width: 'auto', filter: 'brightness(0) invert(1)' }}
               />
             </a>
             <button
@@ -43,10 +43,10 @@ const Navbar = ({ showBookDemo = false, onBookDemo, variant = 'default' }) => {
               style={{
                 background: '#D63031',
                 color: '#fff',
-                fontFamily: 'Unbounded, sans-serif',
+                fontFamily: 'JetBrains Mono, monospace',
                 fontWeight: 700,
-                fontSize: '0.8rem',
-                padding: '0.55rem 1.4rem',
+                fontSize: '0.85rem',
+                padding: '0.6rem 1.6rem',
                 borderRadius: '999px',
                 border: 'none',
                 cursor: 'pointer',
@@ -54,6 +54,7 @@ const Navbar = ({ showBookDemo = false, onBookDemo, variant = 'default' }) => {
                 alignItems: 'center',
                 gap: 6,
                 transition: 'background 0.2s',
+                letterSpacing: '0.01em',
               }}
               onMouseEnter={e => { e.currentTarget.style.background = '#FF3366'; }}
               onMouseLeave={e => { e.currentTarget.style.background = '#D63031'; }}
@@ -97,9 +98,9 @@ const Navbar = ({ showBookDemo = false, onBookDemo, variant = 'default' }) => {
               alt="OLL Logo - Skill Education Platform"
               title="OLL - Robotics, Coding & AI Education"
               loading="eager"
-              width="120"
-              height="40"
-              className="h-10 w-auto"
+              width="150"
+              height="52"
+              className="h-12 w-auto"
             />
           </Link>
           
