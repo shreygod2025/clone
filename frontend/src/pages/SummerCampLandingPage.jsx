@@ -326,6 +326,40 @@ export default function SummerCampLandingPage() {
           .cunit-val { min-width:38px; height:44px; font-size:0.95rem; }
         }
 
+        /* ── Cert 3D flip-in reveal ── */
+        .cert-reveal {
+          opacity:0;
+          transform: perspective(900px) rotateX(40deg) scale(0.88);
+          transition: opacity 0.8s cubic-bezier(0.16,1,0.3,1), transform 0.8s cubic-bezier(0.16,1,0.3,1);
+        }
+        .cert-reveal.sr-vis { opacity:1; transform: perspective(900px) rotateX(0deg) scale(1); }
+        .cert-reveal.sr-d1 { transition-delay:0.05s; }
+        .cert-reveal.sr-d2 { transition-delay:0.22s; }
+        .cert-reveal.sr-d3 { transition-delay:0.39s; }
+
+        /* ── Cert card ── */
+        .cert-card {
+          border-radius:1.5rem; overflow:hidden; position:relative;
+          border:1px solid rgba(255,255,255,0.08);
+          background:rgba(10,20,40,0.8); backdrop-filter:blur(16px);
+          transition: transform 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease;
+          display:flex; flex-direction:column; align-items:center;
+        }
+        .cert-card:hover {
+          transform:translateY(-8px) scale(1.02);
+          box-shadow:0 32px 80px rgba(0,0,0,0.55);
+        }
+
+        /* ── Media card ── */
+        .media-card {
+          position:relative; overflow:hidden; border-radius:1.25rem;
+          border:1px solid rgba(255,255,255,0.08); cursor:pointer;
+          transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .media-card:hover { transform:scale(1.03); box-shadow:0 24px 60px rgba(0,0,0,0.55); }
+        .media-card img { width:100%; height:100%; object-fit:cover; display:block; transition:transform 0.5s ease; }
+        .media-card:hover img { transform:scale(1.06); }
+
         /* ── Scanline overlay ── */
         .scanline {
           position:absolute; left:0; right:0; height:2px;
@@ -476,7 +510,130 @@ export default function SummerCampLandingPage() {
           </div>
         </div>
 
-        {/* ── PHOTO STRIP ───────────────────────────────────────────────── */}
+        {/* ── CERTIFICATIONS ─────────────────────────────────────────────── */}
+        <section data-testid="camp-certifications" style={{ padding: '5.5rem 0', position: 'relative', overflow: 'hidden', background: 'rgba(5,12,28,0.95)' }}>
+          <CircuitBg opacity={0.07} />
+          {/* Top separator glow */}
+          <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: '60%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,229,255,0.35), transparent)' }} />
+
+          <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 1.5rem' }}>
+            {/* Header */}
+            <div className="sr" style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
+              <p className="sec-label" style={{ marginBottom: '0.65rem' }}>globally.recognized</p>
+              <h2 className="sec-title" style={{ marginBottom: '0.85rem' }}>Certified by the World's Best</h2>
+              <p style={{ color: '#475569', fontSize: '0.93rem', maxWidth: 480, margin: '0 auto', lineHeight: 1.65, fontFamily: 'Outfit, sans-serif' }}>
+                Our curriculum meets the highest international standards — accredited by STEM.org and aligned with UNESCO's global education framework.
+              </p>
+            </div>
+
+            {/* Cert badge cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem', marginBottom: '3.5rem' }}>
+
+              {/* STEM.org Educational Program */}
+              <div className="cert-card cert-reveal sr sr-d1"
+                style={{ padding: '2.5rem 2rem', borderColor: 'rgba(230,85,13,0.2)', boxShadow: '0 0 40px rgba(230,85,13,0.06)' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(230,85,13,0.5)'; e.currentTarget.style.boxShadow = '0 0 60px rgba(230,85,13,0.18)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(230,85,13,0.2)'; e.currentTarget.style.boxShadow = '0 0 40px rgba(230,85,13,0.06)'; }}
+              >
+                {/* Orange top glow line */}
+                <div style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: 2, background: 'linear-gradient(90deg, transparent, #E6550D, transparent)', borderRadius: 1 }} />
+                <div style={{ width: 160, height: 175, marginBottom: '1.5rem', position: 'relative' }}>
+                  <img src="https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/jgu6cmji_STM_BrandAssets_NEG_BADGE_ACC_VER.png"
+                    alt="STEM.org Accredited Educational Program" loading="lazy"
+                    style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                  {/* Glow under badge */}
+                  <div style={{ position: 'absolute', bottom: -20, left: '50%', transform: 'translateX(-50%)', width: 100, height: 40, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(230,85,13,0.3), transparent)', filter: 'blur(12px)', pointerEvents: 'none' }} />
+                </div>
+                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '0.7rem', letterSpacing: '0.15em', color: '#E6550D', textTransform: 'uppercase', marginBottom: '0.4rem' }}>STEM.org</div>
+                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '1rem', color: '#F0F4F8', textAlign: 'center', marginBottom: '0.75rem', lineHeight: 1.3 }}>Accredited<br/>Educational Program™</div>
+                <p style={{ fontSize: '0.8rem', color: '#475569', textAlign: 'center', lineHeight: 1.65, fontFamily: 'Outfit, sans-serif' }}>
+                  Our camp program meets STEM.org's rigorous accreditation standards for educational excellence and quality outcomes.
+                </p>
+              </div>
+
+              {/* STEM.org Educational Experience */}
+              <div className="cert-card cert-reveal sr sr-d2"
+                style={{ padding: '2.5rem 2rem', borderColor: 'rgba(180,60,10,0.2)', boxShadow: '0 0 40px rgba(180,60,10,0.06)' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(230,85,13,0.5)'; e.currentTarget.style.boxShadow = '0 0 60px rgba(230,85,13,0.18)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(180,60,10,0.2)'; e.currentTarget.style.boxShadow = '0 0 40px rgba(180,60,10,0.06)'; }}
+              >
+                <div style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: 2, background: 'linear-gradient(90deg, transparent, #B43C0A, transparent)', borderRadius: 1 }} />
+                <div style={{ width: 160, height: 175, marginBottom: '1.5rem', position: 'relative' }}>
+                  <img src="https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/ko80g3wd_images.png"
+                    alt="STEM.org Accredited Educational Experience" loading="lazy"
+                    style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '0.5rem' }} />
+                  <div style={{ position: 'absolute', bottom: -20, left: '50%', transform: 'translateX(-50%)', width: 100, height: 40, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(180,60,10,0.3), transparent)', filter: 'blur(12px)', pointerEvents: 'none' }} />
+                </div>
+                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '0.7rem', letterSpacing: '0.15em', color: '#E6550D', textTransform: 'uppercase', marginBottom: '0.4rem' }}>STEM.org</div>
+                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '1rem', color: '#F0F4F8', textAlign: 'center', marginBottom: '0.75rem', lineHeight: 1.3 }}>Accredited<br/>Educational Experience™</div>
+                <p style={{ fontSize: '0.8rem', color: '#475569', textAlign: 'center', lineHeight: 1.65, fontFamily: 'Outfit, sans-serif' }}>
+                  Every session is certified by STEM.org — ensuring each child gets a world-class, hands-on learning experience.
+                </p>
+              </div>
+
+              {/* UNESCO */}
+              <div className="cert-card cert-reveal sr sr-d3"
+                style={{ padding: '2.5rem 2rem', borderColor: 'rgba(30,80,180,0.2)', boxShadow: '0 0 40px rgba(30,80,180,0.06)' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(50,120,255,0.45)'; e.currentTarget.style.boxShadow = '0 0 60px rgba(50,120,255,0.18)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(30,80,180,0.2)'; e.currentTarget.style.boxShadow = '0 0 40px rgba(30,80,180,0.06)'; }}
+              >
+                <div style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: 2, background: 'linear-gradient(90deg, transparent, #3264CC, transparent)', borderRadius: 1 }} />
+                <div style={{ width: 200, height: 140, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                  <img src="https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/cqfv2iw2_USFUCA%20logo%203.jpg"
+                    alt="UNESCO USFUCA" loading="lazy"
+                    style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '0.5rem' }} />
+                  <div style={{ position: 'absolute', bottom: -20, left: '50%', transform: 'translateX(-50%)', width: 100, height: 40, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(30,80,180,0.35), transparent)', filter: 'blur(12px)', pointerEvents: 'none' }} />
+                </div>
+                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '0.7rem', letterSpacing: '0.15em', color: '#5B8EFF', textTransform: 'uppercase', marginBottom: '0.4rem' }}>UNESCO</div>
+                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '1rem', color: '#F0F4F8', textAlign: 'center', marginBottom: '0.75rem', lineHeight: 1.3 }}>U.S. Federation of<br/>UNESCO Clubs</div>
+                <p style={{ fontSize: '0.8rem', color: '#475569', textAlign: 'center', lineHeight: 1.65, fontFamily: 'Outfit, sans-serif' }}>
+                  Aligned with UNESCO's global framework for quality education, scientific literacy, and sustainable development.
+                </p>
+              </div>
+            </div>
+
+            {/* ── FEATURED ON ── */}
+            <div className="sr" style={{ textAlign: 'center', marginBottom: '2rem' }}>
+              <p className="sec-label">featured.on.national.tv</p>
+              <h2 className="sec-title" style={{ marginBottom: '0.5rem' }}>As Seen On</h2>
+            </div>
+
+            <div className="sr sr-d1" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.1rem' }}>
+              {/* KBC */}
+              <div className="media-card" style={{ height: 260 }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,215,0,0.35)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; }}
+              >
+                <img src="https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/mkbfftaz_KBC%20Website%20%281%29.png"
+                  alt="Kaun Banega Crorepati" loading="lazy" />
+                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(5,12,28,0.95) 0%, rgba(5,12,28,0.3) 50%, transparent 100%)' }} />
+                <div style={{ position: 'absolute', bottom: '1.25rem', left: '1.5rem', right: '1.5rem' }}>
+                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', letterSpacing: '0.18em', color: '#FFD700', textTransform: 'uppercase', fontWeight: 700, marginBottom: 4 }}>Sony Entertainment · KBC</div>
+                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '1.05rem', color: '#F8FAFC' }}>Kaun Banega Crorepati</div>
+                  <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.78rem', color: '#8899AA', marginTop: 3 }}>Featured as India's leading EdTech for kids</div>
+                </div>
+              </div>
+
+              {/* Shark Tank India */}
+              <div className="media-card" style={{ height: 260 }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(0,229,255,0.35)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; }}
+              >
+                <img src="https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/1a3c9g9x_KBC%20%26%20Shark%20Tank%20Website.png"
+                  alt="Shark Tank India" loading="lazy" />
+                <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(5,12,28,0.95) 0%, rgba(5,12,28,0.3) 50%, transparent 100%)' }} />
+                <div style={{ position: 'absolute', bottom: '1.25rem', left: '1.5rem', right: '1.5rem' }}>
+                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', letterSpacing: '0.18em', color: '#00E5FF', textTransform: 'uppercase', fontWeight: 700, marginBottom: 4 }}>Sony LIV · Season Finale</div>
+                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '1.05rem', color: '#F8FAFC' }}>Shark Tank India</div>
+                  <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.78rem', color: '#8899AA', marginTop: 3 }}>Pitched to India's top investors on national TV</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom separator glow */}
+          <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '60%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,229,255,0.2), transparent)' }} />
+        </section>
         <section style={{ padding: '3rem 0', overflow: 'hidden' }}>
           <div style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', paddingLeft: '1.5rem', paddingRight: '1.5rem', paddingBottom: '0.25rem', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
             {[
