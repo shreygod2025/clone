@@ -5,7 +5,7 @@ import CitySearch from '../../components/CitySearch';
 import { 
   MapPin, Building, FileText, Plus, Edit2, Trash2, X, Save, Eye, EyeOff,
   Search, Globe, Calendar, Image, Tag, Briefcase, Users, Video, Play, Key, Copy, RefreshCw,
-  Database, Zap, CheckCircle, Mail
+  Database, Zap, CheckCircle, Mail, Download, HardDrive, Clock, Terminal
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -41,6 +41,11 @@ const AdminSettings = () => {
   const [loadingMongoInfo, setLoadingMongoInfo] = useState(false);
   const [currentIP, setCurrentIP] = useState(null);
   const [ipToWhitelist, setIpToWhitelist] = useState('');
+  // Backup state
+  const [backupStatus, setBackupStatus] = useState(null);
+  const [backupLogs, setBackupLogs] = useState('');
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [backupCreating, setBackupCreating] = useState(false);
   const [whitelistingIP, setWhitelistingIP] = useState(false);
   const [testingApiKey, setTestingApiKey] = useState(false);
   const [apiTestResult, setApiTestResult] = useState(null);
@@ -170,6 +175,63 @@ const AdminSettings = () => {
   };
 
   // Database optimization handler
+
+  // Backup functions
+  const fetchBackupStatus = async () => {
+    try {
+      const res = await axios.get(`${API}/admin/db-backup/status`, { headers: getAuthHeaders() });
+      setBackupStatus(res.data);
+    } catch { /* silent */ }
+  };
+
+  const fetchBackupLogs = async () => {
+    setBackupLoading(true);
+    try {
+      const res = await axios.get(`${API}/admin/db-backup/logs?lines=200`, { headers: getAuthHeaders() });
+      setBackupLogs(res.data.logs || 'No logs yet. Backup runs daily at 10:00 PM.');
+    } catch {
+      setBackupLogs('Could not load logs.');
+    } finally {
+      setBackupLoading(false);
+    }
+  };
+
+  const handleCreateBackup = async () => {
+    setBackupCreating(true);
+    try {
+      const res = await axios.post(`${API}/admin/db-backup/create`, {}, { headers: getAuthHeaders() });
+      toast.success(`Backup created: ${res.data.filename} (${res.data.size_mb} MB)`);
+      await fetchBackupStatus();
+      await fetchBackupLogs();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Backup failed');
+    } finally {
+      setBackupCreating(false);
+    }
+  };
+
+  const handleDownloadBackup = () => {
+    const token = getAuthHeaders()['Authorization'];
+    const url = `${API}/admin/db-backup/download`;
+    fetch(url, { headers: { Authorization: token } })
+      .then(r => {
+        const cd = r.headers.get('Content-Disposition');
+        const filename = cd ? cd.split('filename=')[1]?.replace(/"/g, '') : 'oll_db_backup.tar.gz';
+        return r.blob().then(blob => ({ blob, filename }));
+      })
+      .then(({ blob, filename }) => {
+        const objUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = objUrl;
+        link.download = filename;
+        link.click();
+        URL.revokeObjectURL(objUrl);
+        toast.success('Backup downloaded!');
+      })
+      .catch(() => toast.error('Download failed'));
+  };
+
+
   const handleOptimizeDatabase = async () => {
     if (!confirm('This will create database indexes to improve performance. Continue?')) return;
     setOptimizing(true);
@@ -274,6 +336,7 @@ const AdminSettings = () => {
 
   useEffect(() => {
     fetchData();
+    fetchBackupStatus();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -653,6 +716,109 @@ const AdminSettings = () => {
         {/* System Tab */}
         {activeTab === 'system' && (
           <div className="space-y-6">
+            {/* Database Backup */}
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-orange-100 rounded-lg flex-shrink-0">
+                  <HardDrive className="w-6 h-6 text-orange-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-3 mb-1">
+                    <h3 className="font-semibold text-lg text-[#1E3A5F]">Database Backup</h3>
+                    <span className="inline-flex items-center gap-1.5 text-xs bg-orange-50 text-orange-700 border border-orange-200 px-2 py-0.5 rounded-full font-medium">
+                      <Clock className="w-3 h-3" /> Daily 10:00 PM
+                    </span>
+                  </div>
+                  <p className="text-slate-500 text-sm mb-4">
+                    Automatically backs up the production database every day at 10:00 PM. Only the latest backup is kept. Download it to your computer or cloud storage.
+                  </p>
+
+                  {/* Status row */}
+                  {backupStatus && (
+                    <div className="flex flex-wrap gap-4 p-3 bg-slate-50 rounded-lg border border-slate-100 mb-4 text-sm">
+                      {backupStatus.has_backup ? (
+                        <>
+                          <div>
+                            <span className="text-slate-500 text-xs uppercase tracking-wide">Latest Backup</span>
+                            <p className="font-mono text-xs text-[#1E3A5F] mt-0.5 break-all">{backupStatus.filename}</p>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 text-xs uppercase tracking-wide">Size</span>
+                            <p className="font-semibold text-[#1E3A5F] mt-0.5">{backupStatus.size_mb} MB</p>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 text-xs uppercase tracking-wide">Created</span>
+                            <p className="font-semibold text-[#1E3A5F] mt-0.5">
+                              {new Date(backupStatus.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                            </p>
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-slate-400 text-sm">No backup yet. Click "Backup Now" to create one.</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Action buttons */}
+                  <div className="flex flex-wrap gap-3 mb-5">
+                    <Button
+                      onClick={handleCreateBackup}
+                      disabled={backupCreating}
+                      data-testid="create-backup-btn"
+                      className="bg-orange-600 hover:bg-orange-700 text-white"
+                    >
+                      {backupCreating ? (
+                        <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Creating Backup...</>
+                      ) : (
+                        <><HardDrive className="w-4 h-4 mr-2" />Backup Now</>
+                      )}
+                    </Button>
+
+                    {backupStatus?.has_backup && (
+                      <Button
+                        variant="outline"
+                        onClick={handleDownloadBackup}
+                        data-testid="download-backup-btn"
+                        className="border-[#1E3A5F] text-[#1E3A5F] hover:bg-[#1E3A5F]/5"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download Backup
+                      </Button>
+                    )}
+
+                    <Button
+                      variant="ghost"
+                      onClick={() => { fetchBackupStatus(); fetchBackupLogs(); }}
+                      disabled={backupLoading}
+                      data-testid="refresh-backup-logs-btn"
+                      className="text-slate-500"
+                    >
+                      <RefreshCw className={`w-4 h-4 mr-2 ${backupLoading ? 'animate-spin' : ''}`} />
+                      Refresh Logs
+                    </Button>
+                  </div>
+
+                  {/* Cron Logs */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Terminal className="w-4 h-4 text-slate-400" />
+                      <span className="text-sm font-medium text-slate-600">Backup Logs (last 200 lines)</span>
+                    </div>
+                    <div
+                      data-testid="backup-logs-area"
+                      className="bg-slate-900 rounded-lg p-4 font-mono text-xs text-slate-300 overflow-auto max-h-64 whitespace-pre-wrap"
+                      style={{ lineHeight: '1.6' }}
+                    >
+                      {backupLoading
+                        ? <span className="text-slate-400">Loading logs...</span>
+                        : backupLogs || <span className="text-slate-500">Click "Refresh Logs" to load backup history</span>
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Database Optimization */}
             <div className="bg-white rounded-xl p-6 shadow-sm">
               <div className="flex items-start gap-4">

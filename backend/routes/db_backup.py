@@ -98,7 +98,41 @@ async def list_backups(user: dict = Depends(get_current_user)):
     return result
 
 
-@router.get("/admin/db-backup/download/{filename}")
+@router.get("/admin/db-backup/logs")
+async def get_backup_logs(lines: int = 100, user: dict = Depends(get_current_user)):
+    """Get the last N lines of the backup log."""
+    log_file = f"{BACKUP_DIR}/backup.log"
+    if not os.path.isfile(log_file):
+        return {"logs": "", "line_count": 0, "exists": False}
+    try:
+        result = subprocess.run(["tail", f"-n{lines}", log_file], capture_output=True, text=True)
+        log_content = result.stdout
+        return {
+            "logs": log_content,
+            "line_count": log_content.count('\n'),
+            "exists": True,
+            "log_file": log_file,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/admin/db-backup/status")
+async def get_backup_status(user: dict = Depends(get_current_user)):
+    """Get current backup status — latest file info + next scheduled run."""
+    latest = _latest_backup()
+    status = {"has_backup": False, "cron_schedule": "Daily at 10:00 PM"}
+    if latest:
+        stat = os.stat(latest)
+        status.update({
+            "has_backup": True,
+            "filename": os.path.basename(latest),
+            "size_mb": round(stat.st_size / 1024 / 1024, 2),
+            "created_at": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
+        })
+    return status
+
+
 async def download_specific_backup(filename: str, user: dict = Depends(get_current_user)):
     """Download a specific backup file by filename."""
     # Security: only allow valid backup filenames
