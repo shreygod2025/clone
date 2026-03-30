@@ -141,22 +141,24 @@ function TypedText({ text, speed = 52, startDelay = 0 }) {
     </span>
   );
 }
-function CircuitBg({ opacity = 0.18 }) {
+function CircuitBg({ opacity = 0.22 }) {
   return (
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', opacity, pointerEvents: 'none' }} aria-hidden>
       <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <pattern id="ckt" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
-            {/* Grid lines */}
-            <line x1="0" y1="0" x2="100" y2="0" stroke="#00E5FF" strokeWidth="0.5" opacity="0.4"/>
-            <line x1="0" y1="0" x2="0" y2="100" stroke="#00E5FF" strokeWidth="0.5" opacity="0.4"/>
-            {/* Node at each intersection */}
-            <circle cx="0"   cy="0"   r="3" fill="#00E5FF" opacity="0.7"/>
-            {/* Mid-point circuit traces */}
-            <line x1="50" y1="0" x2="50" y2="30" stroke="#00E5FF" strokeWidth="0.5" opacity="0.3"/>
-            <line x1="0" y1="50" x2="30" y2="50" stroke="#00E5FF" strokeWidth="0.5" opacity="0.3"/>
-            <circle cx="50" cy="50" r="4" fill="none" stroke="#00E5FF" strokeWidth="0.8" opacity="0.5"/>
-            <circle cx="50" cy="50" r="1.5" fill="#00E5FF" opacity="0.4"/>
+            {/* Full cell border — draws all 4 sides */}
+            <rect x="0" y="0" width="100" height="100" fill="none" stroke="#00E5FF" strokeWidth="0.8" opacity="0.35"/>
+            {/* Glowing corner node */}
+            <circle cx="0" cy="0" r="3.5" fill="#00E5FF" opacity="0.9"/>
+            {/* Mid-line traces — horizontal + vertical */}
+            <line x1="50" y1="0" x2="50" y2="36" stroke="#00E5FF" strokeWidth="0.8" opacity="0.4"/>
+            <line x1="50" y1="64" x2="50" y2="100" stroke="#00E5FF" strokeWidth="0.8" opacity="0.4"/>
+            <line x1="0" y1="50" x2="36" y2="50" stroke="#00E5FF" strokeWidth="0.8" opacity="0.4"/>
+            <line x1="64" y1="50" x2="100" y2="50" stroke="#00E5FF" strokeWidth="0.8" opacity="0.4"/>
+            {/* Centre node ring */}
+            <circle cx="50" cy="50" r="5" fill="none" stroke="#00E5FF" strokeWidth="1" opacity="0.6"/>
+            <circle cx="50" cy="50" r="2"   fill="#00E5FF" opacity="0.5"/>
           </pattern>
         </defs>
         <rect width="100%" height="100%" fill="url(#ckt)"/>
@@ -382,12 +384,12 @@ export default function SummerCampLandingPage() {
         .sec-title { font-family:'JetBrains Mono',monospace; font-weight:800; font-size:clamp(1.9rem,4.5vw,3rem); color:#F8FAFC; line-height:1.15; }
       `}</style>
 
-      <div style={{ background: '#080C16', minHeight: '100vh', fontFamily: 'Outfit, sans-serif', overflowX: 'hidden' }}>
+      <div style={{ background: '#080C16', minHeight: '100vh', fontFamily: 'Outfit, sans-serif', overflow: 'clip' }}>
         <Navbar variant="camp" />
 
         {/* ── HERO ─────────────────────────────────────────────────────────── */}
         <section data-testid="camp-hero" style={{ position: 'relative', overflow: 'hidden', paddingTop: '5rem', paddingBottom: '4rem', minHeight: '92vh', display: 'flex', alignItems: 'center' }}>
-          <CircuitBg opacity={0.14} />
+          <CircuitBg opacity={0.28} />
           <div className="scanline" />
           {/* Orbs */}
           <div style={{ position: 'absolute', top: '-8%', right: '-5%', width: 600, height: 600, borderRadius: '50%', background: 'radial-gradient(circle, rgba(214,48,49,0.12) 0%, transparent 65%)', pointerEvents: 'none' }} />
