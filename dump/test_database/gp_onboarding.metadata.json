@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"655b1b9cfb414c8088cf21e922386589","collectionName":"gp_onboarding","type":"collection"}

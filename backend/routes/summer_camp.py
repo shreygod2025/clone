@@ -152,7 +152,7 @@ async def initiate_payment(data: PaymentInitRequest):
         raise HTTPException(status_code=400, detail="Already paid")
 
     order_id = f"SC2026-{booking['id'][:8]}-{int(time.time())}"
-    frontend_url = os.getenv("FRONTEND_URL", "https://inquiry-edit-bug.preview.emergentagent.com")
+    frontend_url = os.getenv("FRONTEND_URL", "https://camp-cashfree-flow.preview.emergentagent.com")
 
     parent_name = booking.get("parent_name", "Parent")
     cf_name = parent_name if len(parent_name) >= 3 else parent_name.ljust(3)

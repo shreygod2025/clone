@@ -1,29 +1,38 @@
-<analysis>**original_problem_statement**: The user requested fixes for GST visibility, corrected invoice math, automated payment receipt emails for online student payments, and extensive improvements to the AI Chat CRM assistant (preventing data overwrites, invoice generation, pronoun resolution, correct proposal defaults, and fixing status changes). The user also requested a complete revamp of the Proposal HTML email template and the ability to track School Team Contacts across lead stages. PRODUCT REQUIREMENTS include seamless multi-action AI chat, accurate PDF generation using existing templates, and detailed activity logging.
+<analysis>**original_problem_statement**: The user requested a new Summer Camps section with a unified landing page, step-by-step booking flow, and Cashfree integration. They also requested an automated daily MongoDB backup system with an Admin Settings UI to manage, view logs, and download backups. Lastly, the user requested design updates to the home page banner. PRODUCT REQUIREMENTS: High-converting futuristic UI for Summer Camps, automated cron jobs for DB backup maintaining only the latest file, and accurate data persistence during lead edits.
 
 **User's preferred language**: English (INSTRUCT next agent to respond in English only)
 
 **what currently exists?** 
-A full-stack React + FastAPI application with MongoDB serving as a School CRM and Orders system. The AI Chat acts as an agentic assistant that can create leads, generate proposals, MOUs, and invoices, schedule follow-ups, and send emails. The system uses Resend for emails and jsPDF for frontend document generation. The application now supports automated student payment receipts, robust AI chat context-awareness, and a rich, updated HTML template for proposal emails.
+A full-stack React + FastAPI application with MongoDB serving as a School CRM and Orders system. It now includes a fully functional Summer Camp booking flow with a dark/neon futuristic landing page and question-by-question checkout. It also features a robust daily database backup system running via cron, manageable directly from the Admin Settings UI.
 
 **Last working item**:
-    - Last item agent was working: Fixing a data initialization bug where School Team Contacts were being erased when a lead was moved from New Lead to Meeting Done via the Edit popup. The agent identified that  was initializing  as , causing it to overwrite existing contacts with an empty array.
-    - Status: IN PROGRESS / USER VERIFICATION PENDING
-    - Agent Testing Done: N (Code was injected via search_replace in message 461, but not yet tested or finalized).
-    - Which testing method agent to use? Frontend manual testing by screenshot tool or manual UI testing (open Edit popup for a lead with contacts, save, and ensure contacts are retained).
+    - Last item agent was working: Updating the home page banner design () to feature a gradient background merging into the footer, with a card above it and a header, based on the user's provided screenshot.
+    - Status: NOT STARTED (Agent reviewed the files but did not apply any edits before the session ended).
+    - Agent Testing Done: N
+    - Which testing method agent to use? Screenshot tool.
     - User Testing Done: N
 
 **All Pending/In progress Issue list**:  
-  Issue 1: (P0) School Team Contacts overwritten during Edit Lead save
-     - Attempted fixes: The agent applied a  patch to  (around line 1161) to correctly initialize  from  instead of leaving it undefined. 
-     - Next debug checklist: Verify the fix in . Test the Edit Lead modal to ensure saving does not wipe out the contacts array. Check the payload sent to .
-     - Why fix this issue and what will be achieved with the fix? Prevents critical contact data loss when sales team updates lead stages.
-     - Status: TESTING PENDING
+  Issue 1: Update home page banner design (P0)
+     - Attempted fixes: Agent only viewed .
+     - Next debug checklist: Modify  and potentially  to apply the requested gradient background that visually merges the banner into the footer. Ensure the card is placed correctly above the gradient as per the user's intent.
+     - Why fix this issue and what will be achieved with the fix? It fulfills the user's direct design request for the platform's main entry point.
+     - Status: NOT STARTED
+     - Is recurring issue? N
+     - Should Test frontend/backend/both after fix? Frontend (Screenshot tool)
+     - Blocked on other issue: None
+
+  Issue 2: Invoice invisible in Approval Modal despite being uploaded (P1)
+     - Attempted fixes: The user reported this in Message 5 with screenshots. The agent acknowledged it, but prioritized a P0 contact bug and completely forgot to come back to this invoice bug.
+     - Next debug checklist: Check  (or the specific PO/Approval Modal component). The invoice shows correctly on the PO detail page (e.g., ₹68,938.43) but shows as Not uploaded and ₹0 inside the Approval modal. Ensure the modal state is correctly receiving and mapping the  and  props from the selected order.
+     - Why fix this issue and what will be achieved with the fix? Unblocks admins from reviewing and approving vendor payments.
+     - Status: NOT STARTED
      - Is recurring issue? N
      - Should Test frontend/backend/both after fix? Frontend
      - Blocked on other issue: None
 
 **In progress Task List**: 
-  (None - All previous tasks were marked completed prior to the last bug report).
+  None (Summer Camps and Backups are completed).
 
 **Upcoming and Future Tasks**
     Upcoming Tasks:
@@ -38,23 +47,19 @@ A full-stack React + FastAPI application with MongoDB serving as a School CRM an
     - Refactor  (Urgent: File is >12,000 lines long and highly fragile)
 
 **Completed work in this session**
-- Built Student Payment Email Receipt flow using Resend (frontend email field + backend trigger) (DONE)
-- Fixed AI Chat proposal generation to use existing school  instead of applying defaults (DONE)
-- Enabled AI Chat to change  and sync it properly to  (DONE)
-- Added AI Chat invoice generation using the exact same jsPDF format from the Orders page (DONE)
-- Fixed AI Chat context pronoun resolution (this, the same) by explicitly injecting the last mentioned school name into the prompt (DONE)
-- Fixed AI Chat proposal default grades to Jr. Kg - 10th and mapped individual kit to  program type (DONE)
-- Completely revamped  in  with new deliverables, links, and layout (DONE)
-- Added automatic, human-friendly email communication notes to the lead's  (DONE)
-- Added School Team Contacts fields to Add Lead and Edit Lead popups, modifying  models to support them (DONE)
-- Blocked AI Chat from using a non-existent  status, correctly mapping it to  +  (DONE)
+- Fixed School Team Contacts getting wiped on Edit Lead save by adding  to  backend model and fixing frontend read paths (DONE)
+- Built completely new unified Summer Camp Landing Page () with dark/neon tech theme (DONE)
+- Built interactive question-by-question Summer Camp booking flow with Cashfree integration () (DONE)
+- Integrated Summer Camp section into the main Home Page () with Shark Tank India badges and testimonials (DONE)
+- Built automated MongoDB backup system () triggering daily at 10 PM via cron (), keeping only the latest backup (DONE)
+- Created Database Backup section in Admin Settings ( -> System tab) to trigger manual backups, view cron logs, and download the tar file (DONE)
 
 **Earlier issues found/mentioned but not fixed**
    - Issue 1: AdminSchoolCRM.jsx File Size / Complexity
    - Debug checklist: The file exceeds 12,000 lines. Modals, forms, and helper functions need to be extracted into .
-   - Why to solve this issue and what will be achieved with this? State initialization bugs (like the contacts wipeout) are occurring because state management is too sprawling.
+   - Why to solve this issue and what will be achieved with this? State initialization bugs are occurring because state management is too sprawling.
    - Should Test frontend/backend/both after fix: Frontend
-   - Is recurring issue? Y (Source of multiple data-sync bugs)
+   - Is recurring issue? Y
 
 **Known issue recurrence from previous fork**
   - None
@@ -63,56 +68,58 @@ A full-stack React + FastAPI application with MongoDB serving as a School CRM an
 
 
 **Key Technical Concepts**
-- **Frontend**: React, Tailwind, jsPDF for local document generation.
-- **Backend**: FastAPI, PyMongo, LLM integrations via Emergent .
-- **AI Chat Architecture**: The LLM determines actions, returns them as JSON to the backend, the backend updates MongoDB and passes a  status back to the client (), which then triggers client-side PDF downloads or UI updates.
+- **Frontend**: React, Tailwind CSS, customized Shadcn UI.
+- **Backend**: FastAPI, PyMongo.
+- **Database Backup**: Uses standard , compresses to , triggered via Linux  inside the pod, and exposed to the frontend via backend  subprocess commands for log reading.
+- **Payments**: Cashfree gateway handles student/parent payments.
 
 **key DB schema**
-  - : Stores lead data,  array, , , and .
-  - : Stores individual student payments, mapped to .
+  - : Stores lead data, onboarding data.
+  -  collections: Includes all newly backed-up data.
 
 **changes in tech stack**
-  - None
+  - Added Linux  and  tools into standard execution pipelines for the backup automation.
 
 **All files of reference**
-  1.  (Edited in last step for the contacts initialization bug)
-  2.  (Heavily updated for AI behaviors and pronoun resolution)
-  3.  (Updated Email HTML templates and  notes)
-  4.  (Updated to handle AI invoice generation and email toggles)
-  5.  (Updated with student email receipt triggers)
+  1.  (Needs UI changes requested in latest message)
+  2.  (Needs fix for skipped invoice preview bug)
+  3.  (Created in this session)
+  4.  (Created in this session)
+  5.  and  (Created for DB automation)
+  6.  (Updated with Database Backup UI)
 
 **Areas that need refactoring**:
--  (Extremely large, causing state collision bugs).
+-  (Extremely large, >12k lines).
 
 **key api endpoints**
-- : Main endpoint for AI Chat. Returns text and an array of executed .
-- : Generates and sends emails, logs activity notes.
-- : Creates a new lead.
-- : Updates a lead (used by Edit popup).
+- : Triggers a manual MongoDB backup.
+- : Reads backup logs and latest file status.
+- : Downloads the  backup file.
+- : Processes new summer camp registrations.
 
 **Critical Info for New Agent**
-- **AI Chat Context**:  now explicitly overrides pronoun references by checking the conversation history and appending  to the user's prompt before it hits the LLM. 
-- **Email Templates**:  handles HTML email generation. It uses  so any CSS styles or HTML properties containing curly braces MUST be double-escaped (e.g.,  and ) or variables must be specifically mapped via single brackets .
-- **PDF Generation**: Invoices generated by the AI Chat are now processed purely on the frontend using  in  to ensure they match the Orders page format exactly. The backend only returns the payment JSON data.
+- **Backup Scope**: The backup script currently points to  which handles the preview pod. When deployed to a production environment, the same cron and script will run against the production local DB natively.
+- **Skipped Bug**: The agent explicitly skipped the invoice modal bug mentioned in Message 5. This needs to be prioritized.
+- **Booking Flow Design**: The booking flow is now a full-screen, question-by-question layout. Avoid reverting this to standard forms.
 
 **documents and test reports created in this job**
-  -  (Updated throughout the session)
+  - 
+  - 
+  - 
+  - 
 
 **Last 10 User Messages and any pending HUMAN messages** 
- - 1. User requested AI Chat not overwrite existing school pricing/students when generating proposals. (DONE)
- - 2. User requested AI Chat ability to change training type (student/teacher) and generate/email invoices. (DONE)
- - 3. User noticed AI invoice was a new format, requested it use the existing invoice format from Orders page. (DONE)
- - 4. User noted AI chat could not resolve pronouns like this or the same to a previously discussed school. (DONE)
- - 5. User requested default grades for proposals be Jr Kg - 10th, not All, and mapping updates for individual kit. (DONE)
- - 6. User noticed grades still saving as Grade All and requested it show Grade Jr Kg - 10th on the PDF table. (DONE)
- - 7. User provided a highly detailed, updated HTML template for Proposal emails with specific formatting and links. (DONE)
- - 8. User requested an activity note be added to leads for every communication sent, and requested School Team Contacts in New Lead popup. (DONE)
- - 9. User requested School Team Contacts in the Edit popup, and noted AI uses an invalid followup stage. (DONE)
- - 10. *(PENDING)* User reported that moving a lead from New Lead to Meeting Done via the Edit popup erases the School Team Contacts. (Agent patched code but did not test/finish).
+ - 1. User reported PO invoice preview showing Not uploaded in Approval modal despite being uploaded. *(SKIPPED BY AGENT - PENDING)*
+ - 2. User asked to build Summer Camps section (3 age groups, 3 pages, robotics/AI tech theme, specific pricing and locations). (DONE)
+ - 3. User clarified pricing, locations, Cashfree, and requested Admin CRM tracking for bookings. (DONE)
+ - 4. User asked to unify the 3 landing pages into one, add a home page section, add Shark Tank badges, and change booking flow to be question-by-question. (DONE)
+ - 5. User asked for a database backup file and a weekly cron to download/save the backup. (DONE)
+ - 6. User asked if this was done for preview or production server. (Answered by agent)
+ - 7. User asked to add a Database Backup section in Admin Settings to trigger production backups, show logs for daily 10 PM runs, and keep only the latest backup. (DONE)
+ - 8. *(PENDING)* User provided an image and requested to update the home page banner in the same design (gradient background merging into the footer, card above that, and header).
 
 **Project Health Check:**
-- Broken:  Edit Lead data initialization (Patch applied, needs testing).
-- Mocked: None
+- Broken: Invoice visibility in Order Approval Modal (AdminOrders).
 
 **3rd Party Integrations**
 - OpenAI GPT-5.4-mini — uses Emergent LLM Key (for AI Chat)
@@ -121,13 +128,13 @@ A full-stack React + FastAPI application with MongoDB serving as a School CRM an
 - Cashfree (Payments) — requires User API Key
 
 **Testing status**
-  - Testing agent used after significant changes: NO (Agent self-tested via bash scripts and manual API tests).
+  - Testing agent used after significant changes: YES (iteration 62)
   - Troubleshoot agent used after agent stuck in loop: NO
-  - Test files created: None
-  - Known regressions: None explicitly known aside from the contacts wipeout on edit.
+  - Test files created: 
+  - Known regressions: None.
 
 **Credentials to test flow:**
 - Admin:  / 
 
 **What agent forgot to execute**
-- The agent applied the search/replace patch for the  initialization bug in  in message 461 but the context window ended before the agent could verify the UI, test the fix, and invoke the finish tool. Next agent must start by verifying this exact fix.</analysis>
+- In Message 5, the user explicitly shared screenshots showing an issue where an uploaded invoice is invisible inside the Approval preview modal. The agent acknowledged it but immediately switched to testing the Contact bug fix, and subsequently ignored the invoice bug completely.</analysis>
