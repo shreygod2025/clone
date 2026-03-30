@@ -496,6 +496,24 @@ export default function SummerCampLandingPage() {
           </div>
         </section>
 
+        {/* ── STATS BAR — OMOTEC style ─────────────────────────────────── */}
+        <div style={{ background: 'rgba(8,15,30,0.9)', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)', padding: '2rem 1.5rem' }}>
+          <div style={{ maxWidth: 1100, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1.5rem', textAlign: 'center' }}>
+            {[
+              { num: '400+', label: 'Schools Trust OLL' },
+              { num: '2,000+', label: 'Kids Trained' },
+              { num: '10', label: 'Kids Per Batch' },
+              { num: '4', label: 'Age Groups' },
+              { num: '98%', label: 'Parents Recommend' },
+            ].map(s => (
+              <div key={s.num} className="sr">
+                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', color: '#F8FAFC', lineHeight: 1, letterSpacing: '-0.03em' }}>{s.num}</div>
+                <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.72rem', color: '#475569', marginTop: '0.4rem', letterSpacing: '0.06em' }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* ── INFINITE PRESS TICKER ──────────────────────────────────────── */}
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '1.25rem 0', background: 'rgba(255,255,255,0.015)', overflow: 'hidden' }}>
           <div style={{ marginBottom: '0.5rem', textAlign: 'center' }}>
@@ -526,67 +544,65 @@ export default function SummerCampLandingPage() {
               </p>
             </div>
 
-            {/* Cert badge cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem', marginBottom: '3.5rem' }}>
+            {/* Cert badge cards — 2 col, larger, more impact */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem', marginBottom: '3.5rem' }}>
 
-              {/* STEM.org Educational Program */}
+              {/* STEM.org Educational Experience — large centrepiece card */}
               <div className="cert-card cert-reveal sr sr-d1"
-                style={{ padding: '2.5rem 2rem', borderColor: 'rgba(230,85,13,0.2)', boxShadow: '0 0 40px rgba(230,85,13,0.06)' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(230,85,13,0.5)'; e.currentTarget.style.boxShadow = '0 0 60px rgba(230,85,13,0.18)'; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(230,85,13,0.2)'; e.currentTarget.style.boxShadow = '0 0 40px rgba(230,85,13,0.06)'; }}
+                style={{ padding: '3rem 2.5rem', borderColor: 'rgba(230,85,13,0.25)', boxShadow: '0 0 60px rgba(230,85,13,0.07), inset 0 0 40px rgba(230,85,13,0.03)' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(230,85,13,0.6)'; e.currentTarget.style.boxShadow = '0 0 80px rgba(230,85,13,0.22), inset 0 0 40px rgba(230,85,13,0.05)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(230,85,13,0.25)'; e.currentTarget.style.boxShadow = '0 0 60px rgba(230,85,13,0.07), inset 0 0 40px rgba(230,85,13,0.03)'; }}
               >
-                {/* Orange top glow line */}
-                <div style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: 2, background: 'linear-gradient(90deg, transparent, #E6550D, transparent)', borderRadius: 1 }} />
-                <div style={{ width: 160, height: 175, marginBottom: '1.5rem', position: 'relative' }}>
-                  <img src="https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/jgu6cmji_STM_BrandAssets_NEG_BADGE_ACC_VER.png"
-                    alt="STEM.org Accredited Educational Program" loading="lazy"
-                    style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                  {/* Glow under badge */}
-                  <div style={{ position: 'absolute', bottom: -20, left: '50%', transform: 'translateX(-50%)', width: 100, height: 40, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(230,85,13,0.3), transparent)', filter: 'blur(12px)', pointerEvents: 'none' }} />
-                </div>
-                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '0.7rem', letterSpacing: '0.15em', color: '#E6550D', textTransform: 'uppercase', marginBottom: '0.4rem' }}>STEM.org</div>
-                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '1rem', color: '#F0F4F8', textAlign: 'center', marginBottom: '0.75rem', lineHeight: 1.3 }}>Accredited<br/>Educational Program™</div>
-                <p style={{ fontSize: '0.8rem', color: '#475569', textAlign: 'center', lineHeight: 1.65, fontFamily: 'Outfit, sans-serif' }}>
-                  Our camp program meets STEM.org's rigorous accreditation standards for educational excellence and quality outcomes.
-                </p>
-              </div>
+                {/* Circuit border accent */}
+                <div style={{ position: 'absolute', top: 0, left: '15%', right: '15%', height: 2, background: 'linear-gradient(90deg, transparent, #E6550D, transparent)', borderRadius: 1 }} />
+                <div style={{ position: 'absolute', bottom: 0, left: '25%', right: '25%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(230,85,13,0.5), transparent)', borderRadius: 1 }} />
+                {/* Corner accents */}
+                <div style={{ position: 'absolute', top: 12, left: 12, width: 18, height: 18, borderTop: '2px solid rgba(230,85,13,0.5)', borderLeft: '2px solid rgba(230,85,13,0.5)', borderRadius: '2px 0 0 0' }} />
+                <div style={{ position: 'absolute', top: 12, right: 12, width: 18, height: 18, borderTop: '2px solid rgba(230,85,13,0.5)', borderRight: '2px solid rgba(230,85,13,0.5)', borderRadius: '0 2px 0 0' }} />
+                <div style={{ position: 'absolute', bottom: 12, left: 12, width: 18, height: 18, borderBottom: '2px solid rgba(230,85,13,0.5)', borderLeft: '2px solid rgba(230,85,13,0.5)', borderRadius: '0 0 0 2px' }} />
+                <div style={{ position: 'absolute', bottom: 12, right: 12, width: 18, height: 18, borderBottom: '2px solid rgba(230,85,13,0.5)', borderRight: '2px solid rgba(230,85,13,0.5)', borderRadius: '0 0 2px 0' }} />
 
-              {/* STEM.org Educational Experience */}
-              <div className="cert-card cert-reveal sr sr-d2"
-                style={{ padding: '2.5rem 2rem', borderColor: 'rgba(180,60,10,0.2)', boxShadow: '0 0 40px rgba(180,60,10,0.06)' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(230,85,13,0.5)'; e.currentTarget.style.boxShadow = '0 0 60px rgba(230,85,13,0.18)'; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(180,60,10,0.2)'; e.currentTarget.style.boxShadow = '0 0 40px rgba(180,60,10,0.06)'; }}
-              >
-                <div style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: 2, background: 'linear-gradient(90deg, transparent, #B43C0A, transparent)', borderRadius: 1 }} />
-                <div style={{ width: 160, height: 175, marginBottom: '1.5rem', position: 'relative' }}>
+                {/* Badge */}
+                <div style={{ width: 220, height: 220, marginBottom: '2rem', position: 'relative' }}>
                   <img src="https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/ko80g3wd_images.png"
                     alt="STEM.org Accredited Educational Experience" loading="lazy"
-                    style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '0.5rem' }} />
-                  <div style={{ position: 'absolute', bottom: -20, left: '50%', transform: 'translateX(-50%)', width: 100, height: 40, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(180,60,10,0.3), transparent)', filter: 'blur(12px)', pointerEvents: 'none' }} />
+                    style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '0.75rem' }} />
+                  {/* Glow bloom */}
+                  <div style={{ position: 'absolute', bottom: -30, left: '50%', transform: 'translateX(-50%)', width: 160, height: 60, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(230,85,13,0.35), transparent)', filter: 'blur(18px)', pointerEvents: 'none' }} />
                 </div>
-                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '0.7rem', letterSpacing: '0.15em', color: '#E6550D', textTransform: 'uppercase', marginBottom: '0.4rem' }}>STEM.org</div>
-                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '1rem', color: '#F0F4F8', textAlign: 'center', marginBottom: '0.75rem', lineHeight: 1.3 }}>Accredited<br/>Educational Experience™</div>
-                <p style={{ fontSize: '0.8rem', color: '#475569', textAlign: 'center', lineHeight: 1.65, fontFamily: 'Outfit, sans-serif' }}>
-                  Every session is certified by STEM.org — ensuring each child gets a world-class, hands-on learning experience.
+                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '0.65rem', letterSpacing: '0.22em', color: '#E6550D', textTransform: 'uppercase', marginBottom: '0.6rem' }}>STEM.ORG</div>
+                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, fontSize: '1.3rem', color: '#F0F4F8', textAlign: 'center', marginBottom: '0.9rem', lineHeight: 1.25 }}>
+                  Accredited<br/>Educational Experience™
+                </div>
+                <p style={{ fontSize: '0.85rem', color: '#475569', textAlign: 'center', lineHeight: 1.7, fontFamily: 'Outfit, sans-serif', maxWidth: 280 }}>
+                  Every session is certified by STEM.org — ensuring each child receives a world-class, hands-on learning experience.
                 </p>
               </div>
 
               {/* UNESCO */}
-              <div className="cert-card cert-reveal sr sr-d3"
-                style={{ padding: '2.5rem 2rem', borderColor: 'rgba(30,80,180,0.2)', boxShadow: '0 0 40px rgba(30,80,180,0.06)' }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(50,120,255,0.45)'; e.currentTarget.style.boxShadow = '0 0 60px rgba(50,120,255,0.18)'; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(30,80,180,0.2)'; e.currentTarget.style.boxShadow = '0 0 40px rgba(30,80,180,0.06)'; }}
+              <div className="cert-card cert-reveal sr sr-d2"
+                style={{ padding: '3rem 2.5rem', borderColor: 'rgba(30,80,180,0.25)', boxShadow: '0 0 60px rgba(30,80,180,0.07), inset 0 0 40px rgba(30,80,180,0.03)' }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(50,120,255,0.55)'; e.currentTarget.style.boxShadow = '0 0 80px rgba(50,120,255,0.2), inset 0 0 40px rgba(50,120,255,0.05)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(30,80,180,0.25)'; e.currentTarget.style.boxShadow = '0 0 60px rgba(30,80,180,0.07), inset 0 0 40px rgba(30,80,180,0.03)'; }}
               >
-                <div style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: 2, background: 'linear-gradient(90deg, transparent, #3264CC, transparent)', borderRadius: 1 }} />
-                <div style={{ width: 200, height: 140, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                <div style={{ position: 'absolute', top: 0, left: '15%', right: '15%', height: 2, background: 'linear-gradient(90deg, transparent, #3264CC, transparent)', borderRadius: 1 }} />
+                <div style={{ position: 'absolute', bottom: 0, left: '25%', right: '25%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(50,100,204,0.5), transparent)', borderRadius: 1 }} />
+                <div style={{ position: 'absolute', top: 12, left: 12, width: 18, height: 18, borderTop: '2px solid rgba(50,100,204,0.5)', borderLeft: '2px solid rgba(50,100,204,0.5)', borderRadius: '2px 0 0 0' }} />
+                <div style={{ position: 'absolute', top: 12, right: 12, width: 18, height: 18, borderTop: '2px solid rgba(50,100,204,0.5)', borderRight: '2px solid rgba(50,100,204,0.5)', borderRadius: '0 2px 0 0' }} />
+                <div style={{ position: 'absolute', bottom: 12, left: 12, width: 18, height: 18, borderBottom: '2px solid rgba(50,100,204,0.5)', borderLeft: '2px solid rgba(50,100,204,0.5)', borderRadius: '0 0 0 2px' }} />
+                <div style={{ position: 'absolute', bottom: 12, right: 12, width: 18, height: 18, borderBottom: '2px solid rgba(50,100,204,0.5)', borderRight: '2px solid rgba(50,100,204,0.5)', borderRadius: '0 0 2px 0' }} />
+
+                <div style={{ width: 260, height: 180, marginBottom: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                   <img src="https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/cqfv2iw2_USFUCA%20logo%203.jpg"
                     alt="UNESCO USFUCA" loading="lazy"
-                    style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '0.5rem' }} />
-                  <div style={{ position: 'absolute', bottom: -20, left: '50%', transform: 'translateX(-50%)', width: 100, height: 40, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(30,80,180,0.35), transparent)', filter: 'blur(12px)', pointerEvents: 'none' }} />
+                    style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '0.75rem' }} />
+                  <div style={{ position: 'absolute', bottom: -30, left: '50%', transform: 'translateX(-50%)', width: 160, height: 60, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(30,80,180,0.4), transparent)', filter: 'blur(18px)', pointerEvents: 'none' }} />
                 </div>
-                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '0.7rem', letterSpacing: '0.15em', color: '#5B8EFF', textTransform: 'uppercase', marginBottom: '0.4rem' }}>UNESCO</div>
-                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '1rem', color: '#F0F4F8', textAlign: 'center', marginBottom: '0.75rem', lineHeight: 1.3 }}>U.S. Federation of<br/>UNESCO Clubs</div>
-                <p style={{ fontSize: '0.8rem', color: '#475569', textAlign: 'center', lineHeight: 1.65, fontFamily: 'Outfit, sans-serif' }}>
+                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '0.65rem', letterSpacing: '0.22em', color: '#5B8EFF', textTransform: 'uppercase', marginBottom: '0.6rem' }}>UNESCO</div>
+                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, fontSize: '1.3rem', color: '#F0F4F8', textAlign: 'center', marginBottom: '0.9rem', lineHeight: 1.25 }}>
+                  U.S. Federation of<br/>UNESCO Clubs
+                </div>
+                <p style={{ fontSize: '0.85rem', color: '#475569', textAlign: 'center', lineHeight: 1.7, fontFamily: 'Outfit, sans-serif', maxWidth: 280 }}>
                   Aligned with UNESCO's global framework for quality education, scientific literacy, and sustainable development.
                 </p>
               </div>
@@ -654,6 +670,34 @@ export default function SummerCampLandingPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* ── 4 PILLARS — OMOTEC style ─────────────────────────────────── */}
+        <section style={{ padding: '4.5rem 0', background: 'rgba(8,15,30,0.85)' }}>
+          <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 1.5rem' }}>
+            <div className="sr" style={{ textAlign: 'center', marginBottom: '2.75rem' }}>
+              <p className="sec-label">why.choose.us</p>
+              <h2 className="sec-title">Every Detail, Designed for Your Child</h2>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '1rem' }}>
+              {[
+                { icon: '🏅', color: '#E6550D', title: 'STEM.org Certified', desc: 'Every session carries a globally recognised STEM.org accreditation.' },
+                { icon: '🧠', color: '#00E5FF', title: 'No Prior Knowledge', desc: 'Every course is designed for beginners — no background needed.' },
+                { icon: '📄', color: '#7C3AED', title: 'Certificate Included', desc: 'Children receive a verified STEM.org certificate on completion.' },
+                { icon: '🚀', color: '#D63031', title: 'Future-Ready Skills', desc: "AI, Robotics and Coding skills for the world's best colleges." },
+              ].map((p, i) => (
+                <div key={i} className={`sr sr-d${i + 1} camp-card`}
+                  style={{ padding: '1.75rem', textAlign: 'center', background: 'rgba(10,20,42,0.7)' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = `${p.color}44`; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; }}
+                >
+                  <div style={{ fontSize: '2.25rem', marginBottom: '0.9rem', filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.15))' }}>{p.icon}</div>
+                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '0.88rem', color: p.color, marginBottom: '0.55rem' }}>{p.title}</div>
+                  <p style={{ fontSize: '0.8rem', color: '#475569', lineHeight: 1.65, fontFamily: 'Outfit, sans-serif' }}>{p.desc}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
