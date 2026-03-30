@@ -176,78 +176,142 @@ const LandingPage = () => {
         </div>
       </main>
 
-      {/* Summer Camp Banner */}
-      <section
-        style={{
-          background: 'linear-gradient(135deg, #080C16 0%, #1E3A5F 45%, #0D1829 100%)',
-          position: 'relative',
-          overflow: 'hidden',
-          padding: '4rem 1.5rem',
-        }}
-      >
-        {/* Circuit pattern */}
-        <div style={{ position: 'absolute', inset: 0, opacity: 0.12, pointerEvents: 'none' }}>
-          <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <pattern id="circuit-home" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
-                <path d="M60 0 L0 0 0 60" fill="none" stroke="#00E5FF" strokeWidth="0.5" />
-                <circle cx="0" cy="0" r="2" fill="#00E5FF" />
-                <path d="M30 0 L30 20 M30 40 L30 60 M0 30 L20 30 M40 30 L60 30" fill="none" stroke="#00E5FF" strokeWidth="0.5" />
-                <circle cx="30" cy="30" r="3" fill="none" stroke="#00E5FF" strokeWidth="0.8" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#circuit-home)" />
-          </svg>
-        </div>
-        <div style={{ position: 'absolute', top: '-60px', right: '5%', width: 320, height: 320, borderRadius: '50%', background: 'radial-gradient(circle, rgba(214,48,49,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: '-40px', left: '5%', width: 240, height: 240, borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,229,255,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
+      {/* Summer Camp — Offerings-style section */}
+      <section style={{
+        background: 'linear-gradient(to bottom, #ffffff 0%, #edf2f8 18%, #c2d4e8 38%, #4a7aaa 55%, #1e3a5f 72%, #0f172a 100%)',
+        position: 'relative',
+        overflow: 'hidden',
+        paddingTop: '4rem',
+        paddingBottom: 0,
+      }}>
 
-        <div className="max-w-6xl mx-auto relative" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 14px', borderRadius: '999px', background: 'rgba(214,48,49,0.2)', border: '1px solid #D63031', color: '#FF6B6B', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em' }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#D63031', display: 'inline-block', animation: 'pulse 2s infinite' }} />
-              Limited Seats
-            </span>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 14px', borderRadius: '999px', background: 'rgba(0,229,255,0.1)', border: '1px solid rgba(0,229,255,0.3)', color: '#00E5FF', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em' }}>
-              May 2026 · Mumbai
-            </span>
-          </div>
-
-          <p style={{ fontFamily: 'Unbounded, sans-serif', fontSize: '0.65rem', letterSpacing: '0.25em', color: '#00E5FF', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
-            Future Skills Summer Camp 2026
+        {/* Above-card header (light background area) */}
+        <div style={{ textAlign: 'center', paddingBottom: '2.5rem', paddingLeft: '1rem', paddingRight: '1rem' }}>
+          <p style={{
+            fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase',
+            color: '#D63031', marginBottom: '0.75rem', fontFamily: 'Outfit, sans-serif',
+          }}>
+            Exclusive · Limited Seats
           </p>
-          <h2 style={{ fontFamily: 'Unbounded, sans-serif', fontSize: 'clamp(1.75rem, 5vw, 3.25rem)', fontWeight: 900, color: '#F8FAFC', lineHeight: 1.1, marginBottom: '1rem', maxWidth: 640 }}>
-            Give Your Child the <span style={{ color: '#D63031' }}>Summer of the Future</span>
+          <h2 style={{
+            fontFamily: 'Unbounded, sans-serif',
+            fontSize: 'clamp(2rem, 5vw, 3.25rem)',
+            fontWeight: 900,
+            color: '#0F172A',
+            lineHeight: 1.15,
+            marginBottom: '0.75rem',
+          }}>
+            Summer Camps 2026
           </h2>
-          <p style={{ color: '#94A3B8', fontSize: '1rem', maxWidth: 500, lineHeight: 1.6, marginBottom: '1.75rem', fontFamily: 'Outfit, sans-serif' }}>
-            Robotics · Coding · AI · 3D Design — 10 days of hands-on learning for ages 4–16 at Mumbai centers or online.
+          <p style={{ color: '#64748B', fontSize: '1rem', maxWidth: 480, margin: '0 auto', lineHeight: 1.6, fontFamily: 'Outfit, sans-serif' }}>
+            Intensive 2-week camps where kids build real tech projects with expert mentors
           </p>
+        </div>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '2rem', justifyContent: 'center' }}>
-            {['Ages 4–8', 'Ages 9–12', 'Ages 13–16', 'Mumbai Centers', 'Online Option', '10 Kids/Batch'].map(tag => (
-              <span key={tag} style={{ padding: '5px 14px', borderRadius: '999px', background: 'rgba(255,255,255,0.06)', color: '#CBD5E1', fontSize: '0.78rem', fontFamily: 'Outfit, sans-serif', border: '1px solid rgba(255,255,255,0.08)' }}>
-                {tag}
-              </span>
-            ))}
+        {/* Standout dark card */}
+        <div style={{ maxWidth: 1000, margin: '0 auto', paddingLeft: '1.5rem', paddingRight: '1.5rem', paddingBottom: '5rem' }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #0B1628 0%, #0f2040 50%, #0B1628 100%)',
+            borderRadius: '1.5rem',
+            border: '1px solid rgba(0,229,255,0.15)',
+            boxShadow: '0 40px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04)',
+            position: 'relative',
+            overflow: 'hidden',
+            padding: '2.5rem',
+          }}>
+            {/* Circuit overlay */}
+            <div style={{ position: 'absolute', inset: 0, opacity: 0.1, pointerEvents: 'none' }}>
+              <svg width="100%" height="100%">
+                <defs>
+                  <pattern id="circuit-card" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
+                    <path d="M60 0L0 0 0 60" fill="none" stroke="#00E5FF" strokeWidth="0.5" />
+                    <circle cx="0" cy="0" r="2" fill="#00E5FF" />
+                    <path d="M30 0L30 20 M30 40L30 60 M0 30L20 30 M40 30L60 30" fill="none" stroke="#00E5FF" strokeWidth="0.5" />
+                    <circle cx="30" cy="30" r="3" fill="none" stroke="#00E5FF" strokeWidth="0.8" />
+                  </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#circuit-card)" />
+              </svg>
+            </div>
+            {/* Red glow */}
+            <div style={{ position: 'absolute', top: '-60px', right: '8%', width: 280, height: 280, borderRadius: '50%', background: 'radial-gradient(circle, rgba(214,48,49,0.2) 0%, transparent 70%)', pointerEvents: 'none' }} />
+
+            <div className="grid md:grid-cols-[1fr_280px] gap-8" style={{ position: 'relative' }}>
+              {/* Left: content */}
+              <div>
+                {/* Badges */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: '1.25rem' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 12px', borderRadius: '999px', background: 'rgba(214,48,49,0.25)', border: '1px solid #D63031', color: '#FF6B6B', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em' }}>
+                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#D63031', display: 'inline-block' }} />
+                    Limited Spots
+                  </span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 12px', borderRadius: '999px', background: 'rgba(0,229,255,0.12)', border: '1px solid rgba(0,229,255,0.35)', color: '#00E5FF', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em' }}>
+                    May 2026
+                  </span>
+                </div>
+
+                {/* Heading */}
+                <h3 style={{ fontFamily: 'Unbounded, sans-serif', fontSize: 'clamp(1.5rem, 3.5vw, 2.25rem)', fontWeight: 900, lineHeight: 1.15, marginBottom: '0.75rem' }}>
+                  <span style={{ color: '#F8FAFC', display: 'block' }}>Future Skills</span>
+                  <span style={{ background: 'linear-gradient(90deg, #00E5FF, #7C3AED)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+                    Summer Camp 2026
+                  </span>
+                </h3>
+
+                <p style={{ color: '#94A3B8', fontSize: '0.9rem', lineHeight: 1.65, marginBottom: '1.25rem', maxWidth: 400, fontFamily: 'Outfit, sans-serif' }}>
+                  Robotics · Coding · AI · 3D Design — 10 days of hands-on learning for ages 4–16. Online or at Mumbai centers.
+                </p>
+
+                {/* Feature pills */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: '1.75rem' }}>
+                  {['Mumbai Centers', 'Online Option', '10 Kids/Batch', '4 Batch Weeks'].map(text => (
+                    <span key={text} style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 12px', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: '#CBD5E1', fontSize: '0.75rem', fontFamily: 'Outfit, sans-serif' }}>
+                      {text}
+                    </span>
+                  ))}
+                </div>
+
+                {/* CTA */}
+                <button
+                  onClick={() => navigate('/summer-camp')}
+                  data-testid="homepage-camp-book-btn"
+                  style={{
+                    background: '#D63031', color: '#fff',
+                    fontFamily: 'Unbounded, sans-serif', fontWeight: 700, fontSize: '0.85rem',
+                    padding: '0.85rem 2rem', borderRadius: '999px', border: 'none', cursor: 'pointer',
+                    boxShadow: '0 0 28px rgba(214,48,49,0.4)',
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    transition: 'all 0.3s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#FF3366'; e.currentTarget.style.boxShadow = '0 0 40px rgba(255,51,102,0.55)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#D63031'; e.currentTarget.style.boxShadow = '0 0 28px rgba(214,48,49,0.4)'; }}
+                >
+                  Book Summer Camp
+                  <ArrowRight style={{ width: 16, height: 16 }} />
+                </button>
+              </div>
+
+              {/* Right: age group cards */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 260 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                  {[
+                    { ages: 'Ages 4–8', label: 'Little Explorers', color: '#00E5FF' },
+                    { ages: 'Ages 9–12', label: 'Tech Creators', color: '#D63031' },
+                    { ages: 'Ages 13–16', label: 'Future Innovators', color: '#7C3AED' },
+                  ].map(g => (
+                    <div key={g.ages} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', padding: '1rem 0.6rem', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s' }}
+                      onClick={() => navigate('/summer-camp')}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.borderColor = g.color + '66'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
+                    >
+                      <div style={{ color: g.color, fontSize: '0.72rem', fontWeight: 700, fontFamily: 'Outfit, sans-serif', marginBottom: '0.25rem' }}>{g.ages}</div>
+                      <div style={{ color: '#64748B', fontSize: '0.62rem', fontFamily: 'Outfit, sans-serif' }}>{g.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
-
-          <button
-            onClick={() => navigate('/summer-camp')}
-            data-testid="homepage-camp-book-btn"
-            style={{
-              background: '#D63031', color: '#fff',
-              fontFamily: 'Unbounded, sans-serif', fontWeight: 700, fontSize: '0.9rem',
-              padding: '1rem 2.5rem', borderRadius: '999px', border: 'none', cursor: 'pointer',
-              boxShadow: '0 0 30px rgba(214,48,49,0.4)',
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-              transition: 'all 0.3s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 40px rgba(255,51,102,0.6)'; e.currentTarget.style.background = '#FF3366'; }}
-            onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 30px rgba(214,48,49,0.4)'; e.currentTarget.style.background = '#D63031'; }}
-          >
-            Book Now
-            <ArrowRight style={{ width: 18, height: 18 }} />
-          </button>
         </div>
       </section>
 

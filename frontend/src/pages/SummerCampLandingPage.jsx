@@ -196,7 +196,7 @@ export default function SummerCampLandingPage() {
       </Helmet>
 
       <div style={{ background: '#080C16', minHeight: '100vh', fontFamily: 'Outfit, sans-serif' }}>
-        <Navbar />
+        <Navbar variant="camp" />
 
         {/* ── HERO ───────────────────────────────────────────────────────── */}
         <section data-testid="camp-hero" style={{ position: 'relative', overflow: 'hidden', paddingTop: '7rem', paddingBottom: '5rem' }}>

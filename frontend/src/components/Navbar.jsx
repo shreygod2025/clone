@@ -16,6 +16,56 @@ const Navbar = ({ showBookDemo = false, onBookDemo, variant = 'default' }) => {
   // For About page, show different action buttons
   const isAboutVariant = variant === 'about';
 
+  // Summer Camp variant — dark glass navbar, only Book Now
+  if (variant === 'camp') {
+    return (
+      <nav style={{
+        background: 'rgba(0,0,0,0.75)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        borderBottom: '1px solid rgba(255,255,255,0.08)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
+      }}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <a href="/" style={{ display: 'flex', alignItems: 'center' }}>
+              <img
+                src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png"
+                alt="OLL Logo"
+                style={{ height: 40, width: 'auto', filter: 'brightness(0) invert(1)' }}
+              />
+            </a>
+            <button
+              onClick={() => navigate('/summer-camp/book')}
+              data-testid="camp-nav-book-btn"
+              style={{
+                background: '#D63031',
+                color: '#fff',
+                fontFamily: 'Unbounded, sans-serif',
+                fontWeight: 700,
+                fontSize: '0.8rem',
+                padding: '0.55rem 1.4rem',
+                borderRadius: '999px',
+                border: 'none',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                transition: 'background 0.2s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#FF3366'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#D63031'; }}
+            >
+              Book Now
+            </button>
+          </div>
+        </div>
+      </nav>
+    );
+  }
+
   // Removed Blog and FAQ from navbar - moved to footer
   const navLinks = [
     { path: '/offerings', label: 'Offerings' },
