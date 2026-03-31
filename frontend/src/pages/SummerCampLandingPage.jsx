@@ -7,9 +7,10 @@ import Footer from '../components/Footer';
 
 // ── GIF assets ────────────────────────────────────────────────────────────────
 const GIFS = [
-  { src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/4y2zbq59_Robotics.gif', label: 'Robotics' },
-  { src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/8i8zob06_Pyhton%20.gif', label: 'Coding' },
-  { src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/xj8dva2y_3D%20Design.gif', label: '3D Designing' },
+  { src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/4y2zbq59_Robotics.gif',      label: 'Robotics' },
+  { src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/8i8zob06_Pyhton%20.gif',      label: 'Coding' },
+  { src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/xj8dva2y_3D%20Design.gif',    label: '3D Designing' },
+  { src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/je1umfoj_AI%20TOOl.gif',      label: 'AI' },
 ];
 
 // ── Images (testimonial/media section) ────────────────────────────────────────
@@ -414,11 +415,11 @@ export default function SummerCampLandingPage() {
         @media (max-width:768px) { .raise-query-btn { display:none !important; } }
 
         /* ── GIF cards ── */
-        .gif-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:0.75rem; }
+        .gif-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:0.85rem; }
         .gif-card { border-radius:1rem; overflow:hidden; border:1px solid rgba(0,229,255,0.2); box-shadow:0 10px 30px rgba(0,0,0,0.5); background:rgba(8,12,22,0.7); transition:transform 0.25s, box-shadow 0.25s; }
         .gif-card:hover { transform:translateY(-4px); box-shadow:0 16px 40px rgba(0,229,255,0.12); }
         .gif-card img { width:100%; aspect-ratio:1/1; object-fit:cover; display:block; }
-        .gif-label { text-align:center; margin-top:0.45rem; font-family:'JetBrains Mono',monospace; font-size:0.68rem; font-weight:700; color:#00E5FF; letter-spacing:0.08em; text-transform:uppercase; }
+        .gif-label { text-align:center; margin-top:0.55rem; font-family:'JetBrains Mono',monospace; font-size:0.82rem; font-weight:700; color:#00E5FF; letter-spacing:0.1em; text-transform:uppercase; }
 
         /* ── Mobile responsive ── */
         @media (max-width:640px) {
@@ -426,7 +427,7 @@ export default function SummerCampLandingPage() {
           .hero-grid { grid-template-columns:1fr !important; }
           .hero-img-col { margin-top:1.5rem; }
           .gif-grid { gap:0.55rem; }
-          .gif-label { font-size:0.6rem; }
+          .gif-label { font-size:0.72rem; }
           .countdown-inner { flex-direction:column; gap:1rem; }
           .countdown-stats { justify-content:center; }
           .age-tabs-row { justify-content:flex-start !important; overflow-x:auto; padding-bottom:4px; flex-wrap:nowrap !important; }
@@ -577,7 +578,7 @@ export default function SummerCampLandingPage() {
                   {GIFS.map(item => (
                     <div key={item.label}>
                       <div className="gif-card">
-                        <img src={item.src} alt={item.label} loading="lazy" width="200" height="200" />
+                        <img src={item.src} alt={item.label} loading="lazy" width="280" height="280" />
                       </div>
                       <p className="gif-label">{item.label}</p>
                     </div>
