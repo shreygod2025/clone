@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, ArrowRight, Check, MapPin, Wifi, CreditCard, Banknote, Lock } from 'lucide-react';
@@ -123,6 +123,7 @@ export default function SummerCampBookingPage() {
 
   const [step, setStep] = useState(preAge ? 1 : 0);
   const [capturedBookingId, setCapturedBookingId] = useState(null);
+  const [centers, setCenters] = useState([]);
   const [form, setForm] = useState({
     age_group: preAge || '',
     mode: '',
@@ -137,6 +138,13 @@ export default function SummerCampBookingPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetch(`${process.env.REACT_APP_BACKEND_URL}/api/centers`)
+      .then(r => r.json())
+      .then(data => setCenters(data.filter(c => c.is_active && !c.name?.toLowerCase().includes('online') && !c.city?.toLowerCase().includes('online'))))
+      .catch(() => {});
+  }, []);
 
   const stepsWithCenter = form.mode === 'offline';
   // Steps: 0=age 1=mode 2=center(offline) 3=batch 4=phone 5=details+pay
@@ -219,7 +227,7 @@ export default function SummerCampBookingPage() {
 
   const selectedAge = AGE_GROUPS.find(g => g.slug === form.age_group);
   const selectedBatch = BATCH_WEEKS.find(b => b.id === form.batch_week);
-  const selectedCenter = CENTERS.find(c => c.id === form.center);
+  const selectedCenter = centers.find(c => c.id === form.center);
 
   return (
     <>
@@ -283,7 +291,7 @@ export default function SummerCampBookingPage() {
                     </div>
                     <div>
                       <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '1.05rem', color: '#F8FAFC', marginBottom: '0.25rem' }}>At a Center</div>
-                      <div style={{ fontSize: '0.88rem', color: '#64748B', fontFamily: NU }}>Mira Road · Dombivli · Andheri West — Mumbai</div>
+                      <div style={{ fontSize: '0.88rem', color: '#64748B', fontFamily: NU }}>{centers.length ? [...new Set(centers.map(c => c.city))].join(' · ') : 'Multiple cities'}</div>
                     </div>
                   </div>
                 </ChoiceCard>
@@ -306,15 +314,15 @@ export default function SummerCampBookingPage() {
           {step === 2 && (
             <div style={{ animation: 'fadeSlide 0.35s ease both' }}>
               <BackBtn onClick={goBack} />
-              <StepHeader stepNum={3} total={TOTAL} title="Choose your center" sub="All centers are in Mumbai." />
+              <StepHeader stepNum={3} total={TOTAL} title="Choose your center" sub={centers.length ? `${[...new Set(centers.map(c => c.city))].join(' · ')}` : 'Loading centers...'} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
-                {CENTERS.map(c => (
+                {centers.map(c => (
                   <ChoiceCard key={c.id} selected={form.center === c.id} onClick={() => { update('center')(c.id); setTimeout(goNext, 200); }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                       <span style={{ fontSize: '1.75rem', lineHeight: 1, flexShrink: 0 }}>🏢</span>
                       <div>
                         <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '1.05rem', color: '#F8FAFC', marginBottom: '0.25rem' }}>{c.name}</div>
-                        <div style={{ fontSize: '0.88rem', color: '#64748B', fontFamily: NU }}>{c.address}</div>
+                        <div style={{ fontSize: '0.88rem', color: '#64748B', fontFamily: NU }}>{c.area ? `${c.area}, ${c.city}` : c.address}</div>
                       </div>
                     </div>
                   </ChoiceCard>
