@@ -516,11 +516,6 @@ export default function SummerCampLandingPage() {
                   ))}
                 </div>
 
-                {/* Cyber tag */}
-                <div style={{ alignSelf: 'flex-start', background: 'rgba(8,12,22,0.85)', backdropFilter: 'blur(10px)', border: '1px solid rgba(0,229,255,0.3)', borderRadius: '0.75rem', padding: '0.6rem 0.9rem' }}>
-                  <div style={{ fontSize: '0.6rem', color: '#00E5FF', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 3 }}>Live Camp</div>
-                  <div style={{ fontSize: '0.82rem', color: '#F8FAFC', fontWeight: 700, fontFamily: 'JetBrains Mono, monospace' }}>400+ Schools</div>
-                </div>
               </div>
             </div>
 
@@ -546,12 +541,10 @@ export default function SummerCampLandingPage() {
 
         {/* ── STATS BAR — OMOTEC style ─────────────────────────────────── */}
         <div style={{ background: 'rgba(8,15,30,0.9)', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(255,255,255,0.05)', padding: '2rem 1.5rem' }}>
-          <div style={{ maxWidth: 1100, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem', textAlign: 'center' }} className="stats-row">
+          <div style={{ maxWidth: 1100, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', textAlign: 'center' }} className="stats-row">
             {[
               { num: '400+', label: 'Schools Trust OLL' },
               { num: '2,000+', label: 'Kids Trained' },
-              { num: '10', label: 'Kids Per Batch' },
-              { num: '4', label: 'Age Groups' },
               { num: '98%', label: 'Parents Recommend' },
             ].map(s => (
               <div key={s.num} className="sr">
