@@ -59,6 +59,20 @@ CENTERS = {
     "online": "Online",
 }
 
+async def _resolve_center_label(center_id: str) -> str:
+    """Resolve a center ID (UUID or legacy slug) to a human-readable label."""
+    if not center_id:
+        return ""
+    doc = await db.centers.find_one({"id": center_id}, {"_id": 0, "name": 1, "area": 1, "city": 1})
+    if doc:
+        area = doc.get("area", "")
+        city = doc.get("city", "")
+        name = doc.get("name", center_id)
+        if area and city:
+            return f"{name} ({area}, {city})"
+        return name
+    return CENTERS.get(center_id, center_id)
+
 BATCH_DATES = {
     "week1": {"weekday": "May 1-5, 2026 (Mon-Fri)", "weekend": "May 2-3, 2026 (Sat-Sun)"},
     "week2": {"weekday": "May 8-12, 2026 (Mon-Fri)", "weekend": "May 9-10, 2026 (Sat-Sun)"},
@@ -193,6 +207,8 @@ async def capture_lead(data: PartialLeadCapture):
             source_name = link.get("name", data.ref)
             await _increment_tracking(data.ref, "leads")
 
+    center_label = await _resolve_center_label(data.center)
+
     doc = {
         "id": booking_id,
         "booking_ref": booking_ref,
@@ -208,7 +224,7 @@ async def capture_lead(data: PartialLeadCapture):
         "batch_dates": batch_dates,
         "mode": data.mode,
         "center": data.center,
-        "center_label": CENTERS.get(data.center, data.center),
+        "center_label": center_label,
         "payment_mode": "cashfree",
         "amount": CAMP_PRICE,
         "payment_status": "pending",
@@ -269,6 +285,7 @@ async def register_summer_camp(data: SummerCampRegistration):
     booking_id = str(uuid.uuid4())
 
     batch_dates = BATCH_DATES[data.batch_week][data.batch_type]
+    center_label = await _resolve_center_label(data.center)
 
     doc = {
         "id": booking_id,
@@ -285,7 +302,7 @@ async def register_summer_camp(data: SummerCampRegistration):
         "batch_dates": batch_dates,
         "mode": data.mode,
         "center": data.center,
-        "center_label": CENTERS.get(data.center, data.center),
+        "center_label": center_label,
         "payment_mode": data.payment_mode,
         "amount": CAMP_PRICE,
         "payment_status": "pending",
@@ -302,7 +319,7 @@ async def register_summer_camp(data: SummerCampRegistration):
         "booking_ref": booking_ref,
         "payment_mode": data.payment_mode,
         "amount": CAMP_PRICE,
-        "center_label": CENTERS.get(data.center, data.center),
+        "center_label": center_label,
         "batch_dates": batch_dates,
         "message": "Registration successful",
     }

@@ -60,13 +60,6 @@ const AGE_GROUPS = [
   },
 ];
 
-const CENTERS = [
-  { id: 'mira_road', name: 'Mira Road',     address: 'OLL Center, Mira Road, Mumbai' },
-  { id: 'dombivli',  name: 'Dombivli',      address: 'OLL Center, Pallava, Dombivli' },
-  { id: 'andheri',   name: 'Andheri West',  address: 'Lokhandwala Complex, Andheri W' },
-  { id: 'online',    name: 'Online',         address: 'Live via Zoom · Anywhere in India' },
-];
-
 const BATCH_DATES = [
   { id: 'week1', weekday: 'May 1–5, 2026',   weekend: 'May 2–3 & 9–10',   label: 'Batch 1' },
   { id: 'week2', weekday: 'May 8–12, 2026',  weekend: 'May 9–10 & 16–17', label: 'Batch 2' },

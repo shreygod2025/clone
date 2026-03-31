@@ -15,12 +15,6 @@ const AGE_GROUPS = [
   { slug: 'innovators', label: 'Future Innovators',  ages: '13 – 16', icon: '🤖', tagline: 'AI, 3D Design & advanced robotics',    color: '#7C3AED' },
 ];
 
-const CENTERS = [
-  { id: 'mira_road', name: 'Mira Road',           address: 'OLL Center, Mira Road, Mumbai' },
-  { id: 'dombivli',  name: 'Dombivli – Pallava',  address: 'OLL Center, Pallava, Dombivli, Mumbai' },
-  { id: 'andheri',   name: 'Andheri West',         address: 'OLL Center, Lokhandwala, Andheri West, Mumbai' },
-];
-
 const BATCH_WEEKS = [
   { id: 'week1', weekday: 'May 1–5, 2026',   weekend: 'May 2–3 & 9–10, 2026' },
   { id: 'week2', weekday: 'May 8–12, 2026',  weekend: 'May 9–10 & 16–17, 2026' },
