@@ -305,10 +305,11 @@ export default function SummerCampLandingPage() {
         .typed-cursor {
           display:inline-block; width:3px; height:0.9em;
           background:#00E5FF; margin-left:4px; border-radius:1px;
-          vertical-align:text-bottom;
+          vertical-align:text-bottom; flex-shrink:0;
           box-shadow: 0 0 8px rgba(0,229,255,0.9);
         }
         .typed-cursor-blink { animation: cursor-blink 1s step-end infinite; }
+        .typed-wrap { white-space: nowrap; display: inline; }
 
         /* ── Animations ── */
         @keyframes fadeUp   { from { opacity:0; transform:translateY(28px); } to { opacity:1; transform:translateY(0); } }
@@ -531,10 +532,11 @@ export default function SummerCampLandingPage() {
                 <h1 className="h-title" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 'clamp(1.9rem, 3.8vw, 3rem)', fontWeight: 800, lineHeight: 1.1, color: '#F8FAFC', marginBottom: '1.2rem', letterSpacing: '-0.025em' }}>
                   Give Your Child the
                   <br />
-                  <span style={{
+                  <span className="typed-wrap" style={{
                     color: '#00E5FF',
                     display: 'inline-block',
                     position: 'relative',
+                    whiteSpace: 'nowrap',
                     textShadow: '0 0 20px rgba(0,229,255,0.9), 0 0 50px rgba(0,229,255,0.45), 0 0 90px rgba(0,229,255,0.2)',
                   }}>
                     <TypedText text="Summer of the Future" startDelay={900} speed={52} />
@@ -742,56 +744,8 @@ export default function SummerCampLandingPage() {
           {/* Bottom separator glow */}
           <div style={{ position: 'absolute', bottom: 0, left: '50%', transform: 'translateX(-50%)', width: '60%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,229,255,0.2), transparent)' }} />
         </section>
-        <section style={{ padding: '3rem 0', overflow: 'hidden' }}>
-          <div style={{ display: 'flex', gap: '0.75rem', overflowX: 'auto', paddingLeft: '1.5rem', paddingRight: '1.5rem', paddingBottom: '0.25rem', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-            {[
-              { src: IMAGES.kidsRobot,    label: 'Robot Building' },
-              { src: IMAGES.kidsTable,    label: 'Teamwork' },
-              { src: IMAGES.boySolder,    label: 'Electronics' },
-              { src: IMAGES.boyRobotToy,  label: 'AI Exploration' },
-              { src: IMAGES.twoKidsRobot, label: 'Showcase' },
-              { src: IMAGES.girlCoding,   label: 'Coding' },
-            ].map((img, i) => (
-              <div key={i} style={{ flexShrink: 0, width: 'clamp(160px, 22vw, 240px)', height: 'clamp(115px, 15vw, 165px)', borderRadius: '0.9rem', overflow: 'hidden', border: '1px solid rgba(0,229,255,0.12)', position: 'relative' }}>
-                <img src={img.src} alt={img.label} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transition: 'transform 0.5s ease' }}
-                  onMouseEnter={e => { e.target.style.transform = 'scale(1.08)'; }}
-                  onMouseLeave={e => { e.target.style.transform = 'scale(1)'; }}
-                />
-                <div style={{ position: 'absolute', bottom: 6, left: 8, background: 'rgba(8,12,22,0.7)', backdropFilter: 'blur(8px)', borderRadius: '999px', padding: '2px 9px', fontSize: '0.6rem', color: '#94A3B8', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                  {img.label}
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
 
-        {/* ── 4 PILLARS — OMOTEC style ─────────────────────────────────── */}
-        <section style={{ padding: '4.5rem 0', background: 'rgba(8,15,30,0.85)' }}>
-          <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 1.5rem' }}>
-            <div className="sr" style={{ textAlign: 'center', marginBottom: '2.75rem' }}>
-              <p className="sec-label">why.choose.us</p>
-              <h2 className="sec-title">Every Detail, Designed for Your Child</h2>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '1rem' }}>
-              {[
-                { icon: '🏅', color: '#E6550D', title: 'STEM.org Certified', desc: 'Every session carries a globally recognised STEM.org accreditation.' },
-                { icon: '🧠', color: '#00E5FF', title: 'No Prior Knowledge', desc: 'Every course is designed for beginners — no background needed.' },
-                { icon: '📄', color: '#7C3AED', title: 'Certificate Included', desc: 'Children receive a verified STEM.org certificate on completion.' },
-                { icon: '🚀', color: '#D63031', title: 'Future-Ready Skills', desc: "AI, Robotics and Coding skills for the world's best colleges." },
-              ].map((p, i) => (
-                <div key={i} className={`sr sr-d${i + 1} camp-card`}
-                  style={{ padding: '1.75rem', textAlign: 'center', background: 'rgba(10,20,42,0.7)' }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = `${p.color}44`; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; }}
-                >
-                  <div style={{ fontSize: '2.25rem', marginBottom: '0.9rem', filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.15))' }}>{p.icon}</div>
-                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '0.88rem', color: p.color, marginBottom: '0.55rem' }}>{p.title}</div>
-                  <p style={{ fontSize: '0.8rem', color: '#475569', lineHeight: 1.65, fontFamily: 'Outfit, sans-serif' }}>{p.desc}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+        {/* ── 4 PILLARS — removed per user request ── */}
 
         {/* ── CURRICULUM ────────────────────────────────────────────────── */}
         <section data-testid="camp-curriculum" style={{ padding: '6rem 0', position: 'relative', zIndex: 1 }}>
@@ -893,7 +847,11 @@ export default function SummerCampLandingPage() {
             </div>
 
             {/* Centers */}
-            <div className="center-grid sr sr-d3" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.85rem' }}>
+            <div className="sr sr-d3" style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <p className="sec-label">Locations</p>
+              <h3 className="sec-title" style={{ fontSize: 'clamp(1.2rem, 2.5vw, 1.6rem)' }}>Choose Your Center</h3>
+            </div>
+            <div className="center-grid sr sr-d4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.85rem' }}>
               {CENTERS.map(c => (
                 <div key={c.id} className="camp-card" style={{ padding: '1.25rem', ...(c.id === 'online' ? { borderColor: 'rgba(214,48,49,0.2)', background: 'rgba(214,48,49,0.04)' } : {}) }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = c.id === 'online' ? 'rgba(214,48,49,0.45)' : 'rgba(0,229,255,0.35)'; }}
@@ -937,21 +895,6 @@ export default function SummerCampLandingPage() {
                 Secure Your Spot Now <ArrowRight style={{ width: 18, height: 18 }} />
               </button>
               <p style={{ fontSize: '0.7rem', color: '#334155', marginTop: '0.9rem', letterSpacing: '0.03em' }}>Cash at center · or online via Cashfree (UPI, Card, Net Banking)</p>
-            </div>
-          </div>
-        </section>
-
-        {/* ── COUNTDOWN — below pricing ─────────────────────────────────── */}
-        <section data-testid="camp-countdown" style={{ padding: '3rem 0 4rem', position: 'relative', zIndex: 1 }}>
-          <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 1.5rem' }}>
-            <div style={{ padding: '2.5rem 2.5rem 2rem', background: 'rgba(4,14,34,0.88)', backdropFilter: 'blur(24px)', border: '1px solid rgba(0,229,255,0.18)', borderRadius: '1.5rem', boxShadow: '0 0 60px rgba(0,229,255,0.06), inset 0 1px 0 rgba(0,229,255,0.12)', textAlign: 'center', position: 'relative' }}>
-              <div style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,229,255,0.5), transparent)', borderRadius: 1 }} />
-              <p style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.68rem', letterSpacing: '0.25em', color: '#2d4a6a', textTransform: 'uppercase', fontWeight: 700, marginBottom: '1.75rem' }}>
-                <span style={{ color: 'rgba(0,229,255,0.35)' }}>{'['}</span> Camp Starts In <span style={{ color: 'rgba(0,229,255,0.35)' }}>{']'}</span>
-              </p>
-              <div className="countdown-inner" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <CountdownDisplay />
-              </div>
             </div>
           </div>
         </section>
