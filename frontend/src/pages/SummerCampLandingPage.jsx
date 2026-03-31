@@ -234,7 +234,16 @@ export default function SummerCampLandingPage() {
   const [batchType, setBatchType] = useState('weekday');
   const activeCamp = AGE_GROUPS[activeAgeIdx];
 
-  useEffect(() => { window.scrollTo(0, 0); }, []);
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    // Tracking link: read ?ref= from URL, fire view, persist for booking
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref');
+    if (ref) {
+      sessionStorage.setItem('camp_ref', ref);
+      fetch(`${process.env.REACT_APP_BACKEND_URL}/api/summer-camp/track-view/${encodeURIComponent(ref)}`, { method: 'POST' }).catch(() => {});
+    }
+  }, []);
 
   return (
     <>

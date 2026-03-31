@@ -87,6 +87,7 @@ class PartialLeadCapture(BaseModel):
     batch_week: str
     mode: str
     center: str
+    ref: Optional[str] = None          # tracking link slug
 
 
 class CompleteLead(BaseModel):
@@ -100,6 +101,81 @@ class PaymentInitRequest(BaseModel):
     booking_id: str
 
 
+class CreateTrackingLinkRequest(BaseModel):
+    name: str
+
+
+# ── helpers ────────────────────────────────────────────────────────────────────
+import re
+
+def _slugify(name: str) -> str:
+    """Convert a name to a URL-safe slug."""
+    slug = re.sub(r'[^a-z0-9]+', '-', name.lower().strip())
+    return slug.strip('-')[:40]
+
+
+async def _increment_tracking(slug: str, field: str):
+    """Safely increment a tracking counter. Silently ignores missing slugs."""
+    if not slug:
+        return
+    await db.summer_camp_tracking_links.update_one(
+        {"slug": slug},
+        {"$inc": {field: 1}}
+    )
+
+
+# ─────────────────────────── TRACKING LINK ENDPOINTS ─────────────────────────
+
+@router.get("/summer-camp/tracking-links")
+async def list_tracking_links(user: dict = Depends(get_current_user)):
+    links = await db.summer_camp_tracking_links.find({}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    return links
+
+
+@router.post("/summer-camp/tracking-links")
+async def create_tracking_link(data: CreateTrackingLinkRequest, user: dict = Depends(get_current_user)):
+    base_slug = _slugify(data.name)
+    if not base_slug:
+        raise HTTPException(status_code=400, detail="Name is required")
+    # Ensure uniqueness
+    slug = base_slug
+    suffix = 1
+    while await db.summer_camp_tracking_links.find_one({"slug": slug}):
+        slug = f"{base_slug}-{suffix}"
+        suffix += 1
+
+    link_id = str(uuid.uuid4())
+    doc = {
+        "id": link_id,
+        "name": data.name.strip(),
+        "slug": slug,
+        "views": 0,
+        "leads": 0,
+        "conversions": 0,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.summer_camp_tracking_links.insert_one(doc)
+    return {k: v for k, v in doc.items() if k != '_id'}
+
+
+@router.delete("/summer-camp/tracking-links/{link_id}")
+async def delete_tracking_link(link_id: str, user: dict = Depends(get_current_user)):
+    result = await db.summer_camp_tracking_links.delete_one({"id": link_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Link not found")
+    return {"message": "Deleted"}
+
+
+@router.post("/summer-camp/track-view/{slug}")
+async def track_view(slug: str):
+    """Called by the landing page when loaded via a tracking link."""
+    await _increment_tracking(slug, "views")
+    return {"ok": True}
+
+
+# ───────────────────────────────────────────────────────────────────────────────
+
+
 @router.post("/summer-camp/capture-lead")
 async def capture_lead(data: PartialLeadCapture):
     """Save a partial lead at the phone number step — before full details are entered."""
@@ -108,6 +184,15 @@ async def capture_lead(data: PartialLeadCapture):
     booking_id = str(uuid.uuid4())
 
     batch_dates = BATCH_DATES.get(data.batch_week, {}).get(data.batch_type, "")
+
+    # Resolve tracking link name for display
+    source_name = "Direct"
+    if data.ref:
+        link = await db.summer_camp_tracking_links.find_one({"slug": data.ref}, {"_id": 0})
+        if link:
+            source_name = link.get("name", data.ref)
+            await _increment_tracking(data.ref, "leads")
+
     doc = {
         "id": booking_id,
         "booking_ref": booking_ref,
@@ -128,11 +213,13 @@ async def capture_lead(data: PartialLeadCapture):
         "amount": CAMP_PRICE,
         "payment_status": "pending",
         "crm_status": "phone_captured",
+        "source_ref": data.ref or "",
+        "source_name": source_name,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.summer_camp_bookings.insert_one(doc)
-    logging.info(f"Summer camp phone lead captured: {booking_ref} - {data.parent_phone}")
+    logging.info(f"Summer camp phone lead captured: {booking_ref} - {data.parent_phone} - source: {source_name}")
     return {"booking_id": booking_id, "booking_ref": booking_ref}
 
 
@@ -313,6 +400,8 @@ async def verify_payment(booking_id: str):
                         "updated_at": datetime.now(timezone.utc).isoformat(),
                     }}
                 )
+                if booking.get("source_ref"):
+                    await _increment_tracking(booking["source_ref"], "conversions")
                 booking["payment_status"] = "paid"
                 booking["crm_status"] = "converted"
             return {"status": new_status, "booking": booking}
@@ -345,6 +434,9 @@ async def summer_camp_webhook(request: Request):
                         "updated_at": datetime.now(timezone.utc).isoformat(),
                     }}
                 )
+                # Increment conversion on tracking link
+                if booking.get("source_ref"):
+                    await _increment_tracking(booking["source_ref"], "conversions")
                 logging.info(f"Summer camp payment confirmed via webhook: {order_id}")
 
         return {"status": "ok"}

@@ -365,6 +365,7 @@ export default function SummerCampBookingPage() {
                   onClick={async () => {
                     // Save partial lead immediately so it appears in admin even if user drops off
                     try {
+                      const campRef = sessionStorage.getItem('camp_ref') || '';
                       const res = await axios.post(`${API}/summer-camp/capture-lead`, {
                         parent_phone: form.parent_phone,
                         age_group: form.age_group,
@@ -372,6 +373,7 @@ export default function SummerCampBookingPage() {
                         batch_week: form.batch_week,
                         mode: form.mode,
                         center: form.mode === 'online' ? 'online' : form.center,
+                        ref: campRef || undefined,
                       });
                       setCapturedBookingId(res.data.booking_id);
                     } catch (err) {

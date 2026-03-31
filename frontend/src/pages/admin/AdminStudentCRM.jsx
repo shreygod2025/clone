@@ -62,6 +62,12 @@ const AdminStudentCRM = () => {
   // Summer Camp
   const [summerCampBookings, setSummerCampBookings] = useState([]);
   const [summerCampLoading, setSummerCampLoading] = useState(false);
+  // Tracking links
+  const [trackingLinks, setTrackingLinks] = useState([]);
+  const [trackingLinksLoading, setTrackingLinksLoading] = useState(false);
+  const [newLinkName, setNewLinkName] = useState('');
+  const [creatingLink, setCreatingLink] = useState(false);
+  const [campSubTab, setCampSubTab] = useState('bookings'); // 'bookings' | 'tracking'
   const [newComment, setNewComment] = useState('');
   const [onboardedEducators, setOnboardedEducators] = useState([]);
   const [assignTab, setAssignTab] = useState('team'); // 'team' or 'educator'
@@ -130,6 +136,7 @@ const AdminStudentCRM = () => {
   useEffect(() => {
     if (activeSection === 'summer_camp') {
       fetchSummerCampBookings();
+      fetchTrackingLinks();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSection]);
@@ -231,6 +238,44 @@ const AdminStudentCRM = () => {
       toast.error('Failed to fetch summer camp bookings');
     } finally {
       setSummerCampLoading(false);
+    }
+  };
+
+  const fetchTrackingLinks = async () => {
+    setTrackingLinksLoading(true);
+    try {
+      const res = await axios.get(`${API}/summer-camp/tracking-links`, { headers: getAuthHeaders() });
+      setTrackingLinks(res.data);
+    } catch {
+      toast.error('Failed to load tracking links');
+    } finally {
+      setTrackingLinksLoading(false);
+    }
+  };
+
+  const createTrackingLink = async () => {
+    if (!newLinkName.trim()) return;
+    setCreatingLink(true);
+    try {
+      const res = await axios.post(`${API}/summer-camp/tracking-links`, { name: newLinkName.trim() }, { headers: getAuthHeaders() });
+      setTrackingLinks(prev => [res.data, ...prev]);
+      setNewLinkName('');
+      toast.success('Tracking link created');
+    } catch {
+      toast.error('Failed to create link');
+    } finally {
+      setCreatingLink(false);
+    }
+  };
+
+  const deleteTrackingLink = async (linkId) => {
+    if (!window.confirm('Delete this tracking link?')) return;
+    try {
+      await axios.delete(`${API}/summer-camp/tracking-links/${linkId}`, { headers: getAuthHeaders() });
+      setTrackingLinks(prev => prev.filter(l => l.id !== linkId));
+      toast.success('Link deleted');
+    } catch {
+      toast.error('Failed to delete link');
     }
   };
 
@@ -1006,89 +1051,207 @@ const AdminStudentCRM = () => {
       {/* Lead Cards */}
       {activeSection === 'summer_camp' ? (
         <div>
-          {summerCampLoading ? (
-            <div className="text-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto" /></div>
-          ) : (
-            <>
-              {/* Stats Bar */}
-              <div className="grid grid-cols-4 gap-4 mb-6">
-                {[
-                  { label: 'Total Registrations', value: summerCampBookings.length, color: 'bg-blue-50 border-blue-200 text-blue-700' },
-                  { label: 'Phone Captured', value: summerCampBookings.filter(b => b.crm_status === 'phone_captured').length, color: 'bg-orange-50 border-orange-200 text-orange-700' },
-                  { label: 'Leads (Details)', value: summerCampBookings.filter(b => b.crm_status === 'lead').length, color: 'bg-yellow-50 border-yellow-200 text-yellow-700' },
-                  { label: 'Converted (Paid)', value: summerCampBookings.filter(b => b.crm_status === 'converted').length, color: 'bg-green-50 border-green-200 text-green-700' },
-                ].map(s => (
-                  <div key={s.label} className={`rounded-xl border p-4 text-center ${s.color}`}>
-                    <div className="text-2xl font-bold">{s.value}</div>
-                    <div className="text-xs font-medium mt-1">{s.label}</div>
+          {/* Sub-tabs */}
+          <div className="flex gap-2 mb-5">
+            {[{ v: 'bookings', l: 'Bookings' }, { v: 'tracking', l: 'Tracking Links' }].map(t => (
+              <button key={t.v} onClick={() => setCampSubTab(t.v)}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${campSubTab === t.v ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                {t.l}
+              </button>
+            ))}
+          </div>
+
+          {campSubTab === 'bookings' ? (
+            summerCampLoading ? (
+              <div className="text-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto" /></div>
+            ) : (
+              <>
+                {/* Stats Bar */}
+                <div className="grid grid-cols-4 gap-4 mb-6">
+                  {[
+                    { label: 'Total Registrations', value: summerCampBookings.length, color: 'bg-blue-50 border-blue-200 text-blue-700' },
+                    { label: 'Phone Captured', value: summerCampBookings.filter(b => b.crm_status === 'phone_captured').length, color: 'bg-orange-50 border-orange-200 text-orange-700' },
+                    { label: 'Leads (Details)', value: summerCampBookings.filter(b => b.crm_status === 'lead').length, color: 'bg-yellow-50 border-yellow-200 text-yellow-700' },
+                    { label: 'Converted (Paid)', value: summerCampBookings.filter(b => b.crm_status === 'converted').length, color: 'bg-green-50 border-green-200 text-green-700' },
+                  ].map(s => (
+                    <div key={s.label} className={`rounded-xl border p-4 text-center ${s.color}`}>
+                      <div className="text-2xl font-bold">{s.value}</div>
+                      <div className="text-xs font-medium mt-1">{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {summerCampBookings.length === 0 ? (
+                  <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">
+                    <p className="text-slate-500">No summer camp bookings yet</p>
                   </div>
-                ))}
+                ) : (
+                  <div className="overflow-x-auto bg-white rounded-2xl border border-slate-100">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-100 text-slate-500 text-xs uppercase tracking-wide">
+                          <th className="px-4 py-3 text-left">Ref</th>
+                          <th className="px-4 py-3 text-left">Child</th>
+                          <th className="px-4 py-3 text-left">Parent</th>
+                          <th className="px-4 py-3 text-left">Age Group</th>
+                          <th className="px-4 py-3 text-left">Batch</th>
+                          <th className="px-4 py-3 text-left">Center</th>
+                          <th className="px-4 py-3 text-left">Payment</th>
+                          <th className="px-4 py-3 text-left">Source</th>
+                          <th className="px-4 py-3 text-left">Status</th>
+                          <th className="px-4 py-3 text-left">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {summerCampBookings.map(booking => (
+                          <tr key={booking.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors" data-testid={`camp-booking-${booking.id}`}>
+                            <td className="px-4 py-3 font-mono text-xs text-slate-600">{booking.booking_ref}</td>
+                            <td className="px-4 py-3 font-semibold text-[#1E3A5F]">{booking.child_name || <span className="text-slate-400 italic">—</span>}</td>
+                            <td className="px-4 py-3">
+                              <div className="text-slate-700">{booking.parent_name || '—'}</div>
+                              <div className="text-xs text-slate-400">{booking.parent_phone}</div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className="text-xs font-semibold px-2 py-1 rounded-full bg-blue-50 text-blue-700">
+                                {booking.age_group_label} ({booking.age_group_ages})
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="text-xs">{booking.batch_dates}</div>
+                              <div className="text-xs text-slate-400 capitalize">{booking.batch_type}</div>
+                            </td>
+                            <td className="px-4 py-3 text-xs text-slate-600">{booking.center_label}</td>
+                            <td className="px-4 py-3">
+                              <span className={`text-xs px-2 py-1 rounded-full font-semibold ${booking.payment_mode === 'cash' ? 'bg-yellow-50 text-yellow-700' : 'bg-blue-50 text-blue-700'}`}>
+                                {booking.payment_mode === 'cash' ? '💵 Cash' : '💳 Online'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              {booking.source_name && booking.source_name !== 'Direct' ? (
+                                <span className="text-xs px-2 py-1 rounded-full bg-purple-50 text-purple-700 font-semibold">
+                                  🔗 {booking.source_name}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-slate-400">Direct</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`text-xs px-2 py-1 rounded-full font-bold ${
+                                booking.crm_status === 'converted' ? 'bg-green-50 text-green-700' :
+                                booking.crm_status === 'phone_captured' ? 'bg-orange-50 text-orange-700' :
+                                'bg-yellow-50 text-yellow-700'
+                              }`}>
+                                {booking.crm_status === 'converted' ? '✓ Paid' :
+                                 booking.crm_status === 'phone_captured' ? '📞 Phone' : '○ Lead'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-xs text-slate-400">
+                              {new Date(booking.created_at).toLocaleDateString('en-IN')}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </>
+            )
+          ) : (
+            /* ── Tracking Links Tab ── */
+            <div>
+              {/* Create link */}
+              <div className="bg-white rounded-2xl border border-slate-100 p-5 mb-6">
+                <h3 className="font-bold text-[#1E3A5F] text-base mb-3">Create Tracking Link</h3>
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    value={newLinkName}
+                    onChange={e => setNewLinkName(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && createTrackingLink()}
+                    placeholder="e.g. Instagram Bio, WhatsApp Campaign, Newspaper Ad"
+                    className="flex-1 border border-slate-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+                    data-testid="new-tracking-link-input"
+                  />
+                  <button
+                    onClick={createTrackingLink}
+                    disabled={creatingLink || !newLinkName.trim()}
+                    className="bg-orange-500 text-white px-5 py-2 rounded-lg text-sm font-semibold disabled:opacity-50 hover:bg-orange-600 transition-colors"
+                    data-testid="create-tracking-link-btn"
+                  >
+                    {creatingLink ? 'Creating...' : 'Create Link'}
+                  </button>
+                </div>
+                <p className="text-xs text-slate-400 mt-2">A unique URL will be generated that tracks views, leads, and paid bookings from that source.</p>
               </div>
 
-              {summerCampBookings.length === 0 ? (
+              {/* Links table */}
+              {trackingLinksLoading ? (
+                <div className="text-center py-8"><div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-500 mx-auto" /></div>
+              ) : trackingLinks.length === 0 ? (
                 <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">
-                  <p className="text-slate-500">No summer camp bookings yet</p>
+                  <p className="text-slate-500">No tracking links yet. Create one above.</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto bg-white rounded-2xl border border-slate-100">
+                <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-slate-100 text-slate-500 text-xs uppercase tracking-wide">
-                        <th className="px-4 py-3 text-left">Ref</th>
-                        <th className="px-4 py-3 text-left">Child</th>
-                        <th className="px-4 py-3 text-left">Parent</th>
-                        <th className="px-4 py-3 text-left">Age Group</th>
-                        <th className="px-4 py-3 text-left">Batch</th>
-                        <th className="px-4 py-3 text-left">Center</th>
-                        <th className="px-4 py-3 text-left">Payment</th>
-                        <th className="px-4 py-3 text-left">Status</th>
-                        <th className="px-4 py-3 text-left">Date</th>
+                      <tr className="border-b border-slate-100 text-slate-500 text-xs uppercase tracking-wide bg-slate-50">
+                        <th className="px-4 py-3 text-left">Name</th>
+                        <th className="px-4 py-3 text-left">Link</th>
+                        <th className="px-4 py-3 text-center">Views</th>
+                        <th className="px-4 py-3 text-center">Leads</th>
+                        <th className="px-4 py-3 text-center">Conversions</th>
+                        <th className="px-4 py-3 text-center">Conv. Rate</th>
+                        <th className="px-4 py-3 text-left">Created</th>
+                        <th className="px-4 py-3 text-center">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {summerCampBookings.map(booking => (
-                        <tr key={booking.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors" data-testid={`camp-booking-${booking.id}`}>
-                          <td className="px-4 py-3 font-mono text-xs text-slate-600">{booking.booking_ref}</td>
-                          <td className="px-4 py-3 font-semibold text-[#1E3A5F]">{booking.child_name}</td>
-                          <td className="px-4 py-3">
-                            <div className="text-slate-700">{booking.parent_name}</div>
-                            <div className="text-xs text-slate-400">{booking.parent_phone}</div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className="text-xs font-semibold px-2 py-1 rounded-full bg-blue-50 text-blue-700">
-                              {booking.age_group_label} ({booking.age_group_ages})
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="text-xs">{booking.batch_dates}</div>
-                            <div className="text-xs text-slate-400 capitalize">{booking.batch_type}</div>
-                          </td>
-                          <td className="px-4 py-3 text-xs text-slate-600">{booking.center_label}</td>
-                          <td className="px-4 py-3">
-                            <span className={`text-xs px-2 py-1 rounded-full font-semibold ${booking.payment_mode === 'cash' ? 'bg-yellow-50 text-yellow-700' : 'bg-blue-50 text-blue-700'}`}>
-                              {booking.payment_mode === 'cash' ? '💵 Cash' : '💳 Online'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={`text-xs px-2 py-1 rounded-full font-bold ${
-                              booking.crm_status === 'converted' ? 'bg-green-50 text-green-700' :
-                              booking.crm_status === 'phone_captured' ? 'bg-orange-50 text-orange-700' :
-                              'bg-yellow-50 text-yellow-700'
-                            }`}>
-                              {booking.crm_status === 'converted' ? '✓ Paid' :
-                               booking.crm_status === 'phone_captured' ? '📞 Phone' : '○ Lead'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-xs text-slate-400">
-                            {new Date(booking.created_at).toLocaleDateString('en-IN')}
-                          </td>
-                        </tr>
-                      ))}
+                      {trackingLinks.map(link => {
+                        const baseUrl = process.env.REACT_APP_BACKEND_URL.replace('/api','').replace('8001','3000');
+                        const trackUrl = `${window.location.origin}/summer-camp?ref=${link.slug}`;
+                        const convRate = link.leads > 0 ? Math.round((link.conversions / link.leads) * 100) : 0;
+                        return (
+                          <tr key={link.id} className="border-b border-slate-50 hover:bg-slate-50">
+                            <td className="px-4 py-3 font-semibold text-[#1E3A5F]">{link.name}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-slate-500 font-mono truncate max-w-[200px]">/summer-camp?ref={link.slug}</span>
+                                <button
+                                  onClick={() => { navigator.clipboard.writeText(trackUrl); toast.success('Link copied!'); }}
+                                  className="text-xs bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded font-medium text-slate-600 transition-colors whitespace-nowrap"
+                                  data-testid={`copy-link-${link.id}`}
+                                >
+                                  Copy
+                                </button>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-center font-bold text-slate-700">{link.views}</td>
+                            <td className="px-4 py-3 text-center font-bold text-yellow-600">{link.leads}</td>
+                            <td className="px-4 py-3 text-center font-bold text-green-600">{link.conversions}</td>
+                            <td className="px-4 py-3 text-center">
+                              <span className={`text-xs font-bold px-2 py-1 rounded-full ${convRate >= 10 ? 'bg-green-50 text-green-700' : convRate > 0 ? 'bg-yellow-50 text-yellow-700' : 'bg-slate-100 text-slate-500'}`}>
+                                {convRate}%
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-xs text-slate-400">{new Date(link.created_at).toLocaleDateString('en-IN')}</td>
+                            <td className="px-4 py-3 text-center">
+                              <button
+                                onClick={() => deleteTrackingLink(link.id)}
+                                className="text-xs text-red-500 hover:text-red-700 font-medium transition-colors"
+                                data-testid={`delete-link-${link.id}`}
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
       ) : loading ? (
