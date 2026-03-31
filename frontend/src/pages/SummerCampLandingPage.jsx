@@ -420,6 +420,8 @@ export default function SummerCampLandingPage() {
         .gif-card:hover { transform:translateY(-4px); box-shadow:0 16px 40px rgba(0,229,255,0.12); }
         .gif-card img { width:100%; aspect-ratio:1/1; object-fit:cover; display:block; }
         .gif-label { text-align:center; margin-top:0.55rem; font-family:'JetBrains Mono',monospace; font-size:0.82rem; font-weight:700; color:#00E5FF; letter-spacing:0.1em; text-transform:uppercase; }
+        /* Laptop: constrain grid so GIFs aren't too tall */
+        @media (min-width:641px) { .gif-grid { max-width:380px; margin-left:auto; } }
 
         /* ── Mobile responsive ── */
         @media (max-width:640px) {
