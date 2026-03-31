@@ -493,7 +493,7 @@ export default function SummerCampLandingPage() {
 
         /* ── Prose section label ── */
         .sec-label { font-family:'JetBrains Mono',monospace; font-size:0.78rem; letter-spacing:0.2em; text-transform:uppercase; font-weight:700; color:#00E5FF; margin-bottom:0.65rem; }
-        .sec-label::before { content:'// '; opacity:0.45; }
+        .sec-label::before { content:'// '; opacity:0.85; }
         .sec-title { font-family:'JetBrains Mono',monospace; font-weight:800; font-size:clamp(1.9rem,4.5vw,3rem); color:#F8FAFC; line-height:1.15; }
       `}</style>
 
@@ -613,7 +613,7 @@ export default function SummerCampLandingPage() {
             ].map(s => (
               <div key={s.num} className="sr">
                 <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, fontSize: 'clamp(1.75rem, 3.5vw, 2.6rem)', color: '#F8FAFC', lineHeight: 1, letterSpacing: '-0.03em' }}>{s.num}</div>
-                <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.78rem', color: '#475569', marginTop: '0.5rem', letterSpacing: '0.06em' }}>{s.label}</div>
+                <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.82rem', color: '#94A3B8', marginTop: '0.5rem', letterSpacing: '0.06em' }}>{s.label}</div>
               </div>
             ))}
           </div>
@@ -629,7 +629,7 @@ export default function SummerCampLandingPage() {
             <div className="sr" style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
               <p className="sec-label" style={{ marginBottom: '0.65rem' }}>globally.recognized</p>
               <h2 className="sec-title" style={{ marginBottom: '0.85rem' }}>Certified by the World's Best</h2>
-              <p style={{ color: '#475569', fontSize: '0.93rem', maxWidth: 480, margin: '0 auto', lineHeight: 1.65, fontFamily: 'Outfit, sans-serif' }}>
+              <p style={{ color: '#94A3B8', fontSize: '0.95rem', maxWidth: 480, margin: '0 auto', lineHeight: 1.65, fontFamily: 'Outfit, sans-serif' }}>
                 Our curriculum meets the highest international standards — accredited by STEM.org and aligned with UNESCO's global education framework.
               </p>
             </div>
@@ -663,7 +663,7 @@ export default function SummerCampLandingPage() {
                 <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, fontSize: '1.05rem', color: '#F0F4F8', textAlign: 'center', marginBottom: '0.65rem', lineHeight: 1.25 }}>
                   Accredited<br/>Educational Experience™
                 </div>
-                <p style={{ fontSize: '0.78rem', color: '#475569', textAlign: 'center', lineHeight: 1.65, fontFamily: 'Outfit, sans-serif', maxWidth: 240 }}>
+                <p style={{ fontSize: '0.82rem', color: '#94A3B8', textAlign: 'center', lineHeight: 1.65, fontFamily: 'Outfit, sans-serif', maxWidth: 240 }}>
                   Every session is certified by STEM.org — ensuring each child receives a world-class, hands-on learning experience.
                 </p>
               </div>
@@ -691,7 +691,7 @@ export default function SummerCampLandingPage() {
                 <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, fontSize: '1.05rem', color: '#F0F4F8', textAlign: 'center', marginBottom: '0.65rem', lineHeight: 1.25 }}>
                   U.S. Federation of<br/>UNESCO Clubs
                 </div>
-                <p style={{ fontSize: '0.78rem', color: '#475569', textAlign: 'center', lineHeight: 1.65, fontFamily: 'Outfit, sans-serif', maxWidth: 240 }}>
+                <p style={{ fontSize: '0.82rem', color: '#94A3B8', textAlign: 'center', lineHeight: 1.65, fontFamily: 'Outfit, sans-serif', maxWidth: 240 }}>
                   Aligned with UNESCO's global framework for quality education, scientific literacy, and sustainable development.
                 </p>
               </div>
@@ -762,7 +762,7 @@ export default function SummerCampLandingPage() {
             <div className="sr" style={{ textAlign: 'center', marginBottom: '3rem' }}>
               <p className="sec-label">Curriculum</p>
               <h2 className="sec-title" style={{ marginBottom: '0.75rem' }}>What Your Child Will Build</h2>
-              <p style={{ color: '#64748B', maxWidth: 460, margin: '0 auto', fontSize: '0.93rem', lineHeight: 1.65 }}>
+              <p style={{ color: '#94A3B8', maxWidth: 460, margin: '0 auto', fontSize: '0.95rem', lineHeight: 1.65 }}>
                 Each curriculum is purpose-built for that age group's stage. Select your child's group:
               </p>
             </div>
@@ -807,7 +807,7 @@ export default function SummerCampLandingPage() {
                       {subject.level}
                     </span>
                     <h3 style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '1.05rem', fontWeight: 700, color: '#F0F4F8', marginBottom: '0.5rem', lineHeight: 1.3 }}>{subject.name}</h3>
-                    <p style={{ fontSize: '0.9rem', color: '#7a95b4', lineHeight: 1.7 }}>{subject.desc}</p>
+                    <p style={{ fontSize: '0.9rem', color: '#94A3B8', lineHeight: 1.7 }}>{subject.desc}</p>
                   </div>
                 );
               })}
@@ -850,7 +850,7 @@ export default function SummerCampLandingPage() {
                 >
                   <div style={{ fontSize: '0.6rem', color: '#00E5FF', textTransform: 'uppercase', letterSpacing: '0.18em', fontWeight: 700, marginBottom: '0.4rem' }}>{b.label}</div>
                   <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '0.8rem', color: '#F0F4F8', lineHeight: 1.4 }}>{b[batchType]}</div>
-                  <div style={{ fontSize: '0.68rem', color: '#334155', marginTop: '0.4rem' }}>10 seats only</div>
+                  <div style={{ fontSize: '0.68rem', color: '#7A9AB8', marginTop: '0.4rem' }}>10 seats only</div>
                 </div>
               ))}
             </div>
@@ -870,7 +870,7 @@ export default function SummerCampLandingPage() {
                     <MapPin style={{ width: 15, height: 15, color: c.id === 'online' ? '#D63031' : '#00E5FF' }} />
                   </div>
                   <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '0.82rem', color: '#F0F4F8', marginBottom: '0.35rem' }}>{c.name}</div>
-                  <div style={{ fontSize: '0.72rem', color: '#475569', lineHeight: 1.45 }}>{c.address}</div>
+                  <div style={{ fontSize: '0.75rem', color: '#94A3B8', lineHeight: 1.45 }}>{c.address}</div>
                 </div>
               ))}
             </div>
@@ -887,7 +887,7 @@ export default function SummerCampLandingPage() {
 
             <div className="sr sr-d1 camp-card" style={{ padding: 'clamp(2rem,5vw,3.25rem)', background: 'linear-gradient(135deg, rgba(8,20,45,0.9) 0%, rgba(8,12,22,0.95) 100%)', border: '1px solid rgba(0,229,255,0.18)', boxShadow: '0 0 60px rgba(0,229,255,0.04), 0 40px 80px rgba(0,0,0,0.4)' }}>
               <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 'clamp(3.5rem,12vw,6rem)', fontWeight: 900, color: '#F8FAFC', lineHeight: 1, letterSpacing: '-0.03em' }}>₹1,999</div>
-              <div style={{ color: '#475569', marginBottom: '2.5rem', marginTop: '0.5rem', fontSize: '0.88rem', letterSpacing: '0.05em' }}>per child · all inclusive · all age groups</div>
+              <div style={{ color: '#94A3B8', marginBottom: '2.5rem', marginTop: '0.5rem', fontSize: '0.88rem', letterSpacing: '0.05em' }}>per child · all inclusive · all age groups</div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.65rem', marginBottom: '2.5rem', textAlign: 'left' }}>
                 {INCLUDES.map(item => (
@@ -903,7 +903,7 @@ export default function SummerCampLandingPage() {
               <button className="neon-btn" onClick={() => navigate('/summer-camp/book')} data-testid="pricing-book-btn" style={{ fontSize: '0.95rem', padding: '1.1rem 3rem' }}>
                 Secure Your Spot Now <ArrowRight style={{ width: 18, height: 18 }} />
               </button>
-              <p style={{ fontSize: '0.7rem', color: '#334155', marginTop: '0.9rem', letterSpacing: '0.03em' }}>Cash at center · or online via Cashfree (UPI, Card, Net Banking)</p>
+              <p style={{ fontSize: '0.72rem', color: '#7A9AB8', marginTop: '0.9rem', letterSpacing: '0.03em' }}>Cash at center · or online via Cashfree (UPI, Card, Net Banking)</p>
             </div>
           </div>
         </section>
@@ -932,7 +932,7 @@ export default function SummerCampLandingPage() {
                   <p style={{ fontSize: '0.88rem', color: '#8899AA', fontStyle: 'italic', lineHeight: 1.72, marginBottom: '1.25rem' }}>"{t.quote}"</p>
                   <div>
                     <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#CBD5E1', fontFamily: 'Outfit, sans-serif' }}>{t.author}</div>
-                    <div style={{ fontSize: '0.7rem', color: '#334155', marginTop: 2 }}>{t.location} · {t.camp}</div>
+                    <div style={{ fontSize: '0.72rem', color: '#7A9AB8', marginTop: 2 }}>{t.location} · {t.camp}</div>
                   </div>
                 </div>
               ))}
