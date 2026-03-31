@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, Check, MapPin, Wifi, CreditCard, Banknote, Lock 
 import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+const CASHFREE_ENV = 'production';
 
 const JB = "'JetBrains Mono', monospace";
 const NU = "'Nunito Sans', sans-serif";
@@ -134,6 +135,14 @@ export default function SummerCampBookingPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    // Load Cashfree JS SDK
+    if (!window.Cashfree) {
+      const script = document.createElement('script');
+      script.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
+      script.async = true;
+      document.head.appendChild(script);
+    }
+    // Fetch active non-online centers
     fetch(`${process.env.REACT_APP_BACKEND_URL}/api/centers`)
       .then(r => r.json())
       .then(data => setCenters(data.filter(c => c.is_active && !c.name?.toLowerCase().includes('online') && !c.city?.toLowerCase().includes('online'))))
@@ -209,9 +218,24 @@ export default function SummerCampBookingPage() {
         navigate(`/summer-camp/success?booking_id=${bid}&payment_mode=cash`);
         return;
       }
+
+      // Initiate Cashfree payment via JS SDK modal
       const pay = await axios.post(`${API}/summer-camp/initiate-payment`, { booking_id: bid });
-      if (pay.data.payment_link) { window.location.href = pay.data.payment_link; }
-      else { setError('Could not initiate payment. Please try again.'); }
+      if (!pay.data.payment_session_id) {
+        setError('Could not initiate payment. Please try again.');
+        return;
+      }
+
+      const cashfree = window.Cashfree({ mode: CASHFREE_ENV });
+      const result = await cashfree.checkout({
+        paymentSessionId: pay.data.payment_session_id,
+        redirectTarget: '_modal',
+      });
+
+      if (result?.error) {
+        setError(result.error.message || 'Payment failed. Please try again.');
+      }
+      // On success, Cashfree redirects to the return_url (/summer-camp/success)
     } catch (err) {
       setError(err.response?.data?.detail || 'Something went wrong. Please try again.');
     } finally {
