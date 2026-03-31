@@ -767,8 +767,7 @@ export default function SummerCampLandingPage() {
                     ...(activeAgeIdx === i ? { background: g.color, color: '#080C16', fontWeight: 700 } : {}),
                   }}
                 >
-                  {g.label}
-                  <span style={{ marginLeft: 6, opacity: 0.75, fontSize: '0.85rem' }}>· Ages {g.ages}</span>
+                  Ages {g.ages}
                 </button>
               ))}
             </div>
