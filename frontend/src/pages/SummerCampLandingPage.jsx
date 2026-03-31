@@ -307,7 +307,7 @@ export default function SummerCampLandingPage() {
           display:inline-flex; align-items:center; gap:10px;
           background:#D63031; color:#fff;
           font-family:'JetBrains Mono',monospace; font-weight:700; font-size:0.98rem; letter-spacing:0.01em;
-          padding:1.1rem 2.6rem; border-radius:999px; border:none; cursor:pointer;
+          padding:1.1rem 2.6rem; border-radius:14px; border:none; cursor:pointer;
           animation: glowPulse 3s ease-in-out infinite;
           transition: transform 0.2s, background 0.2s;
           position:relative; overflow:hidden;
@@ -340,6 +340,9 @@ export default function SummerCampLandingPage() {
         }
         .age-tab:hover { border-color:rgba(255,255,255,0.2); color:#CBD5E1; background:rgba(255,255,255,0.08); }
         .age-tab.active { color:#080C16; border-color:transparent; box-shadow: 0 0 20px var(--tab-color, #00E5FF)44; }
+
+        /* ── Hide Need Help on mobile (this page only) ── */
+        @media (max-width:768px) { .raise-query-btn { display:none !important; } }
 
         /* ── GIF cards ── */
         .gif-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:0.75rem; }
@@ -436,7 +439,7 @@ export default function SummerCampLandingPage() {
         <Navbar variant="camp" />
 
         {/* ── HERO ─────────────────────────────────────────────────────────── */}
-        <section data-testid="camp-hero" style={{ position: 'relative', zIndex: 1, overflow: 'hidden', paddingTop: '5rem', paddingBottom: '4rem', minHeight: '92vh', display: 'flex', alignItems: 'center' }}>
+        <section data-testid="camp-hero" style={{ position: 'relative', zIndex: 1, overflow: 'hidden', paddingTop: '3rem', paddingBottom: '2.5rem', minHeight: '92vh', display: 'flex', alignItems: 'center' }}>
           <div className="scanline" />
           {/* Orbs */}
           <div style={{ position: 'absolute', top: '-8%', right: '-5%', width: 600, height: 600, borderRadius: '50%', background: 'radial-gradient(circle, rgba(214,48,49,0.12) 0%, transparent 65%)', pointerEvents: 'none' }} />
@@ -454,7 +457,7 @@ export default function SummerCampLandingPage() {
                 </p>
 
                 {/* H1 */}
-                <h1 className="h-title" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 'clamp(2.4rem, 5.5vw, 4.5rem)', fontWeight: 800, lineHeight: 1.08, color: '#F8FAFC', marginBottom: '1.4rem', letterSpacing: '-0.025em' }}>
+                <h1 className="h-title" style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 'clamp(1.9rem, 3.8vw, 3rem)', fontWeight: 800, lineHeight: 1.1, color: '#F8FAFC', marginBottom: '1.2rem', letterSpacing: '-0.025em' }}>
                   Give Your Child the
                   <br />
                   <span style={{

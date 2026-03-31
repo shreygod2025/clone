@@ -550,7 +550,8 @@ const RaiseQueryButton = () => {
 
   // Hide on AI Chat page — prevents floating button from overlapping the chat send button
   if (currentPath === '/admin/ai-chat') return null;
-  
+  // Hide on Summer Camp page on mobile (handled via CSS injected by the page)
+
   // Check auth state
   const checkAuth = () => {
     const token = localStorage.getItem('oll_token');
@@ -784,7 +785,7 @@ const RaiseQueryButton = () => {
           bg-[#1E3A5F] backdrop-blur-lg 
           text-white rounded-full shadow-lg 
           hover:bg-[#2d5a8a] hover:shadow-xl hover:scale-105
-          transition-all duration-300"
+          transition-all duration-300 raise-query-btn"
         data-testid="raise-query-btn"
       >
         <MessageCircleQuestion className="w-5 h-5" />

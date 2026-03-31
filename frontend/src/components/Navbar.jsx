@@ -48,12 +48,12 @@ const Navbar = ({ showBookDemo = false, onBookDemo, variant = 'default' }) => {
         <div style={{ position: 'absolute', bottom: 0, left: '10%', right: '10%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,229,255,0.4), transparent)' }} />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" style={{ position: 'relative' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 80 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 62 }}>
             <a href="/" style={{ display: 'flex', alignItems: 'center' }}>
               <img
                 src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png"
                 alt="OLL Logo"
-                style={{ height: 58, width: 'auto', filter: 'brightness(0) invert(1)' }}
+                style={{ height: 44, width: 'auto', filter: 'brightness(0) invert(1)' }}
               />
             </a>
             <button
@@ -64,9 +64,9 @@ const Navbar = ({ showBookDemo = false, onBookDemo, variant = 'default' }) => {
                 color: '#fff',
                 fontFamily: 'JetBrains Mono, monospace',
                 fontWeight: 700,
-                fontSize: '0.88rem',
-                padding: '0.7rem 1.8rem',
-                borderRadius: '999px',
+                fontSize: '0.85rem',
+                padding: '0.6rem 1.5rem',
+                borderRadius: '12px',
                 border: 'none',
                 cursor: 'pointer',
                 display: 'inline-flex',
