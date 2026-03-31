@@ -517,7 +517,7 @@ export default function SummerCampLandingPage() {
           <div style={{ position: 'absolute', bottom: '0%', left: '-10%', width: 450, height: 450, borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,229,255,0.08) 0%, transparent 65%)', pointerEvents: 'none' }} />
           <div style={{ position: 'absolute', top: '40%', right: '35%', width: 250, height: 250, borderRadius: '50%', background: 'radial-gradient(circle, rgba(124,58,237,0.07) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
-          <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 1.5rem', width: '100%', position: 'relative' }}>
+          <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 1.5rem', width: '100%', position: 'relative' }}>
             <div className="hero-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem', alignItems: 'center' }}>
 
               {/* Left */}
