@@ -437,6 +437,8 @@ export default function SummerCampLandingPage() {
         @media (max-width:640px) {
           .cunit-val { min-width:56px; height:62px; font-size:1.35rem; }
           .hero-grid { grid-template-columns:1fr !important; }
+          .h-title { font-size: 1.45rem !important; }
+          .typed-wrap { white-space: normal !important; }
           .hero-img-col { margin-top:1.5rem; }
           .gif-grid { gap:0.55rem; }
           .gif-label { font-size:0.72rem; }
@@ -497,7 +499,7 @@ export default function SummerCampLandingPage() {
         .sec-title { font-family:'JetBrains Mono',monospace; font-weight:800; font-size:clamp(1.9rem,4.5vw,3rem); color:#F8FAFC; line-height:1.15; }
       `}</style>
 
-      <div style={{ background: '#080C16', minHeight: '100vh', fontFamily: "'Nunito Sans', sans-serif", overflow: 'clip', position: 'relative' }}>
+      <div style={{ background: '#080C16', minHeight: '100vh', fontFamily: "'Nunito Sans', sans-serif", overflowX: 'hidden', position: 'relative' }}>
         {/* ── GLOBAL FIXED CIRCUIT BACKGROUND ── */}
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, opacity: 0.22 }} aria-hidden>
           <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style={{ position: 'sticky', top: 0 }}>
@@ -545,7 +547,6 @@ export default function SummerCampLandingPage() {
                     color: '#00E5FF',
                     display: 'inline-block',
                     position: 'relative',
-                    whiteSpace: 'nowrap',
                     textShadow: '0 0 20px rgba(0,229,255,0.9), 0 0 50px rgba(0,229,255,0.45), 0 0 90px rgba(0,229,255,0.2)',
                   }}>
                     <TypedText text="Summer of the Future" startDelay={900} speed={52} />
