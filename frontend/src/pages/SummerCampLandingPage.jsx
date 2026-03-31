@@ -499,7 +499,7 @@ export default function SummerCampLandingPage() {
         .sec-title { font-family:'JetBrains Mono',monospace; font-weight:800; font-size:clamp(1.9rem,4.5vw,3rem); color:#F8FAFC; line-height:1.15; }
       `}</style>
 
-      <div style={{ background: '#080C16', minHeight: '100vh', fontFamily: "'Nunito Sans', sans-serif", overflowX: 'hidden', position: 'relative' }}>
+      <div style={{ background: '#080C16', minHeight: '100vh', fontFamily: "'Nunito Sans', sans-serif", overflow: 'clip', position: 'relative' }}>
         {/* ── GLOBAL FIXED CIRCUIT BACKGROUND ── */}
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, opacity: 0.22 }} aria-hidden>
           <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style={{ position: 'sticky', top: 0 }}>
