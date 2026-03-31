@@ -377,7 +377,7 @@ export default function SummerCampLandingPage() {
           display:inline-flex; align-items:center; gap:8px;
           padding:10px 28px; margin:0 6px; border-radius:999px; white-space:nowrap;
           background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
-          font-family:'JetBrains Mono',monospace; font-weight:700; font-size:0.88rem; color:#94A3B8;
+          font-family:'JetBrains Mono',monospace; font-weight:700; font-size:1.2rem; color:#94A3B8;
           transition:all 0.2s;
         }
         .ticker-item:hover { color:#F8FAFC; border-color:rgba(255,255,255,0.2); background:rgba(255,255,255,0.08); }
@@ -497,7 +497,7 @@ export default function SummerCampLandingPage() {
         .sec-title { font-family:'JetBrains Mono',monospace; font-weight:800; font-size:clamp(1.9rem,4.5vw,3rem); color:#F8FAFC; line-height:1.15; }
       `}</style>
 
-      <div style={{ background: '#080C16', minHeight: '100vh', fontFamily: 'Outfit, sans-serif', overflow: 'clip', position: 'relative' }}>
+      <div style={{ background: '#080C16', minHeight: '100vh', fontFamily: "'Nunito Sans', sans-serif", overflow: 'clip', position: 'relative' }}>
         {/* ── GLOBAL FIXED CIRCUIT BACKGROUND ── */}
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, opacity: 0.22 }} aria-hidden>
           <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" style={{ position: 'sticky', top: 0 }}>
@@ -613,7 +613,7 @@ export default function SummerCampLandingPage() {
             ].map(s => (
               <div key={s.num} className="sr">
                 <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, fontSize: 'clamp(1.75rem, 3.5vw, 2.6rem)', color: '#F8FAFC', lineHeight: 1, letterSpacing: '-0.03em' }}>{s.num}</div>
-                <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.82rem', color: '#94A3B8', marginTop: '0.5rem', letterSpacing: '0.06em' }}>{s.label}</div>
+                <div style={{ fontFamily: "'Nunito Sans', sans-serif", fontSize: '0.82rem', color: '#94A3B8', marginTop: '0.5rem', letterSpacing: '0.06em' }}>{s.label}</div>
               </div>
             ))}
           </div>
@@ -629,7 +629,7 @@ export default function SummerCampLandingPage() {
             <div className="sr" style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
               <p className="sec-label" style={{ marginBottom: '0.65rem' }}>globally.recognized</p>
               <h2 className="sec-title" style={{ marginBottom: '0.85rem' }}>Certified by the World's Best</h2>
-              <p style={{ color: '#94A3B8', fontSize: '0.95rem', maxWidth: 480, margin: '0 auto', lineHeight: 1.65, fontFamily: 'Outfit, sans-serif' }}>
+              <p style={{ color: '#94A3B8', fontSize: '0.95rem', maxWidth: 480, margin: '0 auto', lineHeight: 1.65, fontFamily: "'Nunito Sans', sans-serif" }}>
                 Our curriculum meets the highest international standards — accredited by STEM.org and aligned with UNESCO's global education framework.
               </p>
             </div>
@@ -663,7 +663,7 @@ export default function SummerCampLandingPage() {
                 <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, fontSize: '1.05rem', color: '#F0F4F8', textAlign: 'center', marginBottom: '0.65rem', lineHeight: 1.25 }}>
                   Accredited<br/>Educational Experience™
                 </div>
-                <p style={{ fontSize: '0.82rem', color: '#94A3B8', textAlign: 'center', lineHeight: 1.65, fontFamily: 'Outfit, sans-serif', maxWidth: 240 }}>
+                <p style={{ fontSize: '0.82rem', color: '#94A3B8', textAlign: 'center', lineHeight: 1.65, fontFamily: "'Nunito Sans', sans-serif", maxWidth: 240 }}>
                   Every session is certified by STEM.org — ensuring each child receives a world-class, hands-on learning experience.
                 </p>
               </div>
@@ -691,7 +691,7 @@ export default function SummerCampLandingPage() {
                 <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, fontSize: '1.05rem', color: '#F0F4F8', textAlign: 'center', marginBottom: '0.65rem', lineHeight: 1.25 }}>
                   U.S. Federation of<br/>UNESCO Clubs
                 </div>
-                <p style={{ fontSize: '0.82rem', color: '#94A3B8', textAlign: 'center', lineHeight: 1.65, fontFamily: 'Outfit, sans-serif', maxWidth: 240 }}>
+                <p style={{ fontSize: '0.82rem', color: '#94A3B8', textAlign: 'center', lineHeight: 1.65, fontFamily: "'Nunito Sans', sans-serif", maxWidth: 240 }}>
                   Aligned with UNESCO's global framework for quality education, scientific literacy, and sustainable development.
                 </p>
               </div>
@@ -715,7 +715,7 @@ export default function SummerCampLandingPage() {
                 <div style={{ position: 'absolute', bottom: '1.25rem', left: '1.5rem', right: '1.5rem' }}>
                   <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', letterSpacing: '0.18em', color: '#FFD700', textTransform: 'uppercase', fontWeight: 700, marginBottom: 4 }}>Sony Entertainment · KBC</div>
                   <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '1.05rem', color: '#F8FAFC' }}>Kaun Banega Crorepati</div>
-                  <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.78rem', color: '#8899AA', marginTop: 3 }}>Featured as India's leading EdTech for kids</div>
+                  <div style={{ fontFamily: "'Nunito Sans', sans-serif", fontSize: '0.78rem', color: '#8899AA', marginTop: 3 }}>Featured as India's leading EdTech for kids</div>
                 </div>
               </div>
 
@@ -730,7 +730,7 @@ export default function SummerCampLandingPage() {
                 <div style={{ position: 'absolute', bottom: '1.25rem', left: '1.5rem', right: '1.5rem' }}>
                   <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.6rem', letterSpacing: '0.18em', color: '#00E5FF', textTransform: 'uppercase', fontWeight: 700, marginBottom: 4 }}>Sony LIV · Season Finale</div>
                   <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '1.05rem', color: '#F8FAFC' }}>Shark Tank India</div>
-                  <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.78rem', color: '#8899AA', marginTop: 3 }}>Pitched to India's top investors on national TV</div>
+                  <div style={{ fontFamily: "'Nunito Sans', sans-serif", fontSize: '0.78rem', color: '#8899AA', marginTop: 3 }}>Pitched to India's top investors on national TV</div>
                 </div>
               </div>
             </div>
@@ -803,7 +803,7 @@ export default function SummerCampLandingPage() {
                     <div style={{ width: 44, height: 44, borderRadius: '0.75rem', background: activeCamp.accentBg, border: `1px solid ${activeCamp.color}35`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
                       <Icon style={{ width: 20, height: 20, color: activeCamp.color }} />
                     </div>
-                    <span style={{ fontSize: '0.68rem', fontFamily: 'Outfit, sans-serif', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', background: activeCamp.accentBg, color: activeCamp.color, padding: '3px 10px', borderRadius: '999px', display: 'inline-block', marginBottom: '0.7rem' }}>
+                    <span style={{ fontSize: '0.68rem', fontFamily: "'Nunito Sans', sans-serif", fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', background: activeCamp.accentBg, color: activeCamp.color, padding: '3px 10px', borderRadius: '999px', display: 'inline-block', marginBottom: '0.7rem' }}>
                       {subject.level}
                     </span>
                     <h3 style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '1.05rem', fontWeight: 700, color: '#F0F4F8', marginBottom: '0.5rem', lineHeight: 1.3 }}>{subject.name}</h3>
@@ -833,7 +833,7 @@ export default function SummerCampLandingPage() {
                   <button
                     key={t.k}
                     onClick={() => setBatchType(t.k)}
-                    style={{ padding: '0.6rem 1.4rem', borderRadius: '999px', border: 'none', cursor: 'pointer', fontFamily: 'Outfit, sans-serif', fontWeight: 600, fontSize: '0.83rem', transition: 'all 0.25s', whiteSpace: 'nowrap', ...(batchType === t.k ? { background: '#00E5FF', color: '#080C16' } : { background: 'transparent', color: '#64748B' }) }}
+                    style={{ padding: '0.6rem 1.4rem', borderRadius: '999px', border: 'none', cursor: 'pointer', fontFamily: "'Nunito Sans', sans-serif", fontWeight: 600, fontSize: '0.83rem', transition: 'all 0.25s', whiteSpace: 'nowrap', ...(batchType === t.k ? { background: '#00E5FF', color: '#080C16' } : { background: 'transparent', color: '#64748B' }) }}
                   >
                     {t.label}
                   </button>
@@ -849,7 +849,7 @@ export default function SummerCampLandingPage() {
                   onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; }}
                 >
                   <div style={{ fontSize: '0.6rem', color: '#00E5FF', textTransform: 'uppercase', letterSpacing: '0.18em', fontWeight: 700, marginBottom: '0.4rem' }}>{b.label}</div>
-                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '0.8rem', color: '#F0F4F8', lineHeight: 1.4 }}>{b[batchType]}</div>
+                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '1.2rem', color: '#F0F4F8', lineHeight: 1.4 }}>{b[batchType]}</div>
                   <div style={{ fontSize: '0.68rem', color: '#7A9AB8', marginTop: '0.4rem' }}>10 seats only</div>
                 </div>
               ))}
@@ -869,7 +869,7 @@ export default function SummerCampLandingPage() {
                   <div style={{ width: 32, height: 32, borderRadius: '0.5rem', background: c.id === 'online' ? 'rgba(214,48,49,0.12)' : 'rgba(0,229,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
                     <MapPin style={{ width: 15, height: 15, color: c.id === 'online' ? '#D63031' : '#00E5FF' }} />
                   </div>
-                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '0.82rem', color: '#F0F4F8', marginBottom: '0.35rem' }}>{c.name}</div>
+                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '1.2rem', color: '#F0F4F8', marginBottom: '0.35rem' }}>{c.name}</div>
                   <div style={{ fontSize: '0.75rem', color: '#94A3B8', lineHeight: 1.45 }}>{c.address}</div>
                 </div>
               ))}
@@ -931,7 +931,7 @@ export default function SummerCampLandingPage() {
                   </div>
                   <p style={{ fontSize: '0.88rem', color: '#8899AA', fontStyle: 'italic', lineHeight: 1.72, marginBottom: '1.25rem' }}>"{t.quote}"</p>
                   <div>
-                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#CBD5E1', fontFamily: 'Outfit, sans-serif' }}>{t.author}</div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#CBD5E1', fontFamily: "'Nunito Sans', sans-serif" }}>{t.author}</div>
                     <div style={{ fontSize: '0.72rem', color: '#7A9AB8', marginTop: 2 }}>{t.location} · {t.camp}</div>
                   </div>
                 </div>
