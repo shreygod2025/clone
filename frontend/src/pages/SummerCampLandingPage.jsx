@@ -341,18 +341,20 @@ export default function SummerCampLandingPage() {
         .age-tab:hover { border-color:rgba(255,255,255,0.2); color:#CBD5E1; background:rgba(255,255,255,0.08); }
         .age-tab.active { color:#080C16; border-color:transparent; box-shadow: 0 0 20px var(--tab-color, #00E5FF)44; }
 
-        /* ── Floating images ── */
-        .fimg { border-radius:1.1rem; overflow:hidden; border:1px solid rgba(0,229,255,0.18); box-shadow:0 20px 60px rgba(0,0,0,0.55); }
-        .fimg img { width:100%; height:100%; object-fit:cover; display:block; }
-        .fimg-1 { animation:float 7s ease-in-out 0s infinite; }
-        .fimg-2 { animation:float 7s ease-in-out 2.3s infinite; }
-        .fimg-3 { animation:float 7s ease-in-out 4.6s infinite; }
+        /* ── GIF cards ── */
+        .gif-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:0.75rem; }
+        .gif-card { border-radius:1rem; overflow:hidden; border:1px solid rgba(0,229,255,0.2); box-shadow:0 10px 30px rgba(0,0,0,0.5); background:rgba(8,12,22,0.7); transition:transform 0.25s, box-shadow 0.25s; }
+        .gif-card:hover { transform:translateY(-4px); box-shadow:0 16px 40px rgba(0,229,255,0.12); }
+        .gif-card img { width:100%; aspect-ratio:1/1; object-fit:cover; display:block; }
+        .gif-label { text-align:center; margin-top:0.45rem; font-family:'JetBrains Mono',monospace; font-size:0.68rem; font-weight:700; color:#00E5FF; letter-spacing:0.08em; text-transform:uppercase; }
 
         /* ── Mobile responsive ── */
         @media (max-width:640px) {
           .cunit-val { min-width:56px; height:62px; font-size:1.35rem; }
           .hero-grid { grid-template-columns:1fr !important; }
-          .hero-img-col { display:none !important; }
+          .hero-img-col { margin-top:1.5rem; }
+          .gif-grid { gap:0.55rem; }
+          .gif-label { font-size:0.6rem; }
           .countdown-inner { flex-direction:column; gap:1rem; }
           .countdown-stats { justify-content:center; }
           .age-tabs-row { justify-content:flex-start !important; overflow-x:auto; padding-bottom:4px; flex-wrap:nowrap !important; }
@@ -361,11 +363,6 @@ export default function SummerCampLandingPage() {
           .neon-btn { font-size:0.85rem; padding:0.95rem 1.9rem; }
           .center-grid { grid-template-columns:1fr 1fr !important; }
           .stats-row { grid-template-columns:repeat(3,1fr) !important; }
-        }
-        @media (max-width:400px) {
-          .center-grid { grid-template-columns:1fr !important; }
-          .cunit-val { min-width:48px; height:54px; font-size:1.1rem; }
-          .stats-row { grid-template-columns:repeat(2,1fr) !important; }
         }
 
         /* ── Cert 3D flip-in reveal ── */
@@ -499,21 +496,28 @@ export default function SummerCampLandingPage() {
                 </div>
               </div>
 
-              {/* Right: Floating image mosaic */}
-              <div className="h-imgs hero-img-col" style={{ position: 'relative', height: 440 }}>
-                {/* Glow beneath */}
-                <div style={{ position: 'absolute', top: '45%', left: '45%', width: 220, height: 220, borderRadius: '50%', background: 'radial-gradient(circle, rgba(214,48,49,0.22) 0%, transparent 70%)', pointerEvents: 'none', transform: 'translate(-50%,-50%)' }} />
-                <div className="fimg fimg-1" style={{ position: 'absolute', top: 0, right: 0, width: 270, height: 195 }}>
-                  <img src={IMAGES.kidsRobot} alt="Kids learning robotics" loading="eager" />
+              {/* Right: GIF showcase — Robotics, Coding, 3D Designing */}
+              <div className="h-imgs hero-img-col" style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', justifyContent: 'center' }}>
+                {/* Red glow */}
+                <div style={{ position: 'absolute', top: '30%', right: '5%', width: 200, height: 200, borderRadius: '50%', background: 'radial-gradient(circle, rgba(214,48,49,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
+
+                <div className="gif-grid">
+                  {[
+                    { src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/4y2zbq59_Robotics.gif', label: 'Robotics' },
+                    { src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/8i8zob06_Pyhton%20.gif', label: 'Coding' },
+                    { src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/xj8dva2y_3D%20Design.gif', label: '3D Designing' },
+                  ].map(item => (
+                    <div key={item.label}>
+                      <div className="gif-card">
+                        <img src={item.src} alt={item.label} loading="lazy" />
+                      </div>
+                      <p className="gif-label">{item.label}</p>
+                    </div>
+                  ))}
                 </div>
-                <div className="fimg fimg-2" style={{ position: 'absolute', top: 160, left: 0, width: 230, height: 165 }}>
-                  <img src={IMAGES.kidsTable} alt="Kids working together" loading="eager" />
-                </div>
-                <div className="fimg fimg-3" style={{ position: 'absolute', bottom: 10, right: 50, width: 195, height: 145 }}>
-                  <img src={IMAGES.boySolder} alt="Building electronics" loading="eager" />
-                </div>
+
                 {/* Cyber tag */}
-                <div style={{ position: 'absolute', top: 175, right: 285, background: 'rgba(8,12,22,0.85)', backdropFilter: 'blur(10px)', border: '1px solid rgba(0,229,255,0.3)', borderRadius: '0.75rem', padding: '0.6rem 0.9rem' }}>
+                <div style={{ alignSelf: 'flex-start', background: 'rgba(8,12,22,0.85)', backdropFilter: 'blur(10px)', border: '1px solid rgba(0,229,255,0.3)', borderRadius: '0.75rem', padding: '0.6rem 0.9rem' }}>
                   <div style={{ fontSize: '0.6rem', color: '#00E5FF', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 3 }}>Live Camp</div>
                   <div style={{ fontSize: '0.82rem', color: '#F8FAFC', fontWeight: 700, fontFamily: 'JetBrains Mono, monospace' }}>400+ Schools</div>
                 </div>
