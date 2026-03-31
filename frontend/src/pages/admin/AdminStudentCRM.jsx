@@ -1011,10 +1011,11 @@ const AdminStudentCRM = () => {
           ) : (
             <>
               {/* Stats Bar */}
-              <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="grid grid-cols-4 gap-4 mb-6">
                 {[
                   { label: 'Total Registrations', value: summerCampBookings.length, color: 'bg-blue-50 border-blue-200 text-blue-700' },
-                  { label: 'Leads (Unpaid)', value: summerCampBookings.filter(b => b.crm_status === 'lead').length, color: 'bg-yellow-50 border-yellow-200 text-yellow-700' },
+                  { label: 'Phone Captured', value: summerCampBookings.filter(b => b.crm_status === 'phone_captured').length, color: 'bg-orange-50 border-orange-200 text-orange-700' },
+                  { label: 'Leads (Details)', value: summerCampBookings.filter(b => b.crm_status === 'lead').length, color: 'bg-yellow-50 border-yellow-200 text-yellow-700' },
                   { label: 'Converted (Paid)', value: summerCampBookings.filter(b => b.crm_status === 'converted').length, color: 'bg-green-50 border-green-200 text-green-700' },
                 ].map(s => (
                   <div key={s.label} className={`rounded-xl border p-4 text-center ${s.color}`}>
@@ -1069,8 +1070,13 @@ const AdminStudentCRM = () => {
                             </span>
                           </td>
                           <td className="px-4 py-3">
-                            <span className={`text-xs px-2 py-1 rounded-full font-bold ${booking.crm_status === 'converted' ? 'bg-green-50 text-green-700' : 'bg-yellow-50 text-yellow-700'}`}>
-                              {booking.crm_status === 'converted' ? '✓ Converted' : '○ Lead'}
+                            <span className={`text-xs px-2 py-1 rounded-full font-bold ${
+                              booking.crm_status === 'converted' ? 'bg-green-50 text-green-700' :
+                              booking.crm_status === 'phone_captured' ? 'bg-orange-50 text-orange-700' :
+                              'bg-yellow-50 text-yellow-700'
+                            }`}>
+                              {booking.crm_status === 'converted' ? '✓ Paid' :
+                               booking.crm_status === 'phone_captured' ? '📞 Phone' : '○ Lead'}
                             </span>
                           </td>
                           <td className="px-4 py-3 text-xs text-slate-400">

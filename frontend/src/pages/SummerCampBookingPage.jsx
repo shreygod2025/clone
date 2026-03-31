@@ -122,6 +122,7 @@ export default function SummerCampBookingPage() {
   const preAge = searchParams.get('age') || '';
 
   const [step, setStep] = useState(preAge ? 1 : 0);
+  const [capturedBookingId, setCapturedBookingId] = useState(null);
   const [form, setForm] = useState({
     age_group: preAge || '',
     mode: '',
@@ -167,27 +168,41 @@ export default function SummerCampBookingPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.child_name || !form.parent_name || !form.parent_phone || !form.parent_email) {
+    if (!form.child_name || !form.parent_phone || !form.parent_email) {
       setError('Please fill in all required fields.');
       return;
     }
     setSubmitting(true);
     setError('');
     try {
-      const payload = {
-        child_name: form.child_name,
-        parent_name: form.parent_name,
-        parent_phone: form.parent_phone,
-        parent_email: form.parent_email,
-        age_group: form.age_group,
-        batch_type: form.batch_type,
-        batch_week: form.batch_week,
-        mode: form.mode,
-        center: form.mode === 'online' ? 'online' : form.center,
-        payment_mode: form.payment_mode,
-      };
-      const reg = await axios.post(`${API}/summer-camp/register`, payload);
-      const bid = reg.data.booking_id;
+      let bid = capturedBookingId;
+
+      if (bid) {
+        // Update the existing phone-captured lead
+        const upd = await axios.patch(`${API}/summer-camp/complete-lead/${bid}`, {
+          child_name: form.child_name,
+          parent_email: form.parent_email,
+          payment_mode: form.payment_mode,
+        });
+        bid = upd.data.booking_id;
+      } else {
+        // Fallback: full register (e.g. if capture-lead failed silently)
+        const payload = {
+          child_name: form.child_name,
+          parent_name: '',
+          parent_phone: form.parent_phone,
+          parent_email: form.parent_email,
+          age_group: form.age_group,
+          batch_type: form.batch_type,
+          batch_week: form.batch_week,
+          mode: form.mode,
+          center: form.mode === 'online' ? 'online' : form.center,
+          payment_mode: form.payment_mode,
+        };
+        const reg = await axios.post(`${API}/summer-camp/register`, payload);
+        bid = reg.data.booking_id;
+      }
+
       if (form.payment_mode === 'cash') {
         navigate(`/summer-camp/success?booking_id=${bid}&payment_mode=cash`);
         return;
@@ -345,7 +360,27 @@ export default function SummerCampBookingPage() {
               <StepHeader stepNum={stepsWithCenter ? 5 : 4} total={TOTAL} title="What's your phone number?" sub="We'll send your booking confirmation on WhatsApp." />
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 <InputField label="Parent's Phone" id="parent_phone" type="tel" value={form.parent_phone} onChange={e => update('parent_phone')(e.target.value)} placeholder="e.g. 9876543210" required autoFocus />
-                <PrimaryBtn disabled={form.parent_phone.trim().length < 10} onClick={goNext}>
+                <PrimaryBtn
+                  disabled={form.parent_phone.trim().length < 10}
+                  onClick={async () => {
+                    // Save partial lead immediately so it appears in admin even if user drops off
+                    try {
+                      const res = await axios.post(`${API}/summer-camp/capture-lead`, {
+                        parent_phone: form.parent_phone,
+                        age_group: form.age_group,
+                        batch_type: form.batch_type,
+                        batch_week: form.batch_week,
+                        mode: form.mode,
+                        center: form.mode === 'online' ? 'online' : form.center,
+                      });
+                      setCapturedBookingId(res.data.booking_id);
+                    } catch (err) {
+                      // Don't block the user if capture fails — they can still proceed
+                      console.warn('Partial lead capture failed', err);
+                    }
+                    goNext();
+                  }}
+                >
                   Continue <ArrowRight style={{ width: 18, height: 18 }} />
                 </PrimaryBtn>
               </div>
@@ -368,7 +403,6 @@ export default function SummerCampBookingPage() {
 
               <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.35rem' }}>
                 <InputField label="Child's Name"   id="child_name"   value={form.child_name}   onChange={e => update('child_name')(e.target.value)}   placeholder="e.g. Aryan Kumar"    required autoFocus />
-                <InputField label="Parent's Name"  id="parent_name"  value={form.parent_name}  onChange={e => update('parent_name')(e.target.value)}  placeholder="e.g. Rajesh Kumar"   required />
                 <InputField label="Parent's Email" id="parent_email" type="email" value={form.parent_email} onChange={e => update('parent_email')(e.target.value)} placeholder="e.g. rajesh@gmail.com" required />
 
                 {/* Payment method */}

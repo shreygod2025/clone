@@ -69,7 +69,7 @@ BATCH_DATES = {
 
 class SummerCampRegistration(BaseModel):
     child_name: str
-    parent_name: str
+    parent_name: Optional[str] = ""
     parent_phone: str
     parent_email: str
     age_group: str  # explorers | creators | innovators
@@ -80,8 +80,88 @@ class SummerCampRegistration(BaseModel):
     payment_mode: str  # cashfree | cash
 
 
+class PartialLeadCapture(BaseModel):
+    parent_phone: str
+    age_group: str
+    batch_type: str
+    batch_week: str
+    mode: str
+    center: str
+
+
+class CompleteLead(BaseModel):
+    child_name: str
+    parent_email: str
+    payment_mode: str
+    parent_name: Optional[str] = ""
+
+
 class PaymentInitRequest(BaseModel):
     booking_id: str
+
+
+@router.post("/summer-camp/capture-lead")
+async def capture_lead(data: PartialLeadCapture):
+    """Save a partial lead at the phone number step — before full details are entered."""
+    ref_num = str(int(time.time()))[-6:]
+    booking_ref = f"SC2026-{ref_num}"
+    booking_id = str(uuid.uuid4())
+
+    batch_dates = BATCH_DATES.get(data.batch_week, {}).get(data.batch_type, "")
+    doc = {
+        "id": booking_id,
+        "booking_ref": booking_ref,
+        "parent_phone": data.parent_phone,
+        "child_name": "",
+        "parent_name": "",
+        "parent_email": "",
+        "age_group": data.age_group,
+        "age_group_label": AGE_GROUPS.get(data.age_group, {}).get("label", ""),
+        "age_group_ages": AGE_GROUPS.get(data.age_group, {}).get("ages", ""),
+        "batch_type": data.batch_type,
+        "batch_week": data.batch_week,
+        "batch_dates": batch_dates,
+        "mode": data.mode,
+        "center": data.center,
+        "center_label": CENTERS.get(data.center, data.center),
+        "payment_mode": "cashfree",
+        "amount": CAMP_PRICE,
+        "payment_status": "pending",
+        "crm_status": "phone_captured",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.summer_camp_bookings.insert_one(doc)
+    logging.info(f"Summer camp phone lead captured: {booking_ref} - {data.parent_phone}")
+    return {"booking_id": booking_id, "booking_ref": booking_ref}
+
+
+@router.patch("/summer-camp/complete-lead/{booking_id}")
+async def complete_lead(booking_id: str, data: CompleteLead):
+    """Update a phone-captured lead with full registration details."""
+    booking = await db.summer_camp_bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    await db.summer_camp_bookings.update_one(
+        {"id": booking_id},
+        {"$set": {
+            "child_name": data.child_name,
+            "parent_name": data.parent_name or "",
+            "parent_email": data.parent_email,
+            "payment_mode": data.payment_mode,
+            "crm_status": "lead",
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }}
+    )
+    return {
+        "booking_id": booking_id,
+        "booking_ref": booking.get("booking_ref"),
+        "payment_mode": data.payment_mode,
+        "amount": CAMP_PRICE,
+        "center_label": booking.get("center_label"),
+        "batch_dates": booking.get("batch_dates"),
+        "message": "Lead updated successfully",
+    }
 
 
 @router.post("/summer-camp/register")
