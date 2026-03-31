@@ -434,7 +434,6 @@ export default function SummerCampLandingPage() {
           .countdown-stats { justify-content:center; }
           .age-tabs-row { justify-content:flex-start !important; overflow-x:auto; padding-bottom:4px; flex-wrap:nowrap !important; }
           .age-tab { font-size:0.88rem; padding:0.65rem 1.1rem; }
-          .batch-toggle { flex-direction:column; }
           .neon-btn { font-size:0.85rem; padding:0.95rem 1.9rem; }
           .center-grid { grid-template-columns:1fr 1fr !important; }
           .stats-row { grid-template-columns:repeat(3,1fr) !important; }
@@ -863,7 +862,7 @@ export default function SummerCampLandingPage() {
 
             {/* Toggle */}
             <div className="sr sr-d1" style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
-              <div className="batch-toggle" style={{ display: 'flex', background: 'rgba(10,20,40,0.8)', border: '1px solid rgba(0,229,255,0.18)', borderRadius: '999px', padding: 4, gap: 4 }}>
+              <div className="batch-toggle" style={{ display: 'flex', flexDirection: 'row', background: 'rgba(10,20,40,0.8)', border: '1px solid rgba(0,229,255,0.18)', borderRadius: '999px', padding: 4, gap: 4 }}>
                 {[
                   { k: 'weekday', label: 'Weekday  Mon–Fri' },
                   { k: 'weekend', label: 'Weekend  Sat–Sun' },

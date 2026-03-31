@@ -330,9 +330,9 @@ export default function SummerCampBookingPage() {
               <StepHeader stepNum={stepsWithCenter ? 4 : 3} total={TOTAL} title="Pick your batch" sub="Select your preferred schedule and start week." />
 
               {/* Weekday / Weekend toggle */}
-              <div style={{ display: 'flex', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '12px', padding: '4px', gap: '4px', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'row', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '12px', padding: '4px', gap: '4px', marginBottom: '1.5rem' }}>
                 {[{ v: 'weekday', l: 'Weekday · Mon–Fri' }, { v: 'weekend', l: 'Weekend · Sat–Sun' }].map(opt => (
-                  <button key={opt.v} onClick={() => update('batch_type')(opt.v)} style={{ flex: 1, padding: '0.7rem 0.5rem', borderRadius: '10px', border: 'none', cursor: 'pointer', fontFamily: JB, fontWeight: 700, fontSize: '0.82rem', transition: 'all 0.25s', letterSpacing: '0.01em', ...(form.batch_type === opt.v ? { background: '#00E5FF', color: '#080C16' } : { background: 'transparent', color: '#64748B' }) }}>
+                  <button key={opt.v} onClick={() => update('batch_type')(opt.v)} style={{ flex: 1, minWidth: 0, padding: '0.7rem 0.5rem', borderRadius: '10px', border: 'none', cursor: 'pointer', fontFamily: JB, fontWeight: 700, fontSize: 'clamp(0.68rem, 2.5vw, 0.82rem)', transition: 'all 0.25s', letterSpacing: '0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', ...(form.batch_type === opt.v ? { background: '#00E5FF', color: '#080C16' } : { background: 'transparent', color: '#64748B' }) }}>
                     {opt.l}
                   </button>
                 ))}
