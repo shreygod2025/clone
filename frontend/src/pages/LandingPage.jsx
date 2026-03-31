@@ -189,12 +189,12 @@ const LandingPage = () => {
         <div style={{ textAlign: 'center', paddingBottom: '2.5rem', paddingLeft: '1rem', paddingRight: '1rem' }}>
           <p style={{
             fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase',
-            color: '#D63031', marginBottom: '0.75rem', fontFamily: 'Outfit, sans-serif',
+            color: '#D63031', marginBottom: '0.75rem', fontFamily: 'Nunito Sans, sans-serif',
           }}>
             Exclusive · Limited Seats
           </p>
           <h2 style={{
-            fontFamily: 'Unbounded, sans-serif',
+            fontFamily: "'JetBrains Mono', monospace",
             fontSize: 'clamp(2rem, 5vw, 3.25rem)',
             fontWeight: 900,
             color: '#0F172A',
@@ -203,7 +203,7 @@ const LandingPage = () => {
           }}>
             Summer Camps 2026
           </h2>
-          <p style={{ color: '#64748B', fontSize: '1rem', maxWidth: 480, margin: '0 auto', lineHeight: 1.6, fontFamily: 'Outfit, sans-serif' }}>
+          <p style={{ color: '#64748B', fontSize: '1rem', maxWidth: 480, margin: '0 auto', lineHeight: 1.6, fontFamily: 'Nunito Sans, sans-serif' }}>
             Intensive 2-week camps where kids build real tech projects with expert mentors
           </p>
         </div>
@@ -251,21 +251,21 @@ const LandingPage = () => {
                 </div>
 
                 {/* Heading */}
-                <h3 style={{ fontFamily: 'Unbounded, sans-serif', fontSize: 'clamp(1.5rem, 3.5vw, 2.25rem)', fontWeight: 900, lineHeight: 1.15, marginBottom: '0.75rem' }}>
+                <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 'clamp(1.5rem, 3.5vw, 2.25rem)', fontWeight: 900, lineHeight: 1.15, marginBottom: '0.75rem' }}>
                   <span style={{ color: '#F8FAFC', display: 'block' }}>Future Skills</span>
                   <span style={{ background: 'linear-gradient(90deg, #00E5FF, #7C3AED)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
                     Summer Camp 2026
                   </span>
                 </h3>
 
-                <p style={{ color: '#94A3B8', fontSize: '0.9rem', lineHeight: 1.65, marginBottom: '1.25rem', maxWidth: 400, fontFamily: 'Outfit, sans-serif' }}>
+                <p style={{ color: '#94A3B8', fontSize: '0.9rem', lineHeight: 1.65, marginBottom: '1.25rem', maxWidth: 400, fontFamily: 'Nunito Sans, sans-serif' }}>
                   Robotics · Coding · AI · 3D Design — 10 days of hands-on learning for ages 4–16. Online or at Mumbai centers.
                 </p>
 
                 {/* Feature pills */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: '1.75rem' }}>
                   {['Mumbai Centers', 'Online Option', '10 Kids/Batch', '4 Batch Weeks'].map(text => (
-                    <span key={text} style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 12px', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: '#CBD5E1', fontSize: '0.75rem', fontFamily: 'Outfit, sans-serif' }}>
+                    <span key={text} style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 12px', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: '#CBD5E1', fontSize: '0.75rem', fontFamily: 'Nunito Sans, sans-serif' }}>
                       {text}
                     </span>
                   ))}
@@ -277,7 +277,7 @@ const LandingPage = () => {
                   data-testid="homepage-camp-book-btn"
                   style={{
                     background: '#D63031', color: '#fff',
-                    fontFamily: 'Unbounded, sans-serif', fontWeight: 700, fontSize: '0.85rem',
+                    fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: '0.85rem',
                     padding: '0.85rem 2rem', borderRadius: '999px', border: 'none', cursor: 'pointer',
                     boxShadow: '0 0 28px rgba(214,48,49,0.4)',
                     display: 'inline-flex', alignItems: 'center', gap: 8,
@@ -304,8 +304,8 @@ const LandingPage = () => {
                       onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.borderColor = g.color + '66'; }}
                       onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
                     >
-                      <div style={{ color: g.color, fontSize: '0.72rem', fontWeight: 700, fontFamily: 'Outfit, sans-serif', marginBottom: '0.25rem' }}>{g.ages}</div>
-                      <div style={{ color: '#64748B', fontSize: '0.62rem', fontFamily: 'Outfit, sans-serif' }}>{g.label}</div>
+                      <div style={{ color: g.color, fontSize: '0.72rem', fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", marginBottom: '0.25rem' }}>{g.ages}</div>
+                      <div style={{ color: '#64748B', fontSize: '0.62rem', fontFamily: 'Nunito Sans, sans-serif' }}>{g.label}</div>
                     </div>
                   ))}
                 </div>

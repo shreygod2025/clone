@@ -274,13 +274,13 @@ const AgeGroupModal = ({ onClose, onSelect }) => {
         </button>
 
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <p style={{ fontSize: '0.65rem', fontFamily: 'Outfit, sans-serif', letterSpacing: '0.2em', color: '#00E5FF', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem' }}>
+          <p style={{ fontSize: '0.65rem', fontFamily: 'Nunito Sans, sans-serif', letterSpacing: '0.2em', color: '#00E5FF', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem' }}>
             Future Skills Summer Camp 2026
           </p>
-          <h2 style={{ fontFamily: 'Unbounded, sans-serif', fontSize: 'clamp(1.2rem, 3vw, 1.6rem)', fontWeight: 900, color: '#F8FAFC', marginBottom: '0.5rem' }}>
+          <h2 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 'clamp(1.2rem, 3vw, 1.6rem)', fontWeight: 900, color: '#F8FAFC', marginBottom: '0.5rem' }}>
             Select Your Child's Age Group
           </h2>
-          <p style={{ color: '#94A3B8', fontSize: '0.85rem', fontFamily: 'Outfit, sans-serif' }}>
+          <p style={{ color: '#94A3B8', fontSize: '0.85rem', fontFamily: 'Nunito Sans, sans-serif' }}>
             Each camp is designed for that specific age group's learning stage
           </p>
         </div>
@@ -295,29 +295,29 @@ const AgeGroupModal = ({ onClose, onSelect }) => {
                 background: g.gradient, border: `1px solid ${g.color}33`,
                 borderRadius: '1.25rem', padding: '1.75rem 1.25rem',
                 cursor: 'pointer', textAlign: 'center',
-                transition: 'all 0.25s', fontFamily: 'Outfit, sans-serif',
+                transition: 'all 0.25s', fontFamily: 'Nunito Sans, sans-serif',
               }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = g.color; e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = `0 8px 30px ${g.color}25`; }}
               onMouseLeave={e => { e.currentTarget.style.borderColor = `${g.color}33`; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
             >
               <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>{g.icon}</div>
-              <div style={{ fontFamily: 'Unbounded, sans-serif', fontWeight: 900, fontSize: '0.85rem', color: g.color, marginBottom: '0.25rem' }}>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 900, fontSize: '0.85rem', color: g.color, marginBottom: '0.25rem' }}>
                 Ages {g.ages}
               </div>
-              <div style={{ fontFamily: 'Unbounded, sans-serif', fontWeight: 700, fontSize: '0.9rem', color: '#F8FAFC', marginBottom: '0.5rem' }}>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: '0.9rem', color: '#F8FAFC', marginBottom: '0.5rem' }}>
                 {g.label}
               </div>
-              <div style={{ fontSize: '0.72rem', color: '#94A3B8', lineHeight: 1.4 }}>
+              <div style={{ fontSize: '0.72rem', color: '#94A3B8', lineHeight: 1.4, fontFamily: 'Nunito Sans, sans-serif' }}>
                 {g.tagline}
               </div>
-              <div style={{ marginTop: '1rem', display: 'inline-flex', alignItems: 'center', gap: 4, color: g.color, fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              <div style={{ marginTop: '1rem', display: 'inline-flex', alignItems: 'center', gap: 4, color: g.color, fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'Nunito Sans, sans-serif' }}>
                 Explore <ArrowRight size={12} />
               </div>
             </button>
           ))}
         </div>
 
-        <p style={{ textAlign: 'center', fontSize: '0.75rem', color: '#64748B', marginTop: '1.5rem', fontFamily: 'Outfit, sans-serif' }}>
+        <p style={{ textAlign: 'center', fontSize: '0.75rem', color: '#64748B', marginTop: '1.5rem', fontFamily: 'Nunito Sans, sans-serif' }}>
           ₹1,999 per child · May 2026 · Mumbai Centers + Online
         </p>
       </div>
@@ -453,13 +453,13 @@ const OfferingsPage = () => {
             <section className="py-16" style={{ background: 'linear-gradient(180deg, #f8fafc 0%, #0D1829 100%)' }}>
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center mb-10">
-                  <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.7rem', letterSpacing: '0.2em', color: '#D63031', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem' }}>
+                  <p style={{ fontFamily: 'Nunito Sans, sans-serif', fontSize: '0.7rem', letterSpacing: '0.2em', color: '#D63031', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem' }}>
                     Exclusive · Limited Seats
                   </p>
-                  <h2 style={{ fontFamily: 'Unbounded, sans-serif', fontSize: 'clamp(1.5rem, 4vw, 2.5rem)', fontWeight: 900, color: '#0D1829', marginBottom: '0.5rem' }}>
+                  <h2 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 'clamp(1.5rem, 4vw, 2.5rem)', fontWeight: 900, color: '#0D1829', marginBottom: '0.5rem' }}>
                     Summer Camps 2026
                   </h2>
-                  <p style={{ color: '#475569', maxWidth: 480, margin: '0 auto', fontSize: '0.95rem', fontFamily: 'Outfit, sans-serif' }}>
+                  <p style={{ color: '#475569', maxWidth: 480, margin: '0 auto', fontSize: '0.95rem', fontFamily: 'Nunito Sans, sans-serif' }}>
                     Intensive 2-week camps where kids build real tech projects with expert mentors
                   </p>
                 </div>
@@ -512,11 +512,11 @@ const OfferingsPage = () => {
                           May 2026
                         </span>
                       </div>
-                      <h3 style={{ fontFamily: 'Unbounded, sans-serif', fontSize: 'clamp(1.25rem, 3.5vw, 2rem)', fontWeight: 900, color: '#F8FAFC', lineHeight: 1.2, marginBottom: '0.75rem' }}>
+                      <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 'clamp(1.25rem, 3.5vw, 2rem)', fontWeight: 900, color: '#F8FAFC', lineHeight: 1.2, marginBottom: '0.75rem' }}>
                         Future Skills<br />
                         <span style={{ color: '#00E5FF' }}>Summer Camp 2026</span>
                       </h3>
-                      <p style={{ color: '#94A3B8', fontSize: '0.95rem', lineHeight: 1.6, marginBottom: '1.5rem', fontFamily: 'Outfit, sans-serif', maxWidth: 380 }}>
+                      <p style={{ color: '#94A3B8', fontSize: '0.95rem', lineHeight: 1.6, marginBottom: '1.5rem', fontFamily: 'Nunito Sans, sans-serif', maxWidth: 380 }}>
                         Robotics · Coding · AI · 3D Design — 10 days of hands-on learning for ages 4–16. Online or at Mumbai centers.
                       </p>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.75rem' }}>
@@ -526,7 +526,7 @@ const OfferingsPage = () => {
                           { icon: '👨‍👩‍👧', text: '10 Kids/Batch' },
                           { icon: '📅', text: '4 Batch Weeks' },
                         ].map(f => (
-                          <span key={f.text} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: '999px', background: 'rgba(255,255,255,0.06)', color: '#CBD5E1', fontSize: '0.78rem', fontFamily: 'Outfit, sans-serif' }}>
+                          <span key={f.text} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: '999px', background: 'rgba(255,255,255,0.06)', color: '#CBD5E1', fontSize: '0.78rem', fontFamily: 'Nunito Sans, sans-serif' }}>
                             {f.icon} {f.text}
                           </span>
                         ))}
@@ -538,7 +538,7 @@ const OfferingsPage = () => {
                           display: 'inline-flex', alignItems: 'center', gap: 10,
                           padding: '0.9rem 2rem', borderRadius: '999px',
                           background: '#D63031', color: '#fff',
-                          fontFamily: 'Unbounded, sans-serif', fontWeight: 700, fontSize: '0.85rem',
+                          fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: '0.85rem',
                           border: 'none', cursor: 'pointer',
                           boxShadow: '0 0 24px rgba(214,48,49,0.4)',
                           letterSpacing: '0.05em',
