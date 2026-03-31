@@ -522,23 +522,6 @@ export default function SummerCampLandingPage() {
               </div>
             </div>
 
-            {/* ── Countdown — full-width HUD panel ── */}
-            <div className="h-count" style={{ marginTop: '3.5rem', padding: '2.5rem 2.5rem 2rem', background: 'rgba(4,14,34,0.88)', backdropFilter: 'blur(24px)', border: '1px solid rgba(0,229,255,0.18)', borderRadius: '1.5rem', boxShadow: '0 0 60px rgba(0,229,255,0.06), inset 0 1px 0 rgba(0,229,255,0.12)', textAlign: 'center' }}>
-              {/* Top accent line */}
-              <div style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,229,255,0.5), transparent)', borderRadius: 1 }} />
-              <p style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.68rem', letterSpacing: '0.25em', color: '#2d4a6a', textTransform: 'uppercase', fontWeight: 700, marginBottom: '1.75rem' }}>
-                <span style={{ color: 'rgba(0,229,255,0.35)' }}>{'['}</span> Camp Starts In <span style={{ color: 'rgba(0,229,255,0.35)' }}>{']'}</span>
-              </p>
-              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <CUnit value={countdown.days}    label="Days"  />
-                <CUnitSep />
-                <CUnit value={countdown.hours}   label="Hours" />
-                <CUnitSep />
-                <CUnit value={countdown.minutes} label="Mins"  />
-                <CUnitSep />
-                <CUnit value={countdown.seconds} label="Secs"  />
-              </div>
-            </div>
           </div>
         </section>
 
@@ -887,6 +870,27 @@ export default function SummerCampLandingPage() {
                 Secure Your Spot Now <ArrowRight style={{ width: 18, height: 18 }} />
               </button>
               <p style={{ fontSize: '0.7rem', color: '#334155', marginTop: '0.9rem', letterSpacing: '0.03em' }}>Cash at center · or online via Cashfree (UPI, Card, Net Banking)</p>
+            </div>
+          </div>
+        </section>
+
+        {/* ── COUNTDOWN — below pricing ─────────────────────────────────── */}
+        <section data-testid="camp-countdown" style={{ padding: '3rem 0 4rem', position: 'relative', zIndex: 1 }}>
+          <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 1.5rem' }}>
+            <div style={{ padding: '2.5rem 2.5rem 2rem', background: 'rgba(4,14,34,0.88)', backdropFilter: 'blur(24px)', border: '1px solid rgba(0,229,255,0.18)', borderRadius: '1.5rem', boxShadow: '0 0 60px rgba(0,229,255,0.06), inset 0 1px 0 rgba(0,229,255,0.12)', textAlign: 'center', position: 'relative' }}>
+              <div style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,229,255,0.5), transparent)', borderRadius: 1 }} />
+              <p style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.68rem', letterSpacing: '0.25em', color: '#2d4a6a', textTransform: 'uppercase', fontWeight: 700, marginBottom: '1.75rem' }}>
+                <span style={{ color: 'rgba(0,229,255,0.35)' }}>{'['}</span> Camp Starts In <span style={{ color: 'rgba(0,229,255,0.35)' }}>{']'}</span>
+              </p>
+              <div className="countdown-inner" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <CUnit value={countdown.days}    label="Days"  />
+                <CUnitSep />
+                <CUnit value={countdown.hours}   label="Hours" />
+                <CUnitSep />
+                <CUnit value={countdown.minutes} label="Mins"  />
+                <CUnitSep />
+                <CUnit value={countdown.seconds} label="Secs"  />
+              </div>
             </div>
           </div>
         </section>
