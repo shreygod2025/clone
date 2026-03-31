@@ -333,8 +333,8 @@ export default function SummerCampLandingPage() {
 
         /* ── Tab button ── */
         .age-tab {
-          padding:0.75rem 1.6rem; border-radius:999px; cursor:pointer;
-          font-family:'JetBrains Mono',monospace; font-weight:700; font-size:0.9rem;
+          padding:0.85rem 1.8rem; border-radius:999px; cursor:pointer;
+          font-family:'JetBrains Mono',monospace; font-weight:700; font-size:1.05rem;
           border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04);
           color:#64748B; transition:all 0.25s; white-space:nowrap;
         }
@@ -356,7 +356,7 @@ export default function SummerCampLandingPage() {
           .countdown-inner { flex-direction:column; gap:1rem; }
           .countdown-stats { justify-content:center; }
           .age-tabs-row { justify-content:flex-start !important; overflow-x:auto; padding-bottom:4px; flex-wrap:nowrap !important; }
-          .age-tab { font-size:0.8rem; padding:0.6rem 1.1rem; }
+          .age-tab { font-size:0.88rem; padding:0.65rem 1.1rem; }
           .batch-toggle { flex-direction:column; }
           .neon-btn { font-size:0.85rem; padding:0.95rem 1.9rem; }
           .center-grid { grid-template-columns:1fr 1fr !important; }
@@ -769,7 +769,7 @@ export default function SummerCampLandingPage() {
                   }}
                 >
                   {g.label}
-                  <span style={{ marginLeft: 5, opacity: 0.65, fontSize: '0.75rem' }}>· {g.ages}</span>
+                  <span style={{ marginLeft: 6, opacity: 0.75, fontSize: '0.85rem' }}>· Ages {g.ages}</span>
                 </button>
               ))}
             </div>
@@ -792,11 +792,11 @@ export default function SummerCampLandingPage() {
                     <div style={{ width: 44, height: 44, borderRadius: '0.75rem', background: activeCamp.accentBg, border: `1px solid ${activeCamp.color}35`, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>
                       <Icon style={{ width: 20, height: 20, color: activeCamp.color }} />
                     </div>
-                    <span style={{ fontSize: '0.58rem', fontFamily: 'Outfit, sans-serif', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', background: activeCamp.accentBg, color: activeCamp.color, padding: '2px 8px', borderRadius: '999px', display: 'inline-block', marginBottom: '0.6rem' }}>
+                    <span style={{ fontSize: '0.68rem', fontFamily: 'Outfit, sans-serif', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', background: activeCamp.accentBg, color: activeCamp.color, padding: '3px 10px', borderRadius: '999px', display: 'inline-block', marginBottom: '0.7rem' }}>
                       {subject.level}
                     </span>
-                    <h3 style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.95rem', fontWeight: 700, color: '#F0F4F8', marginBottom: '0.45rem', lineHeight: 1.3 }}>{subject.name}</h3>
-                    <p style={{ fontSize: '0.82rem', color: '#5f7a9a', lineHeight: 1.65 }}>{subject.desc}</p>
+                    <h3 style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '1.05rem', fontWeight: 700, color: '#F0F4F8', marginBottom: '0.5rem', lineHeight: 1.3 }}>{subject.name}</h3>
+                    <p style={{ fontSize: '0.9rem', color: '#7a95b4', lineHeight: 1.7 }}>{subject.desc}</p>
                   </div>
                 );
               })}
