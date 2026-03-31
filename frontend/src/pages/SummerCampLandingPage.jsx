@@ -571,11 +571,11 @@ export default function SummerCampLandingPage() {
             </div>
 
             {/* Cert badge cards — 2 col, larger, more impact */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem', marginBottom: '3.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '3.5rem' }}>
 
-              {/* STEM.org Educational Experience — large centrepiece card */}
+              {/* STEM.org Educational Experience */}
               <div className="cert-card cert-reveal sr sr-d1"
-                style={{ padding: '3rem 2.5rem', borderColor: 'rgba(230,85,13,0.25)', boxShadow: '0 0 60px rgba(230,85,13,0.07), inset 0 0 40px rgba(230,85,13,0.03)' }}
+                style={{ padding: '1.75rem 1.75rem', borderColor: 'rgba(230,85,13,0.25)', boxShadow: '0 0 60px rgba(230,85,13,0.07), inset 0 0 40px rgba(230,85,13,0.03)' }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(230,85,13,0.6)'; e.currentTarget.style.boxShadow = '0 0 80px rgba(230,85,13,0.22), inset 0 0 40px rgba(230,85,13,0.05)'; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(230,85,13,0.25)'; e.currentTarget.style.boxShadow = '0 0 60px rgba(230,85,13,0.07), inset 0 0 40px rgba(230,85,13,0.03)'; }}
               >
@@ -583,52 +583,51 @@ export default function SummerCampLandingPage() {
                 <div style={{ position: 'absolute', top: 0, left: '15%', right: '15%', height: 2, background: 'linear-gradient(90deg, transparent, #E6550D, transparent)', borderRadius: 1 }} />
                 <div style={{ position: 'absolute', bottom: 0, left: '25%', right: '25%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(230,85,13,0.5), transparent)', borderRadius: 1 }} />
                 {/* Corner accents */}
-                <div style={{ position: 'absolute', top: 12, left: 12, width: 18, height: 18, borderTop: '2px solid rgba(230,85,13,0.5)', borderLeft: '2px solid rgba(230,85,13,0.5)', borderRadius: '2px 0 0 0' }} />
-                <div style={{ position: 'absolute', top: 12, right: 12, width: 18, height: 18, borderTop: '2px solid rgba(230,85,13,0.5)', borderRight: '2px solid rgba(230,85,13,0.5)', borderRadius: '0 2px 0 0' }} />
-                <div style={{ position: 'absolute', bottom: 12, left: 12, width: 18, height: 18, borderBottom: '2px solid rgba(230,85,13,0.5)', borderLeft: '2px solid rgba(230,85,13,0.5)', borderRadius: '0 0 0 2px' }} />
-                <div style={{ position: 'absolute', bottom: 12, right: 12, width: 18, height: 18, borderBottom: '2px solid rgba(230,85,13,0.5)', borderRight: '2px solid rgba(230,85,13,0.5)', borderRadius: '0 0 2px 0' }} />
+                <div style={{ position: 'absolute', top: 10, left: 10, width: 14, height: 14, borderTop: '2px solid rgba(230,85,13,0.5)', borderLeft: '2px solid rgba(230,85,13,0.5)', borderRadius: '2px 0 0 0' }} />
+                <div style={{ position: 'absolute', top: 10, right: 10, width: 14, height: 14, borderTop: '2px solid rgba(230,85,13,0.5)', borderRight: '2px solid rgba(230,85,13,0.5)', borderRadius: '0 2px 0 0' }} />
+                <div style={{ position: 'absolute', bottom: 10, left: 10, width: 14, height: 14, borderBottom: '2px solid rgba(230,85,13,0.5)', borderLeft: '2px solid rgba(230,85,13,0.5)', borderRadius: '0 0 0 2px' }} />
+                <div style={{ position: 'absolute', bottom: 10, right: 10, width: 14, height: 14, borderBottom: '2px solid rgba(230,85,13,0.5)', borderRight: '2px solid rgba(230,85,13,0.5)', borderRadius: '0 0 2px 0' }} />
 
                 {/* Badge */}
-                <div style={{ width: 220, height: 220, marginBottom: '2rem', position: 'relative' }}>
+                <div style={{ width: 130, height: 130, marginBottom: '1.1rem', position: 'relative' }}>
                   <img src="https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/ko80g3wd_images.png"
                     alt="STEM.org Accredited Educational Experience" loading="lazy"
                     style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '0.75rem' }} />
-                  {/* Glow bloom */}
-                  <div style={{ position: 'absolute', bottom: -30, left: '50%', transform: 'translateX(-50%)', width: 160, height: 60, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(230,85,13,0.35), transparent)', filter: 'blur(18px)', pointerEvents: 'none' }} />
+                  <div style={{ position: 'absolute', bottom: -20, left: '50%', transform: 'translateX(-50%)', width: 100, height: 40, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(230,85,13,0.35), transparent)', filter: 'blur(14px)', pointerEvents: 'none' }} />
                 </div>
-                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '0.65rem', letterSpacing: '0.22em', color: '#E6550D', textTransform: 'uppercase', marginBottom: '0.6rem' }}>STEM.ORG</div>
-                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, fontSize: '1.3rem', color: '#F0F4F8', textAlign: 'center', marginBottom: '0.9rem', lineHeight: 1.25 }}>
+                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '0.6rem', letterSpacing: '0.22em', color: '#E6550D', textTransform: 'uppercase', marginBottom: '0.45rem' }}>STEM.ORG</div>
+                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, fontSize: '1.05rem', color: '#F0F4F8', textAlign: 'center', marginBottom: '0.65rem', lineHeight: 1.25 }}>
                   Accredited<br/>Educational Experience™
                 </div>
-                <p style={{ fontSize: '0.85rem', color: '#475569', textAlign: 'center', lineHeight: 1.7, fontFamily: 'Outfit, sans-serif', maxWidth: 280 }}>
+                <p style={{ fontSize: '0.78rem', color: '#475569', textAlign: 'center', lineHeight: 1.65, fontFamily: 'Outfit, sans-serif', maxWidth: 240 }}>
                   Every session is certified by STEM.org — ensuring each child receives a world-class, hands-on learning experience.
                 </p>
               </div>
 
               {/* UNESCO */}
               <div className="cert-card cert-reveal sr sr-d2"
-                style={{ padding: '3rem 2.5rem', borderColor: 'rgba(30,80,180,0.25)', boxShadow: '0 0 60px rgba(30,80,180,0.07), inset 0 0 40px rgba(30,80,180,0.03)' }}
+                style={{ padding: '1.75rem 1.75rem', borderColor: 'rgba(30,80,180,0.25)', boxShadow: '0 0 60px rgba(30,80,180,0.07), inset 0 0 40px rgba(30,80,180,0.03)' }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(50,120,255,0.55)'; e.currentTarget.style.boxShadow = '0 0 80px rgba(50,120,255,0.2), inset 0 0 40px rgba(50,120,255,0.05)'; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(30,80,180,0.25)'; e.currentTarget.style.boxShadow = '0 0 60px rgba(30,80,180,0.07), inset 0 0 40px rgba(30,80,180,0.03)'; }}
               >
                 <div style={{ position: 'absolute', top: 0, left: '15%', right: '15%', height: 2, background: 'linear-gradient(90deg, transparent, #3264CC, transparent)', borderRadius: 1 }} />
                 <div style={{ position: 'absolute', bottom: 0, left: '25%', right: '25%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(50,100,204,0.5), transparent)', borderRadius: 1 }} />
-                <div style={{ position: 'absolute', top: 12, left: 12, width: 18, height: 18, borderTop: '2px solid rgba(50,100,204,0.5)', borderLeft: '2px solid rgba(50,100,204,0.5)', borderRadius: '2px 0 0 0' }} />
-                <div style={{ position: 'absolute', top: 12, right: 12, width: 18, height: 18, borderTop: '2px solid rgba(50,100,204,0.5)', borderRight: '2px solid rgba(50,100,204,0.5)', borderRadius: '0 2px 0 0' }} />
-                <div style={{ position: 'absolute', bottom: 12, left: 12, width: 18, height: 18, borderBottom: '2px solid rgba(50,100,204,0.5)', borderLeft: '2px solid rgba(50,100,204,0.5)', borderRadius: '0 0 0 2px' }} />
-                <div style={{ position: 'absolute', bottom: 12, right: 12, width: 18, height: 18, borderBottom: '2px solid rgba(50,100,204,0.5)', borderRight: '2px solid rgba(50,100,204,0.5)', borderRadius: '0 0 2px 0' }} />
+                <div style={{ position: 'absolute', top: 10, left: 10, width: 14, height: 14, borderTop: '2px solid rgba(50,100,204,0.5)', borderLeft: '2px solid rgba(50,100,204,0.5)', borderRadius: '2px 0 0 0' }} />
+                <div style={{ position: 'absolute', top: 10, right: 10, width: 14, height: 14, borderTop: '2px solid rgba(50,100,204,0.5)', borderRight: '2px solid rgba(50,100,204,0.5)', borderRadius: '0 2px 0 0' }} />
+                <div style={{ position: 'absolute', bottom: 10, left: 10, width: 14, height: 14, borderBottom: '2px solid rgba(50,100,204,0.5)', borderLeft: '2px solid rgba(50,100,204,0.5)', borderRadius: '0 0 0 2px' }} />
+                <div style={{ position: 'absolute', bottom: 10, right: 10, width: 14, height: 14, borderBottom: '2px solid rgba(50,100,204,0.5)', borderRight: '2px solid rgba(50,100,204,0.5)', borderRadius: '0 0 2px 0' }} />
 
-                <div style={{ width: 260, height: 180, marginBottom: '2rem', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                <div style={{ width: 170, height: 110, marginBottom: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                   <img src="https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/cqfv2iw2_USFUCA%20logo%203.jpg"
                     alt="UNESCO USFUCA" loading="lazy"
                     style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '0.75rem' }} />
-                  <div style={{ position: 'absolute', bottom: -30, left: '50%', transform: 'translateX(-50%)', width: 160, height: 60, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(30,80,180,0.4), transparent)', filter: 'blur(18px)', pointerEvents: 'none' }} />
+                  <div style={{ position: 'absolute', bottom: -20, left: '50%', transform: 'translateX(-50%)', width: 100, height: 40, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(30,80,180,0.4), transparent)', filter: 'blur(14px)', pointerEvents: 'none' }} />
                 </div>
-                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '0.65rem', letterSpacing: '0.22em', color: '#5B8EFF', textTransform: 'uppercase', marginBottom: '0.6rem' }}>UNESCO</div>
-                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, fontSize: '1.3rem', color: '#F0F4F8', textAlign: 'center', marginBottom: '0.9rem', lineHeight: 1.25 }}>
+                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '0.6rem', letterSpacing: '0.22em', color: '#5B8EFF', textTransform: 'uppercase', marginBottom: '0.45rem' }}>UNESCO</div>
+                <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, fontSize: '1.05rem', color: '#F0F4F8', textAlign: 'center', marginBottom: '0.65rem', lineHeight: 1.25 }}>
                   U.S. Federation of<br/>UNESCO Clubs
                 </div>
-                <p style={{ fontSize: '0.85rem', color: '#475569', textAlign: 'center', lineHeight: 1.7, fontFamily: 'Outfit, sans-serif', maxWidth: 280 }}>
+                <p style={{ fontSize: '0.78rem', color: '#475569', textAlign: 'center', lineHeight: 1.65, fontFamily: 'Outfit, sans-serif', maxWidth: 240 }}>
                   Aligned with UNESCO's global framework for quality education, scientific literacy, and sustainable development.
                 </p>
               </div>
