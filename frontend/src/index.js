@@ -2,7 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { HelmetProvider } from "react-helmet-async";
 import axios from "axios";
-import "@/index.css";
+import "./index.css";
 import App from "@/App";
 
 // Global axios configuration

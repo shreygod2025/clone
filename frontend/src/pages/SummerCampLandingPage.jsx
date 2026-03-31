@@ -1,18 +1,25 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, memo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { Cpu, Code, Brain, Box, Clock, Users, MapPin, ArrowRight, Check, Star, ChevronRight } from 'lucide-react';
+import { Cpu, Code, Brain, Box, Clock, Users, MapPin, ArrowRight, Check, Star } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
-// ── Images ────────────────────────────────────────────────────────────────────
+// ── GIF assets ────────────────────────────────────────────────────────────────
+const GIFS = [
+  { src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/4y2zbq59_Robotics.gif', label: 'Robotics' },
+  { src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/8i8zob06_Pyhton%20.gif', label: 'Coding' },
+  { src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/xj8dva2y_3D%20Design.gif', label: '3D Designing' },
+];
+
+// ── Images (testimonial/media section) ────────────────────────────────────────
 const IMAGES = {
-  kidsRobot:   'https://images.unsplash.com/photo-1743677077216-00a458eff9e0?crop=entropy&cs=srgb&fm=jpg&w=800&q=75',
-  kidsTable:   'https://images.unsplash.com/photo-1740205644066-0ca1535e19ff?crop=entropy&cs=srgb&fm=jpg&w=800&q=75',
-  boySolder:   'https://images.unsplash.com/photo-1537151242758-331155dcf21b?crop=entropy&cs=srgb&fm=jpg&w=800&q=75',
-  boyRobotToy: 'https://images.pexels.com/photos/8294682/pexels-photo-8294682.jpeg?auto=compress&cs=tinysrgb&w=600',
-  twoKidsRobot:'https://images.pexels.com/photos/8294687/pexels-photo-8294687.jpeg?auto=compress&cs=tinysrgb&w=600',
-  girlCoding:  'https://images.unsplash.com/photo-1771408427146-09be9a1d4535?crop=entropy&cs=srgb&fm=jpg&w=800&q=75',
+  boyRobotToy: 'https://images.pexels.com/photos/8294682/pexels-photo-8294682.jpeg?auto=compress&cs=tinysrgb&w=400',
+  twoKidsRobot:'https://images.pexels.com/photos/8294687/pexels-photo-8294687.jpeg?auto=compress&cs=tinysrgb&w=400',
+  girlCoding:  'https://images.unsplash.com/photo-1771408427146-09be9a1d4535?crop=entropy&cs=srgb&fm=jpg&w=600&q=70',
+  kidsRobot:   'https://images.pexels.com/photos/8294682/pexels-photo-8294682.jpeg?auto=compress&cs=tinysrgb&w=400',
+  kidsTable:   'https://images.pexels.com/photos/8294687/pexels-photo-8294687.jpeg?auto=compress&cs=tinysrgb&w=400',
+  boySolder:   'https://images.pexels.com/photos/8294682/pexels-photo-8294682.jpeg?auto=compress&cs=tinysrgb&w=400',
 };
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -141,38 +148,33 @@ function TypedText({ text, speed = 52, startDelay = 0 }) {
     </span>
   );
 }
-function CircuitBg({ opacity = 0.22 }) {
+const CircuitBg = memo(function CircuitBg({ opacity = 0.22 }) {
   return (
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', opacity, pointerEvents: 'none' }} aria-hidden>
       <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <pattern id="ckt" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
-            {/* Full cell border — draws all 4 sides */}
             <rect x="0" y="0" width="100" height="100" fill="none" stroke="#00E5FF" strokeWidth="0.8" opacity="0.35"/>
-            {/* Glowing corner node */}
             <circle cx="0" cy="0" r="3.5" fill="#00E5FF" opacity="0.9"/>
-            {/* Mid-line traces — horizontal + vertical */}
             <line x1="50" y1="0" x2="50" y2="36" stroke="#00E5FF" strokeWidth="0.8" opacity="0.4"/>
             <line x1="50" y1="64" x2="50" y2="100" stroke="#00E5FF" strokeWidth="0.8" opacity="0.4"/>
             <line x1="0" y1="50" x2="36" y2="50" stroke="#00E5FF" strokeWidth="0.8" opacity="0.4"/>
             <line x1="64" y1="50" x2="100" y2="50" stroke="#00E5FF" strokeWidth="0.8" opacity="0.4"/>
-            {/* Centre node ring */}
             <circle cx="50" cy="50" r="5" fill="none" stroke="#00E5FF" strokeWidth="1" opacity="0.6"/>
-            <circle cx="50" cy="50" r="2"   fill="#00E5FF" opacity="0.5"/>
+            <circle cx="50" cy="50" r="2" fill="#00E5FF" opacity="0.5"/>
           </pattern>
         </defs>
         <rect width="100%" height="100%" fill="url(#ckt)"/>
       </svg>
     </div>
   );
-}
+});
 
 // ── Countdown unit — tall HUD capsule ──────────────────────────────────────
-function CUnit({ value, label }) {
+const CUnit = memo(function CUnit({ value, label }) {
   return (
     <div className="cunit">
       <div className="cunit-val">
-        {/* Inner circuit watermark */}
         <div style={{ position: 'absolute', inset: 0, opacity: 0.08, pointerEvents: 'none' }}>
           <svg width="100%" height="100%">
             <defs>
@@ -185,29 +187,43 @@ function CUnit({ value, label }) {
             <rect width="100%" height="100%" fill="url(#ckt-inner)"/>
           </svg>
         </div>
-        {/* Top inner highlight */}
         <div style={{ position: 'absolute', top: 0, left: '15%', right: '15%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,229,255,0.6), transparent)', borderRadius: 1 }} />
         <span style={{ position: 'relative', zIndex: 1 }}>{String(value).padStart(2, '0')}</span>
       </div>
       <div className="cunit-lbl">{label}</div>
     </div>
   );
-}
+});
 
 // ── Colon separator — two stacked dots ─────────────────────────────────────
-function CUnitSep() {
+const CUnitSep = memo(function CUnitSep() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center', paddingBottom: '2.4rem', flexShrink: 0 }}>
       <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#00E5FF', boxShadow: '0 0 12px rgba(0,229,255,0.9)', display: 'block' }} />
       <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#00E5FF', boxShadow: '0 0 12px rgba(0,229,255,0.9)', display: 'block' }} />
     </div>
   );
-}
+});
+
+// ── Isolated countdown — has its own timer, doesn't cause parent to re-render ──
+const CountdownDisplay = memo(function CountdownDisplay() {
+  const countdown = useCountdown();
+  return (
+    <div className="countdown-inner" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+      <CUnit value={countdown.days}    label="Days"  />
+      <CUnitSep />
+      <CUnit value={countdown.hours}   label="Hours" />
+      <CUnitSep />
+      <CUnit value={countdown.minutes} label="Mins"  />
+      <CUnitSep />
+      <CUnit value={countdown.seconds} label="Secs"  />
+    </div>
+  );
+});
 
 export default function SummerCampLandingPage() {
   const { ageGroup } = useParams();
   const navigate = useNavigate();
-  const countdown = useCountdown();
   useScrollReveal();
 
   const [activeAgeIdx, setActiveAgeIdx] = useState(() => {
@@ -222,14 +238,67 @@ export default function SummerCampLandingPage() {
   return (
     <>
       <Helmet>
-        <title>Future Skills Summer Camp 2026 — Robotics, AI & Coding | OLL Mumbai</title>
-        <meta name="description" content="India's best kids tech summer camp. Robotics, Coding, AI & 3D Design for ages 4–16. Mumbai + online. May 2026. As seen on Shark Tank India." />
+        <title>Future Skills Summer Camp 2026 — Robotics, AI & Coding for Kids | OLL Mumbai</title>
+        <meta name="description" content="India's #1 kids tech summer camp. Robotics, Python Coding, AI & 3D Design for ages 4–16. 10-day intensive camps in Mumbai (Mira Road, Dombivli, Andheri) & Online. STEM.org certified. May 2026. Book now — limited seats." />
+        <meta name="keywords" content="summer camp Mumbai, robotics summer camp, coding camp for kids, AI camp India, kids tech camp 2026, STEM camp Mumbai, summer camp ages 4-16, OLL summer camp, school holiday camp Mumbai" />
+        <meta name="robots" content="index, follow" />
+        <link rel="canonical" href="https://www.ollindia.com/summer-camp" />
+
+        {/* Open Graph */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://www.ollindia.com/summer-camp" />
+        <meta property="og:title" content="Future Skills Summer Camp 2026 — Robotics, AI & Coding for Kids | OLL" />
+        <meta property="og:description" content="10-day hands-on tech camps for ages 4–16. Robotics · Coding · AI · 3D Design. Mumbai + Online. STEM.org Certified. As seen on Shark Tank India & KBC." />
+        <meta property="og:image" content="https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/ko80g3wd_images.png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:locale" content="en_IN" />
+        <meta property="og:site_name" content="OLL India" />
+
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Future Skills Summer Camp 2026 | OLL Mumbai" />
+        <meta name="twitter:description" content="Robotics, Coding, AI & 3D Design for kids ages 4–16. Mumbai + Online. May 2026. Limited seats." />
+        <meta name="twitter:image" content="https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/ko80g3wd_images.png" />
+
+        {/* Preconnect for faster font loading */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+
+        {/* JSON-LD Structured Data */}
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Event",
+              "name": "Future Skills Summer Camp 2026",
+              "startDate": "2026-05-01",
+              "endDate": "2026-05-31",
+              "eventStatus": "https://schema.org/EventScheduled",
+              "eventAttendanceMode": "https://schema.org/MixedEventAttendanceMode",
+              "location": [
+                { "@type": "Place", "name": "OLL Center Mira Road", "address": { "@type": "PostalAddress", "addressLocality": "Mira Road", "addressRegion": "Maharashtra", "addressCountry": "IN" } },
+                { "@type": "Place", "name": "OLL Center Dombivli", "address": { "@type": "PostalAddress", "addressLocality": "Dombivli", "addressRegion": "Maharashtra", "addressCountry": "IN" } },
+                { "@type": "VirtualLocation", "url": "https://www.ollindia.com/summer-camp" }
+              ],
+              "image": "https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/ko80g3wd_images.png",
+              "description": "10-day intensive tech camps for kids ages 4–16 covering Robotics, Coding, AI and 3D Design.",
+              "organizer": { "@type": "Organization", "name": "OLL India", "url": "https://www.ollindia.com" },
+              "offers": { "@type": "Offer", "price": "1999", "priceCurrency": "INR", "availability": "https://schema.org/LimitedAvailability", "url": "https://www.ollindia.com/summer-camp/book" }
+            },
+            {
+              "@type": "Organization",
+              "name": "OLL India",
+              "url": "https://www.ollindia.com",
+              "description": "India's leading future-skills edtech for school students — Robotics, AI, Coding.",
+              "areaServed": "IN",
+              "sameAs": ["https://www.instagram.com/oll.india"]
+            }
+          ]
+        })}</script>
       </Helmet>
 
       <style>{`
-        /* ── Fonts ── */
-        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;0,800;1,400&family=Outfit:wght@300;400;500;600;700&display=swap');
-
         /* ── Typing cursor ── */
         @keyframes cursor-blink { 0%,100%{opacity:1} 50%{opacity:0} }
         .typed-cursor {
@@ -505,14 +574,10 @@ export default function SummerCampLandingPage() {
                 <div style={{ position: 'absolute', top: '30%', right: '5%', width: 200, height: 200, borderRadius: '50%', background: 'radial-gradient(circle, rgba(214,48,49,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
                 <div className="gif-grid">
-                  {[
-                    { src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/4y2zbq59_Robotics.gif', label: 'Robotics' },
-                    { src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/8i8zob06_Pyhton%20.gif', label: 'Coding' },
-                    { src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/xj8dva2y_3D%20Design.gif', label: '3D Designing' },
-                  ].map(item => (
+                  {GIFS.map(item => (
                     <div key={item.label}>
                       <div className="gif-card">
-                        <img src={item.src} alt={item.label} loading="lazy" />
+                        <img src={item.src} alt={item.label} loading="lazy" width="200" height="200" />
                       </div>
                       <p className="gif-label">{item.label}</p>
                     </div>
@@ -883,13 +948,7 @@ export default function SummerCampLandingPage() {
                 <span style={{ color: 'rgba(0,229,255,0.35)' }}>{'['}</span> Camp Starts In <span style={{ color: 'rgba(0,229,255,0.35)' }}>{']'}</span>
               </p>
               <div className="countdown-inner" style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <CUnit value={countdown.days}    label="Days"  />
-                <CUnitSep />
-                <CUnit value={countdown.hours}   label="Hours" />
-                <CUnitSep />
-                <CUnit value={countdown.minutes} label="Mins"  />
-                <CUnitSep />
-                <CUnit value={countdown.seconds} label="Secs"  />
+                <CountdownDisplay />
               </div>
             </div>
           </div>
