@@ -113,10 +113,10 @@ function useCountdown() {
 // ── Scroll-reveal hook ─────────────────────────────────────────────────────
 function useScrollReveal() {
   useEffect(() => {
-    const els = document.querySelectorAll('.sr');
+    const els = document.querySelectorAll('.sr, .sr-blur, .sr-scale, .sr-left, .sr-right');
     const io = new IntersectionObserver(
       entries => entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('sr-vis'); io.unobserve(e.target); } }),
-      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
+      { threshold: 0.08, rootMargin: '0px 0px -40px 0px' }
     );
     els.forEach(el => io.observe(el));
     return () => io.disconnect();
@@ -348,12 +348,26 @@ export default function SummerCampLandingPage() {
         .h-count  { animation: fadeUp 0.5s ease 0.75s both; }
 
         /* ── Scroll reveal ── */
-        .sr { opacity:0; transform:translateY(28px); transition: opacity 0.65s ease, transform 0.65s ease; }
-        .sr.sr-vis { opacity:1; transform:translateY(0); }
-        .sr-d1 { transition-delay:0.1s; }
-        .sr-d2 { transition-delay:0.2s; }
-        .sr-d3 { transition-delay:0.3s; }
-        .sr-d4 { transition-delay:0.4s; }
+        /* ── Scroll Reveal ── */
+        .sr       { opacity:0; transform:translateY(36px); transition: opacity 0.75s cubic-bezier(0.16,1,0.3,1), transform 0.75s cubic-bezier(0.16,1,0.3,1); }
+        .sr.sr-vis{ opacity:1; transform:translateY(0); }
+
+        .sr-blur       { opacity:0; filter:blur(14px); transform:translateY(20px); transition: opacity 0.85s cubic-bezier(0.16,1,0.3,1), filter 0.85s cubic-bezier(0.16,1,0.3,1), transform 0.85s cubic-bezier(0.16,1,0.3,1); }
+        .sr-blur.sr-vis{ opacity:1; filter:blur(0px); transform:translateY(0); }
+
+        .sr-scale       { opacity:0; transform:scale(0.92) translateY(24px); transition: opacity 0.75s cubic-bezier(0.16,1,0.3,1), transform 0.75s cubic-bezier(0.16,1,0.3,1); }
+        .sr-scale.sr-vis{ opacity:1; transform:scale(1) translateY(0); }
+
+        .sr-left       { opacity:0; transform:translateX(-36px); transition: opacity 0.75s cubic-bezier(0.16,1,0.3,1), transform 0.75s cubic-bezier(0.16,1,0.3,1); }
+        .sr-left.sr-vis{ opacity:1; transform:translateX(0); }
+
+        .sr-right       { opacity:0; transform:translateX(36px); transition: opacity 0.75s cubic-bezier(0.16,1,0.3,1), transform 0.75s cubic-bezier(0.16,1,0.3,1); }
+        .sr-right.sr-vis{ opacity:1; transform:translateX(0); }
+
+        .sr-d1 { transition-delay:0.08s; }
+        .sr-d2 { transition-delay:0.17s; }
+        .sr-d3 { transition-delay:0.27s; }
+        .sr-d4 { transition-delay:0.38s; }
         .sr-d5 { transition-delay:0.5s; }
 
         /* ── Countdown ── */
@@ -617,8 +631,8 @@ export default function SummerCampLandingPage() {
               { num: '400+', label: 'Schools Trust OLL' },
               { num: '2,000+', label: 'Kids Trained' },
               { num: '98%', label: 'Parents Recommend' },
-            ].map(s => (
-              <div key={s.num} className="sr">
+            ].map((s, i) => (
+              <div key={s.num} className={`sr-scale sr-d${i + 1}`}>
                 <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, fontSize: 'clamp(1.75rem, 3.5vw, 2.6rem)', color: '#F8FAFC', lineHeight: 1, letterSpacing: '-0.03em' }}>{s.num}</div>
                 <div style={{ fontFamily: "'Nunito Sans', sans-serif", fontSize: '0.82rem', color: '#94A3B8', marginTop: '0.5rem', letterSpacing: '0.06em' }}>{s.label}</div>
               </div>
@@ -633,7 +647,7 @@ export default function SummerCampLandingPage() {
 
           <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 1.5rem' }}>
             {/* Header */}
-            <div className="sr" style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
+            <div className="sr-blur" style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
               <p className="sec-label" style={{ marginBottom: '0.65rem' }}>globally.recognized</p>
               <h2 className="sec-title" style={{ marginBottom: '0.85rem' }}>Certified by the World's Best</h2>
               <p style={{ color: '#94A3B8', fontSize: '0.95rem', maxWidth: 480, margin: '0 auto', lineHeight: 1.65, fontFamily: "'Nunito Sans', sans-serif" }}>
@@ -645,7 +659,7 @@ export default function SummerCampLandingPage() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem', marginBottom: '3.5rem' }}>
 
               {/* STEM.org Educational Experience */}
-              <div className="cert-card cert-reveal sr sr-d1"
+              <div className="cert-card cert-reveal sr-scale sr-d1"
                 style={{ padding: '1.75rem 1.75rem', borderColor: 'rgba(230,85,13,0.25)', boxShadow: '0 0 60px rgba(230,85,13,0.07), inset 0 0 40px rgba(230,85,13,0.03)' }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(230,85,13,0.6)'; e.currentTarget.style.boxShadow = '0 0 80px rgba(230,85,13,0.22), inset 0 0 40px rgba(230,85,13,0.05)'; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(230,85,13,0.25)'; e.currentTarget.style.boxShadow = '0 0 60px rgba(230,85,13,0.07), inset 0 0 40px rgba(230,85,13,0.03)'; }}
@@ -676,7 +690,7 @@ export default function SummerCampLandingPage() {
               </div>
 
               {/* UNESCO */}
-              <div className="cert-card cert-reveal sr sr-d2"
+              <div className="cert-card cert-reveal sr-scale sr-d2"
                 style={{ padding: '1.75rem 1.75rem', borderColor: 'rgba(30,80,180,0.25)', boxShadow: '0 0 60px rgba(30,80,180,0.07), inset 0 0 40px rgba(30,80,180,0.03)' }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(50,120,255,0.55)'; e.currentTarget.style.boxShadow = '0 0 80px rgba(50,120,255,0.2), inset 0 0 40px rgba(50,120,255,0.05)'; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(30,80,180,0.25)'; e.currentTarget.style.boxShadow = '0 0 60px rgba(30,80,180,0.07), inset 0 0 40px rgba(30,80,180,0.03)'; }}
@@ -705,12 +719,12 @@ export default function SummerCampLandingPage() {
             </div>
 
             {/* ── FEATURED ON ── */}
-            <div className="sr" style={{ textAlign: 'center', marginBottom: '2rem' }}>
+            <div className="sr-blur" style={{ textAlign: 'center', marginBottom: '2rem' }}>
               <p className="sec-label">featured.on.national.tv</p>
               <h2 className="sec-title" style={{ marginBottom: '0.5rem' }}>As Seen On</h2>
             </div>
 
-            <div className="sr sr-d1" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.1rem' }}>
+            <div className="sr-scale sr-d1" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.1rem' }}>
               {/* KBC */}
               <div className="media-card" style={{ height: 260 }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,215,0,0.35)'; }}
@@ -766,7 +780,7 @@ export default function SummerCampLandingPage() {
         {/* ── CURRICULUM ────────────────────────────────────────────────── */}
         <section data-testid="camp-curriculum" style={{ padding: '6rem 0', position: 'relative', zIndex: 1 }}>
           <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 1.5rem' }}>
-            <div className="sr" style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <div className="sr-blur" style={{ textAlign: 'center', marginBottom: '3rem' }}>
               <p className="sec-label">Curriculum</p>
               <h2 className="sec-title" style={{ marginBottom: '0.75rem' }}>What Your Child Will Build</h2>
               <p style={{ color: '#94A3B8', maxWidth: 460, margin: '0 auto', fontSize: '0.95rem', lineHeight: 1.65 }}>
@@ -825,7 +839,7 @@ export default function SummerCampLandingPage() {
         {/* ── SCHEDULE & CENTERS ────────────────────────────────────────── */}
         <section data-testid="camp-schedule" style={{ padding: '6rem 0', background: 'rgba(8,15,30,0.78)', position: 'relative', zIndex: 1 }}>
           <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 1.5rem' }}>
-            <div className="sr" style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <div className="sr-blur" style={{ textAlign: 'center', marginBottom: '3rem' }}>
               <p className="sec-label">Batches & Locations</p>
               <h2 className="sec-title">Choose Your Schedule</h2>
             </div>
@@ -849,7 +863,7 @@ export default function SummerCampLandingPage() {
             </div>
 
             {/* Batch cards */}
-            <div className="sr sr-d2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))', gap: '0.85rem', marginBottom: '3rem' }}>
+            <div className="sr-scale sr-d2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))', gap: '0.85rem', marginBottom: '3rem' }}>
               {BATCH_DATES.map(b => (
                 <div key={b.id} className="camp-card" style={{ padding: '1.25rem' }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(0,229,255,0.35)'; }}
@@ -863,7 +877,7 @@ export default function SummerCampLandingPage() {
             </div>
 
             {/* Centers */}
-            <div className="sr sr-d3" style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+            <div className="sr-blur sr-d3" style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
               <p className="sec-label">Locations</p>
               <h3 className="sec-title" style={{ fontSize: 'clamp(1.2rem, 2.5vw, 1.6rem)' }}>Choose Your Center</h3>
             </div>
@@ -890,12 +904,12 @@ export default function SummerCampLandingPage() {
         {/* ── PRICING ───────────────────────────────────────────────────── */}
         <section data-testid="camp-pricing" style={{ padding: '6rem 0', position: 'relative', zIndex: 1 }}>
           <div style={{ maxWidth: 700, margin: '0 auto', padding: '0 1.5rem', textAlign: 'center' }}>
-            <div className="sr">
+            <div className="sr-blur">
               <p className="sec-label">Investment</p>
               <h2 className="sec-title" style={{ marginBottom: '2.5rem' }}>Everything Included</h2>
             </div>
 
-            <div className="sr sr-d1 camp-card" style={{ padding: 'clamp(2rem,5vw,3.25rem)', background: 'linear-gradient(135deg, rgba(8,20,45,0.9) 0%, rgba(8,12,22,0.95) 100%)', border: '1px solid rgba(0,229,255,0.18)', boxShadow: '0 0 60px rgba(0,229,255,0.04), 0 40px 80px rgba(0,0,0,0.4)' }}>
+            <div className="sr-scale sr-d1 camp-card" style={{ padding: 'clamp(2rem,5vw,3.25rem)', background: 'linear-gradient(135deg, rgba(8,20,45,0.9) 0%, rgba(8,12,22,0.95) 100%)', border: '1px solid rgba(0,229,255,0.18)', boxShadow: '0 0 60px rgba(0,229,255,0.04), 0 40px 80px rgba(0,0,0,0.4)' }}>
               <div style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 'clamp(3.5rem,12vw,6rem)', fontWeight: 900, color: '#F8FAFC', lineHeight: 1, letterSpacing: '-0.03em' }}>₹1,999</div>
               <div style={{ color: '#94A3B8', marginBottom: '2.5rem', marginTop: '0.5rem', fontSize: '0.88rem', letterSpacing: '0.05em' }}>per child · all inclusive · all age groups</div>
 
@@ -921,7 +935,7 @@ export default function SummerCampLandingPage() {
         {/* ── TESTIMONIALS ─────────────────────────────────────────────── */}
         <section data-testid="camp-testimonials" style={{ padding: '6rem 0', background: 'rgba(8,15,30,0.78)', position: 'relative', zIndex: 1 }}>
           <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 1.5rem' }}>
-            <div className="sr" style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <div className="sr-blur" style={{ textAlign: 'center', marginBottom: '3rem' }}>
               <p className="sec-label">Parents Love It</p>
               <h2 className="sec-title">What Parents Are Saying</h2>
             </div>
@@ -930,7 +944,7 @@ export default function SummerCampLandingPage() {
               {TESTIMONIALS.map((t, i) => (
                 <div
                   key={i}
-                  className={`sr sr-d${Math.min(i % 3 + 1, 4)} camp-card`}
+                  className={`sr-scale sr-d${Math.min(i % 3 + 1, 4)} camp-card`}
                   style={{ padding: '1.75rem', background: 'rgba(8,18,38,0.8)' }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(0,229,255,0.25)'; }}
                   onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; }}
@@ -956,7 +970,7 @@ export default function SummerCampLandingPage() {
           <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at center, rgba(214,48,49,0.07) 0%, transparent 65%)', pointerEvents: 'none' }} />
           <div className="scanline" />
           <div style={{ maxWidth: 640, margin: '0 auto', padding: '0 1.5rem', textAlign: 'center', position: 'relative' }}>
-            <div className="sr">
+            <div className="sr-blur">
               <p className="sec-label">Don't Wait</p>
               <h2 style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 'clamp(1.75rem, 5vw, 3rem)', fontWeight: 900, color: '#F8FAFC', lineHeight: 1.1, marginBottom: '1rem', letterSpacing: '-0.02em' }}>
                 Don't Let Your Child Miss<br />
