@@ -48,6 +48,9 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+### 2026-03-31
+- **Bug Fix**: Invoice PDF generator (`invoicePdfGenerator.js`) — for GST-exclusive invoices, removed per-line-item CGST/SGST columns from the table. GST now appears only in the summary totals section (Sub Total → CGST → SGST → Total), eliminating the appearance of double-charging. Inclusive GST and IGST (inter-state) types are unaffected.
+
 ### March 27, 2026
 
 #### Bug Fix: AI Chat Training Type + Invoice Features

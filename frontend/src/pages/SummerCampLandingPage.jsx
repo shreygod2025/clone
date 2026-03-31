@@ -167,12 +167,39 @@ function CircuitBg({ opacity = 0.22 }) {
   );
 }
 
-// ── Countdown unit ──────────────────────────────────────────────────────────
+// ── Countdown unit — tall HUD capsule ──────────────────────────────────────
 function CUnit({ value, label }) {
   return (
     <div className="cunit">
-      <div className="cunit-val">{String(value).padStart(2, '0')}</div>
+      <div className="cunit-val">
+        {/* Inner circuit watermark */}
+        <div style={{ position: 'absolute', inset: 0, opacity: 0.08, pointerEvents: 'none' }}>
+          <svg width="100%" height="100%">
+            <defs>
+              <pattern id="ckt-inner" x="0" y="0" width="28" height="28" patternUnits="userSpaceOnUse">
+                <rect width="28" height="28" fill="none" stroke="#00E5FF" strokeWidth="0.7"/>
+                <circle cx="0" cy="0" r="2" fill="#00E5FF"/>
+                <circle cx="14" cy="14" r="1.2" fill="#00E5FF" opacity="0.5"/>
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#ckt-inner)"/>
+          </svg>
+        </div>
+        {/* Top inner highlight */}
+        <div style={{ position: 'absolute', top: 0, left: '15%', right: '15%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,229,255,0.6), transparent)', borderRadius: 1 }} />
+        <span style={{ position: 'relative', zIndex: 1 }}>{String(value).padStart(2, '0')}</span>
+      </div>
       <div className="cunit-lbl">{label}</div>
+    </div>
+  );
+}
+
+// ── Colon separator — two stacked dots ─────────────────────────────────────
+function CUnitSep() {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center', paddingBottom: '2.4rem', flexShrink: 0 }}>
+      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#00E5FF', boxShadow: '0 0 12px rgba(0,229,255,0.9)', display: 'block' }} />
+      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#00E5FF', boxShadow: '0 0 12px rgba(0,229,255,0.9)', display: 'block' }} />
     </div>
   );
 }
@@ -244,19 +271,23 @@ export default function SummerCampLandingPage() {
         .sr-d5 { transition-delay:0.5s; }
 
         /* ── Countdown ── */
-        .cunit { display:flex; flex-direction:column; align-items:center; gap:6px; }
+        .cunit { display:flex; flex-direction:column; align-items:center; gap:10px; }
         .cunit-val {
-          min-width:72px; height:78px;
+          width: clamp(78px, 10vw, 115px);
+          height: clamp(120px, 16vw, 175px);
           display:flex; align-items:center; justify-content:center;
-          border-radius:12px;
-          background:linear-gradient(145deg,rgba(0,229,255,0.15),rgba(0,229,255,0.04));
-          border:1px solid rgba(0,229,255,0.4);
-          font-family:'JetBrains Mono',monospace; font-weight:800; font-size:1.75rem; color:#00E5FF;
-          letter-spacing:-0.02em;
+          border-radius: 1.5rem;
+          background: linear-gradient(170deg, rgba(5,25,60,0.96) 0%, rgba(3,14,38,0.99) 100%);
+          border: 1px solid rgba(0,229,255,0.45);
+          box-shadow: 0 0 40px rgba(0,229,255,0.2), 0 0 80px rgba(0,229,255,0.06), inset 0 0 40px rgba(0,229,255,0.08);
+          font-family:'JetBrains Mono',monospace; font-weight:800;
+          font-size: clamp(2rem, 4.5vw, 3.25rem);
+          color:#00E5FF;
+          text-shadow: 0 0 24px rgba(0,229,255,1), 0 0 50px rgba(0,229,255,0.55), 0 0 80px rgba(0,229,255,0.25);
+          letter-spacing:-0.03em; position:relative; overflow:hidden;
           animation: borderGlow 3s ease-in-out infinite;
-          box-shadow: 0 0 24px rgba(0,229,255,0.12), inset 0 0 20px rgba(0,229,255,0.05);
         }
-        .cunit-lbl { font-size:0.62rem; color:#334155; text-transform:uppercase; letter-spacing:0.18em; font-family:'JetBrains Mono',monospace; font-weight:700; }
+        .cunit-lbl { font-size:0.65rem; color:#2d4a6a; text-transform:uppercase; letter-spacing:0.22em; font-family:'JetBrains Mono',monospace; font-weight:700; }
 
         /* ── Ticker ── */
         .ticker-wrap { overflow:hidden; mask-image:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent); -webkit-mask-image:linear-gradient(90deg,transparent,#000 10%,#000 90%,transparent); }
@@ -489,21 +520,21 @@ export default function SummerCampLandingPage() {
               </div>
             </div>
 
-            {/* ── Countdown bar ── */}
-            <div className="h-count" style={{ marginTop: '3rem', padding: '1.5rem 2rem', background: 'rgba(10,20,40,0.7)', backdropFilter: 'blur(16px)', border: '1px solid rgba(0,229,255,0.15)', borderRadius: '1.25rem' }}>
-              <div className="countdown-inner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1.5rem', flexWrap: 'wrap' }}>
-                <div>
-                  <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.62rem', letterSpacing: '0.2em', color: '#475569', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.85rem' }}>Camp starts in</p>
-                  <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'flex-end' }}>
-                    <CUnit value={countdown.days} label="Days" />
-                    <span style={{ color: '#1e3a5f', fontFamily: 'JetBrains Mono, monospace', fontSize: '1.25rem', marginBottom: '1.2rem' }}>:</span>
-                    <CUnit value={countdown.hours} label="Hours" />
-                    <span style={{ color: '#1e3a5f', fontFamily: 'JetBrains Mono, monospace', fontSize: '1.25rem', marginBottom: '1.2rem' }}>:</span>
-                    <CUnit value={countdown.minutes} label="Mins" />
-                    <span style={{ color: '#1e3a5f', fontFamily: 'JetBrains Mono, monospace', fontSize: '1.25rem', marginBottom: '1.2rem' }}>:</span>
-                    <CUnit value={countdown.seconds} label="Secs" />
-                  </div>
-                </div>
+            {/* ── Countdown — full-width HUD panel ── */}
+            <div className="h-count" style={{ marginTop: '3.5rem', padding: '2.5rem 2.5rem 2rem', background: 'rgba(4,14,34,0.88)', backdropFilter: 'blur(24px)', border: '1px solid rgba(0,229,255,0.18)', borderRadius: '1.5rem', boxShadow: '0 0 60px rgba(0,229,255,0.06), inset 0 1px 0 rgba(0,229,255,0.12)', textAlign: 'center' }}>
+              {/* Top accent line */}
+              <div style={{ position: 'absolute', top: 0, left: '20%', right: '20%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,229,255,0.5), transparent)', borderRadius: 1 }} />
+              <p style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.68rem', letterSpacing: '0.25em', color: '#2d4a6a', textTransform: 'uppercase', fontWeight: 700, marginBottom: '1.75rem' }}>
+                <span style={{ color: 'rgba(0,229,255,0.35)' }}>{'['}</span> Camp Starts In <span style={{ color: 'rgba(0,229,255,0.35)' }}>{']'}</span>
+              </p>
+              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <CUnit value={countdown.days}    label="Days"  />
+                <CUnitSep />
+                <CUnit value={countdown.hours}   label="Hours" />
+                <CUnitSep />
+                <CUnit value={countdown.minutes} label="Mins"  />
+                <CUnitSep />
+                <CUnit value={countdown.seconds} label="Secs"  />
               </div>
             </div>
           </div>

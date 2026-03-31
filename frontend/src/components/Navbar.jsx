@@ -20,21 +20,40 @@ const Navbar = ({ showBookDemo = false, onBookDemo, variant = 'default' }) => {
   if (variant === 'camp') {
     return (
       <nav style={{
-        background: 'rgba(0,0,0,0.75)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        borderBottom: '1px solid rgba(255,255,255,0.08)',
+        background: 'rgba(2,8,22,0.88)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderBottom: '1px solid rgba(0,229,255,0.22)',
+        boxShadow: '0 1px 0 rgba(0,229,255,0.08), 0 4px 30px rgba(0,0,0,0.5)',
         position: 'sticky',
         top: 0,
         zIndex: 50,
+        overflow: 'hidden',
       }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
+        {/* HUD circuit grid in nav */}
+        <div style={{ position: 'absolute', inset: 0, opacity: 0.09, pointerEvents: 'none' }} aria-hidden>
+          <svg width="100%" height="100%">
+            <defs>
+              <pattern id="nav-ckt" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
+                <rect width="60" height="60" fill="none" stroke="#00E5FF" strokeWidth="0.7" opacity="0.5"/>
+                <circle cx="0" cy="0" r="2.5" fill="#00E5FF" opacity="0.9"/>
+                <circle cx="30" cy="30" r="3" fill="none" stroke="#00E5FF" strokeWidth="0.8" opacity="0.5"/>
+                <circle cx="30" cy="30" r="1" fill="#00E5FF" opacity="0.4"/>
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#nav-ckt)"/>
+          </svg>
+        </div>
+        {/* Bottom glow line */}
+        <div style={{ position: 'absolute', bottom: 0, left: '10%', right: '10%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,229,255,0.4), transparent)' }} />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" style={{ position: 'relative' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 80 }}>
             <a href="/" style={{ display: 'flex', alignItems: 'center' }}>
               <img
                 src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png"
                 alt="OLL Logo"
-                style={{ height: 52, width: 'auto', filter: 'brightness(0) invert(1)' }}
+                style={{ height: 58, width: 'auto', filter: 'brightness(0) invert(1)' }}
               />
             </a>
             <button
@@ -45,19 +64,20 @@ const Navbar = ({ showBookDemo = false, onBookDemo, variant = 'default' }) => {
                 color: '#fff',
                 fontFamily: 'JetBrains Mono, monospace',
                 fontWeight: 700,
-                fontSize: '0.85rem',
-                padding: '0.6rem 1.6rem',
+                fontSize: '0.88rem',
+                padding: '0.7rem 1.8rem',
                 borderRadius: '999px',
                 border: 'none',
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: 6,
-                transition: 'background 0.2s',
+                transition: 'background 0.2s, box-shadow 0.2s',
                 letterSpacing: '0.01em',
+                boxShadow: '0 0 20px rgba(214,48,49,0.35)',
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#FF3366'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#D63031'; }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#FF3366'; e.currentTarget.style.boxShadow = '0 0 35px rgba(255,51,102,0.55)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#D63031'; e.currentTarget.style.boxShadow = '0 0 20px rgba(214,48,49,0.35)'; }}
             >
               Book Now
             </button>

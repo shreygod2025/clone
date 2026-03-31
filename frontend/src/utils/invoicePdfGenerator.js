@@ -354,23 +354,33 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
   const fallback = !useGradeRows ? buildFallbackRow(schoolName) : null;
 
   // Table layout depends on GST type
+  // For exclusive GST (exclusive_18 / exclusive): GST is shown only in the summary totals section,
+  // NOT per line item — to avoid the appearance of double-charging.
+  // For inclusive GST: per-item GST breakdown is shown since the tax is embedded in the rate.
+  const isExclusiveGST = gstType === 'exclusive_18' || gstType === 'exclusive';
+
   let tableHeaders, tableBody, columnStyles;
 
-  if (gst.isBookGST) {
+  // Simple table layout (no per-row GST columns): used for book_gst and exclusive GST types
+  const simpleColumnStyles = {
+    0: { halign: 'center', cellWidth: 10 },
+    1: { cellWidth: 'auto' },
+    2: { halign: 'center', cellWidth: 20 },
+    3: { halign: 'center', cellWidth: 18 },
+    4: { halign: 'right', cellWidth: 28 },
+    5: { halign: 'right', cellWidth: 28 },
+  };
+
+  if (gst.isBookGST || isExclusiveGST) {
+    // Book GST = 0% tax. Exclusive = GST totals shown in summary only (not per item).
     tableHeaders = [['#', 'Item & Description', 'HSN/SAC', 'Qty', 'Rate', 'Amount']];
-    columnStyles = {
-      0: { halign: 'center', cellWidth: 10 },
-      1: { cellWidth: 'auto' },
-      2: { halign: 'center', cellWidth: 20 },
-      3: { halign: 'center', cellWidth: 18 },
-      4: { halign: 'right', cellWidth: 28 },
-      5: { halign: 'right', cellWidth: 28 },
-    };
+    columnStyles = simpleColumnStyles;
     tableBody = useGradeRows
       ? gradeRows.map(r => [String(r.idx + 1), r.desc, HSN_SAC, String(r.students), formatINR(r.scaledRate), formatINR(r.rowBase)])
       : [['1', fallback.desc, HSN_SAC, fallback.qtyStr, fallback.rateStr, formatINR(gst.baseAmount)]];
 
   } else if (gst.isIntraState) {
+    // Inclusive intra-state: show CGST/SGST breakdown per line item
     tableHeaders = [['#', 'Item & Description', 'HSN/SAC', 'Qty', 'Rate', 'CGST %', 'CGST Amt', 'SGST %', 'SGST Amt', 'Amount']];
     columnStyles = {
       0: { halign: 'center', cellWidth: 8 },
@@ -397,6 +407,7 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
           formatINR(gst.baseAmount)]];
 
   } else {
+    // Inter-state: show IGST breakdown per line item (only for inclusive; exclusive handled above)
     tableHeaders = [['#', 'Item & Description', 'HSN/SAC', 'Qty', 'Rate', 'IGST %', 'IGST Amt', 'Amount']];
     columnStyles = {
       0: { halign: 'center', cellWidth: 10 },

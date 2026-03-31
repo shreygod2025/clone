@@ -22,7 +22,7 @@ Contains all 41 MongoDB collections including: school_inquiries, students, payme
 # Download latest backup via API
 curl -L -o oll_backup.tar.gz \
   -H "Authorization: Bearer YOUR_TOKEN" \
-  https://camp-cashfree-flow.preview.emergentagent.com/api/admin/db-backup/download
+  https://neon-camp-book.preview.emergentagent.com/api/admin/db-backup/download
 ```
 
 ### Option 3 — Trigger Fresh Backup via API
@@ -30,7 +30,7 @@ curl -L -o oll_backup.tar.gz \
 # Create a new backup
 curl -X POST \
   -H "Authorization: Bearer YOUR_TOKEN" \
-  https://camp-cashfree-flow.preview.emergentagent.com/api/admin/db-backup/create
+  https://neon-camp-book.preview.emergentagent.com/api/admin/db-backup/create
 ```
 
 ---
