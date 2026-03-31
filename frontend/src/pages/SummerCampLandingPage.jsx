@@ -232,6 +232,7 @@ export default function SummerCampLandingPage() {
     return idx >= 0 ? idx : 0;
   });
   const [batchType, setBatchType] = useState('weekday');
+  const [centers, setCenters] = useState([]);
   const activeCamp = AGE_GROUPS[activeAgeIdx];
 
   useEffect(() => {
@@ -243,6 +244,11 @@ export default function SummerCampLandingPage() {
       sessionStorage.setItem('camp_ref', ref);
       fetch(`${process.env.REACT_APP_BACKEND_URL}/api/summer-camp/track-view/${encodeURIComponent(ref)}`, { method: 'POST' }).catch(() => {});
     }
+    // Fetch active centers dynamically
+    fetch(`${process.env.REACT_APP_BACKEND_URL}/api/centers`)
+      .then(r => r.json())
+      .then(data => setCenters(data.filter(c => c.is_active)))
+      .catch(() => {});
   }, []);
 
   return (
@@ -861,19 +867,22 @@ export default function SummerCampLandingPage() {
               <p className="sec-label">Locations</p>
               <h3 className="sec-title" style={{ fontSize: 'clamp(1.2rem, 2.5vw, 1.6rem)' }}>Choose Your Center</h3>
             </div>
-            <div className="center-grid sr sr-d4" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.85rem' }}>
-              {CENTERS.map(c => (
-                <div key={c.id} className="camp-card" style={{ padding: '1.25rem', ...(c.id === 'online' ? { borderColor: 'rgba(214,48,49,0.2)', background: 'rgba(214,48,49,0.04)' } : {}) }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = c.id === 'online' ? 'rgba(214,48,49,0.45)' : 'rgba(0,229,255,0.35)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = c.id === 'online' ? 'rgba(214,48,49,0.2)' : 'rgba(255,255,255,0.07)'; }}
+            <div className="center-grid sr sr-d4" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.85rem' }}>
+              {centers.map(c => {
+                const isOnline = c.name?.toLowerCase().includes('online') || c.city?.toLowerCase().includes('online');
+                return (
+                <div key={c.id} className="camp-card" style={{ padding: '1.25rem', ...(isOnline ? { borderColor: 'rgba(214,48,49,0.2)', background: 'rgba(214,48,49,0.04)' } : {}) }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = isOnline ? 'rgba(214,48,49,0.45)' : 'rgba(0,229,255,0.35)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = isOnline ? 'rgba(214,48,49,0.2)' : 'rgba(255,255,255,0.07)'; }}
                 >
-                  <div style={{ width: 32, height: 32, borderRadius: '0.5rem', background: c.id === 'online' ? 'rgba(214,48,49,0.12)' : 'rgba(0,229,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
-                    <MapPin style={{ width: 15, height: 15, color: c.id === 'online' ? '#D63031' : '#00E5FF' }} />
+                  <div style={{ width: 32, height: 32, borderRadius: '0.5rem', background: isOnline ? 'rgba(214,48,49,0.12)' : 'rgba(0,229,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem' }}>
+                    <MapPin style={{ width: 15, height: 15, color: isOnline ? '#D63031' : '#00E5FF' }} />
                   </div>
                   <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '1.2rem', color: '#F0F4F8', marginBottom: '0.35rem' }}>{c.name}</div>
-                  <div style={{ fontSize: '0.75rem', color: '#94A3B8', lineHeight: 1.45 }}>{c.address}</div>
+                  <div style={{ fontSize: '0.75rem', color: '#94A3B8', lineHeight: 1.45 }}>{c.area ? `${c.area}, ${c.city}` : c.address}</div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </section>
