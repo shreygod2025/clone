@@ -284,23 +284,25 @@ const LandingPage = () => {
               </div>
 
               {/* Right: age group cards */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 260 }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                  {[
-                    { ages: 'Ages 4–8', label: 'Little Explorers', color: '#00E5FF' },
-                    { ages: 'Ages 9–12', label: 'Tech Creators', color: '#D63031' },
-                    { ages: 'Ages 13–16', label: 'Future Innovators', color: '#7C3AED' },
-                  ].map(g => (
-                    <div key={g.ages} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.75rem', padding: '1rem 0.6rem', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s' }}
-                      onClick={() => navigate('/summer-camp')}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.borderColor = g.color + '66'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; }}
-                    >
-                      <div style={{ color: g.color, fontSize: '0.72rem', fontWeight: 700, fontFamily: "'JetBrains Mono', monospace", marginBottom: '0.25rem' }}>{g.ages}</div>
-                      <div style={{ color: '#64748B', fontSize: '0.62rem', fontFamily: 'Nunito Sans, sans-serif' }}>{g.label}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 220 }}>
+                {[
+                  { ages: 'Ages 4–8',   label: 'Little Explorers',  color: '#00E5FF', icon: '🌱' },
+                  { ages: 'Ages 9–12',  label: 'Tech Creators',     color: '#D63031', icon: '⚡' },
+                  { ages: 'Ages 13–16', label: 'Future Innovators', color: '#7C3AED', icon: '🚀' },
+                ].map(g => (
+                  <div key={g.ages}
+                    onClick={() => navigate('/summer-camp')}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.09)'; e.currentTarget.style.borderColor = g.color + '55'; e.currentTarget.style.transform = 'translateX(3px)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.09)'; e.currentTarget.style.transform = 'translateX(0)'; }}
+                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '0.65rem', padding: '0.65rem 0.9rem', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.65rem' }}
+                  >
+                    <span style={{ fontSize: '1.15rem', lineHeight: 1, flexShrink: 0 }}>{g.icon}</span>
+                    <div>
+                      <div style={{ color: g.color, fontSize: '0.78rem', fontWeight: 800, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.2, whiteSpace: 'nowrap' }}>{g.ages}</div>
+                      <div style={{ color: '#64748B', fontSize: '0.7rem', fontFamily: "'Nunito Sans', sans-serif", marginTop: '0.1rem' }}>{g.label}</div>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
