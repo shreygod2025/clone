@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, memo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Cpu, Code, Brain, Box, Clock, Users, MapPin, ArrowRight, Check, Star } from 'lucide-react';
 import Navbar from '../components/Navbar';
@@ -975,6 +975,42 @@ export default function SummerCampLandingPage() {
               <button className="neon-btn" onClick={() => navigate('/summer-camp/book')} data-testid="final-book-btn" style={{ fontSize: '1rem', padding: '1.15rem 3rem' }}>
                 Book Your Spot Now <ArrowRight style={{ width: 19, height: 19 }} />
               </button>
+            </div>
+          </div>
+        </section>
+
+        {/* ── SEO Footer Links ────────────────────────────────────────── */}
+        <section style={{ borderTop: '1px solid rgba(255,255,255,0.07)', padding: '3rem 0 2rem' }}>
+          <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 1.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '2.5rem' }}>
+
+              <div>
+                <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.78rem', fontWeight: 700, color: '#00E5FF', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem' }}>Camp by Location</h3>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {[['andheri-west','Andheri West, Mumbai'],['mira-road','Mira Road, Mumbai'],['dombivli','Dombivli, Mumbai'],['dahisar','Dahisar, Mumbai'],['online','Online – All India']].map(([s,n]) => (
+                    <li key={s}><Link to={`/summer-camp/location/${s}`} style={{ color: '#94A3B8', textDecoration: 'none', fontSize: '0.9rem' }}>{n}</Link></li>
+                  ))}
+                </ul>
+              </div>
+
+              <div>
+                <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.78rem', fontWeight: 700, color: '#00E5FF', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem' }}>Camp by Skill</h3>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {[['robotics','Robotics Summer Camp'],['coding','Coding & Python Camp'],['ai','AI & Machine Learning Camp'],['3d-design','3D Design & Printing Camp'],['financial-literacy','Financial Literacy Camp']].map(([s,n]) => (
+                    <li key={s}><Link to={`/summer-camp/skill/${s}`} style={{ color: '#94A3B8', textDecoration: 'none', fontSize: '0.9rem' }}>{n}</Link></li>
+                  ))}
+                </ul>
+              </div>
+
+              <div>
+                <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.78rem', fontWeight: 700, color: '#00E5FF', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem' }}>Camp by Age</h3>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {[['4-6','Ages 4–6 (Little Explorers)'],['6-8','Ages 6–8'],['8-10','Ages 8–10'],['10-12','Ages 10–12 (Tech Creators)'],['12-14','Ages 12–14'],['14-16','Ages 14–16 (Future Innovators)']].map(([s,n]) => (
+                    <li key={s}><Link to={`/summer-camp/age/${s}`} style={{ color: '#94A3B8', textDecoration: 'none', fontSize: '0.9rem' }}>{n}</Link></li>
+                  ))}
+                </ul>
+              </div>
+
             </div>
           </div>
         </section>

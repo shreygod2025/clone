@@ -61,6 +61,7 @@ const CoursePage = lazy(() => import("./pages/courses/CoursePage"));
 const SummerCampLandingPage = lazy(() => import("./pages/SummerCampLandingPage"));
 const SummerCampBookingPage = lazy(() => import("./pages/SummerCampBookingPage"));
 const SummerCampSuccessPage = lazy(() => import("./pages/SummerCampSuccessPage"));
+const SummerCampSEOPage = lazy(() => import("./pages/SummerCampSEOPage"));
 
 // Admin Pages - All Lazy loaded (heavy components)
 const AdminLogin = lazy(() => import("./pages/admin/AdminLogin"));
@@ -189,6 +190,7 @@ function App() {
               {/* Summer Camp 2026 */}
               <Route path="/summer-camp/book" element={<SummerCampBookingPage />} />
               <Route path="/summer-camp/success" element={<SummerCampSuccessPage />} />
+              <Route path="/summer-camp/:type/:slug" element={<SummerCampSEOPage />} />
               <Route path="/summer-camp" element={<SummerCampLandingPage />} />
               <Route path="/summer-camp/:ageGroup" element={<SummerCampLandingPage />} />
               
