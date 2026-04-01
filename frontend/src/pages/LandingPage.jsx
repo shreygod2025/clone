@@ -74,7 +74,7 @@ const LandingPage = () => {
         <meta property="og:image" content="https://static.prod-images.emergentagent.com/jobs/4048d873-d260-47ab-be01-5efb2f8a71c2/images/3484c900f20debbcd95f333ebd0b59a212adcaeebd3c2db1919581020c07de0c.png" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        <meta property="og:site_name" content="OLL - Online Live Learning" />
+        <meta property="og:site_name" content="OLL" />
 
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:url" content="https://oll.co/" />
@@ -87,11 +87,11 @@ const LandingPage = () => {
             "@context": "https://schema.org",
             "@type": "EducationalOrganization",
             "name": "OLL",
-            "alternateName": ["OLL India", "Online Live Learning", "OLL - Learn Future Skills"],
+            "alternateName": ["OLL India", "OLL - Learn Future Skills"],
             "url": "https://oll.co",
             "logo": "https://oll.co/favicon.png",
             "description": "India's leading platform for Robotics, Coding, AI, Entrepreneurship & Financial Literacy education for students aged 4–16. Lab setups and programs for ICSE, CBSE & State Board schools. As seen on Shark Tank India and Kaun Banega Crorepati.",
-            "foundingDate": "2018",
+            "foundingDate": "2020",
             "sameAs": [
               "https://www.facebook.com/ollcompany",
               "https://www.instagram.com/ollindia/",

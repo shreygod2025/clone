@@ -110,7 +110,7 @@ const BlogsPage = () => {
         <meta property="og:title" content="OLL Blog | Robotics, AI, Coding Education Tips & Insights" />
         <meta property="og:description" content="Expert articles on Robotics, AI, Coding & STEM education. Tips for students, parents, educators & schools." />
         <meta property="og:image" content="https://oll.co/og-image.png" />
-        <meta property="og:site_name" content="OLL - Online Live Learning" />
+        <meta property="og:site_name" content="OLL" />
         
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />

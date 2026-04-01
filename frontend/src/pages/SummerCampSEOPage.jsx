@@ -161,7 +161,7 @@ export default function SummerCampSEOPage() {
           "eventStatus": "https://schema.org/EventScheduled",
           "eventAttendanceMode": locData?.name === 'Online' ? "https://schema.org/OnlineEventAttendanceMode" : "https://schema.org/OfflineEventAttendanceMode",
           "location": locData ? { "@type": "Place", "name": `OLL Center – ${locData.name}`, "address": { "@type": "PostalAddress", "streetAddress": locData.address, "addressLocality": locData.city, "addressRegion": "Maharashtra", "addressCountry": "IN" } } : { "@type": "Place", "name": "OLL – Multiple Centers in Mumbai & Online" },
-          "organizer": { "@type": "Organization", "name": "OLL – Online Live Learning", "url": "https://oll.co", "logo": "https://oll.co/favicon.png" },
+          "organizer": { "@type": "Organization", "name": "OLL", "url": "https://oll.co", "logo": "https://oll.co/favicon.png" },
           "offers": { "@type": "Offer", "price": "1999", "priceCurrency": "INR", "url": "https://oll.co/summer-camp/book", "availability": "https://schema.org/LimitedAvailability" },
           "audience": { "@type": "Audience", "audienceType": "Children aged 4–16" }
         })}</script>
@@ -243,7 +243,7 @@ export default function SummerCampSEOPage() {
             <p style={{ fontSize: '0.78rem', color: '#00E5FF', fontFamily: JB, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.75rem' }}>About OLL</p>
             <h2 style={{ fontFamily: JB, fontWeight: 800, fontSize: 'clamp(1.3rem, 2.5vw, 1.8rem)', color: '#F8FAFC', marginBottom: '1rem', lineHeight: 1.2 }}>India's #1 Future-Skills Platform for Kids</h2>
             <p style={{ color: '#94A3B8', lineHeight: 1.75, marginBottom: '1rem', fontSize: '0.95rem' }}>
-              OLL (Online Live Learning) was founded in 2018 with a single mission: make world-class tech education accessible to every Indian child. We've trained over 12,000 students across 500+ schools, running programs in Robotics, AI, Coding, 3D Design, and Financial Literacy.
+              OLL was founded in 2020 with a single mission: make world-class tech education accessible to every Indian child. We've trained over 12,000 students across 500+ schools, running programs in Robotics, AI, Coding, 3D Design, and Financial Literacy.
             </p>
             <p style={{ color: '#94A3B8', lineHeight: 1.75, marginBottom: '1.5rem', fontSize: '0.95rem' }}>
               Our Summer Camps are an intensive 10-day version of what we do year-round — distilled into the most fun, hands-on, transformative experience your child will have this summer.

@@ -200,7 +200,7 @@ const AboutPage = () => {
         <meta property="og:title" content="About OLL | India's Leading Skill Education Platform" />
         <meta property="og:description" content="Mission for 1 Billion Daily Learners. Robotics, AI, Coding, Entrepreneurship & Financial Literacy programs for students & schools across India." />
         <meta property="og:image" content="https://oll.co/og-image.png" />
-        <meta property="og:site_name" content="OLL - Online Live Learning" />
+        <meta property="og:site_name" content="OLL" />
         
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
