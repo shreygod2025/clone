@@ -177,21 +177,21 @@ const AboutPage = () => {
         <title>About OLL | India's Leading Skill Education Platform | Robotics, AI, Coding</title>
         <meta name="description" content="Learn about OLL - India's leading skill education platform with a mission for 1 Billion Learners. Robotics, AI, Coding, Entrepreneurship & Financial Literacy programs for students & schools. Founded by Shreyaan Daga." />
         <meta name="keywords" content="about OLL, skill education India, robotics education company, coding classes company, AI education platform, entrepreneurship training, Shreyaan Daga, Clonefutura Live Solutions, STEM education India, school robotics programs" />
-        <link rel="canonical" href="https://oll.co/about" />
+        <link rel="canonical" href="https://www.ollindia.com/about" />
         
         {/* Open Graph */}
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://oll.co/about" />
+        <meta property="og:url" content="https://www.ollindia.com/about" />
         <meta property="og:title" content="About OLL | India's Leading Skill Education Platform" />
         <meta property="og:description" content="Mission for 1 Billion Daily Learners. Robotics, AI, Coding, Entrepreneurship & Financial Literacy programs for students & schools across India." />
-        <meta property="og:image" content="https://oll.co/og-image.png" />
+        <meta property="og:image" content="https://www.ollindia.com/og-image.png" />
         <meta property="og:site_name" content="OLL - Online Live Learning" />
         
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="About OLL | India's Leading Skill Education Platform" />
         <meta name="twitter:description" content="Mission for 1 Billion Daily Learners. Robotics, AI, Coding & more." />
-        <meta name="twitter:image" content="https://oll.co/og-image.png" />
+        <meta name="twitter:image" content="https://www.ollindia.com/og-image.png" />
       </Helmet>
       
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">

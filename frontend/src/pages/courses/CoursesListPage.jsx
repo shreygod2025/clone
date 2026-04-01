@@ -18,7 +18,7 @@ const CoursesListPage = () => {
         <meta name="keywords" content="OLL courses, robotics classes, coding for kids, AI classes, entrepreneurship program, financial literacy, skill education" />
         <meta property="og:title" content="All Courses | OLL - Skill Education Platform" />
         <meta property="og:description" content="Future-ready skill courses for kids aged 6-17. Robotics, Coding, AI, and more." />
-        <link rel="canonical" href="https://oll.co/courses" />
+        <link rel="canonical" href="https://www.ollindia.com/courses" />
       </Helmet>
 
       <div className="min-h-screen bg-slate-50">

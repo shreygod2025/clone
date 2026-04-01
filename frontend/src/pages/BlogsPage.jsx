@@ -102,21 +102,21 @@ const BlogsPage = () => {
         <title>OLL Blog | Robotics, AI, Coding Education Tips & Insights</title>
         <meta name="description" content="Read expert articles on Robotics, AI, Coding, STEM education for kids. Tips for parents, educators & schools. Learn about future skills, career guidance & teaching methods." />
         <meta name="keywords" content="robotics blog, coding for kids tips, AI education articles, STEM education blog, entrepreneurship for students, skill development, parenting tech kids, teaching robotics, school STEM programs" />
-        <link rel="canonical" href="https://oll.co/blogs" />
+        <link rel="canonical" href="https://www.ollindia.com/blogs" />
         
         {/* Open Graph */}
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://oll.co/blogs" />
+        <meta property="og:url" content="https://www.ollindia.com/blogs" />
         <meta property="og:title" content="OLL Blog | Robotics, AI, Coding Education Tips & Insights" />
         <meta property="og:description" content="Expert articles on Robotics, AI, Coding & STEM education. Tips for students, parents, educators & schools." />
-        <meta property="og:image" content="https://oll.co/og-image.png" />
+        <meta property="og:image" content="https://www.ollindia.com/og-image.png" />
         <meta property="og:site_name" content="OLL - Online Live Learning" />
         
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="OLL Blog | Robotics, AI, Coding Education Tips" />
         <meta name="twitter:description" content="Expert articles on Robotics, AI, Coding & STEM education for kids and schools." />
-        <meta name="twitter:image" content="https://oll.co/og-image.png" />
+        <meta name="twitter:image" content="https://www.ollindia.com/og-image.png" />
       </Helmet>
       
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">

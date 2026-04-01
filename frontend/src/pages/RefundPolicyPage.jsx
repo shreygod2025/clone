@@ -15,7 +15,7 @@ const RefundPolicyPage = () => {
       <Helmet>
         <title>Refund Policy | OLL - Clonefutura Live Solutions</title>
         <meta name="description" content="OLL's refund policy for courses, kits, and educational services. Learn about our cancellation and refund procedures." />
-        <link rel="canonical" href="https://oll.co/refund-policy" />
+        <link rel="canonical" href="https://www.ollindia.com/refund-policy" />
       </Helmet>
 
       <div className="min-h-screen bg-slate-50 flex flex-col">

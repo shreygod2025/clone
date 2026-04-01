@@ -13,7 +13,7 @@ const PrivacyPage = () => {
       <Helmet>
         <title>Privacy Policy | OLL - Clonefutura Live Solutions</title>
         <meta name="description" content="Learn how OLL collects, uses, and protects your personal information. Our commitment to your privacy." />
-        <link rel="canonical" href="https://oll.co/privacy" />
+        <link rel="canonical" href="https://www.ollindia.com/privacy" />
       </Helmet>
 
       <div className="min-h-screen bg-slate-50 flex flex-col">

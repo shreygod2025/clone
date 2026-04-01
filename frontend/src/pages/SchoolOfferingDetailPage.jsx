@@ -640,13 +640,13 @@ const SchoolOfferingDetailPage = () => {
         <title>{offering.title} for Schools | OLL - India's #1 Skill Education</title>
         <meta name="description" content={`${offering.description} Best ${category.title.toLowerCase()} program for schools in India. Duration: ${offering.duration}. Ideal for: ${offering.ideal}. Book a demo today!`} />
         <meta name="keywords" content={seoKeywords} />
-        <link rel="canonical" href={`https://oll.co/school-offerings/${categoryId}/${offeringId}`} />
+        <link rel="canonical" href={`https://www.ollindia.com/school-offerings/${categoryId}/${offeringId}`} />
         
         {/* Open Graph */}
         <meta property="og:title" content={`${offering.title} | OLL School Programs`} />
         <meta property="og:description" content={offering.description} />
         <meta property="og:type" content="product" />
-        <meta property="og:url" content={`https://oll.co/school-offerings/${categoryId}/${offeringId}`} />
+        <meta property="og:url" content={`https://www.ollindia.com/school-offerings/${categoryId}/${offeringId}`} />
         
         {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
@@ -663,7 +663,7 @@ const SchoolOfferingDetailPage = () => {
             "provider": {
               "@type": "Organization",
               "name": "OLL - Clonefutura Live Solutions",
-              "sameAs": "https://oll.co"
+              "sameAs": "https://www.ollindia.com"
             },
             "educationalLevel": "K-12",
             "isAccessibleForFree": false,

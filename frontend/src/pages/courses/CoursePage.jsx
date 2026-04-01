@@ -59,7 +59,7 @@ const CoursePage = () => {
         <meta property="og:description" content={course.metaDescription} />
         <meta property="og:image" content={course.heroImage} />
         <meta property="og:type" content="website" />
-        <link rel="canonical" href={`https://oll.co/courses/${course.id}`} />
+        <link rel="canonical" href={`https://www.ollindia.com/courses/${course.id}`} />
       </Helmet>
 
       <div className="min-h-screen bg-slate-50">

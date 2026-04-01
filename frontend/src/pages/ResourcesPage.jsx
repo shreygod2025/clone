@@ -77,7 +77,7 @@ const ResourcesPage = () => {
       <Helmet>
         <title>{selectedResource ? `${selectedResource.title} | OLL Resources` : 'Open Learning Resources | OLL'}</title>
         <meta name="description" content={selectedResource?.excerpt || 'Free learning resources, documentation, and guides for robotics, coding, and STEM education.'} />
-        <link rel="canonical" href={`https://oll.co/resources${slug ? `/${slug}` : ''}`} />
+        <link rel="canonical" href={`https://www.ollindia.com/resources${slug ? `/${slug}` : ''}`} />
       </Helmet>
 
       <div className="min-h-screen bg-slate-50">

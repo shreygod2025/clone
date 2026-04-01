@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+
+# Block admin and private routes
+Disallow: /admin/
+Disallow: /login
+Disallow: /educator-dashboard
+Disallow: /educator-profile
+Disallow: /educator-onboarding
+Disallow: /my-bookings
+Disallow: /school-student/dashboard
+
+# Sitemap location
+Sitemap: https://www.ollindia.com/sitemap.xml

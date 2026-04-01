@@ -139,20 +139,20 @@ const SchoolOfferingsPage = () => {
         <title>School Programs & Pricing | Robotics Lab, STEM Curriculum | OLL</title>
         <meta name="description" content="Explore OLL's school programs: Robotics Lab Setup, STEM Curriculum, AI & Coding, Teacher Training. Pricing for ICSE, CBSE, State Board schools. View case studies from 500+ partner schools." />
         <meta name="keywords" content="school robotics programs, STEM curriculum pricing, robotics lab cost India, school AI program, coding for schools, ICSE CBSE robotics, school partnership, robotics case study, teacher training program" />
-        <link rel="canonical" href="https://oll.co/school-offerings" />
+        <link rel="canonical" href="https://www.ollindia.com/school-offerings" />
         
         {/* Open Graph */}
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://oll.co/school-offerings" />
+        <meta property="og:url" content="https://www.ollindia.com/school-offerings" />
         <meta property="og:title" content="School Programs & Pricing | Robotics Lab, STEM Curriculum | OLL" />
         <meta property="og:description" content="Explore Robotics Lab Setup, STEM Curriculum, AI & Coding programs for schools. View pricing and case studies from 500+ partner schools." />
-        <meta property="og:image" content="https://oll.co/og-image.png" />
+        <meta property="og:image" content="https://www.ollindia.com/og-image.png" />
         
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="School Programs | Robotics, AI & STEM | OLL" />
         <meta name="twitter:description" content="Robotics Lab Setup, STEM, AI programs for schools. View pricing & case studies." />
-        <meta name="twitter:image" content="https://oll.co/og-image.png" />
+        <meta name="twitter:image" content="https://www.ollindia.com/og-image.png" />
       </Helmet>
 
       <div className="min-h-screen bg-slate-50">
