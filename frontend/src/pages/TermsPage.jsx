@@ -13,7 +13,7 @@ const TermsPage = () => {
       <Helmet>
         <title>Terms & Conditions | OLL - Clonefutura Live Solutions</title>
         <meta name="description" content="Read OLL's terms and conditions for using our skill education platform, courses, and services." />
-        <link rel="canonical" href="https://www.ollindia.com/terms" />
+        <link rel="canonical" href="https://oll.co/terms" />
       </Helmet>
 
       <div className="min-h-screen bg-slate-50 flex flex-col">

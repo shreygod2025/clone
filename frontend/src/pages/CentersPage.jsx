@@ -54,7 +54,7 @@ const CentersPage = () => {
         <title>OLL Learning Centers - Find a Center Near You | Robotics & Coding Classes</title>
         <meta name="description" content="Visit OLL Learning Centers for hands-on Robotics, Coding, and AI classes. Find locations in Mumbai, Delhi, Bangalore, and more cities across India." />
         <meta name="keywords" content="robotics classes near me, coding classes for kids, OLL learning center, STEM education center, robotics lab, hands-on learning" />
-        <link rel="canonical" href="https://www.ollindia.com/centers" />
+        <link rel="canonical" href="https://oll.co/centers" />
         <meta property="og:title" content="OLL Learning Centers - Find a Center Near You" />
         <meta property="og:description" content="Visit our centers for hands-on Robotics, Coding, and AI learning experience." />
         <meta property="og:type" content="website" />

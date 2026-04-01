@@ -65,10 +65,10 @@ const LandingPage = () => {
         <title>OLL - Learn Future Skills | Robotics, AI, Coding & Entrepreneurship Classes</title>
         <meta name="description" content="OLL offers Robotics, AI, Coding, Entrepreneurship & Financial Literacy skill classes for students of all ages. Lab setups & programs for ICSE, CBSE, State Board schools. Book a free demo today!" />
         <meta name="keywords" content="OLL, OLL India, robotics classes, AI classes, coding for kids, entrepreneurship classes, financial literacy, STEM education, robotics lab setup, ICSE robotics, CBSE robotics, skill education India, future skills, coding classes near me" />
-        <link rel="canonical" href="https://www.ollindia.com/" />
+        <link rel="canonical" href="https://oll.co/" />
 
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://www.ollindia.com/" />
+        <meta property="og:url" content="https://oll.co/" />
         <meta property="og:title" content="OLL - Learn Future Skills | Robotics, AI, Coding & Entrepreneurship" />
         <meta property="og:description" content="Transform your future with OLL. Learn Robotics, AI, Coding, Entrepreneurship & Financial Literacy. Expert educators, flexible timings. Book a free demo!" />
         <meta property="og:image" content="https://static.prod-images.emergentagent.com/jobs/4048d873-d260-47ab-be01-5efb2f8a71c2/images/3484c900f20debbcd95f333ebd0b59a212adcaeebd3c2db1919581020c07de0c.png" />
@@ -77,7 +77,7 @@ const LandingPage = () => {
         <meta property="og:site_name" content="OLL - Online Live Learning" />
 
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:url" content="https://www.ollindia.com/" />
+        <meta name="twitter:url" content="https://oll.co/" />
         <meta name="twitter:title" content="OLL - Learn Future Skills | Robotics, AI, Coding & Entrepreneurship" />
         <meta name="twitter:description" content="Transform your future with OLL. Learn Robotics, AI, Coding, Entrepreneurship & Financial Literacy. Book a free demo!" />
         <meta name="twitter:image" content="https://static.prod-images.emergentagent.com/jobs/4048d873-d260-47ab-be01-5efb2f8a71c2/images/3484c900f20debbcd95f333ebd0b59a212adcaeebd3c2db1919581020c07de0c.png" />
@@ -88,8 +88,8 @@ const LandingPage = () => {
             "@type": "EducationalOrganization",
             "name": "OLL",
             "alternateName": ["OLL India", "Online Live Learning", "OLL - Learn Future Skills"],
-            "url": "https://www.ollindia.com",
-            "logo": "https://www.ollindia.com/favicon.png",
+            "url": "https://oll.co",
+            "logo": "https://oll.co/favicon.png",
             "description": "India's leading platform for Robotics, Coding, AI, Entrepreneurship & Financial Literacy education for students aged 4–16. Lab setups and programs for ICSE, CBSE & State Board schools. As seen on Shark Tank India and Kaun Banega Crorepati.",
             "foundingDate": "2018",
             "sameAs": [

@@ -120,7 +120,7 @@ export default function SummerCampSEOPage() {
     ? `India's best ${skillData.name} summer camp for kids. 10-day intensive hands-on program in Mumbai & Online. Build real projects. Ages 4–16. STEM.org certified. As seen on Shark Tank India & KBC. May 2026.`
     : `${ageData.campGroup} summer camp for kids aged ${ageData.label}. Robotics, Coding, AI & 3D Design — 10 days of hands-on tech learning in Mumbai & Online. STEM.org certified. May 2026.`;
 
-  const canonical = `https://www.ollindia.com/summer-camp/${type}/${slug}`;
+  const canonical = `https://oll.co/summer-camp/${type}/${slug}`;
 
   const h1 = locData ? `Summer Camp in ${locData.name}` : skillData ? skillData.headline : ageData.headline;
   const intro = locData
@@ -161,8 +161,8 @@ export default function SummerCampSEOPage() {
           "eventStatus": "https://schema.org/EventScheduled",
           "eventAttendanceMode": locData?.name === 'Online' ? "https://schema.org/OnlineEventAttendanceMode" : "https://schema.org/OfflineEventAttendanceMode",
           "location": locData ? { "@type": "Place", "name": `OLL Center – ${locData.name}`, "address": { "@type": "PostalAddress", "streetAddress": locData.address, "addressLocality": locData.city, "addressRegion": "Maharashtra", "addressCountry": "IN" } } : { "@type": "Place", "name": "OLL – Multiple Centers in Mumbai & Online" },
-          "organizer": { "@type": "Organization", "name": "OLL – Online Live Learning", "url": "https://www.ollindia.com", "logo": "https://www.ollindia.com/favicon.png" },
-          "offers": { "@type": "Offer", "price": "1999", "priceCurrency": "INR", "url": "https://www.ollindia.com/summer-camp/book", "availability": "https://schema.org/LimitedAvailability" },
+          "organizer": { "@type": "Organization", "name": "OLL – Online Live Learning", "url": "https://oll.co", "logo": "https://oll.co/favicon.png" },
+          "offers": { "@type": "Offer", "price": "1999", "priceCurrency": "INR", "url": "https://oll.co/summer-camp/book", "availability": "https://schema.org/LimitedAvailability" },
           "audience": { "@type": "Audience", "audienceType": "Children aged 4–16" }
         })}</script>
       </Helmet>

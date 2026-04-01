@@ -138,8 +138,8 @@ const FAQPage = () => {
       <Helmet>
         <title>FAQ - OLL | Robotics, Coding & AI Classes for Kids</title>
         <meta name="description" content="Find answers to frequently asked questions about OLL's skill education programs. Learn about course fees, demo sessions, age groups, online vs offline classes, and more." />
-        <link rel="canonical" href="https://www.ollindia.com/faq" />
-        <meta property="og:url" content="https://www.ollindia.com/faq" />
+        <link rel="canonical" href="https://oll.co/faq" />
+        <meta property="og:url" content="https://oll.co/faq" />
         <meta property="og:title" content="FAQ - OLL | Robotics, Coding & AI Classes for Kids" />
         <meta property="og:description" content="Find answers to frequently asked questions about OLL's Robotics, AI, Coding & Entrepreneurship programs. Fees, batch timings, age groups and more." />
         <script type="application/ld+json">{JSON.stringify({
@@ -150,7 +150,7 @@ const FAQPage = () => {
             {"@type": "Question", "name": "Does OLL offer online classes?", "acceptedAnswer": {"@type": "Answer", "text": "Yes, OLL offers live online classes via Zoom with the same hands-on experience as offline. Physical kits are shipped to your home."}},
             {"@type": "Question", "name": "What subjects does OLL teach?", "acceptedAnswer": {"@type": "Answer", "text": "OLL teaches Robotics, Artificial Intelligence, Python & Scratch Coding, 3D Design, Entrepreneurship and Financial Literacy."}},
             {"@type": "Question", "name": "Is OLL certified?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. OLL is STEM.org accredited and UNESCO USFUCA aligned. Every student receives a STEM.org certificate upon completion."}},
-            {"@type": "Question", "name": "How do I book a free demo?", "acceptedAnswer": {"@type": "Answer", "text": "You can book a free demo class at www.ollindia.com/student. Our team will contact you within 24 hours to schedule."}}
+            {"@type": "Question", "name": "How do I book a free demo?", "acceptedAnswer": {"@type": "Answer", "text": "You can book a free demo class at oll.co/student. Our team will contact you within 24 hours to schedule."}}
           ]
         })}</script>
       </Helmet>

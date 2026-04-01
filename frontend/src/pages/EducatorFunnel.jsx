@@ -562,20 +562,20 @@ const EducatorFunnel = () => {
         <title>Become an Educator | Teach Robotics, AI, Coding Jobs | OLL</title>
         <meta name="description" content="Join OLL as an educator! Teach Robotics, Coding, AI, Entrepreneurship. Flexible hours, competitive pay ₹500-2000/session. Work from home or centers. Apply now!" />
         <meta name="keywords" content="robotics teacher jobs, coding instructor jobs, AI educator, STEM teacher jobs India, teach robotics online, freelance educator, work from home teaching, skill educator jobs, part time teaching" />
-        <link rel="canonical" href="https://www.ollindia.com/educator" />
+        <link rel="canonical" href="https://oll.co/educator" />
         
         {/* Open Graph */}
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://www.ollindia.com/educator" />
+        <meta property="og:url" content="https://oll.co/educator" />
         <meta property="og:title" content="Become an Educator | Teach Robotics, AI, Coding | OLL" />
         <meta property="og:description" content="Join OLL as an educator! Teach Robotics, Coding, AI. Flexible hours, competitive pay. Work from home or centers." />
-        <meta property="og:image" content="https://www.ollindia.com/og-image.png" />
+        <meta property="og:image" content="https://oll.co/og-image.png" />
         
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Become an Educator | OLL - Teaching Jobs" />
         <meta name="twitter:description" content="Teach Robotics, Coding, AI at OLL. Flexible hours, great pay!" />
-        <meta name="twitter:image" content="https://www.ollindia.com/og-image.png" />
+        <meta name="twitter:image" content="https://oll.co/og-image.png" />
       </Helmet>
       <Navbar />
 

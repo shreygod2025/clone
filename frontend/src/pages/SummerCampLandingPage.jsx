@@ -251,11 +251,11 @@ export default function SummerCampLandingPage() {
         <meta name="description" content="India's #1 kids tech summer camp. Robotics, Python Coding, AI & 3D Design for ages 4–16. 10-day intensive camps in Mumbai (Mira Road, Dombivli, Andheri) & Online. STEM.org certified. May 2026. Book now — limited seats." />
         <meta name="keywords" content="summer camp Mumbai, robotics summer camp, coding camp for kids, AI camp India, kids tech camp 2026, STEM camp Mumbai, summer camp ages 4-16, OLL summer camp, school holiday camp Mumbai" />
         <meta name="robots" content="index, follow" />
-        <link rel="canonical" href="https://www.ollindia.com/summer-camp" />
+        <link rel="canonical" href="https://oll.co/summer-camp" />
 
         {/* Open Graph */}
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://www.ollindia.com/summer-camp" />
+        <meta property="og:url" content="https://oll.co/summer-camp" />
         <meta property="og:title" content="Future Skills Summer Camp 2026 — Robotics, AI & Coding for Kids | OLL" />
         <meta property="og:description" content="10-day hands-on tech camps for ages 4–16. Robotics · Coding · AI · 3D Design. Mumbai + Online. STEM.org Certified. As seen on Shark Tank India & KBC." />
         <meta property="og:image" content="https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/ko80g3wd_images.png" />
@@ -288,17 +288,17 @@ export default function SummerCampLandingPage() {
               "location": [
                 { "@type": "Place", "name": "OLL Center Mira Road", "address": { "@type": "PostalAddress", "addressLocality": "Mira Road", "addressRegion": "Maharashtra", "addressCountry": "IN" } },
                 { "@type": "Place", "name": "OLL Center Dombivli", "address": { "@type": "PostalAddress", "addressLocality": "Dombivli", "addressRegion": "Maharashtra", "addressCountry": "IN" } },
-                { "@type": "VirtualLocation", "url": "https://www.ollindia.com/summer-camp" }
+                { "@type": "VirtualLocation", "url": "https://oll.co/summer-camp" }
               ],
               "image": "https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/ko80g3wd_images.png",
               "description": "10-day intensive tech camps for kids ages 4–16 covering Robotics, Coding, AI and 3D Design.",
-              "organizer": { "@type": "Organization", "name": "OLL India", "url": "https://www.ollindia.com" },
-              "offers": { "@type": "Offer", "price": "1999", "priceCurrency": "INR", "availability": "https://schema.org/LimitedAvailability", "url": "https://www.ollindia.com/summer-camp/book" }
+              "organizer": { "@type": "Organization", "name": "OLL India", "url": "https://oll.co" },
+              "offers": { "@type": "Offer", "price": "1999", "priceCurrency": "INR", "availability": "https://schema.org/LimitedAvailability", "url": "https://oll.co/summer-camp/book" }
             },
             {
               "@type": "Organization",
               "name": "OLL India",
-              "url": "https://www.ollindia.com",
+              "url": "https://oll.co",
               "description": "India's leading future-skills edtech for school students — Robotics, AI, Coding.",
               "areaServed": "IN",
               "sameAs": ["https://www.instagram.com/oll.india"]
