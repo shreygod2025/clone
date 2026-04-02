@@ -14707,13 +14707,15 @@ async def startup_db_client():
     _db_index_task = asyncio.create_task(_create_db_indexes())
 
     # Start the payment sync scheduler
+    # Defer first run by 5 minutes so it never fires during the health-check window
     if PAYMENT_SYNC_ENABLED and CASHFREE_APP_ID and CASHFREE_SECRET_KEY:
         scheduler.add_job(
             scheduled_payment_sync,
             trigger=IntervalTrigger(minutes=PAYMENT_SYNC_INTERVAL_MINUTES),
             id="payment_sync_job",
             name="Automated Payment Sync",
-            replace_existing=True
+            replace_existing=True,
+            next_run_time=datetime.now(timezone.utc) + timedelta(minutes=5)
         )
         print(f"[STARTUP] Payment sync scheduler configured - runs every {PAYMENT_SYNC_INTERVAL_MINUTES} minutes")
     else:
