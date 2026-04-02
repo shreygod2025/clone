@@ -19,19 +19,10 @@ import httpx
 import shutil
 import resend
 from io import BytesIO
-from reportlab.lib.pagesizes import A4, landscape
-from reportlab.lib.units import inch, cm
-from reportlab.lib.colors import HexColor, white, black
-from reportlab.pdfgen import canvas
-from reportlab.lib.styles import ParagraphStyle
-from reportlab.platypus import Paragraph
-from reportlab.lib.enums import TA_CENTER
-import qrcode
-from PIL import Image
+# Heavy libraries are imported lazily (inside the functions that need them)
+# to keep startup time fast and health check responsive.
+# Lazy: reportlab, PIL/qrcode, cloudinary, cashfree_pg
 from emergentintegrations.llm.chat import LlmChat, UserMessage
-import cloudinary
-import cloudinary.uploader
-import cloudinary.utils
 import time
 import hmac
 import hashlib
@@ -42,11 +33,14 @@ import warnings
 # Suppress urllib3 SSL warnings for Cashfree SDK (SDK handles SSL internally)
 warnings.filterwarnings('ignore', message='Unverified HTTPS request')
 
-# Cashfree Payment Gateway
-from cashfree_pg.api_client import Cashfree
-from cashfree_pg.models.create_order_request import CreateOrderRequest
-from cashfree_pg.models.customer_details import CustomerDetails as CashfreeCustomerDetails
-from cashfree_pg.models.order_meta import OrderMeta
+# Cashfree — loaded lazily on first payment request
+def _get_cashfree_imports():
+    """Lazy-load cashfree_pg to avoid slow startup."""
+    from cashfree_pg.api_client import Cashfree
+    from cashfree_pg.models.create_order_request import CreateOrderRequest
+    from cashfree_pg.models.customer_details import CustomerDetails as CashfreeCustomerDetails
+    from cashfree_pg.models.order_meta import OrderMeta
+    return Cashfree, CreateOrderRequest, CashfreeCustomerDetails, OrderMeta
 
 # Background Scheduler for automated tasks
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -81,13 +75,24 @@ UPLOAD_DIR = ROOT_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 load_dotenv(ROOT_DIR / '.env')
 
-# Cloudinary configuration
-cloudinary.config(
-    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
-    api_key=os.getenv("CLOUDINARY_API_KEY"),
-    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
-    secure=True
-)
+# Cloudinary — configured lazily on first upload request
+_cloudinary_configured = False
+
+def _get_cloudinary():
+    """Lazy-load and configure cloudinary to avoid slow startup."""
+    global _cloudinary_configured
+    import cloudinary
+    import cloudinary.uploader
+    import cloudinary.utils
+    if not _cloudinary_configured:
+        cloudinary.config(
+            cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+            api_key=os.getenv("CLOUDINARY_API_KEY"),
+            api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+            secure=True
+        )
+        _cloudinary_configured = True
+    return cloudinary
 
 # Cashfree Payment Gateway Configuration
 CASHFREE_APP_ID = os.getenv("CASHFREE_APP_ID", "")
@@ -99,18 +104,17 @@ CASHFREE_API_VERSION = "2023-08-01"
 PAYMENT_SYNC_ENABLED = os.getenv("PAYMENT_SYNC_ENABLED", "true").lower() == "true"
 PAYMENT_SYNC_INTERVAL_MINUTES = int(os.getenv("PAYMENT_SYNC_INTERVAL_MINUTES", "60"))  # Default: every hour
 
-# Initialize Cashfree credentials globally
-if CASHFREE_APP_ID and CASHFREE_SECRET_KEY:
-    Cashfree.XClientId = CASHFREE_APP_ID
-    Cashfree.XClientSecret = CASHFREE_SECRET_KEY
-    if CASHFREE_ENVIRONMENT == "PRODUCTION":
-        Cashfree.XEnvironment = Cashfree.PRODUCTION
-    else:
-        Cashfree.XEnvironment = Cashfree.SANDBOX
-    logging.info(f"Cashfree initialized in {CASHFREE_ENVIRONMENT} environment")
-
+# Initialize Cashfree credentials globally (lazy — only when first payment is made)
 def get_cashfree_client():
-    """Get Cashfree client with correct environment"""
+    """Get Cashfree client with correct environment (lazy import + init)."""
+    Cashfree, _, _, _ = _get_cashfree_imports()
+    if CASHFREE_APP_ID and CASHFREE_SECRET_KEY:
+        Cashfree.XClientId = CASHFREE_APP_ID
+        Cashfree.XClientSecret = CASHFREE_SECRET_KEY
+        if CASHFREE_ENVIRONMENT == "PRODUCTION":
+            Cashfree.XEnvironment = Cashfree.PRODUCTION
+        else:
+            Cashfree.XEnvironment = Cashfree.SANDBOX
     cf_env = Cashfree.PRODUCTION if CASHFREE_ENVIRONMENT == "PRODUCTION" else Cashfree.SANDBOX
     return Cashfree(cf_env)
 
@@ -7109,7 +7113,7 @@ def _fetch_image_bytes(url: str):
 def _make_circular_png(img_bytes: bytes) -> BytesIO:
     """Apply circular mask to image bytes and return PNG BytesIO."""
     try:
-        from PIL import ImageDraw
+        from PIL import Image, ImageDraw
         img = Image.open(BytesIO(img_bytes)).convert("RGBA")
         s = min(img.size)
         img = img.crop(((img.width - s) // 2, (img.height - s) // 2,
@@ -7127,7 +7131,16 @@ def _make_circular_png(img_bytes: bytes) -> BytesIO:
 
 def generate_id_card_pdf(educator_data, onboarding_data) -> BytesIO:
     """Generate branded ID Card PDF with OLL logo and educator profile photo."""
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.units import inch, cm
+    from reportlab.lib.colors import HexColor, white, black
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.platypus import Paragraph
+    from reportlab.lib.enums import TA_CENTER
     from reportlab.lib.utils import ImageReader
+    import qrcode
+    from PIL import Image
 
     buffer = BytesIO()
     width, height = 400, 550
@@ -7229,6 +7242,12 @@ def _draw_id_photo_placeholder(c, cx, cy, r, color):
 
 def generate_certificate_pdf(educator_data) -> BytesIO:
     """Generate branded Certificate of Completion PDF with OLL logo and signature."""
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.colors import HexColor, white, black
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.platypus import Paragraph
+    from reportlab.lib.enums import TA_CENTER
     from reportlab.lib.utils import ImageReader
 
     buffer = BytesIO()
@@ -13848,7 +13867,7 @@ async def get_cloudinary_signature(
         "folder": folder,
     }
     
-    signature = cloudinary.utils.api_sign_request(
+    signature = _get_cloudinary().utils.api_sign_request(
         params,
         os.getenv("CLOUDINARY_API_SECRET")
     )
@@ -13888,7 +13907,7 @@ async def upload_file(file: UploadFile = File(...), type: str = "general"):
     
     try:
         # Upload to Cloudinary
-        result = cloudinary.uploader.upload(
+        result = _get_cloudinary().uploader.upload(
             BytesIO(content),
             public_id=unique_id,
             folder=folder,
@@ -14036,15 +14055,13 @@ async def migrate_files_to_cloudinary(user: dict = Depends(get_current_user)):
             folder = f"oll_{file_type}"
             
             # Upload to Cloudinary
-            result = cloudinary.uploader.upload(
+            result = _get_cloudinary().uploader.upload(
                 BytesIO(content),
                 public_id=Path(filename).stem,
                 folder=folder,
                 resource_type=resource_type,
                 overwrite=True
             )
-            
-            # Update MongoDB document with Cloudinary URL
             await db.uploaded_files.update_one(
                 {"_id": file_doc["_id"]},
                 {
@@ -14115,7 +14132,7 @@ async def migrate_local_files_to_mongodb(user: dict = Depends(get_current_user))
                     folder = f"oll_{file_type}"
                     
                     # Upload to Cloudinary
-                    result = cloudinary.uploader.upload(
+                    result = _get_cloudinary().uploader.upload(
                         BytesIO(content),
                         public_id=Path(filename).stem,
                         folder=folder,
