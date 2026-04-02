@@ -14615,9 +14615,15 @@ logger = logging.getLogger(__name__)
 
 # NOTE: scheduled_payment_sync routes moved to routes/payments.py
 # scheduler, PAYMENT_SYNC_ENABLED, PAYMENT_SYNC_INTERVAL_MINUTES imported from routes/payments.py
-@app.on_event("startup")
-async def startup_db_client():
-    """Create database indexes on startup and start background scheduler"""
+# Keep a reference to the background index task so it isn't garbage-collected
+_db_index_task = None
+
+
+async def _create_db_indexes():
+    """
+    Create MongoDB indexes in the background so they don't block server startup.
+    Called via asyncio.create_task() from startup_db_client.
+    """
     try:
         # School Inquiries indexes
         await db.school_inquiries.create_index("id", unique=True)
@@ -14625,62 +14631,75 @@ async def startup_db_client():
         await db.school_inquiries.create_index("assigned_to")
         await db.school_inquiries.create_index("created_at")
         await db.school_inquiries.create_index([("status", 1), ("created_at", -1)])
-        
+
         # Student Inquiries indexes
         await db.student_inquiries.create_index("id", unique=True)
         await db.student_inquiries.create_index("status")
         await db.student_inquiries.create_index("assigned_to")
         await db.student_inquiries.create_index("demo_date")
         await db.student_inquiries.create_index([("status", 1), ("created_at", -1)])
-        
+
         # Educator Applications indexes
         await db.educator_applications.create_index("id", unique=True)
         await db.educator_applications.create_index("status")
         await db.educator_applications.create_index("assigned_to")
         await db.educator_applications.create_index([("status", 1), ("created_at", -1)])
-        
+
         # Support Queries indexes
         await db.support_queries.create_index("id", unique=True)
         await db.support_queries.create_index("status")
         await db.support_queries.create_index("assigned_to")
         await db.support_queries.create_index([("status", 1), ("created_at", -1)])
-        
+
         # Inquiry Queries indexes
         await db.inquiry_queries.create_index("id", unique=True)
         await db.inquiry_queries.create_index("status")
         await db.inquiry_queries.create_index([("status", 1), ("created_at", -1)])
-        
+
         # Support Tickets indexes
         await db.support_tickets.create_index("id", unique=True)
         await db.support_tickets.create_index("status")
         await db.support_tickets.create_index("source")
         await db.support_tickets.create_index([("status", 1), ("created_at", -1)])
-        
+
         # Team Users indexes
         await db.team_users.create_index("id", unique=True)
         await db.team_users.create_index("email")
-        
+
         # School Expenses indexes
         await db.school_expenses.create_index("id", unique=True)
         await db.school_expenses.create_index("school_id")
         await db.school_expenses.create_index([("school_id", 1), ("created_at", -1)])
-        
+
         # External API Keys indexes
         await db.external_api_keys.create_index("id", unique=True)
         await db.external_api_keys.create_index("key", unique=True)
-        
+
         # GP Applications indexes
         await db.gp_applications.create_index("id", unique=True)
         await db.gp_applications.create_index("status")
-        
+
         # Growth Partners indexes
         await db.growth_partners.create_index("id", unique=True)
         await db.growth_partners.create_index("status")
-        
+
         print("[STARTUP] Database indexes created successfully")
     except Exception as e:
         print(f"[STARTUP] Warning: Could not create some indexes: {e}")
-    
+
+
+@app.on_event("startup")
+async def startup_db_client():
+    """Start schedulers and kick off background index creation.
+
+    Index creation is deliberately run in a background task so it does NOT
+    block the server from accepting requests (and thus does not delay the
+    health-check response on slow/remote MongoDB Atlas connections).
+    """
+    global _db_index_task
+    # Fire-and-forget — indexes are built while the server is already live
+    _db_index_task = asyncio.create_task(_create_db_indexes())
+
     # Start the payment sync scheduler
     if PAYMENT_SYNC_ENABLED and CASHFREE_APP_ID and CASHFREE_SECRET_KEY:
         scheduler.add_job(
@@ -14706,7 +14725,7 @@ async def startup_db_client():
         name="Daily Category Reports",
         replace_existing=True
     )
-    
+
     # Schedule overdue ticket check every 30 minutes
     scheduler.add_job(
         check_overdue_tickets,
@@ -14716,7 +14735,7 @@ async def startup_db_client():
         replace_existing=True
     )
     print("[STARTUP] Overdue ticket check scheduled — runs every 30 minutes")
-    
+
     # Schedule school meeting reminders every 15 minutes
     scheduler.add_job(
         check_school_meeting_reminders,
@@ -14736,7 +14755,7 @@ async def startup_db_client():
         replace_existing=True
     )
     print("[STARTUP] School CRM daily digest scheduled — fires at 8:30 AM IST (03:00 UTC)")
-    
+
     if not scheduler.running:
         scheduler.start()
     print("[STARTUP] Daily report emailer scheduled — fires at 8:00 PM IST (14:30 UTC)")

@@ -8,7 +8,14 @@ from datetime import datetime, timezone, timedelta
 from config import MONGO_URL, DB_NAME, OTP_EXPIRE_MINUTES, OTP_MAX_ATTEMPTS, OTP_LOCKOUT_MINUTES, OTP_SEND_COOLDOWN_SECONDS
 
 # ── MongoDB ───────────────────────────────────────────────────────────────
-_client = AsyncIOMotorClient(MONGO_URL)
+# Use explicit timeouts so the client never hangs indefinitely on
+# slow / remote Atlas connections (important for production Kubernetes health checks).
+_client = AsyncIOMotorClient(
+    MONGO_URL,
+    serverSelectionTimeoutMS=10000,   # 10 s to find a suitable server
+    connectTimeoutMS=10000,            # 10 s to establish a TCP connection
+    socketTimeoutMS=30000,             # 30 s for individual socket operations
+)
 db = _client[DB_NAME]
 
 

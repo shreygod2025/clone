@@ -48,6 +48,14 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+### 2026-04-02 — Production Deployment Fix
+- **Root Cause 1 (`.gitignore`)**: Lines `*.env` and `*.env.*` were blocking all `.env` files from the Docker build context, causing the backend to start without any environment variables on production → MongoDB connection failed → health check never got a 200 response.
+  - **Fix**: Commented out those two lines in `/app/.gitignore`. The `.env` files are now included in the build.
+- **Root Cause 2 (Blocking startup)**: `startup_db_client()` created 40+ MongoDB indexes synchronously during FastAPI startup. On MongoDB Atlas (remote), each round-trip is ~100–500 ms → total startup time easily exceeded the deployment health-check timeout of 120 s.
+  - **Fix**: Extracted all `create_index` calls into an `async def _create_db_indexes()` coroutine and launched it with `asyncio.create_task()` from the startup event. The server now becomes ready to accept requests in under 1 second; indexes are built in the background.
+- **Root Cause 3 (Atlas timeouts)**: `AsyncIOMotorClient` had no explicit timeouts, so on a slow Atlas cluster it could hang indefinitely waiting for a server or socket.
+  - **Fix**: Added `serverSelectionTimeoutMS=10000`, `connectTimeoutMS=10000`, `socketTimeoutMS=30000` to the Motor client in `database.py`.
+
 ### 2026-03-31
 - **Bug Fix**: Invoice PDF generator (`invoicePdfGenerator.js`) — for GST-exclusive invoices, removed per-line-item CGST/SGST columns from the table. GST now appears only in the summary totals section (Sub Total → CGST → SGST → Total), eliminating the appearance of double-charging. Inclusive GST and IGST (inter-state) types are unaffected.
 
