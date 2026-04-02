@@ -1936,7 +1936,7 @@ const AdminOrders = () => {
                       View
                     </a>
                     <button 
-                      onClick={() => setPaymentUpdate(prev => ({ ...prev, invoice_url: '' }))}
+                      onClick={() => setPaymentUpdate(prev => ({ ...prev, invoice_url: '', clear_invoice: true }))}
                       className="text-xs text-red-600 underline"
                     >
                       Remove
@@ -1975,7 +1975,7 @@ const AdminOrders = () => {
                       View
                     </a>
                     <button 
-                      onClick={() => setPaymentUpdate(prev => ({ ...prev, receipt_url: '' }))}
+                      onClick={() => setPaymentUpdate(prev => ({ ...prev, receipt_url: '', clear_receipt: true }))}
                       className="text-xs text-red-600 underline"
                     >
                       Remove
@@ -2028,10 +2028,11 @@ const AdminOrders = () => {
                 <Button 
                   onClick={handleUpdatePayment} 
                   className="flex-1 bg-green-600 hover:bg-green-700"
+                  disabled={uploadingInvoice || uploadingReceipt}
                   data-testid="save-payment-btn"
                 >
                   <CheckCircle2 className="w-4 h-4 mr-1" />
-                  Save Payment
+                  {uploadingInvoice || uploadingReceipt ? 'Uploading...' : 'Save Payment'}
                 </Button>
               </div>
             </div>

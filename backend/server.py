@@ -11984,14 +11984,24 @@ async def update_payment(
             None
         )
         
+        # Preserve existing invoice/receipt URLs if incoming is empty (prevents accidental overwrites)
+        existing_payment_rec = payments[existing_idx] if existing_idx is not None else {}
+        incoming_invoice_url = data.get("invoice_url")
+        incoming_receipt_url = data.get("receipt_url")
+        # Only overwrite with empty if `clear_invoice`/`clear_receipt` flag is set by the frontend
+        if not incoming_invoice_url and not data.get("clear_invoice") and existing_payment_rec.get("invoice_url"):
+            incoming_invoice_url = existing_payment_rec.get("invoice_url")
+        if not incoming_receipt_url and not data.get("clear_receipt") and existing_payment_rec.get("receipt_url"):
+            incoming_receipt_url = existing_payment_rec.get("receipt_url")
+
         payment_record = {
             "id": payment_id,
             "tranche_index": tranche_index,
             "status": data.get("status", "pending"),
             "payment_date": data.get("payment_date"),
             "transaction_id": data.get("transaction_id"),
-            "invoice_url": data.get("invoice_url"),
-            "receipt_url": data.get("receipt_url"),
+            "invoice_url": incoming_invoice_url,
+            "receipt_url": incoming_receipt_url,
             "gst_type": data.get("gst_type"),
             "payment_link": data.get("payment_link"),
             "notes": data.get("notes", ""),

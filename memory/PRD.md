@@ -48,6 +48,13 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+### 2026-04-02 — Invoice Modal Bug Fix (AdminOrders.jsx)
+**Root Cause:** Race condition — Save button was not disabled during file upload. Admin could click "Save" before the async upload completed, sending `invoice_url: ''` to the backend which overwrote valid data.
+**Fixes Applied:**
+1. `AdminOrders.jsx`: Disabled "Save Payment" button while `uploadingInvoice || uploadingReceipt` is true; button shows "Uploading..." text during upload
+2. `AdminOrders.jsx`: "Remove" buttons now send `clear_invoice: true` / `clear_receipt: true` flags to signal intentional removal
+3. `server.py` PATCH `/orders/{payment_id}`: Preserves existing `invoice_url`/`receipt_url` when incoming value is empty AND `clear_invoice`/`clear_receipt` flags are NOT set — prevents accidental overwrites while still allowing intentional removal
+
 ### 2026-04-02 — Production Deployment Fix
 - **Root Cause 1 (`.gitignore`)**: Lines `*.env` and `*.env.*` were blocking all `.env` files from the Docker build context, causing the backend to start without any environment variables on production → MongoDB connection failed → health check never got a 200 response.
   - **Fix**: Commented out those two lines in `/app/.gitignore`. The `.env` files are now included in the build.
