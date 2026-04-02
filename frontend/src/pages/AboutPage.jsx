@@ -8,6 +8,21 @@ import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
+
+function AdvisorPhoto({ name, src }) {
+  const [failed, setFailed] = useState(false);
+  const initials = name.replace(/^(Mr\.|Ms\.|Mrs\.|Dr\.|Lt\s+Gen)\s*/i, '').split(' ').filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+  const colors = ['#1E3A5F', '#2d5a8f', '#D63031', '#0F4C75', '#1B4332'];
+  const bg = colors[name.charCodeAt(0) % colors.length];
+  if (failed || !src) {
+    return (
+      <div className="w-full h-full flex items-center justify-center text-white font-bold text-2xl" style={{ background: bg }}>
+        {initials}
+      </div>
+    );
+  }
+  return <img src={src} alt={name} className="w-full h-full object-cover" onError={() => setFailed(true)} />;
+}
 import Footer from '../components/Footer';
 import SchoolCaseStudies from '../components/SchoolCaseStudies';
 
@@ -185,7 +200,7 @@ const AboutPage = () => {
         <meta property="og:title" content="About OLL | India's Leading Skill Education Platform" />
         <meta property="og:description" content="Mission for 1 Billion Daily Learners. Robotics, AI, Coding, Entrepreneurship & Financial Literacy programs for students & schools across India." />
         <meta property="og:image" content="https://oll.co/og-image.png" />
-        <meta property="og:site_name" content="OLL - Online Live Learning" />
+        <meta property="og:site_name" content="OLL" />
         
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
@@ -458,11 +473,7 @@ const AboutPage = () => {
               <div key={index} className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 hover:bg-white/20 transition-colors" data-testid={`advisor-${index}`}>
                 <div className="flex items-start gap-4">
                   <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-white/20">
-                    <img 
-                      src={advisor.image} 
-                      alt={advisor.name}
-                      className="w-full h-full object-cover"
-                    />
+                    <AdvisorPhoto src={advisor.image} name={advisor.name} />
                   </div>
                   <div>
                     <h3 className="text-white font-bold mb-1">{advisor.name}</h3>

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Eye, Phone, Mail, Calendar, Clock, Plus, ChevronRight, MessageSquare, Archive, CalendarClock, CheckCircle2, User, Users, Briefcase, MapPin, UserPlus, Send, Edit, Save, Video, Star, FileText, X, Download } from 'lucide-react';
+import { Search, Eye, Phone, Mail, Calendar, Clock, Plus, ChevronRight, MessageSquare, Archive, CalendarClock, CheckCircle2, User, Users, Briefcase, MapPin, UserPlus, Send, Edit, Save, Video, Star, FileText, X, Download, Copy, Link, Trash2, XCircle } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -10,6 +10,7 @@ import { Calendar as CalendarComponent } from '../../components/ui/calendar';
 import { toast } from 'sonner';
 import { format, addDays, parseISO, isAfter, isBefore, addHours } from 'date-fns';
 import axios from 'axios';
+import CitySearch from '../../components/CitySearch';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -86,6 +87,7 @@ const AdminEducators = () => {
   // Modal states
   const [viewEducator, setViewEducator] = useState(null);
   const [showScheduleModal, setShowScheduleModal] = useState(null);
+  const [showTechScheduleModal, setShowTechScheduleModal] = useState(null);
   const [showAssignModal, setShowAssignModal] = useState(null);
   const [showCommentModal, setShowCommentModal] = useState(null);
   const [showRatingModal, setShowRatingModal] = useState(null);
@@ -94,6 +96,8 @@ const AdminEducators = () => {
   const [onboardingData, setOnboardingData] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [scheduleData, setScheduleData] = useState({ date: null, time: '' });
+  const [techScheduleData, setTechScheduleData] = useState({ date: null, time: '' });
+  const [hrDoneModal, setHrDoneModal] = useState(null); // educator object
   
   // Edit Educator state
   const [showEditEducatorModal, setShowEditEducatorModal] = useState(null);
@@ -130,7 +134,17 @@ const AdminEducators = () => {
     fetchEducators();
     fetchTeamUsers();
     fetchRequirements();
+    fetchOnboardingProgress(); // Pre-fetch so Onboarding tab count is correct on initial load
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Refresh onboarding progress when Onboarding tab becomes active
+  useEffect(() => {
+    if (activeTab === 'onboarded') {
+      fetchOnboardingProgress();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   // Auto-load onboarding details when viewing an onboarding educator
   useEffect(() => {
@@ -139,6 +153,7 @@ const AdminEducators = () => {
     } else {
       setSelectedOnboarding(null);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewEducator]);
 
   const fetchRequirements = async () => {
@@ -161,7 +176,7 @@ const AdminEducators = () => {
     }
     try {
       if (editingRequirement) {
-        await axios.put(`${API}/requirements/${editingRequirement.id}`, requirementForm, {
+        await axios.patch(`${API}/requirements/${editingRequirement.id}`, requirementForm, {
           headers: getAuthHeaders()
         });
         toast.success('Requirement updated');
@@ -308,7 +323,9 @@ const AdminEducators = () => {
       toast.success('Educator added and onboarding started!');
       setShowDirectOnboardModal(false);
       setDirectOnboardForm({ name: '', email: '', phone: '', skills: '', city: '', experience: '' });
-      fetchEducators();
+      // Refresh both educators list AND onboarding data so the new educator appears in Onboarding tab
+      await fetchEducators();
+      await fetchOnboardingProgress();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to add educator');
     }
@@ -497,6 +514,58 @@ const AdminEducators = () => {
     await handleStatusChange(educator, 'archived');
   };
 
+  const handleUnarchive = async (educator) => {
+    await handleStatusChange(educator, 'new');
+    toast.success(`${educator.name} has been unarchived`);
+  };
+
+  const handleHRDone = async (educator) => {
+    await handleStatusChange(educator, 'hr_done');
+    toast.success('HR Round marked as done. You can now schedule the Technical Demo.');
+  };
+
+  const handleCloseRequirement = async (req) => {
+    try {
+      const newState = !req.is_active;
+      await axios.patch(`${API}/requirements/${req.id}`, { is_active: newState }, { headers: getAuthHeaders() });
+      toast.success(newState ? 'Requirement reopened' : 'Requirement closed');
+      fetchRequirements();
+    } catch {
+      toast.error('Failed to update requirement');
+    }
+  };
+
+  const handleDeleteRequirement = async (req) => {
+    if (!window.confirm(`Delete "${req.title}"? This cannot be undone.`)) return;
+    try {
+      await axios.delete(`${API}/requirements/${req.id}`, { headers: getAuthHeaders() });
+      toast.success('Requirement deleted');
+      fetchRequirements();
+    } catch {
+      toast.error('Failed to delete requirement');
+    }
+  };
+
+  const handleScheduleTechDemo = async () => {
+    if (!techScheduleData.date || !techScheduleData.time) {
+      toast.error('Please select date and time for the technical demo');
+      return;
+    }
+    try {
+      await axios.patch(`${API}/educators/application/${showTechScheduleModal.id}`, {
+        status: 'tech_scheduled',
+        tech_demo_date: format(techScheduleData.date, 'yyyy-MM-dd'),
+        tech_demo_time: techScheduleData.time
+      }, { headers: getAuthHeaders() });
+      toast.success('Technical demo scheduled successfully!');
+      setShowTechScheduleModal(null);
+      setTechScheduleData({ date: null, time: '' });
+      fetchEducators();
+    } catch (error) {
+      toast.error('Failed to schedule technical demo');
+    }
+  };
+
   const openEditEducatorModal = (educator) => {
     setEditEducatorForm({
       name: educator.name || '',
@@ -653,7 +722,7 @@ const AdminEducators = () => {
     let matchesTab = false;
     if (activeTab === 'applicants') {
       if (applicantSubFilter === 'all') {
-        matchesTab = edu.status === 'new' || edu.status === 'demo_scheduled';
+        matchesTab = ['new', 'demo_scheduled', 'hr_done', 'tech_scheduled'].includes(edu.status);
       } else {
         matchesTab = edu.status === applicantSubFilter;
       }
@@ -663,6 +732,9 @@ const AdminEducators = () => {
       }
     } else if (activeTab === 'requirements') {
       matchesTab = false; // Requirements tab doesn't show educators
+    } else if (activeTab === 'onboarded') {
+      matchesTab = ['onboarded', 'onboarding', 'active'].includes(edu.status) && 
+                   onboardingData.some(o => o.educator?.id === edu.id);
     } else {
       matchesTab = edu.status === activeTab;
     }
@@ -682,17 +754,24 @@ const AdminEducators = () => {
 
   const getCount = (status) => {
     if (status === 'applicants') {
-      return educators.filter(e => e.status === 'new' || e.status === 'demo_scheduled').length;
+      return educators.filter(e => ['new', 'demo_scheduled', 'hr_done', 'tech_scheduled'].includes(e.status)).length;
     }
     if (status === 'requirements') {
       return requirements.length;
+    }
+    if (status === 'onboarded') {
+      // Count educators that have onboarding records
+      return onboardingData.length;
     }
     return educators.filter(e => e.status === status).length;
   };
 
   // Render action buttons based on status
   const renderActionButtons = (educator) => {
-    switch (educator.status) {
+    // Treat 'new' with demo_date as 'demo_scheduled' (HR round booked via application)
+    const effectiveStatus = (educator.status === 'new' && educator.demo_date) ? 'demo_scheduled' : educator.status;
+
+    switch (effectiveStatus) {
       case 'new':
         return (
           <div className="flex gap-1 flex-wrap">
@@ -705,7 +784,7 @@ const AdminEducators = () => {
               data-testid={`schedule-demo-${educator.id}`}
             >
               <CalendarClock className="w-3 h-3" />
-              Schedule Demo
+              Schedule HR Demo
             </button>
             <button
               onClick={() => handleArchive(educator)}
@@ -717,11 +796,11 @@ const AdminEducators = () => {
             </button>
           </div>
         );
-      
+
       case 'demo_scheduled':
         return (
           <div className="flex gap-1 flex-wrap">
-            {/* Join Demo Button */}
+            {/* Join HR Demo */}
             <a
               href={generateMeetingLink(educator)}
               target="_blank"
@@ -734,15 +813,16 @@ const AdminEducators = () => {
               data-testid={`join-demo-${educator.id}`}
             >
               <Video className="w-3 h-3" />
-              {isDemoJoinable(educator) ? 'Join Now' : 'Join Demo'}
+              {isDemoJoinable(educator) ? 'Join Now' : 'Join HR Demo'}
             </a>
+            {/* HR Round Done */}
             <button
-              onClick={() => handleDemoCompleted(educator)}
-              className="text-xs px-3 py-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-700 flex items-center gap-1 font-medium"
-              data-testid={`demo-completed-${educator.id}`}
+              onClick={() => setHrDoneModal(educator)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 flex items-center gap-1 font-medium"
+              data-testid={`hr-done-${educator.id}`}
             >
               <CheckCircle2 className="w-3 h-3" />
-              Complete & Rate
+              HR Done
             </button>
             <button
               onClick={() => {
@@ -765,7 +845,99 @@ const AdminEducators = () => {
             </button>
           </div>
         );
-      
+
+      case 'hr_done':
+        return (
+          <div className="flex gap-1 flex-wrap">
+            <div className="w-full mb-1">
+              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">HR Round Completed</span>
+            </div>
+            <button
+              onClick={() => {
+                setShowTechScheduleModal(educator);
+                setTechScheduleData({ date: null, time: '' });
+              }}
+              className="text-xs px-3 py-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 flex items-center gap-1 font-medium"
+              data-testid={`schedule-tech-${educator.id}`}
+            >
+              <CalendarClock className="w-3 h-3" />
+              Schedule Tech Demo
+            </button>
+            <button
+              onClick={() => handleArchive(educator)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1 font-medium"
+            >
+              <Archive className="w-3 h-3" />
+              Archive
+            </button>
+          </div>
+        );
+
+      case 'tech_scheduled':
+        return (
+          <div className="flex gap-1 flex-wrap">
+            {/* Join Tech Demo */}
+            <a
+              href={generateMeetingLink(educator)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 text-white flex items-center gap-1 font-medium"
+              data-testid={`join-tech-demo-${educator.id}`}
+            >
+              <Video className="w-3 h-3" />
+              Join Tech Demo
+            </a>
+            {/* Complete & Rate */}
+            <button
+              onClick={() => handleDemoCompleted(educator)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-700 flex items-center gap-1 font-medium"
+              data-testid={`demo-completed-${educator.id}`}
+            >
+              <CheckCircle2 className="w-3 h-3" />
+              Complete & Rate
+            </button>
+            <button
+              onClick={() => {
+                setShowTechScheduleModal(educator);
+                setTechScheduleData({ date: null, time: '' });
+              }}
+              className="text-xs px-3 py-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 flex items-center gap-1 font-medium"
+              data-testid={`reschedule-tech-${educator.id}`}
+            >
+              <CalendarClock className="w-3 h-3" />
+              Reschedule
+            </button>
+            <button
+              onClick={() => handleArchive(educator)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1 font-medium"
+            >
+              <Archive className="w-3 h-3" />
+              Archive
+            </button>
+          </div>
+        );
+
+      case 'demo_completed':
+        return (
+          <div className="flex gap-1 flex-wrap">
+            <button
+              onClick={() => handleDemoCompleted(educator)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-700 flex items-center gap-1 font-medium"
+              data-testid={`demo-completed-${educator.id}`}
+            >
+              <CheckCircle2 className="w-3 h-3" />
+              Complete & Rate
+            </button>
+            <button
+              onClick={() => handleArchive(educator)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1 font-medium"
+            >
+              <Archive className="w-3 h-3" />
+              Archive
+            </button>
+          </div>
+        );
+
       case 'onboarded':
         return (
           <div className="flex gap-1 flex-wrap">
@@ -794,7 +966,7 @@ const AdminEducators = () => {
             </button>
           </div>
         );
-      
+
       case 'active':
         return (
           <div className="flex gap-1 flex-wrap">
@@ -816,10 +988,21 @@ const AdminEducators = () => {
             </button>
           </div>
         );
-      
+
       case 'archived':
-        return null;
-      
+        return (
+          <div className="flex gap-1 flex-wrap">
+            <button
+              onClick={() => handleUnarchive(educator)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 flex items-center gap-1 font-medium"
+              data-testid={`unarchive-${educator.id}`}
+            >
+              <CheckCircle2 className="w-3 h-3" />
+              Unarchive
+            </button>
+          </div>
+        );
+
       default:
         return null;
     }
@@ -968,56 +1151,7 @@ const AdminEducators = () => {
       )}
 
       {/* Onboarding Progress View - Show when onboarding tab is active */}
-      {activeTab === 'onboarded' && onboardingData.length > 0 && (
-        <div className="mb-6 bg-gradient-to-r from-orange-50 to-amber-50 rounded-2xl p-6 border border-orange-100">
-          <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-orange-500" />
-            Onboarding Progress Overview
-          </h3>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {onboardingData.map((item) => {
-              const progress = item.progress || 0;
-              const steps = item.onboarding?.completed_steps || [];
-              const verified = item.onboarding?.documents_verified;
-              return (
-                <div key={item.educator?.id} className="bg-white rounded-xl p-4 shadow-sm">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-[#1E3A5F] rounded-full flex items-center justify-center text-white font-bold">
-                      {item.educator?.name?.charAt(0) || '?'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-[#1E3A5F] truncate">{item.educator?.name}</h4>
-                      <p className="text-xs text-slate-500">{steps.length}/7 steps completed</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-lg text-[#1E3A5F]">{Math.round(progress)}%</p>
-                    </div>
-                  </div>
-                  <div className="h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
-                    <div 
-                      className={`h-full transition-all ${progress >= 100 ? 'bg-green-500' : 'bg-orange-500'}`}
-                      style={{ width: `${progress}%` }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className={`px-2 py-0.5 rounded-full ${
-                      verified ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-                    }`}>
-                      {verified ? '✓ Docs Verified' : 'Docs Pending'}
-                    </span>
-                    <button 
-                      onClick={() => setViewEducator(educators.find(e => e.id === item.educator?.id))}
-                      className="text-[#D63031] hover:underline"
-                    >
-                      View Details
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* Onboarding progress is now shown inline inside each educator card */}
 
       {/* Requirements Tab Content */}
       {activeTab === 'requirements' && (
@@ -1081,7 +1215,20 @@ const AdminEducators = () => {
                         <Eye className="w-3 h-3" />
                         View {matchingApps} applicant(s)
                       </button>
-                      <div className="flex gap-2">
+                      <div className="flex gap-1">
+                        {/* Copy link */}
+                        <button
+                          onClick={() => {
+                            const link = `${window.location.origin}/educator/apply/${req.id}`;
+                            navigator.clipboard.writeText(link);
+                            toast.success('Application link copied!');
+                          }}
+                          className="p-2 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Copy public application link"
+                        >
+                          <Copy className="w-4 h-4 text-blue-500" />
+                        </button>
+                        {/* Edit */}
                         <button
                           onClick={() => {
                             setEditingRequirement(req);
@@ -1089,8 +1236,25 @@ const AdminEducators = () => {
                             setShowRequirementModal(true);
                           }}
                           className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                          title="Edit requirement"
                         >
                           <Edit className="w-4 h-4 text-slate-500" />
+                        </button>
+                        {/* Close / Reopen */}
+                        <button
+                          onClick={() => handleCloseRequirement(req)}
+                          className={`p-2 rounded-lg transition-colors ${req.is_active ? 'hover:bg-amber-50 text-amber-500' : 'hover:bg-green-50 text-green-600'}`}
+                          title={req.is_active ? 'Close requirement' : 'Reopen requirement'}
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                        {/* Delete */}
+                        <button
+                          onClick={() => handleDeleteRequirement(req)}
+                          className="p-2 hover:bg-red-50 rounded-lg transition-colors text-red-400 hover:text-red-600"
+                          title="Delete requirement"
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
@@ -1169,16 +1333,50 @@ const AdminEducators = () => {
                 {educator.demo_date && (
                   <p className="flex items-center gap-1 text-purple-600 font-medium">
                     <Calendar className="w-3 h-3" />
-                    Demo: {educator.demo_date} {educator.demo_time && `at ${educator.demo_time}`}
+                    {educator.status === 'tech_scheduled' ? 'Tech Demo:' : 'HR Demo:'} {educator.status === 'tech_scheduled' ? (educator.tech_demo_date || educator.demo_date) : educator.demo_date} {((educator.status === 'tech_scheduled' ? educator.tech_demo_time : educator.demo_time)) && `at ${educator.status === 'tech_scheduled' ? (educator.tech_demo_time || educator.demo_time) : educator.demo_time}`}
                   </p>
                 )}
-                {educator.onboarding_date && (
+                {educator.status === 'hr_done' && (
                   <p className="flex items-center gap-1 text-green-600 font-medium">
                     <CheckCircle2 className="w-3 h-3" />
-                    Onboarded: {educator.onboarding_date}
+                    HR Round Done — Pending Tech Demo
+                  </p>
+                )}
+                {educator.onboarding_date && ['onboarded', 'active', 'onboarding'].includes(educator.status) && (
+                  <p className="flex items-center gap-1 text-green-600 font-medium">
+                    <CheckCircle2 className="w-3 h-3" />
+                    Onboarded: {educator.onboarding_date?.split('T')[0]}
                   </p>
                 )}
               </div>
+
+              {/* Onboarding Progress - inside card for onboarded tab */}
+              {activeTab === 'onboarded' && (() => {
+                const onbItem = onboardingData.find(o => o.educator?.id === educator.id);
+                if (!onbItem) return null;
+                const progress = onbItem.progress || 0;
+                const steps = onbItem.onboarding?.completed_steps || [];
+                const verified = onbItem.onboarding?.documents_verified;
+                return (
+                  <div className="mb-3 p-3 bg-orange-50 rounded-lg border border-orange-100">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-medium text-orange-700">{steps.length}/7 steps</span>
+                      <span className="text-xs font-bold text-[#1E3A5F]">{Math.round(progress)}%</span>
+                    </div>
+                    <div className="h-1.5 bg-orange-100 rounded-full overflow-hidden mb-1.5">
+                      <div
+                        className={`h-full transition-all rounded-full ${progress >= 100 ? 'bg-green-500' : 'bg-orange-500'}`}
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                      verified ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                    }`}>
+                      {verified ? '✓ Docs Verified' : 'Docs Pending'}
+                    </span>
+                  </div>
+                );
+              })()}
 
               {/* Notes shown outside */}
               {educator.notes && (
@@ -1419,6 +1617,114 @@ const AdminEducators = () => {
                     <div className="bg-amber-50 rounded-lg p-3">
                       <p className="text-xs text-amber-500 mb-1">Notes</p>
                       <p className="text-amber-900 whitespace-pre-line">{viewEducator.notes}</p>
+                    </div>
+                  )}
+
+                  {/* Profile Details - For Active/Onboarded educators with profile data */}
+                  {(viewEducator.status === 'active' || viewEducator.status === 'onboarded') && (viewEducator.profile_photo || viewEducator.bio || viewEducator.bank_name || viewEducator.aadhar_number) && (
+                    <div className="border-t pt-4">
+                      <h4 className="font-semibold text-[#1E3A5F] mb-3">Profile Details</h4>
+                      <div className="space-y-3">
+                        {/* Profile Photo & Bio */}
+                        <div className="flex gap-3">
+                          {viewEducator.profile_photo ? (
+                            <img src={viewEducator.profile_photo} alt="Profile" className="w-16 h-16 rounded-lg object-cover" />
+                          ) : (
+                            <div className="w-16 h-16 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400">
+                              <User className="w-6 h-6" />
+                            </div>
+                          )}
+                          <div className="flex-1">
+                            <p className="text-sm text-slate-700">{viewEducator.bio || 'No bio provided'}</p>
+                          </div>
+                        </div>
+                        
+                        {/* Personal Details */}
+                        <div className="grid grid-cols-2 gap-2 text-xs bg-slate-50 rounded-lg p-3">
+                          <div>
+                            <span className="text-slate-500">T-Shirt Size:</span>
+                            <span className="ml-1 font-medium">{viewEducator.tshirt_size || 'N/A'}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500">Available:</span>
+                            <span className={`ml-1 font-medium ${viewEducator.is_available !== false ? 'text-green-600' : 'text-red-600'}`}>
+                              {viewEducator.is_available !== false ? 'Yes' : 'No'}
+                            </span>
+                          </div>
+                          {viewEducator.address_line1 && (
+                            <div className="col-span-2">
+                              <span className="text-slate-500">Address:</span>
+                              <span className="ml-1 font-medium">
+                                {viewEducator.address_line1}{viewEducator.address_line2 && `, ${viewEducator.address_line2}`}, {viewEducator.city}, {viewEducator.state} - {viewEducator.pincode}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Emergency Contact */}
+                        {viewEducator.emergency_contact_name && (
+                          <div className="grid grid-cols-3 gap-2 text-xs bg-red-50 rounded-lg p-3">
+                            <div>
+                              <span className="text-red-400">Emergency Name:</span>
+                              <span className="ml-1 font-medium text-red-700">{viewEducator.emergency_contact_name}</span>
+                            </div>
+                            <div>
+                              <span className="text-red-400">Phone:</span>
+                              <span className="ml-1 font-medium text-red-700">{viewEducator.emergency_contact_phone}</span>
+                            </div>
+                            <div>
+                              <span className="text-red-400">Relation:</span>
+                              <span className="ml-1 font-medium text-red-700">{viewEducator.emergency_contact_relation}</span>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Bank Details */}
+                        {viewEducator.bank_name && (
+                          <div className="grid grid-cols-2 gap-2 text-xs bg-green-50 rounded-lg p-3">
+                            <div>
+                              <span className="text-green-500">Bank:</span>
+                              <span className="ml-1 font-medium text-green-700">{viewEducator.bank_name}</span>
+                            </div>
+                            <div>
+                              <span className="text-green-500">Account Holder:</span>
+                              <span className="ml-1 font-medium text-green-700">{viewEducator.account_holder_name}</span>
+                            </div>
+                            <div>
+                              <span className="text-green-500">Account No:</span>
+                              <span className="ml-1 font-medium text-green-700">{viewEducator.account_number ? '****' + viewEducator.account_number.slice(-4) : 'N/A'}</span>
+                            </div>
+                            <div>
+                              <span className="text-green-500">IFSC:</span>
+                              <span className="ml-1 font-medium text-green-700">{viewEducator.ifsc_code}</span>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Documents */}
+                        <div className="grid grid-cols-2 gap-2 text-xs bg-blue-50 rounded-lg p-3">
+                          <div>
+                            <span className="text-blue-500">Aadhar:</span>
+                            <span className="ml-1 font-medium text-blue-700">{viewEducator.aadhar_number ? '****' + viewEducator.aadhar_number.slice(-4) : 'N/A'}</span>
+                          </div>
+                          <div>
+                            <span className="text-blue-500">PAN:</span>
+                            <span className="ml-1 font-medium text-blue-700">{viewEducator.pan_number || 'N/A'}</span>
+                          </div>
+                          <div>
+                            <span className="text-blue-500">Docs Verified:</span>
+                            <span className={`ml-1 font-medium ${viewEducator.documents_verified ? 'text-green-600' : 'text-orange-600'}`}>
+                              {viewEducator.documents_verified ? 'Yes' : 'Pending'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-blue-500">Contract:</span>
+                            <span className={`ml-1 font-medium ${viewEducator.contract_accepted ? 'text-green-600' : 'text-orange-600'}`}>
+                              {viewEducator.contract_accepted ? 'Accepted' : 'Pending'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -1804,6 +2110,105 @@ const AdminEducators = () => {
         </DialogContent>
       </Dialog>
 
+      {/* HR Done Decision Modal */}
+      <Dialog open={!!hrDoneModal} onOpenChange={() => setHrDoneModal(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-green-600" />
+              HR Round Complete
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            <p className="text-sm text-slate-600 mb-1">What would you like to do with <span className="font-semibold text-slate-800">{hrDoneModal?.name}</span>?</p>
+          </div>
+          <div className="flex flex-col gap-3 pt-1">
+            <button
+              onClick={async () => {
+                await handleHRDone(hrDoneModal);
+                setHrDoneModal(null);
+              }}
+              className="w-full px-4 py-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-medium text-sm flex items-center gap-3 transition-colors"
+              data-testid="hr-done-move-tech"
+            >
+              <CalendarClock className="w-5 h-5 flex-shrink-0" />
+              <div className="text-left">
+                <p className="font-semibold">Move to Technical Round</p>
+                <p className="text-xs text-indigo-500 font-normal">Schedule the technical demo next</p>
+              </div>
+            </button>
+            <button
+              onClick={async () => {
+                await handleStatusChange(hrDoneModal, 'archived');
+                setHrDoneModal(null);
+              }}
+              className="w-full px-4 py-3 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-medium text-sm flex items-center gap-3 transition-colors"
+              data-testid="hr-done-reject"
+            >
+              <Archive className="w-5 h-5 flex-shrink-0" />
+              <div className="text-left">
+                <p className="font-semibold">Reject Applicant</p>
+                <p className="text-xs text-red-400 font-normal">Archive and end their application</p>
+              </div>
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Schedule Tech Demo Modal */}
+      <Dialog open={!!showTechScheduleModal} onOpenChange={() => setShowTechScheduleModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Video className="w-5 h-5 text-indigo-600" />
+              Schedule Technical Demo — {showTechScheduleModal?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="bg-indigo-50 rounded-lg p-3 mb-4">
+            <p className="text-sm text-indigo-700">HR Round completed. Now schedule the Technical Demo round with admin/expert.</p>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Select Date</label>
+              <div className="flex justify-center">
+                <CalendarComponent
+                  mode="single"
+                  selected={techScheduleData.date}
+                  onSelect={(date) => setTechScheduleData({...techScheduleData, date})}
+                  disabled={(date) => date < new Date() || date > addDays(new Date(), 30) || date.getDay() === 0}
+                  className="rounded-xl border border-slate-200"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Select Time</label>
+              <div className="grid grid-cols-4 gap-2">
+                {TIME_SLOTS.map(time => (
+                  <button
+                    key={time}
+                    type="button"
+                    className={`p-2 rounded-lg border text-sm font-medium transition-all ${
+                      techScheduleData.time === time
+                        ? 'border-indigo-600 bg-indigo-50 text-indigo-700'
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                    onClick={() => setTechScheduleData({...techScheduleData, time})}
+                  >
+                    {time}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" onClick={() => setShowTechScheduleModal(null)} className="flex-1">Cancel</Button>
+              <Button onClick={handleScheduleTechDemo} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white">
+                Schedule Tech Demo
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Assign Lead Modal */}
       <Dialog open={!!showAssignModal} onOpenChange={() => setShowAssignModal(null)}>
         <DialogContent className="max-w-md max-h-[90vh]">
@@ -2122,10 +2527,10 @@ const AdminEducators = () => {
             </div>
             <div>
               <label className="text-sm font-medium text-slate-700">City</label>
-              <Input
+              <CitySearch
                 value={directOnboardForm.city}
-                onChange={(e) => setDirectOnboardForm({...directOnboardForm, city: e.target.value})}
-                placeholder="City"
+                onChange={(city) => setDirectOnboardForm({...directOnboardForm, city})}
+                placeholder="Search city..."
               />
             </div>
             <div>
@@ -2189,16 +2594,11 @@ const AdminEducators = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">City *</label>
-                <select
+                <CitySearch
                   value={requirementForm.city}
-                  onChange={(e) => setRequirementForm({ ...requirementForm, city: e.target.value })}
-                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
-                >
-                  <option value="">Select City</option>
-                  {cities.map(c => (
-                    <option key={c.name} value={c.name}>{c.name}</option>
-                  ))}
-                </select>
+                  onChange={(city) => setRequirementForm({ ...requirementForm, city })}
+                  placeholder="Search city..."
+                />
               </div>
             </div>
             <div>
@@ -2307,16 +2707,11 @@ const AdminEducators = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">City</label>
-              <select
+              <CitySearch
                 value={addEducatorForm.city}
-                onChange={(e) => setAddEducatorForm({ ...addEducatorForm, city: e.target.value })}
-                className="w-full h-10 px-3 border border-slate-200 rounded-lg"
-              >
-                <option value="">Select City</option>
-                {cities.map(c => (
-                  <option key={c.name} value={c.name}>{c.name}</option>
-                ))}
-              </select>
+                onChange={(city) => setAddEducatorForm({ ...addEducatorForm, city })}
+                placeholder="Search city..."
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Skills</label>
@@ -2478,10 +2873,10 @@ const AdminEducators = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">City</label>
-                <Input
+                <CitySearch
                   value={editEducatorForm.city}
-                  onChange={(e) => setEditEducatorForm({ ...editEducatorForm, city: e.target.value })}
-                  placeholder="City"
+                  onChange={(city) => setEditEducatorForm({ ...editEducatorForm, city })}
+                  placeholder="Search city..."
                 />
               </div>
               <div>

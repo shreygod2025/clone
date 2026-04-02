@@ -60,7 +60,7 @@ const SchoolLandingPage = () => {
         <meta property="og:title" content="For Schools | Robotics Lab Setup, AI & STEM Programs | OLL" />
         <meta property="og:description" content="Transform your school with Robotics, AI & STEM programs. NEP 2020 aligned, 500+ partner schools. Lab setup, teacher training & student programs." />
         <meta property="og:image" content="https://oll.co/og-image.png" />
-        <meta property="og:site_name" content="OLL - Online Live Learning" />
+        <meta property="og:site_name" content="OLL" />
         
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />

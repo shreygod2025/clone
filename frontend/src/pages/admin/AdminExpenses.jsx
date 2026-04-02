@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { 
   Wallet, Plus, Search, Building2, Calendar, Edit, Trash2, 
   ChevronDown, ChevronUp, FileText, Download, Filter, X,
-  DollarSign, TrendingUp, BarChart3, RefreshCw
+  DollarSign, TrendingUp, BarChart3, RefreshCw, CheckSquare,
+  Upload, Paperclip, ChevronRight
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -32,7 +33,12 @@ const AdminExpenses = () => {
     end_date: ''
   });
   const [searchQuery, setSearchQuery] = useState('');
-  
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [schoolSearch, setSchoolSearch] = useState('');
+  const [showSchoolDropdown, setShowSchoolDropdown] = useState(false);
+  const [invoiceUploading, setInvoiceUploading] = useState(false);
+  const schoolDropdownRef = useRef(null);
+
   const [expenseForm, setExpenseForm] = useState({
     school_id: '',
     category: '',
@@ -43,50 +49,62 @@ const AdminExpenses = () => {
     vendor_name: '',
     payment_status: 'pending',
     payment_mode: '',
-    notes: ''
+    notes: '',
+    expense_breakup_type: '',
+    expense_breakup_value: '',
+    expected_payment_date: '',
+    partial_amount_paid: '',
+    partial_payment_date: '',
+    invoice_file_url: ''
   });
 
   useEffect(() => {
     fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (schoolDropdownRef.current && !schoolDropdownRef.current.contains(e.target)) {
+        setShowSchoolDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       const headers = getAuthHeaders();
-      
-      // Fetch categories
-      const catRes = await axios.get(`${API}/school-expenses/categories`, { headers });
-      setCategories(Array.isArray(catRes.data) ? catRes.data : []);
-      
-      // Fetch schools for dropdown (all schools, not just converted)
-      try {
-        const schoolsRes = await axios.get(`${API}/school-inquiries`, { headers });
-        const schoolsList = schoolsRes.data?.inquiries || schoolsRes.data || [];
-        setSchools(Array.isArray(schoolsList) ? schoolsList : []);
-      } catch (err) {
-        console.error('Failed to fetch schools:', err);
-        setSchools([]);
-      }
-      
-      // Build query params
+
+      // Build expense query params
       const params = new URLSearchParams();
       if (filters.school_id) params.append('school_id', filters.school_id);
       if (filters.category) params.append('category', filters.category);
       if (filters.start_date) params.append('start_date', filters.start_date);
       if (filters.end_date) params.append('end_date', filters.end_date);
-      
-      // Fetch expenses
-      const expRes = await axios.get(`${API}/school-expenses?${params.toString()}`, { headers });
-      // Handle both response formats: direct array or object with expenses property
+      const summaryQuery = filters.school_id ? `?school_id=${filters.school_id}` : '';
+
+      // Run all API calls in parallel for faster load
+      const [catRes, schoolsRes, expRes, summaryRes] = await Promise.all([
+        axios.get(`${API}/school-expenses/categories`, { headers }),
+        axios.get(`${API}/schools/names`, { headers }),
+        axios.get(`${API}/school-expenses?${params.toString()}`, { headers }),
+        axios.get(`${API}/school-expenses/summary${summaryQuery}`, { headers })
+      ]);
+
+      setCategories(Array.isArray(catRes.data) ? catRes.data : []);
+
+      const schoolsList = schoolsRes.data?.inquiries || schoolsRes.data || [];
+      setSchools(Array.isArray(schoolsList) ? schoolsList : []);
+
       const expenseData = Array.isArray(expRes.data) ? expRes.data : (expRes.data?.expenses || []);
       setExpenses(expenseData);
-      
-      // Fetch summary
-      const summaryParams = filters.school_id ? `?school_id=${filters.school_id}` : '';
-      const summaryRes = await axios.get(`${API}/school-expenses/summary${summaryParams}`, { headers });
+      setSelectedIds([]);
+
       setSummary(summaryRes.data);
-      
+
     } catch (error) {
       console.error('Failed to fetch expenses:', error);
       toast.error('Failed to load expenses');
@@ -122,14 +140,40 @@ const AdminExpenses = () => {
   };
 
   const handleDelete = async (expenseId) => {
-    if (!confirm('Are you sure you want to delete this expense?')) return;
-    
+    if (!confirm('Are you sure you want to delete this expense? This cannot be undone.')) return;
     try {
       await axios.delete(`${API}/school-expenses/${expenseId}`, { headers: getAuthHeaders() });
       toast.success('Expense deleted');
       fetchData();
     } catch (error) {
       toast.error('Failed to delete expense');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`Delete ${selectedIds.length} selected expense(s)? This cannot be undone.`)) return;
+    try {
+      await axios.post(`${API}/school-expenses/bulk-delete`, { ids: selectedIds }, { headers: getAuthHeaders() });
+      toast.success(`Deleted ${selectedIds.length} expense(s)`);
+      setSelectedIds([]);
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to delete selected expenses');
+    }
+  };
+
+  const toggleSelect = (id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  const toggleSelectAll = () => setSelectedIds(prev => prev.length === filteredExpenses.length ? [] : filteredExpenses.map(e => e.id));
+
+  const handleCleanDuplicates = async () => {
+    if (!confirm('This will remove duplicate auto-synced expenses (keeping one per school/PO/category). Manually added expenses will not be affected. Continue?')) return;
+    try {
+      const res = await axios.post(`${API}/expenses/cleanup-duplicates`, {}, { headers: getAuthHeaders() });
+      toast.success(res.data.message);
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to clean duplicates');
     }
   };
 
@@ -144,8 +188,15 @@ const AdminExpenses = () => {
       vendor_name: '',
       payment_status: 'pending',
       payment_mode: '',
-      notes: ''
+      notes: '',
+      expense_breakup_type: '',
+      expense_breakup_value: '',
+      expected_payment_date: '',
+      partial_amount_paid: '',
+      partial_payment_date: '',
+      invoice_file_url: ''
     });
+    setSchoolSearch('');
   };
 
   const openEditModal = (expense) => {
@@ -160,9 +211,35 @@ const AdminExpenses = () => {
       vendor_name: expense.vendor_name || '',
       payment_status: expense.payment_status || 'pending',
       payment_mode: expense.payment_mode || '',
-      notes: expense.notes || ''
+      notes: expense.notes || '',
+      expense_breakup_type: expense.expense_breakup_type || '',
+      expense_breakup_value: expense.expense_breakup_value || '',
+      expected_payment_date: expense.expected_payment_date || '',
+      partial_amount_paid: expense.partial_amount_paid || '',
+      partial_payment_date: expense.partial_payment_date || '',
+      invoice_file_url: expense.invoice_file_url || ''
     });
+    setSchoolSearch(expense.school_name || '');
     setShowAddModal(true);
+  };
+
+  const handleInvoiceUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setInvoiceUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await axios.post(`${API}/upload?type=invoice`, formData, {
+        headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
+      });
+      setExpenseForm(prev => ({ ...prev, invoice_file_url: res.data.url }));
+      toast.success('Invoice uploaded successfully');
+    } catch (err) {
+      toast.error('Failed to upload invoice');
+    } finally {
+      setInvoiceUploading(false);
+    }
   };
 
   const formatCurrency = (amount) => {
@@ -202,6 +279,31 @@ const AdminExpenses = () => {
     );
   });
 
+  const exportExpensesToCSV = () => {
+    const headers = ['Date', 'School', 'PO Number', 'Category', 'Description', 'Vendor', 'Subtotal', 'GST', 'Total', 'Status'];
+    const rows = filteredExpenses.map(exp => [
+      exp.expense_date ? format(new Date(exp.expense_date), 'dd MMM yyyy') : '',
+      exp.school_name || '',
+      exp.po_number || '',
+      exp.category_name || '',
+      exp.description || '',
+      exp.vendor_name || '',
+      exp.subtotal || 0,
+      exp.gst_amount || 0,
+      exp.total_amount || exp.total || 0,
+      exp.status || '',
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `expenses_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${filteredExpenses.length} expenses`);
+  };
+
   return (
     <AdminLayout title="Expenses">
       <div className="space-y-6">
@@ -214,13 +316,34 @@ const AdminExpenses = () => {
             </h1>
             <p className="text-slate-600 text-sm mt-1">Track and manage expenses for each school</p>
           </div>
-          <Button 
-            onClick={() => { resetForm(); setEditingExpense(null); setShowAddModal(true); }}
-            className="bg-[#1E3A5F] hover:bg-[#2a4a6f]"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Expense
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={exportExpensesToCSV}
+              className="text-green-700 border-green-300 hover:bg-green-50"
+              data-testid="export-expenses-csv-btn"
+              title="Export current view to CSV"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleCleanDuplicates}
+              className="text-amber-600 border-amber-300 hover:bg-amber-50"
+              title="Remove duplicate auto-synced entries"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Clean Duplicates
+            </Button>
+            <Button 
+              onClick={() => { resetForm(); setEditingExpense(null); setShowAddModal(true); }}
+              className="bg-[#1E3A5F] hover:bg-[#2a4a6f]"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Expense
+            </Button>
+          </div>
         </div>
 
         {/* Summary Cards */}
@@ -347,13 +470,34 @@ const AdminExpenses = () => {
             <FileText className="w-5 h-5" />
             All Expense Entries
           </h2>
-          <span className="text-sm text-slate-500">{filteredExpenses.length} entries</span>
+          <div className="flex items-center gap-3">
+            {selectedIds.length > 0 && (
+              <button
+                onClick={handleBulkDelete}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors font-medium"
+                data-testid="bulk-delete-btn"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete {selectedIds.length} selected
+              </button>
+            )}
+            <span className="text-sm text-slate-500">{filteredExpenses.length} entries</span>
+          </div>
         </div>
         
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px]">
             <thead className="bg-slate-50 border-b">
               <tr>
+                <th className="px-4 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    checked={filteredExpenses.length > 0 && selectedIds.length === filteredExpenses.length}
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 rounded border-slate-300 accent-[#1E3A5F] cursor-pointer"
+                    data-testid="select-all-expenses"
+                  />
+                </th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">Date</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">School</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold text-slate-600">Category</th>
@@ -369,7 +513,16 @@ const AdminExpenses = () => {
             </thead>
             <tbody className="divide-y">
               {filteredExpenses.map((expense) => (
-                <tr key={expense.id} className="hover:bg-slate-50/50">
+                <tr key={expense.id} className={`hover:bg-slate-50/50 transition-colors ${selectedIds.includes(expense.id) ? 'bg-red-50/40' : ''}`}>
+                  <td className="px-4 py-3 w-10">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(expense.id)}
+                      onChange={() => toggleSelect(expense.id)}
+                      className="w-4 h-4 rounded border-slate-300 accent-[#1E3A5F] cursor-pointer"
+                      data-testid={`select-expense-${expense.id}`}
+                    />
+                  </td>
                   <td className="px-4 py-3 text-sm text-slate-600">
                     {expense.expense_date ? format(new Date(expense.expense_date), 'dd MMM yyyy') : '-'}
                   </td>
@@ -387,8 +540,15 @@ const AdminExpenses = () => {
                       <span className="ml-1 text-xs text-green-600">⚡</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-sm text-slate-600 max-w-[200px] truncate">
-                    {expense.description || '-'}
+                  <td className="px-4 py-3 text-sm text-slate-600 max-w-[220px]">
+                    <span className="whitespace-normal break-words leading-snug">{expense.description || '-'}</span>
+                    {expense.expense_breakup_type && (
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Breakup: {expense.expense_breakup_type === 'per_student' ? `₹${expense.expense_breakup_value}/student` :
+                          expense.expense_breakup_type === 'lumpsum' ? `Lumpsum ₹${expense.expense_breakup_value}` :
+                          `${expense.expense_breakup_value}%`}
+                      </p>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-sm text-slate-600">
                     {expense.vendor_name || '-'}
@@ -471,18 +631,27 @@ const AdminExpenses = () => {
                     }`}>
                       {expense.payment_status || 'pending'}
                     </span>
+                    {expense.payment_status === 'partial' && expense.partial_amount_paid && (
+                      <p className="text-xs text-amber-600 mt-0.5">Paid: {formatCurrency(expense.partial_amount_paid)}</p>
+                    )}
+                    {expense.expected_payment_date && expense.payment_status !== 'paid' && (
+                      <p className="text-xs text-slate-400 mt-0.5">Due: {format(new Date(expense.expected_payment_date), 'dd MMM yy')}</p>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-1">
                       <button 
                         onClick={() => openEditModal(expense)}
                         className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600"
+                        title="Edit expense"
                       >
                         <Edit className="w-4 h-4" />
                       </button>
                       <button 
                         onClick={() => handleDelete(expense.id)}
-                        className="p-1.5 hover:bg-red-50 rounded-lg text-red-600"
+                        className="p-1.5 hover:bg-red-50 rounded-lg text-red-500 hover:text-red-700"
+                        title="Delete expense"
+                        data-testid={`delete-expense-${expense.id}`}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -513,19 +682,59 @@ const AdminExpenses = () => {
           </DialogHeader>
           
           <div className="space-y-4 overflow-y-auto flex-1 pr-2">
-            {/* School Selection */}
-            <div>
+            {/* School Selection - Searchable */}
+            <div ref={schoolDropdownRef} className="relative">
               <label className="block text-sm font-medium text-slate-700 mb-1">School *</label>
-              <select
-                value={expenseForm.school_id}
-                onChange={(e) => setExpenseForm({...expenseForm, school_id: e.target.value})}
-                className="w-full h-10 px-3 border border-slate-200 rounded-lg"
-              >
-                <option value="">Select School</option>
-                {schools.map(school => (
-                  <option key={school.id} value={school.id}>{school.school_name}</option>
-                ))}
-              </select>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={schoolSearch}
+                  onChange={(e) => {
+                    setSchoolSearch(e.target.value);
+                    setShowSchoolDropdown(true);
+                    if (!e.target.value) setExpenseForm(prev => ({ ...prev, school_id: '' }));
+                  }}
+                  onFocus={() => setShowSchoolDropdown(true)}
+                  placeholder="Search and select school..."
+                  className="w-full h-10 pl-9 pr-8 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]/30"
+                  data-testid="school-search-input"
+                />
+                {schoolSearch && (
+                  <button
+                    type="button"
+                    onClick={() => { setSchoolSearch(''); setExpenseForm(prev => ({ ...prev, school_id: '' })); }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              {showSchoolDropdown && (
+                <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {schools
+                    .filter(s => s.school_name?.toLowerCase().includes(schoolSearch.toLowerCase()))
+                    .slice(0, 20)
+                    .map(school => (
+                      <button
+                        key={school.id}
+                        type="button"
+                        onClick={() => {
+                          setExpenseForm(prev => ({ ...prev, school_id: school.id }));
+                          setSchoolSearch(school.school_name);
+                          setShowSchoolDropdown(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-50 transition-colors ${expenseForm.school_id === school.id ? 'bg-blue-50 text-blue-700 font-medium' : 'text-slate-700'}`}
+                      >
+                        {school.school_name}
+                      </button>
+                    ))
+                  }
+                  {schools.filter(s => s.school_name?.toLowerCase().includes(schoolSearch.toLowerCase())).length === 0 && (
+                    <p className="px-3 py-2 text-sm text-slate-400">No schools found</p>
+                  )}
+                </div>
+              )}
             </div>
             
             {/* Category Selection */}
@@ -552,6 +761,7 @@ const AdminExpenses = () => {
                   value={expenseForm.amount}
                   onChange={(e) => setExpenseForm({...expenseForm, amount: e.target.value})}
                   placeholder="0"
+                  data-testid="expense-amount-input"
                 />
               </div>
               <div>
@@ -563,15 +773,55 @@ const AdminExpenses = () => {
                 />
               </div>
             </div>
+
+            {/* Expected Payment Date */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Expected Payment Date</label>
+              <Input
+                type="date"
+                value={expenseForm.expected_payment_date}
+                onChange={(e) => setExpenseForm({...expenseForm, expected_payment_date: e.target.value})}
+                data-testid="expected-payment-date-input"
+              />
+            </div>
             
             {/* Description */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Description</label>
-              <Input
+              <Textarea
                 value={expenseForm.description}
                 onChange={(e) => setExpenseForm({...expenseForm, description: e.target.value})}
-                placeholder="Brief description of the expense"
+                placeholder="Full description of the expense"
+                rows={2}
               />
+            </div>
+
+            {/* Expense Breakup */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Expense Breakup</label>
+              <div className="flex gap-2">
+                <select
+                  value={expenseForm.expense_breakup_type}
+                  onChange={(e) => setExpenseForm({...expenseForm, expense_breakup_type: e.target.value})}
+                  className="h-10 px-3 border border-slate-200 rounded-lg text-sm flex-1"
+                  data-testid="breakup-type-select"
+                >
+                  <option value="">Select Type</option>
+                  <option value="per_student">Amount per Student</option>
+                  <option value="lumpsum">Lumpsum</option>
+                  <option value="percentage">Percentage (%)</option>
+                </select>
+                {expenseForm.expense_breakup_type && (
+                  <Input
+                    type="number"
+                    value={expenseForm.expense_breakup_value}
+                    onChange={(e) => setExpenseForm({...expenseForm, expense_breakup_value: e.target.value})}
+                    placeholder={expenseForm.expense_breakup_type === 'percentage' ? '0%' : '₹0'}
+                    className="w-28"
+                    data-testid="breakup-value-input"
+                  />
+                )}
+              </div>
             </div>
             
             {/* Vendor and Invoice */}
@@ -602,6 +852,7 @@ const AdminExpenses = () => {
                   value={expenseForm.payment_status}
                   onChange={(e) => setExpenseForm({...expenseForm, payment_status: e.target.value})}
                   className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                  data-testid="payment-status-select"
                 >
                   <option value="pending">Pending</option>
                   <option value="partial">Partial</option>
@@ -624,6 +875,71 @@ const AdminExpenses = () => {
                 </select>
               </div>
             </div>
+
+            {/* Partial Payment Details - shown only when status is 'partial' */}
+            {expenseForm.payment_status === 'partial' && (
+              <div className="grid grid-cols-2 gap-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                <div>
+                  <label className="block text-sm font-medium text-amber-700 mb-1">Partial Amount Paid (₹)</label>
+                  <Input
+                    type="number"
+                    value={expenseForm.partial_amount_paid}
+                    onChange={(e) => setExpenseForm({...expenseForm, partial_amount_paid: e.target.value})}
+                    placeholder="0"
+                    data-testid="partial-amount-input"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-amber-700 mb-1">Date Paid</label>
+                  <Input
+                    type="date"
+                    value={expenseForm.partial_payment_date}
+                    onChange={(e) => setExpenseForm({...expenseForm, partial_payment_date: e.target.value})}
+                    data-testid="partial-payment-date-input"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Invoice Upload - only in edit mode */}
+            {editingExpense && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Upload Invoice Document</label>
+                <div className="space-y-2">
+                  {expenseForm.invoice_file_url ? (
+                    <div className="flex items-center gap-2 p-2 bg-green-50 border border-green-200 rounded-lg">
+                      <Paperclip className="w-4 h-4 text-green-600 flex-shrink-0" />
+                      <a href={expenseForm.invoice_file_url} target="_blank" rel="noopener noreferrer"
+                         className="text-sm text-green-700 hover:underline truncate flex-1">
+                        View Invoice
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => setExpenseForm(prev => ({ ...prev, invoice_file_url: '' }))}
+                        className="text-slate-400 hover:text-red-500"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex items-center gap-2 px-3 py-2 border border-dashed border-slate-300 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors">
+                      <Upload className="w-4 h-4 text-slate-400" />
+                      <span className="text-sm text-slate-500">
+                        {invoiceUploading ? 'Uploading...' : 'Click to upload (PDF, image, max 10MB)'}
+                      </span>
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                        onChange={handleInvoiceUpload}
+                        disabled={invoiceUploading}
+                        data-testid="invoice-file-input"
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
+            )}
             
             {/* Notes */}
             <div>

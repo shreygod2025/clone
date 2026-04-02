@@ -12,6 +12,7 @@ import { Checkbox } from '../../components/ui/checkbox';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import axios from 'axios';
+import CitySearch from '../../components/CitySearch';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -114,6 +115,7 @@ const AdminUsers = () => {
 
   useEffect(() => {
     fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchData = async () => {
@@ -697,10 +699,10 @@ const AdminUsers = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">City</label>
-                <Input
+                <CitySearch
                   value={userForm.city}
-                  onChange={(e) => setUserForm({ ...userForm, city: e.target.value })}
-                  placeholder="e.g., Mumbai, Delhi"
+                  onChange={(city) => setUserForm({ ...userForm, city })}
+                  placeholder="Search city..."
                 />
                 <p className="text-xs text-slate-500 mt-1">Used for location-based assignment</p>
               </div>

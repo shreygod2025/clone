@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Eye, Building2, Phone, MapPin, Plus, MessageSquare, Calendar, Archive, CalendarClock, CheckCircle2, CheckCircle, Video, Users, User, Mail, Layers, DollarSign, UserPlus, Send, Clock, Edit, Save, RefreshCw, RefreshCcw, X, Upload, Download, FileSpreadsheet, AlertCircle, Gift, FileText, Receipt, Paperclip, History, Ticket, FileCheck, ChevronDown, ChevronUp, Mic, MicOff, Play, Pause, Trash2, Package, ExternalLink, CreditCard, BarChart3, FileSignature } from 'lucide-react';
+import { Search, Eye, Building2, Phone, MapPin, Plus, MessageSquare, Calendar, Archive, CalendarClock, CalendarDays, CheckCircle2, CheckCircle, Video, Users, User, Mail, Layers, DollarSign, UserPlus, Send, Clock, Edit, Save, RefreshCw, RefreshCcw, X, Upload, Download, FileSpreadsheet, AlertCircle, Gift, FileText, Receipt, Paperclip, History, Ticket, FileCheck, ChevronDown, ChevronUp, Mic, MicOff, Play, Pause, Trash2, Package, ExternalLink, CreditCard, BarChart3, FileSignature } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -14,20 +14,13 @@ import axios from 'axios';
 import PhoneInput from '../../components/PhoneInput';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import QRCode from 'qrcode';
-import { saveAs } from 'file-saver';
+import { generateProposalDocument } from '../../utils/proposalPdfGenerator';
+import { generateMOUDocument } from '../../utils/mouPdfGenerator';
+import BulkEmailModal from '../../components/BulkEmailModal';
+import { generateParentCircularDocument } from '../../utils/parentCircularGenerator';
+import { SchoolMapPicker } from '../../components/SchoolMapPicker';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
-
-// OLL Horizontal Logo for Proposals (black text version)
-const OLL_LOGO_HORIZONTAL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAB4AAAAQ4CAMAAADfDTFxAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAGNQTFRF8sfJ5JCUj5evx8vXV2SI11lfLT1q/PHyzS828fL11djhc36c3nV666uu9dXX0T1E+OPk4+XrSVd+O0p01EtRgYum4YOHq7HD7rm8ub7N22ds6J2hZXGSnaS5HzBgyiEp////mWXqBwAAACF0Uk5T//////////////////////////////////////////8An8HQIQAAMPZJREFUeNrs3Wd3IruagFEDBozJxjlQ/P9febtP7tsJMPUq7f1t1sys4yLoaalU4uoAAIS78hIAgAADgAADAAIMAAIMAAgwACDAACDAAIAAA4AAA4AAAwACDAACDAAIMAAIMAAgwAAgwACAAAOAAAOAAAMAAgwAAgwACDAACDAAIMAAIMAAgAADgAADgAADAAIMAAIMAAgwAAgwACDAACDAAIAAA4AAA4AAAwACDAACDAAIMAAIMAAgwAAgwACAAAOAAAOAAAMAAgwAAgwACDAACDAAIMAAIMAAgAADgAADgAADAAIMAAIMAAgwAAgwACDAACDAAIAAA4AAA4AAAwACDAACDAAIMAAIMAAgwAAgwACAAAOAAAOAAAMAAgwAAgwACDAACDAAIMAAIMAAgAADgAADgAADAAIMAAIMAAgwAAgwACDAACDAAIAAA4AAAwACDAACDAACDAAIMAAIMAAgwAAgwACAAAOAAAMAAgwAAgwAAgwACDAACDAAIMAAIMAAgAADgAADAAIMAAIMAAIMAAgwAAgwACDAACDAAIAAA4AAAwACDAACDAACDAAIMAAIMAAgwAAgwACAAAOAAAMAAgwAAgwAAgwACDAACDCEm15dhBcSEGD49Qey64PXFRBgEGAAAUaAAQQYBBgQYBBgAAFGgAUYEGAQYAABRoAFGBBgEGAAAUaABRgQYBBgAAFGgAEEGAQYEGCoKsBTLywgwBAfYB9zQIBBgAEEGAEGEGAQYECAQYABBBgBFmBAgEGAAQQYARZgQIBBgAEEGAEWYECAQYABBBgBBhBgEGBAgEGAAQQYARZgQIBBgAEEGAEWYECAQYABBBgBFmBAgEGAAQQYAQYQYBBgQIBBgAEEuDLPi5s8XvPV1Q+9DX7o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';
-// OLL Brand Colors
-const OLL_BLUE = '#1e3a5f';
-
-// OLL Logo embedded as base64 (white version for dark header backgrounds)
-const OLL_LOGO_B64 = 'data:image/png;base64,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CrDVEWDgTYDdRQG2OwIMCLAAC7AFAwTYfRRguyPAwJsAO4sCbHkEGBBgARZgCwZEBNhVFGDbI8CAAAuwAFswQIDdRwG2PQIMvAmwoyjA1keAAQEWYAG2YIAAu48CbH0EGHgTYDdRgAVYgAEBFmABtmCAALuPAmx/BBh4E2AnUYAFWIABARZgAbZggAC7jwJsgQQYEGABFmALBpwJsIsowAIswIAAC7AAWzBAgN1HAbZB+gu8CbCLKMACLMCAAAvwwh9maQQYBNjxFGABtl/AigA7iAKswAIMCLAAu/wAAizAAgyAAAuwAAOcCbDeCjAAAizAAgwgwAIswAC8CbDcCjAAAizAAgwgwAIswAAIsAALMMCZAKutAAMgwAIswAACLMACDIAAC7AAA5wJsNgKMAACLMACDCDAAizAAAiwAAswwJkAa60AAyDAAizAAAIswAIMgAALsAADnAmw1AowAAIswAIMIMACLMAACLAACzCAAAuwAAPw5wFWWgEGQIAFWIABBFiABRgAARZgAQY4E2ChFWAABFiABRhAgAVYgAEQYAEWYAABFmABBuDPA6yzAgyAAAuwAAMIsAALMAACLMACDCDAAizAAAiwAAswwKoAy2xggBUYQIAFWIABBBgBBkCABViAAQRYgAUYgF8LsMoKMAACLMACDCDAAizAAAiwAAswgAALsAADIMACLMAAAizAAgwgwPorwAIMIMACLMAAAizAAgyAAAuwAAMIMAIMgAALsAADHAqwxgowAAIswAIMIMAIMAACLMACDCDAAizAAAiwAAswgAALsAADCLAAC7AAA4wLsMQKMAACLMACDCDACDAAAizAAgwgwAIswAAIsAALMIAAC7AAAwiwAAuwAAMIsAALMIAAC7AAA9ASYIUVYAAEWIAFGECAEWAABFiABRhAgAVYgAEQYAEWYAABFmABBhBgARZg/O0CCLBb61NYCkCAXX0BRoABARZgLAUgwAgwAgwIsAAjwMClALulAowAAwIswFgKQIARYAQYEGABRoABAXZrBdhSAAiwACPAgAC7tQJsKQABdvQFGAEGBNit9S0sBSDAjr4AI8CAAAswlgIQYAQYAQYEWIARYECA3VoBthQAAizACDAgwG6tAFsKQIAdfQFGgAEBdmt9C0sBCLCjL8AIMCDAbq1vYSkAAUaAEWBAgAUYAQYE2K0VYEsB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';
 
 const TICKET_SOURCE_OPTIONS = [
   { value: 'school_crm', label: 'School CRM' },
@@ -62,6 +55,12 @@ const STATUS_SECTIONS = [
   { value: 'renewed', label: 'Renewed', color: 'bg-emerald-500' },
   { value: 'lost', label: 'Lost', color: 'bg-red-500' },
   { value: 'archived', label: 'Archived', color: 'bg-slate-400' },
+];
+
+// Lost sub-statuses for granular tracking
+const LOST_SUB_STATUSES = [
+  { value: 'lost_lead', label: 'Lost Leads', color: 'bg-red-400' },
+  { value: 'lost_customer', label: 'Lost Customers', color: 'bg-red-600' },
 ];
 
 // Ticket query types with FAQ auto-fill
@@ -151,7 +150,7 @@ const TICKET_RELATED_TO_OPTIONS = {
   ],
 };
 
-const CITIES = ['Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow'];
+import CitySearch from '../../components/CitySearch';
 const BOARDS = ['CBSE', 'ICSE', 'IGCSE', 'State Board', 'IB'];
 const TIME_SLOTS = [
   '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', 
@@ -516,6 +515,10 @@ const AdminSchoolCRM = () => {
   // Contacts Management State
   const [allContacts, setAllContacts] = useState([]);
   const [contactSearchQuery, setContactSearchQuery] = useState('');
+  // Email modal state
+  const [emailModal, setEmailModal] = useState(null); // { mode, ...props }
+  // Contacts bulk selection
+  const [contactBulkSelected, setContactBulkSelected] = useState([]);
   const [showEditContactModal, setShowEditContactModal] = useState(null);
   const [editContactData, setEditContactData] = useState({
     name: '', phone: '', email: '', role: '', school_id: '', school_name: '',
@@ -538,6 +541,8 @@ const AdminSchoolCRM = () => {
   const [showMeetingDoneModal, setShowMeetingDoneModal] = useState(null);
   const [showLostReasonModal, setShowLostReasonModal] = useState(null);
   const [lostReason, setLostReason] = useState('');
+  const [lostLeadValue, setLostLeadValue] = useState('');
+  const [lostTargetStatus, setLostTargetStatus] = useState('lost'); // 'lost_lead' or 'lost_customer'
   const [showEditLeadModal, setShowEditLeadModal] = useState(null);
   const [generatingProposal, setGeneratingProposal] = useState(false);
   const [lastProposalPDF, setLastProposalPDF] = useState(null); // { base64, filename, schoolId }
@@ -566,6 +571,13 @@ const AdminSchoolCRM = () => {
   const [schoolPoData, setSchoolPoData] = useState(null);  // PO data from ProcureWay
   const [loadingPoData, setLoadingPoData] = useState(false);
   const [syncingExpenses, setSyncingExpenses] = useState(false);
+  const [showRaisePODialog, setShowRaisePODialog] = useState(false);
+  const [poPreviewProducts, setPoPreviewProducts] = useState([]);
+  const [loadingPoPreview, setLoadingPoPreview] = useState(false);
+  const [poPreviewLoaded, setPoPreviewLoaded] = useState(false);
+  const [newPoProduct, setNewPoProduct] = useState({ product_name: '', quantity: '' });
+  const [poDeliveryDate, setPoDeliveryDate] = useState('');
+  const [raisingPO, setRaisingPO] = useState(false);
   const [renewalConvertData, setRenewalConvertData] = useState({
     offering: '',
     model: '',
@@ -607,7 +619,8 @@ const AdminSchoolCRM = () => {
     quoted_price: '',
     followup_type: '', // 'message' or 'meeting'
     followup_date: null, 
-    followup_time: '' 
+    followup_time: '',
+    sendFollowupEmail: true,
   });
   const [newMeetingData, setNewMeetingData] = useState({ date: null, time: '', type: 'offline', notes: '' });
   const [newComment, setNewComment] = useState('');
@@ -683,6 +696,34 @@ const AdminSchoolCRM = () => {
     meeting_link: '', // if online
     address: '' // if offline
   });
+  const [meetingDoneEmailState, setMeetingDoneEmailState] = useState({
+    selectedTemplate: null, // 'next_steps' | 'confirmation' | 'custom'
+    subject: '',
+    body_html: '',
+    sending: false,
+    sent: false
+  });
+  const [showTimetableBuilder, setShowTimetableBuilder] = useState(null); // schoolId when open
+  const [timetableFormLocal, setTimetableFormLocal] = useState({
+    session_mode: 'offline', start_date: '', end_date: '',
+    days_of_week: [], time_slots: {}, sessions_per_week: '', timetable_status: 'active', notes: '', educator_id: ''
+  });
+  const [checkinEducators, setCheckinEducators] = useState([]);
+  const [checkinEducatorsLoading, setCheckinEducatorsLoading] = useState(false);
+  const [savingTimetable, setSavingTimetable] = useState(false);
+  const [showSessionsModal, setShowSessionsModal] = useState(null);
+  const [sessionsData, setSessionsData] = useState([]);
+  const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [sessionsMeta, setSessionsMeta] = useState({});
+  const [sessionsFilter, setSessionsFilter] = useState({ status: '', start_date: '', end_date: '' });
+  const [editingSession, setEditingSession] = useState(null);
+  const [sessionEditForm, setSessionEditForm] = useState({});
+  // Full edit session modal
+  const [showEditSessionModal, setShowEditSessionModal] = useState(null); // session object
+  const [editSessionFullForm, setEditSessionFullForm] = useState({});
+  // Standalone timetable editor
+  const [showStandaloneTimetableModal, setShowStandaloneTimetableModal] = useState(null); // school object
+  const [standaloneTimetableLoading, setStandaloneTimetableLoading] = useState(false);
   // Contact Management Filters
   const [contactCityFilter, setContactCityFilter] = useState('all');
   const [contactRoleFilter, setContactRoleFilter] = useState('all');
@@ -726,6 +767,7 @@ const AdminSchoolCRM = () => {
   const [offerings, setOfferings] = useState([]);
   const [uploadingMOU, setUploadingMOU] = useState(false);
   const [generatingMOU, setGeneratingMOU] = useState(false);
+  const [generatingEditMOU, setGeneratingEditMOU] = useState(false);
   const [generatingParentCircular, setGeneratingParentCircular] = useState(false);
   const lastOnboardInquiryId = useRef(null);
   // Email modal states
@@ -753,8 +795,9 @@ const AdminSchoolCRM = () => {
     notes: '',
     quoted_price: '',
     selected_offerings: [],
-    assign_option: 'self', // 'self' or 'admin'
-    sendIntroEmail: false
+    assign_option: 'self',
+    sendIntroEmail: false,
+    school_contacts: [{ name: '', role: '', phone_number: '', country_code: '+91', email: '' }]
   });
 
   useEffect(() => {
@@ -762,6 +805,7 @@ const AdminSchoolCRM = () => {
     fetchTeamUsers();
     fetchOfferings();
     fetchRelationshipManagers();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Extract all contacts from all schools for contact management
@@ -829,6 +873,7 @@ const AdminSchoolCRM = () => {
       }
     };
     fetchSchoolHistory();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewInquiry?.id]);
 
   // Auto-fetch PO data when onboarding workflow modal opens
@@ -869,7 +914,9 @@ const AdminSchoolCRM = () => {
             });
             setShowOnboardingWorkflowModal(prev => ({
               ...prev,
-              onboarding_workflow: updatedResponse.data.workflow
+              onboarding_workflow: updatedResponse.data.workflow,
+              po_requests: updatedResponse.data.po_requests || [],
+              onboarding_data: updatedResponse.data.onboarding_data || prev.onboarding_data,
             }));
           }
         }
@@ -881,6 +928,7 @@ const AdminSchoolCRM = () => {
       }
     };
     autoFetchPoData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showOnboardingWorkflowModal?.id]);
 
   // Get this week's data for dashboard
@@ -925,8 +973,11 @@ const AdminSchoolCRM = () => {
       .sort((a, b) => new Date(a.meeting_date) - new Date(b.meeting_date));
 
     // Legacy followups (from followup_date field) - use next 7 days
+    // Only include new leads and meeting_done; exclude converted/active/archived etc.
+    const followupStatuses = ['new', 'meeting_done'];
     const legacyFollowups = inquiries.filter(i => {
       if (!i.followup_date) return false;
+      if (!followupStatuses.includes(i.status)) return false;
       const followupDate = new Date(i.followup_date);
       return followupDate >= startOfToday && followupDate <= endOfNext7Days;
     }).map(i => ({
@@ -939,6 +990,8 @@ const AdminSchoolCRM = () => {
     const scheduledFollowups = [];
     const taskLabels = { followup_1: 'F1: OLL Program', followup_2: 'F2: Partner Schools', followup_3: 'F3: Admissions +15%', followup_4: 'F4: Last Note' };
     inquiries.forEach(i => {
+      // Only include new leads and meeting_done
+      if (!followupStatuses.includes(i.status)) return;
       if (i.followup_tasks && Array.isArray(i.followup_tasks)) {
         i.followup_tasks.forEach(task => {
           if (task.status === 'pending') {
@@ -1088,6 +1141,9 @@ const AdminSchoolCRM = () => {
       gp_share_calc: existingOnboardData.gp_share_calc || 'lumpsum',
       gp_share_value: existingOnboardData.gp_share_value || '',
       gp_share_amount: existingOnboardData.gp_share_amount || 0,
+      // Store school identity fields in onboardData as fallback for PDF generation
+      _school_name: inquiry.school_name || inquiry.name || '',
+      _school_id: inquiry.id,
     });
     setShowOnboardModal(inquiry);
   };
@@ -1105,9 +1161,9 @@ const AdminSchoolCRM = () => {
     
     setEditLeadData({
       offering: existingData.offering || inquiry.selected_offerings?.[0] || '',
-      training_type: existingData.training_type || 'teacher_training',
-      grades_from: existingData.grades_from || '1st',
-      grades_to: existingData.grades_to || '8th',
+      training_type: existingData.training_type || 'both',
+      grades_from: existingData.grades_from || 'Jr. Kg',
+      grades_to: existingData.grades_to || '10th',
       program_type: existingData.program_type || 'lab_setup',
       lab_kit_count: existingData.lab_kit_count || 30,
       kit_ratio: existingData.kit_ratio || '1:2',
@@ -1119,6 +1175,10 @@ const AdminSchoolCRM = () => {
       pricing_type: existingData.pricing_type || 'per_student',
       fixed_price: existingData.fixed_price || '',
       notes: existingData.notes || '',
+      // Read school_contacts from top-level inquiry field (NOT from proposal_data/onboarding_data)
+      school_contacts: inquiry.school_contacts?.length > 0
+        ? inquiry.school_contacts
+        : [{ name: '', role: '', phone_number: '', country_code: '+91', email: '' }],
     });
     setShowEditLeadModal(inquiry);
   };
@@ -1128,324 +1188,12 @@ const AdminSchoolCRM = () => {
     const school = overrideSchool || showEditLeadModal;
     const data = overrideData || editLeadData;
     if (!school) return;
-
-    // Auto-save proposal data when triggered from the edit lead modal (not from renewal override)
     if (!overrideSchool && showEditLeadModal?.id) {
       await autoSaveProposalData(showEditLeadModal.id, editLeadData);
     }
-
     setGeneratingProposal(true);
     try {
-      const PW = 210, PH = 297, M = 15;
-      const CW = PW - M * 2;
-      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-      
-      const schoolName = school?.school_name || school?.name || 'School';
-
-      // Helper function to add a bullet point with proper spacing (OLL Blue bullets)
-      const addBulletPoint = (text, xOffset = 8) => {
-        doc.setFillColor(30, 58, 95); // OLL Blue #1e3a5f
-        doc.circle(M + 3, y - 1.5, 1.2, 'F');
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(0, 0, 0);
-        const lines = doc.splitTextToSize(text, CW - xOffset - 4);
-        lines.forEach((line, idx) => {
-          doc.text(line, M + xOffset, y);
-          y += 5;
-        });
-        y += 1;
-      };
-
-      let y = 12;
-
-      // ── BLUE HEADER BAND WITH WHITE LOGO ────────────────────────
-      const HEADER_HEIGHT = 32;
-      doc.setFillColor(30, 58, 95); // OLL Blue #1e3a5f
-      doc.rect(0, 0, PW, HEADER_HEIGHT, 'F');
-      
-      try {
-        // Add white logo on blue background
-        doc.addImage(OLL_LOGO_B64, 'PNG', M, 4, 45, 24);
-      } catch {
-        // Fallback: just add white text if logo fails
-        doc.setFontSize(18);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(255, 255, 255);
-        doc.text('OLL', M + 10, 20);
-      }
-      y = HEADER_HEIGHT + 10;
-
-      // ── TITLE (OLL Blue) ────────────────────────────────────────────
-      doc.setFontSize(16);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95); // OLL Blue #1e3a5f
-      doc.text('OLL Robotics and AI Program Proposal', PW / 2, y, { align: 'center' });
-      y += 7;
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(100, 100, 100);
-      doc.text(`For ${schoolName}`, PW / 2, y, { align: 'center' });
-      y += 10;
-
-      // ── GREETING ──────────────────────────────────────────
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(0, 0, 0);
-      const greetingText = `Dear ${schoolName} Team,`;
-      doc.setFont('helvetica', 'bold');
-      doc.text(greetingText, M, y);
-      doc.setFont('helvetica', 'normal');
-      y += 6;
-      doc.text('Greetings from Team OLL', M, y);
-      y += 10;
-
-      // ── INTRODUCTION (with increased line spacing) ────────────────────────────────────────────
-      doc.setFontSize(10);
-      doc.setTextColor(0, 0, 0);
-      const introText = `We are delighted to share our OLL's Robotics & AI Lab Setup for the upcoming academic year for your school. Designed for students from Grades 1 to 10th, this program has already been successfully implemented in 400+ schools across India, with remarkable achievements.`;
-      const introLines = doc.splitTextToSize(introText, CW);
-      // Increased line spacing (7mm instead of 5mm)
-      introLines.forEach((line, idx) => {
-        doc.text(line, M, y + (idx * 7));
-      });
-      y += introLines.length * 7 + 8;
-
-      // ── PROGRAM DETAILS BOX ───────────────────────────────────
-      doc.setFillColor(245, 245, 245);
-      doc.setDrawColor(200, 200, 200);
-      doc.setLineWidth(0.5);
-      doc.roundedRect(M, y, CW, 26, 2, 2, 'FD');
-      
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(0, 0, 0);
-      
-      // Course type display
-      const courseTypeDisplay = data.course_type === 'robotics_coding_ai' ? 'Robotics, Coding & AI' : 'Robotics & AI';
-      doc.text(`Program: ${courseTypeDisplay}`, M + 8, y + 8);
-      
-      // Model display
-      const modelDisplay = data.model === 'optional' ? 'Optional' : 'Compulsory';
-      doc.text(`Model: ${modelDisplay}`, M + 100, y + 8);
-      
-      // Training type display
-      const trainingDisplay = data.training_type === 'teacher_training' ? 'Teacher Training' : data.training_type === 'student_training' ? 'Student Training' : 'Both';
-      doc.text(`Type of Training: ${trainingDisplay}`, M + 8, y + 15);
-      
-      doc.text(`Grades: ${data.grades_from || '1st'} to ${data.grades_to || '8th'}`, M + 8, y + 22);
-      y += 32;
-
-      // ── PROGRAM DELIVERABLES SECTION (OLL Blue) ────────────────────────────
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95); // OLL Blue #1e3a5f
-      doc.text('Program Deliverables', M, y);
-      y += 8;
-
-      doc.setFontSize(10);
-      doc.setTextColor(0, 0, 0);
-
-      // Build deliverables array conditionally based on kit_type, training_type, book_type
-      const deliverables = [];
-
-      // 1. Lab Kits - only if program_type is lab_setup
-      if (data.program_type === 'lab_setup') {
-        deliverables.push(`${data.lab_kit_count || 30} Master Robotics & AI Lab Kits will be provided to the school. Kit to Child ratio: ${data.kit_ratio || '1:2'}`);
-        deliverables.push('Lab Wallpapers & Decoration material will be provided');
-      }
-
-      // 2. Individual kit - only if program_type is per_student
-      if (data.program_type === 'per_student') {
-        deliverables.push('Individual Robotics & AI Kit will be provided to each student');
-      }
-
-      // 3. Curriculum - always show
-      deliverables.push('28 Projects Based Curriculum covering: Robotics, Coding, 3D Design, AI, Science');
-
-      // 4. Training - based on training_type
-      if (data.training_type === 'teacher_training') {
-        deliverables.push('Year Long Teacher Training will be provided to the School Teachers');
-        deliverables.push('One Hardcopy Robotics Manual per Grade will be provided to the Teachers');
-      } else if (data.training_type === 'student_training') {
-        deliverables.push('Direct Student Training sessions will be conducted by OLL trainers');
-      } else if (data.training_type === 'both') {
-        deliverables.push('Year Long Teacher Training will be provided to the School Teachers');
-        deliverables.push('Direct Student Training sessions will also be conducted by OLL trainers');
-        deliverables.push('One Hardcopy Robotics Manual per Grade will be provided to the Teachers');
-      }
-
-      // 5. LMS Access - always show
-      deliverables.push('Each child gets LMS Access - Tracking progress, Monitoring Assessment & Soft copy STEM Certificate');
-
-      // 6. Events - always show
-      deliverables.push('Robotics Competition & Robotics Exhibition conducted at the School');
-
-      // 7. Books - only if book_type is individual
-      if (data.book_type === 'individual') {
-        deliverables.push('Hardcopy Robotics Take Home Book per child');
-      }
-
-      // Render deliverables with proper bullet points
-      deliverables.forEach((item) => {
-        addBulletPoint(item);
-      });
-      y += 4;
-
-      // ── FEES STRUCTURE TABLE (OLL Blue) ────────────────────────────────────
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95); // OLL Blue #1e3a5f
-      doc.text('Fees Structure', M, y);
-      y += 6;
-
-      // Build fees table based on pricing_type
-      const pricingType = data.pricing_type || 'per_student';
-      let feeRows = [];
-      
-      if (pricingType === 'fixed') {
-        // Fixed price only
-        const fixedPrice = data.fixed_price || '0';
-        feeRows.push(['Robotics & AI Program (Annual Fee)', `Rs. ${Number(fixedPrice).toLocaleString('en-IN')}`]);
-      } else if (pricingType === 'both') {
-        // Show both fixed and per-student pricing
-        const fixedPrice = data.fixed_price || '0';
-        feeRows.push(['Fixed Annual Program Fee', `Rs. ${Number(fixedPrice).toLocaleString('en-IN')}`]);
-        
-        // Add grade-wise pricing
-        const gradePricing = data.grade_pricing || [];
-        gradePricing.filter(gp => gp.grade && gp.price_per_student).forEach(gp => {
-          feeRows.push([`Grade ${gp.grade} (Per Student)`, `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}/student/year`]);
-        });
-      } else {
-        // Per student pricing (default)
-        const gradePricing = data.grade_pricing || [];
-        feeRows = gradePricing.filter(gp => gp.grade && gp.price_per_student).map(gp => [
-          `Grade ${gp.grade}`,
-          `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}/student/year`
-        ]);
-        
-        // If no grade pricing, show default
-        if (feeRows.length === 0) {
-          feeRows.push(['Robotics & AI Program Fees', 'Per student pricing (to be discussed)']);
-        }
-      }
-
-      autoTable(doc, {
-        startY: y,
-        head: [['Structure', 'Fees for Program']],
-        body: feeRows,
-        theme: 'grid',
-        headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontSize: 10, fontStyle: 'bold' }, // OLL Blue header
-        styles: { fontSize: 10, cellPadding: 4, textColor: [0, 0, 0] },
-        columnStyles: { 0: { cellWidth: 90 }, 1: { cellWidth: 90 } },
-        margin: { left: M, right: M },
-        alternateRowStyles: { fillColor: [248, 248, 248] },
-      });
-      y = doc.lastAutoTable.finalY + 10;
-
-      // ── PAGE 2 ──────────────────────────────────────────────────
-      doc.addPage();
-      y = 12;
-
-      // Logo on page 2
-      try {
-        doc.addImage(OLL_LOGO_HORIZONTAL, 'PNG', M, y, 50, 12);
-      } catch {
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(0, 0, 0);
-        doc.text('OLL', M, y + 8);
-      }
-      y += 22;
-
-      // ── REQUIREMENTS FROM SCHOOL (OLL Blue) ────────────────────────────────
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95); // OLL Blue #1e3a5f
-      doc.text('Requirements from School', M, y);
-      y += 8;
-
-      doc.setFontSize(10);
-      doc.setTextColor(0, 0, 0);
-
-      const requirements = [
-        'Schools need to provide a list of enrolled students (Name, STD & Division), Schedule, school holidays & exam in a specific format for program related communication & Certification purposes.',
-        `The program should be opted for a minimum ${data.min_students || 800} students for the altogether chosen grades, as selected by the school for this pricing.`,
-        'OLL collects 100% advance Program Fees which can be submitted via NEFT/Cheque to Clone Futura Live Solutions Private Limited.'
-      ];
-
-      requirements.forEach((item) => {
-        addBulletPoint(item);
-      });
-      y += 6;
-
-      // ── NEXT STEPS BOX ──────────────────────────────────────────
-      doc.setFillColor(248, 248, 248);
-      doc.setDrawColor(200, 200, 200);
-      doc.setLineWidth(0.5);
-      const nextStepsText = `Upon finalizing the proposal, we will proceed with signing the Memorandum of Understanding (MoU), which will be shared by OLL.\n\nAfter signing the MoU and completion of the payment process, a minimum of 15 days will be required to commence the teacher training program to ensure proper allocation and verification of resource personnel for quality execution.`;
-      const nextStepsLines = doc.splitTextToSize(nextStepsText, CW - 16);
-      const boxHeight = nextStepsLines.length * 5 + 12;
-      doc.roundedRect(M, y, CW, boxHeight, 2, 2, 'FD');
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(0, 0, 0);
-      doc.text(nextStepsLines, M + 8, y + 8);
-      y += boxHeight + 10;
-
-      // ── CLOSING (OLL Blue) ─────────────────────────────────────────────────
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95); // OLL Blue #1e3a5f
-      doc.text('We look forward to your positive response and a fruitful collaboration ahead!', M, y);
-      y += 12;
-
-      // ── CONTACT INFO ─────────────────────────────────────────────
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(0, 0, 0);
-      doc.text('For any queries or assistance, feel free to contact our Business Development Team at', M, y);
-      y += 8;
-
-      doc.setFont('helvetica', 'bold');
-      doc.text('+91 9699188188  |  Team OLL  |  www.oll.co', M, y);
-
-      // ── DOWNLOAD ────────────────────────────────────────────────
-      const fileName = `Proposal_${(schoolName).replace(/\s+/g, '_')}_${format(new Date(), 'ddMMMyyyy')}.pdf`;
-      
-      // ── STORE BASE64 FOR EMAIL ATTACHMENT ──────────────────────
-      const pdfBase64 = doc.output('datauristring').split(',')[1];
-      setLastProposalPDF({ base64: pdfBase64, filename: fileName, schoolId: school.id });
-      
-      doc.save(fileName);
-
-      // ── UPLOAD & STORE ──────────────────────────────────────────
-      try {
-        const pdfBlob = doc.output('blob');
-        const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
-        const formData = new FormData();
-        formData.append('file', pdfFile);
-        const uploadRes = await axios.post(`${API}/upload`, formData, {
-          headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' },
-        });
-        const fileUrl = uploadRes.data.url;
-        
-        // Save to documents
-        const existingDocs = school?.documents || [];
-        const newDoc = {
-          type: 'Proposal',
-          url: fileUrl,
-          name: fileName,
-          uploaded_at: new Date().toISOString(),
-          uploaded_by: user?.name || user?.email || 'Admin',
-        };
-        await axios.patch(`${API}/schools/inquiry/${school.id}`, {
-          documents: [...existingDocs, newDoc],
-        }, { headers: getAuthHeaders() });
-        fetchInquiries();
-        toast.success('Proposal generated, downloaded & saved!');
-      } catch {
-        toast.success('Proposal downloaded!');
-      }
+      await generateProposalDocument(school, data, { API, getAuthHeaders, user, toast, fetchInquiries, setLastProposalPDF });
     } catch (err) {
       console.error('Proposal generation error:', err);
       toast.error('Failed to generate Proposal: ' + (err.message || 'Unknown error'));
@@ -1507,12 +1255,87 @@ const AdminSchoolCRM = () => {
     setEmailModalTaskId(task.id);
   };
 
+  const buildMeetingDoneTemplate = (type, schoolName = 'your school', contactName = 'there') => {
+    const BASE_STYLE = `font-family:'Segoe UI',Arial,sans-serif;background:#f4f6f9;margin:0;padding:0`;
+    const WRAP = `max-width:600px;margin:30px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)`;
+    const FOOTER = `<div style="padding:14px 32px;background:#f8fafc;border-top:1px solid #e2e8f0;font-size:11px;color:#94a3b8;text-align:center">OLL · skills@oll.co · www.oll.co</div>`;
+    const STEP = (n, color, title, desc) =>
+      `<div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid #f1f5f9"><div style="min-width:28px;height:28px;background:${color};border-radius:50%;color:#fff;font-size:12px;font-weight:700;text-align:center;line-height:28px;flex-shrink:0">${n}</div><div><p style="margin:0;font-size:14px;font-weight:600;color:#1e293b">${title}</p><p style="margin:4px 0 0;font-size:13px;color:#64748b">${desc}</p></div></div>`;
+
+    if (type === 'next_steps') {
+      return {
+        subject: `Next Steps — OLL Program for ${schoolName}`,
+        body_html: `<!DOCTYPE html><html><body style="${BASE_STYLE}"><div style="${WRAP}">
+<div style="background:linear-gradient(135deg,#1E3A5F,#2d5a8e);padding:28px 32px;color:#fff"><h1 style="margin:0;font-size:22px">Your Next Steps with OLL</h1><p style="margin:6px 0 0;opacity:.8;font-size:13px">OLL · Skill Education</p></div>
+<div style="padding:28px 32px">
+<p style="color:#334155;font-size:15px">Dear ${contactName},</p>
+<p style="color:#475569;font-size:14px;line-height:1.7">Thank you for the productive discussion! We are thrilled about the opportunity to partner with <strong>${schoolName}</strong> on the OLL Skill Program.</p>
+<p style="color:#1E3A5F;font-size:14px;font-weight:600;margin-top:20px">Here are the next steps to get started:</p>
+<div style="margin:16px 0">
+${STEP(1,'#1E3A5F','Review &amp; Sign the MOU / Contract','Our team will share the agreement document within 24 hours for your review and signature.')}
+${STEP(2,'#1E3A5F','Initial Payment','An invoice will be raised for the first tranche upon contract signing.')}
+${STEP(3,'#1E3A5F','Curriculum Kit Delivery','OLL kits and learning materials will be dispatched to your school within 7–10 working days.')}
+${STEP(4,'#1E3A5F','Educator Assignment &amp; Training','A certified OLL educator will be assigned and a training session conducted for your staff.')}
+<div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0"><div style="min-width:28px;height:28px;background:#059669;border-radius:50%;color:#fff;font-size:12px;font-weight:700;text-align:center;line-height:28px;flex-shrink:0">5</div><div><p style="margin:0;font-size:14px;font-weight:600;color:#1e293b">Program Launch!</p><p style="margin:4px 0 0;font-size:13px;color:#64748b">Your students start their OLL skill journey. We will provide continuous support and monthly progress reports.</p></div></div>
+</div>
+<div style="margin-top:24px;padding:16px;background:#f0f9ff;border-radius:8px;border-left:4px solid #1E3A5F"><p style="margin:0;color:#1E3A5F;font-size:13px">Ready to move forward? Reply to this email or call <strong>+91 98921 50714</strong> to confirm.</p></div>
+<p style="color:#475569;font-size:14px;margin-top:24px">Warm regards,<br><strong>The OLL Team</strong></p>
+</div>
+${FOOTER}</div></body></html>`
+      };
+    }
+    if (type === 'confirmation') {
+      return {
+        subject: `Action Required — Confirm OLL Program for ${schoolName}`,
+        body_html: `<!DOCTYPE html><html><body style="${BASE_STYLE}"><div style="${WRAP}">
+<div style="background:linear-gradient(135deg,#6d28d9,#7c3aed);padding:28px 32px;color:#fff"><h1 style="margin:0;font-size:22px">Confirm Your OLL Program</h1><p style="margin:6px 0 0;opacity:.8;font-size:13px">OLL · Skill Education</p></div>
+<div style="padding:28px 32px">
+<p style="color:#334155;font-size:15px">Dear ${contactName},</p>
+<p style="color:#475569;font-size:14px;line-height:1.7">We hope you are doing well! We are following up on our recent discussion about bringing the OLL Skill Program to <strong>${schoolName}</strong>.</p>
+<div style="background:#fef3c7;border-radius:10px;padding:18px;margin:20px 0;border-left:4px solid #d97706"><p style="margin:0;font-size:14px;color:#92400e;font-weight:600">A quick reminder — your enrollment slot is being held!</p><p style="margin:8px 0 0;font-size:13px;color:#78350f">To secure your school's place in the upcoming batch, please confirm your enrollment at your earliest convenience.</p></div>
+<p style="color:#1E3A5F;font-size:14px;font-weight:600">What you'll get upon confirmation:</p>
+<ul style="color:#475569;font-size:14px;line-height:2;margin:8px 0 20px 0">
+  <li>Dedicated Relationship Manager for ${schoolName}</li>
+  <li>Priority slot for educator assignment</li>
+  <li>Access to OLL curriculum materials before program start</li>
+  <li>Flexible payment schedule tailored to your needs</li>
+</ul>
+<div style="text-align:center;margin:20px 0"><a href="mailto:skills@oll.co?subject=Confirming OLL Program - ${schoolName}" style="background:#7c3aed;color:#fff;text-decoration:none;padding:12px 32px;border-radius:8px;font-size:14px;font-weight:600;display:inline-block">Confirm Enrollment →</a></div>
+<p style="color:#475569;font-size:14px">Or simply reply to this email or call us at <strong>+91 98921 50714</strong>.</p>
+<p style="color:#475569;font-size:14px;margin-top:24px">Warm regards,<br><strong>The OLL Team</strong></p>
+</div>
+${FOOTER}</div></body></html>`
+      };
+    }
+    // custom
+    return { subject: '', body_html: '' };
+  };
+
+  const handleSendMeetingDoneEmail = async () => {
+    if (!meetingDoneEmailState.subject.trim()) { toast.error('Please enter an email subject'); return; }
+    if (!meetingDoneEmailState.body_html.trim()) { toast.error('Please select a template or enter email body'); return; }
+    setMeetingDoneEmailState(prev => ({ ...prev, sending: true }));
+    try {
+      await axios.post(
+        `${API}/schools/${showFollowupModal.id}/send-meeting-followup`,
+        { subject: meetingDoneEmailState.subject, body_html: meetingDoneEmailState.body_html },
+        { headers: getAuthHeaders() }
+      );
+      toast.success('Follow-up email sent successfully!');
+      setMeetingDoneEmailState({ selectedTemplate: null, subject: '', body_html: '', sending: false, sent: true });
+    } catch (err) {
+      toast.error('Failed to send email. Please try again.');
+      setMeetingDoneEmailState(prev => ({ ...prev, sending: false }));
+    }
+  };
+
   const handleSaveEditLead = async (moveToMeetingDone = false) => {    if (!showEditLeadModal) return;
     
     try {
       // Save proposal data to inquiry
       const updateData = {
         proposal_data: { ...editLeadData },
+        school_contacts: editLeadData.school_contacts?.filter(c => c.name) || [],
       };
       
       // Also prepare onboarding_data for continuity when moving to Meeting Done
@@ -1668,9 +1491,22 @@ const AdminSchoolCRM = () => {
           ? 'Meeting completed & follow-up message scheduled!'
           : 'Meeting marked as done!';
       toast.success(successMsg);
+      // Capture school before clearing state
+      const schoolForEmail = showMeetingDoneModal;
+      const notesForEmail = meetingDoneData.notes;
+      const shouldEmail = meetingDoneData.sendFollowupEmail;
       setShowMeetingDoneModal(null);
-      setMeetingDoneData({ notes: '', quoted_price: '', followup_type: '', followup_date: null, followup_time: '' });
+      setMeetingDoneData({ notes: '', quoted_price: '', followup_type: '', followup_date: null, followup_time: '', sendFollowupEmail: true });
       fetchInquiries();
+      // Send followup email silently in background if checkbox was checked
+      if (shouldEmail && schoolForEmail?.id) {
+        axios.post(`${API}/schools/${schoolForEmail.id}/send-meeting-followup`, {
+          notes: notesForEmail,
+          next_steps: '',
+        }, { headers: getAuthHeaders() })
+          .then(() => toast.success('Meeting followup email sent to school'))
+          .catch(() => toast.error('Meeting followup email failed to send'));
+      }
     } catch (error) {
       toast.error('Failed to update meeting status');
     }
@@ -1782,9 +1618,15 @@ const AdminSchoolCRM = () => {
   };
 
   // Lost Reason Modal handlers
-  const openLostReasonModal = (inquiry) => {
+  const openLostReasonModal = (inquiry, targetStatus = 'lost_customer') => {
+    // Determine default target based on current inquiry status
+    // If inquiry is 'new' or 'meeting_done', default to 'lost_lead'
+    // If inquiry is 'active', 'converted', 'renewal_meeting', 'renewed', default to 'lost_customer'
+    const defaultTarget = ['new', 'meeting_done'].includes(inquiry.status) ? 'lost_lead' : 'lost_customer';
     setShowLostReasonModal(inquiry);
     setLostReason('');
+    setLostLeadValue('');
+    setLostTargetStatus(targetStatus || defaultTarget);
   };
 
   const submitLostReason = async () => {
@@ -1793,18 +1635,25 @@ const AdminSchoolCRM = () => {
       return;
     }
     try {
-      await axios.patch(`${API}/schools/inquiry/${showLostReasonModal.id}`, { 
-        status: 'lost',
+      const lostLabel = lostTargetStatus === 'lost_lead' ? 'Lost Lead' : 'Lost Customer';
+      const updatePayload = { 
+        status: lostTargetStatus,
         lost_reason: lostReason,
         notes: showLostReasonModal.notes 
-          ? `${showLostReasonModal.notes}\n\n--- Lost Reason (${format(new Date(), 'dd MMM yyyy')}) ---\n${lostReason}`
-          : `--- Lost Reason (${format(new Date(), 'dd MMM yyyy')}) ---\n${lostReason}`
-      }, {
+          ? `${showLostReasonModal.notes}\n\n--- ${lostLabel} Reason (${format(new Date(), 'dd MMM yyyy')}) ---\n${lostReason}`
+          : `--- ${lostLabel} Reason (${format(new Date(), 'dd MMM yyyy')}) ---\n${lostReason}`
+      };
+      if (lostLeadValue && !isNaN(parseFloat(lostLeadValue))) {
+        updatePayload.lead_value = parseFloat(lostLeadValue);
+      }
+      await axios.patch(`${API}/schools/inquiry/${showLostReasonModal.id}`, updatePayload, {
         headers: getAuthHeaders()
       });
-      toast.success('School marked as lost');
+      toast.success(`School marked as ${lostLabel.toLowerCase()}`);
       setShowLostReasonModal(null);
       setLostReason('');
+      setLostLeadValue('');
+      setLostTargetStatus('lost');
       fetchInquiries();
     } catch (error) {
       toast.error('Failed to update status');
@@ -1856,7 +1705,7 @@ const AdminSchoolCRM = () => {
   // Renewal Conversion Modal handlers
   const openRenewalConvertModal = (inquiry) => {
     // Pre-fill with existing onboarding data
-    const existingData = inquiry.onboarding_data || {};
+    const existingData = inquiry.onboarding_data || inquiry.proposal_data || {};
     setShowRenewalConvertModal(inquiry);
     setRenewalConvertData({
       school_name: inquiry.school_name || '',
@@ -1893,6 +1742,10 @@ const AdminSchoolCRM = () => {
       contract_start: '',
       contract_end: '',
       mou_url: '',
+      address: inquiry.address || existingData.address || '',
+      latitude: inquiry.latitude || existingData.latitude || null,
+      longitude: inquiry.longitude || existingData.longitude || null,
+      geofence_radius: inquiry.geofence_radius || existingData.geofence_radius || 500,
       parent_circular_url: existingData.parent_circular_url || '',
       payment_link: existingData.payment_link || '',
       school_share_type: existingData.school_share_type || 'none',
@@ -1902,7 +1755,10 @@ const AdminSchoolCRM = () => {
       gp_share_type: existingData.gp_share_type || 'none',
       gp_share_calc: existingData.gp_share_calc || 'lumpsum',
       gp_share_value: existingData.gp_share_value || '',
-      gp_share_amount: existingData.gp_share_amount || 0
+      gp_share_amount: existingData.gp_share_amount || 0,
+      // Store school identity for PDF generation fallback
+      _school_name: inquiry.school_name || inquiry.name || '',
+      _school_id: inquiry.id,
     });
   };
 
@@ -1948,17 +1804,24 @@ const AdminSchoolCRM = () => {
           role: String(c.role || '')
         }));
       
-      // Format payment tranches
+      // Format payment tranches — recalculate amounts from percentages if total changes
+      const _effectiveAmountForTranches = totalAmount > 0 ? totalAmount : (renewalConvertData.total_amount || 0);
       const formattedTranches = renewalConvertData.payment_tranches
         .filter(t => t.amount || t.percentage)
-        .map(t => ({
-          percentage: String(t.percentage || ''),
-          amount: String(t.amount || ''),
-          date: String(t.date || ''),
-          notes: String(t.notes || '')
-        }));
+        .map(t => {
+          const pct = parseFloat(t.percentage) || 0;
+          const recalcAmount = pct > 0 && _effectiveAmountForTranches > 0
+            ? String(Math.round(_effectiveAmountForTranches * pct / 100))
+            : String(t.amount || '');
+          return {
+            percentage: String(t.percentage || ''),
+            amount: recalcAmount,
+            date: String(t.date || ''),
+            notes: String(t.notes || '')
+          };
+        });
       
-      const finalAmount = totalAmount > 0 ? totalAmount : (renewalConvertData.total_amount || 0);
+      const finalAmount = _effectiveAmountForTranches;
       
       // Calculate school share
       let schoolShareAmount = 0;
@@ -2003,6 +1866,9 @@ const AdminSchoolCRM = () => {
         status: 'renewed',
         conversion_amount: String(finalAmount),
         address: renewalConvertData.address,
+        latitude: renewalConvertData.latitude || null,
+        longitude: renewalConvertData.longitude || null,
+        geofence_radius: renewalConvertData.geofence_radius || 500,
         onboarding_data: {
           ...(showRenewalConvertModal.onboarding_data || {}),
           offering: renewalConvertData.offering,
@@ -2080,7 +1946,118 @@ const AdminSchoolCRM = () => {
       fetchInquiries();
     } catch (error) {
       console.error('Renewal error:', error.response?.data || error.message);
-      toast.error(error.response?.data?.detail || 'Failed to renew school');
+      const errDetail = error.response?.data?.detail;
+      const errMsg = Array.isArray(errDetail) 
+        ? errDetail.map(e => e.msg || e.message || JSON.stringify(e)).join(', ')
+        : (typeof errDetail === 'string' ? errDetail : null);
+      toast.error(errMsg || 'Failed to renew school. Please check all fields and try again.');
+    }
+  };
+
+  // Save Renewal as Draft - saves all renewal data without changing status
+  const handleRenewalSaveDraft = async () => {
+    try {
+      let totalStudents = 0;
+      let totalAmount = 0;
+      
+      if (renewalConvertData.pricing_type === 'per_student' || renewalConvertData.pricing_type === 'both') {
+        totalStudents = renewalConvertData.grade_pricing.reduce((sum, g) => sum + (parseInt(g.students) || 0), 0);
+        totalAmount = renewalConvertData.grade_pricing.reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
+      }
+      if (renewalConvertData.pricing_type === 'fixed' || renewalConvertData.pricing_type === 'both') {
+        totalAmount += parseFloat(renewalConvertData.fixed_price) || 0;
+      }
+
+      const contractStart = renewalConvertData.contract_start 
+        ? (typeof renewalConvertData.contract_start === 'string' 
+            ? renewalConvertData.contract_start 
+            : format(renewalConvertData.contract_start, 'yyyy-MM-dd'))
+        : '';
+      const contractEnd = renewalConvertData.contract_end 
+        ? (typeof renewalConvertData.contract_end === 'string'
+            ? renewalConvertData.contract_end 
+            : format(renewalConvertData.contract_end, 'yyyy-MM-dd'))
+        : '';
+
+      const formattedContacts = renewalConvertData.school_contacts
+        .filter(c => c.name && c.phone_number)
+        .map(c => ({
+          name: String(c.name || ''),
+          phone: String((c.country_code || '+91') + (c.phone_number || '')),
+          email: String(c.email || ''),
+          role: String(c.role || '')
+        }));
+
+      const _draftEffectiveAmount = totalAmount > 0 ? totalAmount : (renewalConvertData.total_amount || 0);
+      const formattedTranches = renewalConvertData.payment_tranches
+        .filter(t => t.amount || t.percentage)
+        .map(t => {
+          const pct = parseFloat(t.percentage) || 0;
+          const recalcAmount = pct > 0 && _draftEffectiveAmount > 0
+            ? String(Math.round(_draftEffectiveAmount * pct / 100))
+            : String(t.amount || '');
+          return {
+            percentage: String(t.percentage || ''),
+            amount: recalcAmount,
+            date: String(t.date || ''),
+            notes: String(t.notes || '')
+          };
+        });
+
+      const finalAmount = _draftEffectiveAmount;
+
+      await axios.patch(`${API}/schools/inquiry/${showRenewalConvertModal.id}`, {
+        address: renewalConvertData.address,
+        latitude: renewalConvertData.latitude || null,
+        longitude: renewalConvertData.longitude || null,
+        geofence_radius: renewalConvertData.geofence_radius || 500,
+        onboarding_data: {
+          ...(showRenewalConvertModal.onboarding_data || {}),
+          offering: renewalConvertData.offering,
+          model: renewalConvertData.model,
+          kit_type: renewalConvertData.kit_type,
+          lab_kit_count: renewalConvertData.kit_type === 'lab_setup' ? renewalConvertData.lab_kit_count : '',
+          course_type: renewalConvertData.course_type,
+          book_type: renewalConvertData.book_type,
+          training_type: renewalConvertData.training_type,
+          pricing_type: renewalConvertData.pricing_type,
+          fixed_price: renewalConvertData.fixed_price,
+          total_students: totalStudents > 0 ? totalStudents : renewalConvertData.total_students,
+          total_amount: finalAmount,
+          grade_pricing: renewalConvertData.grade_pricing.filter(g => g.grade),
+          contract_start: contractStart,
+          contract_end: contractEnd,
+          mou_url: renewalConvertData.mou_url,
+          school_contacts: formattedContacts,
+          payment_mode: renewalConvertData.payment_mode,
+          payment_method: renewalConvertData.payment_mode === 'online' ? 'student' : renewalConvertData.payment_method,
+          payment_tranches: renewalConvertData.payment_mode === 'online' ? [] : formattedTranches,
+          gst_type: renewalConvertData.gst_type || '',
+          deadline_date: renewalConvertData.deadline_date,
+          parent_circular_url: renewalConvertData.parent_circular_url,
+          payment_link: renewalConvertData.payment_link,
+          draft_renewal: true,
+          draft_saved_at: new Date().toISOString(),
+          school_share_type: renewalConvertData.school_share_type,
+          school_share_calc: renewalConvertData.school_share_calc,
+          school_share_value: renewalConvertData.school_share_value,
+          gp_share_type: renewalConvertData.gp_share_type,
+          gp_share_calc: renewalConvertData.gp_share_calc,
+          gp_share_value: renewalConvertData.gp_share_value,
+        },
+        notes: showRenewalConvertModal.notes 
+          ? `${showRenewalConvertModal.notes}\n\n--- Renewal Draft Saved (${format(new Date(), 'dd MMM yyyy')}) ---`
+          : `--- Renewal Draft Saved (${format(new Date(), 'dd MMM yyyy')}) ---`
+      }, {
+        headers: getAuthHeaders()
+      });
+
+      toast.success('Renewal draft saved successfully!');
+      setShowRenewalConvertModal(null);
+      fetchInquiries();
+    } catch (error) {
+      console.error('Draft save error:', error.response?.data || error.message);
+      toast.error('Failed to save draft');
     }
   };
 
@@ -2182,7 +2159,7 @@ const AdminSchoolCRM = () => {
       const formData = new FormData();
       formData.append('file', file);
       const response = await axios.post(`${API}/upload`, formData, {
-        headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
+        headers: getAuthHeaders()
       });
       setRenewalConvertData(prev => ({ ...prev, mou_url: response.data.url }));
       toast.success('MOU uploaded successfully');
@@ -2268,7 +2245,7 @@ const AdminSchoolCRM = () => {
         formData.append('file', file);
         
         const response = await axios.post(`${API}/upload`, formData, {
-          headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
+          headers: getAuthHeaders()
         });
         
         setTicketAttachments(prev => [...prev, {
@@ -2332,7 +2309,7 @@ const AdminSchoolCRM = () => {
         const formData = new FormData();
         formData.append('file', ticketAudioBlob, 'voice-note.webm');
         const uploadResponse = await axios.post(`${API}/upload`, formData, {
-          headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
+          headers: getAuthHeaders()
         });
         allAttachments.push({
           name: 'Voice Note',
@@ -2377,7 +2354,7 @@ const AdminSchoolCRM = () => {
       formData.append('file', file);
       
       const uploadRes = await axios.post(`${API}/upload`, formData, {
-        headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
+        headers: getAuthHeaders()
       });
       
       const fileUrl = uploadRes.data.url;
@@ -2445,775 +2422,7 @@ const AdminSchoolCRM = () => {
     if (!school) return;
     setGeneratingMOU(true);
     try {
-      const PW = 210, PH = 297, M = 15;
-      const CW = PW - M * 2;
-      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-
-      // ── USE EMBEDDED OLL LOGO (no CORS issues) ─────────────────
-      const logoDataUrl = OLL_LOGO_B64;
-
-      // ── HELPERS ────────────────────────────────────────────────
-      let y = 0;
-
-      const drawPageHeader = () => {
-        doc.setFillColor(30, 58, 95);
-        doc.rect(0, 0, PW, 26, 'F');
-        // 1920x1080 = 1.78:1 ratio → at height 20mm: width = 20*1.78 = 35.5mm
-        doc.addImage(logoDataUrl, 'PNG', M, 3, 36, 20);
-      };
-
-      const drawFooter = (pageNum, total) => {
-        doc.setFillColor(30, 58, 95);
-        doc.rect(0, PH - 10, PW, 10, 'F');
-        doc.setTextColor(180, 200, 235);
-        doc.setFontSize(7);
-        doc.setFont('helvetica', 'normal');
-        doc.text('Clonefutura Live Solutions Pvt Ltd  |  info@oll.co  |  +91 9920188188  |  www.oll.co', M, PH - 4);
-        doc.text(`Page ${pageNum} of ${total}`, PW - M, PH - 4, { align: 'right' });
-      };
-
-      const ensureSpace = (needed) => {
-        if (y + needed > PH - 15) {
-          doc.addPage();
-          drawPageHeader();
-          y = 31;
-        }
-      };
-
-      const sectionTitle = (text) => {
-        ensureSpace(12);
-        doc.setFontSize(10.5);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(30, 58, 95);
-        doc.text(text, M, y);
-        y += 7;
-      };
-
-      const bullet = (text, indent = 4) => {
-        const lines = doc.splitTextToSize('• ' + text, CW - indent);
-        ensureSpace(lines.length * 5 + 2);
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(50, 50, 50);
-        doc.text(lines, M + indent, y);
-        y += lines.length * 5 + 1;
-      };
-
-      const inlineField = (label, value, indent = 4) => {
-        ensureSpace(7);
-        doc.setFontSize(9.5);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(30, 58, 95);
-        doc.text(`${label}: `, M + indent, y);
-        const lw = doc.getTextWidth(`${label}: `);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(50, 50, 50);
-        doc.text(value || '________________________________________', M + indent + lw, y);
-        y += 6;
-      };
-
-      // ── DATA ───────────────────────────────────────────────────
-      const schoolName = data?.school_name || school?.school_name || school?.name || school?.school || '';
-      const schoolAddress = data.school_address || school?.location || school?.address || '';
-      const contacts = data.school_contacts || [];
-      const principal = contacts.find(c => c.role === 'principal') || contacts[0] || {};
-      const coordinator = contacts.find(c => ['coordinator', 'program_coordinator', 'teacher'].includes(c.role)) || contacts[1] || {};
-      const accountsCoord = contacts.find(c => ['accounts', 'accountant', 'admin'].includes(c.role)) || contacts[2] || {};
-
-      const courseTypeLabel = { only_robotics: 'Only Robotics', robotics_coding_ai: 'Robotics, Coding & AI' };
-      const kitTypeLabel = { lab_setup: 'Lab Setup', individual: 'Individual', no_kit: 'No Kit' };
-      const trainingLabel = { student_training: 'Student Training', teacher_training: 'Teacher Training', both: 'Teacher & Student Training' };
-      const paymentCollectionLabel = { from_school: 'School Collects & Pays OLL', from_student: 'OLL Collects Online', online: 'OLL Collects Online' };
-      const paymentMethodLabel = { cheque: 'Cheque', neft: 'Netbanking', online: 'Online Payments', cash: 'Cash' };
-
-      const todayStr = format(new Date(), 'dd MMMM yyyy');
-
-      // ── PAGE 1 HEADER ──────────────────────────────────────────
-      drawPageHeader();
-      y = 32;
-
-      // MOU Title
-      doc.setFontSize(15);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      doc.text('MEMORANDUM OF UNDERSTANDING', PW / 2, y, { align: 'center' });
-      y += 5;
-      doc.setDrawColor(30, 58, 95);
-      doc.setLineWidth(0.6);
-      doc.line(M, y, PW - M, y);
-      y += 8;
-
-      // Introduction
-      doc.setFontSize(9.5);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(50, 50, 50);
-      const introText = `This Memorandum of Understanding (MOU) is entered into on ${todayStr} by and between`;
-      doc.text(introText, M, y);
-      y += 7;
-
-      // Party 1 — dynamic height based on address line count
-      const ollAddrText = '103, 1st Floor - Kshitij Building, Veera Desai Rd, Dattaguru Nagar, Azad Nagar, Andheri West, Mumbai, Maharashtra 400053';
-      const ollAddrLines = doc.splitTextToSize(ollAddrText, CW - 8);
-      const p1H = 6 + 7 + (ollAddrLines.length * 5) + 6 + 4; // padding + name + addr + phone line + bottom
-      doc.setFillColor(240, 245, 252);
-      doc.roundedRect(M, y, CW, p1H, 2, 2, 'F');
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      doc.text('PARTY 1 (Service Provider):', M + 4, y + 6);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(50, 50, 50);
-      doc.text('Clonefutura Live Solutions Pvt Ltd, also referred to as "OLL"', M + 4, y + 13);
-      doc.text(ollAddrLines, M + 4, y + 19);
-      doc.text('Phone: +91 9920188188  |  GST No: 27AAKCC1113B1ZC', M + 4, y + 19 + ollAddrLines.length * 5 + 2);
-      y += p1H + 4;
-
-      // Party 2
-      const p2Lines = schoolAddress ? doc.splitTextToSize(`Address: ${schoolAddress}`, CW - 8) : [];
-      const p2H = 22 + (p2Lines.length > 1 ? (p2Lines.length - 1) * 5 : 0);
-      doc.setFillColor(240, 245, 252);
-      doc.roundedRect(M, y, CW, p2H, 2, 2, 'F');
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      doc.text('PARTY 2 (School):', M + 4, y + 6);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(50, 50, 50);
-      doc.text(`School Name: ${schoolName || '________________________________________'}`, M + 4, y + 13);
-      if (p2Lines.length > 0) doc.text(p2Lines, M + 4, y + 19);
-      y += p2H + 6;
-
-      // Terms & Conditions Banner
-      ensureSpace(12);
-      doc.setFillColor(30, 58, 95);
-      doc.rect(M, y, CW, 8, 'F');
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.text('TERMS AND CONDITIONS', M + 4, y + 5.5);
-      y += 12;
-
-      // ── SECTION 1: PROGRAM DETAILS ─────────────────────────────
-      sectionTitle('1. PROGRAM DETAILS');
-
-      const progFields = [
-        ['Course Name', data.offering],
-        ['Course Type', courseTypeLabel[data.course_type] || data.course_type],
-        ['Model', data.model || 'Compulsory / Optional'],
-        ['Kit', kitTypeLabel[data.kit_type] || data.kit_type || 'Individual / Lab Setup'],
-        ...(data.kit_type === 'lab_setup' ? [['No. of Lab Kits', String(data.lab_kit_count || '')]] : []),
-        ['Mode', 'Offline'],
-        ['Type of Training', trainingLabel[data.training_type] || 'Teacher Training / Student Training'],
-        ['Assistant Educator Required', 'Yes / No'],
-      ];
-      progFields.forEach(([lbl, val]) => inlineField(lbl, val));
-      y += 3;
-
-      // Timeline
-      ensureSpace(35);
-      doc.setFontSize(9.5);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      doc.text('Timeline of Program:', M + 4, y);
-      y += 6;
-
-      const trainingStart = '_____ / _____ / _____';
-      [
-        ['Teacher Training Start Date (if teacher training)', trainingStart],
-        ['Kit Delivery Date', '_____ / _____ / _____'],
-        ['Kit Distribution Date', '_____ / _____ / _____'],
-      ].forEach(([lbl, val]) => {
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(50, 50, 50);
-        doc.text(`• ${lbl}: ${val}`, M + 4, y);
-        y += 6;
-      });
-
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'italic');
-      doc.setTextColor(120, 120, 120);
-      doc.text('* NOTE: The kits will only be delivered 15 days after we receive payment', M + 4, y);
-      y += 8;
-
-      // ── SECTION 2: COUNT AND PAYMENT ───────────────────────────
-      ensureSpace(15);
-      sectionTitle('2. COUNT AND PAYMENT');
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(50, 50, 50);
-
-      const gradeOrder = ['Jr. Kg', 'Sr. Kg', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
-      const enteredGrades = (data.grade_pricing || []).filter(gp => gp.grade && (gp.students || gp.price_per_student));
-      const isExclusiveGST = data.gst_type === 'exclusive_18';
-      
-      // Helper to add GST rows to table body
-      const addGstRows = (body, baseAmt, cols) => {
-        if (isExclusiveGST && baseAmt > 0) {
-          const gstAmt = Math.round(baseAmt * 0.18);
-          const grandTot = baseAmt + gstAmt;
-          // GST row
-          const gstRow = cols === 2 
-            ? [{ content: 'GST @ 18%', styles: { fontStyle: 'italic', textColor: [80, 80, 80] } }, { content: `Rs. ${gstAmt.toLocaleString('en-IN')}`, styles: { fontStyle: 'italic', textColor: [80, 80, 80], halign: 'right' } }]
-            : [{ content: 'GST @ 18%', styles: { fontStyle: 'italic', textColor: [80, 80, 80] } }, '', '', { content: `Rs. ${gstAmt.toLocaleString('en-IN')}`, styles: { fontStyle: 'italic', textColor: [80, 80, 80], halign: 'right' } }];
-          body.push(gstRow);
-          // Grand Total row
-          const grandRow = cols === 2
-            ? [{ content: 'Grand Total (incl. GST)', styles: { fontStyle: 'bold', textColor: [30, 58, 95] } }, { content: `Rs. ${grandTot.toLocaleString('en-IN')}`, styles: { fontStyle: 'bold', textColor: [30, 58, 95], halign: 'right' } }]
-            : [{ content: 'Grand Total (incl. GST)', styles: { fontStyle: 'bold', textColor: [30, 58, 95] } }, '', '', { content: `Rs. ${grandTot.toLocaleString('en-IN')}`, styles: { fontStyle: 'bold', textColor: [30, 58, 95], halign: 'right' } }];
-          body.push(grandRow);
-        }
-      };
-
-      // ═══ CASE 1: FIXED PRICING - Hide "Student Count" and "Amount per Student" columns ═══
-      if (data.pricing_type === 'fixed') {
-        doc.text('Below is the fixed program pricing:', M, y);
-        y += 5;
-        
-        const fixedAmt = Number(data.fixed_price || data.total_amount || 0);
-        const fixedTableBody = [
-          [{ content: 'Fixed Price Package', styles: { fontStyle: 'bold' } }, { content: fixedAmt ? `Rs. ${fixedAmt.toLocaleString('en-IN')}` : '', styles: { halign: 'right', fontStyle: 'bold' } }],
-        ];
-        // Add Subtotal row for GST exclusive
-        if (isExclusiveGST) {
-          fixedTableBody.push([
-            { content: 'Subtotal (before GST)', styles: { fontStyle: 'bold', textColor: [30, 58, 95] } },
-            { content: fixedAmt ? `Rs. ${fixedAmt.toLocaleString('en-IN')}` : '', styles: { fontStyle: 'bold', textColor: [30, 58, 95], halign: 'right' } },
-          ]);
-        } else {
-          fixedTableBody.push([
-            { content: 'Total', styles: { fontStyle: 'bold', textColor: [30, 58, 95] } },
-            { content: fixedAmt ? `Rs. ${fixedAmt.toLocaleString('en-IN')}` : '', styles: { fontStyle: 'bold', textColor: [30, 58, 95], halign: 'right' } },
-          ]);
-        }
-        addGstRows(fixedTableBody, fixedAmt, 2);
-
-        autoTable(doc, {
-          startY: y,
-          head: [['Description', 'Total Amount']],
-          body: fixedTableBody,
-          theme: 'grid',
-          headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold', halign: 'center' },
-          styles: { fontSize: 8.5, cellPadding: 2.5, textColor: [50, 50, 50] },
-          columnStyles: { 0: { cellWidth: 100 }, 1: { cellWidth: 80, halign: 'right' } },
-          margin: { left: M, right: M },
-          alternateRowStyles: { fillColor: [245, 249, 255] },
-        });
-        y = doc.lastAutoTable.finalY + 5;
-
-      // ═══ CASE 2: BOTH PRICING - Two separate tables ═══
-      } else if (data.pricing_type === 'both') {
-        // ── Fixed Price Table ──
-        doc.text('Fixed Program Fee:', M, y);
-        y += 5;
-        
-        const fixedAmt = Number(data.fixed_price || 0);
-        const fixedTableBody = [
-          [{ content: 'Fixed Price Component', styles: { fontStyle: 'bold' } }, { content: fixedAmt ? `Rs. ${fixedAmt.toLocaleString('en-IN')}` : '', styles: { halign: 'right', fontStyle: 'bold' } }],
-          [{ content: 'Subtotal (Fixed)', styles: { fontStyle: 'bold', textColor: [30, 58, 95] } }, { content: fixedAmt ? `Rs. ${fixedAmt.toLocaleString('en-IN')}` : '', styles: { fontStyle: 'bold', textColor: [30, 58, 95], halign: 'right' } }],
-        ];
-
-        autoTable(doc, {
-          startY: y,
-          head: [['Description', 'Amount']],
-          body: fixedTableBody,
-          theme: 'grid',
-          headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold', halign: 'center' },
-          styles: { fontSize: 8.5, cellPadding: 2.5, textColor: [50, 50, 50] },
-          columnStyles: { 0: { cellWidth: 100 }, 1: { cellWidth: 80, halign: 'right' } },
-          margin: { left: M, right: M },
-          alternateRowStyles: { fillColor: [245, 249, 255] },
-        });
-        y = doc.lastAutoTable.finalY + 6;
-
-        // ── Per-Student Pricing Table ──
-        ensureSpace(15);
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(50, 50, 50);
-        doc.text('Per-Student Program Fee:', M, y);
-        y += 5;
-
-        let perStudentTotal = 0;
-        let perStudentTableBody;
-        if (enteredGrades.length > 0) {
-          perStudentTableBody = enteredGrades.map(gp => {
-            if (gp.students && gp.price_per_student) {
-              const tot = Number(gp.students) * Number(gp.price_per_student);
-              perStudentTotal += tot;
-              return [gp.grade, String(gp.students), `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}`, `Rs. ${tot.toLocaleString('en-IN')}`];
-            }
-            return [gp.grade, String(gp.students || ''), gp.price_per_student ? `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}` : '', ''];
-          });
-        } else {
-          // Empty grade_pricing: show blank table Jr. KG to 10th
-          perStudentTableBody = gradeOrder.map(grade => [grade, '', '', '']);
-        }
-        
-        if (data.training_type === 'teacher_training' || data.training_type === 'both') {
-          perStudentTableBody.push(['No. of Teachers', '', '', '']);
-        }
-        perStudentTableBody.push([
-          { content: 'Subtotal (Per-Student)', styles: { fontStyle: 'bold', textColor: [30, 58, 95] } },
-          { content: String(data.total_students || ''), styles: { fontStyle: 'bold' } },
-          '',
-          { content: perStudentTotal ? `Rs. ${perStudentTotal.toLocaleString('en-IN')}` : '', styles: { fontStyle: 'bold', textColor: [30, 58, 95] } },
-        ]);
-
-        autoTable(doc, {
-          startY: y,
-          head: [['Grade', 'No. of Students', 'Price / Student', 'Total Amount']],
-          body: perStudentTableBody,
-          theme: 'grid',
-          headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold', halign: 'center' },
-          styles: { fontSize: 8.5, cellPadding: 2.5, textColor: [50, 50, 50] },
-          columnStyles: { 0: { cellWidth: 28 }, 1: { cellWidth: 38, halign: 'center' }, 2: { cellWidth: 57, halign: 'right' }, 3: { cellWidth: 57, halign: 'right' } },
-          margin: { left: M, right: M },
-          alternateRowStyles: { fillColor: [245, 249, 255] },
-        });
-        y = doc.lastAutoTable.finalY + 6;
-
-        // ── Combined Total Table ──
-        ensureSpace(15);
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(30, 58, 95);
-        doc.text('Combined Total:', M, y);
-        y += 5;
-        
-        const combinedBase = fixedAmt + perStudentTotal;
-        const combinedTableBody = [
-          ['Fixed Component', fixedAmt ? `Rs. ${fixedAmt.toLocaleString('en-IN')}` : ''],
-          ['Per-Student Component', perStudentTotal ? `Rs. ${perStudentTotal.toLocaleString('en-IN')}` : ''],
-          [{ content: isExclusiveGST ? 'Subtotal (before GST)' : 'Grand Total', styles: { fontStyle: 'bold', textColor: [30, 58, 95] } }, { content: combinedBase ? `Rs. ${combinedBase.toLocaleString('en-IN')}` : '', styles: { fontStyle: 'bold', textColor: [30, 58, 95], halign: 'right' } }],
-        ];
-        addGstRows(combinedTableBody, combinedBase, 2);
-
-        autoTable(doc, {
-          startY: y,
-          head: [['Component', 'Amount']],
-          body: combinedTableBody,
-          theme: 'grid',
-          headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold', halign: 'center' },
-          styles: { fontSize: 8.5, cellPadding: 2.5, textColor: [50, 50, 50] },
-          columnStyles: { 0: { cellWidth: 100 }, 1: { cellWidth: 80, halign: 'right' } },
-          margin: { left: M, right: M },
-          alternateRowStyles: { fillColor: [245, 249, 255] },
-        });
-        y = doc.lastAutoTable.finalY + 5;
-
-      // ═══ CASE 3: PER-STUDENT PRICING (default) ═══
-      } else {
-        doc.text('Below is the table outlining the count and program pricing per student:', M, y);
-        y += 5;
-
-        let tableTotal = 0;
-        let gradeTableBody;
-        
-        if (enteredGrades.length > 0) {
-          // Show entered grades with their data
-          gradeTableBody = enteredGrades.map(gp => {
-            if (gp.students && gp.price_per_student) {
-              const tot = Number(gp.students) * Number(gp.price_per_student);
-              tableTotal += tot;
-              return [gp.grade, String(gp.students), `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}`, `Rs. ${tot.toLocaleString('en-IN')}`];
-            }
-            return [gp.grade, String(gp.students || ''), gp.price_per_student ? `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}` : '', ''];
-          });
-        } else {
-          // Empty grade_pricing: render blank table from Jr. KG to 10th
-          gradeTableBody = gradeOrder.map(grade => [grade, '', '', '']);
-        }
-
-        if (data.training_type === 'teacher_training' || data.training_type === 'both') {
-          gradeTableBody.push(['No. of Teachers', '', '', '']);
-        }
-        
-        const baseAmt = tableTotal > 0 ? tableTotal : Number(data.total_amount || 0);
-        const baseAmtDisp = baseAmt ? `Rs. ${baseAmt.toLocaleString('en-IN')}` : '';
-        
-        gradeTableBody.push([
-          { content: isExclusiveGST ? 'Subtotal (before GST)' : 'Total', styles: { fontStyle: 'bold', textColor: [30, 58, 95] } },
-          { content: String(data.total_students || ''), styles: { fontStyle: 'bold' } },
-          '',
-          { content: baseAmtDisp, styles: { fontStyle: 'bold', textColor: [30, 58, 95] } },
-        ]);
-        addGstRows(gradeTableBody, baseAmt, 4);
-
-        autoTable(doc, {
-          startY: y,
-          head: [['Grade', 'No. of Students', 'Price / Student', 'Total Amount']],
-          body: gradeTableBody,
-          theme: 'grid',
-          headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold', halign: 'center' },
-          styles: { fontSize: 8.5, cellPadding: 2.5, textColor: [50, 50, 50] },
-          columnStyles: { 0: { cellWidth: 28 }, 1: { cellWidth: 38, halign: 'center' }, 2: { cellWidth: 57, halign: 'right' }, 3: { cellWidth: 57, halign: 'right' } },
-          margin: { left: M, right: M },
-          alternateRowStyles: { fillColor: [245, 249, 255] },
-        });
-        y = doc.lastAutoTable.finalY + 5;
-      }
-
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'italic');
-      doc.setTextColor(120, 120, 120);
-      doc.text('* NOTE: In case of change in count it will take us additional 15 days to deliver the material', M, y);
-      y += 7;
-
-      // Requirements
-      ensureSpace(25);
-      doc.setFontSize(9.5);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      doc.text('Requirements:', M, y);
-      y += 5;
-      ['Room with basic infrastructure provided with table & chairs and storage space for the Robotic kits',
-        'WiFi / internet stability',
-        'Projector / Smart Board',
-      ].forEach(r => bullet(r));
-      y += 3;
-
-      // Additional Services Table — only show if entries exist
-      const validServices = (data.additional_services || []).filter(s => s.item || s.qty || s.price);
-      if (validServices.length > 0) {
-        ensureSpace(38);
-        doc.setFontSize(9.5);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(30, 58, 95);
-        doc.text('Additional Services / Components:', M, y);
-        y += 4;
-        const servicesBody = validServices.map(s => [
-          s.item || '',
-          String(s.qty || ''),
-          s.price ? `Rs. ${Number(s.price).toLocaleString('en-IN')}` : '',
-        ]);
-        autoTable(doc, {
-          startY: y,
-          head: [['Item', 'Qty', 'Price']],
-          body: servicesBody,
-          theme: 'grid',
-          headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontSize: 9 },
-          styles: { fontSize: 9, cellPadding: 4 },
-          columnStyles: { 0: { cellWidth: 110 }, 1: { cellWidth: 35, halign: 'center' }, 2: { cellWidth: 35, halign: 'right' } },
-          margin: { left: M, right: M },
-        });
-        y = doc.lastAutoTable.finalY + 6;
-      }
-
-      // Payment Collection
-      ensureSpace(22);
-      doc.setFontSize(9.5);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      doc.text('Payment Collection:', M, y);
-      y += 5;
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(50, 50, 50);
-      doc.text(`Collection From: ${paymentCollectionLabel[data.payment_mode] || '________________________'}`, M + 4, y);
-      y += 6;
-      doc.text(`Payment Mode: ${paymentMethodLabel[data.payment_method] || '________________________'}`, M + 4, y);
-      y += 7;
-
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      doc.text('Notes for Payment: ', M + 4, y);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(50, 50, 50);
-      doc.text('Program Fees to be paid 100% in advance.', M + 4 + doc.getTextWidth('Notes for Payment: '), y);
-      y += 7;
-
-      // Payment Terms Table
-      ensureSpace(30);
-      doc.setFontSize(9.5);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      doc.text('Payment Terms:', M, y);
-      y += 4;
-
-      const validTranches = (data.payment_tranches || []).filter(t => t.amount);
-      const trancheRows = validTranches.length > 0
-        ? validTranches.map(t => [
-            `Rs. ${Number(t.amount).toLocaleString('en-IN')}`,
-            t.percentage ? `${t.percentage}%` : '100%',
-            t.date ? format(new Date(t.date), 'dd/MM/yyyy') : '________________________',
-          ])
-        : [['________________________', '100%', '________________________']];
-
-      autoTable(doc, {
-        startY: y,
-        head: [['Amount', 'Payment %', 'Due Date']],
-        body: trancheRows,
-        theme: 'grid',
-        headStyles: { fillColor: [30, 58, 95], textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold' },
-        styles: { fontSize: 9, cellPadding: 3 },
-        columnStyles: { 0: { cellWidth: 75 }, 1: { cellWidth: 35, halign: 'center' }, 2: { cellWidth: 70 } },
-        margin: { left: M, right: M },
-      });
-      y = doc.lastAutoTable.finalY + 6;
-
-      // GST info - just show the GST type (calculations are in tables)
-      const gstLabels = { inclusive_18: 'GST Inclusive @ 18%', exclusive_18: 'GST Exclusive @ 18%', book_gst_0: 'Book GST = 0%' };
-      if (data.gst_type) {
-        ensureSpace(8);
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(30, 58, 95);
-        doc.text('GST: ', M, y);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(50, 50, 50);
-        doc.text(gstLabels[data.gst_type] || data.gst_type, M + doc.getTextWidth('GST: '), y);
-        y += 6;
-      }
-
-      // Bank Details
-      ensureSpace(30);
-      doc.setFontSize(9.5);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      doc.text('Bank Details for Payment:', M, y);
-      y += 5;
-      doc.setFillColor(240, 245, 252);
-      doc.roundedRect(M, y, CW, 24, 2, 2, 'F');
-      doc.setFontSize(8.5);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(50, 50, 50);
-      doc.text('Account No: 50200063789133', M + 4, y + 6);
-      doc.text('IFSC Code: HDFC0000240', M + 4, y + 12);
-      doc.text('Bank: HDFC Bank  |  Branch: Sandoz House Worli', M + 4, y + 18);
-      doc.text('Account Holder: Clonefutura Live Solutions Pvt Ltd', M + CW/2, y + 6);
-      doc.text('GST No: 27AAKCC1113B1ZC', M + CW/2, y + 12);
-      y += 30;
-
-      // ── SECTION 3 ──────────────────────────────────────────────
-      ensureSpace(12);
-      sectionTitle('3. PROGRAM EXECUTION & DELIVERABLES');
-      const kitDeliverableLine = data.kit_type === 'lab_setup'
-        ? `${data.lab_kit_count ? data.lab_kit_count + ' Lab Kit(s)' : 'Lab Kits'} will be supplied.`
-        : data.kit_type === 'individual'
-        ? 'Individual kits will be provided to each student.'
-        : null;
-      [
-        'OLL will require a dedicated coordinator who will be the point of contact for the program\'s execution at the school level.',
-        'Grade-specific individual textbooks will be provided.',
-        ...(kitDeliverableLine ? [kitDeliverableLine] : []),
-        '16 projects-based curriculum will be delivered.',
-        'Teacher training will be provided.',
-        'STEM certificates will be awarded to each participating child.',
-      ].forEach(item => bullet(item));
-      y += 3;
-
-      // ── SECTION 4 ──────────────────────────────────────────────
-      ensureSpace(12);
-      sectionTitle('4. KIT & BOOK MANAGEMENT');
-      [
-        'OLL will deliver the required kits and books to the school within 15 days of receiving full payment.',
-        'The school is responsible for informing security and arranging proper storage for the kits and books upon arrival.',
-        'The school is also required to verify the count of kits and books as per the delivery provided by OLL to ensure accuracy.',
-        'Free Replacement for Damaged Components: In the event that any kit components are found to be damaged or defective, OLL will provide a free replacement for such components for the full duration of the program.',
-        'Replacement for Lost Components & Books: If students misplace or lose components, they are required to purchase replacements either from the OLL website or directly from the educator. Misplaced components are not covered under the free replacement policy.',
-      ].forEach(item => bullet(item));
-      y += 3;
-
-      // ── SECTION 5 ──────────────────────────────────────────────
-      ensureSpace(12);
-      sectionTitle('5. EDUCATOR CONFIRMATION & TRAINING SCHEDULE');
-      [
-        'The school will provide OLL with the final timetable and holiday calendar of the school.',
-        'OLL will take 15 days from receiving the timetable and calendar to allocate a certified educator for the program.',
-        'Once allocated, the school will have the opportunity to approve the educator and provide feedback. If satisfied, OLL will move forward with the training sessions.',
-        'In case the school wishes to request a change of the educator for valid reasons, OLL will evaluate the request and, if accepted, will take 15 days to allocate a new educator.',
-      ].forEach(item => bullet(item));
-      y += 3;
-
-      // ── SECTION 6 ──────────────────────────────────────────────
-      ensureSpace(12);
-      sectionTitle('6. REPORTS');
-      bullet('OLL will collect physical/digital feedback forms from students and teachers once every three months. OLL will analyze these and share the report with the school.');
-      y += 3;
-
-      // ── SECTION 7 ──────────────────────────────────────────────
-      ensureSpace(12);
-      sectionTitle('7. ASSESSMENT & AUDIT');
-      [
-        'OLL will conduct periodic on-site audits of educators to ensure quality and consistency in the delivery of the program.',
-        'Students will undergo assessments at the end of the year that will include both theoretical and practical components to gauge their understanding and progress.',
-      ].forEach(item => bullet(item));
-      y += 3;
-
-      // ── SECTION 8 ──────────────────────────────────────────────
-      ensureSpace(12);
-      sectionTitle('8. DISPLAY');
-      [
-        'School is requested to inform the OLL team about all parent orientations and Parent Teacher Meetings. OLL will have representatives and projects showcased on a table.',
-        'Students will prepare projects to showcase during a final exhibition, where parents will be invited to observe the students\' work.',
-        'One final video will be professionally shot by OLL; school to give permission to shoot on a mutually agreed upon date.',
-        'All videos and photos clicked by OLL/School team are permissible to be uploaded on social media platforms.',
-        'For Competitions: In certain cases, students may need to arrange additional components for their projects. Our team will guide where to purchase from and even support students, including offering components for rent with a minimal deposit.',
-      ].forEach(item => bullet(item));
-      y += 3;
-
-      // ── SECTION 9 ──────────────────────────────────────────────
-      ensureSpace(12);
-      sectionTitle('9. CERTIFICATION');
-      [
-        'Upon completion of the program, a graduation ceremony will be held where students will receive OLL certifications.',
-        'Students list of First Name, Last Name, Grade and Division will be shared with OLL to make the certificates.',
-        'A final compilation report summarizing each student\'s performance will also be provided to the school.',
-      ].forEach(item => bullet(item));
-      y += 3;
-
-      // ── SECTION 10 ─────────────────────────────────────────────
-      ensureSpace(12);
-      sectionTitle('10. TERM OF AGREEMENT');
-
-      const cStartDisplay = data.contract_start ? format(new Date(data.contract_start), 'dd MMMM yyyy') : '________________________';
-      const cEndDisplay = data.contract_end ? format(new Date(data.contract_end), 'dd MMMM yyyy') : '________________________';
-
-      [
-        `This MoU will remain in effect from ${cStartDisplay} to ${cEndDisplay} (one academic year).`,
-        'Either party may terminate the agreement with 30 days\' written notice if either party fails to meet their obligations.',
-        'Renewal of the agreement for the following year will be based on mutual consent and performance evaluation.',
-      ].forEach(item => bullet(item));
-      y += 3;
-
-      // ── SECTION 11: CONTACT DETAILS ────────────────────────────
-      ensureSpace(12);
-      sectionTitle('11. CONTACT DETAILS');
-
-      const renderContact = (title, c, fallbackName, fallbackPhone, fallbackEmail) => {
-        ensureSpace(30);
-        doc.setFontSize(9.5);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(30, 58, 95);
-        doc.text(title, M, y);
-        y += 6;
-        [
-          ['Name', c?.name || fallbackName || ''],
-          ['Mobile', c?.phone_number || fallbackPhone || ''],
-          ['E-mail', c?.email || fallbackEmail || ''],
-        ].forEach(([lbl, val]) => {
-          doc.setFontSize(9);
-          doc.setFont('helvetica', 'normal');
-          doc.setTextColor(50, 50, 50);
-          doc.text(`${lbl}: ${val || '________________________________________________________'}`, M + 4, y);
-          y += 6;
-        });
-        y += 3;
-      };
-
-      renderContact(
-        'Program Coordinator Details (From School):',
-        coordinator.name ? coordinator : principal,
-        school?.contact_name, school?.phone, school?.email
-      );
-      renderContact('Accounts Coordinator Details (From School):', accountsCoord);
-      renderContact(
-        'School Principal Details (From School):',
-        principal,
-        school?.contact_name, school?.phone, school?.email
-      );
-
-      // ── AUTHORIZED SIGNATORIES ─────────────────────────────────
-      ensureSpace(65);
-      doc.setDrawColor(200, 215, 235);
-      doc.setLineWidth(0.3);
-      doc.line(M, y, PW - M, y);
-      y += 7;
-
-      doc.setFontSize(10.5);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      doc.text('AUTHORIZED SIGNATORIES', M, y);
-      y += 8;
-
-      const sigW = (CW - 10) / 2;
-      const sigH = 55;
-
-      // OLL sig box
-      doc.setFillColor(240, 245, 252);
-      doc.roundedRect(M, y, sigW, sigH, 2, 2, 'F');
-      doc.setDrawColor(160, 185, 215);
-      doc.setLineWidth(0.3);
-      doc.roundedRect(M, y, sigW, sigH, 2, 2);
-      doc.setFontSize(9.5);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      doc.text('OLL Representative', M + 4, y + 7);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(50, 50, 50);
-      doc.text('Name: Vidushi Daga', M + 4, y + 15);
-      doc.text('Designation: Chairman', M + 4, y + 21);
-      doc.text('Signature:', M + 4, y + 32);
-      doc.setDrawColor(120, 140, 170);
-      doc.line(M + 32, y + 32, M + sigW - 4, y + 32);
-      doc.setFontSize(8.5);
-      doc.setTextColor(100, 100, 100);
-      doc.text('Date: _______________________', M + 4, y + 48);
-
-      // School sig box
-      const rx = M + sigW + 10;
-      doc.setFillColor(240, 245, 252);
-      doc.roundedRect(rx, y, sigW, sigH, 2, 2, 'F');
-      doc.roundedRect(rx, y, sigW, sigH, 2, 2);
-      doc.setFontSize(9.5);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(30, 58, 95);
-      doc.text('School Representative', rx + 4, y + 7);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(50, 50, 50);
-      doc.text(`Name: ${principal?.name || school?.contact_name || '________________________'}`, rx + 4, y + 15);
-      doc.text(`Designation: ${principal?.role || '________________________'}`, rx + 4, y + 21);
-      doc.text('Signature:', rx + 4, y + 32);
-      doc.setDrawColor(120, 140, 170);
-      doc.line(rx + 32, y + 32, rx + sigW - 4, y + 32);
-      doc.setFontSize(8.5);
-      doc.setTextColor(100, 100, 100);
-      doc.text('Date: _______________________', rx + 4, y + 48);
-
-      y += sigH + 5;
-
-      // ── FOOTER ON ALL PAGES ────────────────────────────────────
-      const totalPages = doc.internal.getNumberOfPages();
-      for (let p = 1; p <= totalPages; p++) {
-        doc.setPage(p);
-        drawFooter(p, totalPages);
-      }
-
-      // ── DOWNLOAD ───────────────────────────────────────────────
-      const fileName = `MOU_${(schoolName || 'School').replace(/\s+/g, '_')}_${format(new Date(), 'ddMMMyyyy')}.pdf`;
-      doc.save(fileName);
-
-      // ── UPLOAD & STORE IN DOCUMENTS ───────────────────────────
-      try {
-        const pdfBlob = doc.output('blob');
-        const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
-        const formData = new FormData();
-        formData.append('file', pdfFile);
-        const uploadRes = await axios.post(`${API}/upload`, formData, {
-          headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' },
-        });
-        const fileUrl = uploadRes.data.url;
-        const existingDocs = school?.documents || [];
-        const newDoc = {
-          type: 'MOU',
-          url: fileUrl,
-          name: fileName,
-          uploaded_at: new Date().toISOString(),
-          uploaded_by: user?.name || user?.email || 'Admin',
-        };
-        // Only save to documents if we have an ID
-        if (school?.id) {
-          await axios.patch(`${API}/schools/inquiry/${school.id}`, {
-            documents: [...existingDocs, newDoc],
-          }, { headers: getAuthHeaders() });
-          setOnboardData(prev => ({ ...prev, mou_url: fileUrl }));
-          fetchInquiries();
-        }
-        toast.success('MOU generated, downloaded & saved to documents!');
-      } catch {
-        toast.success('MOU downloaded! (Save to documents failed — check upload service)');
-      }
+      await generateMOUDocument(school, data, { API, getAuthHeaders, user, toast, fetchInquiries, setOnboardData });
     } catch (err) {
       console.error('MOU generation error:', err);
       toast.error('Failed to generate MOU: ' + (err.message || 'Unknown error'));
@@ -3222,268 +2431,34 @@ const AdminSchoolCRM = () => {
     }
   };
 
+  // Generate MOU from the Edit School popup (showEditOnboardingModal)
+  const generateEditMOUPDF = async () => {
+    const school = showEditOnboardingModal;
+    if (!school) return;
+    setGeneratingEditMOU(true);
+    try {
+      // Pass setEditOnboardData as setOnboardData so the URL is saved into the edit modal state
+      await generateMOUDocument(school, editOnboardData, {
+        API, getAuthHeaders, user, toast, fetchInquiries,
+        setOnboardData: setEditOnboardData,
+      });
+    } catch (err) {
+      console.error('Edit MOU generation error:', err);
+      toast.error('Failed to generate MOU: ' + (err.message || 'Unknown error'));
+    } finally {
+      setGeneratingEditMOU(false);
+    }
+  };
+
   // ═══ GENERATE PARENT CIRCULAR DOC ═══════════════════════════════════════════
   const generateParentCircularPDF = async (schoolOverride = null, dataOverride = null, setDataFunc = null) => {
     const school = schoolOverride || showOnboardModal;
     const data = dataOverride || onboardData;
     const setData = setDataFunc || setOnboardData;
-    
     if (!school) return;
     setGeneratingParentCircular(true);
     try {
-      // Dynamic import of docx library to avoid webpack initialization issues
-      const docx = await import('docx');
-      const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, ImageRun, ExternalHyperlink, TableLayoutType } = docx;
-
-      const schoolName = data?.school_name || school?.school_name || school?.name || 'School';
-      const academicYear = data.contract_start ? format(new Date(data.contract_start), 'yyyy') + '-' + (parseInt(format(new Date(data.contract_start), 'yy')) + 1).toString().padStart(2, '0') : '2026-27';
-      
-      // Get grade range from grade_pricing
-      const enteredGrades = (data.grade_pricing || []).filter(gp => gp.grade && gp.price_per_student);
-      const gradeOrder = ['Jr. Kg', 'Sr. Kg', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th'];
-      let gradeRangeText = '';
-      if (enteredGrades.length > 0) {
-        const sortedGrades = enteredGrades.map(g => g.grade).sort((a, b) => gradeOrder.indexOf(a) - gradeOrder.indexOf(b));
-        gradeRangeText = sortedGrades.length > 1 ? `${sortedGrades[0]} to ${sortedGrades[sortedGrades.length - 1]}` : sortedGrades[0];
-      }
-      
-      // Payment link
-      const paymentLink = data.payment_link || school?.payment_link || `https://oll.co/school-pay/${school?.id || 'demo'}`;
-
-      // Generate QR code as base64 image
-      let qrImageData = null;
-      try {
-        const qrDataUrl = await QRCode.toDataURL(paymentLink, {
-          width: 150,
-          margin: 1,
-          color: { dark: '#1e3a5f', light: '#ffffff' },
-        });
-        // Convert data URL to base64
-        qrImageData = qrDataUrl.split(',')[1];
-      } catch (qrErr) {
-        console.error('QR Code generation failed:', qrErr);
-      }
-
-      // Build fee table rows
-      let feeTableRows = [];
-      if (enteredGrades.length > 0) {
-        feeTableRows = enteredGrades.map(gp => 
-          new TableRow({
-            children: [
-              new TableCell({
-                children: [new Paragraph({ children: [new TextRun({ text: gp.grade, size: 22 })], alignment: AlignmentType.CENTER })],
-              }),
-              new TableCell({
-                children: [new Paragraph({ children: [new TextRun({ text: `Rs. ${Number(gp.price_per_student).toLocaleString('en-IN')}`, size: 22 })], alignment: AlignmentType.CENTER })],
-              }),
-            ],
-          })
-        );
-      } else if (data.pricing_type === 'fixed' && data.fixed_price) {
-        feeTableRows = [
-          new TableRow({
-            children: [
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'All Grades', size: 22 })], alignment: AlignmentType.CENTER })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: `Rs. ${Number(data.fixed_price).toLocaleString('en-IN')}`, size: 22 })], alignment: AlignmentType.CENTER })] }),
-            ],
-          }),
-        ];
-      } else {
-        feeTableRows = [
-          new TableRow({
-            children: [
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: '1st to 4th', size: 22 })], alignment: AlignmentType.CENTER })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Rs. ________', size: 22 })], alignment: AlignmentType.CENTER })] }),
-            ],
-          }),
-          new TableRow({
-            children: [
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: '5th to 8th', size: 22 })], alignment: AlignmentType.CENTER })] }),
-              new TableCell({ children: [new Paragraph({ children: [new TextRun({ text: 'Rs. ________', size: 22 })], alignment: AlignmentType.CENTER })] }),
-            ],
-          }),
-        ];
-      }
-
-      // Create document sections
-      const docSections = [
-        // School Name
-        new Paragraph({
-          children: [new TextRun({ text: schoolName, bold: true, size: 36, color: '1E3A5F' })],
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 200 },
-        }),
-        // Title
-        new Paragraph({
-          children: [new TextRun({ text: `Robotics & A.I. for Academic Year ${academicYear}`, bold: true, size: 32, color: '1E3A5F' })],
-          alignment: AlignmentType.CENTER,
-          spacing: { after: 400 },
-        }),
-        // Dear Parents
-        new Paragraph({
-          children: [new TextRun({ text: 'Dear Parents,', bold: true, size: 24 })],
-          spacing: { after: 200 },
-        }),
-        // Introduction paragraph
-        new Paragraph({
-          children: [
-            new TextRun({ text: `As per the release of NEP 2020, Our school will introduce the Robotics & A.I. Program as a subject from next academic year. We are thrilled to announce our partnership with OLL, to train all our students of Classes from ${gradeRangeText || '_____ to _____'} grade in the field of Robotics & AI so that our children will have an upper hand in the future work industry. OLL is a skill partner with over 400+ Schools across India.`, size: 22 }),
-          ],
-          spacing: { after: 300 },
-        }),
-        // Program Deliverables heading
-        new Paragraph({
-          children: [new TextRun({ text: 'Program Deliverables', bold: true, size: 26, color: '1E3A5F' })],
-          spacing: { before: 200, after: 200 },
-        }),
-        // Deliverables list
-        new Paragraph({ children: [new TextRun({ text: '1. Take home Robotic Kit: ', bold: true, size: 22 }), new TextRun({ text: 'Every child gets their own Robotics Kit', size: 22 })], spacing: { after: 100 } }),
-        new Paragraph({ children: [new TextRun({ text: '2. Duration: ', bold: true, size: 22 }), new TextRun({ text: 'Year long - Once a Week, Offline in the school during school hours.', size: 22 })], spacing: { after: 100 } }),
-        new Paragraph({ children: [new TextRun({ text: '3. Assessment & Certification: ', bold: true, size: 22 }), new TextRun({ text: 'will be conducted by the expert from OLL. International Accredited Certificates by STEM.org will be provided after assessment', size: 22 })], spacing: { after: 100 } }),
-        new Paragraph({ children: [new TextRun({ text: '4. Tech Exhibition: ', bold: true, size: 22 }), new TextRun({ text: 'Parents will be invited to an exhibition where our students will proudly showcase their innovative robotics projects.', size: 22 })], spacing: { after: 100 } }),
-        new Paragraph({ children: [new TextRun({ text: '5. 16 Projects: ', bold: true, size: 22 }), new TextRun({ text: 'will be made from that kit', size: 22 })], spacing: { after: 100 } }),
-        new Paragraph({ children: [new TextRun({ text: '6. Hard Copy Robotics & AI Books: ', bold: true, size: 22 }), new TextRun({ text: 'will be provided (Step by Step manual + videos, and PDFs)', size: 22 })], spacing: { after: 300 } }),
-        // Fees heading
-        new Paragraph({
-          children: [new TextRun({ text: 'Following are the Fees for the Robotics Program', bold: true, size: 26, color: '1E3A5F' })],
-          spacing: { before: 200, after: 200 },
-        }),
-        // Fee Table
-        new Table({
-          layout: TableLayoutType.FIXED,
-          width: { size: 100, type: WidthType.PERCENTAGE },
-          columnWidths: [4000, 4000],
-          rows: [
-            new TableRow({
-              children: [
-                new TableCell({
-                  children: [new Paragraph({ children: [new TextRun({ text: 'Grade', bold: true, size: 22, color: 'FFFFFF' })], alignment: AlignmentType.CENTER })],
-                  shading: { fill: '1E3A5F' },
-                  verticalAlign: 'center',
-                }),
-                new TableCell({
-                  children: [new Paragraph({ children: [new TextRun({ text: 'Fee per Student', bold: true, size: 22, color: 'FFFFFF' })], alignment: AlignmentType.CENTER })],
-                  shading: { fill: '1E3A5F' },
-                  verticalAlign: 'center',
-                }),
-              ],
-            }),
-            ...feeTableRows,
-          ],
-        }),
-        // Payment Link heading
-        new Paragraph({
-          children: [new TextRun({ text: `For Grades ${gradeRangeText || '1st to 8th'} Payment Link:`, bold: true, size: 24, color: '1E3A5F' })],
-          spacing: { before: 300, after: 100 },
-        }),
-        // Payment Link (clickable)
-        new Paragraph({
-          children: [
-            new ExternalHyperlink({
-              children: [new TextRun({ text: paymentLink, color: '0066CC', underline: {} , size: 22 })],
-              link: paymentLink,
-            }),
-          ],
-          spacing: { after: 200 },
-        }),
-      ];
-
-      // Add QR code if generated
-      if (qrImageData) {
-        docSections.push(
-          new Paragraph({
-            children: [new TextRun({ text: 'Scan QR Code to Pay:', size: 22 })],
-            spacing: { before: 100, after: 100 },
-          }),
-          new Paragraph({
-            children: [
-              new ImageRun({
-                data: Uint8Array.from(atob(qrImageData), c => c.charCodeAt(0)),
-                transformation: { width: 100, height: 100 },
-                type: 'png',
-              }),
-            ],
-            spacing: { after: 200 },
-          })
-        );
-      }
-
-      // Add remaining sections
-      docSections.push(
-        // Please Note
-        new Paragraph({
-          children: [
-            new TextRun({ text: 'Please Note: ', bold: true, size: 22, color: 'B48200' }),
-            new TextRun({ text: 'Students will receive their kits and books once the Robotics Classes commence in School.', size: 22, color: '664600' }),
-          ],
-          spacing: { before: 200, after: 300 },
-          shading: { fill: 'FFF8E1' },
-        }),
-        // Closing
-        new Paragraph({
-          children: [new TextRun({ text: `We look forward to a progressive & dynamic year ${academicYear} on the Journey of Upskilling our students!`, size: 22 })],
-          spacing: { after: 300 },
-        }),
-        // Regards
-        new Paragraph({
-          children: [new TextRun({ text: 'Regards,', bold: true, size: 24 })],
-          spacing: { after: 50 },
-        }),
-        new Paragraph({
-          children: [new TextRun({ text: 'Principal', bold: true, size: 24 })],
-          spacing: { after: 300 },
-        }),
-        // Helpline
-        new Paragraph({
-          children: [new TextRun({ text: 'For Queries – Call the OLL Helpline Number - 99201 88188', bold: true, size: 22, color: 'FFFFFF' })],
-          alignment: AlignmentType.CENTER,
-          shading: { fill: '1E3A5F' },
-        })
-      );
-
-      // Create the document
-      const doc = new Document({
-        sections: [{
-          properties: {},
-          children: docSections,
-        }],
-      });
-
-      // Generate the blob
-      const blob = await Packer.toBlob(doc);
-      
-      // Download
-      const fileName = `ParentCircular_${(schoolName).replace(/\s+/g, '_')}_${format(new Date(), 'ddMMMyyyy')}.docx`;
-      saveAs(blob, fileName);
-
-      // Upload & Store
-      try {
-        const docFile = new File([blob], fileName, { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-        const formData = new FormData();
-        formData.append('file', docFile);
-        const uploadRes = await axios.post(`${API}/upload`, formData, {
-          headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' },
-        });
-        const fileUrl = uploadRes.data.url;
-        setData(prev => ({ ...prev, parent_circular_url: fileUrl }));
-        
-        // Also save to documents
-        const existingDocs = school?.documents || [];
-        const newDoc = {
-          type: 'Parent Circular',
-          url: fileUrl,
-          name: fileName,
-          uploaded_at: new Date().toISOString(),
-          uploaded_by: user?.name || user?.email || 'Admin',
-        };
-        await axios.patch(`${API}/schools/inquiry/${school.id}`, {
-          documents: [...existingDocs, newDoc],
-        }, { headers: getAuthHeaders() });
-        fetchInquiries();
-        toast.success('Parent Circular generated, downloaded & saved!');
-      } catch {
-        toast.success('Parent Circular downloaded! (Save to documents failed)');
-      }
+      await generateParentCircularDocument(school, data, { API, getAuthHeaders, user, toast, fetchInquiries, setData });
     } catch (err) {
       console.error('Parent Circular generation error:', err);
       toast.error('Failed to generate Parent Circular: ' + (err.message || 'Unknown error'));
@@ -3573,6 +2548,9 @@ const AdminSchoolCRM = () => {
         payment_tranches: formattedTranches,
         gst_type: String(onboardData.gst_type || ''),
         school_address: String(onboardData.school_address || ''),
+        latitude: onboardData.latitude || null,
+        longitude: onboardData.longitude || null,
+        geofence_radius: onboardData.geofence_radius || 500,
         additional_services: onboardData.additional_services || [],
         deadline_date: String(onboardData.deadline_date || ''),
         contract_start: contractStart,
@@ -3614,10 +2592,14 @@ const AdminSchoolCRM = () => {
       
       // Update school status based on save mode
       if (!saveAsDraft) {
-        // Set status to converted
+        // Set status to converted and include location data at root level
         await axios.patch(`${API}/schools/inquiry/${showOnboardModal.id}`, {
           status: 'converted',
-          conversion_amount: String(totalAmount)
+          conversion_amount: String(totalAmount),
+          latitude: onboardData.latitude || null,
+          longitude: onboardData.longitude || null,
+          geofence_radius: onboardData.geofence_radius || 500,
+          address: onboardData.school_address || '',
         }, { headers: getAuthHeaders() });
         
         // Auto-initialize the onboarding workflow
@@ -3738,7 +2720,7 @@ const AdminSchoolCRM = () => {
       formData.append('file', file);
       formData.append('type', 'mou');
       const response = await axios.post(`${API}/upload?type=mou`, formData, {
-        headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
+        headers: getAuthHeaders()
       });
       setOnboardData(prev => ({ ...prev, mou_url: response.data.url }));
       toast.success('MOU uploaded successfully');
@@ -3764,6 +2746,18 @@ const AdminSchoolCRM = () => {
     
     return { progress: Math.min(progress, 100), steps };
   };
+
+  const addNewLeadContact = () => setNewLead(prev => ({
+    ...prev, school_contacts: [...prev.school_contacts, { name: '', role: '', phone_number: '', country_code: '+91', email: '' }]
+  }));
+  const removeNewLeadContact = (idx) => setNewLead(prev => ({
+    ...prev, school_contacts: prev.school_contacts.filter((_, i) => i !== idx)
+  }));
+  const updateNewLeadContact = (idx, field, val) => setNewLead(prev => {
+    const updated = [...prev.school_contacts];
+    updated[idx] = { ...updated[idx], [field]: val };
+    return { ...prev, school_contacts: updated };
+  });
 
   const handleAddLead = async () => {
     if (!newLead.school_name || !newLead.contact_name || !newLead.phone) {
@@ -3799,7 +2793,8 @@ const AdminSchoolCRM = () => {
         selected_offerings: newLead.selected_offerings,
         assign_option: newLead.assign_option,
         added_by: user?.id || user?.email,
-        added_by_name: user?.name || 'Admin'
+        added_by_name: user?.name || 'Admin',
+        school_contacts: newLead.school_contacts.filter(c => c.name)
       }, {
         headers: getAuthHeaders()
       });
@@ -3844,7 +2839,8 @@ const AdminSchoolCRM = () => {
         quoted_price: '',
         selected_offerings: [],
         assign_option: 'self',
-        sendIntroEmail: false
+        sendIntroEmail: false,
+        school_contacts: [{ name: '', role: '', phone_number: '', country_code: '+91', email: '' }]
       });
       fetchInquiries();
     } catch (error) {
@@ -4021,6 +3017,155 @@ const AdminSchoolCRM = () => {
   };
 
   // Update an onboarding step
+  // ── Checkin API handlers ──────────────────────────────────────────────────
+  const fetchCheckinEducators = async () => {
+    if (checkinEducators.length > 0) return; // already loaded
+    setCheckinEducatorsLoading(true);
+    try {
+      const res = await axios.get(`${API}/schools/checkin/educators`, { headers: getAuthHeaders() });
+      setCheckinEducators(res.data.educators || []);
+    } catch {
+      toast.error('Could not load educators from checkin system');
+    } finally {
+      setCheckinEducatorsLoading(false);
+    }
+  };
+
+  const saveTimetableToCheckin = async (schoolId) => {
+    if (!timetableFormLocal.start_date || !timetableFormLocal.end_date || !(timetableFormLocal.days_of_week || []).length) {
+      toast.error('Please fill Start Date, End Date, and select at least one day');
+      return;
+    }
+    if (!timetableFormLocal.educator_id) {
+      toast.error('Please select an educator');
+      return;
+    }
+    setSavingTimetable(true);
+    try {
+      const res = await axios.post(`${API}/schools/${schoolId}/timetable`, timetableFormLocal, { headers: getAuthHeaders() });
+      const timetableId = res.data.timetable_id;
+      // Also save locally to onboarding step (only when called from onboarding workflow)
+      if (showOnboardingWorkflowModal) {
+        await handleUpdateOnboardingStep(schoolId, 'timetable_finalization', {
+          data: { ...timetableFormLocal, timetable_created: true, checkin_timetable_id: timetableId }
+        });
+      }
+      toast.success(`Timetable ${timetableId ? 'saved to Checkin system' : 'saved locally'}`);
+      setShowTimetableBuilder(null);
+      setShowStandaloneTimetableModal(null);
+      // Refresh sessions if sessions modal is open
+      if (showSessionsModal) fetchSchoolSessions(showSessionsModal, sessionsFilter);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to save timetable');
+    } finally {
+      setSavingTimetable(false);
+    }
+  };
+
+  const fetchSchoolSessions = async (school, filters = {}) => {
+    setSessionsLoading(true);
+    try {
+      // Always ensure educators are loaded BEFORE sessions so name lookup works immediately
+      let eduList = checkinEducators;
+      if (eduList.length === 0) {
+        try {
+          setCheckinEducatorsLoading(true);
+          const eduRes = await axios.get(`${API}/schools/checkin/educators`, { headers: getAuthHeaders() });
+          eduList = eduRes.data.educators || [];
+          setCheckinEducators(eduList);
+        } catch {
+          // non-critical — fall back to UUID
+        } finally {
+          setCheckinEducatorsLoading(false);
+        }
+      }
+
+      const params = new URLSearchParams({ per_page: 30, ...filters });
+      Object.keys(filters).forEach(k => { if (!filters[k]) params.delete(k); });
+      const res = await axios.get(`${API}/schools/${school.id}/checkin-sessions?${params}`, { headers: getAuthHeaders() });
+      setSessionsData(res.data.sessions || []);
+      setSessionsMeta(res.data.meta || {});
+    } catch {
+      toast.error('Failed to load sessions');
+      setSessionsData([]);
+    } finally {
+      setSessionsLoading(false);
+    }
+  };
+
+  const updateSession = async (sessionId) => {
+    try {
+      await axios.put(`${API}/schools/${showSessionsModal.id}/checkin-sessions/${sessionId}`, sessionEditForm, { headers: getAuthHeaders() });
+      toast.success('Session updated');
+      setEditingSession(null);
+      setSessionEditForm({});
+      fetchSchoolSessions(showSessionsModal, sessionsFilter);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to update session');
+    }
+  };
+
+  const updateSessionFull = async () => {
+    if (!showEditSessionModal) return;
+    try {
+      await axios.put(`${API}/schools/${showSessionsModal.id}/checkin-sessions/${showEditSessionModal.id}`, editSessionFullForm, { headers: getAuthHeaders() });
+      toast.success('Session updated');
+      setShowEditSessionModal(null);
+      setEditSessionFullForm({});
+      fetchSchoolSessions(showSessionsModal, sessionsFilter);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to update session');
+    }
+  };
+
+  // Day name short↔full conversion for timetable
+  const FULL_TO_SHORT = { monday:'Mon', tuesday:'Tue', wednesday:'Wed', thursday:'Thu', friday:'Fri', saturday:'Sat', sunday:'Sun' };
+
+  const openStandaloneTimetableEditor = async (school) => {
+    setStandaloneTimetableLoading(true);
+    // Ensure educators are loaded
+    if (checkinEducators.length === 0) {
+      try {
+        setCheckinEducatorsLoading(true);
+        const eduRes = await axios.get(`${API}/schools/checkin/educators`, { headers: getAuthHeaders() });
+        setCheckinEducators(eduRes.data.educators || []);
+      } catch {} finally { setCheckinEducatorsLoading(false); }
+    }
+    try {
+      const res = await axios.get(`${API}/schools/${school.id}/timetable`, { headers: getAuthHeaders() });
+      const t = res.data.timetable;
+      if (t) {
+        // Map API full day names → short names used by form
+        const shortDays = (t.days_of_week || []).map(d => FULL_TO_SHORT[d] || d);
+        // Map time_slots: {thursday:[{start_time,end_time}]} → {Thu:[{start,end}]}
+        const mappedSlots = {};
+        for (const [fullDay, slots] of Object.entries(t.time_slots || {})) {
+          const shortDay = FULL_TO_SHORT[fullDay] || fullDay;
+          mappedSlots[shortDay] = (slots || []).map(s => ({ start: s.start_time || '', end: s.end_time || '' }));
+        }
+        setTimetableFormLocal({
+          educator_id: t.educator_id || '',
+          session_mode: t.mode || 'offline',
+          start_date: t.start_date || '',
+          end_date: t.end_date || '',
+          days_of_week: shortDays,
+          time_slots: mappedSlots,
+          sessions_per_week: '',
+          timetable_status: t.is_active ? 'active' : 'inactive',
+          notes: '',
+        });
+      } else {
+        setTimetableFormLocal({ session_mode: 'offline', start_date: '', end_date: '', days_of_week: [], time_slots: {}, sessions_per_week: '', timetable_status: 'active', notes: '', educator_id: '' });
+      }
+    } catch {
+      toast.error('Could not load timetable');
+    } finally {
+      setStandaloneTimetableLoading(false);
+    }
+    setShowStandaloneTimetableModal(school);
+  };
+  // ─────────────────────────────────────────────────────────────────────────
+
   const handleUpdateOnboardingStep = async (schoolId, stepKey, data) => {
     try {
       await axios.patch(`${API}/schools/${schoolId}/onboarding-step/${stepKey}`, data, {
@@ -4040,6 +3185,25 @@ const AdminSchoolCRM = () => {
       }
     } catch (error) {
       toast.error('Failed to update step');
+    }
+  };
+
+  const handleRegenerateWorkflow = async (schoolId) => {
+    if (!window.confirm('Regenerate workflow steps based on current program details?\n\nThis will add/remove steps to match the school\'s kit type and training type, while preserving completed step data.')) return;
+    try {
+      const response = await axios.post(`${API}/schools/${schoolId}/regenerate-workflow`, {}, {
+        headers: getAuthHeaders()
+      });
+      toast.success(response.data.message || 'Workflow regenerated');
+      fetchInquiries();
+      if (showOnboardingWorkflowModal) {
+        setShowOnboardingWorkflowModal({
+          ...showOnboardingWorkflowModal,
+          onboarding_workflow: response.data.workflow
+        });
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to regenerate workflow');
     }
   };
 
@@ -4107,6 +3271,57 @@ const AdminSchoolCRM = () => {
       toast.error('Failed to sync expenses');
     } finally {
       setSyncingExpenses(false);
+    }
+  };
+
+  // Raise PO Request to Vendor Panel
+  const handlePoPreview = async () => {
+    if (!poDeliveryDate) { toast.error('Please select a delivery date'); return; }
+    setLoadingPoPreview(true);
+    try {
+      const res = await axios.post(`${API}/schools/${showOnboardingWorkflowModal.id}/po-preview`, {}, { headers: getAuthHeaders() });
+      setPoPreviewProducts((res.data.products || []).map((p, i) => ({ ...p, _id: i })));
+      setPoPreviewLoaded(true);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to load product preview');
+    } finally {
+      setLoadingPoPreview(false);
+    }
+  };
+
+  const handleRaisePO = async () => {
+    if (!poDeliveryDate) {
+      toast.error('Please select a delivery date');
+      return;
+    }
+    setRaisingPO(true);
+    try {
+      const res = await axios.post(`${API}/schools/${showOnboardingWorkflowModal.id}/raise-po`, {
+        delivery_date: poDeliveryDate,
+        products: poPreviewLoaded ? poPreviewProducts : undefined,
+      }, { headers: getAuthHeaders() });
+      toast.success(res.data.message || 'PO raised successfully!');
+      setShowRaisePODialog(false);
+      setPoDeliveryDate('');
+      setPoPreviewProducts([]);
+      setPoPreviewLoaded(false);
+      setNewPoProduct({ product_name: '', quantity: '' });
+      // Refresh school data
+      fetchInquiries();
+      // Refresh the modal data
+      const updated = await axios.get(`${API}/schools/${showOnboardingWorkflowModal.id}/onboarding`, { headers: getAuthHeaders() });
+      if (updated.data) {
+        setShowOnboardingWorkflowModal(prev => ({
+          ...prev,
+          onboarding_workflow: updated.data.workflow,
+          po_requests: updated.data.po_requests || [],
+          onboarding_data: updated.data.onboarding_data || prev.onboarding_data,
+        }));
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to raise PO');
+    } finally {
+      setRaisingPO(false);
     }
   };
 
@@ -4360,6 +3575,7 @@ const AdminSchoolCRM = () => {
         gp_share_calc: existingOnboardData.gp_share_calc || 'lumpsum',
         gp_share_value: existingOnboardData.gp_share_value || '',
         gp_share_amount: existingOnboardData.gp_share_amount || 0,
+        gst_type: existingOnboardData.gst_type || '',
       });
       setShowEditOnboardingModal(school);
       return;
@@ -4392,6 +3608,7 @@ const AdminSchoolCRM = () => {
         gp_share_calc: response.data.gp_share_calc || 'lumpsum',
         gp_share_value: response.data.gp_share_value || '',
         gp_share_amount: response.data.gp_share_amount || 0,
+        gst_type: response.data.gst_type || '',
       });
       setShowEditOnboardingModal(school);
     } catch (error) {
@@ -4432,6 +3649,7 @@ const AdminSchoolCRM = () => {
         gp_share_calc: 'lumpsum',
         gp_share_value: '',
         gp_share_amount: 0,
+        gst_type: '',
       });
       setShowEditOnboardingModal(school);
     }
@@ -4453,6 +3671,31 @@ const AdminSchoolCRM = () => {
       if (editOnboardData.pricing_type === 'fixed' || editOnboardData.pricing_type === 'both') {
         calculatedTotalAmount += parseFloat(editOnboardData.fixed_price) || 0;
       }
+
+      // Recalculate school_share_amount on BASE (pre-GST) amount
+      const calcShareAmount = (shareType, shareCalc, shareValue, totalStudents, totalAmount) => {
+        if (!shareType || shareType === 'none' || !shareValue) return 0;
+        const val = parseFloat(shareValue) || 0;
+        if (shareType === 'percentage') {
+          const base = shareCalc === 'per_student' ? totalStudents : totalAmount;
+          return shareCalc === 'per_student' ? val * base : (val / 100) * base;
+        }
+        return shareCalc === 'per_student' ? val * totalStudents : val;
+      };
+
+      const calculatedSchoolShareAmount = calcShareAmount(
+        editOnboardData.school_share_type, editOnboardData.school_share_calc,
+        editOnboardData.school_share_value, calculatedTotalStudents, calculatedTotalAmount
+      );
+      const calculatedGpShareAmount = calcShareAmount(
+        editOnboardData.gp_share_type, editOnboardData.gp_share_calc,
+        editOnboardData.gp_share_value, calculatedTotalStudents, calculatedTotalAmount
+      );
+
+      // Apply GST on top of base for exclusive type — this is the amount schools actually pay
+      if (editOnboardData.gst_type === 'exclusive_18') {
+        calculatedTotalAmount = Math.round(calculatedTotalAmount * 1.18);
+      }
       
       // Build the onboarding data object with recalculated values
       const onboardingData = {
@@ -4471,7 +3714,14 @@ const AdminSchoolCRM = () => {
         school_contacts: editOnboardData.school_contacts,
         payment_mode: editOnboardData.payment_mode,
         payment_method: editOnboardData.payment_mode === 'online' ? 'student' : editOnboardData.payment_method,
-        payment_tranches: editOnboardData.payment_mode === 'online' ? [] : editOnboardData.payment_tranches,
+        payment_tranches: editOnboardData.payment_mode === 'online' ? [] : (editOnboardData.payment_tranches || []).map(t => {
+          const pct = parseFloat(t.percentage) || 0;
+          // Recalculate tranche amount from percentage if total_amount changed
+          if (pct > 0 && calculatedTotalAmount > 0) {
+            return { ...t, amount: String(Math.round(calculatedTotalAmount * pct / 100)) };
+          }
+          return t;
+        }),
         deadline_date: editOnboardData.deadline_date,
         contract_start: editOnboardData.contract_start,
         contract_end: editOnboardData.contract_end,
@@ -4481,11 +3731,12 @@ const AdminSchoolCRM = () => {
         school_share_type: editOnboardData.school_share_type,
         school_share_calc: editOnboardData.school_share_calc,
         school_share_value: editOnboardData.school_share_value,
-        school_share_amount: editOnboardData.school_share_amount,
+        school_share_amount: calculatedSchoolShareAmount,
         gp_share_type: editOnboardData.gp_share_type,
         gp_share_calc: editOnboardData.gp_share_calc,
         gp_share_value: editOnboardData.gp_share_value,
-        gp_share_amount: editOnboardData.gp_share_amount,
+        gp_share_amount: calculatedGpShareAmount,
+        gst_type: editOnboardData.gst_type || '',
       };
 
       // Update school inquiry basic info AND onboarding_data for renewed/converted schools
@@ -4498,6 +3749,9 @@ const AdminSchoolCRM = () => {
         location: editOnboardData.location,
         board: editOnboardData.board,
         address: editOnboardData.address,
+        latitude: editOnboardData.latitude || null,
+        longitude: editOnboardData.longitude || null,
+        geofence_radius: editOnboardData.geofence_radius || 500,
         model: editOnboardData.model,
         total_students: calculatedTotalStudents,
         // Keep conversion_amount in sync with total_amount for display purposes
@@ -4536,7 +3790,15 @@ const AdminSchoolCRM = () => {
       inq.phone?.includes(searchQuery);
     
     // If searching all statuses and there's a search query, ignore section filter
-    const matchesSection = (searchAllStatuses && searchQuery.trim()) ? true : inq.status === activeSection;
+    let matchesSection = false;
+    if (searchAllStatuses && searchQuery.trim()) {
+      matchesSection = true;
+    } else if (activeSection === 'lost') {
+      // "Lost" tab shows both lost_lead and lost_customer (and legacy 'lost')
+      matchesSection = ['lost', 'lost_lead', 'lost_customer'].includes(inq.status);
+    } else {
+      matchesSection = inq.status === activeSection;
+    }
     
     // Assignee filter
     let matchesAssignee = true;
@@ -4551,7 +3813,349 @@ const AdminSchoolCRM = () => {
     return matchesSearch && matchesSection && matchesAssignee;
   });
 
-  const getCount = (status) => inquiries.filter(i => i.status === status).length;
+  // Count function that groups lost statuses under 'lost' tab
+  const getCount = (status) => {
+    if (status === 'lost') {
+      return inquiries.filter(i => ['lost', 'lost_lead', 'lost_customer'].includes(i.status)).length;
+    }
+    return inquiries.filter(i => i.status === status).length;
+  };
+
+  const exportSchoolsToCSV = () => {
+    const headers = ['School Name', 'Contact Name', 'Phone', 'City', 'Board', 'Status', 'Source', 'Assigned To', 'Lead Value (₹)', 'Created At'];
+    const rows = filteredInquiries.map(inq => {
+      const assignedUser = teamUsers.find(u => u.id === inq.assigned_to);
+      return [
+        inq.school_name || '',
+        inq.contact_name || '',
+        inq.phone || '',
+        inq.city || '',
+        inq.board || '',
+        inq.status || '',
+        inq.source || '',
+        assignedUser?.name || inq.assigned_to || '',
+        inq.lead_value || 0,
+        inq.created_at ? new Date(inq.created_at).toLocaleDateString('en-IN') : '',
+      ];
+    });
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `schools_${activeSection}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${filteredInquiries.length} schools`);
+  };
+
+  // Helper function to render a school card
+  const renderSchoolCard = (inquiry) => (
+    <div 
+      key={inquiry.id} 
+      className={`bg-white rounded-xl border ${inquiry.is_viewer ? 'border-slate-200 ring-1 ring-slate-100' : 'border-slate-100'} p-4 hover:shadow-md transition-shadow`}
+      data-testid={`school-card-${inquiry.id}`}
+    >
+      <div className="flex items-start justify-between mb-2">
+        <div className="min-w-0 flex-1 pr-2">
+          <h3 className="font-semibold text-[#1E3A5F] break-words">{inquiry.school_name}</h3>
+          <p className="text-sm text-slate-500">{inquiry.contact_name}</p>
+          {/* Source badge on separate line */}
+          <div className="flex flex-wrap gap-1 mt-1">
+            <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+              inquiry.source === 'website' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
+            }`}>
+              {inquiry.source || 'website'}
+            </span>
+            {inquiry.meeting_type && (
+              <span className={`px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1 ${
+                inquiry.meeting_type === 'online' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
+              }`}>
+                {inquiry.meeting_type === 'online' ? <Video className="w-3 h-3" /> : <Users className="w-3 h-3" />}
+                {inquiry.meeting_type === 'online' ? 'Online' : 'Offline'}
+              </span>
+            )}
+            {/* Show lost status badge */}
+            {['lost_lead', 'lost_customer', 'lost'].includes(inquiry.status) && (
+              <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                inquiry.status === 'lost_lead' ? 'bg-red-100 text-red-600' : 'bg-red-200 text-red-700'
+              }`}>
+                {inquiry.status === 'lost_lead' ? 'Lost Lead' : 'Lost Customer'}
+              </span>
+            )}
+          </div>
+          {inquiry.assigned_to && (
+            <p className="text-xs text-indigo-600 mt-1 flex items-center gap-1">
+              <UserPlus className="w-3 h-3 flex-shrink-0" /> 
+              <span>{inquiry.assigned_to_name || getAssignedUserName(inquiry.assigned_to) || 'Team'}</span>
+            </p>
+          )}
+          {inquiry.is_viewer && (
+            <span className="inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">
+              Viewer Only
+            </span>
+          )}
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          {/* Show status badge when searching all statuses */}
+          {searchAllStatuses && searchQuery.trim() && (
+            <span className={`px-2 py-1 rounded text-xs font-medium ${
+              STATUS_SECTIONS.find(s => s.value === inquiry.status)?.color || 
+              (inquiry.status === 'lost_lead' ? 'bg-red-400' : inquiry.status === 'lost_customer' ? 'bg-red-600' : 'bg-slate-100')
+            } text-white`}>
+              {STATUS_SECTIONS.find(s => s.value === inquiry.status)?.label || 
+               (inquiry.status === 'lost_lead' ? 'Lost Lead' : inquiry.status === 'lost_customer' ? 'Lost Customer' : inquiry.status)}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-0.5 text-sm text-slate-600 mb-2">
+        <p className="flex items-center gap-1 text-xs">
+          <Phone className="w-3 h-3 text-slate-400" /> {inquiry.phone}
+        </p>
+        {inquiry.location && (
+          <p className="flex items-center gap-1 text-xs truncate">
+            <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" /> <span className="truncate">{inquiry.location}</span>
+          </p>
+        )}
+        {inquiry.board && (
+          <p className="text-xs"><span className="text-slate-400">Board:</span> {inquiry.board}</p>
+        )}
+        {inquiry.meeting_date && (
+          <p className="flex items-center gap-1 text-[#D63031] font-medium text-xs">
+            <Calendar className="w-3 h-3" />
+            {inquiry.meeting_date} {inquiry.meeting_time && `${inquiry.meeting_time}`}
+          </p>
+        )}
+        {(inquiry.conversion_amount || inquiry.onboarding_data?.total_amount) && (
+          <p className="text-green-600 font-medium text-xs">
+            ₹{Number(inquiry.conversion_amount || inquiry.onboarding_data?.total_amount).toLocaleString()}
+          </p>
+        )}
+        {inquiry.quoted_price && !inquiry.conversion_amount && !inquiry.onboarding_data?.total_amount && (
+          <p className="text-blue-600 font-medium text-xs">
+            Quoted: ₹{Number(inquiry.quoted_price).toLocaleString()}
+          </p>
+        )}
+      </div>
+
+      {/* Lost Reason - Show for lost items */}
+      {['lost_lead', 'lost_customer', 'lost'].includes(inquiry.status) && inquiry.lost_reason && (
+        <div className="bg-red-50 border border-red-100 rounded-lg p-2 mb-2">
+          <p className="text-xs text-red-600 font-medium mb-0.5 flex items-center gap-1">
+            <X className="w-3 h-3" /> Lost Reason
+          </p>
+          <p className="text-xs text-red-700">
+            {inquiry.lost_reason.startsWith('custom:') ? inquiry.lost_reason.replace('custom:', '') : inquiry.lost_reason}
+          </p>
+          {inquiry.lead_value > 0 && (
+            <p className="text-xs text-red-600 font-semibold mt-1">
+              Lead Value: ₹{Number(inquiry.lead_value).toLocaleString('en-IN')}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Selected Offerings */}
+      {inquiry.selected_offerings?.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-2">
+          {inquiry.selected_offerings.slice(0, 2).map((offeringId, idx) => {
+            const offering = offerings.find(o => o.id === offeringId);
+            return (
+              <span key={idx} className="px-1.5 py-0.5 bg-purple-100 rounded text-[10px] text-purple-700">
+                {offering ? offering.title : offeringId}
+              </span>
+            );
+          })}
+          {inquiry.selected_offerings.length > 2 && (
+            <span className="px-1.5 py-0.5 bg-purple-100 rounded text-[10px] text-purple-700">
+              +{inquiry.selected_offerings.length - 2}
+            </span>
+          )}
+        </div>
+      )}
+      
+      {/* Support Needed (from SchoolFunnel) */}
+      {inquiry.support_needed?.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-2">
+          {inquiry.support_needed.slice(0, 2).map((supportId, idx) => {
+            const offering = offerings.find(o => o.id === supportId);
+            return (
+              <span key={idx} className="px-1.5 py-0.5 bg-green-100 rounded text-[10px] text-green-700">
+                {offering ? offering.title : supportId}
+              </span>
+            );
+          })}
+        </div>
+      )}
+
+      {inquiry.programs_interested?.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-2">
+          {inquiry.programs_interested.slice(0, 3).map((p, idx) => (
+            <span key={idx} className="px-1.5 py-0.5 bg-[#1E3A5F]/10 rounded text-[10px] text-[#1E3A5F] capitalize">
+              {p}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Comments shown outside */}
+      {inquiry.notes && (
+        <div className="bg-slate-50 border border-slate-100 rounded-lg p-2 mb-2">
+          <p className="text-xs text-slate-500 font-medium mb-0.5 flex items-center gap-1">
+            <MessageSquare className="w-3 h-3" /> Latest Note
+          </p>
+          <p className="text-xs text-slate-700 line-clamp-2">
+            {inquiry.notes.split('\n\n').pop()?.split('\n').slice(0, 2).join('\n') || inquiry.notes.slice(-150)}
+          </p>
+        </div>
+      )}
+
+      {/* Relationship Manager - Show for converted/active schools */}
+      {['converted', 'active', 'renewed'].includes(inquiry.status) && inquiry.relationship_manager_name && (
+        <div className="bg-indigo-50/50 rounded px-2 py-1 mb-2">
+          <p className="text-[10px] text-indigo-700 flex items-center gap-1">
+            <User className="w-2.5 h-2.5" />
+            <span className="font-medium">RM:</span> {inquiry.relationship_manager_name}
+          </p>
+        </div>
+      )}
+
+      {/* Referred By - Show for referral leads */}
+      {inquiry.referred_by && (
+        <div className="bg-green-50/50 rounded px-2 py-1 mb-2">
+          <p className="text-[10px] text-green-700 flex items-center gap-1">
+            <Users className="w-2.5 h-2.5" />
+            <span className="font-medium">Ref:</span> {inquiry.referred_by}
+          </p>
+        </div>
+      )}
+
+      {/* Followup shown outside - only for non-converted */}
+      {inquiry.status !== 'converted' && inquiry.followup_date && (
+        <div className="bg-cyan-50/50 rounded px-2 py-1 mb-2">
+          <p className="text-[10px] text-cyan-700 font-medium flex items-center gap-1">
+            <Clock className="w-2.5 h-2.5" /> Followup: {inquiry.followup_date}
+          </p>
+        </div>
+      )}
+
+      {/* Scheduled Followup Tasks - show for new/lead status */}
+      {(inquiry.status === 'new' || inquiry.status === 'lead') && inquiry.followup_tasks?.length > 0 && (() => {
+        const pendingTasks = inquiry.followup_tasks.filter(t => t.status === 'pending');
+        const completedCount = inquiry.followup_tasks.filter(t => t.status === 'completed' || t.status === 'sent').length;
+        const nextTask = pendingTasks.sort((a, b) => new Date(a.scheduled_date) - new Date(b.scheduled_date))[0];
+        if (!nextTask) return null;
+        return (
+          <div className="bg-blue-50/50 rounded px-2 py-1 mb-2">
+            <p className="text-[10px] text-blue-700 font-medium flex items-center gap-1">
+              <Mail className="w-2.5 h-2.5" /> 
+              Next: {format(new Date(nextTask.scheduled_date), 'dd MMM')}
+              <span className="ml-auto text-blue-500">({completedCount}/{inquiry.followup_tasks.length})</span>
+            </p>
+          </div>
+        );
+      })()}
+
+      {/* Draft Progress Bar - Show if onboarding is in draft state */}
+      {inquiry.onboarding_status === 'draft' && inquiry.onboarding_id && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 mb-2">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-[10px] text-amber-700 font-medium flex items-center gap-1">
+              <Clock className="w-2.5 h-2.5" /> Draft
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-5 text-[10px] text-amber-700 hover:bg-amber-100 px-1"
+              onClick={() => openConversionModal(inquiry)}
+            >
+              Continue →
+            </Button>
+          </div>
+          <div className="w-full bg-amber-200 rounded-full h-1.5">
+            <div 
+              className="bg-amber-500 h-1.5 rounded-full transition-all" 
+              style={{ width: `${inquiry.total_students ? 60 : 25}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Onboarding Progress - Show for converted and renewed schools with onboarding_workflow */}
+      {inquiry.onboarding_workflow && ['converted', 'renewed'].includes(inquiry.status) && (
+        <div className={`${inquiry.status === 'renewed' ? 'bg-emerald-50 border-emerald-200' : 'bg-purple-50 border-purple-200'} border rounded-lg p-2 mb-2`}>
+          <div className="flex items-center justify-between mb-1">
+            <p className={`text-[10px] font-medium flex items-center gap-1 ${inquiry.status === 'renewed' ? 'text-emerald-700' : 'text-purple-700'}`}>
+              <CheckCircle2 className="w-2.5 h-2.5" />
+              {inquiry.status === 'renewed' ? 'Re-Onboarding' : 'Onboarding'}
+            </p>
+            <button
+              onClick={() => setShowOnboardingWorkflowModal(inquiry)}
+              className={`text-[10px] font-medium ${inquiry.status === 'renewed' ? 'text-emerald-600 hover:text-emerald-800' : 'text-purple-600 hover:text-purple-800'}`}
+            >
+              View →
+            </button>
+          </div>
+          {/* Progress Bar */}
+          <div className={`w-full ${inquiry.status === 'renewed' ? 'bg-emerald-200' : 'bg-purple-200'} rounded-full h-1.5 mb-1`}>
+            <div 
+              className={`${inquiry.status === 'renewed' ? 'bg-emerald-500' : 'bg-purple-500'} h-1.5 rounded-full transition-all`}
+              style={{ 
+                width: `${(Object.values(inquiry.onboarding_workflow.steps || {}).filter(s => s.completed).length / Math.max(Object.keys(inquiry.onboarding_workflow.steps || {}).length, 1) * 100).toFixed(0)}%` 
+              }}
+            />
+          </div>
+          <div className="flex items-center justify-between text-[10px]">
+            <span className={inquiry.status === 'renewed' ? 'text-emerald-600' : 'text-purple-600'}>
+              {Object.values(inquiry.onboarding_workflow.steps || {}).filter(s => s.completed).length}/{Object.keys(inquiry.onboarding_workflow.steps || {}).length}
+            </span>
+            {inquiry.onboarding_workflow.tracking_token && (
+              <button
+                onClick={() => {
+                  const url = `${window.location.origin}/track/${inquiry.onboarding_workflow.tracking_token}`;
+                  navigator.clipboard.writeText(url);
+                  toast.success('Link copied!');
+                }}
+                className={`flex items-center gap-0.5 ${inquiry.status === 'renewed' ? 'text-emerald-500 hover:text-emerald-700' : 'text-purple-500 hover:text-purple-700'}`}
+              >
+                <Gift className="w-2.5 h-2.5" /> Copy link
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* View Button */}
+      <div className="flex gap-1.5 mb-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="flex-1 h-7 text-xs"
+          onClick={() => setViewInquiry(inquiry)}
+          data-testid={`view-school-${inquiry.id}`}
+        >
+          <Eye className="w-3 h-3 mr-1" /> View
+        </Button>
+        {/* Add Meeting button for relevant statuses */}
+        {['meeting_done', 'converted', 'active', 'renewed'].includes(inquiry.status) && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 px-2"
+            onClick={() => setShowAddMeetingModal(inquiry)}
+            data-testid={`add-meeting-${inquiry.id}`}
+          >
+            <Plus className="w-3 h-3" />
+          </Button>
+        )}
+      </div>
+
+      {/* Action Buttons based on status */}
+      {renderActionButtons(inquiry)}
+    </div>
+  );
 
   // Render action buttons based on status
   const renderActionButtons = (inquiry) => {
@@ -4628,6 +4232,78 @@ const AdminSchoolCRM = () => {
       </button>
     );
 
+    // Raise Ticket button - available across ALL stages
+    const raiseTicketButton = (
+      <button
+        onClick={() => {
+          setShowRaiseTicketModal(inquiry);
+          setTicketData({
+            query_type: '',
+            related_to: '',
+            subject: '',
+            description: '',
+            priority: 'medium',
+            source: 'school_crm',
+            user_type: 'school',
+            contact_name: inquiry.contact_name,
+            contact_phone: inquiry.phone,
+            contact_email: inquiry.email
+          });
+          setTicketAttachments([]);
+          setTicketAudioBlob(null);
+          setTicketAudioUrl(null);
+        }}
+        className="text-xs px-2.5 py-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-700 flex items-center gap-1 font-medium"
+        data-testid={`raise-ticket-${inquiry.id}`}
+      >
+        <Ticket className="w-3 h-3" />
+        Ticket
+      </button>
+    );
+
+    // Change Stage (rollback) dropdown - move back one step
+    const stageRollbackMap = {
+      'meeting_done': [{ value: 'new', label: 'New Lead' }],
+      'converted': [{ value: 'meeting_done', label: 'Meeting Done' }],
+      'active': [{ value: 'converted', label: 'Converted' }],
+      'renewal_meeting': [{ value: 'active', label: 'Active' }],
+      'renewed': [{ value: 'active', label: 'Active' }, { value: 'renewal_meeting', label: 'Renewal Meeting' }],
+    };
+    const rollbackOptions = stageRollbackMap[inquiry.status] || [];
+    const changeStageButton = rollbackOptions.length > 0 && (
+      <div className="relative group/stage">
+        <button
+          className="text-xs px-2.5 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center gap-1 font-medium"
+          data-testid={`change-stage-${inquiry.id}`}
+        >
+          <History className="w-3 h-3" />
+          Move Back
+          {rollbackOptions.length > 1 && <ChevronDown className="w-3 h-3" />}
+        </button>
+        <div className="absolute z-50 hidden group-hover/stage:block top-full left-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg min-w-[160px]">
+          {rollbackOptions.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => {
+                if (window.confirm(`Move "${inquiry.school_name}" back to ${opt.label}?`)) {
+                  handleStatusChange(inquiry, opt.value, {
+                    notes: inquiry.notes 
+                      ? `${inquiry.notes}\n\n--- Moved back to ${opt.label} (${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}) ---`
+                      : `--- Moved back to ${opt.label} (${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}) ---`
+                  });
+                }
+              }}
+              className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 flex items-center gap-2"
+              data-testid={`move-to-${opt.value}-${inquiry.id}`}
+            >
+              <RefreshCcw className="w-4 h-4 text-gray-500" />
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+
     switch (inquiry.status) {
       case 'new':
         return (
@@ -4659,9 +4335,18 @@ const AdminSchoolCRM = () => {
               <CalendarClock className="w-3 h-3" />
               {inquiry.meeting_date ? 'Reschedule' : 'Schedule Meeting'}
             </button>
+            {raiseTicketButton}
             {followupButton}
             {documentsButton}
             {baseButtons}
+            <button
+              onClick={() => openLostReasonModal(inquiry, 'lost_lead')}
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 font-medium"
+              data-testid={`lost-lead-${inquiry.id}`}
+            >
+              <X className="w-3 h-3" />
+              Lost Lead
+            </button>
             <button
               onClick={() => handleArchive(inquiry)}
               className="text-xs px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1 font-medium"
@@ -4684,9 +4369,19 @@ const AdminSchoolCRM = () => {
               <CheckCircle2 className="w-3 h-3" />
               Convert
             </button>
+            {changeStageButton}
+            {raiseTicketButton}
             {followupButton}
             {documentsButton}
             {baseButtons}
+            <button
+              onClick={() => openLostReasonModal(inquiry, 'lost_lead')}
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 font-medium"
+              data-testid={`lost-lead-${inquiry.id}`}
+            >
+              <X className="w-3 h-3" />
+              Lost Lead
+            </button>
             <button
               onClick={() => handleArchive(inquiry)}
               className="text-xs px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1 font-medium"
@@ -4717,31 +4412,8 @@ const AdminSchoolCRM = () => {
               <UserPlus className="w-3 h-3" />
               {inquiry.relationship_manager_name ? 'Change RM' : 'Assign RM'}
             </button>
-            <button
-              onClick={() => {
-                setShowRaiseTicketModal(inquiry);
-                setTicketData({
-                  query_type: '',
-                  related_to: '',
-                  subject: '',
-                  description: '',
-                  priority: 'medium',
-                  source: 'school_crm',
-                  user_type: 'school',
-                  contact_name: inquiry.contact_name,
-                  contact_phone: inquiry.phone,
-                  contact_email: inquiry.email
-                });
-                setTicketAttachments([]);
-                setTicketAudioBlob(null);
-                setTicketAudioUrl(null);
-              }}
-              className="text-xs px-2.5 py-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-700 flex items-center gap-1 font-medium"
-              data-testid={`raise-ticket-${inquiry.id}`}
-            >
-              <AlertCircle className="w-3 h-3" />
-              Ticket
-            </button>
+            {changeStageButton}
+            {raiseTicketButton}
             {documentsButton}
             {baseButtons}
           </div>
@@ -4757,6 +4429,19 @@ const AdminSchoolCRM = () => {
             >
               <Edit className="w-3 h-3" />
               Edit
+            </button>
+            <button
+              onClick={() => {
+                setShowSessionsModal(inquiry);
+                setSessionsData([]);
+                setSessionsFilter({ status: '', start_date: '', end_date: '' });
+                fetchSchoolSessions(inquiry);
+              }}
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-700 flex items-center gap-1 font-medium"
+              data-testid={`sessions-${inquiry.id}`}
+            >
+              <CalendarDays className="w-3 h-3" />
+              Sessions
             </button>
             <button
               onClick={() => setShowAssignRMModal(inquiry)}
@@ -4792,31 +4477,8 @@ const AdminSchoolCRM = () => {
                 </button>
               </div>
             </div>
-            <button
-              onClick={() => {
-                setShowRaiseTicketModal(inquiry);
-                setTicketData({
-                  query_type: '',
-                  related_to: '',
-                  subject: '',
-                  description: '',
-                  priority: 'medium',
-                  source: 'school_crm',
-                  user_type: 'school',
-                  contact_name: inquiry.contact_name,
-                  contact_phone: inquiry.phone,
-                  contact_email: inquiry.email
-                });
-                setTicketAttachments([]);
-                setTicketAudioBlob(null);
-                setTicketAudioUrl(null);
-              }}
-              className="text-xs px-2.5 py-1.5 rounded-lg bg-orange-100 hover:bg-orange-200 text-orange-700 flex items-center gap-1 font-medium"
-              data-testid={`raise-ticket-${inquiry.id}`}
-            >
-              <AlertCircle className="w-3 h-3" />
-              Ticket
-            </button>
+            {changeStageButton}
+            {raiseTicketButton}
             <button
               onClick={() => openLostReasonModal(inquiry)}
               className="text-xs px-2.5 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 font-medium"
@@ -4841,6 +4503,8 @@ const AdminSchoolCRM = () => {
               <CheckCircle className="w-3 h-3" />
               Renewed
             </button>
+            {changeStageButton}
+            {raiseTicketButton}
             <button
               onClick={() => setShowFollowupModal(inquiry)}
               className="text-xs px-2.5 py-1.5 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-700 flex items-center gap-1 font-medium"
@@ -4873,6 +4537,8 @@ const AdminSchoolCRM = () => {
               <Edit className="w-3 h-3" />
               Edit
             </button>
+            {changeStageButton}
+            {raiseTicketButton}
             <button
               onClick={() => openLostReasonModal(inquiry)}
               className="text-xs px-2.5 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 font-medium"
@@ -4887,23 +4553,38 @@ const AdminSchoolCRM = () => {
         );
       
       case 'lost':
+      case 'lost_lead':
+      case 'lost_customer':
         return (
           <div className="flex gap-1.5 flex-wrap items-center">
             <button
-              onClick={() => handleStatusChange(inquiry, 'active')}
+              onClick={() => handleStatusChange(inquiry, inquiry.status === 'lost_lead' ? 'new' : 'active')}
               className="text-xs px-2.5 py-1.5 rounded-lg bg-green-500 hover:bg-green-600 text-white flex items-center gap-1 font-medium"
               data-testid={`reactivate-${inquiry.id}`}
             >
               <RefreshCw className="w-3 h-3" />
-              Reactivate
+              {inquiry.status === 'lost_lead' ? 'Restore to Lead' : 'Reactivate'}
             </button>
+            {raiseTicketButton}
             {documentsButton}
             {baseButtons}
           </div>
         );
       
       case 'archived':
-        return <div className="flex gap-1.5 flex-wrap items-center">{followupButton}{documentsButton}{baseButtons}</div>;
+        return (
+          <div className="flex gap-1.5 flex-wrap items-center">
+            <button
+              onClick={() => handleStatusChange(inquiry, 'new')}
+              className="text-xs px-2.5 py-1.5 rounded-lg bg-blue-500 hover:bg-blue-600 text-white flex items-center gap-1 font-medium"
+              data-testid={`unarchive-${inquiry.id}`}
+            >
+              <RefreshCw className="w-3 h-3" />
+              Unarchive
+            </button>
+            {raiseTicketButton}{followupButton}{documentsButton}{baseButtons}
+          </div>
+        );
       
       default:
         return null;
@@ -5089,6 +4770,14 @@ const AdminSchoolCRM = () => {
                 </Button>
               )}
               <Button
+                variant="outline"
+                onClick={exportSchoolsToCSV}
+                className="flex items-center gap-2 flex-1 sm:flex-none justify-center border-green-300 text-green-700 hover:bg-green-50"
+                data-testid="export-schools-csv-btn"
+              >
+                <Download className="w-4 h-4" /> <span className="hidden sm:inline">Export</span> CSV
+              </Button>
+              <Button
                 onClick={() => setShowAddForm(true)}
                 className="btn-primary flex items-center gap-2 flex-1 sm:flex-none justify-center"
                 data-testid="add-school-lead-btn"
@@ -5144,287 +4833,52 @@ const AdminSchoolCRM = () => {
             </button>
           )}
         </div>
+      ) : activeSection === 'lost' ? (
+        /* Lost Section - Divided into Lost Leads and Lost Customers */
+        <div className="space-y-8">
+          {/* Lost Leads Subsection */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="w-3 h-3 rounded-full bg-red-400"></span>
+              <h3 className="text-lg font-semibold text-slate-800">Lost Leads</h3>
+              <span className="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-700">
+                {filteredInquiries.filter(i => i.status === 'lost_lead').length}
+              </span>
+            </div>
+            {filteredInquiries.filter(i => i.status === 'lost_lead').length === 0 ? (
+              <div className="text-center py-6 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                <p className="text-sm text-slate-500">No lost leads</p>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredInquiries.filter(i => i.status === 'lost_lead').map((inquiry) => renderSchoolCard(inquiry))}
+              </div>
+            )}
+          </div>
+
+          {/* Lost Customers Subsection */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="w-3 h-3 rounded-full bg-red-600"></span>
+              <h3 className="text-lg font-semibold text-slate-800">Lost Customers</h3>
+              <span className="px-2 py-0.5 rounded-full text-xs bg-red-100 text-red-700">
+                {filteredInquiries.filter(i => i.status === 'lost_customer' || i.status === 'lost').length}
+              </span>
+            </div>
+            {filteredInquiries.filter(i => i.status === 'lost_customer' || i.status === 'lost').length === 0 ? (
+              <div className="text-center py-6 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                <p className="text-sm text-slate-500">No lost customers</p>
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredInquiries.filter(i => i.status === 'lost_customer' || i.status === 'lost').map((inquiry) => renderSchoolCard(inquiry))}
+              </div>
+            )}
+          </div>
+        </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredInquiries.map((inquiry) => (
-            <div 
-              key={inquiry.id} 
-              className={`bg-white rounded-xl border ${inquiry.is_viewer ? 'border-slate-200 ring-1 ring-slate-100' : 'border-slate-100'} p-4 hover:shadow-md transition-shadow`}
-              data-testid={`school-card-${inquiry.id}`}
-            >
-              <div className="flex items-start justify-between mb-2">
-                <div className="min-w-0 flex-1 pr-2">
-                  <h3 className="font-semibold text-[#1E3A5F] break-words">{inquiry.school_name}</h3>
-                  <p className="text-sm text-slate-500">{inquiry.contact_name}</p>
-                  {/* Source badge on separate line */}
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                      inquiry.source === 'website' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
-                    }`}>
-                      {inquiry.source || 'website'}
-                    </span>
-                    {inquiry.meeting_type && (
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1 ${
-                        inquiry.meeting_type === 'online' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
-                      }`}>
-                        {inquiry.meeting_type === 'online' ? <Video className="w-3 h-3" /> : <Users className="w-3 h-3" />}
-                        {inquiry.meeting_type === 'online' ? 'Online' : 'Offline'}
-                      </span>
-                    )}
-                  </div>
-                  {inquiry.assigned_to && (
-                    <p className="text-xs text-indigo-600 mt-1 flex items-center gap-1">
-                      <UserPlus className="w-3 h-3 flex-shrink-0" /> 
-                      <span>{inquiry.assigned_to_name || getAssignedUserName(inquiry.assigned_to) || 'Team'}</span>
-                    </p>
-                  )}
-                  {inquiry.is_viewer && (
-                    <span className="inline-block mt-1 px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">
-                      Viewer Only
-                    </span>
-                  )}
-                </div>
-                <div className="flex flex-col items-end gap-1">
-                  {/* Show status badge when searching all statuses */}
-                  {searchAllStatuses && searchQuery.trim() && (
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      STATUS_SECTIONS.find(s => s.value === inquiry.status)?.color || 'bg-slate-100'
-                    } text-white`}>
-                      {STATUS_SECTIONS.find(s => s.value === inquiry.status)?.label || inquiry.status}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-0.5 text-sm text-slate-600 mb-2">
-                <p className="flex items-center gap-1 text-xs">
-                  <Phone className="w-3 h-3 text-slate-400" /> {inquiry.phone}
-                </p>
-                {inquiry.location && (
-                  <p className="flex items-center gap-1 text-xs truncate">
-                    <MapPin className="w-3 h-3 text-slate-400 flex-shrink-0" /> <span className="truncate">{inquiry.location}</span>
-                  </p>
-                )}
-                {inquiry.board && (
-                  <p className="text-xs"><span className="text-slate-400">Board:</span> {inquiry.board}</p>
-                )}
-                {inquiry.meeting_date && (
-                  <p className="flex items-center gap-1 text-[#D63031] font-medium text-xs">
-                    <Calendar className="w-3 h-3" />
-                    {inquiry.meeting_date} {inquiry.meeting_time && `${inquiry.meeting_time}`}
-                  </p>
-                )}
-                {(inquiry.conversion_amount || inquiry.onboarding_data?.total_amount) && (
-                  <p className="text-green-600 font-medium text-xs">
-                    ₹{Number(inquiry.conversion_amount || inquiry.onboarding_data?.total_amount).toLocaleString()}
-                  </p>
-                )}
-                {inquiry.quoted_price && !inquiry.conversion_amount && !inquiry.onboarding_data?.total_amount && (
-                  <p className="text-blue-600 font-medium text-xs">
-                    Quoted: ₹{Number(inquiry.quoted_price).toLocaleString()}
-                  </p>
-                )}
-              </div>
-
-              {/* Selected Offerings */}
-              {inquiry.selected_offerings?.length > 0 && (
-                <div className="flex flex-wrap gap-1 mb-2">
-                  {inquiry.selected_offerings.slice(0, 2).map((offeringId, idx) => {
-                    const offering = offerings.find(o => o.id === offeringId);
-                    return (
-                      <span key={idx} className="px-1.5 py-0.5 bg-purple-100 rounded text-[10px] text-purple-700">
-                        {offering ? offering.title : offeringId}
-                      </span>
-                    );
-                  })}
-                  {inquiry.selected_offerings.length > 2 && (
-                    <span className="px-1.5 py-0.5 bg-purple-100 rounded text-[10px] text-purple-700">
-                      +{inquiry.selected_offerings.length - 2}
-                    </span>
-                  )}
-                </div>
-              )}
-              
-              {/* Support Needed (from SchoolFunnel) */}
-              {inquiry.support_needed?.length > 0 && (
-                <div className="flex flex-wrap gap-1 mb-2">
-                  {inquiry.support_needed.slice(0, 2).map((supportId, idx) => {
-                    const offering = offerings.find(o => o.id === supportId);
-                    return (
-                      <span key={idx} className="px-1.5 py-0.5 bg-green-100 rounded text-[10px] text-green-700">
-                        {offering ? offering.title : supportId}
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
-
-              {inquiry.programs_interested?.length > 0 && (
-                <div className="flex flex-wrap gap-1 mb-2">
-                  {inquiry.programs_interested.slice(0, 3).map((p, idx) => (
-                    <span key={idx} className="px-1.5 py-0.5 bg-[#1E3A5F]/10 rounded text-[10px] text-[#1E3A5F] capitalize">
-                      {p}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {/* Comments shown outside */}
-              {inquiry.notes && (
-                <div className="bg-slate-50 border border-slate-100 rounded-lg p-2 mb-2">
-                  <p className="text-xs text-slate-500 font-medium mb-0.5 flex items-center gap-1">
-                    <MessageSquare className="w-3 h-3" /> Latest Note
-                  </p>
-                  <p className="text-xs text-slate-700 line-clamp-2">
-                    {inquiry.notes.split('\n\n').pop()?.split('\n').slice(0, 2).join('\n') || inquiry.notes.slice(-150)}
-                  </p>
-                </div>
-              )}
-
-              {/* Relationship Manager - Show for converted/active schools */}
-              {['converted', 'active', 'renewed'].includes(inquiry.status) && inquiry.relationship_manager_name && (
-                <div className="bg-indigo-50/50 rounded px-2 py-1 mb-2">
-                  <p className="text-[10px] text-indigo-700 flex items-center gap-1">
-                    <User className="w-2.5 h-2.5" />
-                    <span className="font-medium">RM:</span> {inquiry.relationship_manager_name}
-                  </p>
-                </div>
-              )}
-
-              {/* Referred By - Show for referral leads */}
-              {inquiry.referred_by && (
-                <div className="bg-green-50/50 rounded px-2 py-1 mb-2">
-                  <p className="text-[10px] text-green-700 flex items-center gap-1">
-                    <Users className="w-2.5 h-2.5" />
-                    <span className="font-medium">Ref:</span> {inquiry.referred_by}
-                  </p>
-                </div>
-              )}
-
-              {/* Followup shown outside - only for non-converted */}
-              {inquiry.status !== 'converted' && inquiry.followup_date && (
-                <div className="bg-cyan-50/50 rounded px-2 py-1 mb-2">
-                  <p className="text-[10px] text-cyan-700 font-medium flex items-center gap-1">
-                    <Clock className="w-2.5 h-2.5" /> Followup: {inquiry.followup_date}
-                  </p>
-                </div>
-              )}
-
-              {/* Scheduled Followup Tasks - show for new/lead status */}
-              {(inquiry.status === 'new' || inquiry.status === 'lead') && inquiry.followup_tasks?.length > 0 && (() => {
-                const pendingTasks = inquiry.followup_tasks.filter(t => t.status === 'pending');
-                const completedCount = inquiry.followup_tasks.filter(t => t.status === 'completed' || t.status === 'sent').length;
-                const nextTask = pendingTasks.sort((a, b) => new Date(a.scheduled_date) - new Date(b.scheduled_date))[0];
-                if (!nextTask) return null;
-                return (
-                  <div className="bg-blue-50/50 rounded px-2 py-1 mb-2">
-                    <p className="text-[10px] text-blue-700 font-medium flex items-center gap-1">
-                      <Mail className="w-2.5 h-2.5" /> 
-                      Next: {format(new Date(nextTask.scheduled_date), 'dd MMM')}
-                      <span className="ml-auto text-blue-500">({completedCount}/{inquiry.followup_tasks.length})</span>
-                    </p>
-                  </div>
-                );
-              })()}
-
-              {/* Draft Progress Bar - Show if onboarding is in draft state */}
-              {inquiry.onboarding_status === 'draft' && inquiry.onboarding_id && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-2 mb-2">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-[10px] text-amber-700 font-medium flex items-center gap-1">
-                      <Clock className="w-2.5 h-2.5" /> Draft
-                    </p>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-5 text-[10px] text-amber-700 hover:bg-amber-100 px-1"
-                      onClick={() => openConversionModal(inquiry)}
-                    >
-                      Continue →
-                    </Button>
-                  </div>
-                  <div className="w-full bg-amber-200 rounded-full h-1.5">
-                    <div 
-                      className="bg-amber-500 h-1.5 rounded-full transition-all" 
-                      style={{ width: `${inquiry.total_students ? 60 : 25}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Onboarding Progress - Show for converted and renewed schools with onboarding_workflow */}
-              {inquiry.onboarding_workflow && ['converted', 'renewed'].includes(inquiry.status) && (
-                <div className={`${inquiry.status === 'renewed' ? 'bg-emerald-50 border-emerald-200' : 'bg-purple-50 border-purple-200'} border rounded-lg p-2 mb-2`}>
-                  <div className="flex items-center justify-between mb-1">
-                    <p className={`text-[10px] font-medium flex items-center gap-1 ${inquiry.status === 'renewed' ? 'text-emerald-700' : 'text-purple-700'}`}>
-                      <CheckCircle2 className="w-2.5 h-2.5" />
-                      {inquiry.status === 'renewed' ? 'Re-Onboarding' : 'Onboarding'}
-                    </p>
-                    <button
-                      onClick={() => setShowOnboardingWorkflowModal(inquiry)}
-                      className={`text-[10px] font-medium ${inquiry.status === 'renewed' ? 'text-emerald-600 hover:text-emerald-800' : 'text-purple-600 hover:text-purple-800'}`}
-                    >
-                      View →
-                    </button>
-                  </div>
-                  {/* Progress Bar */}
-                  <div className={`w-full ${inquiry.status === 'renewed' ? 'bg-emerald-200' : 'bg-purple-200'} rounded-full h-1.5 mb-1`}>
-                    <div 
-                      className={`${inquiry.status === 'renewed' ? 'bg-emerald-500' : 'bg-purple-500'} h-1.5 rounded-full transition-all`}
-                      style={{ 
-                        width: `${(Object.values(inquiry.onboarding_workflow.steps || {}).filter(s => s.completed).length / 9 * 100).toFixed(0)}%` 
-                      }}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-[10px]">
-                    <span className={inquiry.status === 'renewed' ? 'text-emerald-600' : 'text-purple-600'}>
-                      {Object.values(inquiry.onboarding_workflow.steps || {}).filter(s => s.completed).length}/9
-                    </span>
-                    {inquiry.onboarding_workflow.tracking_token && (
-                      <button
-                        onClick={() => {
-                          const url = `${window.location.origin}/track/${inquiry.onboarding_workflow.tracking_token}`;
-                          navigator.clipboard.writeText(url);
-                          toast.success('Link copied!');
-                        }}
-                        className={`flex items-center gap-0.5 ${inquiry.status === 'renewed' ? 'text-emerald-500 hover:text-emerald-700' : 'text-purple-500 hover:text-purple-700'}`}
-                      >
-                        <Gift className="w-2.5 h-2.5" /> Copy link
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* View Button */}
-              <div className="flex gap-1.5 mb-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 h-7 text-xs"
-                  onClick={() => setViewInquiry(inquiry)}
-                  data-testid={`view-school-${inquiry.id}`}
-                >
-                  <Eye className="w-3 h-3 mr-1" /> View
-                </Button>
-                {/* Add Meeting button for relevant statuses */}
-                {['meeting_done', 'converted', 'active', 'renewed'].includes(inquiry.status) && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 px-2"
-                    onClick={() => setShowAddMeetingModal(inquiry)}
-                    data-testid={`add-meeting-${inquiry.id}`}
-                  >
-                    <Plus className="w-3 h-3" />
-                  </Button>
-                )}
-              </div>
-
-              {/* Action Buttons based on status */}
-              {renderActionButtons(inquiry)}
-            </div>
-          ))}
+          {filteredInquiries.map((inquiry) => renderSchoolCard(inquiry))}
         </div>
       )}
         </>
@@ -5452,9 +4906,7 @@ const AdminSchoolCRM = () => {
               data-testid="contact-city-filter"
             >
               <option value="all">All Cities</option>
-              {CITIES.map(city => (
-                <option key={city} value={city}>{city}</option>
-              ))}
+              {/* Cities loaded dynamically - replace with CitySearch if needed */}
             </select>
             <select
               value={contactRoleFilter}
@@ -5464,6 +4916,7 @@ const AdminSchoolCRM = () => {
             >
               <option value="all">All Roles</option>
               <option value="principal">Principal</option>
+              <option value="vice_principal">Vice Principal</option>
               <option value="trustee_owner">Trustee/Owner</option>
               <option value="director">Director</option>
               <option value="coordinator">Coordinator</option>
@@ -5485,9 +4938,41 @@ const AdminSchoolCRM = () => {
 
           {/* Contacts Table */}
           <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            {/* Bulk email toolbar */}
+            {contactBulkSelected.length > 0 && (
+              <div className="flex items-center justify-between px-4 py-2.5 bg-blue-50 border-b border-blue-200">
+                <span className="text-sm font-medium text-blue-800">{contactBulkSelected.length} contact{contactBulkSelected.length > 1 ? 's' : ''} selected</span>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setContactBulkSelected([])}
+                    className="text-xs text-slate-500 hover:text-slate-700">Clear</button>
+                  <button
+                    onClick={() => setEmailModal({
+                      mode: 'bulk',
+                      initialSubject: '',
+                      initialBody: '<p>Dear {{name}},</p>\n\n<p>Write your message here...</p>\n\n<p>Best regards,<br>The OLL Team</p>',
+                      recipients: contactBulkSelected,
+                    })}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1E3A5F] text-white text-sm rounded-lg hover:bg-[#162d4a] transition-colors"
+                    data-testid="bulk-email-contacts-btn"
+                  >
+                    <Mail className="w-4 h-4" /> Compose & Send
+                  </button>
+                </div>
+              </div>
+            )}
             <table className="w-full">
               <thead className="bg-slate-50">
                 <tr>
+                  <th className="px-4 py-3 w-10">
+                    <input type="checkbox"
+                      className="w-4 h-4 rounded accent-[#1E3A5F] cursor-pointer"
+                      checked={contactBulkSelected.length > 0 && contactBulkSelected.length === allContacts.filter(c => c.email).length}
+                      onChange={e => setContactBulkSelected(e.target.checked
+                        ? allContacts.filter(c => c.email).map(c => ({ email: c.email, name: c.name, school_name: c.school_name }))
+                        : [])}
+                      data-testid="select-all-contacts"
+                    />
+                  </th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">Contact</th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">School</th>
                   <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">Role</th>
@@ -5519,7 +5004,20 @@ const AdminSchoolCRM = () => {
                     return true;
                   })
                   .map((contact) => (
-                    <tr key={contact.id} className="hover:bg-slate-50">
+                    <tr key={contact.id} className={`hover:bg-slate-50 ${contactBulkSelected.some(s => s.email === contact.email) ? 'bg-blue-50/40' : ''}`}>
+                      <td className="px-4 py-3 w-10">
+                        <input type="checkbox"
+                          className="w-4 h-4 rounded accent-[#1E3A5F] cursor-pointer"
+                          disabled={!contact.email}
+                          checked={contactBulkSelected.some(s => s.email === contact.email)}
+                          onChange={e => setContactBulkSelected(prev =>
+                            e.target.checked
+                              ? [...prev, { email: contact.email, name: contact.name, school_name: contact.school_name }]
+                              : prev.filter(s => s.email !== contact.email)
+                          )}
+                          data-testid={`select-contact-${contact.id}`}
+                        />
+                      </td>
                       <td className="px-4 py-3">
                         <div>
                           <p className="font-medium text-[#1E3A5F]">{contact.name}</p>
@@ -5902,15 +5400,15 @@ const AdminSchoolCRM = () => {
                       )}
 
                       {/* School Contacts */}
-                      {viewInquiry.onboarding_data.school_contacts?.length > 0 && (
+                      {((viewInquiry.school_contacts?.length > 0 ? viewInquiry.school_contacts : viewInquiry.onboarding_data?.school_contacts) || []).length > 0 && (
                         <div className="border-t border-purple-200 pt-3">
                           <p className="text-xs text-purple-600 mb-2">School Team Contacts</p>
                           <div className="space-y-1">
-                            {viewInquiry.onboarding_data.school_contacts.map((c, idx) => (
+                            {(viewInquiry.school_contacts?.length > 0 ? viewInquiry.school_contacts : viewInquiry.onboarding_data?.school_contacts).map((c, idx) => (
                               <div key={idx} className="text-sm text-purple-800 bg-white/50 px-2 py-1 rounded flex items-center gap-2">
                                 <span className="font-medium">{c.name}</span>
-                                <span className="text-purple-600">({c.role})</span>
-                                <span>{c.phone}</span>
+                                {c.role && <span className="text-purple-600">({c.role})</span>}
+                                <span>{c.phone_number || c.phone}</span>
                                 {c.email && <span className="text-purple-500">{c.email}</span>}
                               </div>
                             ))}
@@ -6311,6 +5809,22 @@ const AdminSchoolCRM = () => {
               </div>
             )}
 
+            {/* Send followup email option */}
+            <div className="flex items-center gap-3 px-3 py-2.5 bg-blue-50 rounded-lg border border-blue-100">
+              <input
+                type="checkbox"
+                id="sendFollowupEmail"
+                checked={meetingDoneData.sendFollowupEmail}
+                onChange={e => setMeetingDoneData({...meetingDoneData, sendFollowupEmail: e.target.checked})}
+                className="w-4 h-4 rounded accent-[#1E3A5F] cursor-pointer shrink-0"
+                data-testid="send-followup-email-checkbox"
+              />
+              <label htmlFor="sendFollowupEmail" className="text-sm text-blue-800 cursor-pointer select-none">
+                <span className="font-medium">Send meeting followup email to school</span>
+                <span className="text-blue-600 text-xs block">Sends a thank-you email with meeting notes to the school contact</span>
+              </label>
+            </div>
+
             <div className="flex gap-3 pt-4">
               <Button variant="outline" onClick={() => setShowMeetingDoneModal(null)} className="flex-1">
                 Cancel
@@ -6695,6 +6209,103 @@ const AdminSchoolCRM = () => {
               )}
             </div>
 
+            {/* School Team Contacts Section */}
+            <div className="bg-slate-50 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+                  <Users className="w-4 h-4" /> School Team Contacts
+                </h3>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setEditLeadData(prev => ({
+                    ...prev,
+                    school_contacts: [...(prev.school_contacts || []), { name: '', role: '', phone_number: '', country_code: '+91', email: '' }]
+                  }))}
+                  className="text-blue-600 h-7 text-xs"
+                >
+                  <Plus className="w-3 h-3 mr-1" /> Add Contact
+                </Button>
+              </div>
+              <div className="space-y-3">
+                {(editLeadData.school_contacts || []).map((contact, idx) => (
+                  <div key={idx} className="bg-white border border-slate-200 p-3 rounded-lg space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        placeholder="Name *"
+                        value={contact.name || ''}
+                        onChange={(e) => setEditLeadData(prev => {
+                          const contacts = [...(prev.school_contacts || [])];
+                          contacts[idx] = { ...contacts[idx], name: e.target.value };
+                          return { ...prev, school_contacts: contacts };
+                        })}
+                        className="h-9 text-sm"
+                        data-testid={`edit-contact-name-${idx}`}
+                      />
+                      <select
+                        value={contact.role || ''}
+                        onChange={(e) => setEditLeadData(prev => {
+                          const contacts = [...(prev.school_contacts || [])];
+                          contacts[idx] = { ...contacts[idx], role: e.target.value };
+                          return { ...prev, school_contacts: contacts };
+                        })}
+                        className="h-9 px-3 border border-slate-200 rounded-lg text-sm bg-white"
+                        data-testid={`edit-contact-role-${idx}`}
+                      >
+                        <option value="">Select Role</option>
+                        <option value="principal">Principal</option>
+                        <option value="vice_principal">Vice Principal</option>
+                        <option value="trustee_owner">Trustee/Owner</option>
+                        <option value="director">Director</option>
+                        <option value="coordinator">Coordinator</option>
+                        <option value="accounts">Accounts</option>
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <PhoneInput
+                        value={contact.phone_number || ''}
+                        onChange={(val) => setEditLeadData(prev => {
+                          const contacts = [...(prev.school_contacts || [])];
+                          contacts[idx] = { ...contacts[idx], phone_number: val };
+                          return { ...prev, school_contacts: contacts };
+                        })}
+                        countryCode={contact.country_code || '+91'}
+                        onCountryCodeChange={(code) => setEditLeadData(prev => {
+                          const contacts = [...(prev.school_contacts || [])];
+                          contacts[idx] = { ...contacts[idx], country_code: code };
+                          return { ...prev, school_contacts: contacts };
+                        })}
+                        placeholder="Phone"
+                      />
+                      <Input
+                        placeholder="Email"
+                        value={contact.email || ''}
+                        onChange={(e) => setEditLeadData(prev => {
+                          const contacts = [...(prev.school_contacts || [])];
+                          contacts[idx] = { ...contacts[idx], email: e.target.value };
+                          return { ...prev, school_contacts: contacts };
+                        })}
+                        className="h-9 text-sm"
+                        data-testid={`edit-contact-email-${idx}`}
+                      />
+                    </div>
+                    {(editLeadData.school_contacts || []).length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setEditLeadData(prev => ({
+                          ...prev,
+                          school_contacts: prev.school_contacts.filter((_, i) => i !== idx)
+                        }))}
+                        className="text-xs text-red-500 hover:text-red-700"
+                      >
+                        Remove Contact
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* Notes Section */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Notes</label>
@@ -6763,10 +6374,42 @@ const AdminSchoolCRM = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <X className="w-5 h-5 text-red-600" />
-              Mark as Lost - {showLostReasonModal?.school_name}
+              Mark as {lostTargetStatus === 'lost_lead' ? 'Lost Lead' : 'Lost Customer'} - {showLostReasonModal?.school_name}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Lost Type Selection */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Mark as *</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setLostTargetStatus('lost_lead')}
+                  className={`p-3 rounded-lg border text-center transition-all ${
+                    lostTargetStatus === 'lost_lead' 
+                      ? 'border-red-400 bg-red-50 text-red-700 ring-1 ring-red-400' 
+                      : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                  }`}
+                  data-testid="lost-type-lead"
+                >
+                  <span className="block text-sm font-medium">Lost Lead</span>
+                  <span className="block text-xs text-slate-500 mt-1">Before conversion</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLostTargetStatus('lost_customer')}
+                  className={`p-3 rounded-lg border text-center transition-all ${
+                    lostTargetStatus === 'lost_customer' 
+                      ? 'border-red-600 bg-red-50 text-red-700 ring-1 ring-red-600' 
+                      : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                  }`}
+                  data-testid="lost-type-customer"
+                >
+                  <span className="block text-sm font-medium">Lost Customer</span>
+                  <span className="block text-xs text-slate-500 mt-1">After conversion</span>
+                </button>
+              </div>
+            </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Reason for Lost *</label>
               <select
@@ -6788,6 +6431,13 @@ const AdminSchoolCRM = () => {
                 <option value="Decision postponed">Decision postponed</option>
                 <option value="No response">No response / Not reachable</option>
                 <option value="Management change">Management change</option>
+                {lostTargetStatus === 'lost_customer' && (
+                  <>
+                    <option value="Service dissatisfaction">Service dissatisfaction</option>
+                    <option value="Contract not renewed">Contract not renewed</option>
+                    <option value="School closed/merged">School closed/merged</option>
+                  </>
+                )}
                 <option value="other">Other (specify)</option>
               </select>
               {lostReason.startsWith('custom:') && (
@@ -6800,6 +6450,21 @@ const AdminSchoolCRM = () => {
                 />
               )}
             </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                Lead Value (₹) <span className="text-slate-400 font-normal">— optional</span>
+              </label>
+              <input
+                type="number"
+                min="0"
+                placeholder="e.g. 150000"
+                value={lostLeadValue}
+                onChange={(e) => setLostLeadValue(e.target.value)}
+                className="w-full h-10 px-4 border border-slate-200 rounded-lg bg-white text-sm"
+                data-testid="lost-lead-value"
+              />
+              <p className="text-xs text-slate-400 mt-1">This value will be included in lost pipeline reports.</p>
+            </div>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setShowLostReasonModal(null)} className="flex-1">
                 Cancel
@@ -6809,7 +6474,7 @@ const AdminSchoolCRM = () => {
                 className="flex-1 bg-red-600 hover:bg-red-700"
                 data-testid="lost-submit"
               >
-                Mark as Lost
+                Mark as {lostTargetStatus === 'lost_lead' ? 'Lost Lead' : 'Lost Customer'}
               </Button>
             </div>
           </div>
@@ -7089,14 +6754,23 @@ const AdminSchoolCRM = () => {
             {/* School Address */}
             <div>
               <label className="text-sm font-medium text-slate-700">School Address</label>
-              <Textarea
-                placeholder="Enter full school address"
-                value={renewalConvertData.address || ''}
-                onChange={(e) => setRenewalConvertData(prev => ({ ...prev, address: e.target.value }))}
-                rows={2}
-                className="mt-1"
-                data-testid="renewal-address"
-              />
+              <div className="mt-1">
+                <SchoolMapPicker
+                  value={{
+                    address: renewalConvertData.address || '',
+                    latitude: renewalConvertData.latitude,
+                    longitude: renewalConvertData.longitude,
+                    geofence_radius: renewalConvertData.geofence_radius || 500,
+                  }}
+                  onChange={(loc) => setRenewalConvertData(prev => ({
+                    ...prev,
+                    address: loc.address,
+                    latitude: loc.latitude,
+                    longitude: loc.longitude,
+                    geofence_radius: loc.geofence_radius,
+                  }))}
+                />
+              </div>
             </div>
 
             {/* MOU Upload */}
@@ -7432,6 +7106,7 @@ const AdminSchoolCRM = () => {
                       >
                         <option value="">Select Role *</option>
                         <option value="principal">Principal</option>
+                        <option value="vice_principal">Vice Principal</option>
                         <option value="trustee_owner">Trustee/Owner</option>
                         <option value="director">Director</option>
                         <option value="coordinator">Coordinator</option>
@@ -7481,6 +7156,7 @@ const AdminSchoolCRM = () => {
                   >
                     <option value="from_school">From School</option>
                     <option value="from_student">From Student (Offline)</option>
+                    <option value="from_distributor">From Distributor</option>
                     <option value="online">Online (Student Payment via Cashfree)</option>
                   </select>
                 </div>
@@ -7664,7 +7340,7 @@ const AdminSchoolCRM = () => {
                             formData.append('file', file);
                             try {
                               const res = await axios.post(`${API}/upload`, formData, {
-                                headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
+                                headers: getAuthHeaders()
                               });
                               setRenewalConvertData(prev => ({ ...prev, parent_circular_url: res.data.url }));
                               toast.success('Parent circular uploaded');
@@ -7739,9 +7415,31 @@ const AdminSchoolCRM = () => {
               </div>
             </div>
 
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-3 pt-2 flex-wrap">
               <Button variant="outline" onClick={() => setShowRenewalConvertModal(null)} className="flex-1">
                 Cancel
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => generateMOUPDF(showRenewalConvertModal, renewalConvertData)}
+                disabled={generatingMOU}
+                className="flex-1 border-[#1E3A5F] text-[#1E3A5F] hover:bg-[#1E3A5F]/10"
+                data-testid="renewal-generate-mou-footer"
+              >
+                {generatingMOU ? (
+                  <><RefreshCw className="w-4 h-4 mr-1 animate-spin" /> Generating...</>
+                ) : (
+                  <><FileText className="w-4 h-4 mr-1" /> Generate MOU</>
+                )}
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={handleRenewalSaveDraft} 
+                className="flex-1 border-amber-300 text-amber-700 hover:bg-amber-50"
+                data-testid="renewal-save-draft"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                Save as Draft
               </Button>
               <Button 
                 onClick={handleRenewalConvert} 
@@ -8035,15 +7733,12 @@ const AdminSchoolCRM = () => {
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">City</label>
-                <select
+                <CitySearch
                   value={newLead.location}
-                  onChange={(e) => setNewLead({...newLead, location: e.target.value})}
-                  className="w-full h-10 px-4 border border-slate-200 rounded-lg"
+                  onChange={(city) => setNewLead({...newLead, location: city})}
+                  placeholder="Search city..."
                   data-testid="new-school-city"
-                >
-                  <option value="">Select city</option>
-                  {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Board</label>
@@ -8069,6 +7764,64 @@ const AdminSchoolCRM = () => {
               </div>
             </div>
             
+            {/* School Team Contacts */}
+            <div className="border-t pt-4 mt-4">
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-medium text-slate-700">School Team Contacts</label>
+                <Button variant="ghost" size="sm" onClick={addNewLeadContact} className="text-blue-600 h-7 text-xs">
+                  <Plus className="w-3 h-3 mr-1" /> Add Contact
+                </Button>
+              </div>
+              <div className="space-y-3">
+                {newLead.school_contacts.map((contact, idx) => (
+                  <div key={idx} className="bg-slate-50 p-3 rounded-lg space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <Input
+                        placeholder="Name *"
+                        value={contact.name}
+                        onChange={(e) => updateNewLeadContact(idx, 'name', e.target.value)}
+                        data-testid={`new-contact-name-${idx}`}
+                      />
+                      <select
+                        value={contact.role}
+                        onChange={(e) => updateNewLeadContact(idx, 'role', e.target.value)}
+                        className="h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white"
+                        data-testid={`new-contact-role-${idx}`}
+                      >
+                        <option value="">Select Role</option>
+                        <option value="principal">Principal</option>
+                        <option value="vice_principal">Vice Principal</option>
+                        <option value="trustee_owner">Trustee/Owner</option>
+                        <option value="director">Director</option>
+                        <option value="coordinator">Coordinator</option>
+                        <option value="accounts">Accounts</option>
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <PhoneInput
+                        value={contact.phone_number || ''}
+                        onChange={(val) => updateNewLeadContact(idx, 'phone_number', val)}
+                        countryCode={contact.country_code || '+91'}
+                        onCountryCodeChange={(code) => updateNewLeadContact(idx, 'country_code', code)}
+                        placeholder="Phone"
+                      />
+                      <Input
+                        placeholder="Email"
+                        value={contact.email}
+                        onChange={(e) => updateNewLeadContact(idx, 'email', e.target.value)}
+                        data-testid={`new-contact-email-${idx}`}
+                      />
+                    </div>
+                    {newLead.school_contacts.length > 1 && (
+                      <button type="button" onClick={() => removeNewLeadContact(idx)} className="text-xs text-red-500 hover:text-red-700">
+                        Remove Contact
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* Meeting Type */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Preferred Meeting Type</label>
@@ -8362,11 +8115,13 @@ const AdminSchoolCRM = () => {
 
             <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-700">
               <strong>Reply-to:</strong> info@oll.co &nbsp;|&nbsp; <strong>From:</strong> OLL Team
-              {emailModalType === 'proposal' && lastProposalPDF?.schoolId === showEmailModal?.id && (
-                <span className="ml-2 text-green-700 font-semibold">&#10003; Proposal PDF will be attached</span>
+              {emailModalType === 'proposal' && (
+                lastProposalPDF?.schoolId === showEmailModal?.id
+                  ? <span className="ml-2 text-green-700 font-semibold">&#10003; Proposal PDF will be attached (cached)</span>
+                  : <span className="ml-2 text-blue-600">PDF will be auto-generated &amp; attached on send</span>
               )}
-              {emailModalType === 'proposal' && lastProposalPDF?.schoolId !== showEmailModal?.id && (
-                <span className="ml-2 text-amber-600">&#9888; Generate the proposal first to attach PDF</span>
+              {emailModalType === 'mou' && (
+                <span className="ml-2 text-blue-600">MOU PDF will be auto-generated &amp; attached on send</span>
               )}
             </div>
 
@@ -8382,8 +8137,36 @@ const AdminSchoolCRM = () => {
                   }
                   setEmailModalSending(true);
                   try {
-                    // Include proposal PDF if available for this school and type is 'proposal'
-                    const hasPDF = emailModalType === 'proposal' && lastProposalPDF?.schoolId === showEmailModal?.id;
+                    let pdfAttachment = {};
+
+                    // Auto-generate and attach Proposal PDF
+                    if (emailModalType === 'proposal') {
+                      const proposalData = showEmailModal.proposal_data || showEmailModal.onboarding_data || {};
+                      if (lastProposalPDF?.schoolId === showEmailModal?.id) {
+                        // Already generated in this session — use cached
+                        pdfAttachment = { pdf_base64: lastProposalPDF.base64, pdf_filename: lastProposalPDF.filename };
+                      } else {
+                        // Auto-generate silently (no download, no upload)
+                        const result = await generateProposalDocument(showEmailModal, proposalData, {
+                          API, getAuthHeaders, user, toast: () => {}, noDownload: true
+                        });
+                        if (result?.base64) {
+                          pdfAttachment = { pdf_base64: result.base64, pdf_filename: result.filename };
+                        }
+                      }
+                    }
+
+                    // Auto-generate and attach MOU PDF
+                    if (emailModalType === 'mou') {
+                      const mouData = showEmailModal.onboarding_data || showEmailModal.proposal_data || {};
+                      const result = await generateMOUDocument(showEmailModal, mouData, {
+                        API, getAuthHeaders, user, toast: () => {}, noDownload: true
+                      });
+                      if (result?.base64) {
+                        pdfAttachment = { pdf_base64: result.base64, pdf_filename: result.filename };
+                      }
+                    }
+
                     await axios.post(`${API}/schools/${showEmailModal.id}/send-crm-email`, {
                       email_type: emailModalType,
                       to_email: emailModalToEmail,
@@ -8392,9 +8175,10 @@ const AdminSchoolCRM = () => {
                       meeting_time: showEmailModal.meeting_time,
                       meeting_mode: showEmailModal.meeting_type,
                       task_id: emailModalTaskId || undefined,
-                      ...(hasPDF ? { pdf_base64: lastProposalPDF.base64, pdf_filename: lastProposalPDF.filename } : {})
+                      ...pdfAttachment,
                     }, { headers: getAuthHeaders() });
-                    toast.success(`Email sent to ${emailModalToEmail}${hasPDF ? ' with PDF attached!' : ''}`);
+                    const attached = Object.keys(pdfAttachment).length > 0;
+                    toast.success(`Email sent to ${emailModalToEmail}${attached ? ' with PDF attached!' : ''}`);
                     setShowEmailModal(null);
                     setEmailModalTaskId(null);
                     fetchInquiries();
@@ -8528,7 +8312,7 @@ const AdminSchoolCRM = () => {
       </Dialog>
 
       {/* Followup Modal */}
-      <Dialog open={!!showFollowupModal} onOpenChange={() => setShowFollowupModal(null)}>
+      <Dialog open={!!showFollowupModal} onOpenChange={() => { setShowFollowupModal(null); setMeetingDoneEmailState({ selectedTemplate: null, subject: '', body_html: '', sending: false, sent: false }); }}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -8586,6 +8370,99 @@ const AdminSchoolCRM = () => {
                     );
                   })}
                 </div>
+              </div>
+            )}
+
+            {/* Meeting Done Follow-up Email Templates */}
+            {showFollowupModal?.status === 'meeting_done' && (
+              <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
+                <h4 className="text-sm font-semibold text-purple-800 mb-3 flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-purple-600" />
+                  Send Follow-up Email
+                  {meetingDoneEmailState.sent && (
+                    <span className="ml-auto text-xs font-medium text-green-700 bg-green-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      <CheckCircle className="w-3 h-3" /> Sent
+                    </span>
+                  )}
+                </h4>
+
+                {!meetingDoneEmailState.selectedTemplate ? (
+                  /* Template picker */
+                  <div className="space-y-2">
+                    {[
+                      { key: 'next_steps', label: 'Next Steps for Your School', desc: 'Outlines the 5-step onboarding roadmap after the meeting', color: 'border-blue-200 hover:border-blue-400 hover:bg-blue-50' },
+                      { key: 'confirmation', label: 'Confirmation Reminder', desc: 'Gentle nudge to confirm enrollment — with urgency cue', color: 'border-violet-200 hover:border-violet-400 hover:bg-violet-50' },
+                      { key: 'custom', label: 'Custom Message', desc: 'Write your own subject and email body', color: 'border-slate-200 hover:border-slate-400 hover:bg-slate-50' },
+                    ].map(({ key, label, desc, color }) => (
+                      <button
+                        key={key}
+                        data-testid={`email-template-${key}`}
+                        onClick={() => {
+                          const tpl = buildMeetingDoneTemplate(key, showFollowupModal.school_name, showFollowupModal.contact_name);
+                          setMeetingDoneEmailState(prev => ({ ...prev, selectedTemplate: key, subject: tpl.subject, body_html: tpl.body_html, sent: false }));
+                        }}
+                        className={`w-full text-left px-3 py-2.5 rounded-lg border bg-white transition-all ${color}`}
+                      >
+                        <p className="text-sm font-semibold text-slate-800">{label}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{desc}</p>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  /* Edit & Send view */
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">Subject</label>
+                      <Input
+                        value={meetingDoneEmailState.subject}
+                        onChange={(e) => setMeetingDoneEmailState(prev => ({ ...prev, subject: e.target.value }))}
+                        placeholder="Email subject"
+                        data-testid="followup-email-subject"
+                        className="text-sm"
+                      />
+                    </div>
+                    {meetingDoneEmailState.selectedTemplate === 'custom' ? (
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Email Body (HTML)</label>
+                        <Textarea
+                          value={meetingDoneEmailState.body_html}
+                          onChange={(e) => setMeetingDoneEmailState(prev => ({ ...prev, body_html: e.target.value }))}
+                          placeholder="Write your email body here..."
+                          className="min-h-[100px] text-sm font-mono"
+                          data-testid="followup-email-body"
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Preview</label>
+                        <div className="bg-white rounded-lg border border-slate-200 p-3 max-h-[140px] overflow-y-auto text-xs text-slate-600 leading-relaxed">
+                          <div dangerouslySetInnerHTML={{ __html: meetingDoneEmailState.body_html }} />
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex gap-2 pt-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setMeetingDoneEmailState(prev => ({ ...prev, selectedTemplate: null, subject: '', body_html: '' }))}
+                        className="text-xs"
+                        data-testid="followup-email-back"
+                      >
+                        <X className="w-3 h-3 mr-1" /> Back
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleSendMeetingDoneEmail}
+                        disabled={meetingDoneEmailState.sending}
+                        className="flex-1 bg-purple-600 hover:bg-purple-700 text-xs"
+                        data-testid="followup-email-send"
+                      >
+                        <Send className="w-3 h-3 mr-1" />
+                        {meetingDoneEmailState.sending ? 'Sending...' : 'Send Email'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -8780,7 +8657,7 @@ const AdminSchoolCRM = () => {
             )}
             
             <div className="flex gap-3 pt-2">
-              <Button variant="outline" onClick={() => setShowFollowupModal(null)} className="flex-1">
+              <Button variant="outline" onClick={() => { setShowFollowupModal(null); setMeetingDoneEmailState({ selectedTemplate: null, subject: '', body_html: '', sending: false, sent: false }); }} className="flex-1">
                 Cancel
               </Button>
               <Button onClick={handleAddFollowup} className="flex-1 bg-cyan-600 hover:bg-cyan-700" data-testid="submit-followup">
@@ -9287,6 +9164,7 @@ const AdminSchoolCRM = () => {
                       >
                         <option value="">Select Role *</option>
                         <option value="principal">Principal</option>
+                        <option value="vice_principal">Vice Principal</option>
                         <option value="trustee_owner">Trustee/Owner</option>
                         <option value="director">Director</option>
                         <option value="coordinator">Coordinator</option>
@@ -9328,13 +9206,23 @@ const AdminSchoolCRM = () => {
             {/* School Address */}
             <div>
               <label className="text-sm font-medium text-slate-700">School Address</label>
-              <Input
-                placeholder="Enter school full address"
-                value={onboardData.school_address || ''}
-                onChange={(e) => setOnboardData(prev => ({ ...prev, school_address: e.target.value }))}
-                className="h-10"
-                data-testid="onboard-school-address"
-              />
+              <div className="mt-1">
+                <SchoolMapPicker
+                  value={{
+                    address: onboardData.school_address || '',
+                    latitude: onboardData.latitude,
+                    longitude: onboardData.longitude,
+                    geofence_radius: onboardData.geofence_radius || 500,
+                  }}
+                  onChange={(loc) => setOnboardData(prev => ({
+                    ...prev,
+                    school_address: loc.address,
+                    latitude: loc.latitude,
+                    longitude: loc.longitude,
+                    geofence_radius: loc.geofence_radius,
+                  }))}
+                />
+              </div>
             </div>
 
             {/* Additional Services / Components */}
@@ -9400,6 +9288,7 @@ const AdminSchoolCRM = () => {
                   >
                     <option value="from_school">From School</option>
                     <option value="from_student">From Student (Offline)</option>
+                    <option value="from_distributor">From Distributor</option>
                     <option value="online">Online (Student Payment via Cashfree)</option>
                   </select>
                 </div>
@@ -9557,7 +9446,7 @@ const AdminSchoolCRM = () => {
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
-                      onClick={generateParentCircularPDF}
+                      onClick={() => generateParentCircularPDF()}
                       disabled={generatingParentCircular}
                       className="flex-1 border-yellow-500 text-yellow-700 hover:bg-yellow-100"
                       data-testid="generate-parent-circular-btn"
@@ -9580,7 +9469,7 @@ const AdminSchoolCRM = () => {
                             formData.append('file', file);
                             try {
                               const res = await axios.post(`${API}/upload`, formData, {
-                                headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
+                                headers: getAuthHeaders()
                               });
                               setOnboardData(prev => ({ ...prev, parent_circular_url: res.data.url }));
                               toast.success('Parent circular uploaded');
@@ -9616,7 +9505,7 @@ const AdminSchoolCRM = () => {
               </Button>
               <Button
                 variant="outline"
-                onClick={generateMOUPDF}
+                onClick={() => generateMOUPDF()}
                 disabled={generatingMOU}
                 className="flex-1 border-[#1E3A5F] text-[#1E3A5F] hover:bg-[#1E3A5F]/10"
                 data-testid="generate-mou-btn"
@@ -9835,16 +9724,11 @@ const AdminSchoolCRM = () => {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-slate-700">Location</label>
-                    <select
+                    <CitySearch
                       value={editOnboardData.location || ''}
-                      onChange={(e) => setEditOnboardData(prev => ({ ...prev, location: e.target.value }))}
-                      className="w-full h-10 px-4 border border-slate-200 rounded-lg"
-                    >
-                      <option value="">Select City</option>
-                      {CITIES.map(city => (
-                        <option key={city} value={city}>{city}</option>
-                      ))}
-                    </select>
+                      onChange={(city) => setEditOnboardData(prev => ({ ...prev, location: city }))}
+                      placeholder="Search city..."
+                    />
                   </div>
                   <div>
                     <label className="text-sm font-medium text-slate-700">Board</label>
@@ -9863,14 +9747,23 @@ const AdminSchoolCRM = () => {
                 {/* School Address */}
                 <div className="mt-3">
                   <label className="text-sm font-medium text-slate-700">School Address</label>
-                  <Textarea
-                    placeholder="Enter full school address"
-                    value={editOnboardData.address || ''}
-                    onChange={(e) => setEditOnboardData(prev => ({ ...prev, address: e.target.value }))}
-                    rows={2}
-                    className="mt-1"
-                    data-testid="edit-school-address"
-                  />
+                  <div className="mt-1">
+                    <SchoolMapPicker
+                      value={{
+                        address: editOnboardData.address || '',
+                        latitude: editOnboardData.latitude,
+                        longitude: editOnboardData.longitude,
+                        geofence_radius: editOnboardData.geofence_radius || 500,
+                      }}
+                      onChange={(loc) => setEditOnboardData(prev => ({
+                        ...prev,
+                        address: loc.address,
+                        latitude: loc.latitude,
+                        longitude: loc.longitude,
+                        geofence_radius: loc.geofence_radius,
+                      }))}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -9972,7 +9865,7 @@ const AdminSchoolCRM = () => {
                 </div>
               </div>
 
-              {/* MOU Upload */}
+              {/* MOU Upload / Generate */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <label className="text-sm font-medium text-blue-800 flex items-center gap-2">
                   <Upload className="w-4 h-4" />
@@ -9980,7 +9873,7 @@ const AdminSchoolCRM = () => {
                 </label>
                 <div className="mt-2">
                   {editOnboardData.mou_url ? (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       <span className="text-sm text-green-700 flex items-center gap-1">
                         <CheckCircle2 className="w-4 h-4" />
                         MOU uploaded
@@ -9999,29 +9892,55 @@ const AdminSchoolCRM = () => {
                       >
                         Remove
                       </button>
+                      <button
+                        onClick={generateEditMOUPDF}
+                        disabled={generatingEditMOU}
+                        className="text-xs text-blue-700 underline"
+                      >
+                        {generatingEditMOU ? 'Regenerating...' : 'Regenerate'}
+                      </button>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="file"
-                        accept=".pdf,.doc,.docx,image/*"
-                        onChange={async (e) => {
-                          const file = e.target.files[0];
-                          if (!file) return;
-                          const formData = new FormData();
-                          formData.append('file', file);
-                          try {
-                            const response = await axios.post(`${API}/upload`, formData, {
-                              headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
-                            });
-                            setEditOnboardData(prev => ({ ...prev, mou_url: response.data.url }));
-                            toast.success('MOU uploaded');
-                          } catch (error) {
-                            toast.error('Failed to upload MOU');
-                          }
-                        }}
-                        className="text-sm"
-                      />
+                    <div className="space-y-2">
+                      {/* Primary: Generate button */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={generateEditMOUPDF}
+                        disabled={generatingEditMOU}
+                        className="border-[#1E3A5F] text-[#1E3A5F] hover:bg-[#1E3A5F]/10 w-full"
+                        data-testid="edit-generate-mou-btn"
+                      >
+                        {generatingEditMOU ? (
+                          <><RefreshCw className="w-4 h-4 mr-1 animate-spin" /> Generating MOU...</>
+                        ) : (
+                          <><FileText className="w-4 h-4 mr-1" /> Generate MOU</>
+                        )}
+                      </Button>
+                      {/* Alternative: Upload existing */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-500">or upload existing:</span>
+                        <Input
+                          type="file"
+                          accept=".pdf,.doc,.docx,image/*"
+                          onChange={async (e) => {
+                            const file = e.target.files[0];
+                            if (!file) return;
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            try {
+                              const response = await axios.post(`${API}/upload`, formData, {
+                                headers: getAuthHeaders()
+                              });
+                              setEditOnboardData(prev => ({ ...prev, mou_url: response.data.url }));
+                              toast.success('MOU uploaded');
+                            } catch (error) {
+                              toast.error('Failed to upload MOU');
+                            }
+                          }}
+                          className="text-sm"
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
@@ -10141,21 +10060,46 @@ const AdminSchoolCRM = () => {
               </div>
               )}
 
-              {/* Grand Total */}
-              <div className="p-3 bg-emerald-100 rounded-lg border border-emerald-200">
-                <span className="font-semibold text-emerald-800">Grand Total: ₹</span>
-                <span className="font-bold text-emerald-900 text-lg">
-                  {(() => {
-                    let total = 0;
-                    if (editOnboardData.pricing_type === 'per_student' || editOnboardData.pricing_type === 'both') {
-                      total += (editOnboardData.grade_pricing || []).reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
-                    }
-                    if (editOnboardData.pricing_type === 'fixed' || editOnboardData.pricing_type === 'both') {
-                      total += parseFloat(editOnboardData.fixed_price) || 0;
-                    }
-                    return total.toLocaleString();
-                  })()}
-                </span>
+              {/* Grand Total with GST */}
+              <div className="p-3 bg-emerald-100 rounded-lg border border-emerald-200 space-y-1">
+                {(() => {
+                  let base = 0;
+                  if (editOnboardData.pricing_type === 'per_student' || editOnboardData.pricing_type === 'both') {
+                    base += (editOnboardData.grade_pricing || []).reduce((sum, g) => sum + ((parseInt(g.students) || 0) * (parseFloat(g.price_per_student) || 0)), 0);
+                  }
+                  if (editOnboardData.pricing_type === 'fixed' || editOnboardData.pricing_type === 'both') {
+                    base += parseFloat(editOnboardData.fixed_price) || 0;
+                  }
+                  const isExclusive = editOnboardData.gst_type === 'exclusive_18';
+                  const gstAmt = isExclusive ? Math.round(base * 0.18) : 0;
+                  const total = base + gstAmt;
+                  return (
+                    <>
+                      {isExclusive && (
+                        <>
+                          <div className="flex justify-between text-sm text-emerald-700">
+                            <span>Base Amount:</span>
+                            <span>₹{base.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between text-sm text-orange-700">
+                            <span>GST @ 18% (Exclusive):</span>
+                            <span>+ ₹{gstAmt.toLocaleString()}</span>
+                          </div>
+                          <div className="border-t border-emerald-300 pt-1 flex justify-between">
+                            <span className="font-semibold text-emerald-800">Grand Total (incl. GST):</span>
+                            <span className="font-bold text-emerald-900 text-lg">₹{total.toLocaleString()}</span>
+                          </div>
+                        </>
+                      )}
+                      {!isExclusive && (
+                        <div className="flex justify-between">
+                          <span className="font-semibold text-emerald-800">Grand Total:</span>
+                          <span className="font-bold text-emerald-900 text-lg">₹{base.toLocaleString()}</span>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
 
               {/* School Share */}
@@ -10337,6 +10281,7 @@ const AdminSchoolCRM = () => {
                         >
                           <option value="">Select Role *</option>
                           <option value="principal">Principal</option>
+                          <option value="vice_principal">Vice Principal</option>
                           <option value="trustee_owner">Trustee/Owner</option>
                           <option value="director">Director</option>
                           <option value="coordinator">Coordinator</option>
@@ -10391,15 +10336,7 @@ const AdminSchoolCRM = () => {
               {/* Payment Details */}
               <div className="bg-green-50 rounded-lg p-4">
                 <h4 className="font-medium text-green-800 mb-3">Payment Details</h4>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="text-sm font-medium text-slate-700">Total Amount (₹)</label>
-                    <Input
-                      type="number"
-                      value={editOnboardData.total_amount || ''}
-                      onChange={(e) => setEditOnboardData(prev => ({ ...prev, total_amount: parseFloat(e.target.value) || 0 }))}
-                    />
-                  </div>
+                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-sm font-medium text-slate-700">Payment Mode</label>
                     <select
@@ -10434,6 +10371,22 @@ const AdminSchoolCRM = () => {
                   )}
                 </div>
                 
+                {/* GST Type */}
+                <div>
+                  <label className="text-sm font-medium text-slate-700">GST Type</label>
+                  <select
+                    value={editOnboardData.gst_type || ''}
+                    onChange={(e) => setEditOnboardData(prev => ({ ...prev, gst_type: e.target.value }))}
+                    className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white"
+                    data-testid="edit-onboard-gst-type"
+                  >
+                    <option value="">Select GST type</option>
+                    <option value="inclusive_18">GST Inclusive @ 18%</option>
+                    <option value="exclusive_18">GST Exclusive @ 18%</option>
+                    <option value="book_gst_0">Book GST = 0%</option>
+                  </select>
+                </div>
+
                 {/* Online Student Payment Info */}
                 {editOnboardData.payment_mode === 'online' && (
                   <div className="bg-green-100 border border-green-300 rounded-lg p-3 mt-3">
@@ -10530,9 +10483,15 @@ const AdminSchoolCRM = () => {
                           onChange={(e) => {
                             const newTranches = [...(editOnboardData.payment_tranches || [])];
                             newTranches[idx] = { ...newTranches[idx], percentage: e.target.value };
-                            // Auto-calculate amount if total_amount is set
-                            if (editOnboardData.total_amount && e.target.value) {
-                              newTranches[idx].amount = Math.round((editOnboardData.total_amount * parseFloat(e.target.value)) / 100);
+                            // Auto-calculate amount from grade pricing grand total
+                            // Auto-calculate amount: base × GST multiplier × percentage%
+                            const editGradeBase = editOnboardData.pricing_type === 'fixed'
+                              ? parseFloat(editOnboardData.fixed_price || 0)
+                              : (editOnboardData.grade_pricing || []).reduce((s, g) => s + (parseInt(g.students || 0) * parseFloat(g.price_per_student || 0)), 0);
+                            const editGSTMul = editOnboardData.gst_type === 'exclusive_18' ? 1.18 : 1;
+                            const editGradeTotal = Math.round(editGradeBase * editGSTMul);
+                            if (editGradeTotal > 0 && e.target.value) {
+                              newTranches[idx].amount = Math.round((editGradeTotal * parseFloat(e.target.value)) / 100);
                             }
                             setEditOnboardData(prev => ({ ...prev, payment_tranches: newTranches }));
                           }}
@@ -10866,6 +10825,13 @@ const AdminSchoolCRM = () => {
                     Copy Tracking Link
                   </button>
                 )}
+                <button
+                  onClick={() => handleRegenerateWorkflow(showOnboardingWorkflowModal.id)}
+                  className="text-xs px-3 py-1.5 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 flex items-center gap-1"
+                  title="Re-sync steps based on current program details (kit type & training type)"
+                >
+                  <RefreshCw className="w-3 h-3" /> Sync Steps
+                </button>
               </div>
             </DialogTitle>
           </DialogHeader>
@@ -10877,14 +10843,24 @@ const AdminSchoolCRM = () => {
                 <div 
                   className="h-full bg-gradient-to-r from-green-500 to-emerald-500 transition-all"
                   style={{ 
-                    width: `${Object.values(showOnboardingWorkflowModal.onboarding_workflow.steps || {}).filter(s => s.completed).length / 9 * 100}%` 
+                    width: `${Object.values(showOnboardingWorkflowModal.onboarding_workflow.steps || {}).filter(s => s.completed).length / Math.max(Object.keys(showOnboardingWorkflowModal.onboarding_workflow.steps || {}).length, 1) * 100}%` 
                   }}
                 />
               </div>
               
               {/* Steps Grid */}
               <div className="space-y-4">
-                {Object.entries(showOnboardingWorkflowModal.onboarding_workflow.steps || {}).map(([key, step]) => (
+                {Object.entries(showOnboardingWorkflowModal.onboarding_workflow.steps || {}).map(([key, step]) => {
+                  // For student_training schools, the teacher_training step is renamed
+                  const trainingType = showOnboardingWorkflowModal.onboarding_data?.training_type;
+                  const isStudentTraining = trainingType === 'student_training';
+                  const displayTitle = (key === 'teacher_training' && isStudentTraining)
+                    ? 'Teacher Allocation and School Approval'
+                    : step.title;
+                  const displayDesc = (key === 'teacher_training' && isStudentTraining)
+                    ? 'School allocates teachers and provides formal approval for program execution'
+                    : step.description;
+                  return (
                   <div 
                     key={key}
                     className={`border rounded-xl p-4 ${step.completed ? 'bg-green-50 border-green-200' : 'bg-white border-slate-200'}`}
@@ -10907,9 +10883,9 @@ const AdminSchoolCRM = () => {
                         </button>
                         <div>
                           <h4 className={`font-medium ${step.completed ? 'text-green-800' : 'text-slate-800'}`}>
-                            {step.title}
+                            {displayTitle}
                           </h4>
-                          <p className="text-sm text-slate-500">{step.description}</p>
+                          <p className="text-sm text-slate-500">{displayDesc}</p>
                           {step.completed_date && (
                             <p className="text-xs text-green-600 mt-1">
                               Completed: {format(new Date(step.completed_date), 'MMM d, yyyy h:mm a')}
@@ -10917,6 +10893,23 @@ const AdminSchoolCRM = () => {
                           )}
                         </div>
                       </div>
+                      {/* Send step email */}
+                      <button
+                        onClick={() => setEmailModal({
+                          mode: 'onboarding_step',
+                          schoolId: showOnboardingWorkflowModal.id,
+                          stepKey: key,
+                          stepTitle: step.title,
+                          initialSubject: '',
+                          initialBody: '',
+                          recipients: (showOnboardingWorkflowModal.onboarding_data?.school_contacts || [])
+                            .filter(c => c.email).map(c => ({ email: c.email, name: c.name })),
+                        })}
+                        className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 border border-blue-200 rounded px-2 py-1 hover:bg-blue-50 transition-colors shrink-0"
+                        title="Send email notification for this step"
+                      >
+                        <Mail className="w-3.5 h-3.5" /> Email
+                      </button>
                     </div>
                     
                     {/* Step-specific fields */}
@@ -11000,8 +10993,8 @@ const AdminSchoolCRM = () => {
                                         </span>
                                       </div>
                                     </div>
-                                    {/* Download buttons */}
-                                    <div className="flex items-center gap-3 mt-2 pt-2 border-t">
+                                    {/* Download buttons + Email actions */}
+                                    <div className="flex items-center gap-3 mt-2 pt-2 border-t flex-wrap">
                                       {tranchePayment?.invoice_url ? (
                                         <button 
                                           onClick={() => downloadFile(tranchePayment.invoice_url, `Invoice_${showOnboardingWorkflowModal.school_name?.replace(/\s+/g, '_') || 'School'}_Tranche${idx + 1}.pdf`)}
@@ -11022,6 +11015,47 @@ const AdminSchoolCRM = () => {
                                       ) : (
                                         <span className="text-slate-400 text-xs">No receipt</span>
                                       )}
+                                      <div className="flex items-center gap-1.5 ml-auto">
+                                        <button
+                                          onClick={() => setEmailModal({
+                                            mode: 'payment', paymentType: 'invoice',
+                                            schoolId: showOnboardingWorkflowModal.id,
+                                            tranche: { ...tranche, label: `Tranche ${idx+1}`, due_date: tranche.date },
+                                            trancheIndex: idx,
+                                            initialSubject: `Invoice — ${showOnboardingWorkflowModal.school_name} Tranche ${idx+1}`,
+                                            initialBody: '',
+                                            recipients: (showOnboardingWorkflowModal.onboarding_data?.school_contacts || []).filter(c=>c.email).map(c=>({email:c.email,name:c.name})),
+                                          })}
+                                          className="text-blue-600 text-xs flex items-center gap-1 border border-blue-200 rounded px-2 py-0.5 hover:bg-blue-50"
+                                          title="Send invoice email with PDF"
+                                        ><Mail className="w-3 h-3" /> Invoice</button>
+                                        <button
+                                          onClick={() => setEmailModal({
+                                            mode: 'payment', paymentType: 'reminder',
+                                            schoolId: showOnboardingWorkflowModal.id,
+                                            tranche: { ...tranche, label: `Tranche ${idx+1}`, due_date: tranche.date },
+                                            trancheIndex: idx,
+                                            initialSubject: `Payment Reminder — ${showOnboardingWorkflowModal.school_name} Tranche ${idx+1}`,
+                                            initialBody: '',
+                                            recipients: (showOnboardingWorkflowModal.onboarding_data?.school_contacts || []).filter(c=>c.email).map(c=>({email:c.email,name:c.name})),
+                                          })}
+                                          className="text-amber-600 text-xs flex items-center gap-1 border border-amber-200 rounded px-2 py-0.5 hover:bg-amber-50"
+                                          title="Send gentle payment reminder"
+                                        ><Mail className="w-3 h-3" /> Reminder</button>
+                                        <button
+                                          onClick={() => setEmailModal({
+                                            mode: 'payment', paymentType: 'overdue',
+                                            schoolId: showOnboardingWorkflowModal.id,
+                                            tranche: { ...tranche, label: `Tranche ${idx+1}`, due_date: tranche.date },
+                                            trancheIndex: idx,
+                                            initialSubject: `Overdue Notice — ${showOnboardingWorkflowModal.school_name} Tranche ${idx+1}`,
+                                            initialBody: '',
+                                            recipients: (showOnboardingWorkflowModal.onboarding_data?.school_contacts || []).filter(c=>c.email).map(c=>({email:c.email,name:c.name})),
+                                          })}
+                                          className="text-red-600 text-xs flex items-center gap-1 border border-red-200 rounded px-2 py-0.5 hover:bg-red-50"
+                                          title="Send overdue payment notice"
+                                        ><Mail className="w-3 h-3" /> Overdue</button>
+                                      </div>
                                     </div>
                                   </div>
                                 );
@@ -11038,6 +11072,41 @@ const AdminSchoolCRM = () => {
                               → Manage payments in Orders → School Payments
                             </a>
                           </p>
+                          
+                          {/* Raise PO Request Button - shown when payment step is complete or at least one payment received */}
+                          {(() => {
+                            const paymentStep = showOnboardingWorkflowModal?.onboarding_workflow?.steps?.payment_collection;
+                            const hasPaidTranche = showOnboardingWorkflowModal?.payments?.some(p => p.status === 'paid');
+                            const canRaisePO = paymentStep?.completed || hasPaidTranche;
+                            const existingPOs = showOnboardingWorkflowModal?.po_requests || [];
+                            return canRaisePO ? (
+                              <div className="mt-3 pt-3 border-t border-slate-200">
+                                {existingPOs.length > 0 && (
+                                  <div className="mb-2 space-y-1">
+                                    {existingPOs.map((po, i) => (
+                                      <div key={i} className="text-xs bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 flex items-center justify-between">
+                                        <span className="text-blue-700 font-medium">{po.po_number} ({po.products?.length} items)</span>
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-blue-500">{po.status}</span>
+                                          {po.tracking_url && (
+                                            <a href={po.tracking_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Track</a>
+                                          )}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                <button
+                                  onClick={() => { setShowRaisePODialog(true); setPoDeliveryDate(''); setPoPreviewProducts([]); setPoPreviewLoaded(false); setNewPoProduct({ product_name: '', quantity: '' }); }}
+                                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white text-xs rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+                                  data-testid="raise-po-btn"
+                                >
+                                  <Package className="w-3.5 h-3.5" />
+                                  Raise PO Request
+                                </button>
+                              </div>
+                            ) : null;
+                          })()}
                         </div>
                       )}
                       
@@ -11105,6 +11174,59 @@ const AdminSchoolCRM = () => {
                               {step.data.vendor_name && (
                                 <p className="text-xs text-slate-600">Vendor: {step.data.vendor_name}</p>
                               )}
+                            </div>
+                          )}
+
+                          {/* Show all raised PO requests */}
+                          {showOnboardingWorkflowModal?.po_requests?.length > 0 && (
+                            <div className="space-y-2">
+                              <p className="text-xs font-semibold text-slate-600">Raised PO Requests</p>
+                              {showOnboardingWorkflowModal.po_requests.map((po, poIdx) => (
+                                <div key={poIdx} className="bg-indigo-50 border border-indigo-200 rounded-lg p-3 text-sm">
+                                  <div className="flex items-center justify-between mb-2">
+                                    <div className="flex items-center gap-2">
+                                      <Package className="w-4 h-4 text-indigo-600" />
+                                      <span className="font-semibold text-indigo-700">{po.po_number}</span>
+                                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                        po.status === 'delivered' || po.status === 'closed' ? 'bg-green-100 text-green-700' :
+                                        po.status === 'dispatched' ? 'bg-blue-100 text-blue-700' :
+                                        po.status === 'confirmed' ? 'bg-teal-100 text-teal-700' :
+                                        po.status === 'sent' ? 'bg-yellow-100 text-yellow-700' :
+                                        'bg-slate-100 text-slate-600'
+                                      }`}>
+                                        {po.status || 'request'}
+                                      </span>
+                                    </div>
+                                    {po.tracking_url && (
+                                      <a href={po.tracking_url} target="_blank" rel="noopener noreferrer"
+                                        className="text-xs text-indigo-600 hover:underline flex items-center gap-1">
+                                        <ExternalLink className="w-3 h-3" /> Track
+                                      </a>
+                                    )}
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-600">
+                                    <p>Delivery Date: <span className="font-medium text-slate-800">
+                                      {po.delivery_date ? new Date(po.delivery_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                                    </span></p>
+                                    <p>Raised: <span className="font-medium text-slate-800">
+                                      {po.raised_at ? new Date(po.raised_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                                    </span></p>
+                                    <p>Products: <span className="font-medium text-slate-800">{po.products?.length || 0} items</span></p>
+                                    <p>By: <span className="font-medium text-slate-800">{po.raised_by || '-'}</span></p>
+                                  </div>
+                                  {po.products?.length > 0 && (
+                                    <div className="mt-2 pt-2 border-t border-indigo-100">
+                                      <div className="flex flex-wrap gap-1">
+                                        {po.products.map((prod, pIdx) => (
+                                          <span key={pIdx} className="text-xs bg-white border border-indigo-100 rounded px-2 py-0.5 text-slate-700">
+                                            {prod.product_name} x{prod.quantity}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
                             </div>
                           )}
                           
@@ -11262,28 +11384,202 @@ const AdminSchoolCRM = () => {
                       {/* Timetable */}
                       {key === 'timetable_finalization' && (
                         <div className="space-y-3">
-                          <div>
-                            <label className="text-xs text-slate-500">Sessions per Week</label>
-                            <Input
-                              type="number"
-                              value={step.data?.sessions_per_week || ''}
-                              onChange={(e) => handleUpdateOnboardingStep(
-                                showOnboardingWorkflowModal.id, key,
-                                { data: { sessions_per_week: e.target.value } }
+                          {/* Summary if already created */}
+                          {step.data?.timetable_created && showTimetableBuilder !== showOnboardingWorkflowModal.id && (
+                            <div className="p-3 bg-indigo-50 rounded-lg border border-indigo-100">
+                              <p className="text-xs font-semibold text-indigo-700 mb-1">Timetable Created</p>
+                              <div className="text-xs text-indigo-600 space-y-0.5">
+                                {step.data?.days_of_week?.length > 0 && <p>Days: {step.data.days_of_week.join(', ')}</p>}
+                                {step.data?.start_date && <p>Period: {step.data.start_date} → {step.data.end_date || '—'}</p>}
+                                {step.data?.session_mode && <p>Mode: {step.data.session_mode === 'online' ? 'Online' : 'Offline'}</p>}
+                                {step.data?.sessions_per_week && <p>Sessions/week: {step.data.sessions_per_week}</p>}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Create / Edit button */}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              if (showTimetableBuilder === showOnboardingWorkflowModal.id) {
+                                setShowTimetableBuilder(null);
+                              } else {
+                                // Pre-fill from saved step data
+                                setTimetableFormLocal({
+                                  session_mode: step.data?.session_mode || 'offline',
+                                  start_date: step.data?.start_date || '',
+                                  end_date: step.data?.end_date || '',
+                                  days_of_week: step.data?.days_of_week || [],
+                                  time_slots: step.data?.time_slots || {},
+                                  sessions_per_week: step.data?.sessions_per_week || '',
+                                  timetable_status: step.data?.timetable_status || 'active',
+                                  notes: step.data?.notes || '',
+                                  educator_id: step.data?.educator_id || '',
+                                });
+                                setShowTimetableBuilder(showOnboardingWorkflowModal.id);
+                                fetchCheckinEducators();
+                              }
+                            }}
+                            className={`text-xs ${step.data?.timetable_created ? 'border-indigo-200 text-indigo-600 hover:bg-indigo-50' : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'}`}
+                            data-testid="create-timetable-btn"
+                          >
+                            <CalendarDays className="w-3.5 h-3.5 mr-1.5" />
+                            {showTimetableBuilder === showOnboardingWorkflowModal.id ? 'Close' : step.data?.timetable_created ? 'Edit Timetable' : 'Create Timetable'}
+                          </Button>
+
+                          {/* Timetable Builder Form */}
+                          {showTimetableBuilder === showOnboardingWorkflowModal.id && (
+                            <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 space-y-3">
+                              <p className="text-xs font-semibold text-slate-700">Timetable Configuration</p>
+
+                              {/* Educator selector */}
+                              <div>
+                                <label className="text-xs text-slate-500 mb-1 block">Educator *</label>
+                                <select
+                                  value={timetableFormLocal.educator_id}
+                                  onChange={(e) => setTimetableFormLocal(prev => ({ ...prev, educator_id: e.target.value }))}
+                                  className="w-full h-8 px-2 border border-slate-200 rounded-lg text-xs bg-white"
+                                >
+                                  <option value="">{checkinEducatorsLoading ? 'Loading educators...' : '— Select Educator —'}</option>
+                                  {checkinEducators.map(e => (
+                                    <option key={e.id} value={e.id}>{e.full_name || e.email}</option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              {/* School + Mode */}
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="text-xs text-slate-500 mb-1 block">School</label>
+                                  <Input value={showOnboardingWorkflowModal.school_name || ''} readOnly className="h-8 text-xs bg-slate-100 text-slate-600" />
+                                </div>
+                                <div>
+                                  <label className="text-xs text-slate-500 mb-1 block">Session Mode</label>
+                                  <select
+                                    value={timetableFormLocal.session_mode}
+                                    onChange={(e) => setTimetableFormLocal(prev => ({ ...prev, session_mode: e.target.value }))}
+                                    className="w-full h-8 px-2 border border-slate-200 rounded-lg text-xs"
+                                  >
+                                    <option value="offline">Offline</option>
+                                    <option value="online">Online</option>
+                                  </select>
+                                </div>
+                              </div>
+
+                              {/* Start / End Date */}
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="text-xs text-slate-500 mb-1 block">Start Date *</label>
+                                  <Input type="date" value={timetableFormLocal.start_date} onChange={(e) => setTimetableFormLocal(prev => ({ ...prev, start_date: e.target.value }))} className="h-8 text-xs" />
+                                </div>
+                                <div>
+                                  <label className="text-xs text-slate-500 mb-1 block">End Date *</label>
+                                  <Input type="date" value={timetableFormLocal.end_date} onChange={(e) => setTimetableFormLocal(prev => ({ ...prev, end_date: e.target.value }))} className="h-8 text-xs" />
+                                </div>
+                              </div>
+
+                              {/* Days of Week */}
+                              <div>
+                                <label className="text-xs text-slate-500 mb-1.5 block">Days of Week *</label>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(day => (
+                                    <button
+                                      key={day}
+                                      type="button"
+                                      onClick={() => {
+                                        const days = timetableFormLocal.days_of_week || [];
+                                        const newDays = days.includes(day) ? days.filter(d => d !== day) : [...days, day];
+                                        // Initialize empty slot for new day
+                                        const slots = { ...timetableFormLocal.time_slots };
+                                        if (!days.includes(day)) slots[day] = slots[day] || [{ start: '', end: '' }];
+                                        setTimetableFormLocal(prev => ({ ...prev, days_of_week: newDays, time_slots: slots }));
+                                      }}
+                                      className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${(timetableFormLocal.days_of_week||[]).includes(day) ? 'bg-indigo-600 text-white border-indigo-600' : 'border-slate-200 text-slate-600 hover:border-indigo-300 bg-white'}`}
+                                    >
+                                      {day}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Time Slots per Day */}
+                              {(timetableFormLocal.days_of_week||[]).length > 0 && (
+                                <div className="space-y-2">
+                                  {(timetableFormLocal.days_of_week||[]).map(day => (
+                                    <div key={day} className="bg-white rounded-lg border border-slate-200 p-2">
+                                      <div className="flex items-center justify-between mb-1.5">
+                                        <span className="text-xs font-medium text-slate-700">{day}</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const slots = [...(timetableFormLocal.time_slots?.[day] || [])];
+                                            setTimetableFormLocal(prev => ({ ...prev, time_slots: { ...prev.time_slots, [day]: [...slots, { start: '', end: '' }] } }));
+                                          }}
+                                          className="text-xs text-indigo-600 hover:text-indigo-700"
+                                        >+ Add Slot</button>
+                                      </div>
+                                      {(timetableFormLocal.time_slots?.[day] || [{ start: '', end: '' }]).map((slot, i) => (
+                                        <div key={i} className="flex gap-1.5 items-center mb-1">
+                                          <Input type="time" value={slot.start}
+                                            onChange={(e) => { const s = [...(timetableFormLocal.time_slots?.[day]||[])]; s[i]={...s[i],start:e.target.value}; setTimetableFormLocal(prev => ({...prev,time_slots:{...prev.time_slots,[day]:s}})); }}
+                                            className="h-7 flex-1 text-xs" placeholder="Start" />
+                                          <span className="text-slate-400 text-xs">–</span>
+                                          <Input type="time" value={slot.end}
+                                            onChange={(e) => { const s = [...(timetableFormLocal.time_slots?.[day]||[])]; s[i]={...s[i],end:e.target.value}; setTimetableFormLocal(prev => ({...prev,time_slots:{...prev.time_slots,[day]:s}})); }}
+                                            className="h-7 flex-1 text-xs" placeholder="End" />
+                                          {(timetableFormLocal.time_slots?.[day]||[]).length > 1 && (
+                                            <button type="button"
+                                              onClick={() => { const s = (timetableFormLocal.time_slots?.[day]||[]).filter((_,si)=>si!==i); setTimetableFormLocal(prev=>({...prev,time_slots:{...prev.time_slots,[day]:s}})); }}
+                                              className="text-red-400 hover:text-red-600"><X className="w-3 h-3" /></button>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ))}
+                                </div>
                               )}
-                              placeholder="e.g., 2"
-                              className="h-9"
-                            />
-                          </div>
-                          <Textarea
-                            value={step.data?.notes || ''}
-                            onChange={(e) => handleUpdateOnboardingStep(
-                              showOnboardingWorkflowModal.id, key,
-                              { data: { notes: e.target.value } }
-                            )}
-                            placeholder="Timetable details, grades covered, etc."
-                            className="min-h-[60px]"
-                          />
+
+                              {/* Sessions / Status */}
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="text-xs text-slate-500 mb-1 block">Sessions per Week</label>
+                                  <Input type="number" value={timetableFormLocal.sessions_per_week}
+                                    onChange={(e) => setTimetableFormLocal(prev => ({ ...prev, sessions_per_week: e.target.value }))}
+                                    placeholder="e.g., 2" className="h-8 text-xs" />
+                                </div>
+                                <div>
+                                  <label className="text-xs text-slate-500 mb-1 block">Status</label>
+                                  <select value={timetableFormLocal.timetable_status}
+                                    onChange={(e) => setTimetableFormLocal(prev => ({ ...prev, timetable_status: e.target.value }))}
+                                    className="w-full h-8 px-2 border border-slate-200 rounded-lg text-xs">
+                                    <option value="active">Active</option>
+                                    <option value="draft">Draft</option>
+                                  </select>
+                                </div>
+                              </div>
+
+                              <Textarea value={timetableFormLocal.notes}
+                                onChange={(e) => setTimetableFormLocal(prev => ({ ...prev, notes: e.target.value }))}
+                                placeholder="Additional notes..." className="min-h-[50px] text-xs" />
+
+                              <div className="flex gap-2 pt-1">
+                                <Button type="button" variant="outline" size="sm" onClick={() => setShowTimetableBuilder(null)} className="text-xs">Cancel</Button>
+                                <Button type="button" size="sm"
+                                  onClick={() => saveTimetableToCheckin(showOnboardingWorkflowModal.id)}
+                                  disabled={savingTimetable}
+                                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-xs"
+                                  data-testid="save-timetable-btn">
+                                  {savingTimetable ? (
+                                    <><span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin mr-1" />Saving...</>
+                                  ) : (
+                                    <><CalendarDays className="w-3.5 h-3.5 mr-1" />Save Timetable to Checkin</>
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       )}
                       
@@ -11442,7 +11738,7 @@ const AdminSchoolCRM = () => {
                       )}
                     </div>
                   </div>
-                ))}
+                );})}
               </div>
               
               {/* Timeline */}
@@ -11464,6 +11760,175 @@ const AdminSchoolCRM = () => {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Raise PO Delivery Date Dialog */}
+      <Dialog open={showRaisePODialog} onOpenChange={(open) => {
+        setShowRaisePODialog(open);
+        if (!open) { setPoPreviewProducts([]); setPoPreviewLoaded(false); setNewPoProduct({ product_name: '', quantity: '' }); }
+      }}>
+        <DialogContent className={poPreviewLoaded ? 'max-w-2xl' : 'max-w-md'}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="w-5 h-5 text-indigo-600" />
+              {poPreviewLoaded ? 'Review & Approve PO' : 'Raise PO Request'}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* School summary — always visible */}
+            <div className="bg-slate-50 p-3 rounded-lg text-sm">
+              <p className="font-medium text-slate-800">{showOnboardingWorkflowModal?.school_name}</p>
+              <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-slate-600">
+                <span>Course: {showOnboardingWorkflowModal?.onboarding_data?.course_type === 'robotics_coding_ai' ? 'Robotics, Coding & AI' : 'Only Robotics'}</span>
+                <span>Kit: {showOnboardingWorkflowModal?.onboarding_data?.kit_type === 'lab_setup' ? `Lab Setup (${showOnboardingWorkflowModal?.onboarding_data?.lab_kit_count || 0} kits)` : 'Individual'}</span>
+                <span>Books: {showOnboardingWorkflowModal?.onboarding_data?.book_type === 'individual_books' ? 'Individual Books' : 'No Books'}</span>
+                <span>Students: {showOnboardingWorkflowModal?.onboarding_data?.total_students || '-'}</span>
+              </div>
+            </div>
+
+            {/* Delivery date */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Delivery Date *</label>
+              <Input
+                type="date"
+                value={poDeliveryDate}
+                onChange={(e) => { setPoDeliveryDate(e.target.value); setPoPreviewLoaded(false); setPoPreviewProducts([]); }}
+                min={new Date().toISOString().split('T')[0]}
+                data-testid="po-delivery-date"
+              />
+            </div>
+
+            {/* ── STEP 1: Preview Products button ── */}
+            {!poPreviewLoaded && (
+              <div className="flex gap-3 pt-1">
+                <Button variant="outline" onClick={() => setShowRaisePODialog(false)} className="flex-1">
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handlePoPreview}
+                  disabled={loadingPoPreview || !poDeliveryDate}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+                  data-testid="po-preview-btn"
+                >
+                  {loadingPoPreview ? (
+                    <><RefreshCw className="w-4 h-4 mr-1 animate-spin" /> Loading Products...</>
+                  ) : (
+                    <><Eye className="w-4 h-4 mr-1" /> Preview Products</>
+                  )}
+                </Button>
+              </div>
+            )}
+
+            {/* ── STEP 2: Editable product table ── */}
+            {poPreviewLoaded && (
+              <>
+                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-100 text-slate-700">
+                      <tr>
+                        <th className="text-left px-3 py-2 font-medium">Product Name</th>
+                        <th className="text-center px-3 py-2 font-medium w-24">Qty</th>
+                        <th className="w-12"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {poPreviewProducts.length === 0 && (
+                        <tr><td colSpan={3} className="text-center py-4 text-slate-400 text-xs">No products. Add items below.</td></tr>
+                      )}
+                      {poPreviewProducts.map((p, idx) => (
+                        <tr key={p._id ?? idx} className="border-t border-slate-100">
+                          <td className="px-3 py-1.5">
+                            <Input
+                              value={p.product_name}
+                              onChange={(e) => setPoPreviewProducts(prev => prev.map((x, i) => i === idx ? { ...x, product_name: e.target.value } : x))}
+                              className="h-8 text-sm"
+                              data-testid={`po-product-name-${idx}`}
+                            />
+                          </td>
+                          <td className="px-3 py-1.5">
+                            <Input
+                              type="number"
+                              min="1"
+                              value={p.quantity}
+                              onChange={(e) => setPoPreviewProducts(prev => prev.map((x, i) => i === idx ? { ...x, quantity: parseInt(e.target.value) || 1 } : x))}
+                              className="h-8 text-sm text-center"
+                              data-testid={`po-product-qty-${idx}`}
+                            />
+                          </td>
+                          <td className="px-2 py-1.5 text-center">
+                            <button
+                              onClick={() => setPoPreviewProducts(prev => prev.filter((_, i) => i !== idx))}
+                              className="text-red-500 hover:text-red-700"
+                              data-testid={`po-delete-product-${idx}`}
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Add product row */}
+                <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg p-2">
+                  <Input
+                    placeholder="Product name"
+                    value={newPoProduct.product_name}
+                    onChange={(e) => setNewPoProduct(prev => ({ ...prev, product_name: e.target.value }))}
+                    className="h-8 text-sm flex-1"
+                    data-testid="po-new-product-name"
+                  />
+                  <Input
+                    type="number"
+                    min="1"
+                    placeholder="Qty"
+                    value={newPoProduct.quantity}
+                    onChange={(e) => setNewPoProduct(prev => ({ ...prev, quantity: e.target.value }))}
+                    className="h-8 text-sm w-20 text-center"
+                    data-testid="po-new-product-qty"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 border-green-600 text-green-700 hover:bg-green-100 whitespace-nowrap"
+                    onClick={() => {
+                      if (!newPoProduct.product_name.trim() || !newPoProduct.quantity) return;
+                      setPoPreviewProducts(prev => [...prev, { product_name: newPoProduct.product_name.trim(), quantity: parseInt(newPoProduct.quantity) || 1, _id: Date.now() }]);
+                      setNewPoProduct({ product_name: '', quantity: '' });
+                    }}
+                    data-testid="po-add-product-btn"
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" /> Add
+                  </Button>
+                </div>
+
+                <div className="flex gap-3 pt-1">
+                  <Button
+                    variant="outline"
+                    onClick={() => { setPoPreviewLoaded(false); setPoPreviewProducts([]); }}
+                    className="flex-1"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    onClick={handleRaisePO}
+                    disabled={raisingPO || poPreviewProducts.length === 0}
+                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+                    data-testid="confirm-raise-po"
+                  >
+                    {raisingPO ? (
+                      <><RefreshCw className="w-4 h-4 mr-1 animate-spin" /> Raising PO...</>
+                    ) : (
+                      <><CheckCircle2 className="w-4 h-4 mr-1" /> Approve and Raise PO</>
+                    )}
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -11823,6 +12288,420 @@ const AdminSchoolCRM = () => {
           </div>
         </DialogContent>
       </Dialog>
+      {/* Global Email Compose Modal */}
+      {emailModal && (
+        <BulkEmailModal
+          open={!!emailModal}
+          onClose={() => setEmailModal(null)}
+          mode={emailModal.mode}
+          initialSubject={emailModal.initialSubject || ''}
+          initialBody={emailModal.initialBody || ''}
+          recipients={emailModal.recipients || []}
+          schoolId={emailModal.schoolId}
+          stepKey={emailModal.stepKey}
+          stepTitle={emailModal.stepTitle}
+          tranche={emailModal.tranche}
+          trancheIndex={emailModal.trancheIndex || 0}
+          paymentType={emailModal.paymentType || 'invoice'}
+          notes={emailModal.notes || ''}
+          nextSteps={emailModal.nextSteps || ''}
+          onSent={() => setEmailModal(null)}
+        />
+      )}
+      {/* ── Sessions Modal ────────────────────────────────────────────────── */}
+      {showSessionsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-t-2xl">
+              <div>
+                <h2 className="text-lg font-bold">{showSessionsModal.school_name}</h2>
+                <p className="text-xs text-purple-200">Check-in Sessions</p>
+              </div>
+              <button onClick={() => { setShowSessionsModal(null); setEditingSession(null); }} className="p-2 hover:bg-white/20 rounded-full">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Filters */}
+            <div className="px-5 py-3 border-b bg-slate-50 flex flex-wrap gap-3 items-end">
+              <div>
+                <label className="text-xs text-slate-500 block mb-1">Status</label>
+                <select className="h-8 px-2 border border-slate-200 rounded-lg text-xs bg-white"
+                  value={sessionsFilter.status}
+                  onChange={e => { const f = {...sessionsFilter, status: e.target.value}; setSessionsFilter(f); fetchSchoolSessions(showSessionsModal, f); }}>
+                  <option value="">All</option>
+                  {['scheduled','ontime','late','absent','holiday','cancelled','paused'].map(s => (
+                    <option key={s} value={s}>{s.charAt(0).toUpperCase()+s.slice(1)}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-slate-500 block mb-1">From</label>
+                <input type="date" className="h-8 px-2 border border-slate-200 rounded-lg text-xs bg-white"
+                  value={sessionsFilter.start_date}
+                  onChange={e => { const f = {...sessionsFilter, start_date: e.target.value}; setSessionsFilter(f); fetchSchoolSessions(showSessionsModal, f); }} />
+              </div>
+              <div>
+                <label className="text-xs text-slate-500 block mb-1">To</label>
+                <input type="date" className="h-8 px-2 border border-slate-200 rounded-lg text-xs bg-white"
+                  value={sessionsFilter.end_date}
+                  onChange={e => { const f = {...sessionsFilter, end_date: e.target.value}; setSessionsFilter(f); fetchSchoolSessions(showSessionsModal, f); }} />
+              </div>
+              <button onClick={() => fetchSchoolSessions(showSessionsModal, sessionsFilter)}
+                className="h-8 px-3 bg-purple-600 text-white text-xs rounded-lg hover:bg-purple-700 flex items-center gap-1 ml-auto">
+                <RefreshCw className="w-3 h-3" /> Refresh
+              </button>
+            </div>
+
+            {/* Sessions Table */}
+            <div className="overflow-y-auto flex-1 px-4 py-3">
+              {sessionsLoading ? (
+                <div className="flex items-center justify-center h-32 text-slate-400 text-sm">Loading sessions...</div>
+              ) : sessionsData.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-32 text-slate-400">
+                  <CalendarDays className="w-10 h-10 mb-2 opacity-40" />
+                  <p className="text-sm">No sessions found</p>
+                  <p className="text-xs mt-1">Create a timetable first in the onboarding workflow</p>
+                </div>
+              ) : (
+                <table className="w-full text-xs border-collapse">
+                  <thead>
+                    <tr className="text-slate-500 border-b border-slate-200">
+                      <th className="text-left py-2 pr-3 font-medium">Date</th>
+                      <th className="text-left py-2 pr-3 font-medium">Time</th>
+                      <th className="text-left py-2 pr-3 font-medium">Educator</th>
+                      <th className="text-left py-2 pr-3 font-medium">Mode</th>
+                      <th className="text-left py-2 pr-3 font-medium">Status</th>
+                      <th className="text-left py-2 pr-3 font-medium">Completed</th>
+                      <th className="text-left py-2 font-medium">Edit</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sessionsData.map(session => {
+                      const statusColors = {
+                        scheduled: 'bg-blue-100 text-blue-700',
+                        ontime:    'bg-green-100 text-green-700',
+                        late:      'bg-yellow-100 text-yellow-700',
+                        absent:    'bg-red-100 text-red-700',
+                        holiday:   'bg-purple-100 text-purple-700',
+                        cancelled: 'bg-slate-100 text-slate-600',
+                        paused:    'bg-orange-100 text-orange-700',
+                      };
+                      const isEditing = editingSession === session.id;
+                      return (
+                        <tr key={session.id} className={`border-b border-slate-100 hover:bg-slate-50 ${isEditing ? 'bg-blue-50' : ''}`}>
+                          <td className="py-2 pr-3">{session.session_date || '—'}</td>
+                          <td className="py-2 pr-3 whitespace-nowrap">
+                            {session.start_time?.slice(0,5)} – {session.end_time?.slice(0,5)}
+                          </td>
+                          <td className="py-2 pr-3">
+                            {checkinEducators.find(e => e.id === session.educator_id)?.full_name
+                              || (session.educator_id ? session.educator_id.toString().slice(0,8) + '...' : '—')}
+                          </td>
+                          <td className="py-2 pr-3 capitalize">{session.mode || '—'}</td>
+                          <td className="py-2 pr-3">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusColors[session.status] || 'bg-slate-100 text-slate-600'}`}>
+                              {session.status || 'scheduled'}
+                            </span>
+                          </td>
+                          <td className="py-2 pr-3">
+                            <span className={session.iscompleted ? 'text-green-600 font-semibold' : 'text-slate-400'}>
+                              {session.iscompleted ? 'Yes' : 'No'}
+                            </span>
+                          </td>
+                          <td className="py-2">
+                            <button onClick={() => {
+                              setShowEditSessionModal(session);
+                              setEditSessionFullForm({
+                                session_date: session.session_date || '',
+                                start_time: session.start_time?.slice(0,5) || '',
+                                end_time: session.end_time?.slice(0,5) || '',
+                                status: session.status || 'scheduled',
+                                mode: session.mode || 'offline',
+                                educator_id: session.educator_id || '',
+                                notes: '',
+                              });
+                            }}
+                              className="text-[10px] px-2 py-1 bg-slate-100 text-slate-600 rounded hover:bg-slate-200 flex items-center gap-1">
+                              <Edit className="w-2.5 h-2.5" /> Edit
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* Footer with timetable edit link */}
+            <div className="px-5 py-3 border-t bg-slate-50 flex items-center justify-between">
+              <p className="text-xs text-slate-400">
+                {sessionsMeta.total ? `${sessionsMeta.total} session(s) total` : `${sessionsData.length} session(s) shown`}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    const school = inquiries.find(i => i.id === showSessionsModal.id);
+                    if (school) {
+                      openStandaloneTimetableEditor(school);
+                    }
+                  }}
+                  className="text-xs px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-1"
+                >
+                  <Edit className="w-3 h-3" /> Edit Timetable
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+
+      {/* ── Edit Session Full Modal ────────────────────────────────────────── */}
+      {showEditSessionModal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+            <div className="px-5 py-4 border-b flex items-center justify-between">
+              <h3 className="font-semibold text-slate-800">Edit Session</h3>
+              <button onClick={() => setShowEditSessionModal(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              {/* Section 1: Session Details */}
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Session Details</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="text-xs text-slate-500 mb-1 block">Date *</label>
+                  <Input type="date" value={editSessionFullForm.session_date || ''}
+                    onChange={e => setEditSessionFullForm(p => ({...p, session_date: e.target.value}))}
+                    className="h-8 text-xs" />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 block">Start Time *</label>
+                  <Input type="time" value={editSessionFullForm.start_time || ''}
+                    onChange={e => setEditSessionFullForm(p => ({...p, start_time: e.target.value}))}
+                    className="h-8 text-xs" />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 block">End Time *</label>
+                  <Input type="time" value={editSessionFullForm.end_time || ''}
+                    onChange={e => setEditSessionFullForm(p => ({...p, end_time: e.target.value}))}
+                    className="h-8 text-xs" />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 block">Status *</label>
+                  <select className="w-full h-8 px-2 border border-input rounded-md text-xs bg-background"
+                    value={editSessionFullForm.status || 'scheduled'}
+                    onChange={e => setEditSessionFullForm(p => ({...p, status: e.target.value}))}>
+                    {['scheduled','ontime','late','absent','holiday','cancelled','paused'].map(s => (
+                      <option key={s} value={s} className="capitalize">{s.charAt(0).toUpperCase()+s.slice(1)}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 block">Mode *</label>
+                  <select className="w-full h-8 px-2 border border-input rounded-md text-xs bg-background"
+                    value={editSessionFullForm.mode || 'offline'}
+                    onChange={e => setEditSessionFullForm(p => ({...p, mode: e.target.value}))}>
+                    <option value="offline">Offline</option>
+                    <option value="online">Online</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Section 2: Staff */}
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mt-1">Staff & Location</p>
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Educator *</label>
+                <select className="w-full h-8 px-2 border border-input rounded-md text-xs bg-background"
+                  value={editSessionFullForm.educator_id || ''}
+                  onChange={e => setEditSessionFullForm(p => ({...p, educator_id: e.target.value}))}>
+                  <option value="">{checkinEducatorsLoading ? 'Loading...' : '— Select Educator —'}</option>
+                  {checkinEducators.map(e => (
+                    <option key={e.id} value={e.id}>{e.full_name || e.email}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">School</label>
+                <Input value={showSessionsModal?.school_name || ''} readOnly className="h-8 text-xs bg-slate-50 text-slate-500" />
+              </div>
+              <div>
+                <label className="text-xs text-slate-500 mb-1 block">Reason for Modification (admin only)</label>
+                <textarea
+                  value={editSessionFullForm.notes || ''}
+                  onChange={e => setEditSessionFullForm(p => ({...p, notes: e.target.value}))}
+                  className="w-full text-xs border border-input rounded-md px-3 py-2 min-h-[60px] bg-background resize-none"
+                  placeholder="Optional reason for this change..."
+                />
+              </div>
+            </div>
+            <div className="px-5 py-3 border-t flex justify-end gap-2">
+              <button onClick={() => setShowEditSessionModal(null)}
+                className="text-xs px-4 py-1.5 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">
+                Cancel
+              </button>
+              <button onClick={updateSessionFull}
+                className="text-xs px-4 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+                Update Session
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Standalone Timetable Editor Modal ──────────────────────────────── */}
+      {showStandaloneTimetableModal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg my-6">
+            <div className="px-5 py-4 border-b flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-slate-800">Edit Timetable</h3>
+                <p className="text-xs text-slate-500 mt-0.5">{showStandaloneTimetableModal.school_name}</p>
+              </div>
+              <button onClick={() => setShowStandaloneTimetableModal(null)} className="text-slate-400 hover:text-slate-600"><X className="w-4 h-4" /></button>
+            </div>
+
+            {standaloneTimetableLoading ? (
+              <div className="flex items-center justify-center py-12 text-slate-400 text-sm">Loading timetable...</div>
+            ) : (
+              <div className="p-5 space-y-4 overflow-y-auto max-h-[70vh]">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Basic Information</p>
+
+                {/* Educator */}
+                <div>
+                  <label className="text-xs text-slate-500 mb-1 block">Educator *</label>
+                  <select className="w-full h-8 px-2 border border-input rounded-md text-xs bg-background"
+                    value={timetableFormLocal.educator_id}
+                    onChange={e => setTimetableFormLocal(p => ({...p, educator_id: e.target.value}))}>
+                    <option value="">{checkinEducatorsLoading ? 'Loading educators...' : '— Select Educator —'}</option>
+                    {checkinEducators.map(e => (
+                      <option key={e.id} value={e.id}>{e.full_name || e.email}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* School + Mode */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">School Name</label>
+                    <Input value={showStandaloneTimetableModal.school_name || ''} readOnly className="h-8 text-xs bg-slate-50 text-slate-500" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Session Mode</label>
+                    <select className="w-full h-8 px-2 border border-input rounded-md text-xs bg-background"
+                      value={timetableFormLocal.session_mode}
+                      onChange={e => setTimetableFormLocal(p => ({...p, session_mode: e.target.value}))}>
+                      <option value="offline">Offline</option>
+                      <option value="online">Online</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Start / End Date */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">Start Date *</label>
+                    <Input type="date" value={timetableFormLocal.start_date}
+                      onChange={e => setTimetableFormLocal(p => ({...p, start_date: e.target.value}))}
+                      className="h-8 text-xs" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 mb-1 block">End Date *</label>
+                    <Input type="date" value={timetableFormLocal.end_date}
+                      onChange={e => setTimetableFormLocal(p => ({...p, end_date: e.target.value}))}
+                      className="h-8 text-xs" />
+                    <p className="text-[10px] text-slate-400 mt-0.5">Sessions auto-created until this date.</p>
+                  </div>
+                </div>
+
+                {/* Timetable Status */}
+                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                  <div>
+                    <p className="text-xs font-medium text-slate-700">Timetable Status</p>
+                    <p className="text-[10px] text-slate-400">Active timetables generate sessions automatically.</p>
+                  </div>
+                  <button type="button"
+                    onClick={() => setTimetableFormLocal(p => ({...p, timetable_status: p.timetable_status === 'active' ? 'inactive' : 'active'}))}
+                    className={`relative inline-flex h-5 w-9 rounded-full transition-colors ${timetableFormLocal.timetable_status === 'active' ? 'bg-green-500' : 'bg-slate-300'}`}>
+                    <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform mt-0.5 ${timetableFormLocal.timetable_status === 'active' ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                  </button>
+                </div>
+
+                {/* Days of Week */}
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Schedule Configuration</p>
+                <div>
+                  <label className="text-xs text-slate-500 mb-1.5 block">Days of Week *</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(day => (
+                      <button key={day} type="button"
+                        onClick={() => {
+                          const days = timetableFormLocal.days_of_week || [];
+                          const newDays = days.includes(day) ? days.filter(d => d !== day) : [...days, day];
+                          const slots = { ...timetableFormLocal.time_slots };
+                          if (!days.includes(day)) slots[day] = slots[day] || [{ start: '', end: '' }];
+                          setTimetableFormLocal(p => ({...p, days_of_week: newDays, time_slots: slots}));
+                        }}
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all ${(timetableFormLocal.days_of_week||[]).includes(day) ? 'bg-indigo-600 text-white border-indigo-600' : 'border-slate-200 text-slate-600 hover:border-indigo-300 bg-white'}`}>
+                        {day}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Time Slots */}
+                {(timetableFormLocal.days_of_week||[]).length > 0 && (
+                  <div className="space-y-2">
+                    <label className="text-xs text-slate-500 block">Time Slots &amp; Payment Configuration</label>
+                    {(timetableFormLocal.days_of_week||[]).map(day => (
+                      <div key={day} className="bg-slate-50 rounded-lg border border-slate-200 p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-medium text-slate-700">{day}</span>
+                          <button type="button"
+                            onClick={() => { const s=[...(timetableFormLocal.time_slots?.[day]||[])]; setTimetableFormLocal(p=>({...p,time_slots:{...p.time_slots,[day]:[...s,{start:'',end:''}]}})); }}
+                            className="text-xs text-indigo-600 hover:text-indigo-700">+ Add Slot</button>
+                        </div>
+                        {(timetableFormLocal.time_slots?.[day]||[{start:'',end:''}]).map((slot,i)=>(
+                          <div key={i} className="flex gap-2 items-center mb-1.5">
+                            <Input type="time" value={slot.start}
+                              onChange={e=>{const s=[...(timetableFormLocal.time_slots?.[day]||[])];s[i]={...s[i],start:e.target.value};setTimetableFormLocal(p=>({...p,time_slots:{...p.time_slots,[day]:s}}));}}
+                              className="h-7 flex-1 text-xs" />
+                            <span className="text-slate-400 text-xs">–</span>
+                            <Input type="time" value={slot.end}
+                              onChange={e=>{const s=[...(timetableFormLocal.time_slots?.[day]||[])];s[i]={...s[i],end:e.target.value};setTimetableFormLocal(p=>({...p,time_slots:{...p.time_slots,[day]:s}}));}}
+                              className="h-7 flex-1 text-xs" />
+                            {(timetableFormLocal.time_slots?.[day]||[]).length > 1 && (
+                              <button type="button"
+                                onClick={()=>{const s=(timetableFormLocal.time_slots?.[day]||[]).filter((_,si)=>si!==i);setTimetableFormLocal(p=>({...p,time_slots:{...p.time_slots,[day]:s}}));}}
+                                className="text-red-400 hover:text-red-600"><X className="w-3 h-3"/></button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="px-5 py-3 border-t flex justify-end gap-2">
+              <button onClick={() => setShowStandaloneTimetableModal(null)}
+                className="text-xs px-4 py-1.5 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50">
+                Cancel
+              </button>
+              <button
+                disabled={savingTimetable}
+                onClick={() => saveTimetableToCheckin(showStandaloneTimetableModal.id)}
+                className="text-xs px-4 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50">
+                {savingTimetable ? 'Saving...' : 'Update Timetable'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─────────────────────────────────────────────────────────────────── */}
     </AdminLayout>
   );
 };

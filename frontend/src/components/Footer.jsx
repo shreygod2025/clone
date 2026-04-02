@@ -333,6 +333,52 @@ const Footer = ({ variant = 'full' }) => {
         </div>
       </div>
 
+      {/* Summer Camp Links */}
+      <div className="border-t border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-4 flex items-center gap-3">
+            <span className="text-[#D63031] font-semibold text-sm uppercase tracking-wider">Summer Camp 2026</span>
+            <Link to="/summer-camp" className="text-slate-400 hover:text-white text-xs transition-colors">View all →</Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            {/* By Location */}
+            <div>
+              <h5 className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-3">By Location</h5>
+              <ul className="space-y-1.5 text-sm text-slate-400">
+                <li><Link to="/summer-camp/location/andheri-west" className="hover:text-white transition-colors">Andheri West, Mumbai</Link></li>
+                <li><Link to="/summer-camp/location/mira-road" className="hover:text-white transition-colors">Mira Road, Mumbai</Link></li>
+                <li><Link to="/summer-camp/location/dombivli" className="hover:text-white transition-colors">Dombivli, Mumbai</Link></li>
+                <li><Link to="/summer-camp/location/dahisar" className="hover:text-white transition-colors">Dahisar, Mumbai</Link></li>
+                <li><Link to="/summer-camp/location/online" className="hover:text-white transition-colors">Online – All India</Link></li>
+              </ul>
+            </div>
+            {/* By Skill */}
+            <div>
+              <h5 className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-3">By Skill</h5>
+              <ul className="space-y-1.5 text-sm text-slate-400">
+                <li><Link to="/summer-camp/skill/robotics" className="hover:text-white transition-colors">Robotics Summer Camp</Link></li>
+                <li><Link to="/summer-camp/skill/coding" className="hover:text-white transition-colors">Coding & Python Camp</Link></li>
+                <li><Link to="/summer-camp/skill/ai" className="hover:text-white transition-colors">AI & Machine Learning Camp</Link></li>
+                <li><Link to="/summer-camp/skill/3d-design" className="hover:text-white transition-colors">3D Design & Printing Camp</Link></li>
+                <li><Link to="/summer-camp/skill/financial-literacy" className="hover:text-white transition-colors">Financial Literacy Camp</Link></li>
+              </ul>
+            </div>
+            {/* By Age */}
+            <div>
+              <h5 className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-3">By Age Group</h5>
+              <ul className="space-y-1.5 text-sm text-slate-400">
+                <li><Link to="/summer-camp/age/4-6" className="hover:text-white transition-colors">Ages 4–6 (Little Explorers)</Link></li>
+                <li><Link to="/summer-camp/age/6-8" className="hover:text-white transition-colors">Ages 6–8</Link></li>
+                <li><Link to="/summer-camp/age/8-10" className="hover:text-white transition-colors">Ages 8–10</Link></li>
+                <li><Link to="/summer-camp/age/10-12" className="hover:text-white transition-colors">Ages 10–12 (Tech Creators)</Link></li>
+                <li><Link to="/summer-camp/age/12-14" className="hover:text-white transition-colors">Ages 12–14</Link></li>
+                <li><Link to="/summer-camp/age/14-16" className="hover:text-white transition-colors">Ages 14–16 (Future Innovators)</Link></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Bottom Bar */}
       <div className="border-t border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">

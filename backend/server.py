@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File, Query, Header, Request
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, status, UploadFile, File, Query, Header, Request, BackgroundTasks
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, Response
@@ -9,7 +9,7 @@ import os
 import logging
 import asyncio
 from pathlib import Path
-from pydantic import BaseModel, Field, EmailStr, ConfigDict
+from pydantic import BaseModel, Field, EmailStr, ConfigDict, model_validator
 from typing import List, Optional, Union
 import uuid
 from datetime import datetime, timezone, timedelta
@@ -19,23 +19,10 @@ import httpx
 import shutil
 import resend
 from io import BytesIO
-from reportlab.lib.pagesizes import A4, landscape
-from reportlab.lib.units import inch, cm
-from reportlab.lib.colors import HexColor, white, black
-from reportlab.pdfgen import canvas
-from reportlab.lib.styles import ParagraphStyle
-from reportlab.platypus import Paragraph
-from reportlab.lib.enums import TA_CENTER
-import qrcode
-from PIL import Image
-try:
-    from emergentintegrations.llm.chat import LlmChat, UserMessage
-except ImportError:
-    LlmChat = None
-    UserMessage = None
-import cloudinary
-import cloudinary.uploader
-import cloudinary.utils
+# Heavy libraries are imported lazily (inside the functions that need them)
+# to keep startup time fast and health check responsive.
+# Lazy: reportlab, PIL/qrcode, cloudinary, cashfree_pg
+from emergentintegrations.llm.chat import LlmChat, UserMessage
 import time
 import hmac
 import hashlib
@@ -46,11 +33,14 @@ import warnings
 # Suppress urllib3 SSL warnings for Cashfree SDK (SDK handles SSL internally)
 warnings.filterwarnings('ignore', message='Unverified HTTPS request')
 
-# Cashfree Payment Gateway
-from cashfree_pg.api_client import Cashfree
-from cashfree_pg.models.create_order_request import CreateOrderRequest
-from cashfree_pg.models.customer_details import CustomerDetails as CashfreeCustomerDetails
-from cashfree_pg.models.order_meta import OrderMeta
+# Cashfree — loaded lazily on first payment request
+def _get_cashfree_imports():
+    """Lazy-load cashfree_pg to avoid slow startup."""
+    from cashfree_pg.api_client import Cashfree
+    from cashfree_pg.models.create_order_request import CreateOrderRequest
+    from cashfree_pg.models.customer_details import CustomerDetails as CashfreeCustomerDetails
+    from cashfree_pg.models.order_meta import OrderMeta
+    return Cashfree, CreateOrderRequest, CashfreeCustomerDetails, OrderMeta
 
 # Background Scheduler for automated tasks
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -85,13 +75,24 @@ UPLOAD_DIR = ROOT_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 load_dotenv(ROOT_DIR / '.env')
 
-# Cloudinary configuration
-cloudinary.config(
-    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
-    api_key=os.getenv("CLOUDINARY_API_KEY"),
-    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
-    secure=True
-)
+# Cloudinary — configured lazily on first upload request
+_cloudinary_configured = False
+
+def _get_cloudinary():
+    """Lazy-load and configure cloudinary to avoid slow startup."""
+    global _cloudinary_configured
+    import cloudinary
+    import cloudinary.uploader
+    import cloudinary.utils
+    if not _cloudinary_configured:
+        cloudinary.config(
+            cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+            api_key=os.getenv("CLOUDINARY_API_KEY"),
+            api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+            secure=True
+        )
+        _cloudinary_configured = True
+    return cloudinary
 
 # Cashfree Payment Gateway Configuration
 CASHFREE_APP_ID = os.getenv("CASHFREE_APP_ID", "")
@@ -103,31 +104,28 @@ CASHFREE_API_VERSION = "2023-08-01"
 PAYMENT_SYNC_ENABLED = os.getenv("PAYMENT_SYNC_ENABLED", "true").lower() == "true"
 PAYMENT_SYNC_INTERVAL_MINUTES = int(os.getenv("PAYMENT_SYNC_INTERVAL_MINUTES", "60"))  # Default: every hour
 
-# Initialize Cashfree credentials globally
-if CASHFREE_APP_ID and CASHFREE_SECRET_KEY:
-    Cashfree.XClientId = CASHFREE_APP_ID
-    Cashfree.XClientSecret = CASHFREE_SECRET_KEY
-    if CASHFREE_ENVIRONMENT == "PRODUCTION":
-        Cashfree.XEnvironment = Cashfree.PRODUCTION
-    else:
-        Cashfree.XEnvironment = Cashfree.SANDBOX
-    logging.info(f"Cashfree initialized in {CASHFREE_ENVIRONMENT} environment")
-
+# Initialize Cashfree credentials globally (lazy — only when first payment is made)
 def get_cashfree_client():
-    """Get Cashfree client with correct environment"""
+    """Get Cashfree client with correct environment (lazy import + init)."""
+    Cashfree, _, _, _ = _get_cashfree_imports()
+    if CASHFREE_APP_ID and CASHFREE_SECRET_KEY:
+        Cashfree.XClientId = CASHFREE_APP_ID
+        Cashfree.XClientSecret = CASHFREE_SECRET_KEY
+        if CASHFREE_ENVIRONMENT == "PRODUCTION":
+            Cashfree.XEnvironment = Cashfree.PRODUCTION
+        else:
+            Cashfree.XEnvironment = Cashfree.SANDBOX
     cf_env = Cashfree.PRODUCTION if CASHFREE_ENVIRONMENT == "PRODUCTION" else Cashfree.SANDBOX
     return Cashfree(cf_env)
 
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+# MongoDB connection — import from database module for shared state
+from database import db, _client as mongo_client, otp_store_new, otp_verify, otp_send_allowed
 
-# JWT Configuration - JWT_SECRET must be set in production
+# JWT Configuration
 SECRET_KEY = os.environ.get('JWT_SECRET')
 if not SECRET_KEY:
-    import secrets
-    SECRET_KEY = secrets.token_hex(32)
+    import secrets as _secrets
+    SECRET_KEY = _secrets.token_hex(32)
     logging.warning("JWT_SECRET not set - using randomly generated key (sessions will not persist across restarts)")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 24
@@ -135,6 +133,20 @@ ACCESS_TOKEN_EXPIRE_HOURS = 24
 app = FastAPI(title="OLL Platform API")
 api_router = APIRouter(prefix="/api")
 security = HTTPBearer()
+
+# ── Security middleware ───────────────────────────────────────────────────
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi import Request
+from fastapi.responses import JSONResponse
+
+@app.middleware("http")
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
 
 # ================================================================
 # SERVER.PY TABLE OF CONTENTS
@@ -225,15 +237,20 @@ async def send_whatsapp_notification(
     Returns:
         dict with success status and message
     """
+    # Validate phone number first
+    if not phone or str(phone).strip() in ['', 'None', 'null', 'undefined']:
+        print(f"[WhatsApp] Skipped {template_key} - invalid phone: {phone}")
+        return {"success": False, "message": "Invalid or missing phone number"}
+    
     AISENSY_API_KEY = os.environ.get("AISENSY_API_KEY", "")
     
     if not AISENSY_API_KEY:
-        print("WhatsApp notification skipped - API key not configured")
+        print("[WhatsApp] Skipped - API key not configured")
         return {"success": False, "message": "API key not configured"}
     
     campaign_name = WHATSAPP_TEMPLATES.get(template_key)
     if not campaign_name:
-        print(f"Unknown template key: {template_key}")
+        print(f"[WhatsApp] Unknown template key: {template_key}")
         return {"success": False, "message": f"Unknown template: {template_key}"}
     
     try:
@@ -246,7 +263,7 @@ async def send_whatsapp_notification(
             "apiKey": AISENSY_API_KEY,
             "campaignName": campaign_name,
             "destination": phone_number,
-            "userName": user_name or "Clone Futura Live Solutions Ltd",
+            "userName": "Clone Futura Live Solutions Ltd",
             "templateParams": params or [],
             "source": "OLL Platform",
             "media": {},
@@ -258,6 +275,8 @@ async def send_whatsapp_notification(
                 "FirstName": "user"
             }
         }
+        
+        print(f"[WhatsApp] Sending {template_key} to {phone_number} - Campaign: {campaign_name} - Params: {params}")
         
         async with httpx.AsyncClient() as http_client:
             response = await http_client.post(
@@ -522,6 +541,157 @@ async def send_school_meeting_reminder_2h(school: dict, sales_manager: dict):
 
 
 # ========================
+# SCHEDULED CHECK FUNCTIONS
+# ========================
+
+async def check_overdue_tickets():
+    """Check for support tickets that are overdue (>48 hours) and send notifications"""
+    print("[SCHEDULER] Checking for overdue support tickets...")
+    try:
+        from datetime import datetime, timezone, timedelta
+        
+        # Find tickets that are:
+        # 1. Status is not 'resolved' or 'closed'
+        # 2. Created more than 48 hours ago
+        # 3. Not already marked as overdue_notified
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=48)
+        
+        overdue_tickets = await db.support_queries.find({
+            "status": {"$nin": ["resolved", "closed"]},
+            "created_at": {"$lt": cutoff_time.isoformat()},
+            "overdue_notified": {"$ne": True}
+        }).to_list(100)
+        
+        print(f"[SCHEDULER] Found {len(overdue_tickets)} overdue tickets")
+        
+        # Get admin phones for admin notifications
+        admin_phones_doc = await db.settings.find_one({"key": "admin_notification_phones"})
+        admin_phones = admin_phones_doc.get("value", []) if admin_phones_doc else []
+        
+        for ticket in overdue_tickets:
+            ticket.pop('_id', None)
+            
+            # Send notification to assignee
+            if ticket.get("assigned_to"):
+                assignee = await db.team_users.find_one({"id": ticket["assigned_to"]}, {"_id": 0})
+                if assignee:
+                    await send_ticket_overdue_notification(ticket, assignee)
+            
+            # Send notification to admins
+            if admin_phones:
+                await send_ticket_overdue_admin_notification(ticket, admin_phones)
+            
+            # Mark as notified
+            await db.support_queries.update_one(
+                {"id": ticket["id"]},
+                {"$set": {"overdue_notified": True, "overdue_notified_at": datetime.now(timezone.utc).isoformat()}}
+            )
+        
+        print(f"[SCHEDULER] Overdue ticket check complete - {len(overdue_tickets)} notified")
+    except Exception as e:
+        print(f"[SCHEDULER] Error checking overdue tickets: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+async def check_school_meeting_reminders():
+    """Check for upcoming school meetings and send reminders"""
+    print("[SCHEDULER] Checking for school meeting reminders...")
+    try:
+        from datetime import datetime, timezone, timedelta
+        
+        now = datetime.now(timezone.utc)
+        
+        # Check for meetings in the next 24-25 hours (for 24h reminder)
+        reminder_24h_start = now + timedelta(hours=23)
+        reminder_24h_end = now + timedelta(hours=25)
+        
+        # Check for meetings in the next 1.5-2.5 hours (for 2h reminder)
+        reminder_2h_start = now + timedelta(hours=1, minutes=30)
+        reminder_2h_end = now + timedelta(hours=2, minutes=30)
+
+        # Check for meetings in the next 45-75 minutes (for 1h reminder)
+        reminder_1h_start = now + timedelta(minutes=45)
+        reminder_1h_end = now + timedelta(minutes=75)
+        
+        # Find schools with meetings scheduled
+        schools_with_meetings = await db.school_inquiries.find({
+            "meeting_scheduled": True,
+            "status": {"$nin": ["converted", "lost", "renewed"]},
+            "meeting_date": {"$exists": True, "$ne": None, "$ne": ""}
+        }).to_list(500)
+        
+        print(f"[SCHEDULER] Found {len(schools_with_meetings)} schools with scheduled meetings")
+        
+        for school in schools_with_meetings:
+            school.pop('_id', None)
+            
+            try:
+                # Parse meeting date and time
+                meeting_date_str = school.get("meeting_date", "")
+                meeting_time_str = school.get("meeting_time", "10:00")
+                
+                if not meeting_date_str:
+                    continue
+                
+                # Parse the meeting datetime
+                if "T" in meeting_date_str:
+                    meeting_dt = datetime.fromisoformat(meeting_date_str.replace('Z', '+00:00'))
+                else:
+                    # Combine date and time
+                    meeting_dt = datetime.strptime(f"{meeting_date_str} {meeting_time_str}", "%Y-%m-%d %H:%M")
+                    meeting_dt = meeting_dt.replace(tzinfo=timezone.utc)
+                
+                # Get sales manager
+                sales_manager = None
+                if school.get("assigned_to"):
+                    sales_manager = await db.team_users.find_one({"id": school["assigned_to"]}, {"_id": 0})
+                
+                if not sales_manager:
+                    continue
+                
+                # Check if 24h reminder needed
+                if reminder_24h_start <= meeting_dt <= reminder_24h_end:
+                    if not school.get("reminder_24h_sent"):
+                        await send_school_meeting_reminder_24h(school, sales_manager)
+                        await db.school_inquiries.update_one(
+                            {"id": school["id"]},
+                            {"$set": {"reminder_24h_sent": True, "reminder_24h_sent_at": now.isoformat()}}
+                        )
+                        print(f"[SCHEDULER] Sent 24h reminder for {school.get('school_name', 'Unknown')}")
+                
+                # Check if 2h reminder needed
+                if reminder_2h_start <= meeting_dt <= reminder_2h_end:
+                    if not school.get("reminder_2h_sent"):
+                        await send_school_meeting_reminder_2h(school, sales_manager)
+                        await db.school_inquiries.update_one(
+                            {"id": school["id"]},
+                            {"$set": {"reminder_2h_sent": True, "reminder_2h_sent_at": now.isoformat()}}
+                        )
+                        print(f"[SCHEDULER] Sent 2h reminder for {school.get('school_name', 'Unknown')}")
+
+                # Check if 1h reminder needed
+                if reminder_1h_start <= meeting_dt <= reminder_1h_end:
+                    if not school.get("reminder_1h_sent"):
+                        await send_school_meeting_reminder_2h(school, sales_manager)  # reuse 2h template
+                        await db.school_inquiries.update_one(
+                            {"id": school["id"]},
+                            {"$set": {"reminder_1h_sent": True, "reminder_1h_sent_at": now.isoformat()}}
+                        )
+                        print(f"[SCHEDULER] Sent 1h reminder for {school.get('school_name', 'Unknown')}")
+                        
+            except Exception as e:
+                print(f"[SCHEDULER] Error processing school {school.get('id')}: {e}")
+                continue
+        
+        print("[SCHEDULER] School meeting reminder check complete")
+    except Exception as e:
+        print(f"[SCHEDULER] Error checking school meeting reminders: {e}")
+        import traceback
+        traceback.print_exc()
+
+
+# ========================
 # EMAIL NOTIFICATION SYSTEM (Gmail SMTP)
 # ========================
 
@@ -532,10 +702,29 @@ from email.mime.multipart import MIMEMultipart
 # Gmail SMTP Configuration
 GMAIL_EMAIL = os.environ.get("GMAIL_EMAIL", "clonefutura@gmail.com")
 GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "")  # App Password, not regular password
-SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "clonefutura@gmail.com")
+# Email sender - always use verified oll.co domain
+SENDER_EMAIL = "OLL Team <welcome@oll.co>"
 
 # Legacy Resend support (fallback)
 resend.api_key = os.environ.get("RESEND_API_KEY", "")
+
+# Helper to get Resend API key (checks DB first, then env)
+async def get_resend_api_key():
+    """Get Resend API key from database or environment"""
+    try:
+        resend_doc = await db.service_api_keys.find_one({"service": "resend"}, {"_id": 0})
+        if resend_doc and resend_doc.get("api_key"):
+            return resend_doc["api_key"]
+    except Exception as e:
+        logging.warning(f"Failed to get Resend key from DB: {e}")
+    return os.environ.get("RESEND_API_KEY", "")
+
+async def ensure_resend_api_key():
+    """Ensure Resend API key is set from DB or env"""
+    key = await get_resend_api_key()
+    if key:
+        resend.api_key = key
+    return bool(key)
 
 async def send_email_gmail(to_email: str, subject: str, html_content: str):
     """Send email using Gmail SMTP"""
@@ -562,6 +751,116 @@ async def send_email_gmail(to_email: str, subject: str, html_content: str):
     except Exception as e:
         logging.error(f"Failed to send email: {str(e)}")
         return {"success": False, "error": str(e)}
+
+
+# ─────────────────────────────────────────────────────────────────
+# SCHOOL CRM — DAILY DIGEST (email tomorrow's meetings + follow-ups)
+# ─────────────────────────────────────────────────────────────────
+async def send_school_crm_daily_digest():
+    """Send a daily digest email listing tomorrow's meetings and follow-ups."""
+    print("[SCHEDULER] Building School CRM daily digest...")
+    try:
+        from datetime import timedelta
+        now = datetime.now(timezone.utc)
+        # Use IST (UTC+5:30) for "tomorrow" calculation so it lines up with admin's day
+        ist_now = now + timedelta(hours=5, minutes=30)
+        tomorrow = (ist_now + timedelta(days=1)).strftime('%Y-%m-%d')
+        today = ist_now.strftime('%Y-%m-%d')
+
+        # Meetings tomorrow
+        meetings = await db.school_inquiries.find(
+            {"meeting_date": tomorrow},
+            {"_id": 0, "school_name": 1, "meeting_date": 1, "meeting_time": 1,
+             "meeting_mode": 1, "contact_name": 1, "phone": 1, "status": 1}
+        ).to_list(200)
+
+        # Follow-ups tomorrow or follow_up status updated today/yesterday
+        followups = await db.school_inquiries.find(
+            {"followup_date": tomorrow},
+            {"_id": 0, "school_name": 1, "followup_date": 1, "followup_comment": 1,
+             "contact_name": 1, "phone": 1, "status": 1}
+        ).to_list(200)
+
+        if not meetings and not followups:
+            print("[SCHEDULER] No meetings or follow-ups tomorrow — digest not sent.")
+            return
+
+        # Build email rows
+        def meeting_rows(items):
+            rows = ""
+            for m in items:
+                rows += f"""
+                <tr>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-weight:600;color:#1a1a1a">{m.get('school_name','—')}</td>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;color:#333">{m.get('meeting_time','TBD')}</td>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;color:#555">{(m.get('meeting_mode') or '').title() or '—'}</td>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;color:#555">{m.get('contact_name','—')} · {m.get('phone','')}</td>
+                </tr>"""
+            return rows
+
+        def followup_rows(items):
+            rows = ""
+            for f in items:
+                rows += f"""
+                <tr>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;font-weight:600;color:#1a1a1a">{f.get('school_name','—')}</td>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;color:#555">{f.get('followup_comment','') or '—'}</td>
+                  <td style="padding:8px 12px;border-bottom:1px solid #f0f0f0;color:#555">{f.get('contact_name','—')} · {f.get('phone','')}</td>
+                </tr>"""
+            return rows
+
+        meetings_section = ""
+        if meetings:
+            meetings_section = f"""
+            <h3 style="color:#075E54;margin:20px 0 8px 0">Meetings Tomorrow ({len(meetings)})</h3>
+            <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;border:1px solid #e5e5e5">
+              <thead><tr style="background:#075E54;color:#fff">
+                <th style="padding:9px 12px;text-align:left;font-weight:600">School</th>
+                <th style="padding:9px 12px;text-align:left;font-weight:600">Time</th>
+                <th style="padding:9px 12px;text-align:left;font-weight:600">Mode</th>
+                <th style="padding:9px 12px;text-align:left;font-weight:600">Contact</th>
+              </tr></thead>
+              <tbody>{meeting_rows(meetings)}</tbody>
+            </table>"""
+
+        followups_section = ""
+        if followups:
+            followups_section = f"""
+            <h3 style="color:#1E3A5F;margin:20px 0 8px 0">Follow-ups Tomorrow ({len(followups)})</h3>
+            <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;border:1px solid #e5e5e5">
+              <thead><tr style="background:#1E3A5F;color:#fff">
+                <th style="padding:9px 12px;text-align:left;font-weight:600">School</th>
+                <th style="padding:9px 12px;text-align:left;font-weight:600">Comment</th>
+                <th style="padding:9px 12px;text-align:left;font-weight:600">Contact</th>
+              </tr></thead>
+              <tbody>{followup_rows(followups)}</tbody>
+            </table>"""
+
+        html = f"""
+        <div style="font-family:Arial,sans-serif;max-width:680px;margin:0 auto;padding:20px">
+          <div style="background:#075E54;padding:24px;border-radius:10px 10px 0 0;text-align:center">
+            <h1 style="color:#fff;margin:0;font-size:22px">OLL School CRM — Daily Digest</h1>
+            <p style="color:#b2dfdb;margin:6px 0 0 0">{tomorrow}</p>
+          </div>
+          <div style="background:#f9f9f9;padding:24px;border:1px solid #e0e0e0;border-top:none;border-radius:0 0 10px 10px">
+            <p style="color:#555;margin:0 0 16px 0">Here's your schedule for <strong>tomorrow</strong>. You have <strong>{len(meetings)} meeting(s)</strong> and <strong>{len(followups)} follow-up(s)</strong>.</p>
+            {meetings_section}
+            {followups_section}
+            <p style="color:#888;font-size:12px;margin-top:24px">This digest is auto-generated by OLL CRM AI. Manage your schedule in the AI Chat tab.</p>
+          </div>
+        </div>"""
+
+        admin_email = GMAIL_EMAIL
+        subject = f"OLL CRM Digest — {len(meetings)} Meetings, {len(followups)} Follow-ups for {tomorrow}"
+        result = await send_email_gmail(admin_email, subject, html)
+        if result.get("success"):
+            print(f"[SCHEDULER] Daily digest sent to {admin_email}")
+        else:
+            print(f"[SCHEDULER] Digest email failed: {result.get('error')}")
+
+    except Exception as exc:
+        print(f"[SCHEDULER] Daily digest error: {exc}")
+        import traceback; traceback.print_exc()
 
 # Email Templates for Educators
 EMAIL_TEMPLATES = {
@@ -791,8 +1090,11 @@ async def send_educator_email(
         return {"success": False, "message": "No email provider configured"}
         
     except Exception as e:
-        print(f"Email notification error [{template_key}]: {str(e)}")
-        return {"success": False, "message": str(e)}
+        error_msg = str(e)
+        print(f"Email notification error [{template_key}]: {error_msg}")
+        if "testing" in error_msg.lower():
+            return {"success": False, "message": "Resend API key is a TEST key. Update to production key in Admin > Settings > API Keys."}
+        return {"success": False, "message": error_msg}
 
 
 async def send_educator_application_received_email(educator: dict):
@@ -1028,27 +1330,194 @@ SCHOOL_PROPOSAL_EMAIL_TEMPLATE = """
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 20px;">
-<div style="max-width: 620px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.12);">
+<div style="max-width: 640px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.12);">
     {header}
     <div style="padding: 36px 32px;">
+
         <h2 style="color: #1E3A5F; margin-top: 0; font-size: 22px;">Dear {contact_name},</h2>
-        <p style="color: #333; line-height: 1.7;">
-            Thank you for your time and interest in OLL's programs. As discussed, please find attached the <strong>detailed proposal</strong> for implementing the OLL Robotics & AI program at <strong>{school_name}</strong>.
+        <p style="color: #333; font-size: 15px; line-height: 1.8; margin-bottom: 8px;">
+            Thank you for your time and interest in OLL's programs. As discussed, please find attached the <strong>detailed proposal</strong> for implementing the OLL Robotics &amp; AI program at <strong>{school_name}</strong>.
         </p>
-        <div style="background: #fff8e1; border-left: 4px solid #f39c12; padding: 20px; border-radius: 0 10px 10px 0; margin: 24px 0;">
-            <h3 style="color: #856404; margin: 0 0 12px 0; font-size: 15px;">Proposal Highlights</h3>
-            <ul style="color: #444; line-height: 1.9; padding-left: 18px; margin: 0; font-size: 14px;">
-                <li>Robotics & AI lab setup with complete kit supply</li>
-                <li>Trained educator support for every batch</li>
-                <li>CBSE/ICSE-aligned curriculum for Grades 1–12</li>
-                <li>Flexible pricing — per student or fixed model</li>
-                <li>Ongoing program support & quarterly assessments</li>
+        <p style="color: #333; font-size: 15px; line-height: 1.8; margin-bottom: 28px;">
+            Below is a snapshot of our <strong>Program Deliverables</strong> — what {school_name} will receive as part of the partnership:
+        </p>
+
+        <!-- Deliverables Header -->
+        <div style="background: #1E3A5F; color: white; padding: 14px 20px; border-radius: 10px 10px 0 0;">
+            <h3 style="margin: 0; font-size: 16px; font-weight: 700; letter-spacing: 0.3px;">Program Deliverables</h3>
+        </div>
+
+        <!-- 1. Curriculum -->
+        <div style="border: 1px solid #dde4ef; border-top: none; padding: 18px 20px;">
+            <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: 700; color: #1E3A5F;">1. Curriculum — 28 Projects / Grade</p>
+            <p style="margin: 0 0 10px 0; font-size: 14px; color: #444; line-height: 1.7;">
+                Robotics, Coding, 3D Designing, DIY Science, Electronics &amp; AI curriculum — designed for Grades Jr. KG to 10th.
+            </p>
+            <div style="text-align: left; margin-top: 10px;">
+                <a href="https://drive.google.com/drive/folders/1nYqvokOCiiaXo5FOs9CjfsEzwonMqdVL?usp=drive_link"
+                   style="display: inline-block; background: #1E3A5F; color: white; text-decoration: none; padding: 9px 18px; border-radius: 6px; font-size: 13px; font-weight: 600;">
+                    View Detailed Curriculum
+                </a>
+            </div>
+        </div>
+
+        <!-- 2. LMS Access -->
+        <div style="border: 1px solid #dde4ef; border-top: none; padding: 18px 20px;">
+            <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: 700; color: #1E3A5F;">2. LMS Access</p>
+            <p style="margin: 0 0 6px 0; font-size: 14px; color: #444; line-height: 1.7;">
+                School gets <strong>syllabus progress updates</strong> &bull; <strong>Personalised tracking</strong> for each child &bull; <strong>Parent reports</strong> shared directly.
+            </p>
+            <div style="text-align: left; margin-top: 10px;">
+                <a href="https://youtu.be/pkMSv6-bpic"
+                   style="display: inline-block; background: #c0392b; color: white; text-decoration: none; padding: 9px 18px; border-radius: 6px; font-size: 13px; font-weight: 600;">
+                    &#9654; Watch LMS Walkthrough
+                </a>
+            </div>
+        </div>
+
+        <!-- 3. Hardcopy Robotics Books -->
+        <div style="border: 1px solid #dde4ef; border-top: none; padding: 18px 20px;">
+            <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: 700; color: #1E3A5F;">3. Hardcopy Robotics Books — Each Student</p>
+            <p style="margin: 0 0 8px 0; font-size: 14px; color: #444; line-height: 1.7;">Each project book includes:</p>
+            <ul style="margin: 0 0 10px 0; padding-left: 20px; font-size: 14px; color: #444; line-height: 1.8;">
+                <li>Problem statement</li>
+                <li>Real life applications</li>
+                <li>Theory behind how it works</li>
+            </ul>
+            <p style="margin: 0 0 10px 0; font-size: 14px; color: #555; line-height: 1.7;">
+                All presented in an <strong>innovative comic-book format</strong> with a storyline — making learning engaging and student-friendly.
+            </p>
+            <div style="text-align: left; margin-top: 10px;">
+                <a href="https://drive.google.com/drive/folders/1OZ95-fWhg_-UhTw0rNimuq9cRwn1zpJw"
+                   style="display: inline-block; background: #1E3A5F; color: white; text-decoration: none; padding: 9px 18px; border-radius: 6px; font-size: 13px; font-weight: 600;">
+                    View Book Samples
+                </a>
+            </div>
+        </div>
+
+        <!-- 4. OLL USP -->
+        <div style="border: 1px solid #dde4ef; border-top: none; padding: 18px 20px;">
+            <p style="margin: 0 0 6px 0; font-size: 15px; font-weight: 700; color: #1E3A5F;">4. OLL's USP</p>
+            <p style="margin: 0; font-size: 14px; color: #444; line-height: 1.7;">
+                <strong>1 Child : 1 Kit Ratio</strong> — Personalised, outcome-driven, hands-on project-based learning for every student.
+            </p>
+        </div>
+
+        <!-- 5. Complimentary Workshops -->
+        <div style="border: 1px solid #dde4ef; border-top: none; padding: 18px 20px;">
+            <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: 700; color: #1E3A5F;">5. Complimentary Workshops Calendar 2026–27</p>
+            <p style="margin: 0 0 8px 0; font-size: 14px; color: #555; line-height: 1.6;">1-day sessions for All students:</p>
+            <table style="width:100%; border-collapse: collapse; font-size: 13px; color: #444;">
+                <tr style="background:#f0f4ff;"><td style="padding: 7px 10px; font-weight:600;">Grade 1 &amp; 2</td><td style="padding: 7px 10px;">3D Pen</td></tr>
+                <tr><td style="padding: 7px 10px; font-weight:600;">Grade 3–5</td><td style="padding: 7px 10px;">VR &amp; AR</td></tr>
+                <tr style="background:#f0f4ff;"><td style="padding: 7px 10px; font-weight:600;">Grade 6–8</td><td style="padding: 7px 10px;">Drone Flying</td></tr>
+                <tr><td style="padding: 7px 10px; font-weight:600;">Grade 9 &amp; 10</td><td style="padding: 7px 10px;">Space &amp; Rocket Building</td></tr>
+                <tr style="background:#f0f4ff;"><td style="padding: 7px 10px; font-weight:600;">Teachers</td><td style="padding: 7px 10px;">AI Tools for Educators</td></tr>
+                <tr><td style="padding: 7px 10px; font-weight:600;">Grandparents</td><td style="padding: 7px 10px;">Cyber Security — How to Stay Safe Online</td></tr>
+            </table>
+            <div style="text-align: left; margin-top: 12px;">
+                <a href="https://www.youtube.com/watch?v=QTE-LC7SL9M"
+                   style="display: inline-block; background: #c0392b; color: white; text-decoration: none; padding: 9px 18px; border-radius: 6px; font-size: 13px; font-weight: 600;">
+                    &#9654; Watch Workshop Video
+                </a>
+            </div>
+        </div>
+
+        <!-- 6. Competitions & Exhibitions -->
+        <div style="border: 1px solid #dde4ef; border-top: none; padding: 18px 20px;">
+            <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: 700; color: #1E3A5F;">6. National Level Competitions &amp; Exhibitions</p>
+            <p style="margin: 0 0 6px 0; font-size: 14px; color: #444; line-height: 1.7;">
+                <strong>Robo Sumo, Robo Race &amp; Robo Football</strong> — at interclass, interschool &amp; national levels (held at IIT Bombay).
+            </p>
+            <p style="margin: 0 0 10px 0; font-size: 14px; color: #444; line-height: 1.7;">
+                <strong>Global Robotics &amp; AI Challenge</strong> — Virtual global competition; winners receive a full scholarship to the UNESCO camp in Washington DC.
+            </p>
+            <div style="text-align: left; margin-top: 4px;">
+                <a href="https://www.youtube.com/watch?v=B0n8-RYegVc&t=45s"
+                   style="display: inline-block; background: #c0392b; color: white; text-decoration: none; padding: 9px 18px; border-radius: 6px; font-size: 13px; font-weight: 600;">
+                    &#9654; IIT Bombay Techfest
+                </a>
+            </div>
+        </div>
+
+        <!-- 7. Assessments -->
+        <div style="border: 1px solid #dde4ef; border-top: none; padding: 18px 20px;">
+            <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: 700; color: #1E3A5F;">7. Assessments</p>
+            <p style="margin: 0 0 6px 0; font-size: 14px; color: #555;">Half-yearly practical assessments — students assessed on:</p>
+            <ul style="margin: 0; padding-left: 20px; font-size: 14px; color: #444; line-height: 1.8;">
+                <li>Creativity</li>
+                <li>Logical Reasoning</li>
+                <li>Problem Solving</li>
             </ul>
         </div>
-        <p style="color: #333; line-height: 1.7;">
-            We would love to discuss the proposal in detail at your convenience. Please feel free to share any feedback or questions — we're happy to customize the proposal as per your school's requirements.
+
+        <!-- 8. Certifications -->
+        <div style="border: 1px solid #dde4ef; border-top: none; padding: 18px 20px;">
+            <p style="margin: 0 0 6px 0; font-size: 15px; font-weight: 700; color: #1E3A5F;">8. International Certifications</p>
+            <p style="margin: 0; font-size: 14px; color: #444; line-height: 1.7;">
+                Hardcopy certifications from <strong>STEM.org</strong> &amp; in collaboration with <strong>UNESCO World Genesis Foundation</strong> — for each child.
+            </p>
+        </div>
+
+        <!-- 9. OLL Support Team -->
+        <div style="border: 1px solid #dde4ef; border-top: none; border-radius: 0 0 10px 10px; padding: 18px 20px; margin-bottom: 28px;">
+            <p style="margin: 0 0 8px 0; font-size: 15px; font-weight: 700; color: #1E3A5F;">9. OLL Support Team</p>
+            <p style="margin: 0 0 8px 0; font-size: 14px; color: #555;">Dedicated Relationship Manager assigned for each school:</p>
+            <ul style="margin: 0; padding-left: 20px; font-size: 14px; color: #444; line-height: 1.8;">
+                <li>Monthly reports for each school</li>
+                <li>48-hour query resolution for School, Parents &amp; Students</li>
+                <li>Backup educator if educator is absent</li>
+                <li>Trainer replacement if educator discontinues</li>
+                <li>24x7 WhatsApp community support for teachers</li>
+            </ul>
+        </div>
+
+        <!-- Watch OLL in Schools -->
+        <div style="background: #f8faff; border: 1px solid #dde4ef; border-radius: 10px; padding: 20px; margin-bottom: 24px;">
+            <p style="margin: 0 0 14px 0; font-size: 15px; font-weight: 700; color: #1E3A5F;">Watch OLL's Program Live in Schools</p>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td style="padding: 4px 8px 4px 0; width: 50%;">
+                        <a href="https://www.youtube.com/watch?v=PC51gxK186c"
+                           style="display:block; background:#c0392b; color:white; text-decoration:none; padding:9px 12px; border-radius:6px; font-size:12px; font-weight:600; text-align:center;">
+                            &#9654; NL Dalmia School
+                        </a>
+                    </td>
+                    <td style="padding: 4px 0 4px 8px; width: 50%;">
+                        <a href="https://www.youtube.com/watch?v=BU3ZjAlI2tQ"
+                           style="display:block; background:#c0392b; color:white; text-decoration:none; padding:9px 12px; border-radius:6px; font-size:12px; font-weight:600; text-align:center;">
+                            &#9654; Jankidevi School
+                        </a>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="padding: 8px 8px 0 0; width: 50%;">
+                        <a href="https://www.youtube.com/watch?v=YoIu5akBkr0"
+                           style="display:block; background:#c0392b; color:white; text-decoration:none; padding:9px 12px; border-radius:6px; font-size:12px; font-weight:600; text-align:center;">
+                            &#9654; Greenlawns High School
+                        </a>
+                    </td>
+                    <td style="padding: 8px 0 0 8px; width: 50%;">
+                        <a href="https://www.youtube.com/watch?v=q6mHoHsdmhA"
+                           style="display:block; background:#1E3A5F; color:white; text-decoration:none; padding:9px 12px; border-radius:6px; font-size:12px; font-weight:600; text-align:center;">
+                            &#9654; Lab Setup Tour
+                        </a>
+                    </td>
+                </tr>
+            </table>
+            <div style="text-align: center; margin-top: 12px;">
+                <a href="https://www.youtube.com/watch?v=OavfLmAdprc&t=2s"
+                   style="display: inline-block; background: #27ae60; color: white; text-decoration: none; padding: 10px 24px; border-radius: 6px; font-size: 13px; font-weight: 600;">
+                    &#127897; Principal's Feedback
+                </a>
+            </div>
+        </div>
+
+        <p style="color: #333; font-size: 15px; line-height: 1.8; margin-bottom: 28px;">
+            We would love to discuss the proposal in detail at your convenience. Please feel free to share any feedback or questions — we're happy to customise the proposal as per {school_name}'s requirements.
         </p>
-        <p style="color: #555; line-height: 1.6; margin-top: 24px;">
+
+        <p style="color: #555; font-size: 14px; line-height: 1.6; margin-top: 20px;">
             Warm regards,<br>
             <strong style="color: #1E3A5F;">{sender_name}</strong><br>
             <span style="color: #888; font-size: 13px;">OLL School Partnerships</span>
@@ -1520,8 +1989,11 @@ async def send_school_crm_email(
     Send a School CRM email using Resend with reply-to info@oll.co.
     Supports optional PDF attachment.
     """
+    # Ensure API key is loaded from DB or env
+    await ensure_resend_api_key()
+    
     if not resend.api_key:
-        return {"success": False, "error": "Email service not configured"}
+        return {"success": False, "error": "Email service not configured - please set Resend API key in Settings"}
 
     template_info = SCHOOL_EMAIL_TEMPLATES.get(email_type)
     if not template_info:
@@ -1551,8 +2023,11 @@ async def send_school_crm_email(
             email_id = email_response.get("id") if isinstance(email_response, dict) else str(email_response)
             return {"success": True, "email_id": email_id}
         except Exception as e:
-            logging.error(f"Followup email error [{email_type}]: {str(e)}")
-            return {"success": False, "error": str(e)}
+            error_msg = str(e)
+            logging.error(f"Followup email error [{email_type}]: {error_msg}")
+            if "testing" in error_msg.lower():
+                return {"success": False, "error": "Resend API key is a TEST key. Please update to a production key in Admin > Settings > API Keys."}
+            return {"success": False, "error": error_msg}
 
     extra = extra_data or {}
 
@@ -1867,12 +2342,82 @@ class TeamApplication(BaseModel):
     resume_url: str = ""
     applied_position_id: str = ""
     message: str = ""
-    status: str = "new"  # new, contacted, interview_scheduled, interviewed, hired, rejected, archived
+    # Updated pipeline: applicant -> candidate -> onboarding -> active -> past_member / rejected
+    status: str = "applicant"  # applicant, candidate, onboarding, active, past_member, rejected
     comments: List[dict] = []
     notes: List[dict] = []
     source: str = "about_page"
     added_by: str = ""
     assigned_to: str = ""
+    
+    # Applicant Stage Fields (Telephonic Round)
+    telephonic_round: dict = Field(default_factory=lambda: {
+        "completed": False,
+        "completed_at": None,
+        "completed_by": None,
+        "outcome": None,  # "accepted", "rejected"
+        "reject_reason": None,
+        "notes": None
+    })
+    
+    # Candidate Stage Fields (HR Interview + Dept Head)
+    hr_interview: dict = Field(default_factory=lambda: {
+        "scheduled": False,
+        "scheduled_at": None,
+        "scheduled_by": None,
+        "completed": False,
+        "completed_at": None,
+        "outcome": None,  # "passed", "failed"
+        "notes": None,
+        "email_sent": False
+    })
+    dept_head_interview: dict = Field(default_factory=lambda: {
+        "assigned": False,
+        "dept_head_id": None,
+        "dept_head_name": None,
+        "scheduled_at": None,
+        "completed": False,
+        "completed_at": None,
+        "outcome": None,  # "selected", "not_selected"
+        "notes": None,
+        "notification_sent": False
+    })
+    
+    # Onboarding Stage Fields
+    welcome_email_sent: bool = False
+    welcome_email_sent_at: Optional[str] = None
+    admin_account_created: bool = False
+    admin_role_id: str = ""
+    admin_role_name: str = ""
+    offer_letter_generated: bool = False
+    offer_letter_url: str = ""
+    offer_letter_sent: bool = False
+    
+    # NEW: Simplified Onboarding Steps
+    razorpay_setup_done: bool = False
+    training_done: bool = False
+    
+    # Trial Period Fields
+    trial_period: dict = Field(default_factory=lambda: {
+        "duration": "1_week",  # "1_week", "1_month"
+        "start_date": None,
+        "end_date": None,
+        "extended": False,
+        "extension_date": None,
+        "extension_reason": None,
+        "status": None  # "ongoing", "passed", "failed"
+    })
+    
+    # Activation Fields
+    whatsapp_group_added: bool = False
+    whatsapp_group_added_at: Optional[str] = None
+    activated_at: Optional[str] = None
+    
+    # Exit Fields (for past_member status)
+    exit_date: Optional[str] = None
+    exit_reason: str = ""
+    account_deactivated: bool = False
+    
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -1902,6 +2447,43 @@ class TeamApplicationUpdate(BaseModel):
     portfolio: Optional[str] = None
     resume_url: Optional[str] = None
     availability: Optional[str] = None
+    city: Optional[str] = None
+    role: Optional[str] = None
+    experience: Optional[str] = None
+    
+    # Applicant Stage
+    telephonic_round: Optional[dict] = None
+    
+    # Candidate Stage
+    hr_interview: Optional[dict] = None
+    dept_head_interview: Optional[dict] = None
+    
+    # Onboarding Stage
+    welcome_email_sent: Optional[bool] = None
+    welcome_email_sent_at: Optional[str] = None
+    admin_account_created: Optional[bool] = None
+    admin_role_id: Optional[str] = None
+    admin_role_name: Optional[str] = None
+    offer_letter_generated: Optional[bool] = None
+    offer_letter_url: Optional[str] = None
+    offer_letter_sent: Optional[bool] = None
+    
+    # NEW: Simplified Onboarding Steps
+    razorpay_setup_done: Optional[bool] = None
+    training_done: Optional[bool] = None
+    
+    # Trial Period
+    trial_period: Optional[dict] = None
+    
+    # Activation
+    whatsapp_group_added: Optional[bool] = None
+    whatsapp_group_added_at: Optional[str] = None
+    activated_at: Optional[str] = None
+    
+    # Exit
+    exit_date: Optional[str] = None
+    exit_reason: Optional[str] = None
+    account_deactivated: Optional[bool] = None
 
 # Team Onboarding Model (for hired team members)
 class TeamOnboarding(BaseModel):
@@ -2199,17 +2781,20 @@ class SchoolInquiry(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     school_name: str
-    contact_name: str
-    email: EmailStr
-    phone: str
-    location: str
-    school_size: str
-    fee_range: str
+    contact_name: str = ""
+    email: Optional[str] = ""          # made optional — AI-created leads may have no email
+    phone: str = ""
+    location: str = ""
+    school_size: str = ""
+    fee_range: str = ""
     board: str = ""
     address: str = ""  # Full school address
-    programs_interested: List[str]
-    support_needed: List[str]
-    status: str = "new"  # new, meeting_done, converted, archived
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    geofence_radius: Optional[int] = None
+    programs_interested: List[str] = []
+    support_needed: List[str] = []
+    status: str = "new"  # new, meeting_done, converted, active, renewal_meeting, renewed, lost, lost_lead, lost_customer, archived
     notes: str = ""
     comments: List[dict] = []
     meeting_date: Optional[str] = None
@@ -2237,8 +2822,9 @@ class SchoolInquiry(BaseModel):
     renewal_meeting_link: Optional[str] = None
     renewal_meeting_address: Optional[str] = None
     lost_reason: Optional[str] = None
-    documents: Optional[List[dict]] = None
+    lead_value: Optional[float] = None  # Value of the lost lead/customer (for reports)
     followup_tasks: Optional[List[dict]] = None  # Auto-scheduled followup email tasks
+    school_contacts: Optional[List[dict]] = []  # School team contacts
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -2266,8 +2852,10 @@ class SchoolInquiryCreate(BaseModel):
     assigned_to: str = ""
     assign_option: str = "admin"  # 'self' or 'admin'
     notes: str = ""
+    school_contacts: Optional[List[dict]] = []  # School team contacts added at creation
 
 class SchoolInquiryUpdate(BaseModel):
+    model_config = ConfigDict(extra="ignore")
     status: Optional[str] = None
     school_name: Optional[str] = None
     contact_name: Optional[str] = None
@@ -2276,6 +2864,9 @@ class SchoolInquiryUpdate(BaseModel):
     location: Optional[str] = None
     board: Optional[str] = None
     address: Optional[str] = None  # Full school address
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    geofence_radius: Optional[int] = None
     model: Optional[str] = None
     total_students: Optional[int] = None
     school_size: Optional[str] = None
@@ -2296,6 +2887,7 @@ class SchoolInquiryUpdate(BaseModel):
     programs_interested: Optional[list] = None
     # Lost reason
     lost_reason: Optional[str] = None
+    lead_value: Optional[float] = None  # Value of lost lead/customer
     # Renewal meeting fields
     renewal_meeting_date: Optional[str] = None
     renewal_meeting_time: Optional[str] = None
@@ -2304,38 +2896,113 @@ class SchoolInquiryUpdate(BaseModel):
     renewal_meeting_address: Optional[str] = None
     # Documents (proposal, MOU, parent circular, etc.)
     documents: Optional[list] = None
+    # School team contacts (synced at top-level for quick access)
+    school_contacts: Optional[List[dict]] = None
 
 # Educator Models
 class EducatorApplication(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    name: str
-    email: EmailStr
-    phone: str
-    skills: List[str]
+    name: str = ""
+    email: str = ""          # str instead of EmailStr to avoid validation failures on legacy data
+    phone: str = ""
+    skills: List[str] = []
     experience: str = ""
     grades_comfortable: List[str] = []
     city: str = ""
-    teaching_mode: str = ""  # online, offline_home, offline_center
+    teaching_mode: str = ""
     availability: str = ""
     demo_ready: bool = False
     requirement_id: Optional[str] = None
     requirement_title: Optional[str] = None
-    status: str = "new"  # new, demo_scheduled, demo_completed, onboarded, archived
+    status: str = "new"
     notes: str = ""
     comments: List[dict] = []
     demo_date: Optional[str] = None
     demo_time: Optional[str] = None
+    tech_demo_date: Optional[str] = None
+    tech_demo_time: Optional[str] = None
     meeting_link: str = ""
     phone_verified: bool = False
     onboarding_date: Optional[str] = None
-    # Demo rating fields
-    demo_rating: Optional[dict] = None  # Stores rating data when demo completed
+    demo_rating: Optional[dict] = None
     source: str = "website"
     added_by: str = ""
     assigned_to: str = ""
+
+    # Profile fields (populated from onboarding when moved to active)
+    profile_photo: str = ""
+    bio: str = ""
+    tshirt_size: str = ""
+    address_line1: str = ""
+    address_line2: str = ""
+    state: str = ""
+    pincode: str = ""
+    emergency_contact_name: str = ""
+    emergency_contact_phone: str = ""
+    emergency_contact_relation: str = ""
+    aadhar_number: str = ""
+    aadhar_document: str = ""
+    pan_number: str = ""
+    pan_document: str = ""
+    id_verification_document: str = ""
+
+    # Bank details
+    bank_name: str = ""
+    account_holder_name: str = ""
+    account_number: str = ""
+    ifsc_code: str = ""
+    bank_document: str = ""
+
+    # Contract
+    contract_accepted: bool = False
+    contract_accepted_at: Optional[str] = None
+    digital_signature: str = ""
+
+    # Training & Certification
+    id_card_generated: bool = False
+    certificate_generated: str = ""   # str, not bool — stores URL or empty string
+    documents_verified: bool = False
+    documents_verified_at: Optional[str] = None
+
+    # Availability toggle
+    is_available: bool = True
+
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    @model_validator(mode='before')
+    @classmethod
+    def sanitize_nullable_fields(cls, values):
+        """Coerce None/wrong-type values from legacy DB records so validation never fails."""
+        str_fields = [
+            'name', 'email', 'phone', 'experience', 'city', 'teaching_mode',
+            'availability', 'notes', 'meeting_link', 'source', 'added_by',
+            'assigned_to', 'profile_photo', 'bio', 'tshirt_size',
+            'address_line1', 'address_line2', 'state', 'pincode',
+            'emergency_contact_name', 'emergency_contact_phone',
+            'emergency_contact_relation', 'aadhar_number', 'aadhar_document',
+            'pan_number', 'pan_document', 'id_verification_document',
+            'bank_name', 'account_holder_name', 'account_number', 'ifsc_code',
+            'bank_document', 'digital_signature', 'certificate_generated',
+            'status', 'onboarding_date',
+        ]
+        for f in str_fields:
+            if values.get(f) is None:
+                values[f] = ""
+        list_fields = ['skills', 'grades_comfortable', 'comments']
+        for f in list_fields:
+            if not isinstance(values.get(f), list):
+                values[f] = []
+        bool_fields = ['demo_ready', 'phone_verified', 'contract_accepted',
+                       'id_card_generated', 'documents_verified', 'is_available']
+        for f in bool_fields:
+            v = values.get(f)
+            if v is None or v == "":
+                values[f] = False
+            elif not isinstance(v, bool):
+                values[f] = bool(v)
+        return values
 
 class EducatorApplicationCreate(BaseModel):
     name: str
@@ -2366,6 +3033,8 @@ class EducatorApplicationUpdate(BaseModel):
     notes: Optional[str] = None
     demo_date: Optional[str] = None
     demo_time: Optional[str] = None
+    tech_demo_date: Optional[str] = None
+    tech_demo_time: Optional[str] = None
     onboarding_date: Optional[str] = None
     assigned_to: Optional[str] = None
 
@@ -3093,7 +3762,7 @@ async def get_me(user: dict = Depends(get_current_user)):
 # ========================
 
 # Store OTPs temporarily (in production, use Redis)
-otp_store = {}
+# otp_store is imported from database module (see top of file)
 
 class OTPRequest(BaseModel):
     phone: str
@@ -3708,16 +4377,17 @@ async def create_center_demo(data: StudentInquiryCreate, user: dict = Depends(ge
 async def send_otp(data: OTPRequest):
     import random
     import httpx
+
+    # Rate limiting — enforce cooldown between sends
+    allowed, reason = await otp_send_allowed(data.phone)
+    if not allowed:
+        raise HTTPException(status_code=429, detail=reason)
     
-    # Generate random 4-digit OTP
-    otp = str(random.randint(1000, 9999))
+    # Generate cryptographically random 4-digit OTP
+    otp = str(random.SystemRandom().randint(1000, 9999))
     
-    # Store OTP with 5 minute expiration
-    otp_store[data.phone] = {
-        "otp": otp,
-        "user_type": data.user_type,
-        "expires": datetime.now(timezone.utc) + timedelta(minutes=5)
-    }
+    # Store OTP with expiration and attempt counter
+    await otp_store_new(data.phone, otp)
     
     # AiSensy WhatsApp API Integration
     AISENSY_API_KEY = os.environ.get("AISENSY_API_KEY", "")
@@ -3783,33 +4453,16 @@ async def send_otp(data: OTPRequest):
 
 @api_router.post("/auth/verify-otp")
 async def verify_otp(data: OTPVerify):
-    stored = otp_store.get(data.phone)
-    
-    # Test OTP for development/testing (not shown in frontend)
-    TEST_OTP = "1111"
-    
-    # Check if using test OTP
-    if data.otp == TEST_OTP:
-        # Clear any stored OTP
-        if stored and data.phone in otp_store:
-            del otp_store[data.phone]
-        # Continue to user lookup
-    elif not stored:
-        raise HTTPException(status_code=400, detail="OTP expired or not found. Please request a new one.")
-    elif stored["otp"] != data.otp:
-        raise HTTPException(status_code=400, detail="Invalid OTP")
-    elif datetime.now(timezone.utc) > stored["expires"]:
-        del otp_store[data.phone]
-        raise HTTPException(status_code=400, detail="OTP expired. Please request a new one.")
-    else:
-        # Valid OTP - clear it
-        del otp_store[data.phone]
+    success, error_msg = await otp_verify(data.phone, data.otp)
+    if not success:
+        raise HTTPException(status_code=400, detail=error_msg)
     
     # Find or create user based on phone and type
     collection_map = {
         "student": "student_inquiries",
         "educator": "educator_applications", 
-        "school": "school_inquiries"
+        "school": "school_inquiries",
+        "school_student": "school_student_payments"
     }
     collection = collection_map.get(data.user_type, "student_inquiries")
     
@@ -3818,6 +4471,20 @@ async def verify_otp(data: OTPVerify):
     
     # Get all bookings for this phone
     bookings = await db[collection].find({"phone": data.phone}, {"_id": 0}).sort("created_at", -1).to_list(10)
+    
+    # For school_student, include payment details
+    if data.user_type == "school_student":
+        return {
+            "phone": data.phone,
+            "user_type": data.user_type,
+            "name": user_data.get("student_name") if user_data else None,
+            "email": user_data.get("email") if user_data else None,
+            "grade": user_data.get("grade") if user_data else None,
+            "division": user_data.get("division") if user_data else None,
+            "school_name": user_data.get("school_name") if user_data else None,
+            "payments": bookings,
+            "is_registered": user_data is not None
+        }
     
     return {
         "phone": data.phone,
@@ -3890,6 +4557,89 @@ async def cancel_booking(data: dict):
     
     await db[collection].update_one({"id": booking_id}, {"$set": update_data})
     return {"message": "Booking cancelled successfully"}
+
+# ========================
+# SCHOOL STUDENT PROFILE & RECEIPTS
+# ========================
+
+@api_router.get("/school-student/profile/{phone}")
+async def get_school_student_profile(phone: str):
+    """Get school student profile and payment history"""
+    # Find all payments for this phone
+    payments = await db.school_student_payments.find(
+        {"phone": phone}, 
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+    
+    if not payments:
+        raise HTTPException(status_code=404, detail="No records found for this phone number")
+    
+    # Get the most recent record for profile info
+    latest = payments[0]
+    
+    return {
+        "phone": phone,
+        "student_name": latest.get("student_name", ""),
+        "email": latest.get("email", ""),
+        "grade": latest.get("grade", ""),
+        "division": latest.get("division", ""),
+        "school_name": latest.get("school_name", ""),
+        "school_id": latest.get("school_id", ""),
+        "payments": payments
+    }
+
+@api_router.patch("/school-student/profile/{phone}")
+async def update_school_student_profile(phone: str, data: dict):
+    """Update school student profile details"""
+    allowed_fields = ["student_name", "email", "grade", "division"]
+    update_data = {k: v for k, v in data.items() if k in allowed_fields and v is not None}
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+    
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    # Update all payment records for this phone
+    result = await db.school_student_payments.update_many(
+        {"phone": phone},
+        {"$set": update_data}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="No records found for this phone number")
+    
+    return {"message": "Profile updated successfully", "modified_count": result.modified_count}
+
+@api_router.get("/school-student/receipt/{payment_id}")
+async def get_school_student_receipt(payment_id: str):
+    """Get a specific payment receipt"""
+    payment = await db.school_student_payments.find_one(
+        {"id": payment_id},
+        {"_id": 0}
+    )
+    
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+    
+    # Only return paid payments as receipts
+    if payment.get("status") != "PAID":
+        raise HTTPException(status_code=400, detail="Receipt only available for completed payments")
+    
+    return {
+        "receipt_id": payment.get("id"),
+        "student_name": payment.get("student_name"),
+        "phone": payment.get("phone"),
+        "email": payment.get("email"),
+        "school_name": payment.get("school_name"),
+        "grade": payment.get("grade"),
+        "division": payment.get("division"),
+        "skill": payment.get("skill"),
+        "amount": payment.get("amount"),
+        "status": payment.get("status"),
+        "cf_order_id": payment.get("cf_order_id"),
+        "payment_time": payment.get("payment_time") or payment.get("synced_at"),
+        "created_at": payment.get("created_at")
+    }
 
 # ========================
 # STUDENT INQUIRY ENDPOINTS
@@ -4017,1488 +4767,7 @@ async def update_student_inquiry(
     return inquiry
 
 # ========================
-# CASHFREE PAYMENT ENDPOINTS (Student Payments)
-# ========================
-
-class StudentPaymentRequest(BaseModel):
-    """Request to create a student payment order"""
-    student_id: str
-    amount: float
-    batch_id: Optional[str] = None
-    batch_name: Optional[str] = None
-    description: Optional[str] = None
-
-class PaymentOrderResponse(BaseModel):
-    """Response after creating a payment order"""
-    order_id: str
-    payment_session_id: str
-    payment_link: str
-    order_status: str
-    amount: float
-
-@api_router.post("/payments/create-order")
-async def create_payment_order(data: StudentPaymentRequest, user: dict = Depends(get_current_user)):
-    """Create a Cashfree payment order for student batch payment"""
-    if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
-        raise HTTPException(status_code=500, detail="Payment gateway not configured")
-    
-    # Get student details
-    student = await db.student_inquiries.find_one({"id": data.student_id}, {"_id": 0})
-    if not student:
-        raise HTTPException(status_code=404, detail="Student not found")
-    
-    # Generate unique order ID
-    order_id = f"OLL-STU-{data.student_id[:8]}-{int(time.time())}"
-    
-    # Ensure customer_name meets Cashfree minimum (3 chars)
-    # Use "Student" if name is empty/None
-    student_name = student.get("name") or "Student"
-    student_name = student_name.strip() if student_name else "Student"
-    if not student_name or len(student_name) < 1:
-        student_name = "Student"
-    cf_customer_name = student_name if len(student_name) >= 3 else student_name.ljust(3, ' ')
-    
-    try:
-        # Create customer details
-        customer_details = CashfreeCustomerDetails(
-            customer_id=data.student_id,
-            customer_name=cf_customer_name,
-            customer_email=student.get("email") or f"{data.student_id}@oll.co",
-            customer_phone=student.get("phone") or "9999999999"
-        )
-        
-        # Get frontend URL for return
-        frontend_url = os.getenv("FRONTEND_URL", "https://oll-crm-preview.preview.emergentagent.com")
-        
-        # Create order meta
-        order_meta = OrderMeta(
-            return_url=f"{frontend_url}/student/payment/success?order_id={order_id}",
-            notify_url=f"{frontend_url}/api/payments/webhook"
-        )
-        
-        # Build order request
-        create_order_request = CreateOrderRequest(
-            order_amount=data.amount,
-            order_currency="INR",
-            customer_details=customer_details,
-            order_meta=order_meta,
-            order_note=data.description or f"Batch payment for {student.get('name', 'Student')}"
-        )
-        
-        # Create order via Cashfree using globally initialized credentials
-        logging.info(f"Creating student payment - Order: {order_id}, Amount: {data.amount}")
-        api_response = get_cashfree_client().PGCreateOrder(
-            CASHFREE_API_VERSION,
-            create_order_request,
-            None,
-            None
-        )
-        
-        if api_response.data:
-            # Store payment order in database
-            payment_order = {
-                "id": order_id,
-                "cf_order_id": str(api_response.data.cf_order_id),
-                "student_id": data.student_id,
-                "student_name": student.get("name"),
-                "student_phone": student.get("phone"),
-                "amount": data.amount,
-                "batch_id": data.batch_id,
-                "batch_name": data.batch_name,
-                "description": data.description,
-                "payment_session_id": api_response.data.payment_session_id,
-                "status": "PENDING",
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "created_by": user.get("id"),
-                "created_by_name": user.get("name")
-            }
-            await db.student_payments.insert_one(payment_order)
-            
-            # Update student inquiry with pending payment
-            await db.student_inquiries.update_one(
-                {"id": data.student_id},
-                {"$set": {
-                    "pending_payment": {
-                        "order_id": order_id,
-                        "amount": data.amount,
-                        "batch_id": data.batch_id,
-                        "batch_name": data.batch_name,
-                        "status": "PENDING",
-                        "payment_link": f"https://payments.cashfree.com/forms/{api_response.data.payment_session_id}",
-                        "created_at": datetime.now(timezone.utc).isoformat()
-                    },
-                    "updated_at": datetime.now(timezone.utc).isoformat()
-                }}
-            )
-            
-            logging.info(f"Payment order created: {order_id}")
-            return {
-                "order_id": order_id,
-                "cf_order_id": str(api_response.data.cf_order_id),
-                "payment_session_id": api_response.data.payment_session_id,
-                "payment_link": f"https://payments.cashfree.com/forms/{api_response.data.payment_session_id}",
-                "order_status": api_response.data.order_status,
-                "amount": data.amount
-            }
-        else:
-            logging.error(f"Failed to create payment order: {order_id}")
-            raise HTTPException(status_code=500, detail="Failed to create payment order")
-            
-    except HTTPException:
-        raise
-    except Exception as e:
-        logging.error(f"Payment order creation error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Payment error: {str(e)}")
-
-@api_router.get("/payments/order/{order_id}")
-async def get_payment_order(order_id: str):
-    """Get payment order status"""
-    payment = await db.student_payments.find_one({"id": order_id}, {"_id": 0})
-    if not payment:
-        raise HTTPException(status_code=404, detail="Payment order not found")
-    return payment
-
-@api_router.get("/payments/student/{student_id}")
-async def get_student_payment_info(student_id: str):
-    """Get payment info for a student (public endpoint for student payment page)"""
-    student = await db.student_inquiries.find_one({"id": student_id}, {"_id": 0})
-    if not student:
-        raise HTTPException(status_code=404, detail="Student not found")
-    
-    pending_payment = student.get("pending_payment")
-    if not pending_payment:
-        return {"has_pending_payment": False, "student_name": student.get("name")}
-    
-    return {
-        "has_pending_payment": True,
-        "student_id": student_id,
-        "student_name": student.get("name"),
-        "student_phone": student.get("phone"),
-        "student_email": student.get("email"),
-        "skill": student.get("skill"),
-        "amount": pending_payment.get("amount"),
-        "batch_name": pending_payment.get("batch_name"),
-        "batch_id": pending_payment.get("batch_id"),
-        "order_id": pending_payment.get("order_id"),
-        "status": pending_payment.get("status")
-    }
-
-@api_router.get("/payments/by-phone/{phone}")
-async def get_payment_info_by_phone(phone: str):
-    """Get payment info for a student by phone (for logged-in student dashboard)"""
-    # Find student by phone - prioritize students with pending payments
-    student = await db.student_inquiries.find_one(
-        {"phone": phone, "pending_payment": {"$ne": None}}, 
-        {"_id": 0}
-    )
-    
-    if not student:
-        # No pending payment found for this phone
-        return {"has_pending_payment": False}
-    
-    pending_payment = student.get("pending_payment")
-    if not pending_payment or pending_payment.get("status") == "PAID":
-        return {"has_pending_payment": False, "student_name": student.get("name")}
-    
-    return {
-        "has_pending_payment": True,
-        "student_id": student.get("id"),
-        "student_name": student.get("name"),
-        "student_phone": student.get("phone"),
-        "student_email": student.get("email"),
-        "skill": student.get("skill"),
-        "amount": pending_payment.get("amount"),
-        "batch_name": pending_payment.get("batch_name"),
-        "batch_id": pending_payment.get("batch_id"),
-        "order_id": pending_payment.get("order_id"),
-        "status": pending_payment.get("status")
-    }
-
-@api_router.post("/payments/create-session/{student_id}")
-async def create_payment_session(student_id: str):
-    """
-    Create a Cashfree payment session on-demand when student clicks Pay Fees.
-    This is a PUBLIC endpoint - no auth required.
-    Returns payment_session_id for Drop-in checkout.
-    """
-    if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
-        raise HTTPException(status_code=500, detail="Payment gateway not configured")
-    
-    # Get student details
-    student = await db.student_inquiries.find_one({"id": student_id}, {"_id": 0})
-    if not student:
-        raise HTTPException(status_code=404, detail="Student not found")
-    
-    pending_payment = student.get("pending_payment")
-    if not pending_payment:
-        raise HTTPException(status_code=400, detail="No pending payment for this student")
-    
-    amount = pending_payment.get("amount")
-    if not amount or float(amount) <= 0:
-        raise HTTPException(status_code=400, detail="Invalid payment amount")
-    
-    # Generate unique order ID
-    order_id = f"OLL-STU-{student_id[:8]}-{int(time.time())}"
-    
-    # Ensure customer_name meets Cashfree minimum (3 chars)
-    # Use "Student" if name is empty/None
-    student_name = student.get("name") or "Student"
-    student_name = student_name.strip() if student_name else "Student"
-    if not student_name or len(student_name) < 1:
-        student_name = "Student"
-    cf_customer_name = student_name if len(student_name) >= 3 else student_name.ljust(3, ' ')
-    
-    logging.info(f"Creating payment for student: {student_id}, name: '{student_name}', cf_name: '{cf_customer_name}'")
-    
-    try:
-        # Create customer details
-        customer_details = CashfreeCustomerDetails(
-            customer_id=student_id,
-            customer_name=cf_customer_name,
-            customer_email=student.get("email") or f"{student_id}@oll.co",
-            customer_phone=student.get("phone") or "9999999999"
-        )
-        
-        # Get frontend URL for return
-        frontend_url = os.getenv("FRONTEND_URL", "https://oll-crm-preview.preview.emergentagent.com")
-        backend_url = os.getenv("REACT_APP_BACKEND_URL", frontend_url)
-        
-        # Create order meta
-        order_meta = OrderMeta(
-            return_url=f"{frontend_url}/student/payment/success?order_id={order_id}",
-            notify_url=f"{backend_url}/api/payments/webhook"
-        )
-        
-        # Build order request with our order_id for reference
-        create_order_request = CreateOrderRequest(
-            order_id=order_id,  # Set our order ID so we can reference it later
-            order_amount=float(amount),
-            order_currency="INR",
-            customer_details=customer_details,
-            order_meta=order_meta,
-            order_note=f"Batch payment for {student.get('name', 'Student')} - {pending_payment.get('batch_name', 'Batch')}"
-        )
-        
-        # Create order via Cashfree using globally initialized credentials
-        logging.info(f"Creating public student payment - Order: {order_id}, Amount: {amount}")
-        api_response = get_cashfree_client().PGCreateOrder(
-            CASHFREE_API_VERSION,
-            create_order_request,
-            None,
-            None
-        )
-        
-        if api_response.data:
-            # Store payment order in database
-            payment_order = {
-                "id": order_id,
-                "cf_order_id": str(api_response.data.cf_order_id),
-                "student_id": student_id,
-                "student_name": student.get("name"),
-                "student_phone": student.get("phone"),
-                "student_email": student.get("email"),
-                "amount": float(amount),
-                "batch_id": pending_payment.get("batch_id"),
-                "batch_name": pending_payment.get("batch_name"),
-                "payment_session_id": api_response.data.payment_session_id,
-                "status": "PENDING",
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "created_by": "student_self_checkout"
-            }
-            await db.student_payments.insert_one(payment_order)
-            
-            # Update student's pending_payment with order_id
-            await db.student_inquiries.update_one(
-                {"id": student_id},
-                {"$set": {
-                    "pending_payment.order_id": order_id,
-                    "pending_payment.status": "PENDING",
-                    "updated_at": datetime.now(timezone.utc).isoformat()
-                }}
-            )
-            
-            logging.info(f"Payment session created for student {student_id}: {order_id}")
-            return {
-                "success": True,
-                "order_id": order_id,
-                "payment_session_id": api_response.data.payment_session_id,
-                "amount": float(amount),
-                "environment": CASHFREE_ENVIRONMENT.lower()
-            }
-        else:
-            logging.error(f"Failed to create payment session for student {student_id}")
-            raise HTTPException(status_code=500, detail="Failed to create payment session")
-            
-    except HTTPException:
-        raise
-    except Exception as e:
-        logging.error(f"Payment session creation error for {student_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Payment error: {str(e)}")
-
-@api_router.post("/payments/webhook")
-async def cashfree_webhook(request: Request):
-    """Handle Cashfree payment webhooks"""
-    try:
-        # Get raw body
-        body = await request.body()
-        body_str = body.decode('utf-8')
-        
-        # Get signature headers
-        timestamp = request.headers.get('x-webhook-timestamp', '')
-        received_signature = request.headers.get('x-webhook-signature', '')
-        
-        # Verify signature if present
-        if timestamp and received_signature and CASHFREE_SECRET_KEY:
-            signed_payload = f"{timestamp}.{body_str}"
-            computed_hash = hmac.new(
-                CASHFREE_SECRET_KEY.encode('utf-8'),
-                signed_payload.encode('utf-8'),
-                hashlib.sha256
-            ).digest()
-            computed_signature = b64encode(computed_hash).decode('utf-8')
-            
-            if not hmac.compare_digest(computed_signature, received_signature):
-                logging.warning("Invalid webhook signature")
-                # Don't raise error, just log - some webhooks may come without signature during testing
-        
-        # Parse webhook data
-        webhook_data = json.loads(body_str)
-        event_type = webhook_data.get('type', '')
-        order_data = webhook_data.get('data', {}).get('order', {})
-        payment_data = webhook_data.get('data', {}).get('payment', {})
-        
-        order_id = order_data.get('order_id') or webhook_data.get('data', {}).get('order_id')
-        payment_status = payment_data.get('payment_status') or order_data.get('order_status')
-        cf_payment_id = payment_data.get('cf_payment_id') or payment_data.get('payment_id')
-        payment_method_details = payment_data.get('payment_group', 'unknown')
-        
-        logging.info(f"Webhook received - Event: {event_type}, Order: {order_id}, Status: {payment_status}, CF Payment ID: {cf_payment_id}")
-        
-        if order_id:
-            # Check if already processed to prevent duplicate processing
-            existing_payment = await db.student_payments.find_one({"id": order_id}, {"_id": 0})
-            if existing_payment and existing_payment.get("status") == "PAID":
-                logging.info(f"Payment {order_id} already processed, skipping")
-                return {"status": "success", "message": "Already processed"}
-            
-            # Update payment record
-            update_data = {
-                "status": payment_status,
-                "webhook_data": webhook_data,
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }
-            
-            if payment_status == "SUCCESS" or event_type == "PAYMENT_SUCCESS_WEBHOOK":
-                update_data["status"] = "PAID"
-                update_data["paid_at"] = datetime.now(timezone.utc).isoformat()
-                update_data["payment_method"] = f"Cashfree - {payment_method_details}"
-                update_data["transaction_id"] = cf_payment_id
-                update_data["cf_payment_id"] = cf_payment_id
-            
-            await db.student_payments.update_one(
-                {"id": order_id},
-                {"$set": update_data}
-            )
-            
-            # Get payment to update student
-            payment = await db.student_payments.find_one({"id": order_id}, {"_id": 0})
-            if payment and (payment_status == "SUCCESS" or event_type == "PAYMENT_SUCCESS_WEBHOOK"):
-                # Update student status to converted and add to batch
-                student_id = payment.get("student_id")
-                batch_id = payment.get("batch_id")
-                
-                # Check if student is already converted (prevent duplicate processing)
-                student = await db.student_inquiries.find_one({"id": student_id}, {"_id": 0})
-                if student and student.get("status") == "converted" and student.get("pending_payment") is None:
-                    logging.info(f"Student {student_id} already converted, skipping update")
-                    return {"status": "success", "message": "Already processed"}
-                
-                student_update = {
-                    "status": "converted",
-                    "payment_status": "paid",
-                    "payment_amount": payment.get("amount"),
-                    "payment_date": datetime.now(timezone.utc).isoformat(),
-                    "payment_method": f"Cashfree - {payment_method_details}",
-                    "payment_transaction_id": cf_payment_id,
-                    "pending_payment": None,
-                    "updated_at": datetime.now(timezone.utc).isoformat()
-                }
-                
-                if batch_id:
-                    student_update["batch_id"] = batch_id
-                    student_update["batch_name"] = payment.get("batch_name")
-                    
-                    # Add student to batch
-                    batch = await db.batches.find_one({"id": batch_id}, {"_id": 0})
-                    if batch and student_id not in batch.get("students", []):
-                        await db.batches.update_one(
-                            {"id": batch_id},
-                            {"$addToSet": {"students": student_id}}
-                        )
-                        
-                        # Create sessions for the student from batch schedule
-                        if batch.get("schedule"):
-                            sessions_to_create = []
-                            for i, session_info in enumerate(batch.get("schedule", [])[:12], 1):  # Max 12 sessions
-                                session = {
-                                    "id": str(uuid.uuid4()),
-                                    "student_id": student_id,
-                                    "batch_id": batch_id,
-                                    "session_number": i,
-                                    "date": session_info.get("date"),
-                                    "time": session_info.get("time", batch.get("time")),
-                                    "mode": batch.get("mode", "online"),
-                                    "skill": batch.get("skill"),
-                                    "status": "scheduled",
-                                    "created_at": datetime.now(timezone.utc).isoformat()
-                                }
-                                sessions_to_create.append(session)
-                            
-                            if sessions_to_create:
-                                await db.sessions.insert_many(sessions_to_create)
-                                student_update["sessions_total"] = len(sessions_to_create)
-                                student_update["sessions_completed"] = 0
-                                logging.info(f"Created {len(sessions_to_create)} sessions for student {student_id}")
-                
-                await db.student_inquiries.update_one(
-                    {"id": student_id},
-                    {"$set": student_update}
-                )
-                
-                logging.info(f"Student {student_id} payment successful, status updated to converted, transaction: {cf_payment_id}")
-        
-        return {"status": "success", "message": "Webhook processed"}
-        
-    except json.JSONDecodeError:
-        logging.error("Invalid JSON in webhook payload")
-        return {"status": "error", "message": "Invalid JSON"}
-    except Exception as e:
-        logging.error(f"Webhook processing error: {str(e)}")
-        return {"status": "error", "message": str(e)}
-
-@api_router.get("/payments/verify/{order_id}")
-async def verify_payment(order_id: str):
-    """Verify payment status from Cashfree (can be called after return)"""
-    logging.info(f"[PAYMENT_VERIFY] Starting verification for order: {order_id}")
-    
-    if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
-        logging.error("[PAYMENT_VERIFY] Cashfree credentials missing")
-        raise HTTPException(status_code=500, detail="Payment gateway not configured")
-    
-    payment = await db.student_payments.find_one({"id": order_id}, {"_id": 0})
-    if not payment:
-        logging.error(f"[PAYMENT_VERIFY] Order not found in student_payments: {order_id}")
-        raise HTTPException(status_code=404, detail="Payment order not found")
-    
-    logging.info(f"[PAYMENT_VERIFY] Found payment record: student_id={payment.get('student_id')}, batch_id={payment.get('batch_id')}, status={payment.get('status')}")
-    
-    # Check if already processed
-    if payment.get("status") == "PAID":
-        logging.info(f"[PAYMENT_VERIFY] Payment already marked as PAID, returning cached result")
-        return {
-            "order_id": order_id,
-            "status": "PAID",
-            "amount": payment.get("amount"),
-            "student_name": payment.get("student_name"),
-            "transaction_id": payment.get("transaction_id")
-        }
-    
-    try:
-        # Get the cf_order_id (Cashfree's internal order ID) - we also store our order_id which we set during creation
-        cf_order_id = payment.get("cf_order_id")
-        
-        # Try fetching using our order_id first (which we now set during creation)
-        # Fall back to cf_order_id if needed
-        fetch_order_id = order_id  # Use our order_id since we now pass it to Cashfree
-        
-        # Fetch order status from Cashfree
-        logging.info(f"[PAYMENT_VERIFY] Calling Cashfree PGFetchOrder for order_id: {fetch_order_id}")
-        api_response = get_cashfree_client().PGFetchOrder(
-            CASHFREE_API_VERSION,
-            fetch_order_id,
-            None
-        )
-        
-        if api_response.data:
-            order_status = api_response.data.order_status
-            logging.info(f"[PAYMENT_VERIFY] Cashfree returned status: {order_status}")
-            
-            # Try to get payment details for transaction ID
-            cf_payment_id = None
-            payment_method = "Cashfree"
-            try:
-                payments_response = get_cashfree_client().PGOrderFetchPayments(
-                    CASHFREE_API_VERSION,
-                    fetch_order_id,  # Use the same order ID we used for fetch
-                    None
-                )
-                if payments_response.data and len(payments_response.data) > 0:
-                    cf_payment_id = str(payments_response.data[0].cf_payment_id)
-                    payment_method = f"Cashfree - {payments_response.data[0].payment_group or 'unknown'}"
-                    logging.info(f"[PAYMENT_VERIFY] Got transaction ID: {cf_payment_id}")
-            except Exception as e:
-                logging.warning(f"[PAYMENT_VERIFY] Could not fetch payment details: {e}")
-            
-            # Update local payment record
-            update_data = {
-                "status": order_status,
-                "verified_at": datetime.now(timezone.utc).isoformat()
-            }
-            if cf_payment_id:
-                update_data["transaction_id"] = cf_payment_id
-                update_data["cf_payment_id"] = cf_payment_id
-                update_data["payment_method"] = payment_method
-            
-            logging.info(f"[PAYMENT_VERIFY] Updating student_payments collection with: {update_data}")
-            await db.student_payments.update_one(
-                {"id": order_id},
-                {"$set": update_data}
-            )
-            
-            # If payment is successful, update student
-            if order_status == "PAID":
-                student_id = payment.get("student_id")
-                batch_id = payment.get("batch_id")
-                logging.info(f"[PAYMENT_VERIFY] Payment PAID - Processing student update for student_id={student_id}, batch_id={batch_id}")
-                
-                # Check if already processed
-                student = await db.student_inquiries.find_one({"id": student_id}, {"_id": 0})
-                logging.info(f"[PAYMENT_VERIFY] Student lookup result: found={student is not None}, current_status={student.get('status') if student else 'N/A'}, pending_payment={student.get('pending_payment') if student else 'N/A'}")
-                
-                if student and student.get("status") == "converted" and student.get("pending_payment") is None:
-                    logging.info(f"[PAYMENT_VERIFY] Student already converted with no pending payment - returning early")
-                    return {
-                        "order_id": order_id,
-                        "status": order_status,
-                        "amount": payment.get("amount"),
-                        "student_name": payment.get("student_name"),
-                        "transaction_id": cf_payment_id
-                    }
-                
-                if not student:
-                    logging.error(f"[PAYMENT_VERIFY] CRITICAL: Student not found in student_inquiries: {student_id}")
-                    # Return success but note the issue
-                    return {
-                        "order_id": order_id,
-                        "status": order_status,
-                        "amount": payment.get("amount"),
-                        "student_name": payment.get("student_name"),
-                        "transaction_id": cf_payment_id,
-                        "warning": "Student record not found for session creation"
-                    }
-                
-                student_update = {
-                    "status": "converted",
-                    "payment_status": "paid",
-                    "payment_amount": payment.get("amount"),
-                    "payment_date": datetime.now(timezone.utc).isoformat(),
-                    "payment_method": payment_method,
-                    "payment_transaction_id": cf_payment_id,
-                    "pending_payment": None,
-                    "updated_at": datetime.now(timezone.utc).isoformat()
-                }
-                logging.info(f"[PAYMENT_VERIFY] Preparing student update: {student_update}")
-                
-                if batch_id:
-                    student_update["batch_id"] = batch_id
-                    student_update["batch_name"] = payment.get("batch_name")
-                    
-                    # Add student to batch if not already added
-                    batch = await db.batches.find_one({"id": batch_id}, {"_id": 0})
-                    logging.info(f"[PAYMENT_VERIFY] Batch lookup: found={batch is not None}, batch_name={batch.get('name') if batch else 'N/A'}")
-                    
-                    if batch:
-                        current_students = batch.get("students", [])
-                        if student_id not in current_students:
-                            logging.info(f"[PAYMENT_VERIFY] Adding student to batch")
-                            await db.batches.update_one(
-                                {"id": batch_id},
-                                {"$addToSet": {"students": student_id}}
-                            )
-                            
-                            # Create sessions for the student from batch schedule
-                            schedule = batch.get("schedule", [])
-                            logging.info(f"[PAYMENT_VERIFY] Batch schedule has {len(schedule)} entries")
-                            
-                            if schedule:
-                                # Check if sessions already exist
-                                existing_sessions = await db.sessions.count_documents({"student_id": student_id, "batch_id": batch_id})
-                                logging.info(f"[PAYMENT_VERIFY] Existing sessions count: {existing_sessions}")
-                                
-                                if existing_sessions == 0:
-                                    sessions_to_create = []
-                                    for i, session_info in enumerate(schedule[:12], 1):
-                                        session = {
-                                            "id": str(uuid.uuid4()),
-                                            "student_id": student_id,
-                                            "batch_id": batch_id,
-                                            "session_number": i,
-                                            "date": session_info.get("date"),
-                                            "time": session_info.get("time", batch.get("time")),
-                                            "mode": batch.get("mode", "online"),
-                                            "skill": batch.get("skill"),
-                                            "status": "scheduled",
-                                            "created_at": datetime.now(timezone.utc).isoformat()
-                                        }
-                                        sessions_to_create.append(session)
-                                    
-                                    if sessions_to_create:
-                                        logging.info(f"[PAYMENT_VERIFY] Creating {len(sessions_to_create)} sessions")
-                                        await db.sessions.insert_many(sessions_to_create)
-                                        student_update["sessions_total"] = len(sessions_to_create)
-                                        student_update["sessions_completed"] = 0
-                                else:
-                                    logging.info(f"[PAYMENT_VERIFY] Sessions already exist, skipping creation")
-                        else:
-                            logging.info(f"[PAYMENT_VERIFY] Student already in batch")
-                    else:
-                        logging.warning(f"[PAYMENT_VERIFY] Batch not found: {batch_id}")
-                else:
-                    logging.warning(f"[PAYMENT_VERIFY] No batch_id in payment record")
-                
-                # Perform the student update
-                logging.info(f"[PAYMENT_VERIFY] Executing student_inquiries update for {student_id}")
-                update_result = await db.student_inquiries.update_one(
-                    {"id": student_id},
-                    {"$set": student_update}
-                )
-                logging.info(f"[PAYMENT_VERIFY] Update result: matched={update_result.matched_count}, modified={update_result.modified_count}")
-                
-                # Verify the update worked
-                updated_student = await db.student_inquiries.find_one({"id": student_id}, {"_id": 0, "status": 1, "payment_status": 1})
-                logging.info(f"[PAYMENT_VERIFY] Post-update verification: status={updated_student.get('status') if updated_student else 'N/A'}, payment_status={updated_student.get('payment_status') if updated_student else 'N/A'}")
-            else:
-                logging.info(f"[PAYMENT_VERIFY] Order status is {order_status}, not PAID - skipping student update")
-            
-            return {
-                "order_id": order_id,
-                "status": order_status,
-                "amount": payment.get("amount"),
-                "student_name": payment.get("student_name"),
-                "transaction_id": cf_payment_id
-            }
-        else:
-            logging.warning(f"[PAYMENT_VERIFY] No data in Cashfree response")
-            return {"order_id": order_id, "status": payment.get("status", "UNKNOWN")}
-            
-    except Exception as e:
-        logging.error(f"[PAYMENT_VERIFY] Exception during verification: {str(e)}", exc_info=True)
-        return {"order_id": order_id, "status": payment.get("status", "UNKNOWN"), "error": str(e)}
-
-# ========================
-# SCHOOL STUDENT PAYMENTS (Public)
-# ========================
-
-@api_router.get("/school-payment/{school_id}")
-async def get_school_payment_info(school_id: str):
-    """Get school info for student payment page (public)"""
-    # Check cache first
-    cache_key = f"school_payment_{school_id}"
-    cached = get_cached(cache_key)
-    if cached:
-        return cached
-    
-    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
-    if not school:
-        raise HTTPException(status_code=404, detail="School not found")
-    
-    onboarding_data = school.get("onboarding_data", {})
-    payment_mode = onboarding_data.get("payment_mode", "")
-    payment_method = onboarding_data.get("payment_method", "")
-    
-    # Check if online payment by students is enabled
-    if payment_mode != "online" or payment_method != "student":
-        raise HTTPException(status_code=400, detail="Online student payment not enabled for this school")
-    
-    grade_pricing = onboarding_data.get("grade_pricing", [])
-    if not grade_pricing:
-        raise HTTPException(status_code=400, detail="No grade pricing configured for this school")
-    
-    # Transform grade_pricing to use 'price' key for frontend compatibility
-    # The data may have 'price_per_student' from the admin form
-    transformed_pricing = []
-    for gp in grade_pricing:
-        price = gp.get("price") or gp.get("price_per_student") or 0
-        transformed_pricing.append({
-            "grade": gp.get("grade", ""),
-            "price": float(price) if price else 0,
-            "students": gp.get("students", 0)
-        })
-    
-    # Get skill/program from offerings or model
-    skill = onboarding_data.get("offering") or school.get("skill") or "Program"
-    
-    result = {
-        "school_id": school_id,
-        "school_name": school.get("school_name", ""),
-        "skill": skill,
-        "city": school.get("city", ""),
-        "grade_pricing": transformed_pricing,
-        "total_students": onboarding_data.get("total_students", 0),
-        "total_amount": onboarding_data.get("total_amount", 0)
-    }
-    
-    # Cache for 5 minutes
-    set_cached(cache_key, result, 300)
-    return result
-
-@api_router.post("/school-payment/create-session")
-async def create_school_student_payment_session(data: dict):
-    """Create Cashfree payment session for school student (public)"""
-    if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
-        raise HTTPException(status_code=500, detail="Payment gateway not configured")
-    
-    school_id = data.get("school_id")
-    student_name = data.get("student_name", "").strip()
-    phone = data.get("phone", "").strip()
-    grade = data.get("grade", "").strip()
-    division = data.get("division", "").strip()
-    amount = data.get("amount", 0)
-    
-    if not all([school_id, student_name, phone, grade, amount]):
-        raise HTTPException(status_code=400, detail="Missing required fields")
-    
-    # Validate student name is at least 3 characters (Cashfree requirement)
-    if len(student_name) < 3:
-        raise HTTPException(status_code=400, detail="Student name must be at least 3 characters")
-    
-    # Validate school exists and has online payment enabled
-    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
-    if not school:
-        raise HTTPException(status_code=404, detail="School not found")
-    
-    onboarding_data = school.get("onboarding_data", {})
-    if onboarding_data.get("payment_mode") != "online" or onboarding_data.get("payment_method") != "student":
-        raise HTTPException(status_code=400, detail="Online student payment not enabled")
-    
-    # Validate amount matches grade pricing
-    grade_pricing = onboarding_data.get("grade_pricing", [])
-    grade_match = next((g for g in grade_pricing if g.get("grade") == grade), None)
-    if not grade_match:
-        raise HTTPException(status_code=400, detail=f"Invalid grade: {grade}")
-    
-    # Handle both 'price' and 'price_per_student' field names
-    expected_amount = grade_match.get("price") or grade_match.get("price_per_student") or 0
-    if float(amount) != float(expected_amount):
-        raise HTTPException(status_code=400, detail=f"Amount mismatch. Expected: {expected_amount}")
-    
-    skill = onboarding_data.get("offering") or school.get("skill") or "Program"
-    
-    # Generate unique order ID
-    order_id = f"SCH_{school_id[:8]}_{str(uuid.uuid4())[:8]}"
-    
-    # Ensure customer_name meets Cashfree minimum (3 chars) - pad if needed
-    cf_customer_name = student_name if len(student_name) >= 3 else student_name.ljust(3, ' ')
-    
-    try:
-        # Create Cashfree order using globally initialized credentials
-        customer_details = CashfreeCustomerDetails(
-            customer_id=f"sch_std_{phone}",
-            customer_phone=phone,
-            customer_name=cf_customer_name
-        )
-        
-        order_meta = OrderMeta(
-            return_url=f"{os.environ.get('FRONTEND_URL', 'https://oll.co')}/school-payment-success/{school_id}?order_id={order_id}"
-        )
-        
-        order_request = CreateOrderRequest(
-            order_id=order_id,
-            order_amount=float(amount),
-            order_currency="INR",
-            customer_details=customer_details,
-            order_meta=order_meta,
-            order_note=f"School: {school.get('school_name')} | {skill} | Grade {grade}"
-        )
-        
-        logging.info(f"Creating school payment - Order: {order_id}, Amount: {amount}, School: {school.get('school_name')}")
-        
-        # Use globally initialized Cashfree - credentials already set at startup
-        api_response = get_cashfree_client().PGCreateOrder(
-            CASHFREE_API_VERSION, 
-            order_request, 
-            None, 
-            None
-        )
-        
-        if api_response.data:
-            cf_order_id = api_response.data.cf_order_id
-            payment_session_id = api_response.data.payment_session_id
-            
-            # Store payment record
-            payment_record = {
-                "id": order_id,
-                "type": "school_student",
-                "school_id": school_id,
-                "school_name": school.get("school_name", ""),
-                "student_name": student_name,
-                "phone": phone,
-                "grade": grade,
-                "division": division,
-                "skill": skill,
-                "amount": float(amount),
-                "cf_order_id": cf_order_id,
-                "payment_session_id": payment_session_id,
-                "status": "PENDING",
-                "created_at": datetime.now(timezone.utc).isoformat()
-            }
-            
-            await db.school_student_payments.insert_one(payment_record)
-            
-            return {
-                "success": True,
-                "order_id": order_id,
-                "payment_session_id": payment_session_id,
-                "environment": CASHFREE_ENVIRONMENT.lower()
-            }
-        else:
-            raise HTTPException(status_code=500, detail="Failed to create payment order")
-            
-    except Exception as e:
-        logging.error(f"School payment session creation error: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@api_router.post("/school-payment/webhook")
-async def school_payment_webhook(request: Request):
-    """Handle Cashfree webhook for school student payments"""
-    try:
-        body = await request.body()
-        body_str = body.decode('utf-8')
-        
-        webhook_data = json.loads(body_str)
-        event_type = webhook_data.get('type', '')
-        order_data = webhook_data.get('data', {}).get('order', {})
-        payment_data = webhook_data.get('data', {}).get('payment', {})
-        
-        order_id = order_data.get('order_id') or webhook_data.get('data', {}).get('order_id')
-        payment_status = payment_data.get('payment_status') or order_data.get('order_status')
-        cf_payment_id = payment_data.get('cf_payment_id') or payment_data.get('payment_id')
-        payment_method = payment_data.get('payment_group', 'unknown')
-        
-        logging.info(f"School payment webhook - Order: {order_id}, Status: {payment_status}")
-        
-        if order_id and order_id.startswith("SCH_"):
-            # Check if already processed
-            existing = await db.school_student_payments.find_one({"id": order_id}, {"_id": 0})
-            if existing and existing.get("status") == "PAID":
-                return {"status": "success", "message": "Already processed"}
-            
-            update_data = {
-                "status": payment_status,
-                "webhook_data": webhook_data,
-                "updated_at": datetime.now(timezone.utc).isoformat()
-            }
-            
-            if payment_status == "SUCCESS" or event_type == "PAYMENT_SUCCESS_WEBHOOK":
-                update_data["status"] = "PAID"
-                update_data["paid_at"] = datetime.now(timezone.utc).isoformat()
-                update_data["transaction_id"] = cf_payment_id
-                update_data["cf_payment_id"] = cf_payment_id
-                update_data["payment_method"] = f"Cashfree - {payment_method}"
-            
-            await db.school_student_payments.update_one(
-                {"id": order_id},
-                {"$set": update_data}
-            )
-            
-        return {"status": "success"}
-    except Exception as e:
-        logging.error(f"School payment webhook error: {str(e)}")
-        return {"status": "error", "message": str(e)}
-
-@api_router.get("/school-payment/verify/{order_id}")
-async def verify_school_student_payment(order_id: str):
-    """Verify school student payment status"""
-    if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
-        raise HTTPException(status_code=500, detail="Payment gateway not configured")
-    
-    payment = await db.school_student_payments.find_one({"id": order_id}, {"_id": 0})
-    if not payment:
-        raise HTTPException(status_code=404, detail="Payment not found")
-    
-    # If already paid, return status
-    if payment.get("status") == "PAID":
-        return {
-            "order_id": order_id,
-            "status": "PAID",
-            "amount": payment.get("amount"),
-            "student_name": payment.get("student_name"),
-            "transaction_id": payment.get("transaction_id")
-        }
-    
-    try:
-        # Use the order_id (our ID) to fetch from Cashfree, NOT cf_order_id
-        # Cashfree PGFetchOrder expects the order_id we sent when creating the order
-        logging.info(f"Verifying school payment - Order ID: {order_id}")
-        
-        # Use globally initialized Cashfree - credentials already set at startup
-        api_response = get_cashfree_client().PGFetchOrder(
-            CASHFREE_API_VERSION,
-            order_id,  # Use our order_id, not cf_order_id
-            None
-        )
-        
-        logging.info(f"School payment verification - Order: {order_id}, API Response data: {api_response.data}")
-        
-        if api_response.data:
-            order_status = api_response.data.order_status
-            logging.info(f"Order status from Cashfree: {order_status}")
-            
-            # Try to get transaction ID
-            cf_payment_id = None
-            payment_method = "Cashfree"
-            try:
-                payments_response = get_cashfree_client().PGOrderFetchPayments(
-                    CASHFREE_API_VERSION,
-                    order_id,  # Use our order_id
-                    None
-                )
-                logging.info(f"Payments response: {payments_response.data}")
-                if payments_response.data and len(payments_response.data) > 0:
-                    cf_payment_id = str(payments_response.data[0].cf_payment_id)
-                    payment_method = f"Cashfree - {payments_response.data[0].payment_group or 'unknown'}"
-                    logging.info(f"Payment details fetched - CF Payment ID: {cf_payment_id}, Method: {payment_method}")
-            except Exception as e:
-                logging.warning(f"Could not fetch payment details: {e}")
-            
-            update_data = {
-                "status": order_status,
-                "verified_at": datetime.now(timezone.utc).isoformat()
-            }
-            if cf_payment_id:
-                update_data["transaction_id"] = cf_payment_id
-                update_data["cf_payment_id"] = cf_payment_id
-                update_data["payment_method"] = payment_method
-            
-            if order_status == "PAID":
-                update_data["paid_at"] = datetime.now(timezone.utc).isoformat()
-            
-            await db.school_student_payments.update_one(
-                {"id": order_id},
-                {"$set": update_data}
-            )
-            
-            return {
-                "order_id": order_id,
-                "status": order_status,
-                "amount": payment.get("amount"),
-                "student_name": payment.get("student_name"),
-                "transaction_id": cf_payment_id
-            }
-        
-        return {"order_id": order_id, "status": payment.get("status", "UNKNOWN")}
-        
-    except Exception as e:
-        logging.error(f"School payment verification error: {str(e)}")
-        return {"order_id": order_id, "status": payment.get("status", "UNKNOWN"), "error": str(e)}
-
-@api_router.get("/school-payment/tracker/{school_id}")
-async def get_school_payment_tracker(
-    school_id: str,
-    grade: Optional[str] = None,
-    user: dict = Depends(get_current_user)
-):
-    """Get all student payments for a school (admin)"""
-    query = {"school_id": school_id}
-    if grade:
-        query["grade"] = grade
-    
-    payments = await db.school_student_payments.find(query, {"_id": 0}).sort("created_at", -1).to_list(1000)
-    
-    # Calculate stats
-    total_collected = sum(p.get("amount", 0) for p in payments if p.get("status") == "PAID")
-    paid_count = len([p for p in payments if p.get("status") == "PAID"])
-    pending_count = len([p for p in payments if p.get("status") != "PAID"])
-    
-    # Grade-wise breakdown
-    grade_stats = {}
-    for p in payments:
-        g = p.get("grade", "Unknown")
-        if g not in grade_stats:
-            grade_stats[g] = {"paid": 0, "pending": 0, "amount": 0}
-        if p.get("status") == "PAID":
-            grade_stats[g]["paid"] += 1
-            grade_stats[g]["amount"] += p.get("amount", 0)
-        else:
-            grade_stats[g]["pending"] += 1
-    
-    # Get school info for expected totals
-    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
-    onboarding_data = school.get("onboarding_data", {}) if school else {}
-    total_students = onboarding_data.get("total_students", 0)
-    total_expected = onboarding_data.get("total_amount", 0)
-    
-    return {
-        "payments": payments,
-        "stats": {
-            "total_collected": total_collected,
-            "paid_count": paid_count,
-            "pending_count": pending_count,
-            "total_students": total_students,
-            "total_expected": total_expected,
-            "collection_percentage": round((total_collected / total_expected * 100), 1) if total_expected > 0 else 0
-        },
-        "grade_stats": grade_stats
-    }
-
-@api_router.get("/school-payment/tracker-public/{school_id}")
-async def get_school_payment_tracker_public(school_id: str):
-    """Get school payment tracker summary with student list (public - for tracking page)"""
-    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
-    if not school:
-        raise HTTPException(status_code=404, detail="School not found")
-    
-    # Get ALL payments for this school (both PAID and PENDING/ACTIVE)
-    all_payments = await db.school_student_payments.find(
-        {"school_id": school_id}, 
-        {"_id": 0}
-    ).to_list(5000)
-    
-    paid_payments = [p for p in all_payments if p.get("status") == "PAID"]
-    pending_payments = [p for p in all_payments if p.get("status") in ["PENDING", "ACTIVE"]]
-    
-    total_collected = sum(p.get("amount", 0) for p in paid_payments)
-    paid_count = len(paid_payments)
-    pending_count = len(pending_payments)
-    
-    onboarding_data = school.get("onboarding_data", {})
-    total_students = onboarding_data.get("total_students", 0)
-    total_expected = onboarding_data.get("total_amount", 0)
-    
-    # Grade-wise counts (paid only)
-    grade_counts = {}
-    for p in paid_payments:
-        g = p.get("grade", "Unknown")
-        grade_counts[g] = grade_counts.get(g, 0) + 1
-    
-    # Get unique grades and divisions for filters
-    all_grades = list(set(p.get("grade", "") for p in paid_payments if p.get("grade")))
-    all_divisions = list(set(p.get("division", "") for p in paid_payments if p.get("division")))
-    
-    # Student list (paid students only - with essential info for display)
-    student_list = []
-    for p in paid_payments:
-        student_list.append({
-            "name": p.get("student_name", ""),
-            "phone": p.get("phone", "")[-4:] if p.get("phone") else "****",  # Only show last 4 digits for privacy
-            "grade": p.get("grade", ""),
-            "division": p.get("division", ""),
-            "paid_at": p.get("verified_at") or p.get("created_at", "")
-        })
-    
-    # Sort by paid date (most recent first)
-    student_list.sort(key=lambda x: x.get("paid_at", ""), reverse=True)
-    
-    return {
-        "school_name": school.get("school_name", ""),
-        "total_collected": total_collected,
-        "paid_count": paid_count,
-        "pending_count": pending_count,
-        "total_students": total_students,
-        "total_expected": total_expected,
-        "collection_percentage": round((paid_count / total_students * 100), 1) if total_students > 0 else 0,
-        "grade_counts": grade_counts,
-        "student_list": student_list,
-        "available_grades": sorted(all_grades),
-        "available_divisions": sorted(all_divisions)
-    }
-
-# ========================
-# PAYMENT SYNC ENDPOINTS (Admin)
-# ========================
-
-@api_router.post("/payments/sync-single/{order_id}")
-async def sync_single_payment_status(order_id: str, user: dict = Depends(get_current_user)):
-    """Manually sync a single payment status from Cashfree"""
-    if user.get("role") not in ["admin", "super_admin"]:
-        raise HTTPException(status_code=403, detail="Admin access required")
-    
-    if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
-        raise HTTPException(status_code=500, detail="Payment gateway not configured")
-    
-    # Determine which collection to check
-    payment = None
-    collection_name = None
-    
-    # Check student_payments first
-    payment = await db.student_payments.find_one({"id": order_id}, {"_id": 0})
-    if payment:
-        collection_name = "student_payments"
-    else:
-        # Check school_student_payments
-        payment = await db.school_student_payments.find_one({"id": order_id}, {"_id": 0})
-        if payment:
-            collection_name = "school_student_payments"
-    
-    if not payment:
-        raise HTTPException(status_code=404, detail="Payment not found in any collection")
-    
-    old_status = payment.get("status")
-    
-    try:
-        logging.info(f"[SYNC] Syncing payment {order_id} from {collection_name}, current status: {old_status}")
-        
-        # Fetch from Cashfree
-        api_response = get_cashfree_client().PGFetchOrder(
-            CASHFREE_API_VERSION,
-            order_id,
-            None
-        )
-        
-        if not api_response.data:
-            return {
-                "order_id": order_id,
-                "collection": collection_name,
-                "old_status": old_status,
-                "new_status": old_status,
-                "synced": False,
-                "message": "No data returned from Cashfree"
-            }
-        
-        cashfree_status = api_response.data.order_status
-        logging.info(f"[SYNC] Cashfree returned status: {cashfree_status}")
-        
-        # Get payment details for transaction ID
-        cf_payment_id = None
-        payment_method = "Cashfree"
-        try:
-            payments_response = get_cashfree_client().PGOrderFetchPayments(
-                CASHFREE_API_VERSION,
-                order_id,
-                None
-            )
-            if payments_response.data and len(payments_response.data) > 0:
-                cf_payment_id = str(payments_response.data[0].cf_payment_id)
-                payment_method = f"Cashfree - {payments_response.data[0].payment_group or 'unknown'}"
-        except Exception as e:
-            logging.warning(f"[SYNC] Could not fetch payment details: {e}")
-        
-        # Build update data
-        update_data = {
-            "status": cashfree_status,
-            "synced_at": datetime.now(timezone.utc).isoformat(),
-            "sync_source": "manual"
-        }
-        
-        if cf_payment_id:
-            update_data["transaction_id"] = cf_payment_id
-            update_data["cf_payment_id"] = cf_payment_id
-            update_data["payment_method"] = payment_method
-        
-        if cashfree_status == "PAID" and old_status != "PAID":
-            update_data["paid_at"] = datetime.now(timezone.utc).isoformat()
-        
-        # Update the payment record
-        collection = db.student_payments if collection_name == "student_payments" else db.school_student_payments
-        await collection.update_one({"id": order_id}, {"$set": update_data})
-        
-        # If student_payments and status changed to PAID, update student record
-        if collection_name == "student_payments" and cashfree_status == "PAID" and old_status != "PAID":
-            student_id = payment.get("student_id")
-            batch_id = payment.get("batch_id")
-            
-            if student_id:
-                student_update = {
-                    "status": "converted",
-                    "payment_status": "paid",
-                    "payment_amount": payment.get("amount"),
-                    "payment_date": datetime.now(timezone.utc).isoformat(),
-                    "payment_method": payment_method,
-                    "payment_transaction_id": cf_payment_id,
-                    "pending_payment": None,
-                    "updated_at": datetime.now(timezone.utc).isoformat()
-                }
-                
-                if batch_id:
-                    student_update["batch_id"] = batch_id
-                    student_update["batch_name"] = payment.get("batch_name")
-                    
-                    # Add to batch if not already
-                    batch = await db.batches.find_one({"id": batch_id}, {"_id": 0})
-                    if batch and student_id not in batch.get("students", []):
-                        await db.batches.update_one({"id": batch_id}, {"$addToSet": {"students": student_id}})
-                
-                await db.student_inquiries.update_one({"id": student_id}, {"$set": student_update})
-                logging.info(f"[SYNC] Updated student {student_id} to converted")
-        
-        return {
-            "order_id": order_id,
-            "collection": collection_name,
-            "old_status": old_status,
-            "new_status": cashfree_status,
-            "transaction_id": cf_payment_id,
-            "synced": True,
-            "status_changed": old_status != cashfree_status
-        }
-        
-    except Exception as e:
-        logging.error(f"[SYNC] Error syncing payment {order_id}: {str(e)}")
-        return {
-            "order_id": order_id,
-            "collection": collection_name,
-            "old_status": old_status,
-            "synced": False,
-            "error": str(e)
-        }
-
-
-@api_router.post("/payments/sync-all")
-async def sync_all_pending_payments(
-    payment_type: Optional[str] = Query(None, description="student, school, or all"),
-    user: dict = Depends(get_current_user)
-):
-    """Sync all pending/non-PAID payments with Cashfree - checks every payment status"""
-    if user.get("role") not in ["admin", "super_admin"]:
-        raise HTTPException(status_code=403, detail="Admin access required")
-    
-    if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
-        raise HTTPException(status_code=500, detail="Payment gateway not configured")
-    
-    results = {
-        "student_payments": {"checked": 0, "updated": 0, "errors": 0, "details": []},
-        "school_payments": {"checked": 0, "updated": 0, "errors": 0, "details": []}
-    }
-    
-    # Sync student payments
-    if payment_type in [None, "all", "student"]:
-        # Get all non-PAID student payments
-        pending_payments = await db.student_payments.find(
-            {"status": {"$nin": ["PAID", "CANCELLED", "EXPIRED"]}},
-            {"_id": 0}
-        ).to_list(1000)
-        
-        for payment in pending_payments:
-            order_id = payment.get("id")
-            old_status = payment.get("status")
-            results["student_payments"]["checked"] += 1
-            
-            try:
-                api_response = get_cashfree_client().PGFetchOrder(
-                    CASHFREE_API_VERSION,
-                    order_id,
-                    None
-                )
-                
-                if api_response.data:
-                    new_status = api_response.data.order_status
-                    
-                    if new_status != old_status:
-                        # Get transaction details
-                        cf_payment_id = None
-                        payment_method = "Cashfree"
-                        try:
-                            payments_response = get_cashfree_client().PGOrderFetchPayments(
-                                CASHFREE_API_VERSION, order_id, None
-                            )
-                            if payments_response.data and len(payments_response.data) > 0:
-                                cf_payment_id = str(payments_response.data[0].cf_payment_id)
-                                payment_method = f"Cashfree - {payments_response.data[0].payment_group or 'unknown'}"
-                        except Exception:
-                            pass
-                        
-                        update_data = {
-                            "status": new_status,
-                            "synced_at": datetime.now(timezone.utc).isoformat(),
-                            "sync_source": "bulk"
-                        }
-                        if cf_payment_id:
-                            update_data["transaction_id"] = cf_payment_id
-                            update_data["cf_payment_id"] = cf_payment_id
-                            update_data["payment_method"] = payment_method
-                        if new_status == "PAID":
-                            update_data["paid_at"] = datetime.now(timezone.utc).isoformat()
-                        
-                        await db.student_payments.update_one({"id": order_id}, {"$set": update_data})
-                        
-                        # Update student if PAID
-                        if new_status == "PAID":
-                            student_id = payment.get("student_id")
-                            if student_id:
-                                student_update = {
-                                    "status": "converted",
-                                    "payment_status": "paid",
-                                    "payment_amount": payment.get("amount"),
-                                    "payment_date": datetime.now(timezone.utc).isoformat(),
-                                    "pending_payment": None,
-                                    "updated_at": datetime.now(timezone.utc).isoformat()
-                                }
-                                if cf_payment_id:
-                                    student_update["payment_transaction_id"] = cf_payment_id
-                                    student_update["payment_method"] = payment_method
-                                await db.student_inquiries.update_one({"id": student_id}, {"$set": student_update})
-                        
-                        results["student_payments"]["updated"] += 1
-                        results["student_payments"]["details"].append({
-                            "order_id": order_id,
-                            "old_status": old_status,
-                            "new_status": new_status,
-                            "student_name": payment.get("student_name")
-                        })
-                        
-            except Exception as e:
-                results["student_payments"]["errors"] += 1
-                logging.error(f"[BULK_SYNC] Error syncing student payment {order_id}: {e}")
-    
-    # Sync school student payments
-    if payment_type in [None, "all", "school"]:
-        pending_school_payments = await db.school_student_payments.find(
-            {"status": {"$nin": ["PAID", "CANCELLED", "EXPIRED"]}},
-            {"_id": 0}
-        ).to_list(5000)
-        
-        for payment in pending_school_payments:
-            order_id = payment.get("id")
-            old_status = payment.get("status")
-            results["school_payments"]["checked"] += 1
-            
-            try:
-                api_response = get_cashfree_client().PGFetchOrder(
-                    CASHFREE_API_VERSION,
-                    order_id,
-                    None
-                )
-                
-                if api_response.data:
-                    new_status = api_response.data.order_status
-                    
-                    if new_status != old_status:
-                        cf_payment_id = None
-                        payment_method = "Cashfree"
-                        try:
-                            payments_response = get_cashfree_client().PGOrderFetchPayments(
-                                CASHFREE_API_VERSION, order_id, None
-                            )
-                            if payments_response.data and len(payments_response.data) > 0:
-                                cf_payment_id = str(payments_response.data[0].cf_payment_id)
-                                payment_method = f"Cashfree - {payments_response.data[0].payment_group or 'unknown'}"
-                        except Exception:
-                            pass
-                        
-                        update_data = {
-                            "status": new_status,
-                            "synced_at": datetime.now(timezone.utc).isoformat(),
-                            "sync_source": "bulk"
-                        }
-                        if cf_payment_id:
-                            update_data["transaction_id"] = cf_payment_id
-                            update_data["cf_payment_id"] = cf_payment_id
-                            update_data["payment_method"] = payment_method
-                        if new_status == "PAID":
-                            update_data["paid_at"] = datetime.now(timezone.utc).isoformat()
-                        
-                        await db.school_student_payments.update_one({"id": order_id}, {"$set": update_data})
-                        
-                        results["school_payments"]["updated"] += 1
-                        results["school_payments"]["details"].append({
-                            "order_id": order_id,
-                            "old_status": old_status,
-                            "new_status": new_status,
-                            "student_name": payment.get("student_name"),
-                            "school_id": payment.get("school_id")
-                        })
-                        
-            except Exception as e:
-                results["school_payments"]["errors"] += 1
-                logging.error(f"[BULK_SYNC] Error syncing school payment {order_id}: {e}")
-    
-    # Summary
-    total_checked = results["student_payments"]["checked"] + results["school_payments"]["checked"]
-    total_updated = results["student_payments"]["updated"] + results["school_payments"]["updated"]
-    total_errors = results["student_payments"]["errors"] + results["school_payments"]["errors"]
-    
-    logging.info(f"[BULK_SYNC] Complete - Checked: {total_checked}, Updated: {total_updated}, Errors: {total_errors}")
-    
-    return {
-        "summary": {
-            "total_checked": total_checked,
-            "total_updated": total_updated,
-            "total_errors": total_errors
-        },
-        "results": results
-    }
-
-
-@api_router.get("/payments/status-report")
-async def get_payment_status_report(user: dict = Depends(get_current_user)):
-    """Get a report of all payments and their statuses for diagnostics"""
-    if user.get("role") not in ["admin", "super_admin"]:
-        raise HTTPException(status_code=403, detail="Admin access required")
-    
-    # Student payments stats
-    student_payments = await db.student_payments.find({}, {"_id": 0, "id": 1, "status": 1, "student_name": 1, "amount": 1, "created_at": 1}).to_list(1000)
-    student_by_status = {}
-    for p in student_payments:
-        status = p.get("status", "UNKNOWN")
-        if status not in student_by_status:
-            student_by_status[status] = []
-        student_by_status[status].append({
-            "order_id": p.get("id"),
-            "student_name": p.get("student_name"),
-            "amount": p.get("amount"),
-            "created_at": p.get("created_at")
-        })
-    
-    # School student payments stats
-    school_payments = await db.school_student_payments.find({}, {"_id": 0, "id": 1, "status": 1, "student_name": 1, "school_id": 1, "amount": 1, "created_at": 1}).to_list(5000)
-    school_by_status = {}
-    for p in school_payments:
-        status = p.get("status", "UNKNOWN")
-        if status not in school_by_status:
-            school_by_status[status] = []
-        school_by_status[status].append({
-            "order_id": p.get("id"),
-            "student_name": p.get("student_name"),
-            "school_id": p.get("school_id"),
-            "amount": p.get("amount"),
-            "created_at": p.get("created_at")
-        })
-    
-    return {
-        "student_payments": {
-            "total": len(student_payments),
-            "by_status": {status: len(payments) for status, payments in student_by_status.items()},
-            "pending_list": student_by_status.get("PENDING", []) + student_by_status.get("ACTIVE", [])
-        },
-        "school_payments": {
-            "total": len(school_payments),
-            "by_status": {status: len(payments) for status, payments in school_by_status.items()},
-            "pending_list": school_by_status.get("PENDING", []) + school_by_status.get("ACTIVE", [])
-        }
-    }
-
-
-@api_router.get("/payments/scheduler-status")
-async def get_scheduler_status(user: dict = Depends(get_current_user)):
-    """Get the payment sync scheduler status"""
-    if user.get("role") not in ["admin", "super_admin"]:
-        raise HTTPException(status_code=403, detail="Admin access required")
-    
-    job = scheduler.get_job("payment_sync_job")
-    
-    return {
-        "enabled": PAYMENT_SYNC_ENABLED,
-        "running": scheduler.running,
-        "interval_minutes": PAYMENT_SYNC_INTERVAL_MINUTES,
-        "next_run": job.next_run_time.isoformat() if job and job.next_run_time else None,
-        "cashfree_configured": bool(CASHFREE_APP_ID and CASHFREE_SECRET_KEY)
-    }
-
-
-@api_router.post("/payments/trigger-sync")
-async def trigger_manual_sync(user: dict = Depends(get_current_user)):
-    """Manually trigger a payment sync (runs immediately)"""
-    if user.get("role") not in ["admin", "super_admin"]:
-        raise HTTPException(status_code=403, detail="Admin access required")
-    
-    if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
-        raise HTTPException(status_code=500, detail="Cashfree credentials not configured")
-    
-    # Run the sync immediately in the background
-    asyncio.create_task(scheduled_payment_sync())
-    
-    return {"message": "Payment sync triggered", "status": "running"}
-
-
+# NOTE: payments routes moved to routes/payments.py
 @api_router.get("/orders/school-student-payments")
 async def get_all_school_student_payments(user: dict = Depends(get_current_user)):
     """Get aggregated school student payments (online) for Orders page - school-wise summary"""
@@ -5515,7 +4784,7 @@ async def get_all_school_student_payments(user: dict = Depends(get_current_user)
     for school in schools:
         school_id = school.get("id")
         school_name = school.get("school_name", "Unknown School")
-        onboarding_data = school.get("onboarding_data", {})
+        onboarding_data = school.get("onboarding_data") or {}
         
         # Get all payments for this school
         payments = await db.school_student_payments.find(
@@ -5852,6 +5121,426 @@ async def update_team_application(
     return application
 
 # ========================
+# TEAM APPLICATION BULK UPLOAD
+# ========================
+
+@api_router.post("/team-applications/bulk-upload")
+async def bulk_upload_team_applications(
+    file: UploadFile = File(...),
+    user: dict = Depends(get_current_user)
+):
+    """Bulk upload team applications from CSV file"""
+    import csv
+    import io
+    
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="Only CSV files are supported")
+    
+    content = await file.read()
+    try:
+        decoded = content.decode('utf-8')
+    except UnicodeDecodeError:
+        decoded = content.decode('latin-1')
+    
+    reader = csv.DictReader(io.StringIO(decoded))
+    
+    success_count = 0
+    failed_count = 0
+    errors = []
+    
+    for row_num, row in enumerate(reader, start=2):  # Start at 2 to account for header row
+        try:
+            # Map CSV columns to application fields
+            name = row.get('Name*', row.get('Name', '')).strip()
+            email = row.get('Email*', row.get('Email', '')).strip()
+            phone = row.get('Phone*', row.get('Phone', '')).strip()
+            city = row.get('City*', row.get('City', '')).strip()
+            role = row.get('Role', '').strip()
+            experience = row.get('Experience', '').strip()
+            availability = row.get('Availability', '').strip()
+            linkedin = row.get('LinkedIn', '').strip()
+            portfolio = row.get('Portfolio', '').strip()
+            message = row.get('Message', '').strip()
+            
+            # Validate required fields
+            if not name:
+                errors.append(f"Row {row_num}: Name is required")
+                failed_count += 1
+                continue
+            if not email:
+                errors.append(f"Row {row_num}: Email is required")
+                failed_count += 1
+                continue
+            if not phone:
+                errors.append(f"Row {row_num}: Phone is required")
+                failed_count += 1
+                continue
+            if not city:
+                errors.append(f"Row {row_num}: City is required")
+                failed_count += 1
+                continue
+            
+            # Create application
+            application = TeamApplication(
+                name=name,
+                email=email,
+                phone=phone,
+                city=city,
+                role=role,
+                experience=experience,
+                availability=availability,
+                linkedin=linkedin,
+                portfolio=portfolio,
+                message=message,
+                source='bulk_upload',
+                added_by=user.get('id', '')
+            )
+            
+            doc = application.model_dump()
+            doc['created_at'] = doc['created_at'].isoformat()
+            doc['updated_at'] = doc['updated_at'].isoformat()
+            await db.team_applications.insert_one(doc)
+            success_count += 1
+            
+        except Exception as e:
+            errors.append(f"Row {row_num}: {str(e)}")
+            failed_count += 1
+    
+    return {
+        "success_count": success_count,
+        "failed_count": failed_count,
+        "errors": errors[:10]  # Limit errors to first 10
+    }
+
+# ========================
+# NEW PIPELINE ENDPOINTS
+# ========================
+
+@api_router.post("/team-applications/{application_id}/send-hr-interview-email")
+async def send_hr_interview_email(
+    application_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Send HR interview notification email"""
+    application = await db.team_applications.find_one({"id": application_id}, {"_id": 0})
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    if not application.get('email'):
+        raise HTTPException(status_code=400, detail="No email address for this application")
+    
+    scheduled_at = data.get('scheduled_at', '')
+    notes = data.get('notes', '')
+    
+    # Format date for email
+    try:
+        dt = datetime.fromisoformat(scheduled_at.replace('Z', '+00:00'))
+        formatted_date = dt.strftime('%B %d, %Y at %I:%M %p')
+    except:
+        formatted_date = scheduled_at
+    
+    # Send email using Resend
+    api_key = await ensure_resend_api_key()
+    if not api_key:
+        raise HTTPException(status_code=500, detail="Email service not configured")
+    
+    html_content = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #1E3A5F, #2C5282); padding: 30px; text-align: center;">
+            <h1 style="color: white; margin: 0;">HR Interview Scheduled</h1>
+        </div>
+        <div style="padding: 30px; background: #f8fafc;">
+            <p>Dear <strong>{application.get('name', 'Candidate')}</strong>,</p>
+            <p>We are pleased to inform you that your HR interview has been scheduled.</p>
+            <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <p><strong>Date & Time:</strong> {formatted_date}</p>
+                {f'<p><strong>Notes:</strong> {notes}</p>' if notes else ''}
+            </div>
+            <p>Please be available at the scheduled time. If you need to reschedule, please contact us.</p>
+            <p>Best regards,<br>OLL HR Team</p>
+        </div>
+    </div>
+    """
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {api_key}"},
+                json={
+                    "from": "OLL <info@oll.co>",
+                    "to": [application['email']],
+                    "subject": f"HR Interview Scheduled - {formatted_date}",
+                    "html": html_content,
+                    "reply_to": "info@oll.co"
+                }
+            )
+        return {"message": "Email sent", "status": response.status_code}
+    except Exception as e:
+        return {"message": "Email failed", "error": str(e)}
+
+@api_router.post("/team-applications/{application_id}/notify-dept-head")
+async def notify_dept_head(
+    application_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Notify department head about candidate interview"""
+    application = await db.team_applications.find_one({"id": application_id}, {"_id": 0})
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    dept_head_email = data.get('dept_head_email', '')
+    dept_head_name = data.get('dept_head_name', '')
+    applicant_name = data.get('applicant_name', application.get('name', ''))
+    role = data.get('role', application.get('role', ''))
+    
+    if not dept_head_email:
+        raise HTTPException(status_code=400, detail="Dept head email required")
+    
+    api_key = await ensure_resend_api_key()
+    if not api_key:
+        raise HTTPException(status_code=500, detail="Email service not configured")
+    
+    html_content = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #1E3A5F, #2C5282); padding: 30px; text-align: center;">
+            <h1 style="color: white; margin: 0;">Interview Assignment</h1>
+        </div>
+        <div style="padding: 30px; background: #f8fafc;">
+            <p>Dear <strong>{dept_head_name}</strong>,</p>
+            <p>You have been assigned to conduct a department interview for a candidate.</p>
+            <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <p><strong>Candidate:</strong> {applicant_name}</p>
+                <p><strong>Position:</strong> {role}</p>
+                <p><strong>Email:</strong> {application.get('email', 'N/A')}</p>
+                <p><strong>Phone:</strong> {application.get('phone', 'N/A')}</p>
+            </div>
+            <p>Please review the candidate's profile and schedule the interview at your convenience.</p>
+            <p>Best regards,<br>OLL HR Team</p>
+        </div>
+    </div>
+    """
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {api_key}"},
+                json={
+                    "from": "OLL <info@oll.co>",
+                    "to": [dept_head_email],
+                    "subject": f"Interview Assignment: {applicant_name} - {role}",
+                    "html": html_content,
+                    "reply_to": "info@oll.co"
+                }
+            )
+        return {"message": "Notification sent", "status": response.status_code}
+    except Exception as e:
+        return {"message": "Notification failed", "error": str(e)}
+
+@api_router.post("/team-applications/{application_id}/send-welcome-email")
+async def send_welcome_email(
+    application_id: str,
+    user: dict = Depends(get_current_user)
+):
+    """Send welcome email to new team member with Team Member Handbook"""
+    application = await db.team_applications.find_one({"id": application_id}, {"_id": 0})
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    if not application.get('email'):
+        raise HTTPException(status_code=400, detail="No email address")
+    
+    api_key = await ensure_resend_api_key()
+    if not api_key:
+        raise HTTPException(status_code=500, detail="Email service not configured")
+    
+    # Team Member Handbook PDF URL
+    handbook_url = "https://customer-assets.emergentagent.com/job_158d09fa-bd08-407b-8f91-2a6e86e5f9fd/artifacts/td39jrre_OLL%20-%20Team%20Member%20Handbook%20-%202025_-compressed.pdf"
+    
+    html_content = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: linear-gradient(135deg, #1E3A5F, #2C5282); padding: 30px; text-align: center;">
+            <h1 style="color: white; margin: 0;">Welcome to OLL!</h1>
+        </div>
+        <div style="padding: 30px; background: #f8fafc;">
+            <p>Dear <strong>{application.get('name', 'Team Member')}</strong>,</p>
+            <p>Welcome aboard! We're thrilled to have you join the OLL team.</p>
+            
+            <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: #1E3A5F; margin-top: 0;">📘 Team Member Handbook</h3>
+                <p style="margin-bottom: 15px;">Please read through our Team Member Handbook to understand our policies, guidelines, and culture.</p>
+                <a href="{handbook_url}" 
+                   style="display: inline-block; background: #D63031; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                    Download Handbook (PDF)
+                </a>
+            </div>
+            
+            <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h3 style="color: #1E3A5F; margin-top: 0;">Next Steps:</h3>
+                <ol style="margin: 0; padding-left: 20px;">
+                    <li style="margin-bottom: 8px;">Read the Team Member Handbook attached above</li>
+                    <li style="margin-bottom: 8px;">Complete your Razorpay setup for payments</li>
+                    <li style="margin-bottom: 8px;">Attend the training session</li>
+                    <li style="margin-bottom: 8px;">Connect with your team lead</li>
+                </ol>
+            </div>
+            
+            <p>If you have any questions, feel free to reach out to the HR team.</p>
+            <p>We look forward to working with you!</p>
+            <p>Best regards,<br><strong>OLL HR Team</strong></p>
+        </div>
+        <div style="background: #1E3A5F; padding: 15px; text-align: center;">
+            <p style="color: white; margin: 0; font-size: 12px;">
+                OLL - Empowering India's Youth with Future-Ready Skills
+            </p>
+        </div>
+    </div>
+    """
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {api_key}"},
+                json={
+                    "from": "OLL <info@oll.co>",
+                    "to": [application['email']],
+                    "subject": "Welcome to OLL - Your Onboarding Journey Begins!",
+                    "html": html_content,
+                    "reply_to": "info@oll.co"
+                }
+            )
+        return {"message": "Welcome email sent", "status": response.status_code}
+    except Exception as e:
+        return {"message": "Email failed", "error": str(e)}
+
+@api_router.post("/team-applications/{application_id}/create-account")
+async def create_team_member_account(
+    application_id: str,
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """Create OLL admin account for team member"""
+    application = await db.team_applications.find_one({"id": application_id}, {"_id": 0})
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    role_id = data.get('role_id')
+    if not role_id:
+        raise HTTPException(status_code=400, detail="Role ID required")
+    
+    # Check if account already exists
+    existing = await db.team_users.find_one({"email": application.get('email')})
+    if existing:
+        raise HTTPException(status_code=400, detail="Account already exists for this email")
+    
+    # Get role details
+    role = await db.roles.find_one({"id": role_id}, {"_id": 0})
+    
+    # Generate username
+    username = application.get('email', '').split('@')[0] or application.get('name', '').lower().replace(' ', '_')
+    existing_username = await db.team_users.find_one({"username": username})
+    if existing_username:
+        username = f"{username}_{str(uuid.uuid4())[:4]}"
+    
+    # Generate temporary password
+    temp_password = str(uuid.uuid4())[:8]
+    
+    team_user = {
+        "id": str(uuid.uuid4()),
+        "email": application.get('email', f"{username}@oll.co"),
+        "name": application.get('name', ''),
+        "username": username,
+        "password_hash": bcrypt.hashpw(temp_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
+        "role_id": role_id,
+        "role_name": role.get('name', '') if role else '',
+        "city": application.get('city', ''),
+        "phone": application.get('phone', ''),
+        "permissions": role.get('permissions', []) if role else [],
+        "is_active": True,
+        "team_application_id": application_id,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    
+    await db.team_users.insert_one(team_user)
+    
+    return {
+        "message": "Account created",
+        "team_user_id": team_user['id'],
+        "username": username,
+        "temp_password": temp_password
+    }
+
+@api_router.post("/team-applications/{application_id}/generate-offer-letter")
+async def generate_offer_letter(
+    application_id: str,
+    user: dict = Depends(get_current_user)
+):
+    """Generate offer letter PDF (placeholder - returns success)"""
+    application = await db.team_applications.find_one({"id": application_id}, {"_id": 0})
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    # TODO: Implement actual PDF generation with ReportLab
+    # For now, return success status
+    return {
+        "message": "Offer letter generation initiated",
+        "url": None  # Would be Cloudinary URL in full implementation
+    }
+
+@api_router.post("/team-applications/{application_id}/whatsapp-group-notification")
+async def send_whatsapp_group_notification(
+    application_id: str,
+    user: dict = Depends(get_current_user)
+):
+    """Send WhatsApp notification about group addition"""
+    application = await db.team_applications.find_one({"id": application_id}, {"_id": 0})
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    phone = application.get('phone', '')
+    if not phone:
+        raise HTTPException(status_code=400, detail="No phone number")
+    
+    # Send WhatsApp notification
+    try:
+        await send_whatsapp_notification(
+            phone,
+            "team_group_addition",
+            {
+                "name": application.get('name', 'Team Member'),
+                "role": application.get('role', 'Team Member')
+            }
+        )
+        return {"message": "WhatsApp notification sent"}
+    except Exception as e:
+        return {"message": "Notification failed", "error": str(e)}
+
+@api_router.post("/team-applications/{application_id}/deactivate-account")
+async def deactivate_team_account(
+    application_id: str,
+    user: dict = Depends(get_current_user)
+):
+    """Deactivate team user account when member exits"""
+    application = await db.team_applications.find_one({"id": application_id}, {"_id": 0})
+    if not application:
+        raise HTTPException(status_code=404, detail="Application not found")
+    
+    # Find and deactivate team user by email
+    email = application.get('email', '')
+    if email:
+        await db.team_users.update_one(
+            {"email": email},
+            {"$set": {"is_active": False, "deactivated_at": datetime.now(timezone.utc).isoformat()}}
+        )
+    
+    return {"message": "Account deactivated"}
+
+# ========================
 # TEAM ONBOARDING ENDPOINTS
 # ========================
 
@@ -6082,755 +5771,7 @@ async def discontinue_team_member(
 # GP ONBOARDING ENDPOINTS
 # ========================
 
-@api_router.post("/gp-onboarding/init/{partner_id}")
-async def init_gp_onboarding(
-    partner_id: str,
-    data: dict,
-    user: dict = Depends(get_current_user)
-):
-    """Initialize onboarding for a converted growth partner"""
-    partner = await db.growth_partners.find_one({"id": partner_id}, {"_id": 0})
-    if not partner:
-        raise HTTPException(status_code=404, detail="Growth Partner not found")
-    
-    # Check if onboarding already exists
-    existing = await db.gp_onboarding.find_one({"growth_partner_id": partner_id}, {"_id": 0})
-    if existing:
-        # Update GP status to onboarding (in case it was reverted)
-        await db.growth_partners.update_one(
-            {"id": partner_id},
-            {"$set": {"status": "onboarding", "onboarding_id": existing.get('id')}}
-        )
-        # Also update onboarding status if it was discontinued
-        if existing.get('status') == 'discontinued':
-            new_token = str(uuid.uuid4())[:8]
-            await db.gp_onboarding.update_one(
-                {"id": existing.get('id')},
-                {"$set": {"status": "onboarding", "tracking_token": new_token, "updated_at": datetime.now(timezone.utc).isoformat()}}
-            )
-            existing['status'] = 'onboarding'
-            existing['tracking_token'] = new_token
-        return existing
-    
-    onboarding = GPOnboarding(
-        growth_partner_id=partner_id,
-        name=partner.get('name', ''),
-        email=partner.get('email', ''),
-        phone=partner.get('phone', ''),
-        city=partner.get('city', ''),
-        interest_type=partner.get('interest_type', ''),
-    )
-    
-    doc = onboarding.model_dump()
-    doc['created_at'] = doc['created_at'].isoformat()
-    doc['updated_at'] = doc['updated_at'].isoformat()
-    await db.gp_onboarding.insert_one(doc)
-    
-    # Update GP status to onboarding
-    await db.growth_partners.update_one(
-        {"id": partner_id},
-        {"$set": {"status": "onboarding", "onboarding_id": onboarding.id}}
-    )
-    
-    return {**doc, "_id": None}
-
-@api_router.get("/gp-onboarding/track/{token}")
-async def get_gp_onboarding_public(token: str):
-    """Public endpoint to track GP onboarding progress by token"""
-    onboarding = await db.gp_onboarding.find_one({"tracking_token": token}, {"_id": 0})
-    if not onboarding:
-        raise HTTPException(status_code=404, detail="Invalid tracking link")
-    return {
-        "name": onboarding.get("name"),
-        "email": onboarding.get("email"),
-        "phone": onboarding.get("phone"),
-        "city": onboarding.get("city"),
-        "interest_type": onboarding.get("interest_type"),
-        "status": onboarding.get("status"),
-        "steps": onboarding.get("steps"),
-        "created_at": onboarding.get("created_at"),
-    }
-
-@api_router.get("/gp-onboarding")
-async def get_gp_onboardings(
-    status: Optional[str] = None,
-    user: dict = Depends(get_current_user)
-):
-    """Get all GP onboarding records"""
-    query = {}
-    if status:
-        query["status"] = status
-    
-    onboardings = await db.gp_onboarding.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
-    return onboardings
-
-@api_router.get("/gp-onboarding/{onboarding_id}")
-async def get_gp_onboarding(onboarding_id: str, user: dict = Depends(get_current_user)):
-    """Get a specific GP onboarding record"""
-    onboarding = await db.gp_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
-    if not onboarding:
-        raise HTTPException(status_code=404, detail="Onboarding not found")
-    return onboarding
-
-@api_router.post("/gp-onboarding/{onboarding_id}/complete-step")
-async def complete_gp_onboarding_step(
-    onboarding_id: str,
-    data: dict,
-    user: dict = Depends(get_current_user)
-):
-    """Mark a GP onboarding step as complete"""
-    step_name = data.get('step')
-    step_data = data.get('data', {})
-    
-    if step_name not in ["personal_info", "contract_signing", "training"]:
-        raise HTTPException(status_code=400, detail="Invalid step name")
-    
-    update_data = {
-        f"steps.{step_name}.completed": True,
-        f"steps.{step_name}.completed_at": datetime.now(timezone.utc).isoformat(),
-        "updated_at": datetime.now(timezone.utc).isoformat()
-    }
-    
-    # Store step-specific data
-    if step_name == "personal_info" and step_data:
-        update_data["personal_info"] = step_data
-        if step_data.get('bank_details'):
-            update_data["bank_details"] = step_data['bank_details']
-    elif step_name == "contract_signing":
-        if step_data.get('contract_url'):
-            update_data["contract_url"] = step_data['contract_url']
-        if step_data.get('commission_structure'):
-            update_data["commission_structure"] = step_data['commission_structure']
-        update_data["contract_signed_at"] = datetime.now(timezone.utc).isoformat()
-    elif step_name == "training":
-        update_data["training_completed_at"] = datetime.now(timezone.utc).isoformat()
-        if step_data.get('notes'):
-            update_data["training_notes"] = step_data['notes']
-    
-    await db.gp_onboarding.update_one({"id": onboarding_id}, {"$set": update_data})
-    onboarding = await db.gp_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
-    return onboarding
-
-@api_router.post("/gp-onboarding/{onboarding_id}/verify-payment")
-async def verify_gp_payment(
-    onboarding_id: str,
-    user: dict = Depends(get_current_user)
-):
-    """Verify GP payment - admin action"""
-    onboarding = await db.gp_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
-    if not onboarding:
-        raise HTTPException(status_code=404, detail="Onboarding not found")
-    
-    # Update payment step to verified
-    now = datetime.now(timezone.utc).isoformat()
-    await db.gp_onboarding.update_one(
-        {"id": onboarding_id},
-        {"$set": {
-            "steps.payment.verified": True,
-            "steps.payment.verified_at": now,
-            "steps.payment.verified_by": user.get('id') or user.get('email'),
-            "payment_status": "verified",
-            "updated_at": now
-        }}
-    )
-    
-    updated = await db.gp_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
-    return {"message": "Payment verified successfully", "onboarding": updated}
-
-@api_router.post("/gp-onboarding/{onboarding_id}/kit-delivery")
-async def update_kit_delivery(
-    onboarding_id: str,
-    data: dict,
-    user: dict = Depends(get_current_user)
-):
-    """Update kit delivery status - admin action"""
-    onboarding = await db.gp_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
-    if not onboarding:
-        raise HTTPException(status_code=404, detail="Onboarding not found")
-    
-    now = datetime.now(timezone.utc).isoformat()
-    status = data.get('status', 'pending')
-    
-    update_data = {
-        "kit_delivery_status": status,
-        "kit_tracking_number": data.get('tracking_number', ''),
-        "kit_courier_name": data.get('courier_name', ''),
-        "kit_dispatch_date": data.get('dispatch_date', ''),
-        "kit_expected_delivery_date": data.get('expected_delivery_date', ''),
-        "updated_at": now
-    }
-    
-    # If dispatched, mark step as in progress
-    if status == 'dispatched':
-        update_data["kit_dispatched_at"] = now
-        update_data["kit_dispatched_by"] = user.get('id') or user.get('email')
-    
-    # If delivered, mark step as completed and auto-move to training
-    if status == 'delivered':
-        update_data["kit_delivered_at"] = now
-        update_data["kit_delivery_date"] = now[:10]  # Just the date part
-        update_data["steps.kit_delivery.completed"] = True
-        update_data["steps.kit_delivery.completed_at"] = now
-        update_data["steps.kit_delivery.data"] = {
-            "delivered_at": now,
-            "tracking_number": data.get('tracking_number', ''),
-            "courier_name": data.get('courier_name', '')
-        }
-    
-    await db.gp_onboarding.update_one({"id": onboarding_id}, {"$set": update_data})
-    
-    updated = await db.gp_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
-    return {"message": f"Kit delivery updated to {status}", "onboarding": updated}
-
-@api_router.post("/gp-onboarding/{onboarding_id}/activate")
-async def activate_gp(
-    onboarding_id: str,
-    data: dict,
-    user: dict = Depends(get_current_user)
-):
-    """Activate GP - creates a new team user with GP Manager role"""
-    onboarding = await db.gp_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
-    if not onboarding:
-        raise HTTPException(status_code=404, detail="Onboarding not found")
-    
-    # Check if all steps are complete
-    steps = onboarding.get('steps', {})
-    incomplete = [s for s, v in steps.items() if not v.get('completed')]
-    if incomplete:
-        raise HTTPException(status_code=400, detail=f"Complete all steps first: {', '.join(incomplete)}")
-    
-    # Find or create GP Manager role
-    gp_role = await db.roles.find_one({"name": "GP Manager"}, {"_id": 0})
-    if not gp_role:
-        # Create the role
-        gp_role = {
-            "id": str(uuid.uuid4()),
-            "name": "GP Manager",
-            "description": "Growth Partner Manager - Can manage schools and student leads",
-            "permissions": ["dashboard", "students", "schools", "growth_partners"],
-            "is_system": False,
-            "is_active": True,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }
-        await db.roles.insert_one(gp_role)
-    
-    role_id = data.get('role_id') or gp_role['id']
-    
-    # Create team user
-    username = onboarding.get('email', '').split('@')[0] or onboarding.get('name', '').lower().replace(' ', '_')
-    existing = await db.team_users.find_one({"username": username})
-    if existing:
-        username = f"gp_{username}_{str(uuid.uuid4())[:4]}"
-    
-    temp_password = str(uuid.uuid4())[:8]
-    
-    team_user = TeamUser(
-        email=onboarding.get('email', f"{username}@oll.co"),
-        name=onboarding.get('name', ''),
-        username=username,
-        password_hash=bcrypt.hashpw(temp_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8'),
-        role_id=role_id,
-        city=onboarding.get('city', ''),
-        permissions=["dashboard", "students", "schools", "growth_partners"]  # GP Manager permissions
-    )
-    
-    doc = team_user.model_dump()
-    doc['created_at'] = doc['created_at'].isoformat()
-    doc['is_growth_partner'] = True  # Mark as GP user
-    doc['gp_onboarding_id'] = onboarding_id
-    await db.team_users.insert_one(doc)
-    
-    # Update onboarding status
-    await db.gp_onboarding.update_one(
-        {"id": onboarding_id},
-        {"$set": {
-            "status": "active",
-            "team_user_id": team_user.id,
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }}
-    )
-    
-    # Update growth partner status
-    await db.growth_partners.update_one(
-        {"id": onboarding.get('growth_partner_id')},
-        {"$set": {"status": "converted", "team_user_id": team_user.id}}
-    )
-    
-    return {
-        "message": "Growth Partner activated",
-        "team_user_id": team_user.id,
-        "username": username,
-        "email": team_user.email,
-        "temp_password": temp_password
-    }
-
-@api_router.post("/gp-onboarding/{onboarding_id}/discontinue")
-async def discontinue_gp(
-    onboarding_id: str,
-    data: dict,
-    user: dict = Depends(get_current_user)
-):
-    """Discontinue a Growth Partner"""
-    reason = data.get('reason', '')
-    
-    if not reason:
-        raise HTTPException(status_code=400, detail="Reason required")
-    
-    # Deactivate the team user if exists
-    onboarding = await db.gp_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
-    if onboarding and onboarding.get('team_user_id'):
-        await db.team_users.update_one(
-            {"id": onboarding['team_user_id']},
-            {"$set": {"is_active": False}}
-        )
-    
-    await db.gp_onboarding.update_one(
-        {"id": onboarding_id},
-        {"$set": {
-            "status": "discontinued",
-            "discontinued_reason": reason,
-            "discontinued_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat()
-        }}
-    )
-    
-    # Update growth partner status
-    if onboarding:
-        await db.growth_partners.update_one(
-            {"id": onboarding.get('growth_partner_id')},
-            {"$set": {"status": "archived"}}
-        )
-    
-    return {"message": "Growth Partner discontinued"}
-
-# PUBLIC GP ONBOARDING SUBMISSION ENDPOINTS (No auth required - use tracking token)
-
-@api_router.get("/gp-onboard/{token}")
-async def get_gp_onboarding_full(token: str):
-    """Public endpoint to get full GP onboarding data for filling form"""
-    onboarding = await db.gp_onboarding.find_one({"tracking_token": token}, {"_id": 0})
-    if not onboarding:
-        raise HTTPException(status_code=404, detail="Invalid tracking link")
-    
-    # Return all data needed for the onboarding form
-    return onboarding
-
-@api_router.post("/gp-onboard/{token}/personal-info")
-async def submit_gp_personal_info(token: str, data: dict):
-    """Public endpoint for GP to submit personal information"""
-    onboarding = await db.gp_onboarding.find_one({"tracking_token": token}, {"_id": 0})
-    if not onboarding:
-        raise HTTPException(status_code=404, detail="Invalid tracking link")
-    
-    # Update personal info
-    personal_info = {
-        "full_name": data.get("full_name", ""),
-        "email": data.get("email", ""),
-        "phone": data.get("phone", ""),
-        "aadhar_number": data.get("aadhar_number", ""),
-        "aadhar_url": data.get("aadhar_url", ""),
-        "pan_number": data.get("pan_number", ""),
-        "pan_url": data.get("pan_url", ""),
-        "address": data.get("address", ""),
-        "city": data.get("city", ""),
-        "state": data.get("state", ""),
-        "pincode": data.get("pincode", ""),
-        "tshirt_size": data.get("tshirt_size", "")
-    }
-    
-    now = datetime.now(timezone.utc).isoformat()
-    
-    await db.gp_onboarding.update_one(
-        {"tracking_token": token},
-        {"$set": {
-            "personal_info": personal_info,
-            "name": data.get("full_name", onboarding.get("name", "")),
-            "email": data.get("email", onboarding.get("email", "")),
-            "phone": data.get("phone", onboarding.get("phone", "")),
-            "city": data.get("city", onboarding.get("city", "")),
-            "steps.personal_info.completed": True,
-            "steps.personal_info.completed_at": now,
-            "steps.personal_info.data": personal_info,
-            "updated_at": now
-        }}
-    )
-    
-    return {"message": "Personal information saved", "next_step": "bank_details"}
-
-@api_router.post("/gp-onboard/{token}/bank-details")
-async def submit_gp_bank_details(token: str, data: dict):
-    """Public endpoint for GP to submit bank details"""
-    onboarding = await db.gp_onboarding.find_one({"tracking_token": token}, {"_id": 0})
-    if not onboarding:
-        raise HTTPException(status_code=404, detail="Invalid tracking link")
-    
-    bank_details = {
-        "account_holder_name": data.get("account_holder_name", ""),
-        "bank_name": data.get("bank_name", ""),
-        "account_number": data.get("account_number", ""),
-        "ifsc_code": data.get("ifsc_code", ""),
-        "branch": data.get("branch", ""),
-        "upi_id": data.get("upi_id", ""),
-        "cancelled_cheque_url": data.get("cancelled_cheque_url", "")
-    }
-    
-    now = datetime.now(timezone.utc).isoformat()
-    
-    await db.gp_onboarding.update_one(
-        {"tracking_token": token},
-        {"$set": {
-            "bank_details": bank_details,
-            "steps.bank_details.completed": True,
-            "steps.bank_details.completed_at": now,
-            "steps.bank_details.data": bank_details,
-            "updated_at": now
-        }}
-    )
-    
-    return {"message": "Bank details saved", "next_step": "contract_signing"}
-
-@api_router.post("/gp-onboard/{token}/contract")
-async def submit_gp_contract(token: str, data: dict):
-    """Public endpoint for GP to submit signed contract"""
-    onboarding = await db.gp_onboarding.find_one({"tracking_token": token}, {"_id": 0})
-    if not onboarding:
-        raise HTTPException(status_code=404, detail="Invalid tracking link")
-    
-    now = datetime.now(timezone.utc).isoformat()
-    signed_contract_url = data.get("signed_contract_url", "")
-    
-    await db.gp_onboarding.update_one(
-        {"tracking_token": token},
-        {"$set": {
-            "contract_signed_at": now,
-            "signed_contract_url": signed_contract_url,
-            "contract_url": signed_contract_url,  # Also save to contract_url for admin view
-            "steps.contract_signing.completed": True,
-            "steps.contract_signing.completed_at": now,
-            "steps.contract_signing.data": {
-                "signed_at": now,
-                "signed_contract_url": signed_contract_url,
-                "agreed_terms": True
-            },
-            "updated_at": now
-        }}
-    )
-    
-    return {"message": "Contract submitted", "next_step": "payment"}
-
-@api_router.post("/gp-onboard/{token}/payment")
-async def submit_gp_payment(token: str, data: dict):
-    """Public endpoint for GP to submit payment proof"""
-    onboarding = await db.gp_onboarding.find_one({"tracking_token": token}, {"_id": 0})
-    if not onboarding:
-        raise HTTPException(status_code=404, detail="Invalid tracking link")
-    
-    now = datetime.now(timezone.utc).isoformat()
-    
-    payment_data = {
-        "amount": data.get("amount", 0),
-        "transaction_id": data.get("transaction_id", ""),
-        "screenshot_url": data.get("screenshot_url", ""),
-        "payment_date": data.get("payment_date", now[:10]),
-        "payment_method": data.get("payment_method", "")
-    }
-    
-    await db.gp_onboarding.update_one(
-        {"tracking_token": token},
-        {"$set": {
-            "payment_amount": data.get("amount", 0),
-            "payment_status": "pending_verification",
-            "payment_screenshot_url": data.get("screenshot_url", ""),
-            "payment_transaction_id": data.get("transaction_id", ""),
-            "payment_date": data.get("payment_date", now[:10]),
-            "steps.payment.completed": True,
-            "steps.payment.completed_at": now,
-            "steps.payment.data": payment_data,
-            "steps.payment.verified": False,
-            "updated_at": now
-        }}
-    )
-    
-    return {"message": "Payment proof submitted. Awaiting admin verification.", "next_step": "kit_delivery"}
-
-@api_router.post("/gp-onboard/{token}/training/{step}")
-async def submit_gp_training_step(token: str, step: str, data: dict):
-    """Public endpoint for GP to submit training step progress"""
-    onboarding = await db.gp_onboarding.find_one({"tracking_token": token}, {"_id": 0})
-    if not onboarding:
-        raise HTTPException(status_code=404, detail="Invalid tracking link")
-    
-    valid_steps = ["about_company", "about_skill", "implementation_models", "product_training", 
-                   "target_audiences", "pricing_training", "software_training"]
-    if step not in valid_steps:
-        raise HTTPException(status_code=400, detail=f"Invalid training step. Valid steps: {valid_steps}")
-    
-    now = datetime.now(timezone.utc).isoformat()
-    training_progress = onboarding.get("training_progress", {})
-    step_data = training_progress.get(step, {})
-    
-    # Update videos watched
-    if "video_id" in data:
-        videos_watched = step_data.get("videos_watched", [])
-        if data["video_id"] not in videos_watched:
-            videos_watched.append(data["video_id"])
-        step_data["videos_watched"] = videos_watched
-    
-    # Update assessment
-    if "assessment" in data:
-        step_data["assessment"] = {
-            **step_data.get("assessment", {}),
-            **data["assessment"],
-            "submitted": True,
-            "submitted_at": now
-        }
-    
-    # Mark step as completed if all required items are done
-    if data.get("mark_complete", False):
-        step_data["completed"] = True
-        step_data["completed_at"] = now
-    
-    training_progress[step] = step_data
-    
-    # Check if all training steps are complete
-    all_training_complete = all(
-        training_progress.get(s, {}).get("completed", False) 
-        for s in valid_steps
-    )
-    
-    update_data = {
-        f"training_progress.{step}": step_data,
-        "updated_at": now
-    }
-    
-    if all_training_complete:
-        update_data["steps.training.completed"] = True
-        update_data["steps.training.completed_at"] = now
-        update_data["training_completed_at"] = now
-    
-    await db.gp_onboarding.update_one(
-        {"tracking_token": token},
-        {"$set": update_data}
-    )
-    
-    next_steps = {
-        "about_company": "about_skill",
-        "about_skill": "implementation_models",
-        "implementation_models": "product_training",
-        "product_training": "target_audiences",
-        "target_audiences": "pricing_training",
-        "pricing_training": "software_training",
-        "software_training": "complete"
-    }
-    
-    return {
-        "message": f"Training step '{step}' updated",
-        "next_step": next_steps.get(step, "complete"),
-        "all_training_complete": all_training_complete
-    }
-
-# Admin endpoints for GP onboarding verification
-@api_router.post("/gp-onboarding/{onboarding_id}/verify-payment")
-async def verify_gp_payment(
-    onboarding_id: str,
-    data: dict,
-    user: dict = Depends(get_current_user)
-):
-    """Admin endpoint to verify GP payment"""
-    now = datetime.now(timezone.utc).isoformat()
-    
-    await db.gp_onboarding.update_one(
-        {"id": onboarding_id},
-        {"$set": {
-            "payment_status": "verified",
-            "steps.payment.verified": True,
-            "steps.payment.verified_by": user.get("id"),
-            "steps.payment.verified_at": now,
-            "updated_at": now
-        }}
-    )
-    
-    return {"message": "Payment verified"}
-
-@api_router.post("/gp-onboarding/{onboarding_id}/ship-kit")
-async def ship_gp_kit(
-    onboarding_id: str,
-    data: dict,
-    user: dict = Depends(get_current_user)
-):
-    """Admin endpoint to mark kit as shipped"""
-    now = datetime.now(timezone.utc).isoformat()
-    
-    await db.gp_onboarding.update_one(
-        {"id": onboarding_id},
-        {"$set": {
-            "kit_delivery_status": "shipped",
-            "kit_tracking_number": data.get("tracking_number", ""),
-            "steps.kit_delivery.tracking_number": data.get("tracking_number", ""),
-            "updated_at": now
-        }}
-    )
-    
-    return {"message": "Kit marked as shipped"}
-
-@api_router.post("/gp-onboard/{token}/confirm-kit")
-async def confirm_gp_kit_delivery(token: str, data: dict):
-    """Public endpoint for GP to confirm kit received"""
-    onboarding = await db.gp_onboarding.find_one({"tracking_token": token}, {"_id": 0})
-    if not onboarding:
-        raise HTTPException(status_code=404, detail="Invalid tracking link")
-    
-    now = datetime.now(timezone.utc).isoformat()
-    
-    await db.gp_onboarding.update_one(
-        {"tracking_token": token},
-        {"$set": {
-            "kit_delivery_status": "delivered",
-            "kit_delivery_date": now[:10],
-            "kit_received_confirmation": True,
-            "steps.kit_delivery.completed": True,
-            "steps.kit_delivery.completed_at": now,
-            "steps.kit_delivery.delivered": True,
-            "steps.kit_delivery.delivered_at": now,
-            "updated_at": now
-        }}
-    )
-    
-    return {"message": "Kit delivery confirmed", "next_step": "training"}
-
-@api_router.post("/gp-onboarding/{onboarding_id}/review-assessment")
-async def review_gp_assessment(
-    onboarding_id: str,
-    data: dict,
-    user: dict = Depends(get_current_user)
-):
-    """Admin endpoint to review GP training assessment"""
-    training_step = data.get("training_step")
-    passed = data.get("passed", False)
-    review_notes = data.get("review_notes", "")
-    
-    now = datetime.now(timezone.utc).isoformat()
-    
-    await db.gp_onboarding.update_one(
-        {"id": onboarding_id},
-        {"$set": {
-            f"training_progress.{training_step}.assessment.reviewed": True,
-            f"training_progress.{training_step}.assessment.review_notes": review_notes,
-            f"training_progress.{training_step}.assessment.passed": passed,
-            f"training_progress.{training_step}.assessment.reviewed_by": user.get("id"),
-            f"training_progress.{training_step}.assessment.reviewed_at": now,
-            "updated_at": now
-        }}
-    )
-    
-    return {"message": f"Assessment for {training_step} reviewed", "passed": passed}
-
-@api_router.post("/gp-onboarding/{onboarding_id}/complete-onboarding")
-async def complete_gp_onboarding(
-    onboarding_id: str,
-    data: dict,
-    user: dict = Depends(get_current_user)
-):
-    """Admin endpoint to complete GP onboarding and create credentials"""
-    onboarding = await db.gp_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
-    if not onboarding:
-        raise HTTPException(status_code=404, detail="Onboarding not found")
-    
-    # Verify all steps are complete
-    steps = onboarding.get("steps", {})
-    incomplete_steps = []
-    for step_key, step_val in steps.items():
-        if not step_val.get("completed"):
-            incomplete_steps.append(step_key)
-    
-    if incomplete_steps:
-        raise HTTPException(status_code=400, detail=f"Incomplete steps: {', '.join(incomplete_steps)}")
-    
-    # Find or create GP Manager role
-    gp_role = await db.roles.find_one({"name": "GP Manager"}, {"_id": 0})
-    if not gp_role:
-        gp_role = {
-            "id": str(uuid.uuid4()),
-            "name": "GP Manager",
-            "description": "Growth Partner Manager - Can manage schools and student leads",
-            "permissions": ["dashboard", "students", "schools", "growth_partners"],
-            "is_system": False,
-            "is_active": True,
-            "created_at": datetime.now(timezone.utc).isoformat()
-        }
-        await db.roles.insert_one(gp_role)
-    role_id = gp_role.get("id")
-    
-    # Generate credentials
-    email = onboarding.get("email") or onboarding.get("personal_info", {}).get("email", "")
-    name = onboarding.get("name") or onboarding.get("personal_info", {}).get("full_name", "")
-    phone = onboarding.get("phone") or onboarding.get("personal_info", {}).get("phone", "")
-    
-    username = email.split("@")[0] if email else name.lower().replace(" ", "_")
-    # Ensure unique username
-    existing = await db.team_users.find_one({"username": username})
-    if existing:
-        username = f"gp_{username}_{str(uuid.uuid4())[:4]}"
-    
-    temp_password = str(uuid.uuid4())[:8]
-    
-    # Create team user
-    team_user_id = str(uuid.uuid4())
-    team_user_doc = {
-        "id": team_user_id,
-        "name": name,
-        "email": email,
-        "phone": phone,
-        "username": username,
-        "password_hash": bcrypt.hashpw(temp_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8"),
-        "role_id": role_id,
-        "role_name": "GP Manager",
-        "is_active": True,
-        "is_growth_partner": True,
-        "gp_onboarding_id": onboarding_id,
-        "permissions": ["dashboard", "schools", "students", "growth_partners"],
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "updated_at": datetime.now(timezone.utc).isoformat()
-    }
-    await db.team_users.insert_one(team_user_doc)
-    
-    now = datetime.now(timezone.utc).isoformat()
-    credentials = {
-        "username": username,
-        "email": email,
-        "temp_password": temp_password,
-        "login_url": "/admin/login",
-        "created_at": now
-    }
-    
-    # Update onboarding record
-    await db.gp_onboarding.update_one(
-        {"id": onboarding_id},
-        {"$set": {
-            "status": "active",
-            "team_user_id": team_user_id,
-            "team_user_credentials": credentials,
-            "lms_access_granted": True,
-            "updated_at": now
-        }}
-    )
-    
-    # Update growth partner status
-    await db.growth_partners.update_one(
-        {"id": onboarding.get("growth_partner_id")},
-        {"$set": {"status": "active", "team_user_id": team_user_id}}
-    )
-    
-    return {
-        "message": "GP onboarding completed",
-        "credentials": credentials,
-        "team_user_id": team_user_id
-    }
-
-# ========================
-# EXPENSE ENDPOINTS
-# ========================
-
+# NOTE: gp_onboarding routes moved to routes/gp_onboarding.py
 EXPENSE_CATEGORIES = [
     "salary",
     "marketing",
@@ -7002,6 +5943,13 @@ async def create_school_inquiry(data: SchoolInquiryCreate):
     await db.school_inquiries.insert_one(inquiry_dict)
     return inquiry
 
+@api_router.get("/schools/names")
+async def get_school_names_list(user: dict = Depends(get_current_user)):
+    """Lightweight endpoint returning only id + school_name for dropdowns"""
+    schools = await db.school_inquiries.find({}, {"_id": 0, "id": 1, "school_name": 1}).sort("school_name", 1).to_list(2000)
+    return schools
+
+
 @api_router.get("/schools/inquiries")
 async def get_school_inquiries(
     status: Optional[str] = None,
@@ -7044,6 +5992,11 @@ async def get_school_inquiries(
         # Add flags to indicate ownership
         inq['is_owner'] = inq.get('assigned_to') == user_id or inq.get('added_by') == user_id
         inq['is_viewer'] = not inq['is_owner']
+        
+        # Transform any stale preview tracking URLs in po_requests
+        for po_req in inq.get('po_requests', []):
+            if po_req.get('tracking_url'):
+                po_req['tracking_url'] = transform_tracking_url(po_req['tracking_url'])
     
     return inquiries
 
@@ -7116,9 +6069,17 @@ async def delete_growth_partner_application(application_id: str, user: dict = De
         raise HTTPException(status_code=404, detail="Application not found")
     return {"message": "Application deleted successfully"}
 
-@api_router.patch("/schools/inquiry/{inquiry_id}", response_model=SchoolInquiry)
+@api_router.get("/schools/inquiry/{inquiry_id}")
+async def get_school_inquiry(inquiry_id: str, user: dict = Depends(get_current_user)):
+    """Get a single school inquiry by ID."""
+    doc = await db.school_inquiries.find_one({"id": inquiry_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Inquiry not found")
+    return doc
+
+@api_router.patch("/schools/inquiry/{inquiry_id}")
 async def update_school_inquiry(
-    inquiry_id: str, 
+    inquiry_id: str,
     data: SchoolInquiryUpdate,
     user: dict = Depends(get_current_user)
 ):
@@ -7213,18 +6174,22 @@ async def update_school_inquiry(
     
     await db.school_inquiries.update_one({"id": inquiry_id}, {"$set": update_data})
     
-    # Auto-create GP Share and School Share expenses if present in onboarding_data
+    # Auto-sync GP Share and School Share expenses whenever onboarding_data changes
     onboarding_data = update_data.get('onboarding_data', {})
+    if not onboarding_data:
+        # Also check if share fields are passed directly at top level (legacy support)
+        share_keys = ['gp_share_amount', 'school_share_amount', 'gp_share_type', 'school_share_type']
+        if any(k in update_data for k in share_keys):
+            onboarding_data = {**current_inquiry.get('onboarding_data', {}), **{k: update_data[k] for k in share_keys if k in update_data}}
     if onboarding_data:
         school_name = current_inquiry.get('school_name', '')
         
-        # Check for GP Share expense - create or update
+        # Check for GP Share expense - create or update (any existing expense for this school/category)
         gp_share_amount = onboarding_data.get('gp_share_amount', 0)
         if gp_share_amount and float(gp_share_amount) > 0:
             existing_gp = await db.school_expenses.find_one({
                 "school_id": inquiry_id,
-                "category": "gp_share",
-                "source": {"$in": ["conversion", "renewal"]}
+                "category": "gp_share"
             })
             if not existing_gp:
                 gp_expense = {
@@ -7245,7 +6210,7 @@ async def update_school_inquiry(
                     "created_at": datetime.now(timezone.utc).isoformat(),
                     "updated_at": datetime.now(timezone.utc).isoformat(),
                     "auto_created": True,
-                    "source": "renewal"
+                    "source": "edit"
                 }
                 await db.school_expenses.insert_one(gp_expense)
             else:
@@ -7254,17 +6219,20 @@ async def update_school_inquiry(
                     {"id": existing_gp["id"]},
                     {"$set": {
                         "amount": float(gp_share_amount),
+                        "description": f"Growth Partner share ({onboarding_data.get('gp_share_type', 'amount')} - {onboarding_data.get('gp_share_calc', 'lumpsum')})",
+                        "gp_share_type": onboarding_data.get("gp_share_type"),
+                        "gp_share_calc": onboarding_data.get("gp_share_calc"),
+                        "gp_share_value": onboarding_data.get("gp_share_value"),
                         "updated_at": datetime.now(timezone.utc).isoformat()
                     }}
                 )
         
-        # Check for School Share expense - create or update
+        # Check for School Share expense - create or update (any existing expense for this school/category)
         school_share_amount = onboarding_data.get('school_share_amount', 0)
         if school_share_amount and float(school_share_amount) > 0:
             existing_school_share = await db.school_expenses.find_one({
                 "school_id": inquiry_id,
-                "category": "school_share",
-                "source": {"$in": ["conversion", "renewal"]}
+                "category": "school_share"
             })
             if not existing_school_share:
                 school_share_expense = {
@@ -7285,7 +6253,7 @@ async def update_school_inquiry(
                     "created_at": datetime.now(timezone.utc).isoformat(),
                     "updated_at": datetime.now(timezone.utc).isoformat(),
                     "auto_created": True,
-                    "source": "renewal"
+                    "source": "edit"
                 }
                 await db.school_expenses.insert_one(school_share_expense)
             else:
@@ -7294,6 +6262,10 @@ async def update_school_inquiry(
                     {"id": existing_school_share["id"]},
                     {"$set": {
                         "amount": float(school_share_amount),
+                        "description": f"School revenue share ({onboarding_data.get('school_share_type', 'amount')} - {onboarding_data.get('school_share_calc', 'lumpsum')})",
+                        "school_share_type": onboarding_data.get("school_share_type"),
+                        "school_share_calc": onboarding_data.get("school_share_calc"),
+                        "school_share_value": onboarding_data.get("school_share_value"),
                         "updated_at": datetime.now(timezone.utc).isoformat()
                     }}
                 )
@@ -7573,21 +6545,9 @@ class EducatorApplyWithOTP(BaseModel):
 @api_router.post("/educators/apply-verified")
 async def create_educator_application_verified(data: EducatorApplyWithOTP):
     """Create educator application with OTP verification"""
-    # Test OTP for development
-    TEST_OTP = "1111"
-    
-    stored = otp_store.get(data.phone)
-    
-    # Verify OTP
-    if not stored:
-        if data.otp != TEST_OTP:
-            raise HTTPException(status_code=400, detail="OTP expired or not found")
-    elif stored["otp"] != data.otp and data.otp != TEST_OTP:
-        raise HTTPException(status_code=400, detail="Invalid OTP")
-    
-    # Clear OTP
-    if stored and data.phone in otp_store:
-        del otp_store[data.phone]
+    success, error_msg = await otp_verify(data.phone, data.otp)
+    if not success:
+        raise HTTPException(status_code=400, detail=error_msg)
     
     # Create the application
     app_data = data.application_data.model_dump()
@@ -7665,6 +6625,36 @@ async def update_educator_application(
     
     update_data = {k: v for k, v in data.model_dump().items() if v is not None}
     update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    # If status is changing to 'active', copy onboarding data to educator profile
+    new_status = data.status
+    if new_status == "active" and old_status != "active":
+        # Fetch onboarding data
+        onboarding = await db.educator_onboarding.find_one({"educator_id": app_id}, {"_id": 0})
+        if onboarding:
+            # Copy profile fields from onboarding to educator application
+            profile_fields = [
+                'profile_photo', 'bio', 'tshirt_size', 
+                'address_line1', 'address_line2', 'city', 'state', 'pincode',
+                'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relation',
+                'aadhar_number', 'aadhar_document', 'pan_number', 'pan_document', 'id_verification_document',
+                'bank_name', 'account_holder_name', 'account_number', 'ifsc_code', 'bank_document',
+                'contract_accepted', 'contract_accepted_at', 'digital_signature',
+                'id_card_generated', 'certificate_generated', 'documents_verified', 'documents_verified_at'
+            ]
+            for field in profile_fields:
+                if onboarding.get(field):
+                    update_data[field] = onboarding[field]
+            
+            # Mark onboarding as completed
+            await db.educator_onboarding.update_one(
+                {"educator_id": app_id},
+                {"$set": {
+                    "status": "completed",
+                    "completed_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+    
     await db.educator_applications.update_one({"id": app_id}, {"$set": update_data})
     application = await db.educator_applications.find_one({"id": app_id}, {"_id": 0})
     if isinstance(application.get('created_at'), str):
@@ -7673,7 +6663,6 @@ async def update_educator_application(
         application['updated_at'] = datetime.fromisoformat(application['updated_at'])
     
     # Send email notifications based on status changes
-    new_status = data.status
     if new_status and new_status != old_status:
         if new_status == "demo_scheduled" and (data.demo_date or data.demo_time):
             await send_educator_demo_scheduled_email(application)
@@ -7788,7 +6777,7 @@ async def get_educator_onboarding(educator_id: str):
     onboarding = await db.educator_onboarding.find_one({"educator_id": educator_id}, {"_id": 0})
     
     if not onboarding:
-        # Create new onboarding record
+        # Create new onboarding record for educators without one
         educator = await db.educator_applications.find_one({"id": educator_id}, {"_id": 0})
         if not educator:
             raise HTTPException(status_code=404, detail="Educator not found")
@@ -7798,6 +6787,7 @@ async def get_educator_onboarding(educator_id: str):
         doc['started_at'] = doc['started_at'].isoformat()
         doc['last_activity'] = doc['last_activity'].isoformat()
         await db.educator_onboarding.insert_one(doc)
+        doc.pop('_id', None)  # Remove MongoDB ObjectId before returning
         onboarding = doc
     
     # Get educator details
@@ -7811,17 +6801,35 @@ async def get_educator_onboarding(educator_id: str):
 @api_router.patch("/educator/onboarding/{educator_id}")
 async def update_educator_onboarding(educator_id: str, data: EducatorOnboardingUpdate):
     """Update onboarding progress"""
-    update_data = {k: v for k, v in data.model_dump().items() if v is not None}
+    update_data = {k: v for k, v in data.model_dump().items() if v is not None and v != "" and v != {}}
     update_data['last_activity'] = datetime.now(timezone.utc).isoformat()
     
     # Check if contract is being accepted
     if data.contract_accepted:
         update_data['contract_accepted_at'] = datetime.now(timezone.utc).isoformat()
     
-    await db.educator_onboarding.update_one(
+    # Use upsert to create record if it doesn't exist
+    result = await db.educator_onboarding.update_one(
         {"educator_id": educator_id}, 
-        {"$set": update_data}
+        {
+            "$set": update_data,
+            "$setOnInsert": {
+                "id": str(uuid.uuid4()),
+                "current_step": 1,
+                "completed_steps": [],
+                "started_at": datetime.now(timezone.utc).isoformat(),
+                "status": "in_progress",
+                "documents_verified": False,
+                "welcome_video_watched": False,
+                "video_progress": {},
+                "video_uploads": {}
+            }
+        },
+        upsert=True
     )
+    
+    # No need to re-set educator_id separately — it's already in $set via update_data context
+    # (educator_id is the query field so MongoDB includes it in upserted document)
     
     onboarding = await db.educator_onboarding.find_one({"educator_id": educator_id}, {"_id": 0})
     return onboarding
@@ -7833,7 +6841,17 @@ async def complete_onboarding_step(educator_id: str, data: dict):
     
     onboarding = await db.educator_onboarding.find_one({"educator_id": educator_id}, {"_id": 0})
     if not onboarding:
-        raise HTTPException(status_code=404, detail="Onboarding record not found")
+        # Auto-create missing onboarding record
+        educator = await db.educator_applications.find_one({"id": educator_id}, {"_id": 0})
+        if not educator:
+            raise HTTPException(status_code=404, detail="Educator not found")
+        new_onboarding = EducatorOnboarding(educator_id=educator_id)
+        doc = new_onboarding.model_dump()
+        doc['started_at'] = doc['started_at'].isoformat()
+        doc['last_activity'] = doc['last_activity'].isoformat()
+        await db.educator_onboarding.insert_one(doc)
+        doc.pop('_id', None)
+        onboarding = doc
     
     completed_steps = onboarding.get("completed_steps", [])
     if step not in completed_steps:
@@ -8074,169 +7092,251 @@ async def bulk_import_educators(file: UploadFile = File(...), user: dict = Depen
     }
 
 # PDF Generation Helper Functions
+
+# Branded asset URLs (OLL vertical logo and signature)
+_OLL_LOGO_URL = "https://customer-assets.emergentagent.com/job_9d6a9928-5e77-45f3-ad7f-05d2ff27ef55/artifacts/8m4bz68i_OLL-vertical-logo--skills.png"
+_SHREYAAN_SIGN_URL = "https://customer-assets.emergentagent.com/job_9d6a9928-5e77-45f3-ad7f-05d2ff27ef55/artifacts/3iqpdsgr_Shreyaan%20Sign.png"
+_img_cache: dict = {}
+
+def _fetch_image_bytes(url: str):
+    """Download image bytes with in-memory cache. Returns None on failure."""
+    if url in _img_cache:
+        return _img_cache[url]
+    try:
+        resp = httpx.get(url, timeout=10, follow_redirects=True)
+        if resp.status_code == 200:
+            _img_cache[url] = resp.content
+            return resp.content
+    except Exception:
+        pass
+    return None
+
+def _make_circular_png(img_bytes: bytes) -> BytesIO:
+    """Apply circular mask to image bytes and return PNG BytesIO."""
+    try:
+        from PIL import Image, ImageDraw
+        img = Image.open(BytesIO(img_bytes)).convert("RGBA")
+        s = min(img.size)
+        img = img.crop(((img.width - s) // 2, (img.height - s) // 2,
+                        (img.width + s) // 2, (img.height + s) // 2))
+        mask = Image.new("L", (s, s), 0)
+        ImageDraw.Draw(mask).ellipse((0, 0, s, s), fill=255)
+        result = Image.new("RGBA", (s, s), (0, 0, 0, 0))
+        result.paste(img, mask=mask)
+        out = BytesIO()
+        result.save(out, format='PNG')
+        out.seek(0)
+        return out
+    except Exception:
+        return None
+
 def generate_id_card_pdf(educator_data, onboarding_data) -> BytesIO:
-    """Generate ID Card PDF based on OLL template"""
+    """Generate branded ID Card PDF with OLL logo and educator profile photo."""
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.units import inch, cm
+    from reportlab.lib.colors import HexColor, white, black
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.platypus import Paragraph
+    from reportlab.lib.enums import TA_CENTER
     from reportlab.lib.utils import ImageReader
-    
+    import qrcode
+    from PIL import Image
+
     buffer = BytesIO()
-    
-    # ID Card dimensions (similar to credit card - 3.375 x 2.125 inches, scaled up)
     width, height = 400, 550
     c = canvas.Canvas(buffer, pagesize=(width, height))
-    
-    # Colors
+
     dark_blue = HexColor('#1E3A5F')
     red = HexColor('#D63031')
-    
+
     # Background
     c.setFillColor(white)
     c.rect(0, 0, width, height, fill=1)
-    
+
     # Left blue border
     c.setFillColor(dark_blue)
     c.rect(0, 0, 15, height, fill=1)
-    
-    # Bottom curved section
+
+    # Bottom section
     c.setFillColor(dark_blue)
     c.rect(0, 0, width, 60, fill=1)
-    
-    # Red accent in corner
+
+    # Red accent circle in bottom corner
     c.setFillColor(red)
     c.circle(30, 30, 15, fill=1)
-    
-    # OLL Logo at top right
-    c.setFillColor(dark_blue)
-    c.setFont("Helvetica-Bold", 32)
-    c.drawRightString(width - 30, height - 50, "OLL")
-    
-    # Profile photo placeholder circle
-    c.setStrokeColor(dark_blue)
-    c.setLineWidth(3)
-    c.circle(width/2, height - 180, 70, stroke=1, fill=0)
-    
-    # Add text inside placeholder
-    c.setFillColor(HexColor('#CCCCCC'))
-    c.setFont("Helvetica", 10)
-    c.drawCentredString(width/2, height - 185, "Photo")
-    
+
+    # OLL Logo (top right) — actual image
+    logo_bytes = _fetch_image_bytes(_OLL_LOGO_URL)
+    if logo_bytes:
+        c.drawImage(ImageReader(BytesIO(logo_bytes)),
+                    width - 90, height - 80,
+                    width=65, height=60,
+                    preserveAspectRatio=True, mask='auto')
+    else:
+        c.setFillColor(dark_blue)
+        c.setFont("Helvetica-Bold", 28)
+        c.drawRightString(width - 20, height - 50, "OLL")
+
+    # Profile photo (circular)
+    profile_url = educator_data.get('profile_photo') or (onboarding_data or {}).get('profile_photo')
+    cx, cy, r = width / 2, height - 180, 70
+    if profile_url:
+        photo_bytes = _fetch_image_bytes(profile_url)
+        if photo_bytes:
+            circ_buf = _make_circular_png(photo_bytes)
+            if circ_buf:
+                c.drawImage(ImageReader(circ_buf), cx - r, cy - r,
+                            width=r * 2, height=r * 2, mask='auto')
+            else:
+                _draw_id_photo_placeholder(c, cx, cy, r, dark_blue)
+        else:
+            _draw_id_photo_placeholder(c, cx, cy, r, dark_blue)
+    else:
+        _draw_id_photo_placeholder(c, cx, cy, r, dark_blue)
+
     # Name
     c.setFillColor(black)
     c.setFont("Helvetica-Bold", 22)
     name = educator_data.get('name', 'Educator Name')
-    c.drawCentredString(width/2, height - 280, name)
-    
-    # Title/Role
+    c.drawCentredString(width / 2, height - 280, name)
+
+    # Role
     c.setFont("Helvetica", 16)
     c.setFillColor(red)
-    c.drawCentredString(width/2, height - 305, "OLL Educator")
-    
-    # Phone number
-    c.setFillColor(black)
+    c.drawCentredString(width / 2, height - 305, "OLL Educator")
+
+    # Phone & ID
+    c.setFillColor(white)
     c.setFont("Helvetica", 12)
     phone = educator_data.get('phone', '')
-    c.drawString(40, 130, f"Phone: +91 {phone}")
-    
-    # ID Number
+    c.drawString(25, 38, f"Phone: +91 {phone}")
     educator_id = educator_data.get('id', '')[:8].upper()
-    c.drawString(40, 105, f"ID: {educator_id}")
-    
-    # Generate QR Code and save to temp file
+    c.drawString(25, 20, f"ID: {educator_id}")
+
+    # QR Code
     qr = qrcode.QRCode(version=1, box_size=3, border=1)
     qr.add_data(f"OLL-EDU-{educator_id}")
     qr.make(fit=True)
     qr_img = qr.make_image(fill_color="black", back_color="white")
-    
-    # Save QR to temp file
     qr_temp_path = UPLOAD_DIR / f"qr_temp_{educator_id}.png"
     qr_img.save(str(qr_temp_path))
-    
-    # Draw QR code
-    c.drawImage(str(qr_temp_path), width - 100, 85, width=70, height=70)
-    
-    # Clean up temp file
+    c.drawImage(str(qr_temp_path), width - 88, 2, width=65, height=65)
     try:
         os.remove(qr_temp_path)
-    except:
+    except Exception:
         pass
-    
+
     c.save()
     buffer.seek(0)
     return buffer
 
+def _draw_id_photo_placeholder(c, cx, cy, r, color):
+    """Draw a placeholder circle when profile photo is unavailable."""
+    c.setStrokeColor(color)
+    c.setLineWidth(3)
+    c.setFillColor(HexColor('#E8EEF5'))
+    c.circle(cx, cy, r, stroke=1, fill=1)
+    c.setFillColor(HexColor('#8899AA'))
+    c.setFont("Helvetica", 9)
+    c.drawCentredString(cx, cy - 4, "No Photo")
+
 def generate_certificate_pdf(educator_data) -> BytesIO:
-    """Generate Certificate of Completion PDF"""
+    """Generate branded Certificate of Completion PDF with OLL logo and signature."""
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.colors import HexColor, white, black
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.platypus import Paragraph
+    from reportlab.lib.enums import TA_CENTER
+    from reportlab.lib.utils import ImageReader
+
     buffer = BytesIO()
-    
-    # A4 Landscape
     width, height = landscape(A4)
     c = canvas.Canvas(buffer, pagesize=(width, height))
-    
-    # Colors
+
     dark_blue = HexColor('#1E3A5F')
     red = HexColor('#D63031')
-    
+
     # White background
     c.setFillColor(white)
     c.rect(0, 0, width, height, fill=1)
-    
+
     # Decorative border
     c.setStrokeColor(dark_blue)
     c.setLineWidth(8)
-    c.rect(30, 30, width-60, height-60, stroke=1, fill=0)
-    
-    # Inner border
+    c.rect(30, 30, width - 60, height - 60, stroke=1, fill=0)
     c.setLineWidth(2)
-    c.rect(40, 40, width-80, height-80, stroke=1, fill=0)
-    
-    # OLL Logo at top center
+    c.rect(40, 40, width - 80, height - 80, stroke=1, fill=0)
+
+    # OLL Logo at top center — actual image
+    logo_bytes = _fetch_image_bytes(_OLL_LOGO_URL)
+    if logo_bytes:
+        logo_w, logo_h = 90, 80
+        c.drawImage(ImageReader(BytesIO(logo_bytes)),
+                    (width - logo_w) / 2, height - 105,
+                    width=logo_w, height=logo_h,
+                    preserveAspectRatio=True, mask='auto')
+    else:
+        c.setFillColor(dark_blue)
+        c.setFont("Helvetica-Bold", 36)
+        c.drawCentredString(width / 2, height - 100, "OLL")
+
+    # Certificate Title
     c.setFillColor(dark_blue)
-    c.setFont("Helvetica-Bold", 36)
-    c.drawCentredString(width/2, height - 100, "OLL")
-    
-    # Title
     c.setFont("Helvetica-Bold", 32)
-    c.drawCentredString(width/2, height - 160, "CERTIFICATE OF COMPLETION")
-    
+    c.drawCentredString(width / 2, height - 165, "CERTIFICATE OF COMPLETION")
+
     # Subtitle
     c.setFillColor(HexColor('#666666'))
     c.setFont("Helvetica", 14)
-    c.drawCentredString(width/2, height - 190, "This is to certify that")
-    
+    c.drawCentredString(width / 2, height - 195, "This is to certify that")
+
     # Recipient Name
     c.setFillColor(black)
     c.setFont("Helvetica-Bold", 40)
     name = educator_data.get('name', 'Educator Name')
-    c.drawCentredString(width/2, height - 250, name)
-    
-    # Role/Title in Red
+    c.drawCentredString(width / 2, height - 255, name)
+
+    # Role in Red
     c.setFillColor(red)
     c.setFont("Helvetica-Bold", 20)
-    c.drawCentredString(width/2, height - 290, "OLL Educator")
-    
+    c.drawCentredString(width / 2, height - 295, "OLL Educator")
+
     # Description
     c.setFillColor(black)
     c.setFont("Helvetica", 14)
     today = datetime.now().strftime("%d %B %Y")
-    c.drawCentredString(width/2, height - 330, 
-        f"Has successfully completed the OLL Educator Training Program")
-    c.drawCentredString(width/2, height - 355,
-        f"and is hereby certified as an official OLL Educator.")
-    
+    c.drawCentredString(width / 2, height - 335,
+                        "Has successfully completed the OLL Educator Training Program")
+    c.drawCentredString(width / 2, height - 360,
+                        "and is hereby certified as an official OLL Educator.")
+
     # Date
     c.setFont("Helvetica", 12)
-    c.drawCentredString(width/2, height - 390, f"Date: {today}")
-    
-    # Signature section
-    c.setFont("Helvetica-Bold", 14)
-    c.drawString(width - 250, 100, "SHREYAAN DAGA")
-    c.setFont("Helvetica", 12)
-    c.drawString(width - 250, 80, "Cofounder - OLL")
-    
+    c.drawCentredString(width / 2, height - 395, f"Date: {today}")
+
+    # Signature image (above the line)
+    sign_bytes = _fetch_image_bytes(_SHREYAAN_SIGN_URL)
+    sig_x = width - 280
+    if sign_bytes:
+        c.drawImage(ImageReader(BytesIO(sign_bytes)),
+                    sig_x, 115,
+                    width=140, height=65,
+                    preserveAspectRatio=True, mask='auto')
+
     # Signature line
     c.setStrokeColor(black)
     c.setLineWidth(1)
-    c.line(width - 280, 115, width - 150, 115)
-    
+    c.line(sig_x, 115, sig_x + 150, 115)
+
+    # Signatory name + title
+    c.setFillColor(black)
+    c.setFont("Helvetica-Bold", 14)
+    c.drawString(sig_x + 5, 100, "SHREYAAN DAGA")
+    c.setFont("Helvetica", 12)
+    c.drawString(sig_x + 5, 82, "Cofounder - OLL")
+
     c.save()
     buffer.seek(0)
     return buffer
@@ -8353,17 +7453,23 @@ async def direct_onboard_educator(data: dict, user: dict = Depends(get_current_u
     if user.get("role") not in ["admin", "team_member"]:
         raise HTTPException(status_code=403, detail="Not authorized")
     
+    # Handle skills - convert from string if necessary
+    skills = data.get("skills", [])
+    if isinstance(skills, str):
+        skills = [s.strip() for s in skills.split(',') if s.strip()]
+    
     # Create educator application with onboarding status
     educator = EducatorApplication(
         name=data.get("name", ""),
         email=data.get("email", ""),
         phone=data.get("phone", ""),
-        skills=data.get("skills", []),
+        skills=skills,
         city=data.get("city", ""),
         experience=data.get("experience", ""),
-        status="onboarding",
+        status="onboarded",
         source="direct_onboard",
-        added_by=user.get("id", "")
+        added_by=user.get("id", ""),
+        onboarding_date=datetime.now(timezone.utc).strftime("%Y-%m-%d")
     )
     
     doc = educator.model_dump()
@@ -8390,30 +7496,35 @@ async def direct_onboard_educator(data: dict, user: dict = Depends(get_current_u
 # Admin endpoint to view all onboarding progress
 @api_router.get("/admin/educators/onboarding-progress")
 async def get_all_onboarding_progress(user: dict = Depends(get_current_user)):
-    """Get onboarding progress for all educators"""
-    # Get all educators in onboarding status
+    """Get onboarding progress for all educators that have an onboarding record"""
+    # Get ALL onboarding records first
+    onboarding_records = await db.educator_onboarding.find({}, {"_id": 0}).to_list(500)
+    
+    if not onboarding_records:
+        return []
+    
+    educator_ids = [o["educator_id"] for o in onboarding_records]
+    
+    # Get matching educators (any status)
     educators = await db.educator_applications.find(
-        {"status": {"$in": ["onboarding", "onboarded"]}},
+        {"id": {"$in": educator_ids}},
         {"_id": 0}
     ).to_list(500)
     
-    # Get onboarding records
-    educator_ids = [e["id"] for e in educators]
-    onboarding_records = await db.educator_onboarding.find(
-        {"educator_id": {"$in": educator_ids}},
-        {"_id": 0}
-    ).to_list(500)
-    
-    # Create lookup
+    educator_map = {e["id"]: e for e in educators}
     onboarding_map = {o["educator_id"]: o for o in onboarding_records}
     
     result = []
-    for e in educators:
-        onb = onboarding_map.get(e["id"], {})
+    for educator_id in educator_ids:
+        educator = educator_map.get(educator_id)
+        onb = onboarding_map.get(educator_id, {})
+        if not educator:
+            continue
+        completed = onb.get("completed_steps", [])
         result.append({
-            "educator": e,
+            "educator": educator,
             "onboarding": onb,
-            "progress": len(onb.get("completed_steps", [])) / 7 * 100 if onb else 0
+            "progress": len(completed) / 7 * 100
         })
     
     return result
@@ -8425,24 +7536,9 @@ async def get_all_onboarding_progress(user: dict = Depends(get_current_user)):
 @api_router.post("/educator/login")
 async def educator_login(data: OTPVerify):
     """Login for educators (both onboarded and applicants) using phone + OTP"""
-    # Test OTP for development/testing
-    TEST_OTP = "1111"
-    
-    stored = otp_store.get(data.phone)
-    
-    # Verify OTP
-    if not stored:
-        if data.otp != TEST_OTP:
-            raise HTTPException(status_code=400, detail="OTP expired or not found")
-    elif stored["otp"] != data.otp and data.otp != TEST_OTP:
-        raise HTTPException(status_code=400, detail="Invalid OTP")
-    elif datetime.now(timezone.utc) > stored["expires"] and data.otp != TEST_OTP:
-        del otp_store[data.phone]
-        raise HTTPException(status_code=400, detail="OTP expired")
-    
-    # Clear OTP if stored
-    if stored and data.phone in otp_store:
-        del otp_store[data.phone]
+    success, error_msg = await otp_verify(data.phone, data.otp)
+    if not success:
+        raise HTTPException(status_code=400, detail=error_msg)
     
     # Find educator by phone (any status, not just onboarded)
     educator = await db.educator_applications.find_one({
@@ -8865,6 +7961,164 @@ async def educator_notify_student_not_joined(inquiry_id: str, user: dict = Depen
     
     return {"message": "Student has been notified that they haven't joined yet"}
 
+# ========================
+# EDUCATOR PROFILE ENDPOINTS
+# ========================
+
+@api_router.get("/educator/profile")
+async def get_educator_profile(user: dict = Depends(get_current_user)):
+    """Get educator's complete profile including onboarding data"""
+    educator_id = user.get("educator_id") or user.get("id")
+    
+    if not educator_id:
+        raise HTTPException(status_code=403, detail="Educator not found")
+    
+    # Get educator application with all fields
+    educator = await db.educator_applications.find_one({"id": educator_id}, {"_id": 0})
+    if not educator:
+        raise HTTPException(status_code=404, detail="Educator not found")
+    
+    # If educator is in onboarding/active and doesn't have profile data, check onboarding collection
+    if educator.get("status") in ["onboarded", "onboarding"] and not educator.get("profile_photo"):
+        onboarding = await db.educator_onboarding.find_one({"educator_id": educator_id}, {"_id": 0})
+        if onboarding:
+            # Merge onboarding data with educator data for response
+            profile_fields = [
+                'profile_photo', 'bio', 'tshirt_size', 
+                'address_line1', 'address_line2', 'city', 'state', 'pincode',
+                'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relation',
+                'aadhar_number', 'aadhar_document', 'pan_number', 'pan_document', 'id_verification_document',
+                'bank_name', 'account_holder_name', 'account_number', 'ifsc_code', 'bank_document',
+                'contract_accepted', 'contract_accepted_at', 'digital_signature'
+            ]
+            for field in profile_fields:
+                if onboarding.get(field) and not educator.get(field):
+                    educator[field] = onboarding[field]
+    
+    # Mask sensitive info for security (only show last 4 digits)
+    if educator.get("account_number"):
+        acc_num = educator["account_number"]
+        educator["account_number_masked"] = f"****{acc_num[-4:]}" if len(acc_num) > 4 else "****"
+    if educator.get("aadhar_number"):
+        aadhar = educator["aadhar_number"]
+        educator["aadhar_number_masked"] = f"****{aadhar[-4:]}" if len(aadhar) > 4 else "****"
+    
+    return educator
+
+@api_router.patch("/educator/profile")
+async def update_educator_profile(data: dict, user: dict = Depends(get_current_user)):
+    """Update educator's profile - allows updating personal info, bio, address, etc."""
+    educator_id = user.get("educator_id") or user.get("id")
+    
+    if not educator_id:
+        raise HTTPException(status_code=403, detail="Educator not found")
+    
+    # Fields that educators can update themselves
+    allowed_fields = [
+        'name', 'bio', 'profile_photo', 'tshirt_size',
+        'address_line1', 'address_line2', 'city', 'state', 'pincode',
+        'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relation',
+        'skills', 'experience', 'grades_comfortable', 'teaching_mode', 'availability',
+        'is_available'
+    ]
+    
+    # Filter only allowed fields
+    update_data = {k: v for k, v in data.items() if k in allowed_fields and v is not None}
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No valid fields to update")
+    
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    
+    # Update educator application
+    result = await db.educator_applications.update_one(
+        {"id": educator_id},
+        {"$set": update_data}
+    )
+    
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Educator not found or no changes made")
+    
+    # Also update onboarding record if exists
+    await db.educator_onboarding.update_one(
+        {"educator_id": educator_id},
+        {"$set": {k: v for k, v in update_data.items() if k in ['bio', 'profile_photo', 'tshirt_size', 
+            'address_line1', 'address_line2', 'city', 'state', 'pincode',
+            'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relation']}},
+        upsert=False
+    )
+    
+    # Return updated educator
+    educator = await db.educator_applications.find_one({"id": educator_id}, {"_id": 0})
+    return {"success": True, "message": "Profile updated successfully", "educator": educator}
+
+@api_router.patch("/educator/profile/bank-details")
+async def update_educator_bank_details(data: dict, user: dict = Depends(get_current_user)):
+    """Update educator's bank details - requires verification"""
+    educator_id = user.get("educator_id") or user.get("id")
+    
+    if not educator_id:
+        raise HTTPException(status_code=403, detail="Educator not found")
+    
+    # Bank detail fields
+    bank_fields = ['bank_name', 'account_holder_name', 'account_number', 'ifsc_code', 'bank_document']
+    update_data = {k: v for k, v in data.items() if k in bank_fields and v is not None}
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No valid bank fields to update")
+    
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    update_data['bank_details_updated_at'] = datetime.now(timezone.utc).isoformat()
+    update_data['bank_details_verified'] = False  # Mark as unverified after update
+    
+    # Update educator application
+    await db.educator_applications.update_one(
+        {"id": educator_id},
+        {"$set": update_data}
+    )
+    
+    # Also update onboarding record if exists
+    await db.educator_onboarding.update_one(
+        {"educator_id": educator_id},
+        {"$set": update_data},
+        upsert=False
+    )
+    
+    return {"success": True, "message": "Bank details updated. They will be verified soon."}
+
+@api_router.patch("/educator/profile/documents")
+async def update_educator_documents(data: dict, user: dict = Depends(get_current_user)):
+    """Update educator's documents (Aadhar, PAN, etc.)"""
+    educator_id = user.get("educator_id") or user.get("id")
+    
+    if not educator_id:
+        raise HTTPException(status_code=403, detail="Educator not found")
+    
+    # Document fields
+    doc_fields = ['aadhar_number', 'aadhar_document', 'pan_number', 'pan_document', 'id_verification_document']
+    update_data = {k: v for k, v in data.items() if k in doc_fields and v is not None}
+    
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No valid document fields to update")
+    
+    update_data['updated_at'] = datetime.now(timezone.utc).isoformat()
+    update_data['documents_verified'] = False  # Mark as unverified after update
+    
+    # Update educator application
+    await db.educator_applications.update_one(
+        {"id": educator_id},
+        {"$set": update_data}
+    )
+    
+    # Also update onboarding record if exists
+    await db.educator_onboarding.update_one(
+        {"educator_id": educator_id},
+        {"$set": update_data},
+        upsert=False
+    )
+    
+    return {"success": True, "message": "Documents updated. They will be verified soon."}
+
 @api_router.post("/admin/notify-not-joined/{inquiry_id}")
 async def admin_notify_not_joined(inquiry_id: str, data: dict, user: dict = Depends(get_current_user)):
     """Admin notifies student or educator that they haven't joined"""
@@ -9129,12 +8383,126 @@ async def get_open_requirements(city: Optional[str] = None, skill: Optional[str]
             req['created_at'] = datetime.fromisoformat(req['created_at'])
     return requirements
 
+@api_router.get("/requirements/{req_id}")
+async def get_single_requirement(req_id: str):
+    """Public: get a single requirement by ID"""
+    req = await db.open_requirements.find_one({"id": req_id}, {"_id": 0})
+    if not req:
+        raise HTTPException(status_code=404, detail="Requirement not found")
+    if isinstance(req.get('created_at'), str):
+        req['created_at'] = datetime.fromisoformat(req['created_at'])
+    return req
+
+async def notify_educators_new_requirement(requirement: dict):
+    """Background task: send email to all educators when a new requirement is posted."""
+    try:
+        await ensure_resend_api_key()
+        # Fetch all educators that should be notified
+        target_statuses = ['new', 'demo_scheduled', 'hr_done', 'tech_scheduled', 'demo_completed', 'onboarded', 'active']
+        educators = await db.educator_applications.find(
+            {"status": {"$in": target_statuses}, "email": {"$exists": True, "$ne": ""}},
+            {"_id": 0, "name": 1, "email": 1}
+        ).to_list(1000)
+
+        if not educators:
+            logging.info("[REQ_NOTIFY] No educators to notify")
+            return
+
+        req_id = requirement.get("id", "")
+        frontend_url = os.environ.get("FRONTEND_URL", "https://camp-lead-capture.preview.emergentagent.com")
+        apply_link = f"{frontend_url}/educator/apply/{req_id}"
+
+        pay_text = ""
+        if requirement.get("pay_amount"):
+            pay_type_label = {"per_session": "per session", "per_day": "per day", "per_month": "per month"}.get(requirement.get("pay_type", ""), "")
+            pay_text = f"<p style='margin:5px 0;'><strong>Pay:</strong> ₹{requirement['pay_amount']} {pay_type_label}</p>"
+
+        timing_text = ""
+        if requirement.get("timing_from") and requirement.get("timing_to"):
+            timing_text = f"<p style='margin:5px 0;'><strong>Timing:</strong> {requirement['timing_from']} – {requirement['timing_to']}</p>"
+
+        days_text = ""
+        if requirement.get("days"):
+            days_text = f"<p style='margin:5px 0;'><strong>Days:</strong> {', '.join(requirement['days'])}</p>"
+
+        sent_count = 0
+        for educator in educators:
+            try:
+                name = educator.get("name", "Educator")
+                email = educator.get("email", "")
+                if not email:
+                    continue
+
+                html = f"""
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <div style="background: linear-gradient(135deg, #1E3A5F 0%, #D63031 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+                        <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 800;">OLL</h1>
+                        <p style="color: #f0f0f0; margin: 6px 0 0 0; font-size: 14px;">New Teaching Opportunity</p>
+                    </div>
+                    <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
+                        <h2 style="color: #1E3A5F; margin-top: 0;">Hi {name}! 👋</h2>
+                        <p style="color: #444; line-height: 1.6;">We just posted a new teaching opportunity that you or someone you know might be a great fit for:</p>
+
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #D63031;">
+                            <h3 style="color: #1E3A5F; margin-top: 0; font-size: 18px;">{requirement.get('title', 'New Opening')}</h3>
+                            <p style="margin:5px 0;"><strong>Skill:</strong> {requirement.get('skill', '')}</p>
+                            <p style="margin:5px 0;"><strong>Location:</strong> {requirement.get('city', '')}{(' – ' + requirement.get('area', '')) if requirement.get('area') else ''}</p>
+                            <p style="margin:5px 0;"><strong>Positions:</strong> {requirement.get('positions', 1)}</p>
+                            {pay_text}
+                            {timing_text}
+                            {days_text}
+                            {('<p style="margin:10px 0 0 0; color:#555;">' + requirement.get('description','') + '</p>') if requirement.get('description') else ''}
+                        </div>
+
+                        <p style="color: #444; line-height: 1.6; font-size: 15px;">
+                            <strong>Know someone perfect for this role?</strong> Share the link below — you'll be helping a great candidate find their opportunity!
+                        </p>
+
+                        <div style="text-align: center; margin: 28px 0;">
+                            <a href="{apply_link}" style="background: #D63031; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 15px; display: inline-block;">
+                                Apply or Refer a Candidate →
+                            </a>
+                        </div>
+
+                        <p style="color: #888; font-size: 13px; line-height: 1.6;">
+                            Or copy this link: <a href="{apply_link}" style="color: #D63031;">{apply_link}</a>
+                        </p>
+
+                        <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+                        <p style="color: #999; font-size: 12px; margin: 0;">You're receiving this because you're part of the OLL Educator community. Thank you for being with us!</p>
+                    </div>
+                    <div style="text-align: center; padding: 16px; color: #bbb; font-size: 11px;">
+                        © 2026 OLL. All rights reserved.
+                    </div>
+                </div>
+                """
+
+                params = {
+                    "from": "OLL Team <welcome@oll.co>",
+                    "to": [email],
+                    "subject": f"New Opening: {requirement.get('title', 'Teaching Opportunity')} — Refer or Apply",
+                    "html": html,
+                    "reply_to": "info@oll.co"
+                }
+                await asyncio.to_thread(resend.Emails.send, params)
+                sent_count += 1
+                await asyncio.sleep(0.1)  # small delay to avoid rate limits
+            except Exception as e:
+                logging.error(f"[REQ_NOTIFY] Failed to email {educator.get('email')}: {e}")
+
+        logging.info(f"[REQ_NOTIFY] Sent new requirement notification to {sent_count}/{len(educators)} educators")
+    except Exception as e:
+        logging.error(f"[REQ_NOTIFY] Background task failed: {e}")
+
 @api_router.post("/requirements", response_model=OpenRequirement)
-async def create_requirement(data: OpenRequirementCreate, user: dict = Depends(get_current_user)):
+async def create_requirement(data: OpenRequirementCreate, user: dict = Depends(get_current_user), background_tasks: BackgroundTasks = None):
     requirement = OpenRequirement(**data.model_dump())
     doc = requirement.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
     await db.open_requirements.insert_one(doc)
+    # Send email notifications to all educators in background
+    if background_tasks:
+        background_tasks.add_task(notify_educators_new_requirement, requirement.model_dump())
     return requirement
 
 @api_router.patch("/requirements/{req_id}", response_model=OpenRequirement)
@@ -9583,24 +8951,28 @@ async def assign_support_query(query_id: str, data: dict, user: dict = Depends(g
         
         # Send WhatsApp notification
         # The support_ticket_added template expects: [Name, TicketID, Subject, Priority, CustomerName]
-        if assignee_phone:
+        if assignee_phone and assignee_phone not in ['None', '', 'null']:
             try:
                 ticket_id = query_id[:8].upper()
                 subject = query.get("query_type", "Support Request")
                 priority = query.get("priority", "normal").upper()
                 customer_name = query.get("name", "Customer")
                 
+                print(f"[ASSIGN] Sending WhatsApp to {assignee_phone} with params: [{assignee_name}, {ticket_id}, {subject}, {priority}, {customer_name}]")
+                
                 result = await send_whatsapp_notification(
                     assignee_phone,
                     "ticket_assigned",
                     params=[assignee_name, ticket_id, subject, priority, customer_name],
-                    user_name=assignee_name
+                    user_name="Clone Futura Live Solutions Ltd"
                 )
                 print(f"[ASSIGN] WhatsApp result: {result}")
             except Exception as e:
                 print(f"[ASSIGN] Failed to send WhatsApp: {e}")
+                import traceback
+                traceback.print_exc()
         else:
-            print(f"[ASSIGN] No phone number for {assignee_name}, skipping WhatsApp")
+            print(f"[ASSIGN] Skipping WhatsApp - no phone for {assignee_name} (phone={assignee_phone})")
         
         # Send Email notification using resend
         if assignee_email and resend.api_key:
@@ -9703,7 +9075,8 @@ async def add_query_reply(query_id: str, data: dict, user: dict = Depends(get_cu
         "by": user.get("name", user.get("email", "admin")),
         "by_id": user.get("id", user.get("email")),
         "role": user.get("role", "admin"),
-        "created_at": datetime.now(timezone.utc).isoformat()
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "attachment": data.get("attachment")  # {url, filename, original_name, type}
     }
     
     # Add reply and activity history entry
@@ -9726,7 +9099,127 @@ async def add_query_reply(query_id: str, data: dict, user: dict = Depends(get_cu
         update["$set"]["status"] = "in_progress"
     
     await db.support_queries.update_one({"id": query_id}, update)
+    
+    # Send email notifications to assignee and viewers (fire-and-forget)
+    if query:
+        try:
+            task = asyncio.create_task(_send_reply_notifications(query, reply, user))
+            task.add_done_callback(lambda t: print(f"[REPLY_NOTIFY] Task done: {t.exception() if t.exception() else 'OK'}") if t.done() else None)
+        except Exception as e:
+            print(f"[REPLY_NOTIFY] Failed to create notification task: {e}")
+    
     return {"message": "Reply added successfully", "reply": reply}
+
+
+async def _send_reply_notifications(query: dict, reply: dict, replier: dict):
+    """Send email notifications to assignee and viewers about a new reply"""
+    try:
+        await ensure_resend_api_key()
+        if not resend.api_key:
+            print("[REPLY_NOTIFY] Resend API key not configured, skipping email")
+            return
+        
+        # Collect recipient emails (exclude the person who wrote the reply)
+        replier_id = replier.get("id", replier.get("email"))
+        recipients = []
+        
+        # Re-fetch query to get latest assigned_to (may have been updated just before reply)
+        fresh_query = await db.support_queries.find_one({"id": query.get("id")}, {"_id": 0})
+        if fresh_query:
+            query = fresh_query
+        
+        # 1. Get assignee email
+        assigned_to = query.get("assigned_to")
+        if assigned_to and assigned_to != replier_id:
+            assignee = await db.team_users.find_one({"id": assigned_to}, {"_id": 0})
+            if not assignee:
+                assignee = await db.admins.find_one({"id": assigned_to}, {"_id": 0})
+            if assignee and assignee.get("email"):
+                recipients.append({"email": assignee["email"], "name": assignee.get("name", "Team Member"), "role": "Assignee"})
+        
+        # 2. Get viewer emails
+        viewer_ids = query.get("viewers", [])
+        for vid in viewer_ids:
+            if vid == replier_id:
+                continue
+            # Skip if already added as assignee
+            if vid == assigned_to:
+                continue
+            viewer = await db.team_users.find_one({"id": vid}, {"_id": 0})
+            if not viewer:
+                viewer = await db.admins.find_one({"id": vid}, {"_id": 0})
+            if viewer and viewer.get("email"):
+                recipients.append({"email": viewer["email"], "name": viewer.get("name", "Team Member"), "role": "Viewer"})
+        
+        if not recipients:
+            print(f"[REPLY_NOTIFY] No recipients for query {query.get('id', '')[:8]}")
+            return
+        
+        # Build email
+        query_type = query.get("query_type", "Support Request").replace("_", " ").title()
+        customer_name = query.get("name", "Customer")
+        ticket_id = query.get("id", "")[:8].upper()
+        reply_text = reply.get("text", "No text")
+        reply_by = reply.get("by", "Team")
+        reply_time = reply.get("created_at", "")[:16].replace("T", " ")
+        subject_line = query.get("subject", query_type)
+        attachment_info = ""
+        if reply.get("attachment"):
+            att = reply["attachment"]
+            attachment_info = f"""
+            <div style="background: #e8f4fd; padding: 10px; border-radius: 6px; margin-top: 10px;">
+                <p style="margin: 0; font-size: 13px; color: #1E3A5F;">
+                    <strong>Attachment:</strong> {att.get('original_name', att.get('filename', 'File'))}
+                </p>
+            </div>
+            """
+        
+        to_emails = [r["email"] for r in recipients]
+        
+        html_content = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #1E3A5F 0%, #2d5a87 100%); padding: 20px 30px; border-radius: 10px 10px 0 0;">
+                <h2 style="color: white; margin: 0; font-size: 20px;">New Reply on Ticket #{ticket_id}</h2>
+                <p style="color: #b0c4de; margin: 5px 0 0; font-size: 13px;">{subject_line}</p>
+            </div>
+            <div style="background: #ffffff; padding: 25px 30px; border: 1px solid #e5e7eb; border-top: none;">
+                <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #1E3A5F; margin-bottom: 20px;">
+                    <p style="margin: 0 0 8px; font-size: 13px; color: #6b7280;">
+                        <strong style="color: #1E3A5F;">{reply_by}</strong> replied on {reply_time}
+                    </p>
+                    <p style="margin: 0; font-size: 14px; color: #374151; line-height: 1.6; white-space: pre-wrap;">{reply_text}</p>
+                    {attachment_info}
+                </div>
+                <div style="background: #f0f0f0; padding: 12px 15px; border-radius: 8px; margin-bottom: 15px;">
+                    <p style="margin: 0; font-size: 12px; color: #6b7280;">
+                        <strong>Customer:</strong> {customer_name} &nbsp;|&nbsp;
+                        <strong>Type:</strong> {query_type} &nbsp;|&nbsp;
+                        <strong>Priority:</strong> {query.get('priority', 'normal').upper()}
+                    </p>
+                </div>
+                <p style="margin: 0; font-size: 13px; color: #6b7280;">
+                    Log in to the <a href="https://oll.co/admin/support" style="color: #1E3A5F; text-decoration: underline;">Support Center</a> to view the full conversation and respond.
+                </p>
+            </div>
+            <div style="background: #f8f9fa; padding: 15px 30px; border-radius: 0 0 10px 10px; border: 1px solid #e5e7eb; border-top: none;">
+                <p style="margin: 0; font-size: 11px; color: #9ca3af; text-align: center;">OLL Team &mdash; Support Notification</p>
+            </div>
+        </div>
+        """
+        
+        email_params = {
+            "from": SENDER_EMAIL,
+            "to": to_emails,
+            "subject": f"New Reply: Ticket #{ticket_id} - {subject_line}",
+            "html": html_content,
+            "reply_to": "info@oll.co"
+        }
+        
+        result = await asyncio.to_thread(resend.Emails.send, email_params)
+        print(f"[REPLY_NOTIFY] Email sent to {to_emails} for query {ticket_id}: {result}")
+        
+    except Exception as e:
+        print(f"[REPLY_NOTIFY] Failed to send notification: {e}")
 
 @api_router.get("/support/queries/{query_id}/history")
 async def get_query_history(query_id: str, user: dict = Depends(get_current_user)):
@@ -10949,13 +10442,26 @@ async def send_crm_email_for_school(
         )
 
         if result.get("success"):
-            # Log this email in the school's activity log
+            # Human-friendly email type labels
+            email_labels = {
+                "introduction":          "Introduction email sent",
+                "proposal":              "Proposal email sent",
+                "mou":                   "MOU email sent",
+                "meeting_confirmation":  "Meeting confirmation email sent",
+                "followup":              "Follow-up email sent",
+                "followup_1":            "Follow-up 1 email sent",
+                "followup_2":            "Follow-up 2 email sent",
+                "followup_3":            "Follow-up 3 email sent",
+                "followup_4":            "Follow-up 4 email sent",
+            }
+            label = email_labels.get(email_type, f"{email_type.replace('_', ' ').title()} email sent")
+            pdf_note = " (with PDF)" if data.get("pdf_base64") else ""
             await db.school_inquiries.update_one(
                 {"id": school_id},
                 {"$push": {"activity_log": {
                     "id": str(uuid.uuid4()),
                     "action": f"email_sent_{email_type}",
-                    "description": f"Email sent ({email_type.replace('_', ' ').title()}) to {to_email}",
+                    "description": f"{label} to {to_email}{pdf_note}",
                     "performed_by": user.get("name", "Admin"),
                     "performed_at": datetime.now(timezone.utc).isoformat()
                 }}}
@@ -11132,142 +10638,152 @@ DEFAULT_ONBOARDING_STEPS = {
     "payment_collection": {
         "title": "Payment Collection",
         "description": "Initial payment received from school",
-        "completed": False,
-        "completed_date": None,
-        "data": {
-            "amount": None,
-            "payment_date": None,
-            "payment_mode": None,
-            "transaction_id": None,
-            "notes": ""
-        }
+        "completed": False, "completed_date": None,
+        "data": {"amount": None, "payment_date": None, "payment_mode": None, "transaction_id": None, "notes": ""}
     },
     "kit_delivery": {
         "title": "Kit Delivery & Tracking",
         "description": "Kits dispatched and delivered to school",
-        "completed": False,
-        "completed_date": None,
-        "data": {
-            "dispatch_date": None,
-            "tracking_link": "",
-            "delivery_date": None,
-            "items_list": [],
-            "notes": ""
-        }
+        "completed": False, "completed_date": None,
+        "data": {"dispatch_date": None, "tracking_link": "", "delivery_date": None, "items_list": [], "notes": ""}
     },
     "distribution_checking": {
-        "title": "Distribution & Checking",
+        "title": "Kit Distribution",
         "description": "Kits distributed to students and verified",
-        "completed": False,
-        "completed_date": None,
-        "data": {
-            "distribution_date": None,
-            "students_count": None,
-            "queries": [],
-            "notes": ""
-        }
+        "completed": False, "completed_date": None,
+        "data": {"distribution_date": None, "students_count": None, "queries": [], "notes": ""}
+    },
+    "lab_setup": {
+        "title": "Lab Setup",
+        "description": "School lab installed and configured",
+        "completed": False, "completed_date": None,
+        "data": {"setup_date": None, "technician_name": "", "checklist": [], "notes": ""}
+    },
+    "lab_refilling": {
+        "title": "Kits Checking & Refilling",
+        "description": "Existing lab kits inspected and refilled for renewal",
+        "completed": False, "completed_date": None,
+        "data": {"check_date": None, "items_replaced": [], "notes": ""}
     },
     "technical_check": {
         "title": "Technical Check",
         "description": "All technical requirements verified",
-        "completed": False,
-        "completed_date": None,
-        "data": {
-            "checklist": [
-                {"item": "Lab/Classroom setup verified", "checked": False},
-                {"item": "Power supply & electrical points", "checked": False},
-                {"item": "Internet connectivity", "checked": False},
-                {"item": "Projector/Display working", "checked": False},
-                {"item": "All kits functional", "checked": False},
-                {"item": "Software installed", "checked": False}
-            ],
-            "notes": ""
-        }
+        "completed": False, "completed_date": None,
+        "data": {"checklist": [
+            {"item": "Lab/Classroom setup verified", "checked": False},
+            {"item": "Power supply & electrical points", "checked": False},
+            {"item": "Internet connectivity", "checked": False},
+            {"item": "Projector/Display working", "checked": False},
+            {"item": "All kits functional", "checked": False},
+            {"item": "Software installed", "checked": False}
+        ], "notes": ""}
     },
     "teacher_training": {
         "title": "Teacher Training",
         "description": "Teachers trained and certified",
-        "completed": False,
-        "completed_date": None,
-        "data": {
-            "training_date": None,
-            "training_mode": "offline",
-            "teachers_count": None,
-            "checklist": [
-                {"item": "Training session conducted", "checked": False},
-                {"item": "Assessment completed", "checked": False},
-                {"item": "Certificates issued", "checked": False},
-                {"item": "Doubt clearing session done", "checked": False}
-            ],
-            "teachers": [],
-            "notes": ""
-        }
+        "completed": False, "completed_date": None,
+        "data": {"training_date": None, "training_mode": "offline", "teachers_count": None,
+                 "checklist": [
+                     {"item": "Training session conducted", "checked": False},
+                     {"item": "Assessment completed", "checked": False},
+                     {"item": "Certificates issued", "checked": False},
+                     {"item": "Doubt clearing session done", "checked": False}
+                 ], "teachers": [], "notes": ""}
+    },
+    "teacher_allocation": {
+        "title": "Teacher Allocation",
+        "description": "OLL educator allocated to the school for student training",
+        "completed": False, "completed_date": None,
+        "data": {"educator_name": "", "educator_phone": "", "allocation_date": None, "grades_assigned": [], "notes": ""}
+    },
+    "teacher_approval": {
+        "title": "Teacher Approval from School",
+        "description": "School principal/contact approves the allocated educator",
+        "completed": False, "completed_date": None,
+        "data": {"approval_date": None, "approved_by": "", "approval_mode": "email", "notes": ""}
+    },
+    "timetable_finalization": {
+        "title": "Timetable Creation",
+        "description": "Class timetable created and confirmed by school",
+        "completed": False, "completed_date": None,
+        "data": {"grades": [], "sessions_per_week": None, "synced_to_checkin": False, "timetable_data": [], "notes": ""}
     },
     "calendar_making": {
         "title": "Calendar Making",
         "description": "Academic calendar finalized with all events",
-        "completed": False,
-        "completed_date": None,
-        "data": {
-            "holidays": [],
-            "competitions": [],
-            "exhibitions": [],
-            "special_events": [],
-            "notes": ""
-        }
-    },
-    "timetable_finalization": {
-        "title": "Timetable Finalization",
-        "description": "Class timetable created and synced",
-        "completed": False,
-        "completed_date": None,
-        "data": {
-            "grades": [],
-            "sessions_per_week": None,
-            "synced_to_checkin": False,
-            "timetable_data": [],
-            "notes": ""
-        }
+        "completed": False, "completed_date": None,
+        "data": {"holidays": [], "competitions": [], "exhibitions": [], "special_events": [], "notes": ""}
     },
     "mou_signing": {
         "title": "MOU Signing",
         "description": "Memorandum of Understanding signed",
-        "completed": False,
-        "completed_date": None,
-        "data": {
-            "mou_date": None,
-            "signed_by_school": False,
-            "signed_by_oll": False,
-            "document_link": "",
-            "notes": ""
-        }
+        "completed": False, "completed_date": None,
+        "data": {"mou_date": None, "signed_by_school": False, "signed_by_oll": False, "document_link": "", "notes": ""}
     },
     "lms_setup": {
         "title": "LMS Setup",
         "description": "Student credentials uploaded to LMS",
-        "completed": False,
-        "completed_date": None,
-        "data": {
-            "students_uploaded": 0,
-            "upload_date": None,
-            "file_url": "",
-            "students_list": [],
-            "notes": ""
-        }
+        "completed": False, "completed_date": None,
+        "data": {"students_uploaded": 0, "upload_date": None, "file_url": "", "students_list": [], "notes": ""}
     },
     "school_confirmation": {
         "title": "School Finalization",
         "description": "Final confirmation received from school",
-        "completed": False,
-        "completed_date": None,
-        "data": {
-            "confirmation_date": None,
-            "confirmed_by": "",
-            "feedback": "",
-            "notes": ""
-        }
+        "completed": False, "completed_date": None,
+        "data": {"confirmation_date": None, "confirmed_by": "", "feedback": "", "notes": ""}
     }
 }
+
+# ── Ordered step keys per scenario ────────────────────────────────────────
+# Used to control rendering order in the UI
+
+def generate_dynamic_onboarding_steps(onboarding_data: dict, is_renewal: bool = False) -> dict:
+    """
+    Build a tailored onboarding workflow based on the school's program details.
+
+    Rules
+    ─────
+    • individual kit  → kit_distribution step
+    • lab setup       → no kit_distribution; new=lab_setup | renewal=lab_refilling
+    • teacher_training (or both) → teacher_training step
+    • student_training (or both) → teacher_allocation + teacher_approval + timetable_finalization
+    """
+    import copy
+
+    kit_type      = (onboarding_data.get("kit_type") or "individual").lower()
+    training_type = (onboarding_data.get("training_type") or "teacher_training").lower()
+
+    all_steps = copy.deepcopy(DEFAULT_ONBOARDING_STEPS)
+
+    # Determine which step keys are active (in order)
+    ordered_keys = ["payment_collection", "kit_delivery"]
+
+    if kit_type in ("individual", "student_kit", "individual_books"):
+        ordered_keys.append("distribution_checking")
+    elif kit_type == "lab_setup":
+        ordered_keys.append("lab_refilling" if is_renewal else "lab_setup")
+
+    ordered_keys.append("technical_check")
+
+    needs_teacher_training = training_type in ("teacher_training", "both")
+    needs_student_training = training_type in ("student_training", "both")
+
+    if needs_teacher_training:
+        ordered_keys.append("teacher_training")
+
+    if needs_student_training:
+        ordered_keys += ["timetable_finalization", "teacher_allocation", "teacher_approval"]
+
+    ordered_keys += ["calendar_making", "mou_signing", "lms_setup", "school_confirmation"]
+
+    # Return only the active steps (in order, as an ordered dict)
+    from collections import OrderedDict
+    active = OrderedDict()
+    for key in ordered_keys:
+        if key in all_steps:
+            active[key] = all_steps[key]
+
+    return dict(active)
 
 @api_router.post("/schools/{school_id}/init-onboarding")
 async def init_school_onboarding(school_id: str, data: dict = None, user: dict = Depends(get_current_user)):
@@ -11286,10 +10802,12 @@ async def init_school_onboarding(school_id: str, data: dict = None, user: dict =
     # Generate unique tracking token
     tracking_token = f"oll-{uuid.uuid4().hex[:12]}"
     
-    # Initialize onboarding steps with MOU already completed
-    steps = copy.deepcopy(DEFAULT_ONBOARDING_STEPS)
-    steps["mou_signing"]["completed"] = True
-    steps["mou_signing"]["completed_date"] = datetime.now(timezone.utc).isoformat()
+    # Initialize onboarding steps dynamically based on what the school purchased
+    onboarding_data_for_steps = school.get("onboarding_data") or {}
+    steps = generate_dynamic_onboarding_steps(onboarding_data_for_steps, is_renewal=is_renewal)
+    if "mou_signing" in steps:
+        steps["mou_signing"]["completed"] = True
+        steps["mou_signing"]["completed_date"] = datetime.now(timezone.utc).isoformat()
     
     action_label = "Renewal Started" if is_renewal else "Onboarding Started"
     mou_label = "MOU Signed - School Renewed" if is_renewal else "MOU Signed - School Converted"
@@ -11325,7 +10843,7 @@ async def init_school_onboarding(school_id: str, data: dict = None, user: dict =
     
     # Get updated school and onboarding data
     school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
-    onboarding_data = school.get("onboarding_data", {})
+    onboarding_data = school.get("onboarding_data") or {}
     
     # Send welcome email to school
     school_emails = []
@@ -11501,6 +11019,74 @@ async def init_school_onboarding(school_id: str, data: dict = None, user: dict =
         "emails_sent": school_emails
     }
 
+@api_router.post("/schools/{school_id}/regenerate-workflow")
+async def regenerate_onboarding_workflow(school_id: str, user: dict = Depends(get_current_user)):
+    """
+    Regenerate onboarding workflow steps based on current onboarding_data.
+    Preserves completed status and data for steps that exist in both old and new workflow.
+    Useful when a school's kit_type or training_type changes after onboarding was initialized.
+    """
+    school = await db.school_inquiries.find_one({"id": school_id})
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+
+    workflow = school.get("onboarding_workflow")
+    if not workflow:
+        raise HTTPException(status_code=400, detail="No onboarding workflow found. Initialize onboarding first.")
+
+    onboarding_data = school.get("onboarding_data") or {}
+    is_renewal = workflow.get("is_renewal", False)
+
+    # Generate fresh step set based on current onboarding_data
+    new_steps = generate_dynamic_onboarding_steps(onboarding_data, is_renewal=is_renewal)
+
+    # Preserve completed status and data from existing steps
+    old_steps = workflow.get("steps", {})
+    for key, step in new_steps.items():
+        if key in old_steps:
+            step["completed"] = old_steps[key].get("completed", False)
+            step["completed_date"] = old_steps[key].get("completed_date")
+            # Merge saved data fields
+            saved_data = old_steps[key].get("data", {})
+            if saved_data:
+                step["data"] = {**step.get("data", {}), **saved_data}
+
+    # Find next incomplete step
+    current_step = None
+    for sk in new_steps.keys():
+        if not new_steps[sk].get("completed", False):
+            current_step = sk
+            break
+
+    workflow["steps"] = new_steps
+    workflow["current_step"] = current_step
+
+    # Add timeline entry
+    timeline = workflow.get("timeline", [])
+    timeline.append({
+        "action": "Workflow steps regenerated based on current program details",
+        "date": datetime.now(timezone.utc).isoformat(),
+        "by": user.get("name", user.get("email", "Admin"))
+    })
+    workflow["timeline"] = timeline
+
+    await db.school_inquiries.update_one(
+        {"id": school_id},
+        {"$set": {
+            "onboarding_workflow": workflow,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }}
+    )
+
+    updated_school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
+    return {
+        "success": True,
+        "message": f"Workflow regenerated with {len(new_steps)} steps",
+        "workflow": updated_school.get("onboarding_workflow"),
+        "school": updated_school
+    }
+
+
 @api_router.patch("/schools/{school_id}/onboarding-step/{step_key}")
 async def update_onboarding_step(
     school_id: str, 
@@ -11551,12 +11137,9 @@ async def update_onboarding_step(
     if all_completed:
         workflow["completed_at"] = datetime.now(timezone.utc).isoformat()
     
-    # Find next incomplete step
-    step_order = ["payment_collection", "kit_delivery", "distribution_checking", 
-                  "technical_check", "teacher_training", "calendar_making", 
-                  "timetable_finalization", "mou_signing", "school_confirmation"]
+    # Find next incomplete step using actual workflow keys (preserves dynamic order)
     current_step = None
-    for sk in step_order:
+    for sk in steps.keys():
         if not steps.get(sk, {}).get("completed", False):
             current_step = sk
             break
@@ -11631,6 +11214,134 @@ async def add_onboarding_query(
     
     return {"success": True, "query": query}
 
+
+@api_router.post("/schools/{school_id}/send-mou-email")
+async def send_mou_email(school_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Send MOU PDF as email attachment to school contacts"""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+
+    mou_url = data.get("mou_url")
+    file_name = data.get("file_name", "MOU.pdf")
+    recipient_emails = data.get("emails", [])
+
+    # Collect school contact emails
+    if not recipient_emails:
+        if school.get("email"):
+            recipient_emails.append(school["email"])
+        od = school.get("onboarding_data") or {}
+        for contact_key in ["coordinator", "principal", "accounts_coordinator"]:
+            c = od.get(contact_key, {})
+            if c.get("email") and c["email"] not in recipient_emails:
+                recipient_emails.append(c["email"])
+
+    if not recipient_emails:
+        raise HTTPException(status_code=400, detail="No recipient email addresses found for this school")
+
+    await ensure_resend_api_key()
+    if not resend.api_key:
+        raise HTTPException(status_code=400, detail="Email service not configured. Add Resend API key in Settings.")
+
+    school_name = school.get("school_name", "School")
+
+    # Build attachment from URL
+    attachment = None
+    if mou_url:
+        attachment = {
+            "path": mou_url,
+            "filename": file_name,
+        }
+
+    html_content = f"""
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background: #1E3A5F; padding: 20px; border-radius: 10px 10px 0 0;">
+            <h1 style="color: white; margin: 0; font-size: 24px;">OLL</h1>
+            <p style="color: #e0e0e0; margin: 5px 0 0 0;">One Learner at a time, One Life skill at a time</p>
+        </div>
+        <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
+            <h2 style="color: #1E3A5F; margin-top: 0;">Memorandum of Understanding</h2>
+            <p style="color: #444; line-height: 1.6;">Dear {school_name} Team,</p>
+            <p style="color: #444; line-height: 1.6;">Please find attached the Memorandum of Understanding (MOU) for our programme partnership.</p>
+            <p style="color: #444; line-height: 1.6;">Kindly review, sign, and return a copy at your earliest convenience.</p>
+            <div style="background: #f0f5fc; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                <p style="color: #1E3A5F; margin: 0; font-weight: bold;">Next Steps:</p>
+                <ul style="color: #444; margin: 8px 0 0 0; padding-left: 20px;">
+                    <li>Review all terms and conditions</li>
+                    <li>Sign and stamp the document</li>
+                    <li>Share a scanned copy with us</li>
+                </ul>
+            </div>
+            <p style="color: #444;">Warm regards,<br><strong>The OLL Team</strong></p>
+        </div>
+        <div style="text-align: center; padding: 15px; color: #888; font-size: 12px;">
+            <p>Clone Futura Live Solutions Pvt Ltd | www.oll.co</p>
+        </div>
+    </div>
+    """
+
+    try:
+        params = {
+            "from": SENDER_EMAIL,
+            "to": recipient_emails,
+            "subject": f"MOU - OLL x {school_name}",
+            "html": html_content,
+        }
+        if attachment:
+            params["attachments"] = [attachment]
+
+        email_response = await asyncio.to_thread(resend.Emails.send, params)
+        email_id = email_response.get("id") if isinstance(email_response, dict) else str(email_response)
+        return {
+            "success": True,
+            "message": f"MOU sent to {', '.join(recipient_emails)}",
+            "email_id": email_id,
+            "recipients": recipient_emails,
+        }
+    except Exception as e:
+        error_msg = str(e)
+        logging.error(f"MOU email error: {error_msg}")
+        if "testing" in error_msg.lower():
+            raise HTTPException(status_code=400, detail="Resend API key is a TEST key. Update to production key.")
+        raise HTTPException(status_code=500, detail=f"Failed to send email: {error_msg}")
+
+
+@api_router.post("/schools/{school_id}/add-document")
+async def add_school_document(school_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Atomically append a document to school's documents array"""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin only")
+    
+    doc_entry = {
+        "type": data.get("type", "General"),
+        "url": data.get("url"),
+        "name": data.get("name"),
+        "uploaded_at": data.get("uploaded_at", datetime.now(timezone.utc).isoformat()),
+        "uploaded_by": data.get("uploaded_by", user.get("name") or user.get("email", "Admin")),
+    }
+    if not doc_entry["url"]:
+        raise HTTPException(status_code=400, detail="Document URL is required")
+
+    result = await db.school_inquiries.update_one(
+        {"id": school_id},
+        [{"$set": {
+            "documents": {
+                "$cond": {
+                    "if": {"$isArray": "$documents"},
+                    "then": {"$concatArrays": ["$documents", [doc_entry]]},
+                    "else": [doc_entry]
+                }
+            }
+        }}]
+    )
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="School not found")
+    return {"success": True, "document": doc_entry}
+
+
 @api_router.get("/schools/{school_id}/onboarding")
 async def get_school_onboarding(school_id: str, user: dict = Depends(get_current_user)):
     """Get onboarding workflow for a school"""
@@ -11638,11 +11349,18 @@ async def get_school_onboarding(school_id: str, user: dict = Depends(get_current
     if not school:
         raise HTTPException(status_code=404, detail="School not found")
     
+    po_requests = school.get("po_requests", [])
+    for po_req in po_requests:
+        if po_req.get('tracking_url'):
+            po_req['tracking_url'] = transform_tracking_url(po_req['tracking_url'])
+    
     return {
         "school_id": school_id,
         "school_name": school.get("school_name"),
         "contact_name": school.get("contact_name"),
-        "workflow": school.get("onboarding_workflow", {})
+        "workflow": school.get("onboarding_workflow", {}),
+        "po_requests": po_requests,
+        "onboarding_data": school.get("onboarding_data") or {},
     }
 
 @api_router.post("/schools/{school_id}/lms-students")
@@ -11719,7 +11437,7 @@ async def get_public_tracking(tracking_token: str):
     
     workflow = school.get("onboarding_workflow", {})
     steps = workflow.get("steps", {})
-    onboarding_data = school.get("onboarding_data", {})
+    onboarding_data = school.get("onboarding_data") or {}
     
     # Fetch PO data for this school (for kit_delivery step) - with short timeout for better UX
     po_info = None
@@ -11766,23 +11484,18 @@ async def get_public_tracking(tracking_token: str):
     completed_steps = sum(1 for s in steps.values() if s.get("completed", False))
     progress_percent = int((completed_steps / total_steps) * 100) if total_steps > 0 else 0
     
-    # Build public-safe response - MOU first!
+    # Build public-safe response - MOU first, then rest in workflow order
     public_steps = []
-    step_order = ["mou_signing", "payment_collection", "kit_delivery", "distribution_checking", 
-                  "technical_check", "teacher_training", "calendar_making", 
-                  "timetable_finalization", "lms_setup", "school_confirmation"]
+    # Use actual step keys from workflow (preserves dynamic order), put mou_signing first
+    all_step_keys = list(steps.keys())
+    if "mou_signing" in all_step_keys:
+        all_step_keys.remove("mou_signing")
+        all_step_keys.insert(0, "mou_signing")
     
-    for key in step_order:
+    for key in all_step_keys:
         step = steps.get(key, {})
-        # If step doesn't exist in workflow, create default entry
-        if not step and key == "lms_setup":
-            step = {
-                "title": "LMS Setup",
-                "description": "Student credentials uploaded to LMS",
-                "completed": False,
-                "completed_date": None,
-                "data": {}
-            }
+        if not step:
+            continue
         step_data = step.get("data", {})
         
         # For kit_delivery, include PO info
@@ -12072,7 +11785,7 @@ async def get_school_payments(
     }).to_list(length=None)
     
     for school in schools:
-        onboarding_data = school.get("onboarding_data", {})
+        onboarding_data = school.get("onboarding_data") or {}
         payment_tranches = onboarding_data.get("payment_tranches", [])
         school_payments = school.get("payments", [])
         
@@ -12089,6 +11802,14 @@ async def get_school_payments(
                 total_amount = float(onboarding_data.get("total_amount") or 0)
                 amount = total_amount * float(tranche.get("percentage") or 0) / 100
             
+            school_gst_type = onboarding_data.get("gst_type", "")
+            gst_type = existing_payment.get("gst_type") if existing_payment else (tranche.get("gst_type") or school_gst_type)
+            # Compute gst_amount from gst_type and tranche amount
+            gst_amount = 0
+            if gst_type in ("exclusive_18", "exclusive"):
+                gst_amount = round(amount * 18 / 118, 2) if amount else 0  # extract 18% from inclusive total
+            elif gst_type in ("inclusive_18", "inclusive"):
+                gst_amount = round(amount - amount / 1.18, 2) if amount else 0
             payment = {
                 "id": existing_payment.get("id") if existing_payment else f"pay-{school.get('id')}-{idx}",
                 "school_id": school.get("id"),
@@ -12099,7 +11820,8 @@ async def get_school_payments(
                 "amount": amount or 0,
                 "due_date": tranche.get("date") or None,
                 "status": existing_payment.get("status", tranche.get("status", "pending")) if existing_payment else tranche.get("status", "pending"),
-                "gst_type": existing_payment.get("gst_type") if existing_payment else tranche.get("gst_type"),
+                "gst_type": gst_type,
+                "gst_amount": gst_amount,
                 "payment_date": existing_payment.get("payment_date") if existing_payment else None,
                 "transaction_id": existing_payment.get("transaction_id") if existing_payment else None,
                 "invoice_url": existing_payment.get("invoice_url") if existing_payment else None,
@@ -12137,7 +11859,7 @@ async def get_student_payments(
     }).to_list(length=None)
     
     for student in students:
-        onboarding_data = student.get("onboarding_data", {})
+        onboarding_data = student.get("onboarding_data") or {}
         student_payments = student.get("payments", [])
         
         # Create payment record from student conversion data
@@ -12289,7 +12011,7 @@ async def update_payment(
         # Send invoice email if new invoice is uploaded
         if data.get("invoice_url") and (existing_idx is None or not payments[existing_idx].get("invoice_url") if existing_idx is not None else True):
             # Get school contacts - specifically accounts team
-            onboarding_data = school.get("onboarding_data", {})
+            onboarding_data = school.get("onboarding_data") or {}
             school_contacts = onboarding_data.get("school_contacts", [])
             accounts_contacts = [c for c in school_contacts if c.get("role") == "accounts"]
             
@@ -12436,7 +12158,7 @@ async def update_payment(
         
         if data.get("status") == "paid":
             # Check if all tranches are paid
-            onboarding_data = school.get("onboarding_data", {})
+            onboarding_data = school.get("onboarding_data") or {}
             payment_tranches = onboarding_data.get("payment_tranches", [])
             all_paid = all(
                 any(p.get("tranche_index") == i and p.get("status") == "paid" for p in payments)
@@ -13263,9 +12985,209 @@ async def get_dashboard_stats(user: dict = Depends(get_current_user)):
 # ========================
 
 @api_router.get("/cities", response_model=List[City])
-async def get_cities():
-    cities = await db.cities.find({}, {"_id": 0}).sort("order", 1).to_list(100)
+async def get_cities(search: Optional[str] = None, active_only: bool = False):
+    query = {}
+    if active_only:
+        query["is_active"] = True
+    cities = await db.cities.find(query, {"_id": 0}).sort([("state", 1), ("name", 1)]).to_list(2000)
+    if search:
+        s = search.lower()
+        cities = [c for c in cities if s in c.get("name", "").lower() or s in c.get("state", "").lower()]
     return cities
+
+
+@api_router.post("/cities/seed-india")
+async def seed_india_cities(user: dict = Depends(get_current_user)):
+    """Seed the DB with all India cities and states. Skips cities already present (by name)."""
+    INDIA_CITIES = [
+        # Andhra Pradesh
+        ("Visakhapatnam", "Andhra Pradesh"), ("Vijayawada", "Andhra Pradesh"), ("Guntur", "Andhra Pradesh"),
+        ("Nellore", "Andhra Pradesh"), ("Kurnool", "Andhra Pradesh"), ("Rajahmundry", "Andhra Pradesh"),
+        ("Tirupati", "Andhra Pradesh"), ("Kakinada", "Andhra Pradesh"), ("Kadapa", "Andhra Pradesh"),
+        ("Anantapur", "Andhra Pradesh"), ("Vizianagaram", "Andhra Pradesh"), ("Eluru", "Andhra Pradesh"),
+        ("Ongole", "Andhra Pradesh"), ("Nandyal", "Andhra Pradesh"), ("Chittoor", "Andhra Pradesh"),
+        # Arunachal Pradesh
+        ("Itanagar", "Arunachal Pradesh"), ("Naharlagun", "Arunachal Pradesh"),
+        # Assam
+        ("Guwahati", "Assam"), ("Silchar", "Assam"), ("Dibrugarh", "Assam"), ("Jorhat", "Assam"),
+        ("Nagaon", "Assam"), ("Tinsukia", "Assam"), ("Tezpur", "Assam"), ("Bongaigaon", "Assam"),
+        # Bihar
+        ("Patna", "Bihar"), ("Gaya", "Bihar"), ("Bhagalpur", "Bihar"), ("Muzaffarpur", "Bihar"),
+        ("Darbhanga", "Bihar"), ("Purnia", "Bihar"), ("Arrah", "Bihar"), ("Begusarai", "Bihar"),
+        ("Katihar", "Bihar"), ("Munger", "Bihar"), ("Chapra", "Bihar"), ("Saharsa", "Bihar"),
+        ("Sitamarhi", "Bihar"), ("Hajipur", "Bihar"), ("Bihar Sharif", "Bihar"),
+        # Chhattisgarh
+        ("Raipur", "Chhattisgarh"), ("Bhilai", "Chhattisgarh"), ("Bilaspur", "Chhattisgarh"),
+        ("Korba", "Chhattisgarh"), ("Durg", "Chhattisgarh"), ("Raigarh", "Chhattisgarh"),
+        ("Rajnandgaon", "Chhattisgarh"), ("Jagdalpur", "Chhattisgarh"), ("Ambikapur", "Chhattisgarh"),
+        # Goa
+        ("Panaji", "Goa"), ("Vasco da Gama", "Goa"), ("Margao", "Goa"), ("Mapusa", "Goa"),
+        # Gujarat
+        ("Ahmedabad", "Gujarat"), ("Surat", "Gujarat"), ("Vadodara", "Gujarat"), ("Rajkot", "Gujarat"),
+        ("Bhavnagar", "Gujarat"), ("Jamnagar", "Gujarat"), ("Junagadh", "Gujarat"), ("Gandhinagar", "Gujarat"),
+        ("Gandhidham", "Gujarat"), ("Anand", "Gujarat"), ("Navsari", "Gujarat"), ("Morbi", "Gujarat"),
+        ("Nadiad", "Gujarat"), ("Surendranagar", "Gujarat"), ("Bharuch", "Gujarat"), ("Mehsana", "Gujarat"),
+        ("Bhuj", "Gujarat"), ("Porbandar", "Gujarat"), ("Palanpur", "Gujarat"), ("Valsad", "Gujarat"),
+        # Haryana
+        ("Faridabad", "Haryana"), ("Gurugram", "Haryana"), ("Panipat", "Haryana"), ("Ambala", "Haryana"),
+        ("Yamunanagar", "Haryana"), ("Rohtak", "Haryana"), ("Hisar", "Haryana"), ("Karnal", "Haryana"),
+        ("Sonipat", "Haryana"), ("Panchkula", "Haryana"), ("Bhiwani", "Haryana"), ("Sirsa", "Haryana"),
+        ("Bahadurgarh", "Haryana"), ("Rewari", "Haryana"), ("Kurukshetra", "Haryana"),
+        # Himachal Pradesh
+        ("Shimla", "Himachal Pradesh"), ("Dharamshala", "Himachal Pradesh"), ("Solan", "Himachal Pradesh"),
+        ("Mandi", "Himachal Pradesh"), ("Baddi", "Himachal Pradesh"), ("Kullu", "Himachal Pradesh"),
+        # Jharkhand
+        ("Ranchi", "Jharkhand"), ("Jamshedpur", "Jharkhand"), ("Dhanbad", "Jharkhand"),
+        ("Bokaro", "Jharkhand"), ("Hazaribagh", "Jharkhand"), ("Deoghar", "Jharkhand"),
+        ("Giridih", "Jharkhand"), ("Ramgarh", "Jharkhand"),
+        # Karnataka
+        ("Bangalore", "Karnataka"), ("Mysore", "Karnataka"), ("Hubli", "Karnataka"),
+        ("Mangalore", "Karnataka"), ("Belgaum", "Karnataka"), ("Gulbarga", "Karnataka"),
+        ("Davangere", "Karnataka"), ("Bellary", "Karnataka"), ("Shimoga", "Karnataka"),
+        ("Tumkur", "Karnataka"), ("Udupi", "Karnataka"), ("Bijapur", "Karnataka"),
+        ("Hassan", "Karnataka"), ("Bidar", "Karnataka"), ("Raichur", "Karnataka"),
+        ("Dharwad", "Karnataka"), ("Bagalkot", "Karnataka"), ("Chitradurga", "Karnataka"),
+        ("Hospet", "Karnataka"), ("Gadag", "Karnataka"),
+        # Kerala
+        ("Thiruvananthapuram", "Kerala"), ("Kochi", "Kerala"), ("Kozhikode", "Kerala"),
+        ("Thrissur", "Kerala"), ("Kollam", "Kerala"), ("Alappuzha", "Kerala"),
+        ("Kannur", "Kerala"), ("Palakkad", "Kerala"), ("Kottayam", "Kerala"),
+        ("Malappuram", "Kerala"), ("Irinjalakuda", "Kerala"), ("Kasaragod", "Kerala"),
+        # Madhya Pradesh
+        ("Indore", "Madhya Pradesh"), ("Bhopal", "Madhya Pradesh"), ("Jabalpur", "Madhya Pradesh"),
+        ("Gwalior", "Madhya Pradesh"), ("Ujjain", "Madhya Pradesh"), ("Sagar", "Madhya Pradesh"),
+        ("Dewas", "Madhya Pradesh"), ("Satna", "Madhya Pradesh"), ("Ratlam", "Madhya Pradesh"),
+        ("Rewa", "Madhya Pradesh"), ("Murwara", "Madhya Pradesh"), ("Singrauli", "Madhya Pradesh"),
+        ("Burhanpur", "Madhya Pradesh"), ("Khandwa", "Madhya Pradesh"), ("Bhind", "Madhya Pradesh"),
+        ("Chhindwara", "Madhya Pradesh"), ("Guna", "Madhya Pradesh"), ("Shivpuri", "Madhya Pradesh"),
+        ("Vidisha", "Madhya Pradesh"), ("Damoh", "Madhya Pradesh"), ("Mandsaur", "Madhya Pradesh"),
+        ("Neemuch", "Madhya Pradesh"), ("Itarsi", "Madhya Pradesh"),
+        # Maharashtra
+        ("Mumbai", "Maharashtra"), ("Pune", "Maharashtra"), ("Nagpur", "Maharashtra"),
+        ("Thane", "Maharashtra"), ("Nashik", "Maharashtra"), ("Aurangabad", "Maharashtra"),
+        ("Solapur", "Maharashtra"), ("Kolhapur", "Maharashtra"), ("Navi Mumbai", "Maharashtra"),
+        ("Amravati", "Maharashtra"), ("Sangli", "Maharashtra"), ("Pimpri-Chinchwad", "Maharashtra"),
+        ("Akola", "Maharashtra"), ("Latur", "Maharashtra"), ("Dhule", "Maharashtra"),
+        ("Ahmednagar", "Maharashtra"), ("Chandrapur", "Maharashtra"), ("Parbhani", "Maharashtra"),
+        ("Jalgaon", "Maharashtra"), ("Bhiwandi", "Maharashtra"), ("Jalna", "Maharashtra"),
+        ("Nanded", "Maharashtra"), ("Osmanabad", "Maharashtra"), ("Ratnagiri", "Maharashtra"),
+        ("Satara", "Maharashtra"), ("Beed", "Maharashtra"), ("Wardha", "Maharashtra"),
+        ("Yavatmal", "Maharashtra"), ("Buldhana", "Maharashtra"), ("Vasai-Virar", "Maharashtra"),
+        ("Mira-Bhayandar", "Maharashtra"), ("Kalyan", "Maharashtra"), ("Ulhasnagar", "Maharashtra"),
+        # Manipur
+        ("Imphal", "Manipur"),
+        # Meghalaya
+        ("Shillong", "Meghalaya"),
+        # Mizoram
+        ("Aizawl", "Mizoram"),
+        # Nagaland
+        ("Kohima", "Nagaland"), ("Dimapur", "Nagaland"),
+        # Odisha
+        ("Bhubaneswar", "Odisha"), ("Cuttack", "Odisha"), ("Rourkela", "Odisha"),
+        ("Brahmapur", "Odisha"), ("Sambalpur", "Odisha"), ("Puri", "Odisha"),
+        ("Balasore", "Odisha"), ("Bhadrak", "Odisha"), ("Baripada", "Odisha"),
+        ("Jharsuguda", "Odisha"), ("Bargarh", "Odisha"),
+        # Punjab
+        ("Ludhiana", "Punjab"), ("Amritsar", "Punjab"), ("Jalandhar", "Punjab"),
+        ("Patiala", "Punjab"), ("Bathinda", "Punjab"), ("Pathankot", "Punjab"),
+        ("Hoshiarpur", "Punjab"), ("Batala", "Punjab"), ("Moga", "Punjab"),
+        ("Mohali", "Punjab"), ("Abohar", "Punjab"), ("Phagwara", "Punjab"),
+        # Rajasthan
+        ("Jaipur", "Rajasthan"), ("Jodhpur", "Rajasthan"), ("Kota", "Rajasthan"),
+        ("Bikaner", "Rajasthan"), ("Ajmer", "Rajasthan"), ("Udaipur", "Rajasthan"),
+        ("Bhilwara", "Rajasthan"), ("Alwar", "Rajasthan"), ("Bharatpur", "Rajasthan"),
+        ("Sikar", "Rajasthan"), ("Sri Ganganagar", "Rajasthan"), ("Pali", "Rajasthan"),
+        ("Beawar", "Rajasthan"), ("Hanumangarh", "Rajasthan"), ("Gangapur City", "Rajasthan"),
+        ("Churu", "Rajasthan"), ("Jhunjhunu", "Rajasthan"), ("Sawai Madhopur", "Rajasthan"),
+        ("Tonk", "Rajasthan"), ("Barmer", "Rajasthan"), ("Jaisalmer", "Rajasthan"),
+        # Sikkim
+        ("Gangtok", "Sikkim"),
+        # Tamil Nadu
+        ("Chennai", "Tamil Nadu"), ("Coimbatore", "Tamil Nadu"), ("Madurai", "Tamil Nadu"),
+        ("Tiruchirappalli", "Tamil Nadu"), ("Salem", "Tamil Nadu"), ("Tirunelveli", "Tamil Nadu"),
+        ("Tiruppur", "Tamil Nadu"), ("Vellore", "Tamil Nadu"), ("Erode", "Tamil Nadu"),
+        ("Thoothukudi", "Tamil Nadu"), ("Dindigul", "Tamil Nadu"), ("Thanjavur", "Tamil Nadu"),
+        ("Ranipet", "Tamil Nadu"), ("Sivakasi", "Tamil Nadu"), ("Karur", "Tamil Nadu"),
+        ("Udhagamandalam", "Tamil Nadu"), ("Hosur", "Tamil Nadu"), ("Nagercoil", "Tamil Nadu"),
+        ("Kancheepuram", "Tamil Nadu"), ("Kumarapalayam", "Tamil Nadu"),
+        # Telangana
+        ("Hyderabad", "Telangana"), ("Warangal", "Telangana"), ("Nizamabad", "Telangana"),
+        ("Karimnagar", "Telangana"), ("Khammam", "Telangana"), ("Ramagundam", "Telangana"),
+        ("Secunderabad", "Telangana"), ("Mahbubnagar", "Telangana"), ("Nalgonda", "Telangana"),
+        ("Adilabad", "Telangana"), ("Suryapet", "Telangana"), ("Mancherial", "Telangana"),
+        # Tripura
+        ("Agartala", "Tripura"),
+        # Uttar Pradesh
+        ("Lucknow", "Uttar Pradesh"), ("Kanpur", "Uttar Pradesh"), ("Ghaziabad", "Uttar Pradesh"),
+        ("Agra", "Uttar Pradesh"), ("Varanasi", "Uttar Pradesh"), ("Meerut", "Uttar Pradesh"),
+        ("Prayagraj", "Uttar Pradesh"), ("Noida", "Uttar Pradesh"), ("Bareilly", "Uttar Pradesh"),
+        ("Aligarh", "Uttar Pradesh"), ("Moradabad", "Uttar Pradesh"), ("Saharanpur", "Uttar Pradesh"),
+        ("Gorakhpur", "Uttar Pradesh"), ("Firozabad", "Uttar Pradesh"), ("Jhansi", "Uttar Pradesh"),
+        ("Muzaffarnagar", "Uttar Pradesh"), ("Mathura", "Uttar Pradesh"), ("Rampur", "Uttar Pradesh"),
+        ("Shahjahanpur", "Uttar Pradesh"), ("Farrukhabad", "Uttar Pradesh"), ("Hapur", "Uttar Pradesh"),
+        ("Etawah", "Uttar Pradesh"), ("Mirzapur", "Uttar Pradesh"), ("Bulandshahr", "Uttar Pradesh"),
+        ("Sambhal", "Uttar Pradesh"), ("Amroha", "Uttar Pradesh"), ("Hardoi", "Uttar Pradesh"),
+        ("Fatehpur", "Uttar Pradesh"), ("Raebareli", "Uttar Pradesh"), ("Orai", "Uttar Pradesh"),
+        ("Sitapur", "Uttar Pradesh"), ("Bahraich", "Uttar Pradesh"), ("Modinagar", "Uttar Pradesh"),
+        ("Unnao", "Uttar Pradesh"), ("Jaunpur", "Uttar Pradesh"), ("Lakhimpur", "Uttar Pradesh"),
+        ("Hathras", "Uttar Pradesh"), ("Banda", "Uttar Pradesh"), ("Pilibhit", "Uttar Pradesh"),
+        ("Barabanki", "Uttar Pradesh"), ("Khurja", "Uttar Pradesh"), ("Gonda", "Uttar Pradesh"),
+        ("Greater Noida", "Uttar Pradesh"), ("Ayodhya", "Uttar Pradesh"), ("Vrindavan", "Uttar Pradesh"),
+        # Uttarakhand
+        ("Dehradun", "Uttarakhand"), ("Haridwar", "Uttarakhand"), ("Roorkee", "Uttarakhand"),
+        ("Haldwani", "Uttarakhand"), ("Rudrapur", "Uttarakhand"), ("Kashipur", "Uttarakhand"),
+        ("Rishikesh", "Uttarakhand"), ("Kotdwar", "Uttarakhand"),
+        # West Bengal
+        ("Kolkata", "West Bengal"), ("Asansol", "West Bengal"), ("Siliguri", "West Bengal"),
+        ("Durgapur", "West Bengal"), ("Bardhaman", "West Bengal"), ("Malda", "West Bengal"),
+        ("Baharampur", "West Bengal"), ("Habra", "West Bengal"), ("Kharagpur", "West Bengal"),
+        ("Shantipur", "West Bengal"), ("Raiganj", "West Bengal"), ("Darjeeling", "West Bengal"),
+        ("Jalpaiguri", "West Bengal"), ("Bankura", "West Bengal"),
+        # Union Territories
+        ("New Delhi", "Delhi"), ("Delhi", "Delhi"), ("Dwarka", "Delhi"), ("Rohini", "Delhi"),
+        ("Chandigarh", "Chandigarh"), ("Panchkula", "Chandigarh"),
+        ("Puducherry", "Puducherry"),
+        ("Srinagar", "Jammu & Kashmir"), ("Jammu", "Jammu & Kashmir"), ("Leh", "Ladakh"),
+        ("Port Blair", "Andaman & Nicobar Islands"),
+        ("Silvassa", "Dadra & Nagar Haveli"), ("Daman", "Daman & Diu"),
+        ("Kavaratti", "Lakshadweep"),
+    ]
+
+    # Get existing city names (case-insensitive)
+    existing = await db.cities.find({}, {"_id": 0, "name": 1}).to_list(5000)
+    existing_names = {c["name"].lower() for c in existing}
+
+    # Also update existing cities with missing states
+    existing_full = await db.cities.find({}, {"_id": 0}).to_list(5000)
+    city_state_map = {name.lower(): state for name, state in INDIA_CITIES}
+    for city in existing_full:
+        if not city.get("state") and city.get("name", "").lower() in city_state_map:
+            await db.cities.update_one(
+                {"id": city["id"]},
+                {"$set": {"state": city_state_map[city["name"].lower()]}}
+            )
+
+    # Insert new cities
+    inserted = 0
+    order_start = await db.cities.count_documents({})
+    for i, (name, state) in enumerate(INDIA_CITIES):
+        if name.lower() not in existing_names:
+            city_data = {
+                "id": str(uuid.uuid4()),
+                "name": name,
+                "state": state,
+                "is_active": True,
+                "has_center": False,
+                "order": order_start + i + 1,
+                "created_at": datetime.now(timezone.utc).isoformat()
+            }
+            await db.cities.insert_one(city_data)
+            existing_names.add(name.lower())
+            inserted += 1
+
+    total = await db.cities.count_documents({})
+    return {"message": f"Seeded {inserted} new cities. Total: {total} cities in DB."}
+
 
 @api_router.post("/cities", response_model=City)
 async def create_city(city: CityCreate):
@@ -13683,6 +13605,12 @@ async def manage_inquiry_query_viewers(query_id: str, data: dict, user: dict = D
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
 
+# Root-level health endpoint (no /api prefix) — required by Emergent Kubernetes
+# readiness/liveness probes which poll GET /health directly on port 8001.
+@app.get("/health")
+async def root_health_check():
+    return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
+
 @api_router.post("/admin/optimize-db")
 async def optimize_database(user: dict = Depends(get_current_user)):
     """Manually trigger database index creation for better performance"""
@@ -13810,6 +13738,119 @@ async def optimize_database(user: dict = Depends(get_current_user)):
             "indexes_created": indexes_created
         }
 
+@api_router.get("/admin/mongodb-info")
+async def get_mongodb_info(request: Request, user: dict = Depends(get_current_user)):
+    """Get MongoDB connection info for data export/migration"""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Only admins can access MongoDB info")
+    
+    try:
+        # Get database stats
+        db_name = os.environ.get("DB_NAME", "test_database")
+        mongo_url = os.environ.get("MONGO_URL", "mongodb://localhost:27017")
+        
+        # Get user's IP address
+        client_ip = request.client.host if request.client else None
+        forwarded_for = request.headers.get("X-Forwarded-For")
+        if forwarded_for:
+            client_ip = forwarded_for.split(",")[0].strip()
+        
+        # Build a sanitized connection string (mask password if present)
+        connection_display = mongo_url
+        if "@" in mongo_url:
+            # Has credentials - mask the password
+            parts = mongo_url.split("@")
+            prefix = parts[0]
+            suffix = parts[1]
+            if ":" in prefix:
+                user_pass = prefix.split("//")[1] if "//" in prefix else prefix
+                if ":" in user_pass:
+                    username = user_pass.split(":")[0]
+                    connection_display = f"mongodb+srv://{username}:****@{suffix}"
+        
+        # Get collection stats
+        collections_info = []
+        collection_names = await db.list_collection_names()
+        for col_name in sorted(collection_names):
+            try:
+                count = await db[col_name].count_documents({})
+                collections_info.append({"name": col_name, "count": count})
+            except:
+                collections_info.append({"name": col_name, "count": "N/A"})
+        
+        # For export, provide the actual connection string (admin only)
+        export_connection = f"{mongo_url}/{db_name}"
+        if not mongo_url.endswith("/"):
+            export_connection = f"{mongo_url}/{db_name}"
+        
+        # Get whitelisted IPs from database
+        whitelisted_ips = []
+        try:
+            whitelist_docs = await db.mongodb_whitelist.find({}, {"_id": 0}).to_list(100)
+            whitelisted_ips = whitelist_docs
+        except:
+            pass
+        
+        return {
+            "db_name": db_name,
+            "connection_string": export_connection,
+            "collections": collections_info,
+            "total_collections": len(collection_names),
+            "export_command": f'mongodump --uri="{export_connection}" --archive=backup.gz --gzip',
+            "your_ip": client_ip,
+            "whitelisted_ips": whitelisted_ips
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get MongoDB info: {str(e)}")
+
+@api_router.post("/admin/mongodb-whitelist-ip")
+async def whitelist_ip(data: dict, user: dict = Depends(get_current_user)):
+    """Add an IP address to the whitelist"""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Only admins can manage IP whitelist")
+    
+    ip_address = data.get("ip_address", "").strip()
+    description = data.get("description", "")
+    
+    if not ip_address:
+        raise HTTPException(status_code=400, detail="IP address is required")
+    
+    # Basic IP validation
+    import re
+    ip_pattern = r'^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$|^0\.0\.0\.0\/0$'
+    if not re.match(ip_pattern, ip_address):
+        raise HTTPException(status_code=400, detail="Invalid IP address format")
+    
+    # Check if already exists
+    existing = await db.mongodb_whitelist.find_one({"ip": ip_address})
+    if existing:
+        raise HTTPException(status_code=400, detail="IP already whitelisted")
+    
+    # Add to whitelist
+    await db.mongodb_whitelist.insert_one({
+        "ip": ip_address,
+        "description": description,
+        "added_by": user.get("email"),
+        "added_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return {"message": f"IP {ip_address} added to whitelist", "success": True}
+
+@api_router.delete("/admin/mongodb-whitelist-ip/{ip_address}")
+async def remove_whitelisted_ip(ip_address: str, user: dict = Depends(get_current_user)):
+    """Remove an IP address from the whitelist"""
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Only admins can manage IP whitelist")
+    
+    from urllib.parse import unquote
+    ip_address = unquote(ip_address)
+    
+    result = await db.mongodb_whitelist.delete_one({"ip": ip_address})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="IP not found in whitelist")
+    
+    return {"message": f"IP {ip_address} removed from whitelist", "success": True}
+
 # Cloudinary signature endpoint for frontend uploads
 @api_router.get("/cloudinary/signature")
 async def get_cloudinary_signature(
@@ -13827,7 +13868,7 @@ async def get_cloudinary_signature(
         "folder": folder,
     }
     
-    signature = cloudinary.utils.api_sign_request(
+    signature = _get_cloudinary().utils.api_sign_request(
         params,
         os.getenv("CLOUDINARY_API_SECRET")
     )
@@ -13867,7 +13908,7 @@ async def upload_file(file: UploadFile = File(...), type: str = "general"):
     
     try:
         # Upload to Cloudinary
-        result = cloudinary.uploader.upload(
+        result = _get_cloudinary().uploader.upload(
             BytesIO(content),
             public_id=unique_id,
             folder=folder,
@@ -14015,15 +14056,13 @@ async def migrate_files_to_cloudinary(user: dict = Depends(get_current_user)):
             folder = f"oll_{file_type}"
             
             # Upload to Cloudinary
-            result = cloudinary.uploader.upload(
+            result = _get_cloudinary().uploader.upload(
                 BytesIO(content),
                 public_id=Path(filename).stem,
                 folder=folder,
                 resource_type=resource_type,
                 overwrite=True
             )
-            
-            # Update MongoDB document with Cloudinary URL
             await db.uploaded_files.update_one(
                 {"_id": file_doc["_id"]},
                 {
@@ -14094,7 +14133,7 @@ async def migrate_local_files_to_mongodb(user: dict = Depends(get_current_user))
                     folder = f"oll_{file_type}"
                     
                     # Upload to Cloudinary
-                    result = cloudinary.uploader.upload(
+                    result = _get_cloudinary().uploader.upload(
                         BytesIO(content),
                         public_id=Path(filename).stem,
                         folder=folder,
@@ -14138,795 +14177,209 @@ async def migrate_local_files_to_mongodb(user: dict = Depends(get_current_user))
 # BACKGROUND JOB ENDPOINTS - For Cron/Scheduler
 # ========================
 
-@api_router.post("/jobs/check-overdue-tickets")
-async def check_overdue_tickets_job(secret: str = None):
-    """
-    Background job to check for tickets overdue by 48 hours and send notifications.
-    Should be called by a cron job every hour.
-    """
-    # Simple security - use a secret key for cron jobs
-    JOB_SECRET = os.environ.get("JOB_SECRET", "oll_cron_secret_2024")
-    if secret != JOB_SECRET:
-        raise HTTPException(status_code=403, detail="Invalid secret")
-    
-    # Find tickets that are open/in_progress and created more than 48 hours ago
-    threshold = datetime.now(timezone.utc) - timedelta(hours=48)
-    
-    # Find tickets that need 48h warning and haven't been notified yet
-    tickets = await db.support_tickets.find({
-        "status": {"$in": ["open", "in_progress"]},
-        "created_at": {"$lte": threshold.isoformat()},
-        "overdue_notified_at": {"$exists": False}
-    }, {"_id": 0}).to_list(100)
-    
-    notified_count = 0
-    
-    # Get admin team phones for admin notification
-    admin_users = await db.users.find(
-        {"role": "admin"},
-        {"_id": 0, "phone": 1}
-    ).to_list(10)
-    admin_phones = [u.get("phone") for u in admin_users if u.get("phone")]
-    
-    # Also get phones from team_users with admin role
-    team_admins = await db.team_users.find(
-        {"role": {"$in": ["admin", "super_admin"]}},
-        {"_id": 0, "phone": 1}
-    ).to_list(10)
-    admin_phones.extend([u.get("phone") for u in team_admins if u.get("phone")])
-    admin_phones = list(set(admin_phones))  # Remove duplicates
-    
-    for ticket in tickets:
-        try:
-            # Get assigned team member - check both collections
-            assignee = None
-            if ticket.get("assigned_to"):
-                assignee = await db.team_users.find_one({"id": ticket["assigned_to"]}, {"_id": 0})
-                if not assignee:
-                    assignee = await db.users.find_one({"id": ticket["assigned_to"]}, {"_id": 0})
-            
-            # Send notification to assignee
-            if assignee and assignee.get('phone'):
-                await send_ticket_overdue_notification(ticket, assignee)
-                print(f"Overdue notification sent to {assignee.get('name')}")
-            
-            # Send notification to admin team
-            if admin_phones:
-                await send_ticket_overdue_admin_notification(ticket, admin_phones)
-            
-            # Mark as notified
-            await db.support_tickets.update_one(
-                {"id": ticket["id"]},
-                {"$set": {"overdue_notified_at": datetime.now(timezone.utc).isoformat()}}
-            )
-            notified_count += 1
-            
-        except Exception as e:
-            print(f"Failed to send overdue notification for ticket {ticket.get('id')}: {e}")
-    
-    return {
-        "success": True,
-        "checked": len(tickets),
-        "notified": notified_count,
-        "timestamp": datetime.now(timezone.utc).isoformat()
-    }
-
-
-@api_router.post("/jobs/send-meeting-reminders")
-async def send_meeting_reminders_job(secret: str = None):
-    """
-    Background job to send school meeting reminders.
-    Should be called by a cron job every hour.
-    Sends 24h reminder and 2h reminder based on meeting time.
-    """
-    JOB_SECRET = os.environ.get("JOB_SECRET", "oll_cron_secret_2024")
-    if secret != JOB_SECRET:
-        raise HTTPException(status_code=403, detail="Invalid secret")
-    
-    now = datetime.now(timezone.utc)
-    reminders_sent = {"24h": 0, "2h": 0}
-    
-    # Find schools with upcoming meetings
-    schools = await db.school_inquiries.find({
-        "status": {"$in": ["new", "meeting_done", "converted", "active"]},
-        "meeting_date": {"$exists": True, "$ne": None, "$ne": ""}
-    }, {"_id": 0}).to_list(500)
-    
-    for school in schools:
-        try:
-            meeting_date_str = school.get("meeting_date")
-            meeting_time_str = school.get("meeting_time", "10:00")
-            
-            if not meeting_date_str:
-                continue
-            
-            # Parse meeting datetime
-            try:
-                meeting_datetime = datetime.strptime(
-                    f"{meeting_date_str} {meeting_time_str}",
-                    "%Y-%m-%d %H:%M"
-                ).replace(tzinfo=timezone.utc)
-            except:
-                continue
-            
-            # Calculate time until meeting
-            time_until = meeting_datetime - now
-            hours_until = time_until.total_seconds() / 3600
-            
-            # Get assigned sales manager - check both collections
-            sales_manager = None
-            if school.get("assigned_to"):
-                sales_manager = await db.team_users.find_one({"id": school["assigned_to"]}, {"_id": 0})
-                if not sales_manager:
-                    sales_manager = await db.users.find_one({"id": school["assigned_to"]}, {"_id": 0})
-            
-            if not sales_manager or not sales_manager.get('phone'):
-                print(f"Meeting reminder skipped for school {school.get('school_name')} - no sales manager phone")
-                continue
-            
-            # Check if 24h reminder should be sent (between 23-25 hours before)
-            if 23 <= hours_until <= 25 and not school.get("reminder_24h_sent"):
-                await send_school_meeting_reminder_24h(school, sales_manager)
-                await db.school_inquiries.update_one(
-                    {"id": school["id"]},
-                    {"$set": {"reminder_24h_sent": datetime.now(timezone.utc).isoformat()}}
-                )
-                reminders_sent["24h"] += 1
-            
-            # Check if 2h reminder should be sent (between 1.5-2.5 hours before)
-            elif 1.5 <= hours_until <= 2.5 and not school.get("reminder_2h_sent"):
-                await send_school_meeting_reminder_2h(school, sales_manager)
-                await db.school_inquiries.update_one(
-                    {"id": school["id"]},
-                    {"$set": {"reminder_2h_sent": datetime.now(timezone.utc).isoformat()}}
-                )
-                reminders_sent["2h"] += 1
-                
-        except Exception as e:
-            print(f"Failed to check meeting reminder for school {school.get('id')}: {e}")
-    
-    return {
-        "success": True,
-        "schools_checked": len(schools),
-        "reminders_sent": reminders_sent,
-        "timestamp": datetime.now(timezone.utc).isoformat()
-    }
-
-
-@api_router.post("/jobs/test-notification")
-async def test_notification_job(data: dict, user: dict = Depends(get_current_user)):
-    """
-    Test endpoint to send a notification to a specific user.
-    For debugging notification issues.
-    """
-    if user.get("role") != "admin":
+# NOTE: /jobs routes moved to routes/jobs.py
+# NOTE: /expenses routes moved to routes/expenses.py
+@api_router.post("/schools/{school_id}/po-preview")
+async def preview_po_products(school_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Preview the auto-computed PO products without submitting to vendor"""
+    if user.get("role") not in ["admin", "super_admin"]:
         raise HTTPException(status_code=403, detail="Admin only")
-    
-    user_id = data.get("user_id")
-    notification_type = data.get("type", "ticket")  # ticket, meeting_24h, meeting_2h
-    
-    # Get user from both collections
-    target_user = await db.team_users.find_one({"id": user_id}, {"_id": 0})
-    if not target_user:
-        target_user = await db.users.find_one({"id": user_id}, {"_id": 0})
-    
-    if not target_user:
-        return {"error": "User not found", "user_id": user_id}
-    
-    if not target_user.get("phone"):
-        return {"error": "User has no phone number", "user": target_user.get("name")}
-    
-    try:
-        if notification_type == "ticket":
-            test_ticket = {
-                "id": "test-ticket-123",
-                "subject": "Test Ticket Notification",
-                "priority": "high",
-                "school_name": "Test School",
-                "contact_name": "Test Contact"
-            }
-            await send_support_ticket_notification(test_ticket, target_user)
-        elif notification_type == "meeting_24h":
-            test_school = {
-                "school_name": "Test School",
-                "contact_name": "Test Contact",
-                "meeting_date": "2024-01-01",
-                "meeting_time": "10:00",
-                "meeting_mode": "online"
-            }
-            await send_school_meeting_reminder_24h(test_school, target_user)
-        elif notification_type == "meeting_2h":
-            test_school = {
-                "school_name": "Test School",
-                "contact_name": "Test Contact",
-                "meeting_time": "10:00",
-                "meeting_mode": "online",
-                "meeting_link": "https://meet.jit.si/test"
-            }
-            await send_school_meeting_reminder_2h(test_school, target_user)
-        
-        return {
-            "success": True,
-            "message": f"Test {notification_type} notification sent to {target_user.get('name')} at {target_user.get('phone')}"
-        }
-    except Exception as e:
-        return {"error": str(e), "user": target_user.get("name")}
-
-
-@api_router.get("/jobs/check-user-phones")
-async def check_user_phones(user: dict = Depends(get_current_user)):
-    """
-    Check which users have phone numbers configured for notifications.
-    """
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin only")
-    
-    # Get all team users
-    team_users = await db.team_users.find({}, {"_id": 0, "id": 1, "name": 1, "phone": 1, "email": 1, "role": 1}).to_list(100)
-    users = await db.users.find({}, {"_id": 0, "id": 1, "name": 1, "phone": 1, "email": 1, "role": 1}).to_list(100)
-    
-    with_phone = []
-    without_phone = []
-    
-    for u in team_users + users:
-        user_info = {
-            "id": u.get("id"),
-            "name": u.get("name"),
-            "email": u.get("email"),
-            "phone": u.get("phone"),
-            "role": u.get("role")
-        }
-        if u.get("phone"):
-            with_phone.append(user_info)
-        else:
-            without_phone.append(user_info)
-    
-    return {
-        "total_users": len(team_users) + len(users),
-        "with_phone": len(with_phone),
-        "without_phone": len(without_phone),
-        "users_with_phone": with_phone,
-        "users_without_phone": without_phone
-    }
-
-
-
-
-@api_router.post("/jobs/sync-po-data")
-async def sync_po_data_job(secret: str = None):
-    """
-    Background job to sync PO data from ProcureWay for all active/converted schools.
-    Should be called by a cron job every 30 minutes or hourly.
-    
-    This job:
-    1. Fetches active POs from ProcureWay for schools in onboarding
-    2. Updates kit_delivery step with delivery/dispatch dates and tracking links
-    3. Auto-creates expense records from PO invoice data
-    """
-    JOB_SECRET = os.environ.get("JOB_SECRET", "oll_cron_secret_2024")
-    if secret != JOB_SECRET:
-        raise HTTPException(status_code=403, detail="Invalid secret")
-    
-    # Find schools in onboarding stages (converted, active, renewed, renewal_meeting)
-    schools = await db.school_inquiries.find({
-        "status": {"$in": ["converted", "active", "renewed", "renewal_meeting"]},
-        "onboarding_workflow": {"$exists": True}
-    }, {"_id": 0, "id": 1, "school_name": 1, "onboarding_workflow": 1}).to_list(500)
-    
-    results = {
-        "schools_processed": 0,
-        "po_data_synced": 0,
-        "expenses_created": 0,
-        "errors": []
-    }
-    
-    for school in schools:
-        try:
-            school_id = school.get("id")
-            school_name = school.get("school_name", "")
-            
-            if not school_name:
-                continue
-            
-            # Fetch PO data from ProcureWay
-            po_list_data = await fetch_po_data("po", {"school_name": school_name, "limit": 50})
-            
-            if not po_list_data or "data" not in po_list_data:
-                continue
-            
-            # Filter for active POs (not delivered) - for tracking updates
-            active_pos = [
-                po for po in po_list_data.get("data", [])
-                if po.get("status", "").lower() != "delivered"
-            ]
-            
-            # Filter for delivered POs - for expense creation
-            delivered_pos = [
-                po for po in po_list_data.get("data", [])
-                if po.get("status", "").lower() == "delivered"
-            ]
-            
-            # Update tracking info from active POs
-            if active_pos:
-                po_number = active_pos[0].get("po_number")
-                if po_number:
-                    detailed_po = await fetch_po_data(f"po/{po_number}")
-                    if detailed_po:
-                        dispatch_info = detailed_po.get("dispatch_info") or {}
-                        
-                        # Check if kit_delivery step needs updating
-                        workflow = school.get("onboarding_workflow", {})
-                        kit_step = workflow.get("steps", {}).get("kit_delivery", {})
-                        kit_data = kit_step.get("data", {})
-                        
-                        # Only update if PO number is different or not set
-                        if kit_data.get("po_number") != po_number:
-                            update_data = {
-                                "onboarding_workflow.steps.kit_delivery.data.po_number": po_number,
-                                "onboarding_workflow.steps.kit_delivery.data.po_status": detailed_po.get("status"),
-                                "onboarding_workflow.steps.kit_delivery.data.vendor_name": detailed_po.get("vendor_name"),
-                            }
-                            
-                            if not kit_data.get("delivery_date") and detailed_po.get("delivery_date"):
-                                update_data["onboarding_workflow.steps.kit_delivery.data.delivery_date"] = detailed_po.get("delivery_date")
-                            
-                            if not kit_data.get("dispatch_date") and dispatch_info.get("dispatch_date"):
-                                update_data["onboarding_workflow.steps.kit_delivery.data.dispatch_date"] = dispatch_info.get("dispatch_date")
-                            
-                            if not kit_data.get("tracking_link"):
-                                tracking = transform_tracking_url(detailed_po.get("tracking_link") or detailed_po.get("public_tracking_url"))
-                                if tracking:
-                                    update_data["onboarding_workflow.steps.kit_delivery.data.tracking_link"] = tracking
-                            
-                            await db.school_inquiries.update_one(
-                                {"id": school_id},
-                                {"$set": update_data}
-                            )
-                            results["po_data_synced"] += 1
-            
-            # Create expenses ONLY from delivered POs
-            for delivered_po_summary in delivered_pos:
-                po_number = delivered_po_summary.get("po_number")
-                if not po_number:
-                    continue
-                
-                # IMPORTANT: Verify this PO actually belongs to this school by checking school_name match
-                po_school_name = delivered_po_summary.get("school_name", "")
-                if po_school_name and po_school_name.lower().strip() != school_name.lower().strip():
-                    # PO belongs to a different school, skip it
-                    continue
-                    
-                detailed_po = await fetch_po_data(f"po/{po_number}")
-                if not detailed_po:
-                    continue
-                
-                # Double-check school name from detailed PO
-                detailed_school_name = detailed_po.get("school_name", "")
-                if detailed_school_name and detailed_school_name.lower().strip() != school_name.lower().strip():
-                    continue
-                
-                # Auto-create expenses from delivered PO data
-                invoice_info = detailed_po.get("invoice_info") or {}
-                invoice_amount = invoice_info.get("amount", 0) or detailed_po.get("subtotal", 0) or detailed_po.get("grand_total", 0)
-                logistics_cost = invoice_info.get("logistics_cost", 0)
-                
-                # Get GST/Tax info
-                total_tax = detailed_po.get("total_tax", 0)
-                subtotal = detailed_po.get("subtotal", 0)
-                grand_total = detailed_po.get("grand_total", 0)
-                gst_rate = 18 if total_tax > 0 and subtotal > 0 else 0
-                if total_tax > 0 and subtotal > 0:
-                    gst_rate = round((total_tax / subtotal) * 100, 2)
-                gst_type = "IGST" if total_tax > 0 else "None"
-                
-                # Check if kit expense already exists
-                existing_kit = await db.school_expenses.find_one({
-                    "school_id": school_id,
-                    "po_number": po_number,
-                    "category": "kit_cost"
-                })
-                
-                if not existing_kit and invoice_amount > 0:
-                    # Build attachments from PO files
-                    kit_attachments = []
-                    if detailed_po.get("po_pdf_url"):
-                        kit_attachments.append({
-                            "name": f"PO-{po_number}.pdf",
-                            "url": detailed_po.get("po_pdf_url"),
-                            "type": "po_file"
-                        })
-                    if detailed_po.get("invoice_file_url"):
-                        kit_attachments.append({
-                            "name": f"Invoice-{po_number}",
-                            "url": detailed_po.get("invoice_file_url"),
-                            "type": "invoice"
-                        })
-                    
-                    kit_expense = {
-                        "id": str(uuid.uuid4()),
-                        "school_id": school_id,
-                        "school_name": school_name,
-                        "category": "kit_cost",
-                        "category_name": "Kit Cost",
-                        "amount": float(invoice_amount),
-                        "subtotal": float(subtotal),
-                        "gst_amount": float(total_tax),
-                        "gst_rate": gst_rate,
-                        "gst_type": gst_type,
-                        "grand_total": float(grand_total),
-                        "description": f"Kit cost from PO {po_number} (auto-synced)",
-                        "expense_date": detailed_po.get("created_at", datetime.now(timezone.utc).isoformat())[:10],
-                        "invoice_number": po_number,
-                        "vendor_name": detailed_po.get("vendor_name", ""),
-                        "payment_status": invoice_info.get("payment_status", "pending"),
-                        "po_number": po_number,
-                        "po_pdf_url": detailed_po.get("po_pdf_url"),
-                        "invoice_file_url": detailed_po.get("invoice_file_url"),
-                        "attachments": kit_attachments,
-                        "created_by": "system",
-                        "created_by_name": "Auto-Sync Job",
-                        "created_at": datetime.now(timezone.utc).isoformat(),
-                        "updated_at": datetime.now(timezone.utc).isoformat(),
-                        "auto_synced": True
-                    }
-                    await db.school_expenses.insert_one(kit_expense)
-                    results["expenses_created"] += 1
-                
-                # Check if logistics expense already exists
-                existing_logistics = await db.school_expenses.find_one({
-                    "school_id": school_id,
-                    "po_number": po_number,
-                    "category": "logistics_cost"
-                })
-                
-                if not existing_logistics and logistics_cost > 0:
-                    # Build attachments for logistics
-                    logistics_attachments = []
-                    if detailed_po.get("logistics_bill_url"):
-                        logistics_attachments.append({
-                            "name": f"Logistics-Bill-{po_number}",
-                            "url": detailed_po.get("logistics_bill_url"),
-                            "type": "logistics_bill"
-                        })
-                    if detailed_po.get("delivery_proof_url"):
-                        logistics_attachments.append({
-                            "name": f"Delivery-Proof-{po_number}",
-                            "url": detailed_po.get("delivery_proof_url"),
-                            "type": "delivery_proof"
-                        })
-                    
-                    logistics_expense = {
-                        "id": str(uuid.uuid4()),
-                        "school_id": school_id,
-                        "school_name": school_name,
-                        "category": "logistics_cost",
-                        "category_name": "Logistics Cost",
-                        "amount": float(logistics_cost),
-                        "description": f"Logistics from PO {po_number} (auto-synced)",
-                        "expense_date": detailed_po.get("created_at", datetime.now(timezone.utc).isoformat())[:10],
-                        "invoice_number": f"{po_number}-LOGISTICS",
-                        "vendor_name": detailed_po.get("vendor_name", ""),
-                        "payment_status": "pending",
-                        "po_number": po_number,
-                        "logistics_bill_url": detailed_po.get("logistics_bill_url"),
-                        "delivery_proof_url": detailed_po.get("delivery_proof_url"),
-                        "attachments": logistics_attachments,
-                        "created_by": "system",
-                        "created_by_name": "Auto-Sync Job",
-                        "created_at": datetime.now(timezone.utc).isoformat(),
-                        "updated_at": datetime.now(timezone.utc).isoformat(),
-                        "auto_synced": True
-                    }
-                    await db.school_expenses.insert_one(logistics_expense)
-                    results["expenses_created"] += 1
-            
-            results["schools_processed"] += 1
-            
-        except Exception as e:
-            results["errors"].append({"school_id": school.get("id"), "error": str(e)})
-    
-    return {
-        "success": True,
-        "results": results,
-        "timestamp": datetime.now(timezone.utc).isoformat()
-    }
-
-
-# ========================
-# SCHOOL EXPENSES MANAGEMENT
-# ========================
-
-EXPENSE_CATEGORIES = [
-    {"id": "kit_cost", "name": "Kit Cost", "description": "Learning kits and materials"},
-    {"id": "teacher_cost", "name": "Teacher Cost", "description": "Teacher salaries and fees"},
-    {"id": "logistics_cost", "name": "Logistics Cost", "description": "Delivery and transportation"},
-    {"id": "books_cost", "name": "Books Cost", "description": "Textbooks and workbooks"},
-    {"id": "gp_share", "name": "GP Share", "description": "Growth Partner commission"},
-    {"id": "school_share", "name": "School Share", "description": "School's revenue share"},
-    {"id": "printing_certification", "name": "Printing / Certification Cost", "description": "Certificates and printed materials"},
-    {"id": "renewal_commission_team", "name": "Renewal Commission (Team)", "description": "Team commission on renewals"},
-    {"id": "renewal_commission_teachers", "name": "Renewal Commission (Teachers)", "description": "Teacher commission on renewals"},
-    {"id": "marketing_cost", "name": "Marketing Cost", "description": "Marketing and promotion expenses"},
-    {"id": "technology_cost", "name": "Technology Cost", "description": "Software and platform costs"},
-    {"id": "other", "name": "Other Expenses", "description": "Miscellaneous expenses"},
-]
-
-
-@api_router.get("/school-expenses/categories")
-async def get_school_expense_categories(user: dict = Depends(get_current_user)):
-    """Get all available expense categories"""
-    return EXPENSE_CATEGORIES
-
-
-@api_router.get("/school-expenses")
-async def get_all_school_expenses(
-    school_id: Optional[str] = None,
-    category: Optional[str] = None,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    user: dict = Depends(get_current_user)
-):
-    """Get all expenses with optional filters"""
-    query = {}
-    
-    if school_id:
-        query["school_id"] = school_id
-    if category:
-        query["category"] = category
-    if start_date:
-        query["expense_date"] = {"$gte": start_date}
-    if end_date:
-        if "expense_date" in query:
-            query["expense_date"]["$lte"] = end_date
-        else:
-            query["expense_date"] = {"$lte": end_date}
-    
-    expenses = await db.school_expenses.find(query, {"_id": 0}).sort("expense_date", -1).to_list(1000)
-    return expenses
-
-
-@api_router.get("/school-expenses/summary")
-async def get_school_expenses_summary(
-    school_id: Optional[str] = None,
-    user: dict = Depends(get_current_user)
-):
-    """Get expense summary by school and category"""
-    match_stage = {}
-    if school_id:
-        match_stage["school_id"] = school_id
-    
-    # Aggregate by school
-    pipeline = [
-        {"$match": match_stage} if match_stage else {"$match": {}},
-        {
-            "$group": {
-                "_id": {
-                    "school_id": "$school_id",
-                    "school_name": "$school_name",
-                    "category": "$category"
-                },
-                "total_amount": {"$sum": "$amount"},
-                "count": {"$sum": 1}
-            }
-        },
-        {"$sort": {"_id.school_name": 1, "_id.category": 1}}
-    ]
-    
-    results = await db.school_expenses.aggregate(pipeline).to_list(1000)
-    
-    # Organize by school
-    schools_summary = {}
-    for r in results:
-        school_id = r["_id"]["school_id"]
-        school_name = r["_id"]["school_name"]
-        category = r["_id"]["category"]
-        
-        if school_id not in schools_summary:
-            schools_summary[school_id] = {
-                "school_id": school_id,
-                "school_name": school_name,
-                "total_expenses": 0,
-                "by_category": {}
-            }
-        
-        schools_summary[school_id]["by_category"][category] = {
-            "amount": r["total_amount"],
-            "count": r["count"]
-        }
-        schools_summary[school_id]["total_expenses"] += r["total_amount"]
-    
-    # Get grand total
-    total_pipeline = [
-        {"$match": match_stage} if match_stage else {"$match": {}},
-        {"$group": {"_id": None, "total": {"$sum": "$amount"}}}
-    ]
-    total_result = await db.school_expenses.aggregate(total_pipeline).to_list(1)
-    grand_total = total_result[0]["total"] if total_result else 0
-    
-    return {
-        "grand_total": grand_total,
-        "schools": list(schools_summary.values())
-    }
-
-
-@api_router.get("/school-expenses/school/{school_id}")
-async def get_single_school_expenses(school_id: str, user: dict = Depends(get_current_user)):
-    """Get all expenses for a specific school"""
-    expenses = await db.school_expenses.find(
-        {"school_id": school_id}, 
-        {"_id": 0}
-    ).sort("expense_date", -1).to_list(500)
-    
-    # Calculate totals by category
-    totals = {}
-    grand_total = 0
-    for exp in expenses:
-        cat = exp.get("category", "other")
-        if cat not in totals:
-            totals[cat] = 0
-        totals[cat] += exp.get("amount", 0)
-        grand_total += exp.get("amount", 0)
-    
-    return {
-        "expenses": expenses,
-        "totals_by_category": totals,
-        "grand_total": grand_total
-    }
-
-
-@api_router.post("/school-expenses")
-async def create_school_expense(data: dict, user: dict = Depends(get_current_user)):
-    """Create a new expense entry"""
-    # Get school info
-    school = await db.school_inquiries.find_one({"id": data.get("school_id")}, {"_id": 0})
+    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
     if not school:
         raise HTTPException(status_code=404, detail="School not found")
-    
-    expense = {
-        "id": str(uuid.uuid4()),
-        "school_id": data.get("school_id"),
-        "school_name": school.get("school_name", "Unknown School"),
-        "category": data.get("category"),
-        "category_name": next((c["name"] for c in EXPENSE_CATEGORIES if c["id"] == data.get("category")), data.get("category")),
-        "amount": float(data.get("amount", 0)),
-        "description": data.get("description", ""),
-        "expense_date": data.get("expense_date", datetime.now(timezone.utc).strftime("%Y-%m-%d")),
-        "invoice_number": data.get("invoice_number", ""),
-        "vendor_name": data.get("vendor_name", ""),
-        "payment_status": data.get("payment_status", "pending"),  # pending, paid, partial
-        "payment_mode": data.get("payment_mode", ""),  # cash, bank_transfer, upi, cheque
-        "notes": data.get("notes", ""),
-        "attachments": data.get("attachments", []),
-        "created_by": user.get("email"),
-        "created_by_name": user.get("name"),
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "updated_at": datetime.now(timezone.utc).isoformat()
-    }
-    
-    await db.school_expenses.insert_one(expense)
-    return {"message": "Expense created successfully", "expense": expense}
-
-
-@api_router.patch("/school-expenses/{expense_id}")
-async def update_school_expense(expense_id: str, data: dict, user: dict = Depends(get_current_user)):
-    """Update an expense entry"""
-    update_data = {"updated_at": datetime.now(timezone.utc).isoformat()}
-    
-    allowed_fields = ["amount", "description", "expense_date", "invoice_number", 
-                      "vendor_name", "payment_status", "payment_mode", "notes", "attachments", "category"]
-    
-    for field in allowed_fields:
-        if field in data:
-            update_data[field] = data[field]
-            if field == "category":
-                update_data["category_name"] = next((c["name"] for c in EXPENSE_CATEGORIES if c["id"] == data[field]), data[field])
-    
-    await db.school_expenses.update_one({"id": expense_id}, {"$set": update_data})
-    return {"message": "Expense updated successfully"}
-
-
-@api_router.delete("/school-expenses/{expense_id}")
-async def delete_school_expense(expense_id: str, user: dict = Depends(get_current_user)):
-    """Delete an expense entry"""
-    await db.school_expenses.delete_one({"id": expense_id})
-    return {"message": "Expense deleted successfully"}
-
-
-@api_router.post("/expenses/cleanup-duplicates")
-async def cleanup_duplicate_expenses(user: dict = Depends(get_current_user)):
-    """Remove duplicate expenses - keeps only the first expense per school/PO/category combination"""
-    if user.get("role") not in ["admin", "super_admin"]:
-        raise HTTPException(status_code=403, detail="Admin access required")
-    
-    # Find all auto-synced expenses with PO numbers
-    expenses = await db.school_expenses.find(
-        {"po_number": {"$exists": True, "$ne": None}},
-        {"_id": 0}
-    ).to_list(10000)
-    
-    # Group by school_id + po_number + category
-    seen = {}
-    duplicates_to_delete = []
-    
-    for exp in expenses:
-        key = f"{exp.get('school_id')}_{exp.get('po_number')}_{exp.get('category')}"
-        if key in seen:
-            # This is a duplicate
-            duplicates_to_delete.append(exp.get('id'))
+    od = school.get("onboarding_data") or {}
+    course_type = od.get("course_type", "only_robotics")
+    kit_type = od.get("kit_type", "individual")
+    book_type = od.get("book_type", "no_books")
+    lab_kit_count = int(od.get("lab_kit_count") or 0)
+    grade_pricing = od.get("grade_pricing", [])
+    products = []
+    unmatched = []
+    catalog = await fetch_vendor_products()
+    if kit_type == "individual":
+        for gp in grade_pricing:
+            grade = gp.get("grade", "")
+            students = int(gp.get("students") or 0)
+            if not grade or students <= 0:
+                continue
+            pid, pname = match_vendor_product(catalog, grade, "kit", course_type)
+            if pid:
+                products.append({"product_id": pid, "product_name": pname, "quantity": students})
+            else:
+                grade_num = int(grade) if str(grade).isdigit() else 0
+                fallback = "IOT Kit" if (course_type == "robotics_coding_ai" and grade_num >= 7) else "Robotics Kit"
+                products.append({"product_name": f"{fallback} - Grade {grade}", "quantity": students})
+                unmatched.append(f"{fallback} Grade {grade}")
+    elif kit_type == "lab_setup" and lab_kit_count > 0:
+        pid, pname = match_vendor_product(catalog, "", "lab_kit", course_type)
+        if pid:
+            products.append({"product_id": pid, "product_name": pname, "quantity": lab_kit_count})
         else:
-            seen[key] = exp.get('id')
-    
-    # Delete duplicates
-    if duplicates_to_delete:
-        await db.school_expenses.delete_many({"id": {"$in": duplicates_to_delete}})
-    
-    return {
-        "message": f"Cleanup complete. Removed {len(duplicates_to_delete)} duplicate expenses.",
-        "duplicates_removed": len(duplicates_to_delete)
-    }
+            fallback = "IOT Lab Kit" if course_type == "robotics_coding_ai" else "Robotics Lab Kit"
+            products.append({"product_name": fallback, "quantity": lab_kit_count})
+            unmatched.append(fallback)
+    if book_type == "individual_books":
+        for gp in grade_pricing:
+            grade = gp.get("grade", "")
+            students = int(gp.get("students") or 0)
+            if not grade or students <= 0:
+                continue
+            pid, pname = match_vendor_product(catalog, grade, "book", course_type)
+            if pid:
+                products.append({"product_id": pid, "product_name": pname, "quantity": students})
+            else:
+                products.append({"product_name": f"Book - Grade {grade}", "quantity": students})
+                unmatched.append(f"Book Grade {grade}")
+    return {"products": products, "unmatched": unmatched}
 
 
-@api_router.post("/expenses/clear-auto-synced")
-async def clear_auto_synced_expenses(user: dict = Depends(get_current_user)):
-    """Clear all auto-synced expenses to allow fresh sync. Manual expenses are preserved."""
+@api_router.post("/schools/{school_id}/raise-po")
+async def raise_po_for_school(school_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """Build PO products from onboarding data and submit to vendor panel"""
     if user.get("role") not in ["admin", "super_admin"]:
-        raise HTTPException(status_code=403, detail="Admin access required")
-    
-    result = await db.school_expenses.delete_many({"auto_synced": True})
-    
-    return {
-        "message": f"Cleared {result.deleted_count} auto-synced expenses. Manual expenses preserved.",
-        "deleted_count": result.deleted_count
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
+    if not school:
+        raise HTTPException(status_code=404, detail="School not found")
+
+    od = school.get("onboarding_data") or {}
+    delivery_date = data.get("delivery_date")
+    if not delivery_date:
+        raise HTTPException(status_code=400, detail="Delivery date is required")
+
+    course_type = od.get("course_type", "only_robotics")
+    kit_type = od.get("kit_type", "individual")
+    book_type = od.get("book_type", "no_books")
+    lab_kit_count = int(od.get("lab_kit_count") or 0)
+    grade_pricing = od.get("grade_pricing", [])
+
+    products = []
+    unmatched = []
+
+    # Use products override if provided by frontend (post-preview edits)
+    if data.get("products"):
+        products = data["products"]
+    else:
+        # Fetch vendor product catalog for ID matching
+        catalog = await fetch_vendor_products()
+
+        # ── Kit Products ──
+        if kit_type == "individual":
+            for gp in grade_pricing:
+                grade = gp.get("grade", "")
+                students = int(gp.get("students") or 0)
+                if not grade or students <= 0:
+                    continue
+                pid, pname = match_vendor_product(catalog, grade, "kit", course_type)
+                if pid:
+                    products.append({"product_id": pid, "product_name": pname, "quantity": students})
+                else:
+                    grade_num = int(grade) if str(grade).isdigit() else 0
+                    fallback = "IOT Kit" if (course_type == "robotics_coding_ai" and grade_num >= 7) else "Robotics Kit"
+                    products.append({"product_name": f"{fallback} - Grade {grade}", "quantity": students})
+                    unmatched.append(f"{fallback} Grade {grade}")
+
+        elif kit_type == "lab_setup" and lab_kit_count > 0:
+            pid, pname = match_vendor_product(catalog, "", "lab_kit", course_type)
+            if pid:
+                products.append({"product_id": pid, "product_name": pname, "quantity": lab_kit_count})
+            else:
+                fallback = "IOT Lab Kit" if course_type == "robotics_coding_ai" else "Robotics Lab Kit"
+                products.append({"product_name": fallback, "quantity": lab_kit_count})
+                unmatched.append(fallback)
+
+        # ── Book Products ──
+        if book_type == "individual_books":
+            for gp in grade_pricing:
+                grade = gp.get("grade", "")
+                students = int(gp.get("students") or 0)
+                if not grade or students <= 0:
+                    continue
+                pid, pname = match_vendor_product(catalog, grade, "book", course_type)
+                if pid:
+                    products.append({"product_id": pid, "product_name": pname, "quantity": students})
+                else:
+                    products.append({"product_name": f"Book - Grade {grade}", "quantity": students})
+                    unmatched.append(f"Book Grade {grade}")
+
+    if not products:
+        raise HTTPException(status_code=400, detail="No products could be determined from onboarding data. Check course type, kit type, and grade pricing.")
+
+    school_name = school.get("school_name", "")
+    contact_name = school.get("contact_name", "")
+    contact_phone = school.get("contact_phone") or school.get("phone", "")
+    address = school.get("address") or od.get("address") or school.get("city", "")
+
+    po_payload = {
+        "requester_name": user.get("name") or user.get("email", "OLL System"),
+        "delivery_date": delivery_date,
+        "delivery_address": address or school_name,
+        "contact_person": contact_name or school_name,
+        "contact_number": contact_phone or "",
+        "school_name": school_name,
+        "city": school.get("city", ""),
+        "notes": f"Auto-generated PO for {school_name}. Course: {course_type}, Kit: {kit_type}, Book: {book_type}",
+        "source_system": "oll_admin",
+        "products": products,
     }
 
-
-# ========================
-# PO API INTEGRATION (PROCUREWAY)
-# ========================
-
-PO_API_BASE_URL = os.environ.get("PO_API_BASE_URL", "https://vendorplus-4.emergent.host/api/external")
-PO_API_KEY = os.environ.get("PROCUREWAY_API_KEY", "oll_ext_O5MVdAo6KnEslbB3jtWcDBn_fPu7DRY78vr-ZkHZ7Tg")
-# Production tracking URL domain (replace preview URLs with production)
-PO_TRACKING_PROD_URL = os.environ.get("PO_TRACKING_URL", "https://vendorplus-4.emergent.host")
-
-def transform_tracking_url(url: str) -> str:
-    """Transform preview tracking URLs to production URLs"""
-    if not url:
-        return url
-    # Replace preview domain with production domain
-    preview_patterns = [
-        "oll-procure.preview.emergentagent.com",
-        "procureway.preview.emergentagent.com",
-        "vendorplus.preview.emergentagent.com",
-        "procureway.stage-preview.emergentagent.com",
-        "vendorplus.stage-preview.emergentagent.com",
-        "oll-procure.stage-preview.emergentagent.com"
-    ]
-    for pattern in preview_patterns:
-        if pattern in url:
-            # Extract the path after the domain
-            url = url.replace(f"https://{pattern}", PO_TRACKING_PROD_URL)
-            url = url.replace(f"http://{pattern}", PO_TRACKING_PROD_URL)
-    return url
-
-async def fetch_po_data(endpoint: str, params: dict = None, timeout: float = 10.0):
-    """Helper function to fetch data from PO API"""
+    # Call vendor panel API
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.get(
-                f"{PO_API_BASE_URL}/{endpoint}",
-                headers={"X-API-Key": PO_API_KEY},
-                params=params,
-                timeout=timeout
+            response = await client.post(
+                f"{VENDOR_PUBLIC_API}/po-request",
+                json=po_payload,
+                timeout=15.0
             )
             response.raise_for_status()
-            return response.json()
+            po_result = response.json()
         except httpx.HTTPStatusError as e:
-            logging.error(f"PO API HTTP error: {e.response.status_code} - {e.response.text}")
-            return None
+            err_text = e.response.text if hasattr(e.response, 'text') else str(e)
+            logging.error(f"Vendor PO API error: {e.response.status_code} - {err_text}")
+            raise HTTPException(status_code=502, detail=f"Vendor API error: {err_text}")
         except Exception as e:
-            logging.error(f"PO API error: {str(e)}")
-            return None
+            logging.error(f"Vendor PO API error: {str(e)}")
+            raise HTTPException(status_code=502, detail=f"Failed to reach vendor API: {str(e)}")
+
+    # Store PO info on the school
+    po_info = {
+        "po_number": po_result.get("po_number"),
+        "po_id": po_result.get("po_id"),
+        "tracking_token": po_result.get("tracking_token"),
+        "tracking_url": transform_tracking_url(po_result.get("tracking_url")),
+        "status": po_result.get("status"),
+        "products": products,
+        "delivery_date": delivery_date,
+        "raised_at": datetime.now(timezone.utc).isoformat(),
+        "raised_by": user.get("email"),
+    }
+    await db.school_inquiries.update_one(
+        {"id": school_id},
+        {"$push": {"po_requests": po_info}}
+    )
+
+    # Also update onboarding kit_delivery step
+    await db.school_inquiries.update_one(
+        {"id": school_id},
+        {"$set": {
+            "onboarding_workflow.steps.kit_delivery.data.po_number": po_result.get("po_number"),
+            "onboarding_workflow.steps.kit_delivery.data.po_status": po_result.get("status"),
+            "onboarding_workflow.steps.kit_delivery.data.delivery_date": delivery_date,
+            "onboarding_workflow.steps.kit_delivery.data.tracking_url": transform_tracking_url(po_result.get("tracking_url")),
+        }}
+    )
+
+    return {
+        "success": True,
+        "po_number": po_result.get("po_number"),
+        "tracking_token": po_result.get("tracking_token"),
+        "tracking_url": transform_tracking_url(po_result.get("tracking_url")),
+        "products_count": len(products),
+        "products": products,
+        "unmatched_products": unmatched,
+        "message": f"PO {po_result.get('po_number')} raised successfully with {len(products)} product(s)",
+    }
 
 
 @api_router.get("/schools/{school_id}/po-data")
@@ -14980,183 +14433,8 @@ async def get_school_po_data(school_id: str, user: dict = Depends(get_current_us
 
 @api_router.post("/schools/{school_id}/sync-po-expenses")
 async def sync_po_expenses(school_id: str, data: dict = None, user: dict = Depends(get_current_user)):
-    """Sync expenses from PO data for a school - creates kit and logistics expenses only when delivery is confirmed"""
-    if data is None:
-        data = {}
-    
-    # Get school info
-    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
-    if not school:
-        raise HTTPException(status_code=404, detail="School not found")
-    
-    school_name = school.get("school_name", "")
-    po_number = data.get("po_number")  # Optional - sync specific PO
-    
-    # If specific PO number provided, fetch that one
-    if po_number:
-        po_data = await fetch_po_data(f"po/{po_number}")
-        pos_to_sync = [po_data] if po_data else []
-    else:
-        # Fetch all POs for this school - ONLY delivered ones for expenses
-        po_list_data = await fetch_po_data("po", {"school_name": school_name, "status": "delivered", "limit": 50})
-        if not po_list_data or "data" not in po_list_data:
-            return {"message": "No delivered POs found", "expenses_created": 0, "note": "Expenses are only created after delivery is confirmed"}
-        
-        # Get detailed info for each delivered PO
-        pos_to_sync = []
-        for po in po_list_data.get("data", []):
-            po_num = po.get("po_number")
-            if po_num:
-                detailed = await fetch_po_data(f"po/{po_num}")
-                if detailed:
-                    pos_to_sync.append(detailed)
-    
-    expenses_created = []
-    
-    for po in pos_to_sync:
-        po_num = po.get("po_number", "Unknown")
-        po_status = po.get("status", "").lower()
-        
-        # Only create expenses for delivered POs
-        if po_status != "delivered":
-            continue
-        
-        # Verify PO belongs to this school
-        po_school_name = po.get("school_name", "")
-        if po_school_name and po_school_name.lower().strip() != school_name.lower().strip():
-            continue
-            
-        vendor_name = po.get("vendor_name", "")
-        invoice_info = po.get("invoice_info") or {}
-        
-        # Get amounts from invoice_info if available, otherwise from PO total
-        invoice_amount = invoice_info.get("amount", 0) or po.get("subtotal", 0) or po.get("grand_total", 0)
-        logistics_cost = invoice_info.get("logistics_cost", 0)
-        
-        # Get GST/Tax info
-        total_tax = po.get("total_tax", 0)
-        subtotal = po.get("subtotal", 0)
-        grand_total = po.get("grand_total", 0)
-        
-        # Determine GST type based on tax amount (18% is standard GST)
-        gst_rate = 18 if total_tax > 0 and subtotal > 0 else 0
-        if total_tax > 0 and subtotal > 0:
-            gst_rate = round((total_tax / subtotal) * 100, 2)
-        
-        # Default to IGST for inter-state, can be configured
-        gst_type = "IGST" if total_tax > 0 else "None"
-        
-        # Check if expense already exists for this PO
-        existing_kit = await db.school_expenses.find_one({
-            "school_id": school_id,
-            "po_number": po_num,
-            "category": "kit_cost"
-        })
-        
-        existing_logistics = await db.school_expenses.find_one({
-            "school_id": school_id,
-            "po_number": po_num,
-            "category": "logistics_cost"
-        })
-        
-        # Create Kit Cost expense if not exists and amount > 0
-        if not existing_kit and invoice_amount > 0:
-            # Build attachments from PO files
-            kit_attachments = []
-            if po.get("po_pdf_url"):
-                kit_attachments.append({
-                    "name": f"PO-{po_num}.pdf",
-                    "url": po.get("po_pdf_url"),
-                    "type": "po_file"
-                })
-            if po.get("invoice_file_url"):
-                kit_attachments.append({
-                    "name": f"Invoice-{po_num}",
-                    "url": po.get("invoice_file_url"),
-                    "type": "invoice"
-                })
-            
-            kit_expense = {
-                "id": str(uuid.uuid4()),
-                "school_id": school_id,
-                "school_name": school_name,
-                "category": "kit_cost",
-                "category_name": "Kit Cost",
-                "amount": float(invoice_amount),
-                "subtotal": float(subtotal),
-                "gst_amount": float(total_tax),
-                "gst_rate": gst_rate,
-                "gst_type": gst_type,
-                "grand_total": float(grand_total),
-                "description": f"Kit cost from PO {po_num}",
-                "expense_date": po.get("created_at", datetime.now(timezone.utc).isoformat())[:10],
-                "invoice_number": po_num,
-                "vendor_name": vendor_name,
-                "payment_status": invoice_info.get("payment_status", "pending"),
-                "payment_mode": "",
-                "notes": f"Auto-synced from ProcureWay PO {po_num}",
-                "po_number": po_num,
-                "po_pdf_url": po.get("po_pdf_url"),
-                "invoice_file_url": po.get("invoice_file_url"),
-                "attachments": kit_attachments,
-                "created_by": user.get("email"),
-                "created_by_name": user.get("name"),
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-                "auto_synced": True
-            }
-            await db.school_expenses.insert_one(kit_expense)
-            expenses_created.append({"type": "kit_cost", "po": po_num, "amount": invoice_amount, "gst": total_tax})
-        
-        # Create Logistics Cost expense if not exists and amount > 0
-        if not existing_logistics and logistics_cost > 0:
-            # Build attachments for logistics
-            logistics_attachments = []
-            if po.get("logistics_bill_url"):
-                logistics_attachments.append({
-                    "name": f"Logistics-Bill-{po_num}",
-                    "url": po.get("logistics_bill_url"),
-                    "type": "logistics_bill"
-                })
-            if po.get("delivery_proof_url"):
-                logistics_attachments.append({
-                    "name": f"Delivery-Proof-{po_num}",
-                    "url": po.get("delivery_proof_url"),
-                    "type": "delivery_proof"
-                })
-            
-            logistics_expense = {
-                "id": str(uuid.uuid4()),
-                "school_id": school_id,
-                "school_name": school_name,
-                "category": "logistics_cost",
-                "category_name": "Logistics Cost",
-                "amount": float(logistics_cost),
-                "description": f"Logistics cost from PO {po_num}",
-                "expense_date": po.get("created_at", datetime.now(timezone.utc).isoformat())[:10],
-                "invoice_number": f"{po_num}-LOGISTICS",
-                "vendor_name": vendor_name,
-                "payment_status": "pending",
-                "payment_mode": "",
-                "notes": f"Auto-synced logistics from ProcureWay PO {po_num}",
-                "po_number": po_num,
-                "logistics_bill_url": po.get("logistics_bill_url"),
-                "delivery_proof_url": po.get("delivery_proof_url"),
-                "attachments": logistics_attachments,
-                "created_by": user.get("email"),
-                "created_by_name": user.get("name"),
-                "created_at": datetime.now(timezone.utc).isoformat(),
-                "updated_at": datetime.now(timezone.utc).isoformat(),
-                "auto_synced": True
-            }
-            await db.school_expenses.insert_one(logistics_expense)
-            expenses_created.append({"type": "logistics_cost", "po": po_num, "amount": logistics_cost})
-    
-    return {
-        "message": f"Synced {len(expenses_created)} expenses from POs",
-        "expenses_created": expenses_created,
-        "pos_processed": len(pos_to_sync)
-    }
+    """PO expense sync disabled - expenses are managed manually in the Admin Expenses panel."""
+    return {"message": "PO expense sync is disabled. Add expenses manually via the Expenses page.", "expenses_created": 0}
 
 
 @api_router.get("/schools/{school_id}/onboarding-po-info")
@@ -15253,1242 +14531,96 @@ async def verify_external_api_key(api_key: str = Header(None, alias="X-API-Key")
     return key_doc
 
 
-@api_router.post("/admin/api-keys/generate")
-async def generate_external_api_key(data: dict, user: dict = Depends(get_current_user)):
-    """Generate a new external API key for accessing school data"""
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin only")
-    
-    # Generate a secure API key
-    api_key = f"oll_sk_{secrets.token_urlsafe(32)}"
-    
-    key_doc = {
-        "id": str(uuid.uuid4()),
-        "key": api_key,
-        "name": data.get("name", "External API Key"),
-        "description": data.get("description", ""),
-        "permissions": data.get("permissions", ["schools:read"]),  # schools:read, schools:write
-        "created_by": user.get("email"),
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "last_used_at": None,
-        "usage_count": 0,
-        "is_active": True,
-        "rate_limit": data.get("rate_limit", 1000),  # requests per day
-        "allowed_ips": data.get("allowed_ips", []),  # empty = all IPs allowed
-    }
-    
-    await db.external_api_keys.insert_one(key_doc)
-    
-    return {
-        "message": "API key generated successfully",
-        "api_key": api_key,
-        "name": key_doc["name"],
-        "id": key_doc["id"],
-        "note": "Save this key securely. It won't be shown again."
-    }
-
-
-@api_router.get("/admin/api-keys")
-async def list_external_api_keys(user: dict = Depends(get_current_user)):
-    """List all external API keys (keys are masked)"""
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin only")
-    
-    keys = await db.external_api_keys.find({}, {"_id": 0}).to_list(100)
-    
-    # Mask the actual keys
-    for key in keys:
-        if key.get("key"):
-            key["key"] = key["key"][:12] + "..." + key["key"][-4:]
-    
-    return keys
-
-
-@api_router.patch("/admin/api-keys/{key_id}")
-async def update_external_api_key(key_id: str, data: dict, user: dict = Depends(get_current_user)):
-    """Update an external API key (activate/deactivate, update name, etc.)"""
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin only")
-    
-    update_data = {}
-    if "is_active" in data:
-        update_data["is_active"] = data["is_active"]
-    if "name" in data:
-        update_data["name"] = data["name"]
-    if "description" in data:
-        update_data["description"] = data["description"]
-    if "rate_limit" in data:
-        update_data["rate_limit"] = data["rate_limit"]
-    
-    if update_data:
-        await db.external_api_keys.update_one({"id": key_id}, {"$set": update_data})
-    
-    return {"message": "API key updated successfully"}
-
-
-@api_router.delete("/admin/api-keys/{key_id}")
-async def delete_external_api_key(key_id: str, user: dict = Depends(get_current_user)):
-    """Delete an external API key"""
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Admin only")
-    
-    await db.external_api_keys.delete_one({"id": key_id})
-    return {"message": "API key deleted successfully"}
-
+# NOTE: /admin_keys routes moved to routes/admin_keys.py
+# NOTE: /reports routes moved to routes/reports.py
 
 # ========================
-# EXTERNAL API ENDPOINTS (Protected by API Key)
+# MANUAL TRIGGER ENDPOINTS (For Testing)
 # ========================
 
-@api_router.get("/external/schools")
-async def external_get_schools(
-    status: Optional[str] = None,
-    city: Optional[str] = None,
-    limit: int = 100,
-    offset: int = 0,
-    api_key_data: dict = Depends(verify_external_api_key)
-):
-    """
-    External API to get school data.
-    
-    Headers required:
-        X-API-Key: your_api_key
-    
-    Query params:
-        status: Filter by status (new, contacted, meeting_scheduled, meeting_done, converted, active, renewal_meeting, renewed, lost)
-        city: Filter by city
-        limit: Number of records (default 100, max 500)
-        offset: Pagination offset
-    
-    Returns:
-        List of schools with contact details, relationship manager, and stage info
-    """
-    # Build query
-    query = {}
-    if status:
-        query["status"] = status
-    if city:
-        # Search in 'location' field (which contains city name)
-        query["location"] = {"$regex": city, "$options": "i"}
-    
-    # Limit max results
-    limit = min(limit, 500)
-    
-    # Get schools
-    schools = await db.school_inquiries.find(query, {"_id": 0}).skip(offset).limit(limit).to_list(limit)
-    
-    # Get relationship managers info
-    rm_ids = list(set([s.get("assigned_to") or s.get("relationship_manager") for s in schools if s.get("assigned_to") or s.get("relationship_manager")]))
-    rm_map = {}
-    if rm_ids:
-        rms = await db.team_users.find({"id": {"$in": rm_ids}}, {"_id": 0, "id": 1, "name": 1, "email": 1, "phone": 1}).to_list(100)
-        rm_map = {rm["id"]: rm for rm in rms}
-    
-    # Format response
-    result = []
-    for school in schools:
-        rm_id = school.get("assigned_to") or school.get("relationship_manager")
-        rm_info = rm_map.get(rm_id, {})
-        
-        result.append({
-            "id": school.get("id"),
-            "school_name": school.get("school_name"),
-            "status": school.get("status"),
-            "stage": school.get("status"),  # alias for status
-            
-            # Contact details
-            "contact": {
-                "name": school.get("contact_name"),
-                "phone": school.get("phone"),
-                "email": school.get("email"),
-                "designation": school.get("designation"),
-            },
-            
-            # Location
-            "location": {
-                "city": school.get("location"),  # 'location' field contains city
-                "state": school.get("state"),
-                "address": school.get("address"),
-                "area": school.get("city"),  # some schools may have 'city' as area
-            },
-            
-            # Relationship Manager
-            "relationship_manager": {
-                "id": rm_id,
-                "name": rm_info.get("name") or school.get("relationship_manager_name"),
-                "email": rm_info.get("email"),
-                "phone": rm_info.get("phone"),
-            } if rm_id else None,
-            
-            # School details
-            "school_details": {
-                "board": school.get("board"),
-                "student_count": school.get("student_count"),
-                "type": school.get("school_type"),
-            },
-            
-            # Dates
-            "created_at": school.get("created_at"),
-            "updated_at": school.get("updated_at"),
-            "converted_at": school.get("converted_at"),
-        })
-    
-    # Get total count
-    total = await db.school_inquiries.count_documents(query)
-    
-    return {
-        "data": result,
-        "pagination": {
-            "total": total,
-            "limit": limit,
-            "offset": offset,
-            "has_more": offset + limit < total
-        }
-    }
+@api_router.post("/admin/trigger/overdue-check")
+async def trigger_overdue_check(user: dict = Depends(get_current_user)):
+    """Manually trigger overdue ticket check"""
+    await check_overdue_tickets()
+    return {"message": "Overdue ticket check triggered"}
 
+@api_router.post("/admin/trigger/meeting-reminders")
+async def trigger_meeting_reminders(user: dict = Depends(get_current_user)):
+    """Manually trigger school meeting reminders check"""
+    await check_school_meeting_reminders()
+    return {"message": "Meeting reminders check triggered"}
 
-@api_router.get("/external/schools/{school_id}")
-async def external_get_school_by_id(
-    school_id: str,
-    api_key_data: dict = Depends(verify_external_api_key)
-):
-    """Get a single school by ID"""
-    school = await db.school_inquiries.find_one({"id": school_id}, {"_id": 0})
-    if not school:
-        raise HTTPException(status_code=404, detail="School not found")
-    
-    # Get RM info
-    rm_id = school.get("assigned_to") or school.get("relationship_manager")
-    rm_info = {}
-    if rm_id:
-        rm = await db.team_users.find_one({"id": rm_id}, {"_id": 0, "id": 1, "name": 1, "email": 1, "phone": 1})
-        if rm:
-            rm_info = rm
-    
-    return {
-        "id": school.get("id"),
-        "school_name": school.get("school_name"),
-        "status": school.get("status"),
-        "stage": school.get("status"),
-        
-        "contact": {
-            "name": school.get("contact_name"),
-            "phone": school.get("phone"),
-            "email": school.get("email"),
-            "designation": school.get("designation"),
-        },
-        
-        "location": {
-            "city": school.get("location"),  # 'location' field contains city
-            "state": school.get("state"),
-            "address": school.get("address"),
-            "area": school.get("city"),
-        },
-        
-        "relationship_manager": {
-            "id": rm_id,
-            "name": rm_info.get("name") or school.get("relationship_manager_name"),
-            "email": rm_info.get("email"),
-            "phone": rm_info.get("phone"),
-        } if rm_id else None,
-        
-        "school_details": {
-            "board": school.get("board"),
-            "student_count": school.get("student_count"),
-            "type": school.get("school_type"),
-        },
-        
-        "additional_contacts": school.get("school_contacts", []),
-        
-        "created_at": school.get("created_at"),
-        "updated_at": school.get("updated_at"),
-        "converted_at": school.get("converted_at"),
-    }
+@api_router.post("/admin/trigger/daily-digest")
+async def trigger_daily_digest(user: dict = Depends(get_current_user)):
+    """Manually trigger School CRM daily digest email"""
+    await send_school_crm_daily_digest()
+    return {"message": "Daily digest triggered"}
 
-
-@api_router.get("/external/schools/stats/summary")
-async def external_get_schools_stats(
-    api_key_data: dict = Depends(verify_external_api_key)
-):
-    """Get summary statistics of schools"""
-    pipeline = [
-        {"$group": {"_id": "$status", "count": {"$sum": 1}}},
-        {"$sort": {"count": -1}}
-    ]
-    
-    status_counts = await db.school_inquiries.aggregate(pipeline).to_list(20)
-    
-    total = sum([s["count"] for s in status_counts])
-    
-    return {
-        "total_schools": total,
-        "by_status": {s["_id"]: s["count"] for s in status_counts if s["_id"]},
-        "generated_at": datetime.now(timezone.utc).isoformat()
-    }
-
-
-# ========================
-# ADMIN REPORTS ENDPOINTS
-# ========================
-
-class ReportsDateFilter(BaseModel):
-    start_date: Optional[str] = None  # YYYY-MM-DD
-    end_date: Optional[str] = None    # YYYY-MM-DD
-    period: Optional[str] = None      # day, week, month, year
-
-def get_date_range(start_date: Optional[str], end_date: Optional[str], period: Optional[str]):
-    """Get date range for filtering"""
-    now = datetime.now(timezone.utc)
-    
-    if start_date and end_date:
-        start = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-        end = datetime.strptime(end_date, "%Y-%m-%d").replace(hour=23, minute=59, second=59, tzinfo=timezone.utc)
-    elif period == "day":
-        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        end = now
-    elif period == "week":
-        start = (now - timedelta(days=7)).replace(hour=0, minute=0, second=0, microsecond=0)
-        end = now
-    elif period == "month":
-        start = (now - timedelta(days=30)).replace(hour=0, minute=0, second=0, microsecond=0)
-        end = now
-    elif period == "year":
-        start = (now - timedelta(days=365)).replace(hour=0, minute=0, second=0, microsecond=0)
-        end = now
-    else:
-        # Default to all time
-        start = datetime(2020, 1, 1, tzinfo=timezone.utc)
-        end = now
-    
-    return start, end
-
-def parse_date_field(date_val):
-    """Parse date field from various formats and ensure timezone awareness"""
-    if not date_val:
-        return None
-    if isinstance(date_val, datetime):
-        if date_val.tzinfo is None:
-            return date_val.replace(tzinfo=timezone.utc)
-        return date_val
-    if isinstance(date_val, str):
-        try:
-            # Handle ISO format with Z
-            dt = datetime.fromisoformat(date_val.replace('Z', '+00:00'))
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
-            return dt
-        except:
-            pass
-        try:
-            # Handle simple date format
-            dt = datetime.strptime(date_val, "%Y-%m-%d")
-            return dt.replace(tzinfo=timezone.utc)
-        except:
-            pass
-        try:
-            # Handle datetime without timezone
-            dt = datetime.strptime(date_val, "%Y-%m-%dT%H:%M:%S")
-            return dt.replace(tzinfo=timezone.utc)
-        except:
-            pass
-    return None
-
-@api_router.get("/admin/reports/overview")
-async def get_reports_overview(
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    period: Optional[str] = None,
-    assigned_to: Optional[str] = None,
+@api_router.post("/admin/test/whatsapp")
+async def test_whatsapp_notification(
+    data: dict,
     user: dict = Depends(get_current_user)
 ):
-    """Get overall metrics for the dashboard"""
-    start, end = get_date_range(start_date, end_date, period)
-    
-    # Get all student inquiries for date filtering
-    all_student_inquiries = await db.student_inquiries.find({}, {"_id": 0}).to_list(10000)
-    student_inquiries = []
-    for inq in all_student_inquiries:
-        created = parse_date_field(inq.get('created_at'))
-        if created and start <= created <= end:
-            if assigned_to and inq.get('assigned_to') != assigned_to:
-                continue
-            student_inquiries.append(inq)
-    
-    # Get all school inquiries
-    all_school_inquiries = await db.school_inquiries.find({}, {"_id": 0}).to_list(10000)
-    school_inquiries = []
-    for inq in all_school_inquiries:
-        created = parse_date_field(inq.get('created_at'))
-        if created and start <= created <= end:
-            if assigned_to and inq.get('assigned_to') != assigned_to:
-                continue
-            school_inquiries.append(inq)
-    
-    # Get all educator applications
-    all_educators = await db.educator_applications.find({}, {"_id": 0}).to_list(10000)
-    educators = []
-    for edu in all_educators:
-        created = parse_date_field(edu.get('created_at'))
-        if created and start <= created <= end:
-            if assigned_to and edu.get('assigned_to') != assigned_to:
-                continue
-            educators.append(edu)
-    
-    # Get demo bookings
-    all_demos = await db.demo_bookings.find({}, {"_id": 0}).to_list(10000)
-    demos = []
-    for demo in all_demos:
-        created = parse_date_field(demo.get('created_at'))
-        if created and start <= created <= end:
-            demos.append(demo)
-    
-    # Calculate metrics
-    total_students = len(student_inquiries)
-    paid_students = len([s for s in student_inquiries if s.get('status') == 'converted' or s.get('payment_status') == 'paid'])
-    
-    total_schools = len(school_inquiries)
-    converted_schools = len([s for s in school_inquiries if s.get('status') == 'converted'])
-    
-    total_educators = len(educators)
-    active_educators = len([e for e in educators if e.get('status') == 'active'])
-    
-    total_demos = len(demos)
-    completed_demos = len([d for d in demos if d.get('status') == 'completed'])
-    
-    # Revenue calculation - includes amount_paid AND conversion_amount from onboarding
-    student_revenue = 0
-    for s in student_inquiries:
-        if s.get('payment_status') == 'paid' or s.get('status') == 'converted':
-            # Check for conversion_amount first (from onboarding), then amount_paid
-            amount = float(s.get('conversion_amount') or s.get('amount_paid') or 0)
-            student_revenue += amount
-    
-    school_revenue = 0
-    for s in school_inquiries:
-        if s.get('status') in ['converted', 'active', 'renewed']:
-            # Check for conversion_amount, onboarding_data.total_amount, or amount_paid
-            onboarding_data = s.get('onboarding_data', {})
-            amount = float(s.get('conversion_amount') or onboarding_data.get('total_amount') or s.get('amount_paid') or 0)
-            school_revenue += amount
-    total_revenue = student_revenue + school_revenue
-    
-    return {
-        "overview": {
-            "total_revenue": total_revenue,
-            "student_revenue": student_revenue,
-            "school_revenue": school_revenue,
-            "paid_students": paid_students,
-            "converted_schools": converted_schools,
-            "active_educators": active_educators,
-        },
-        "students": {
-            "total": total_students,
-            "new": len([s for s in student_inquiries if s.get('status') == 'new']),
-            "demo_scheduled": len([s for s in student_inquiries if s.get('status') == 'demo_scheduled']),
-            "demo_completed": len([s for s in student_inquiries if s.get('status') == 'demo_completed']),
-            "converted": paid_students,
-        },
-        "schools": {
-            "total": total_schools,
-            "new": len([s for s in school_inquiries if s.get('status') == 'new']),
-            "meeting_scheduled": len([s for s in school_inquiries if s.get('status') == 'meeting_scheduled']),
-            "proposal_sent": len([s for s in school_inquiries if s.get('status') == 'proposal_sent']),
-            "converted": converted_schools,
-        },
-        "educators": {
-            "total": total_educators,
-            "new": len([e for e in educators if e.get('status') == 'new']),
-            "demo_scheduled": len([e for e in educators if e.get('status') == 'demo_scheduled']),
-            "onboarding": len([e for e in educators if e.get('status') == 'onboarding']),
-            "active": active_educators,
-        },
-        "demos": {
-            "total": total_demos,
-            "scheduled": len([d for d in demos if d.get('status') == 'scheduled']),
-            "completed": completed_demos,
-        },
-        "period": {
-            "start": start.isoformat(),
-            "end": end.isoformat(),
-        }
-    }
-
-@api_router.get("/admin/reports/sales-funnel")
-async def get_sales_funnel_report(
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    period: Optional[str] = None,
-    user_type: str = "students",  # students, schools
-    assigned_to: Optional[str] = None,
-    user: dict = Depends(get_current_user)
-):
-    """Get sales funnel metrics with conversion rates"""
-    start, end = get_date_range(start_date, end_date, period)
-    
-    if user_type == "students":
-        collection = db.student_inquiries
-    else:
-        collection = db.school_inquiries
-    
-    all_items = await collection.find({}, {"_id": 0}).to_list(10000)
-    items = []
-    for item in all_items:
-        created = parse_date_field(item.get('created_at'))
-        if created and start <= created <= end:
-            if assigned_to and item.get('assigned_to') != assigned_to:
-                continue
-            items.append(item)
-    
-    total = len(items)
-    if total == 0:
-        return {
-            "funnel": [],
-            "conversion_rates": {},
-            "revenue": 0,
-            "period": {"start": start.isoformat(), "end": end.isoformat()}
-        }
-    
-    # Define stages based on user type
-    if user_type == "students":
-        stages = [
-            {"name": "New Leads", "status": "new"},
-            {"name": "Demo Scheduled", "status": "demo_scheduled"},
-            {"name": "Demo Completed", "status": "demo_completed"},
-            {"name": "Converted", "status": "converted"},
-        ]
-    else:
-        stages = [
-            {"name": "New Leads", "status": "new"},
-            {"name": "Meeting Scheduled", "status": "meeting_scheduled"},
-            {"name": "Proposal Sent", "status": "proposal_sent"},
-            {"name": "Negotiation", "status": "negotiation"},
-            {"name": "Converted", "status": "converted"},
-        ]
-    
-    funnel = []
-    for i, stage in enumerate(stages):
-        count = len([item for item in items if item.get('status') == stage['status']])
-        # Include all later stages in the count (funnel logic)
-        for later_stage in stages[i+1:]:
-            count += len([item for item in items if item.get('status') == later_stage['status']])
-        funnel.append({
-            "stage": stage['name'],
-            "count": count,
-            "percentage": round(count / total * 100, 1) if total > 0 else 0
-        })
-    
-    # Calculate conversion rates
-    converted = len([item for item in items if item.get('status') == 'converted'])
-    demo_scheduled = len([item for item in items if item.get('status') in ['demo_scheduled', 'demo_completed', 'converted', 'meeting_scheduled', 'proposal_sent', 'negotiation']])
-    
-    conversion_rates = {
-        "lead_to_demo": round(demo_scheduled / total * 100, 1) if total > 0 else 0,
-        "demo_to_conversion": round(converted / demo_scheduled * 100, 1) if demo_scheduled > 0 else 0,
-        "overall_conversion": round(converted / total * 100, 1) if total > 0 else 0,
-    }
-    
-    # Revenue - includes conversion_amount from onboarding
-    revenue = 0
-    for item in items:
-        if item.get('status') == 'converted' or item.get('payment_status') == 'paid':
-            amount = float(item.get('conversion_amount') or item.get('amount_paid') or 0)
-            revenue += amount
-    
-    return {
-        "funnel": funnel,
-        "conversion_rates": conversion_rates,
-        "revenue": revenue,
-        "total_leads": total,
-        "period": {"start": start.isoformat(), "end": end.isoformat()}
-    }
-
-@api_router.get("/admin/reports/lead-analytics")
-async def get_lead_analytics(
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    period: Optional[str] = None,
-    user: dict = Depends(get_current_user)
-):
-    """Get lead analytics - source, age group, course interest breakdown"""
-    start, end = get_date_range(start_date, end_date, period)
-    
-    all_items = await db.student_inquiries.find({}, {"_id": 0}).to_list(10000)
-    items = []
-    for item in all_items:
-        created = parse_date_field(item.get('created_at'))
-        if created and start <= created <= end:
-            items.append(item)
-    
-    # Source breakdown
-    sources = {}
-    for item in items:
-        source = item.get('source', 'website') or 'website'
-        sources[source] = sources.get(source, 0) + 1
-    
-    # Age group breakdown
-    age_groups = {}
-    for item in items:
-        age = item.get('child_age') or item.get('age_group', 'Unknown')
-        if isinstance(age, (int, float)):
-            if age < 6:
-                age_group = "Under 6"
-            elif age < 10:
-                age_group = "6-9"
-            elif age < 14:
-                age_group = "10-13"
-            else:
-                age_group = "14+"
-        else:
-            age_group = str(age) if age else "Unknown"
-        age_groups[age_group] = age_groups.get(age_group, 0) + 1
-    
-    # Course interest breakdown
-    courses = {}
-    for item in items:
-        course = item.get('course_interest') or item.get('skill', 'Not Specified')
-        if isinstance(course, list):
-            for c in course:
-                courses[c] = courses.get(c, 0) + 1
-        else:
-            courses[course] = courses.get(course, 0) + 1
-    
-    # Stage breakdown
-    stages = {}
-    for item in items:
-        stage = item.get('status', 'new')
-        stages[stage] = stages.get(stage, 0) + 1
-    
-    return {
-        "by_source": [{"name": k, "count": v} for k, v in sorted(sources.items(), key=lambda x: -x[1])],
-        "by_age_group": [{"name": k, "count": v} for k, v in sorted(age_groups.items(), key=lambda x: -x[1])],
-        "by_course": [{"name": k, "count": v} for k, v in sorted(courses.items(), key=lambda x: -x[1])],
-        "by_stage": [{"name": k, "count": v} for k, v in sorted(stages.items(), key=lambda x: -x[1])],
-        "total": len(items),
-        "period": {"start": start.isoformat(), "end": end.isoformat()}
-    }
-
-@api_router.get("/admin/reports/educator-metrics")
-async def get_educator_metrics(
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    period: Optional[str] = None,
-    user: dict = Depends(get_current_user)
-):
-    """Get educator/teacher quality metrics"""
-    start, end = get_date_range(start_date, end_date, period)
-    
-    # Get all educators
-    all_educators = await db.educator_applications.find({}, {"_id": 0}).to_list(10000)
-    
-    # Filter by date range for new educators
-    new_educators = []
-    all_active = []
-    for edu in all_educators:
-        created = parse_date_field(edu.get('created_at'))
-        if created and start <= created <= end:
-            new_educators.append(edu)
-        if edu.get('status') == 'active':
-            all_active.append(edu)
-    
-    # Get demo bookings to calculate demos per educator
-    all_demos = await db.demo_bookings.find({}, {"_id": 0}).to_list(10000)
-    demos_in_period = []
-    for demo in all_demos:
-        created = parse_date_field(demo.get('created_at'))
-        if created and start <= created <= end:
-            demos_in_period.append(demo)
-    
-    # Calculate demos per active educator
-    educator_demo_count = {}
-    for demo in demos_in_period:
-        edu_id = demo.get('educator_id')
-        if edu_id:
-            educator_demo_count[edu_id] = educator_demo_count.get(edu_id, 0) + 1
-    
-    total_demos = sum(educator_demo_count.values())
-    active_count = len(all_active)
-    avg_demos_per_educator = round(total_demos / active_count, 1) if active_count > 0 else 0
-    
-    # Calculate earnings per educator (simplified)
-    # Assuming each completed demo has a fixed earning or from demo_bookings
-    demo_earning = 500  # Default earning per demo
-    total_earnings = total_demos * demo_earning
-    avg_earnings = round(total_earnings / active_count, 0) if active_count > 0 else 0
-    
-    # Status breakdown
-    status_breakdown = {}
-    for edu in new_educators:
-        status = edu.get('status', 'new')
-        status_breakdown[status] = status_breakdown.get(status, 0) + 1
-    
-    # Top performers (by demo count)
-    top_educators = []
-    for edu in all_active[:10]:
-        demo_count = educator_demo_count.get(edu.get('id'), 0)
-        if demo_count > 0:
-            top_educators.append({
-                "name": edu.get('name'),
-                "demos": demo_count,
-                "earnings": demo_count * demo_earning
-            })
-    top_educators.sort(key=lambda x: -x['demos'])
-    
-    return {
-        "summary": {
-            "new_educators": len(new_educators),
-            "total_active": active_count,
-            "avg_demos_per_educator": avg_demos_per_educator,
-            "avg_earnings_per_educator": avg_earnings,
-            "total_demos_conducted": total_demos,
-        },
-        "by_status": [{"name": k, "count": v} for k, v in sorted(status_breakdown.items(), key=lambda x: -x[1])],
-        "top_performers": top_educators[:5],
-        "period": {"start": start.isoformat(), "end": end.isoformat()}
-    }
-
-@api_router.get("/admin/reports/support-metrics")
-async def get_support_metrics(
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    period: Optional[str] = None,
-    user: dict = Depends(get_current_user)
-):
-    """Get support query metrics"""
-    start, end = get_date_range(start_date, end_date, period)
-    
-    # Get support queries with date filter in query (optimized)
-    query_filter = {}
-    if start and end:
-        query_filter["created_at"] = {"$gte": start.isoformat(), "$lte": end.isoformat()}
-    
-    all_queries = await db.support_queries.find(query_filter, {"_id": 0}).to_list(5000)
-    queries = []
-    for q in all_queries:
-        created = parse_date_field(q.get('created_at'))
-        if created and start <= created <= end:
-            queries.append(q)
-    
-    total = len(queries)
-    
-    # Status breakdown
-    new_queries = len([q for q in queries if q.get('status') == 'new'])
-    open_queries = len([q for q in queries if q.get('status') in ['new', 'open', 'in_progress']])
-    resolved_queries = len([q for q in queries if q.get('status') in ['resolved', 'closed']])
-    
-    # Query type breakdown
-    query_types = {}
-    for q in queries:
-        qtype = q.get('query_type') or q.get('category', 'General')
-        query_types[qtype] = query_types.get(qtype, 0) + 1
-    
-    # Calculate average resolution time (for resolved queries)
-    resolution_times = []
-    for q in queries:
-        if q.get('status') in ['resolved', 'closed']:
-            created = parse_date_field(q.get('created_at'))
-            resolved = parse_date_field(q.get('resolved_at') or q.get('updated_at'))
-            if created and resolved:
-                diff = (resolved - created).total_seconds() / 3600  # hours
-                resolution_times.append(diff)
-    
-    avg_resolution_time = round(sum(resolution_times) / len(resolution_times), 1) if resolution_times else 0
-    
-    # Priority breakdown
-    priority_breakdown = {}
-    for q in queries:
-        priority = q.get('priority', 'normal')
-        priority_breakdown[priority] = priority_breakdown.get(priority, 0) + 1
-    
-    return {
-        "summary": {
-            "total": total,
-            "new": new_queries,
-            "open": open_queries,
-            "resolved": resolved_queries,
-            "avg_resolution_time_hours": avg_resolution_time,
-        },
-        "by_type": [{"name": k, "count": v} for k, v in sorted(query_types.items(), key=lambda x: -x[1])],
-        "by_priority": [{"name": k, "count": v} for k, v in sorted(priority_breakdown.items(), key=lambda x: -x[1])],
-        "period": {"start": start.isoformat(), "end": end.isoformat()}
-    }
-
-@api_router.get("/admin/reports/user-stages")
-async def get_user_stages_report(
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    period: Optional[str] = None,
-    user: dict = Depends(get_current_user)
-):
-    """Get all user types and their stages"""
-    start, end = get_date_range(start_date, end_date, period)
-    
-    def is_in_range(item):
-        created = parse_date_field(item.get('created_at'))
-        if created is None:
-            return True  # Include items without dates
-        return start <= created <= end
-    
-    # Students
-    all_students = await db.student_inquiries.find({}, {"_id": 0}).to_list(10000)
-    students = [s for s in all_students if is_in_range(s)]
-    
-    student_stages = {}
-    for s in students:
-        stage = s.get('status', 'new')
-        student_stages[stage] = student_stages.get(stage, 0) + 1
-    
-    # Schools
-    all_schools = await db.school_inquiries.find({}, {"_id": 0}).to_list(10000)
-    schools = [s for s in all_schools if is_in_range(s)]
-    
-    school_stages = {}
-    for s in schools:
-        stage = s.get('status', 'new')
-        school_stages[stage] = school_stages.get(stage, 0) + 1
-    
-    # Educators
-    all_educators = await db.educator_applications.find({}, {"_id": 0}).to_list(10000)
-    educators = [e for e in all_educators if is_in_range(e)]
-    
-    educator_stages = {}
-    for e in educators:
-        stage = e.get('status', 'new')
-        educator_stages[stage] = educator_stages.get(stage, 0) + 1
-    
-    # Team applications
-    all_team = await db.team_applications.find({}, {"_id": 0}).to_list(10000)
-    team = [t for t in all_team if is_in_range(t)]
-    
-    team_stages = {}
-    for t in team:
-        stage = t.get('status', 'new')
-        team_stages[stage] = team_stages.get(stage, 0) + 1
-    
-    # Growth Partners
-    all_gps = await db.growth_partners.find({}, {"_id": 0}).to_list(10000)
-    gps = [g for g in all_gps if is_in_range(g)]
-    
-    gp_stages = {}
-    for g in gps:
-        stage = g.get('status', 'new')
-        gp_stages[stage] = gp_stages.get(stage, 0) + 1
-    
-    return {
-        "students": {
-            "total": len(students),
-            "stages": [{"name": k, "count": v} for k, v in sorted(student_stages.items(), key=lambda x: -x[1])]
-        },
-        "schools": {
-            "total": len(schools),
-            "stages": [{"name": k, "count": v} for k, v in sorted(school_stages.items(), key=lambda x: -x[1])]
-        },
-        "educators": {
-            "total": len(educators),
-            "stages": [{"name": k, "count": v} for k, v in sorted(educator_stages.items(), key=lambda x: -x[1])]
-        },
-        "team": {
-            "total": len(team),
-            "stages": [{"name": k, "count": v} for k, v in sorted(team_stages.items(), key=lambda x: -x[1])]
-        },
-        "growth_partners": {
-            "total": len(gps),
-            "stages": [{"name": k, "count": v} for k, v in sorted(gp_stages.items(), key=lambda x: -x[1])]
-        },
-        "period": {"start": start.isoformat(), "end": end.isoformat()}
-    }
-
-@api_router.get("/admin/reports/team-member/{user_id}")
-async def get_team_member_report(
-    user_id: str,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    period: Optional[str] = None,
-    user: dict = Depends(get_current_user)
-):
-    """Get performance report for a specific team member"""
-    start, end = get_date_range(start_date, end_date, period)
-    
-    # Get the team member info
-    team_member = await db.team_users.find_one({"id": user_id}, {"_id": 0})
-    if not team_member:
-        raise HTTPException(status_code=404, detail="Team member not found")
-    
-    # Get their role
-    role = await db.roles.find_one({"id": team_member.get('role_id')}, {"_id": 0})
-    role_name = role.get('name', 'Unknown') if role else 'Unknown'
-    
-    def is_in_range(item):
-        created = parse_date_field(item.get('created_at'))
-        if created is None:
-            return True
-        return start <= created <= end
-    
-    # Calculate metrics based on assigned leads and activities
-    # Students assigned
-    all_student_leads = await db.student_inquiries.find({"assigned_to": user_id}, {"_id": 0}).to_list(10000)
-    student_leads = [s for s in all_student_leads if is_in_range(s)]
-    student_converted = len([s for s in student_leads if s.get('status') == 'converted'])
-    
-    # Schools assigned
-    all_school_leads = await db.school_inquiries.find({"assigned_to": user_id}, {"_id": 0}).to_list(10000)
-    school_leads = [s for s in all_school_leads if is_in_range(s)]
-    school_converted = len([s for s in school_leads if s.get('status') in ['converted', 'active', 'renewed']])
-    
-    # Schools as RM
-    all_rm_schools = await db.school_inquiries.find({"relationship_manager": user_id}, {"_id": 0}).to_list(10000)
-    rm_schools = [s for s in all_rm_schools if is_in_range(s)]
-    
-    # Educators assigned
-    all_educator_leads = await db.educator_applications.find({"assigned_to": user_id}, {"_id": 0}).to_list(10000)
-    educator_leads = [e for e in all_educator_leads if is_in_range(e)]
-    educator_active = len([e for e in educator_leads if e.get('status') == 'active'])
-    
-    # Support tickets handled
-    all_tickets = await db.support_queries.find({"assigned_to": user_id}, {"_id": 0}).to_list(10000)
-    tickets = [t for t in all_tickets if is_in_range(t)]
-    tickets_resolved = len([t for t in tickets if t.get('status') == 'resolved'])
-    
-    # Demo bookings facilitated
-    all_demos = await db.demo_bookings.find({"assigned_to": user_id}, {"_id": 0}).to_list(10000)
-    demos = [d for d in all_demos if is_in_range(d)]
-    demos_completed = len([d for d in demos if d.get('status') == 'completed'])
-    
-    # Calculate conversion rates
-    student_conversion_rate = round((student_converted / len(student_leads) * 100) if student_leads else 0, 1)
-    school_conversion_rate = round((school_converted / len(school_leads) * 100) if school_leads else 0, 1)
-    ticket_resolution_rate = round((tickets_resolved / len(tickets) * 100) if tickets else 0, 1)
-    
-    return {
-        "member": {
-            "id": user_id,
-            "name": team_member.get('name'),
-            "email": team_member.get('email'),
-            "role": role_name,
-            "city": team_member.get('city', ''),
-            "is_active": team_member.get('is_active', True),
-            "joined_at": team_member.get('created_at')
-        },
-        "metrics": {
-            "students": {
-                "assigned": len(student_leads),
-                "converted": student_converted,
-                "conversion_rate": student_conversion_rate
-            },
-            "schools": {
-                "assigned": len(school_leads),
-                "converted": school_converted,
-                "conversion_rate": school_conversion_rate,
-                "as_rm": len(rm_schools)
-            },
-            "educators": {
-                "assigned": len(educator_leads),
-                "active": educator_active
-            },
-            "support": {
-                "total_tickets": len(tickets),
-                "resolved": tickets_resolved,
-                "resolution_rate": ticket_resolution_rate
-            },
-            "demos": {
-                "total": len(demos),
-                "completed": demos_completed
-            }
-        },
-        "period": {"start": start.isoformat(), "end": end.isoformat()}
-    }
-
-@api_router.get("/admin/reports/b2c-insights")
-async def get_b2c_insights(
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    period: Optional[str] = None,
-    user: dict = Depends(get_current_user)
-):
-    """Get B2C (Student) insights - courses, age groups, cities, modes, preferred times"""
-    start, end = get_date_range(start_date, end_date, period)
-    
-    all_students = await db.student_inquiries.find({}, {"_id": 0}).to_list(10000)
-    students = []
-    for s in all_students:
-        created = parse_date_field(s.get('created_at'))
-        if created and start <= created <= end:
-            students.append(s)
-    
-    # Course/Skill breakdown
-    courses = {}
-    for s in students:
-        course = s.get('course') or s.get('skill') or s.get('interest') or 'Unknown'
-        courses[course] = courses.get(course, 0) + 1
-    
-    # Age group breakdown
-    age_groups = {'Under 6': 0, '6-10': 0, '11-15': 0, '16-18': 0, 'Adult': 0, 'Unknown': 0}
-    for s in students:
-        age = s.get('age') or s.get('student_age')
-        if age:
-            try:
-                age = int(age)
-                if age < 6: age_groups['Under 6'] += 1
-                elif age <= 10: age_groups['6-10'] += 1
-                elif age <= 15: age_groups['11-15'] += 1
-                elif age <= 18: age_groups['16-18'] += 1
-                else: age_groups['Adult'] += 1
-            except: age_groups['Unknown'] += 1
-        else:
-            age_groups['Unknown'] += 1
-    
-    # Learning goal breakdown
-    goals = {}
-    for s in students:
-        goal = s.get('learning_goal') or s.get('goal') or 'Not specified'
-        goals[goal] = goals.get(goal, 0) + 1
-    
-    # City breakdown
-    cities = {}
-    for s in students:
-        city = s.get('city') or 'Unknown'
-        cities[city] = cities.get(city, 0) + 1
-    
-    # Mode breakdown (online/offline)
-    modes = {'online': 0, 'offline': 0, 'hybrid': 0, 'unknown': 0}
-    for s in students:
-        mode = (s.get('preferred_mode') or s.get('mode') or 'unknown').lower()
-        if mode in modes:
-            modes[mode] += 1
-        else:
-            modes['unknown'] += 1
-    
-    # Preferred days (from demo bookings)
-    all_demos = await db.demo_bookings.find({}, {"_id": 0}).to_list(10000)
-    day_counts = {'Monday': 0, 'Tuesday': 0, 'Wednesday': 0, 'Thursday': 0, 'Friday': 0, 'Saturday': 0, 'Sunday': 0}
-    time_slots = {'Morning (9-12)': 0, 'Afternoon (12-4)': 0, 'Evening (4-8)': 0, 'Night (8+)': 0}
-    
-    for demo in all_demos:
-        demo_date = demo.get('scheduled_date') or demo.get('date')
-        demo_time = demo.get('scheduled_time') or demo.get('time')
-        if demo_date:
-            try:
-                d = parse_date_field(demo_date)
-                if d:
-                    day_name = d.strftime('%A')
-                    if day_name in day_counts:
-                        day_counts[day_name] += 1
-            except: pass
-        if demo_time:
-            try:
-                hour = int(demo_time.split(':')[0])
-                if 9 <= hour < 12: time_slots['Morning (9-12)'] += 1
-                elif 12 <= hour < 16: time_slots['Afternoon (12-4)'] += 1
-                elif 16 <= hour < 20: time_slots['Evening (4-8)'] += 1
-                else: time_slots['Night (8+)'] += 1
-            except: pass
-    
-    # Calculate revenue
-    student_revenue = sum(float(s.get('payment_amount', 0) or 0) for s in students if s.get('status') == 'converted')
-    
-    return {
-        "total_students": len(students),
-        "revenue": student_revenue,
-        "courses": [{"name": k, "count": v} for k, v in sorted(courses.items(), key=lambda x: -x[1])[:10]],
-        "age_groups": [{"name": k, "count": v} for k, v in age_groups.items()],
-        "learning_goals": [{"name": k, "count": v} for k, v in sorted(goals.items(), key=lambda x: -x[1])[:8]],
-        "cities": [{"name": k, "count": v} for k, v in sorted(cities.items(), key=lambda x: -x[1])[:10]],
-        "modes": [{"name": k, "count": v} for k, v in modes.items()],
-        "preferred_days": [{"name": k, "count": v} for k, v in day_counts.items()],
-        "demo_times": [{"name": k, "count": v} for k, v in time_slots.items()],
-        "period": {"start": start.isoformat(), "end": end.isoformat()}
-    }
-
-@api_router.get("/admin/reports/b2b-insights")
-async def get_b2b_insights(
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    period: Optional[str] = None,
-    user: dict = Depends(get_current_user)
-):
-    """Get B2B (School) insights - offerings, cities, boards, active schools"""
-    start, end = get_date_range(start_date, end_date, period)
-    
-    all_schools = await db.school_inquiries.find({}, {"_id": 0}).to_list(10000)
-    schools = []
-    for s in all_schools:
-        created = parse_date_field(s.get('created_at'))
-        if created and start <= created <= end:
-            schools.append(s)
-    
-    # Status breakdown including active, renewal_meeting, renewed, lost
-    status_counts = {}
-    for s in all_schools:  # Use all schools for status breakdown
-        status = s.get('status', 'unknown')
-        status_counts[status] = status_counts.get(status, 0) + 1
-    
-    active_count = status_counts.get('active', 0)
-    renewal_meeting_count = status_counts.get('renewal_meeting', 0)
-    renewed_count = status_counts.get('renewed', 0)
-    lost_count = status_counts.get('lost', 0)
-    converted_count = status_counts.get('converted', 0)
-    
-    # Offering breakdown
-    offerings = {}
-    for s in schools:
-        selected = s.get('selected_offerings') or []
-        if isinstance(selected, list):
-            for off in selected:
-                offerings[off] = offerings.get(off, 0) + 1
-        offering = s.get('onboarding_data', {}).get('offering')
-        if offering:
-            offerings[offering] = offerings.get(offering, 0) + 1
-    
-    # City breakdown
-    cities = {}
-    for s in schools:
-        city = s.get('city') or 'Unknown'
-        cities[city] = cities.get(city, 0) + 1
-    
-    # Board breakdown
-    boards = {}
-    for s in schools:
-        board = s.get('board') or 'Unknown'
-        boards[board] = boards.get(board, 0) + 1
-    
-    # School type breakdown
-    types = {}
-    for s in schools:
-        school_type = s.get('school_type') or s.get('type') or 'Unknown'
-        types[school_type] = types.get(school_type, 0) + 1
-    
-    # Calculate revenue
-    school_revenue = sum(float(s.get('conversion_amount', 0) or s.get('quoted_price', 0) or 0) for s in all_schools if s.get('status') in ['converted', 'active', 'renewed'])
-    
-    # Calculate renewal ratio: Renewed / (Active + Renewed + Lost)
-    renewal_base = active_count + renewed_count + lost_count
-    renewal_ratio = round((renewed_count / renewal_base * 100) if renewal_base > 0 else 0, 1)
-    
-    return {
-        "total_schools": len(schools),
-        "revenue": school_revenue,
-        "active_schools": active_count,
-        "renewal_meeting": renewal_meeting_count,
-        "renewed": renewed_count,
-        "lost": lost_count,
-        "converted": converted_count,
-        "renewal_ratio": renewal_ratio,
-        "status_breakdown": [{"name": k, "count": v} for k, v in sorted(status_counts.items(), key=lambda x: -x[1])],
-        "offerings": [{"name": k, "count": v} for k, v in sorted(offerings.items(), key=lambda x: -x[1])[:10]],
-        "cities": [{"name": k, "count": v} for k, v in sorted(cities.items(), key=lambda x: -x[1])[:10]],
-        "boards": [{"name": k, "count": v} for k, v in sorted(boards.items(), key=lambda x: -x[1])],
-        "school_types": [{"name": k, "count": v} for k, v in sorted(types.items(), key=lambda x: -x[1])],
-        "period": {"start": start.isoformat(), "end": end.isoformat()}
-    }
-
-@api_router.get("/admin/reports/support-insights")
-async def get_support_insights(
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
-    period: Optional[str] = None,
-    user: dict = Depends(get_current_user)
-):
-    """Get Support insights - resolution time, query types, team member performance"""
-    start, end = get_date_range(start_date, end_date, period)
-    
-    all_queries = await db.support_queries.find({}, {"_id": 0}).to_list(10000)
-    queries = []
-    for q in all_queries:
-        created = parse_date_field(q.get('created_at'))
-        if created and start <= created <= end:
-            queries.append(q)
-    
-    # Query type breakdown
-    query_types = {}
-    for q in queries:
-        qtype = q.get('query_type') or q.get('type') or q.get('category') or 'General'
-        query_types[qtype] = query_types.get(qtype, 0) + 1
-    
-    # Status breakdown
-    status_counts = {'open': 0, 'in_progress': 0, 'resolved': 0, 'closed': 0}
-    for q in queries:
-        status = q.get('status', 'open').lower()
-        if status in status_counts:
-            status_counts[status] += 1
-        else:
-            status_counts['open'] += 1
-    
-    # Calculate resolution times
-    resolution_times = []
-    for q in queries:
-        if q.get('status') in ['resolved', 'closed'] and q.get('resolved_at'):
-            created = parse_date_field(q.get('created_at'))
-            resolved = parse_date_field(q.get('resolved_at'))
-            if created and resolved:
-                delta = (resolved - created).total_seconds() / 3600  # Hours
-                resolution_times.append(delta)
-    
-    avg_resolution_time = round(sum(resolution_times) / len(resolution_times), 1) if resolution_times else 0
-    
-    # Team member performance
-    team_performance = {}
-    team_users = await db.team_users.find({}, {"_id": 0}).to_list(1000)
-    user_names = {u['id']: u.get('name', 'Unknown') for u in team_users}
-    
-    for q in queries:
-        assigned = q.get('assigned_to')
-        if assigned:
-            if assigned not in team_performance:
-                team_performance[assigned] = {'name': user_names.get(assigned, 'Unknown'), 'total': 0, 'resolved': 0}
-            team_performance[assigned]['total'] += 1
-            if q.get('status') in ['resolved', 'closed']:
-                team_performance[assigned]['resolved'] += 1
-    
-    # Calculate resolution rates for each team member
-    team_stats = []
-    for uid, data in team_performance.items():
-        resolution_rate = round((data['resolved'] / data['total'] * 100) if data['total'] > 0 else 0, 1)
-        team_stats.append({
-            'user_id': uid,
-            'name': data['name'],
-            'total': data['total'],
-            'resolved': data['resolved'],
-            'resolution_rate': resolution_rate
-        })
-    team_stats.sort(key=lambda x: -x['resolved'])
-    
-    # Priority breakdown
-    priority_counts = {'high': 0, 'medium': 0, 'low': 0}
-    for q in queries:
-        priority = (q.get('priority') or 'medium').lower()
-        if priority in priority_counts:
-            priority_counts[priority] += 1
-        else:
-            priority_counts['medium'] += 1
-    
-    # Source breakdown
-    source_counts = {}
-    for q in queries:
-        source = q.get('source') or q.get('user_type') or 'Unknown'
-        source_counts[source] = source_counts.get(source, 0) + 1
-    
-    return {
-        "total_queries": len(queries),
-        "resolved": status_counts['resolved'] + status_counts['closed'],
-        "pending": status_counts['open'] + status_counts['in_progress'],
-        "avg_resolution_time_hours": avg_resolution_time,
-        "query_types": [{"name": k, "count": v} for k, v in sorted(query_types.items(), key=lambda x: -x[1])],
-        "status_breakdown": [{"name": k, "count": v} for k, v in status_counts.items()],
-        "priority_breakdown": [{"name": k, "count": v} for k, v in priority_counts.items()],
-        "source_breakdown": [{"name": k, "count": v} for k, v in sorted(source_counts.items(), key=lambda x: -x[1])],
-        "team_performance": team_stats[:10],
-        "period": {"start": start.isoformat(), "end": end.isoformat()}
-    }
+    """Test WhatsApp notification - send any template"""
+    phone = data.get("phone", "")
+    template = data.get("template", "support_overdue_48hours")
+    params = data.get("params", [])
+    
+    result = await send_whatsapp_notification(
+        phone=phone,
+        template_key=template,
+        params=params,
+        user_name="Test"
+    )
+    return result
 
 # Include router and middleware
+# Import and include extracted route modules
+from routes.payments import router as payments_router, scheduled_payment_sync, scheduler, PAYMENT_SYNC_ENABLED, PAYMENT_SYNC_INTERVAL_MINUTES
+from routes.summer_camp import router as summer_camp_router
+from routes.db_backup import router as db_backup_router
+from routes.gp_onboarding import router as gp_onboarding_router
+from routes.reports import router as reports_router
+from routes.jobs import router as jobs_router
+from routes.expenses import router as expenses_router, transform_tracking_url, fetch_po_data, fetch_vendor_products, match_vendor_product, VENDOR_PUBLIC_API
+from routes.admin_keys import router as admin_keys_router
+from routes.daily_report import router as daily_report_router, send_daily_reports
+from routes.school_emails import router as school_emails_router
+from routes.checkin_api import router as checkin_router
+from routes.ai_chat import router as ai_chat_router
+
+api_router.include_router(reports_router)
+api_router.include_router(jobs_router)
+api_router.include_router(expenses_router)
+api_router.include_router(admin_keys_router)
+api_router.include_router(payments_router)
+api_router.include_router(summer_camp_router)
+api_router.include_router(db_backup_router)
+api_router.include_router(gp_onboarding_router)
+api_router.include_router(daily_report_router)
+api_router.include_router(school_emails_router)
+api_router.include_router(checkin_router)
+api_router.include_router(ai_chat_router)
+
 app.include_router(api_router)
 
 # Note: Static files mount removed - files are now served from MongoDB via /api/files/{filename}
 # For backward compatibility, /api/uploads/{filename} redirects to /api/files/{filename}
 
+# CORS: when env is '*' use allow_origin_regex so it works with allow_credentials=True
+_cors_origins_raw = os.environ.get('CORS_ORIGINS', '*').strip().strip('"\'')
+if _cors_origins_raw == '*':
+    _allow_origins = []
+    _allow_origin_regex = r'.*'
+else:
+    _allow_origins = [o.strip() for o in _cors_origins_raw.split(',')]
+    _allow_origin_regex = None
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
+    allow_origins=_allow_origins,
+    allow_origin_regex=_allow_origin_regex,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -16504,163 +14636,18 @@ logger = logging.getLogger(__name__)
 # PAYMENT SYNC SCHEDULER
 # ========================
 
-scheduler = AsyncIOScheduler()
 
-async def scheduled_payment_sync():
-    """Background task to sync all pending payments with Cashfree"""
-    if not CASHFREE_APP_ID or not CASHFREE_SECRET_KEY:
-        logging.warning("[SCHEDULER] Payment sync skipped - Cashfree credentials not configured")
-        return
-    
-    logging.info("[SCHEDULER] Starting automated payment sync...")
-    
-    results = {
-        "student_payments": {"checked": 0, "updated": 0, "errors": 0},
-        "school_payments": {"checked": 0, "updated": 0, "errors": 0}
-    }
-    
-    try:
-        # Sync student payments
-        pending_student_payments = await db.student_payments.find(
-            {"status": {"$nin": ["PAID", "CANCELLED", "EXPIRED"]}},
-            {"_id": 0}
-        ).to_list(500)
-        
-        for payment in pending_student_payments:
-            order_id = payment.get("id")
-            old_status = payment.get("status")
-            results["student_payments"]["checked"] += 1
-            
-            try:
-                api_response = get_cashfree_client().PGFetchOrder(
-                    CASHFREE_API_VERSION,
-                    order_id,
-                    None
-                )
-                
-                if api_response.data:
-                    new_status = api_response.data.order_status
-                    
-                    if new_status != old_status:
-                        cf_payment_id = None
-                        payment_method = "Cashfree"
-                        try:
-                            payments_response = get_cashfree_client().PGOrderFetchPayments(
-                                CASHFREE_API_VERSION, order_id, None
-                            )
-                            if payments_response.data and len(payments_response.data) > 0:
-                                cf_payment_id = str(payments_response.data[0].cf_payment_id)
-                                payment_method = f"Cashfree - {payments_response.data[0].payment_group or 'unknown'}"
-                        except Exception:
-                            pass
-                        
-                        update_data = {
-                            "status": new_status,
-                            "synced_at": datetime.now(timezone.utc).isoformat(),
-                            "sync_source": "scheduler"
-                        }
-                        if cf_payment_id:
-                            update_data["transaction_id"] = cf_payment_id
-                            update_data["cf_payment_id"] = cf_payment_id
-                            update_data["payment_method"] = payment_method
-                        if new_status == "PAID":
-                            update_data["paid_at"] = datetime.now(timezone.utc).isoformat()
-                        
-                        await db.student_payments.update_one({"id": order_id}, {"$set": update_data})
-                        
-                        # Update student if PAID
-                        if new_status == "PAID":
-                            student_id = payment.get("student_id")
-                            if student_id:
-                                student_update = {
-                                    "status": "converted",
-                                    "payment_status": "paid",
-                                    "payment_amount": payment.get("amount"),
-                                    "payment_date": datetime.now(timezone.utc).isoformat(),
-                                    "pending_payment": None,
-                                    "updated_at": datetime.now(timezone.utc).isoformat()
-                                }
-                                if cf_payment_id:
-                                    student_update["payment_transaction_id"] = cf_payment_id
-                                    student_update["payment_method"] = payment_method
-                                await db.student_inquiries.update_one({"id": student_id}, {"$set": student_update})
-                        
-                        results["student_payments"]["updated"] += 1
-                        logging.info(f"[SCHEDULER] Student payment {order_id}: {old_status} -> {new_status}")
-                        
-            except Exception as e:
-                results["student_payments"]["errors"] += 1
-                logging.error(f"[SCHEDULER] Error syncing student payment {order_id}: {e}")
-        
-        # Sync school student payments (batch of 100 at a time)
-        pending_school_payments = await db.school_student_payments.find(
-            {"status": {"$nin": ["PAID", "CANCELLED", "EXPIRED"]}},
-            {"_id": 0}
-        ).to_list(100)
-        
-        for payment in pending_school_payments:
-            order_id = payment.get("id")
-            old_status = payment.get("status")
-            results["school_payments"]["checked"] += 1
-            
-            try:
-                api_response = get_cashfree_client().PGFetchOrder(
-                    CASHFREE_API_VERSION,
-                    order_id,
-                    None
-                )
-                
-                if api_response.data:
-                    new_status = api_response.data.order_status
-                    
-                    if new_status != old_status:
-                        cf_payment_id = None
-                        payment_method = "Cashfree"
-                        try:
-                            payments_response = get_cashfree_client().PGOrderFetchPayments(
-                                CASHFREE_API_VERSION, order_id, None
-                            )
-                            if payments_response.data and len(payments_response.data) > 0:
-                                cf_payment_id = str(payments_response.data[0].cf_payment_id)
-                                payment_method = f"Cashfree - {payments_response.data[0].payment_group or 'unknown'}"
-                        except Exception:
-                            pass
-                        
-                        update_data = {
-                            "status": new_status,
-                            "synced_at": datetime.now(timezone.utc).isoformat(),
-                            "sync_source": "scheduler"
-                        }
-                        if cf_payment_id:
-                            update_data["transaction_id"] = cf_payment_id
-                            update_data["cf_payment_id"] = cf_payment_id
-                            update_data["payment_method"] = payment_method
-                        if new_status == "PAID":
-                            update_data["paid_at"] = datetime.now(timezone.utc).isoformat()
-                        
-                        await db.school_student_payments.update_one({"id": order_id}, {"$set": update_data})
-                        
-                        results["school_payments"]["updated"] += 1
-                        logging.info(f"[SCHEDULER] School payment {order_id}: {old_status} -> {new_status}")
-                        
-            except Exception as e:
-                results["school_payments"]["errors"] += 1
-                logging.error(f"[SCHEDULER] Error syncing school payment {order_id}: {e}")
-        
-        # Log summary
-        total_checked = results["student_payments"]["checked"] + results["school_payments"]["checked"]
-        total_updated = results["student_payments"]["updated"] + results["school_payments"]["updated"]
-        total_errors = results["student_payments"]["errors"] + results["school_payments"]["errors"]
-        
-        logging.info(f"[SCHEDULER] Payment sync complete - Checked: {total_checked}, Updated: {total_updated}, Errors: {total_errors}")
-        
-    except Exception as e:
-        logging.error(f"[SCHEDULER] Payment sync failed: {e}")
+# NOTE: scheduled_payment_sync routes moved to routes/payments.py
+# scheduler, PAYMENT_SYNC_ENABLED, PAYMENT_SYNC_INTERVAL_MINUTES imported from routes/payments.py
+# Keep a reference to the background index task so it isn't garbage-collected
+_db_index_task = None
 
 
-@app.on_event("startup")
-async def startup_db_client():
-    """Create database indexes on startup and start background scheduler"""
+async def _create_db_indexes():
+    """
+    Create MongoDB indexes in the background so they don't block server startup.
+    Called via asyncio.create_task() from startup_db_client.
+    """
     try:
         # School Inquiries indexes
         await db.school_inquiries.create_index("id", unique=True)
@@ -16668,83 +14655,142 @@ async def startup_db_client():
         await db.school_inquiries.create_index("assigned_to")
         await db.school_inquiries.create_index("created_at")
         await db.school_inquiries.create_index([("status", 1), ("created_at", -1)])
-        
+
         # Student Inquiries indexes
         await db.student_inquiries.create_index("id", unique=True)
         await db.student_inquiries.create_index("status")
         await db.student_inquiries.create_index("assigned_to")
         await db.student_inquiries.create_index("demo_date")
         await db.student_inquiries.create_index([("status", 1), ("created_at", -1)])
-        
+
         # Educator Applications indexes
         await db.educator_applications.create_index("id", unique=True)
         await db.educator_applications.create_index("status")
         await db.educator_applications.create_index("assigned_to")
         await db.educator_applications.create_index([("status", 1), ("created_at", -1)])
-        
+
         # Support Queries indexes
         await db.support_queries.create_index("id", unique=True)
         await db.support_queries.create_index("status")
         await db.support_queries.create_index("assigned_to")
         await db.support_queries.create_index([("status", 1), ("created_at", -1)])
-        
+
         # Inquiry Queries indexes
         await db.inquiry_queries.create_index("id", unique=True)
         await db.inquiry_queries.create_index("status")
         await db.inquiry_queries.create_index([("status", 1), ("created_at", -1)])
-        
+
         # Support Tickets indexes
         await db.support_tickets.create_index("id", unique=True)
         await db.support_tickets.create_index("status")
         await db.support_tickets.create_index("source")
         await db.support_tickets.create_index([("status", 1), ("created_at", -1)])
-        
+
         # Team Users indexes
         await db.team_users.create_index("id", unique=True)
         await db.team_users.create_index("email")
-        
+
         # School Expenses indexes
         await db.school_expenses.create_index("id", unique=True)
         await db.school_expenses.create_index("school_id")
         await db.school_expenses.create_index([("school_id", 1), ("created_at", -1)])
-        
+
         # External API Keys indexes
         await db.external_api_keys.create_index("id", unique=True)
         await db.external_api_keys.create_index("key", unique=True)
-        
+
         # GP Applications indexes
         await db.gp_applications.create_index("id", unique=True)
         await db.gp_applications.create_index("status")
-        
+
         # Growth Partners indexes
         await db.growth_partners.create_index("id", unique=True)
         await db.growth_partners.create_index("status")
-        
+
         print("[STARTUP] Database indexes created successfully")
     except Exception as e:
         print(f"[STARTUP] Warning: Could not create some indexes: {e}")
-    
+
+
+@app.on_event("startup")
+async def startup_db_client():
+    """Start schedulers and kick off background index creation.
+
+    Index creation is deliberately run in a background task so it does NOT
+    block the server from accepting requests (and thus does not delay the
+    health-check response on slow/remote MongoDB Atlas connections).
+    """
+    global _db_index_task
+    # Fire-and-forget — indexes are built while the server is already live
+    _db_index_task = asyncio.create_task(_create_db_indexes())
+
     # Start the payment sync scheduler
+    # Defer first run by 5 minutes so it never fires during the health-check window
     if PAYMENT_SYNC_ENABLED and CASHFREE_APP_ID and CASHFREE_SECRET_KEY:
         scheduler.add_job(
             scheduled_payment_sync,
             trigger=IntervalTrigger(minutes=PAYMENT_SYNC_INTERVAL_MINUTES),
             id="payment_sync_job",
             name="Automated Payment Sync",
-            replace_existing=True
+            replace_existing=True,
+            next_run_time=datetime.now(timezone.utc) + timedelta(minutes=5)
         )
-        scheduler.start()
-        print(f"[STARTUP] Payment sync scheduler started - runs every {PAYMENT_SYNC_INTERVAL_MINUTES} minutes")
+        print(f"[STARTUP] Payment sync scheduler configured - runs every {PAYMENT_SYNC_INTERVAL_MINUTES} minutes")
     else:
         if not PAYMENT_SYNC_ENABLED:
             print("[STARTUP] Payment sync scheduler disabled via PAYMENT_SYNC_ENABLED=false")
         else:
             print("[STARTUP] Payment sync scheduler not started - Cashfree credentials missing")
 
+    # Schedule daily report at 8:00 PM IST = 14:30 UTC every day
+    from apscheduler.triggers.cron import CronTrigger
+    scheduler.add_job(
+        send_daily_reports,
+        trigger=CronTrigger(hour=14, minute=30, timezone="UTC"),
+        id="daily_report_job",
+        name="Daily Category Reports",
+        replace_existing=True
+    )
+
+    # Schedule overdue ticket check every 30 minutes
+    scheduler.add_job(
+        check_overdue_tickets,
+        trigger=IntervalTrigger(minutes=30),
+        id="overdue_ticket_check_job",
+        name="Check Overdue Support Tickets",
+        replace_existing=True
+    )
+    print("[STARTUP] Overdue ticket check scheduled — runs every 30 minutes")
+
+    # Schedule school meeting reminders every 15 minutes
+    scheduler.add_job(
+        check_school_meeting_reminders,
+        trigger=IntervalTrigger(minutes=15),
+        id="school_meeting_reminder_job",
+        name="School Meeting Reminders",
+        replace_existing=True
+    )
+    print("[STARTUP] School meeting reminders scheduled — runs every 15 minutes")
+
+    # Schedule School CRM daily digest — fires at 8:30 AM IST (03:00 UTC)
+    scheduler.add_job(
+        send_school_crm_daily_digest,
+        trigger=CronTrigger(hour=3, minute=0, timezone="UTC"),
+        id="school_crm_daily_digest_job",
+        name="School CRM Daily Digest Email",
+        replace_existing=True
+    )
+    print("[STARTUP] School CRM daily digest scheduled — fires at 8:30 AM IST (03:00 UTC)")
+
+    if not scheduler.running:
+        scheduler.start()
+    print("[STARTUP] Daily report emailer scheduled — fires at 8:00 PM IST (14:30 UTC)")
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     # Stop the scheduler if running
     if scheduler.running:
         scheduler.shutdown(wait=False)
-        print("[SHUTDOWN] Payment sync scheduler stopped")
-    client.close()
+        print("[SHUTDOWN] Scheduler stopped")
+    mongo_client.close()
+    print("[SHUTDOWN] MongoDB client closed")

@@ -106,6 +106,7 @@ const EducatorOnboarding = () => {
   const { user, token } = useUserAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [completing, setCompleting] = useState(false);
   const [onboarding, setOnboarding] = useState(null);
   const [educator, setEducator] = useState(null);
   const [content, setContent] = useState(null);
@@ -152,6 +153,7 @@ const EducatorOnboarding = () => {
     }
     fetchOnboardingData();
     fetchContent();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, token]);
 
   const fetchOnboardingData = async () => {
@@ -164,13 +166,33 @@ const EducatorOnboarding = () => {
       setEducator(response.data.educator);
       setCurrentStep(response.data.onboarding?.current_step || 1);
       
-      // Pre-fill form with existing data
+      // Pre-fill form with existing data (only form-relevant fields, NOT step tracking)
       if (response.data.onboarding) {
         const onb = response.data.onboarding;
         setFormData(prev => ({
           ...prev,
-          ...onb,
-          city: onb.city || response.data.educator?.city || ''
+          profile_photo: onb.profile_photo || prev.profile_photo || '',
+          bio: onb.bio || prev.bio || '',
+          tshirt_size: onb.tshirt_size || prev.tshirt_size || '',
+          address_line1: onb.address_line1 || prev.address_line1 || '',
+          address_line2: onb.address_line2 || prev.address_line2 || '',
+          city: onb.city || response.data.educator?.city || prev.city || '',
+          state: onb.state || prev.state || '',
+          pincode: onb.pincode || prev.pincode || '',
+          emergency_contact_name: onb.emergency_contact_name || prev.emergency_contact_name || '',
+          emergency_contact_phone: onb.emergency_contact_phone || prev.emergency_contact_phone || '',
+          emergency_contact_relation: onb.emergency_contact_relation || prev.emergency_contact_relation || '',
+          aadhar_number: onb.aadhar_number || prev.aadhar_number || '',
+          aadhar_document: onb.aadhar_document || prev.aadhar_document || '',
+          pan_number: onb.pan_number || prev.pan_number || '',
+          pan_document: onb.pan_document || prev.pan_document || '',
+          bank_name: onb.bank_name || prev.bank_name || '',
+          account_holder_name: onb.account_holder_name || prev.account_holder_name || '',
+          account_number: onb.account_number || prev.account_number || '',
+          ifsc_code: onb.ifsc_code || prev.ifsc_code || '',
+          bank_document: onb.bank_document || prev.bank_document || '',
+          contract_accepted: onb.contract_accepted || prev.contract_accepted || false,
+          digital_signature: onb.digital_signature || prev.digital_signature || '',
         }));
         setVideoProgress(onb.video_progress || {});
         setVideoUploads(onb.video_uploads || {});
@@ -209,22 +231,36 @@ const EducatorOnboarding = () => {
     }
   };
 
-  const completeStep = async (step) => {
+  const handleStepComplete = async (step, extraData = {}) => {
+    if (completing) return; // prevent double-trigger
+    setCompleting(true);
     try {
+      // 1. Save form data first (await so it doesn't race with complete-step)
+      await saveProgress(extraData);
+
+      // 2. Mark step complete on backend
       const educatorId = user?.educator_id || user?.id;
-      const response = await axios.post(`${API}/educator/onboarding/${educatorId}/complete-step`, 
+      const response = await axios.post(
+        `${API}/educator/onboarding/${educatorId}/complete-step`,
         { step },
         { headers: getAuthHeaders() }
       );
-      
-      if (response.data.next_step) {
-        setCurrentStep(response.data.next_step);
-      }
-      
+
+      const nextStep = response.data.next_step;
+
+      // 3. Advance step in UI immediately
+      if (nextStep) setCurrentStep(nextStep);
+
+      // 4. Show ONE toast
       toast.success(`Step ${step} completed!`);
-      fetchOnboardingData();
+
+      // 5. Refresh data (preserving new step)
+      await fetchOnboardingData();
+      if (nextStep) setCurrentStep(nextStep); // re-apply after fetch
     } catch (error) {
       toast.error('Failed to complete step');
+    } finally {
+      setCompleting(false);
     }
   };
 
@@ -264,33 +300,34 @@ const EducatorOnboarding = () => {
   const renderStepContent = () => {
     switch (currentStep) {
       case 1:
-        return <WelcomeStep content={content} onboarding={onboarding} educator={educator} 
-          onComplete={() => { saveProgress({ welcome_video_watched: true }); completeStep(1); }} />;
+        return <WelcomeStep content={content} onboarding={onboarding} educator={educator} completing={completing}
+          onComplete={() => handleStepComplete(1, { welcome_video_watched: true })} />;
       case 2:
-        return <ProfileStep formData={formData} setFormData={setFormData} 
-          onSave={() => saveProgress()} onComplete={() => completeStep(2)} 
+        return <ProfileStep formData={formData} setFormData={setFormData} completing={completing}
+          onSave={() => saveProgress()} onComplete={() => handleStepComplete(2)}
           onFileUpload={handleFileUpload} />;
       case 3:
-        return <PersonalDetailsStep formData={formData} setFormData={setFormData}
-          onSave={() => saveProgress()} onComplete={() => completeStep(3)}
+        return <PersonalDetailsStep formData={formData} setFormData={setFormData} completing={completing}
+          onSave={() => saveProgress()} onComplete={() => handleStepComplete(3)}
           onFileUpload={handleFileUpload} />;
       case 4:
-        return <BankDetailsStep formData={formData} setFormData={setFormData}
-          onSave={() => saveProgress()} onComplete={() => completeStep(4)}
+        return <BankDetailsStep formData={formData} setFormData={setFormData} completing={completing}
+          onSave={() => saveProgress()} onComplete={() => handleStepComplete(4)}
           onFileUpload={handleFileUpload} />;
       case 5:
-        return <ContractStep content={content} formData={formData} setFormData={setFormData}
-          onSave={() => saveProgress({ contract_accepted: true })} onComplete={() => completeStep(5)} />;
+        return <ContractStep content={content} formData={formData} setFormData={setFormData} completing={completing}
+          onSave={() => saveProgress({ contract_accepted: true })} onComplete={() => handleStepComplete(5, { contract_accepted: true })} />;
       case 6:
         return <TrainingStep 
           videoProgress={videoProgress} setVideoProgress={setVideoProgress}
           quizAnswers={quizAnswers} setQuizAnswers={setQuizAnswers}
           videoUploads={videoUploads} setVideoUploads={setVideoUploads}
           currentVideoIndex={currentVideoIndex} setCurrentVideoIndex={setCurrentVideoIndex}
-          saveProgress={saveProgress} onComplete={() => completeStep(6)} />;
+          completing={completing}
+          saveProgress={saveProgress} onComplete={() => handleStepComplete(6)} />;
       case 7:
-        return <ReviewStep educator={educator} onboarding={onboarding} isApproved={isApproved}
-          onComplete={() => completeStep(7)} />;
+        return <ReviewStep educator={educator} onboarding={onboarding} isApproved={isApproved} completing={completing}
+          onComplete={() => handleStepComplete(7)} />;
       case 8:
         return <CompleteStep educator={educator} onboarding={onboarding} isApproved={isApproved} />;
       default:
@@ -387,7 +424,7 @@ const EducatorOnboarding = () => {
 };
 
 // Step Components
-const WelcomeStep = ({ content, educator, onComplete }) => (
+const WelcomeStep = ({ content, educator, onComplete, completing }) => (
   <div className="space-y-6">
     <div className="text-center">
       <h2 className="text-2xl font-bold text-[#1E3A5F] mb-2">Welcome to OLL, {educator?.name}! 🎉</h2>
@@ -415,13 +452,13 @@ const WelcomeStep = ({ content, educator, onComplete }) => (
       </ul>
     </div>
     
-    <Button onClick={onComplete} className="w-full bg-[#D63031] hover:bg-[#c0392b]">
-      I've Watched the Video - Continue <ChevronRight className="w-4 h-4 ml-2" />
+    <Button onClick={onComplete} disabled={completing} className="w-full bg-[#D63031] hover:bg-[#c0392b]">
+      {completing ? 'Saving...' : "I've Watched the Video - Continue"} <ChevronRight className="w-4 h-4 ml-2" />
     </Button>
   </div>
 );
 
-const ProfileStep = ({ formData, setFormData, onSave, onComplete, onFileUpload }) => {
+const ProfileStep = ({ formData, setFormData, onSave, onComplete, onFileUpload, completing }) => {
   const [photoPreview, setPhotoPreview] = useState(formData.profile_photo || null);
   
   const handlePhotoChange = (e) => {
@@ -475,20 +512,20 @@ const ProfileStep = ({ formData, setFormData, onSave, onComplete, onFileUpload }
       </div>
       
       <div className="flex gap-3 pt-4">
-        <Button variant="outline" onClick={onSave} className="flex-1">Save Progress</Button>
+        <Button variant="outline" onClick={onSave} disabled={completing} className="flex-1">Save Progress</Button>
         <Button 
-          onClick={() => { onSave(); onComplete(); }} 
-          disabled={!canContinue}
+          onClick={onComplete} 
+          disabled={!canContinue || completing}
           className="flex-1 bg-[#D63031] hover:bg-[#c0392b]"
         >
-          Continue <ChevronRight className="w-4 h-4 ml-2" />
+          {completing ? 'Saving...' : 'Continue'} <ChevronRight className="w-4 h-4 ml-2" />
         </Button>
       </div>
     </div>
   );
 };
 
-const PersonalDetailsStep = ({ formData, setFormData, onSave, onComplete, onFileUpload }) => {
+const PersonalDetailsStep = ({ formData, setFormData, onSave, onComplete, onFileUpload, completing }) => {
   const canContinue = formData.address_line1 && formData.city && formData.state && 
     formData.pincode && formData.emergency_contact_name && formData.emergency_contact_phone &&
     formData.aadhar_number && formData.aadhar_document && formData.tshirt_size;
@@ -586,16 +623,16 @@ const PersonalDetailsStep = ({ formData, setFormData, onSave, onComplete, onFile
       </div>
       
       <div className="flex gap-3 pt-4">
-        <Button variant="outline" onClick={onSave} className="flex-1">Save Progress</Button>
-        <Button onClick={() => { onSave(); onComplete(); }} disabled={!canContinue} className="flex-1 bg-[#D63031] hover:bg-[#c0392b]">
-          Continue <ChevronRight className="w-4 h-4 ml-2" />
+        <Button variant="outline" onClick={onSave} disabled={completing} className="flex-1">Save Progress</Button>
+        <Button onClick={onComplete} disabled={!canContinue || completing} className="flex-1 bg-[#D63031] hover:bg-[#c0392b]">
+          {completing ? 'Saving...' : 'Continue'} <ChevronRight className="w-4 h-4 ml-2" />
         </Button>
       </div>
     </div>
   );
 };
 
-const BankDetailsStep = ({ formData, setFormData, onSave, onComplete, onFileUpload }) => {
+const BankDetailsStep = ({ formData, setFormData, onSave, onComplete, onFileUpload, completing }) => {
   const canContinue = formData.bank_name && formData.account_holder_name && formData.account_number && formData.ifsc_code;
   
   return (
@@ -640,16 +677,16 @@ const BankDetailsStep = ({ formData, setFormData, onSave, onComplete, onFileUplo
       </div>
       
       <div className="flex gap-3 pt-4">
-        <Button variant="outline" onClick={onSave} className="flex-1">Save Progress</Button>
-        <Button onClick={() => { onSave(); onComplete(); }} disabled={!canContinue} className="flex-1 bg-[#D63031] hover:bg-[#c0392b]">
-          Continue <ChevronRight className="w-4 h-4 ml-2" />
+        <Button variant="outline" onClick={onSave} disabled={completing} className="flex-1">Save Progress</Button>
+        <Button onClick={onComplete} disabled={!canContinue || completing} className="flex-1 bg-[#D63031] hover:bg-[#c0392b]">
+          {completing ? 'Saving...' : 'Continue'} <ChevronRight className="w-4 h-4 ml-2" />
         </Button>
       </div>
     </div>
   );
 };
 
-const ContractStep = ({ content, formData, setFormData, onSave, onComplete }) => {
+const ContractStep = ({ content, formData, setFormData, onSave, onComplete, completing }) => {
   const [agreed, setAgreed] = useState(formData.contract_accepted || false);
   
   return (
@@ -675,8 +712,8 @@ const ContractStep = ({ content, formData, setFormData, onSave, onComplete }) =>
         </label>
       </div>
       
-      <Button onClick={() => { onSave(); onComplete(); }} disabled={!agreed || !formData.digital_signature} className="w-full bg-[#D63031] hover:bg-[#c0392b]">
-        <Check className="w-4 h-4 mr-2" /> Accept & Continue
+      <Button onClick={onComplete} disabled={!agreed || !formData.digital_signature || completing} className="w-full bg-[#D63031] hover:bg-[#c0392b]">
+        <Check className="w-4 h-4 mr-2" /> {completing ? 'Saving...' : 'Accept & Continue'}
       </Button>
     </div>
   );
@@ -684,7 +721,7 @@ const ContractStep = ({ content, formData, setFormData, onSave, onComplete }) =>
 
 // New Training Step - Videos one by one with quiz after each
 const TrainingStep = ({ videoProgress, setVideoProgress, quizAnswers, setQuizAnswers, 
-  videoUploads, setVideoUploads, currentVideoIndex, setCurrentVideoIndex, saveProgress, onComplete }) => {
+  videoUploads, setVideoUploads, currentVideoIndex, setCurrentVideoIndex, saveProgress, onComplete, completing }) => {
   
   const [showQuiz, setShowQuiz] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
@@ -881,8 +918,8 @@ const TrainingStep = ({ videoProgress, setVideoProgress, quizAnswers, setQuizAns
         )}
         
         {allCompleted && (
-          <Button onClick={onComplete} className="ml-auto bg-[#D63031] hover:bg-[#c0392b]">
-            Complete Training <ChevronRight className="w-4 h-4 ml-2" />
+          <Button onClick={onComplete} disabled={completing} className="ml-auto bg-[#D63031] hover:bg-[#c0392b]">
+            {completing ? 'Saving...' : 'Complete Training'} <ChevronRight className="w-4 h-4 ml-2" />
           </Button>
         )}
       </div>
@@ -891,7 +928,7 @@ const TrainingStep = ({ videoProgress, setVideoProgress, quizAnswers, setQuizAns
 };
 
 // Review Step - Waiting for admin approval
-const ReviewStep = ({ educator, onboarding, isApproved, onComplete }) => {
+const ReviewStep = ({ educator, onboarding, isApproved, onComplete, completing }) => {
   if (isApproved) {
     return (
       <div className="space-y-6 text-center py-8">
@@ -900,8 +937,8 @@ const ReviewStep = ({ educator, onboarding, isApproved, onComplete }) => {
         </div>
         <h2 className="text-2xl font-bold text-[#1E3A5F]">You're Approved! 🎉</h2>
         <p className="text-slate-600">Congratulations! Your documents have been verified and you are now an active OLL Educator.</p>
-        <Button onClick={onComplete} className="bg-[#D63031] hover:bg-[#c0392b]">
-          Continue to Download Your Certificate <ChevronRight className="w-4 h-4 ml-2" />
+        <Button onClick={onComplete} disabled={completing} className="bg-[#D63031] hover:bg-[#c0392b]">
+          {completing ? 'Saving...' : 'Continue to Download Your Certificate'} <ChevronRight className="w-4 h-4 ml-2" />
         </Button>
       </div>
     );

@@ -42,10 +42,326 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - `student_payments` - Individual student payments
 - `school_student_payments` - School-based student payments
 - `school_onboarding` - Detailed onboarding records
+- `team_applications` - Team member applications (HR Pipeline)
 
 ---
 
 ## CHANGELOG
+
+### 2026-04-02 — Production Deployment Fix
+- **Root Cause 1 (`.gitignore`)**: Lines `*.env` and `*.env.*` were blocking all `.env` files from the Docker build context, causing the backend to start without any environment variables on production → MongoDB connection failed → health check never got a 200 response.
+  - **Fix**: Commented out those two lines in `/app/.gitignore`. The `.env` files are now included in the build.
+- **Root Cause 2 (Blocking startup)**: `startup_db_client()` created 40+ MongoDB indexes synchronously during FastAPI startup. On MongoDB Atlas (remote), each round-trip is ~100–500 ms → total startup time easily exceeded the deployment health-check timeout of 120 s.
+  - **Fix**: Extracted all `create_index` calls into an `async def _create_db_indexes()` coroutine and launched it with `asyncio.create_task()` from the startup event. The server now becomes ready to accept requests in under 1 second; indexes are built in the background.
+- **Root Cause 3 (Atlas timeouts)**: `AsyncIOMotorClient` had no explicit timeouts, so on a slow Atlas cluster it could hang indefinitely waiting for a server or socket.
+  - **Fix**: Added `serverSelectionTimeoutMS=10000`, `connectTimeoutMS=10000`, `socketTimeoutMS=30000` to the Motor client in `database.py`.
+
+### 2026-03-31
+- **Bug Fix**: Invoice PDF generator (`invoicePdfGenerator.js`) — for GST-exclusive invoices, removed per-line-item CGST/SGST columns from the table. GST now appears only in the summary totals section (Sub Total → CGST → SGST → Total), eliminating the appearance of double-charging. Inclusive GST and IGST (inter-state) types are unaffected.
+
+### March 27, 2026
+
+#### Bug Fix: AI Chat Training Type + Invoice Features
+
+**1. Training Type Change Fix**
+- `update_lead` handler now normalizes camelCase → snake_case (e.g., `TrainingType` → `training_type`, `ProgramType` → `program_type`)
+- When `training_type` is updated, it's synced to both `school_inquiries.training_type` AND `school_inquiries.onboarding_data.training_type`
+- System prompt updated with explicit instruction: use `training_type` (snake_case), valid values: `student_training | teacher_training | both`
+
+**2. Invoice Generation in AI Chat**
+- New `generate_invoice` action in AI chat system prompt + backend handler
+- Backend generates server-side PDF using existing `generate_invoice_pdf()` function, encodes as base64
+- Saves to `invoices` collection
+- Frontend `AdminAIChat.jsx`: new "Invoice Generated" action card with green "Download Invoice PDF" button
+- `handleGeneratePDF` handles `generate_invoice` type: decodes base64 → creates Blob → triggers browser download
+- If `send_email=true`: sends PDF as email attachment via Resend to school contacts
+- AI context now includes tranche summary for converted/active schools
+
+---
+
+### March 26, 2026
+
+#### P0: Student Payment Email Receipt (COMPLETED)
+**Automated Thank-You/Receipt Email to School Students on Payment**
+### 2026-04-02 — Production Deployment Fix
+- **Root Cause 1 (`.gitignore`)**: Lines `*.env` and `*.env.*` were blocking all `.env` files from the Docker build context, causing the backend to start without any environment variables on production → MongoDB connection failed → health check never got a 200 response.
+  - **Fix**: Commented out those two lines in `/app/.gitignore`. The `.env` files are now included in the build.
+- **Root Cause 2 (Blocking startup)**: `startup_db_client()` created 40+ MongoDB indexes synchronously during FastAPI startup. On MongoDB Atlas (remote), each round-trip is ~100–500 ms → total startup time easily exceeded the deployment health-check timeout of 120 s.
+  - **Fix**: Extracted all `create_index` calls into an `async def _create_db_indexes()` coroutine and launched it with `asyncio.create_task()` from the startup event. The server now becomes ready to accept requests in under 1 second; indexes are built in the background.
+- **Root Cause 3 (Atlas timeouts)**: `AsyncIOMotorClient` had no explicit timeouts, so on a slow Atlas cluster it could hang indefinitely waiting for a server or socket.
+  - **Fix**: Added `serverSelectionTimeoutMS=10000`, `connectTimeoutMS=10000`, `socketTimeoutMS=30000` to the Motor client in `database.py`.
+
+### 2026-03-31
+- **Bug Fix**: Invoice PDF generator (`invoicePdfGenerator.js`) — for GST-exclusive invoices, removed per-line-item CGST/SGST columns from the table. GST now appears only in the summary totals section (Sub Total → CGST → SGST → Total), eliminating the appearance of double-charging. Inclusive GST and IGST (inter-state) types are unaffected.
+
+### March 27, 2026
+
+#### Bug Fix: AI Chat Training Type + Invoice Features
+
+**1. Training Type Change Fix**
+- `update_lead` handler now normalizes camelCase → snake_case (e.g., `TrainingType` → `training_type`, `ProgramType` → `program_type`)
+- When `training_type` is updated, it's synced to both `school_inquiries.training_type` AND `school_inquiries.onboarding_data.training_type`
+- System prompt updated with explicit instruction: use `training_type` (snake_case), valid values: `student_training | teacher_training | both`
+
+**2. Invoice Generation in AI Chat**
+- New `generate_invoice` action in AI chat system prompt + backend handler
+- Backend generates server-side PDF using existing `generate_invoice_pdf()` function, encodes as base64
+- Saves to `invoices` collection
+- Frontend `AdminAIChat.jsx`: new "Invoice Generated" action card with green "Download Invoice PDF" button
+- `handleGeneratePDF` handles `generate_invoice` type: decodes base64 → creates Blob → triggers browser download
+- If `send_email=true`: sends PDF as email attachment via Resend to school contacts
+- AI context now includes tranche summary for converted/active schools
+
+---
+
+### March 26, 2026
+
+#### P0: Student Payment Email Receipt (COMPLETED)
+**Automated Thank-You/Receipt Email to School Students on Payment**
+
+**Backend Changes (`/app/backend/routes/payments.py`):**
+- Added missing imports: `json`, `hmac`, `hashlib`, `time`, `base64`, `resend`
+- Added `_build_receipt_html()` — styled HTML email template with:
+  - Student name, school, grade/division, program, amount, transaction ID, order ID
+  - Green success bar, receipt summary table, support contact box
+  - Strictly follows rules: NO "OLL" full form, support `9920188188`, email `info@oll.co`
+- Added `send_school_student_receipt_email()` — async function using Resend API
+  - Only sends if `student_email` is present; logs & skips otherwise
+  - Only sends once (guarded by `email_receipt_sent` flag in DB)
+- Updated `create_school_student_payment_session` to accept optional `email` / `student_email` and store in payment record with `email_receipt_sent: False`
+- Updated `school_payment_webhook` to trigger email on `PAYMENT_SUCCESS_WEBHOOK`
+- Updated `verify_school_student_payment` to trigger email when `order_status == "PAID"`
+- Added `POST /api/school-payment/send-receipt/{order_id}` — admin endpoint to manually send/re-send receipt (with optional email body override)
+
+**Frontend Changes (`/app/frontend/src/pages/SchoolStudentPayment.jsx`):**
+- Added optional **Email Address** input field (with Mail icon, "(optional – for receipt)" tag)
+- Email passed in `create-session` API call payload
+- Success page footer: shows "A confirmation email has been sent to {email}" when email provided, else shows phone message
+
+**Testing:** Email confirmed sent to `shreyaan@oll.co` via Resend API (HTTP 200, `email_receipt_sent: True` in DB)
+
+---
+
+### March 24, 2026
+
+#### P0: Team Member Applications Workflow Overhaul - Step 1 (COMPLETED)
+**New HR Pipeline:** `Applicant → Candidate → Onboarding → Active → Past Member / Rejected`
+
+**Backend Changes (server.py):**
+- Updated `TeamApplication` model with new statuses: `applicant`, `candidate`, `onboarding`, `active`, `past_member`, `rejected`
+- Added new pipeline fields:
+  - `telephonic_round`: Tracks telephonic interview (completed, outcome, reject_reason, notes)
+  - `hr_interview`: Tracks HR interview (scheduled, scheduled_at, completed, outcome, email_sent)
+  - `dept_head_interview`: Tracks dept head selection (assigned, dept_head_id, dept_head_name, notification_sent)
+  - `trial_period`: Tracks trial (duration: 1_week/1_month, start_date, end_date, extended, status)
+  - Onboarding fields: `welcome_email_sent`, `admin_account_created`, `admin_role_id`, `offer_letter_generated`, `offer_letter_url`
+  - Exit fields: `exit_date`, `exit_reason`, `account_deactivated`, `whatsapp_group_added`
+- New endpoints:
+  - `POST /api/team-applications/bulk-upload` - CSV bulk upload with validation
+  - `POST /api/team-applications/{id}/send-hr-interview-email` - HR interview notification
+  - `POST /api/team-applications/{id}/notify-dept-head` - Dept head assignment notification
+  - `POST /api/team-applications/{id}/send-welcome-email` - Welcome email for onboarding
+  - `POST /api/team-applications/{id}/create-account` - Create OLL admin account
+  - `POST /api/team-applications/{id}/generate-offer-letter` - Generate offer letter (placeholder)
+  - `POST /api/team-applications/{id}/whatsapp-group-notification` - WhatsApp group addition
+  - `POST /api/team-applications/{id}/deactivate-account` - Deactivate on exit
+
+**Frontend Changes (JoinTeamPage.jsx):**
+- Made Resume and City fields mandatory
+- Added validation errors: "Please upload your resume" and "Please select your city"
+
+**Frontend Changes (AdminTeamApplications.jsx):**
+- New status tabs: Applicants, Candidates, Onboarding, Active, Past Members, Rejected
+- Backward compatibility for legacy statuses (new, hired, interviewed, etc.)
+- New action buttons per stage:
+  - **Applicant:** Telephonic Round, Call, Reject
+  - **Candidate:** Schedule HR Interview, Select Dept Head, Move to Onboarding, Reject
+  - **Onboarding:** Send Welcome Email, Create OLL Account, Generate Offer, Start Trial, Extend Trial, Activate Member, Reject
+  - **Active:** Add to WhatsApp Group, Exit/Discontinue
+  - **Past Member/Rejected:** Restore to Applicant
+- New modals: Telephonic Round, HR Interview, Dept Head Selection, Welcome Email, Create Account, Offer Letter, Trial Period, Extend Trial, Bulk Upload
+- Template download button for CSV bulk upload
+
+**Testing:** 24/24 tests pass (iteration_55.json)
+
+#### P0: Team Member Applications Workflow Overhaul - Step 2 (COMPLETED)
+**Candidate Stage Interview Outcome Tracking**
+
+**Frontend Changes (AdminTeamApplications.jsx):**
+- **HR Interview Outcome Modal:** Passed/Failed buttons with auto-reject warning for failed
+- **Dept Head Interview Outcome Modal:** Selected/Not Selected buttons with auto-reject warning for not_selected
+- **Status Indicators:** 
+  - Green checkmark with "HR: Passed" or "Dept: Selected" for positive outcomes
+  - Red X with "HR: Failed" or "Dept: Not Selected" for negative outcomes
+- **"Move to Onboarding" Button:** Only appears when BOTH HR Interview passed AND Dept Head selected
+- **Auto-Rejection:** Marking HR as "Failed" or Dept Head as "Not Selected" automatically moves application to "rejected" status
+
+**New State Variables:**
+- `showHROutcomeModal`, `hrOutcomeData` - For HR interview result modal
+- `showDeptHeadOutcomeModal`, `deptHeadOutcomeData` - For Dept Head interview result modal
+
+**Handler Functions:**
+- `handleHROutcome()` - Updates hr_interview.completed, hr_interview.outcome, auto-rejects if failed
+- `handleDeptHeadOutcome()` - Updates dept_head_interview.completed, dept_head_interview.outcome, auto-rejects if not_selected
+
+**Testing:** 11/11 tests pass (iteration_56.json)
+
+---
+
+### March 23, 2026 (Session 3)
+
+#### P0 FIX: Server Crash During Payment Sync (RESOLVED)
+- **Root Cause:** All 18 synchronous Cashfree SDK calls (`PGFetchOrder`, `PGOrderFetchPayments`, `PGCreateOrder`, `PGOrderCreateRefund`) were blocking the FastAPI async event loop in `routes/payments.py`. During bulk sync, this blocked the entire server for seconds/minutes.
+- **Fix:** Wrapped all 18 Cashfree SDK calls with `asyncio.to_thread()` so they execute in a thread pool without blocking the event loop.
+- **Affected functions:** `scheduled_payment_sync`, `sync_single_payment_status`, `sync_all_pending_payments`, `create_payment_order`, payment verification endpoints, refund endpoint.
+- **Result:** `POST /api/payments/sync-all` and `POST /api/payments/sync-single/{order_id}` now return immediately. Server stays responsive during sync. Background scheduler no longer crashes the app.
+
+#### School CRM: Stage Rollback & Universal Raise Ticket (RESOLVED)
+- **Move Back (Stage Rollback)**: Added "Move Back" dropdown button to meeting_done, converted, active, renewal_meeting, and renewed stages. Each stage shows appropriate previous stage options (e.g., converted→meeting_done, renewed→active/renewal_meeting). Uses confirmation dialog and logs the change in notes.
+- **Raise Ticket across ALL stages**: Added reusable "Ticket" button to every stage (new, meeting_done, converted, active, renewal_meeting, renewed, lost/lost_lead/lost_customer, archived). Opens full ticket modal with query type, subject, description, priority, attachments. Tickets are saved to `support_queries` collection and appear in Support Center.
+- **Test results:** 16/16 backend tests pass, all frontend UI elements verified across all stages.
+
+#### Support Center: School Contact Picker (RESOLVED)
+- When creating a ticket with "School" type, a **School Name search** input appears.
+- Searching shows a dropdown of matching schools. Selecting one displays **all contacts** (main contact + onboarding contacts) with name, phone, email, and role.
+- Clicking a contact **auto-fills** the Name, Phone, Email fields. School name and school_id are included in the ticket payload.
+- **Test results:** 10/10 backend tests pass, all frontend UI elements verified.
+
+#### B2B Reports: Year Filter, New vs Renewal Pie, City Division (RESOLVED)
+- **Year-only filter**: Global date filter (Week/Month/Custom) is hidden when B2B tab is active. B2B has its own year-only dropdown.
+- **New Schools vs Renewals pie chart**: Donut chart showing new school count vs renewal count with renewal rate percentage.
+- **City Division of Customers**: Progress bar chart showing customer breakdown by city (top 15 cities).
+- Backend `GET /api/admin/reports/b2b-insights` now returns `new_vs_renewal` and `customer_cities` fields.
+- **Test results:** 10/10 backend tests pass, all frontend charts verified.
+
+#### MOU Auto-Email Removed (RESOLVED)
+- **Fix:** Removed automatic email sending from `generateMOUDocument()` in `mouPdfGenerator.js`. Previously, generating an MOU would auto-send it via email. Now "Generate MOU" only creates, downloads, uploads, and saves the PDF. Email is only sent when explicitly clicking "Send MOU Email" button.
+
+#### Support Query Reply Email Notifications (RESOLVED)
+- When a reply is added to a support query, email notifications are sent to the **assignee** and all **viewers** (excluding the person who wrote the reply).
+- Email contains: reply text, reply author, timestamp, customer name, query type, priority, and attachment info.
+- Branded HTML email template with OLL styling.
+- Uses Resend API, sent as fire-and-forget background task via `asyncio.create_task`.
+- **Tested:** Verified email sent to both assignee (`john@oll.co`) and viewer (`shreybro@gmail.com`).
+
+#### School Renewal Popup Fixes (RESOLVED)
+- **Bug Fix:** Improved error handling in `handleRenewalConvert` to show actual validation error details instead of generic "Failed to renew school" message. Added `model_config = ConfigDict(extra="ignore")` to `SchoolInquiryUpdate`.
+- **Added `latitude`, `longitude`, `geofence_radius`** to both `SchoolInquiry` (response model) and `SchoolInquiryUpdate` (request model) so map/address data persists through renewals.
+- **Added `address` initialization** in `openRenewalConvertModal` to pre-populate from existing school data.
+- **Added "Generate MOU" button** in the renewal modal footer (matching the converted popup layout).
+- **Added "Save as Draft" button** that saves all renewal onboarding data without changing the school status.
+- **Test results:** 14/14 backend tests pass, frontend UI verified with all 4 buttons (Cancel, Generate MOU, Save as Draft, Complete Renewal).
+
+### March 23, 2026 (Session 2)
+
+#### Reports – Week Filter with Specific Week Selector
+- Added "Week" filter with dropdown to pick any of the last 13 weeks (e.g., "Mar 17 – Mar 23, 2026")
+- Support Timeline auto-detects day granularity for ≤14-day ranges
+
+#### B2B Reports — Full Overhaul
+- **Top KPI cards** (5): Revenue Generated, Conversions, Conversion Ratio, Value Pipeline, Lost Value
+- **Conversion Rate section** moved to top row, side-by-side with Revenue Overview
+- **Renewal Rate fixed**: `renewedSchools / (active + renewed)` → 55.6%
+- **Source of Leads section** added — Manual, Website, Admin Created, etc. with progress bars
+- **Merged Lost Reasons**: single combined pie chart
+- Backend: `pipeline_value`, `conversion_ratio`, `lead_source_breakdown`, fixed `renewal_ratio` in `b2b-insights`
+
+#### P&L Report — Cashflow Section
+- New Cashflow section: Receivables, Payables, Net Cashflow
+- Backend: `GET /api/admin/reports/cashflow`
+
+### March 23, 2026
+
+#### Branded ID Cards & Certificates (P0 Complete)
+**Feature:** Educator ID cards and certificates now include OLL branding.
+- **ID Card:** OLL vertical logo embedded (top right), educator's profile photo (circular crop) using Pillow
+- **Certificate:** OLL vertical logo (top center), Shreyaan Daga's signature image embedded above signatory line
+- **Image delivery:** CDN URLs fetched via httpx with in-memory caching (`_img_cache`)
+- **Fallback:** Graceful placeholder if profile photo unavailable
+- **Modified:** `server.py` — `generate_id_card_pdf`, `generate_certificate_pdf`, `_fetch_image_bytes`, `_make_circular_png`, `_draw_id_photo_placeholder`
+
+#### Support Reports Fixes
+- **Resolution Time:** Was always 0. Fixed to use `updated_at` as fallback when `resolved_at` absent. Now showing actual hours (e.g., 165.9h)
+- **Overdue Queries:** New metric — queries in open/in_progress state for >48 hours. Shown as stat card and in Ticket Status Breakdown (replaced "In Progress")
+- **Ticket Status Breakdown:** Was showing all 0% (wrong data path). Fixed to use `supportInsights.status_breakdown`
+- **Modified:** `routes/reports.py` — `get_support_insights`, public reports endpoint; `AdminReports.jsx`, `PublicReports.jsx`
+
+#### Tickets by Sub-Category with Reply Viewer
+**Feature:** New section in Support Reports tab with drill-down into ticket details and replies.
+- **Sub-Category List:** Clickable rows showing category name + count
+- **Slide-in Panel:** Opens on click showing all tickets for that category with contact info, status badge, priority, date, message preview
+- **Reply Thread:** Expandable chat-style conversation — admin replies (dark blue, right-aligned), user messages (white, left-aligned)
+- **Backend:** `GET /api/admin/reports/support-subcategory-tickets?subcategory=&period=`
+- **Modified:** `routes/reports.py`, `AdminReports.jsx`
+
+### March 22, 2026 (continued)
+**Feature Implemented:**
+
+Created a password-protected public shareable link for the Reports page, allowing external stakeholders to view reports without admin access.
+
+**Backend (routes/reports.py):**
+1. **Public Link Management Endpoints:**
+   - `POST /api/admin/reports/public-link` - Create/update public link with password
+   - `GET /api/admin/reports/public-link` - Get current link info
+   - `PATCH /api/admin/reports/public-link/password` - Change password
+   - `DELETE /api/admin/reports/public-link` - Delete public link
+2. **Public Access Endpoints (No Admin Auth):**
+   - `POST /api/public/reports/{token}/verify` - Verify password, returns JWT access token (24h expiry)
+   - `GET /api/public/reports/{token}/data` - Get report data (with JWT auth)
+3. **Security:**
+   - Bcrypt password hashing
+   - JWT tokens with 24-hour expiration
+   - No sensitive data exposed (contact details, names hidden)
+
+**Frontend:**
+1. **AdminReports.jsx - Share Report Modal:**
+   - "Share Report" button in filter bar
+   - Modal shows: link URL, copy button, change password, delete link
+   - Create new link with password (min 4 characters)
+2. **PublicReports.jsx - Public Reports Page:**
+   - Password gate requiring authentication
+   - All 8 tabs: Overview, B2C, B2B, HR-Team, Educator HR, Growth Partners, Support, P&L
+   - Full date filters (Month/Year/Custom)
+   - Real-time data display
+   - Privacy: No contact details or names visible
+
+**Testing:** All 15 backend tests pass. Frontend UI verified.
+
+**Public Link URL:** `/reports/{token}` (password protected)
+
+**Modified Files:**
+- `backend/routes/reports.py` - Added public link endpoints
+- `frontend/src/pages/admin/AdminReports.jsx` - Share Report modal
+- `frontend/src/pages/PublicReports.jsx` - New public reports page
+- `frontend/src/App.js` - Added route `/reports/:token`
+
+---
+
+#### School CRM Lost Lead Feature
+**Feature Implemented:**
+
+Enhanced the School CRM to better track lost opportunities by dividing them into "Lost Leads" (before conversion) and "Lost Customers" (after conversion).
+
+**Changes:**
+1. **New Statuses:** Added `lost_lead` and `lost_customer` statuses
+2. **Lost Lead Button:** Added "Lost Lead" action button to:
+   - New Leads section
+   - Meeting Done section
+3. **Updated Lost Reason Modal:**
+   - Type selector: Lost Lead vs Lost Customer
+   - Context-aware reason options (e.g., "Service dissatisfaction" for lost customers)
+4. **Divided Lost Tab:**
+   - "Lost Leads" subsection with count
+   - "Lost Customers" subsection with count
+5. **Lost Card Display:**
+   - Shows "Lost Lead" or "Lost Customer" badge
+   - Displays lost reason on card
+   - "Restore to Lead" button for lost leads
+   - "Reactivate" button for lost customers
+
+**Modified Files:**
+- `frontend/src/pages/admin/AdminSchoolCRM.jsx` - STATUS_SECTIONS, renderSchoolCard, renderActionButtons, Lost tab rendering
+- `backend/server.py` - Updated status comment
 
 ### March 14, 2026
 
@@ -538,6 +854,8 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 - [x] Fix NaN fee amount on School Student Payment page
 - [x] Fix Pay Fees button to trigger Cashfree popup
 - [x] Email Notification System for School CRM - DONE March 13, 2026
+- [x] School Student Portal (Login + Dashboard) - DONE Feb 2026 - 100% tests passing
+- [x] Admin Payment Tracker: Fix missing payments (limit 1000→10000), add edit/refund actions - DONE March 2026
 
 ### P1 - High Priority
 - [ ] Fix recurring file download issue (wrong name/type)
@@ -563,8 +881,337 @@ The `/api/schools/{school_id}/raise-ticket` endpoint was saving tickets to the `
 
 ---
 
+### March 21, 2026
+- **Dynamic Onboarding Steps (DONE):** School onboarding workflow now generates tailored step sets based on purchase:
+  - Individual kit → includes `distribution_checking`, excludes `lab_setup/refilling`
+  - Lab setup → includes `lab_setup` (new) / `lab_refilling` (renewal), excludes distribution
+  - Student training → includes `teacher_allocation`, `teacher_approval`, `timetable_finalization`
+  - Teacher training → includes `teacher_training` only
+  - `both` → includes all student + teacher training steps
+  - Fixed: `init_school_onboarding` now uses `generate_dynamic_onboarding_steps` instead of hardcoded `DEFAULT_ONBOARDING_STEPS`
+  - Fixed: `get_public_tracking` iterates over actual workflow steps (no ghost steps from hardcoded list)
+  - Fixed: `update_onboarding_step` uses actual workflow keys for `current_step` calculation
+  - Fixed: `AdminSchoolCRM.jsx` 3 hardcoded `/9` replaced with dynamic step count
+  - Fixed: `SchoolTrackingPage.jsx` added icons for `lab_setup` (Building2), `lab_refilling` (Package), `teacher_allocation` (User), `teacher_approval` (ThumbsUp)
+  - Tested: 20/20 tests passed (iteration 44)
+
 ## Known Issues
 1. **File Downloads:** Downloads have incorrect names/types (recurring - 3+ attempts)
 2. **Jitsi Moderator:** Limited control with public meet.jit.si server
 3. **Gmail SMTP:** Non-functional, blocked on user credentials
 4. **Parent Circular docx:** Table formatting broken (recurring 3+)
+5. **Data Transfer** (User Verification Pending): Converting a lead - Program Details should auto-fill from proposal_data
+6. **MOU School Name** (User Verification Pending): School name should appear in MOU PDF header
+
+### March 21, 2026 (Session 2)
+- **P0 Fix: Backend Shutdown Crash (DONE):** Fixed `NameError: name 'client' is not defined` on server restart. Import `_client as mongo_client` from `database.py`.
+- **P0 Fix: Resend Email Diagnostics (DONE):** Added test email endpoint and "Send Test Email" button in Admin Settings > API Keys. Production issue is a test API key.
+- **School Receipt Filtering & PDF Download (DONE):**
+  - Student /my-bookings: School Receipts tab now only shows PAID/REFUNDED payments (filters out ACTIVE, EXPIRED, PENDING)
+  - Student /my-bookings: Added "Download Receipt" button for each receipt card
+  - Admin SchoolPaymentTracker: Added download receipt (FileText icon) action for PAID/REFUNDED payments
+  - Created `/utils/receiptPdfGenerator.js` - generates styled receipt PDF with OLL branding using jsPDF
+  - Tested: 5/5 features passed (iteration 46)
+
+### March 21, 2026 (Session 2 - continued)
+- **Raise PO Request from Onboarding (DONE):**
+  - Backend: `POST /api/schools/{school_id}/raise-po` builds products from onboarding data (course_type, kit_type, book_type, grade_pricing) and submits to vendor panel API (`vendorplus-4.emergent.host/api/public/po-request`)
+  - Product logic: Only Robotics → Robotics Kit all grades; Robotics+Coding+AI → Robotics Kit (Grade 1-6), IOT Kit (Grade 7-10); Lab Setup → Lab Kit × count; Individual Books → 1 per student per grade
+  - Frontend: "Raise PO Request" button in onboarding workflow > payment_collection step (activated when payment step complete or partial payment received)
+  - Delivery date dialog prompts for date before raising PO
+  - PO response stored on school record (`po_requests` array) and kit_delivery step auto-updated
+  - Tested: Backend API verified with curl, multiple scenarios (individual kit, lab setup, robotics_coding_ai grade split)
+
+### March 2026 (Fork Session 3 - P0 MOU Fix + P0 Refactor)
+- **P0 BUG FIX: MOU PDF document not saving (DONE, TESTED):**
+  - Root cause: FormData uploads had `Content-Type: multipart/form-data` manually set, breaking the multipart boundary — server returned 400.
+  - Fix: Removed all manual `Content-Type: multipart/form-data` headers from FormData axios calls in `AdminSchoolCRM.jsx` using `sed`.
+  - Atomic append: Created `POST /api/schools/{school_id}/add-document` endpoint using MongoDB `$push` to prevent race conditions when saving documents.
+  - Proposal and Parent Circular document saves also updated to use atomic `/add-document` instead of PATCH.
+  - Tested: 9/9 backend tests pass (iteration_47). Frontend: 100% pass.
+
+- **P0 REFACTOR: AdminSchoolCRM.jsx extraction (DONE, TESTED):**
+  - Extracted 3 large PDF generator functions (~1,370 lines total) from AdminSchoolCRM.jsx into dedicated utility files:
+    - `/utils/proposalPdfGenerator.js` — exports `generateProposalDocument(school, data, ctx)`
+    - `/utils/mouPdfGenerator.js` — exports `generateMOUDocument(school, data, ctx)`  
+    - `/utils/parentCircularGenerator.js` — exports `generateParentCircularDocument(school, data, ctx)`
+    - `/utils/ollAssets.js` — exports `OLL_LOGO_B64` and `OLL_LOGO_HORIZONTAL` base64 logos
+  - AdminSchoolCRM.jsx reduced from 12,077 → 10,707 lines (-1,370 lines).
+  - All 3 functions replaced with thin wrappers that manage loading state and pass context to utilities.
+  - Also fixed bug: `generateProposalPDF` was reading `onboardData?.grade_pricing` instead of `data?.grade_pricing` (now fixed in utility).
+  - Tested: 100% pass — 9/9 backend + frontend compilation verified (iteration_47).
+
+## Session: March 22, 2026 — server.py P0 Refactoring Batch 2 (DONE, TESTED)
+- Extracted 2 more route groups from server.py:
+  - `routes/payments.py` — 21 routes: `/payments/*` + `/school-payment/*` + `scheduled_payment_sync` background task + `scheduler` (AsyncIOScheduler)
+  - `routes/gp_onboarding.py` — 19 routes: `/gp-onboarding/*` + `/gp-onboard/*` (includes GPOnboarding + TeamUser models)
+- Moved `scheduler` instance and `PAYMENT_SYNC_*` config to `routes/payments.py`; server.py startup handler imports them
+- Fixed duplicate `verify_gp_payment` route in gp_onboarding.py (dead code removed)
+- server.py: 15,704 → 13,217 lines (−2,487 lines, total −4,690 lines from original 17,907)
+- Tested: 20/20 pytest pass + scheduler-status 200 verified (iteration_49)
+
+## Session: March 22, 2026 — Daily Report Emailer (DONE)
+- Created `/app/backend/routes/daily_report.py` — generates and emails 5 separate daily category reports
+- Recipients: shreyaan@oll.co, lavisha@oll.co, clonefutura@gmail.com
+- Scheduled at 8:00 PM IST (14:30 UTC) daily using APScheduler CronTrigger
+- Manual trigger available at POST /api/admin/daily-report/send-now
+- Reports: Support (queries/categories/resolution), B2C (leads/demos/conversions/revenue), Growth Partners, Team Members, Educators (all with rich HTML metrics)
+
+## Session: March 22, 2026 — PO Tracking URL Fix (DONE)
+- Fixed PO tracking links redirecting to wrong preview domain (`vendor-mgmt-v2.preview.emergentagent.com`) instead of `vendorplus-4.emergent.host`
+- Updated `transform_tracking_url` in `routes/expenses.py` to use regex wildcard for any `*.preview.emergentagent.com` domain
+- Applied transform at write-time (PO raise) and read-time (inquiries + onboarding endpoints) to fix both new and existing records
+- Also fixed bonus `add-document` 500 error: MongoDB `$push` on null `documents` field now handled via aggregation pipeline update
+- Also fixed proper import: `transform_tracking_url`, `fetch_po_data`, `VENDOR_PUBLIC_API`, `fetch_vendor_products`, `match_vendor_product` now properly imported into server.py
+
+## Session: March 22, 2026 — P0 MOU PDF Save Bug Fix (DONE)
+- Fixed critical React event handler bug in `AdminSchoolCRM.jsx`:
+  - `onClick={generateMOUPDF}` was passing the SyntheticEvent as `overrideSchool`, making `school.id` undefined → `/api/schools/undefined/add-document` 404
+  - Fixed by wrapping in arrow functions: `onClick={() => generateMOUPDF()}` and `onClick={() => generateParentCircularPDF()}`
+  - Same bug existed in both MOU and Parent Circular buttons (lines 8359 and 8300)
+- Root cause: Classic React onClick direct function reference pitfall with optional-arg functions
+
+## Prioritized Backlog
+
+### March 22, 2026 (Session 3)
+- **School Map Picker** — COMPLETE
+  - Created `/app/frontend/src/components/SchoolMapPicker.jsx` using Leaflet.js + OpenStreetMap (no API key)
+  - Free geocoding via Nominatim (search → lat/lng) + reverse geocoding (click map → address)
+  - GPS button (browser geolocation), draggable marker, interactive geofence circle
+  - Geofence radius slider (100m–5km)
+  - Added to 3 modals in AdminSchoolCRM.jsx: Edit School, Convert (Onboard), Renewal Convert
+  - Saves `latitude`, `longitude`, `address`, `geofence_radius` to `school_inquiries` root level
+  - External API (`GET /external/schools`) now returns `latitude`, `longitude`, `geofence_radius` in `location` object for Check-in app integration
+- **Orders: Send Invoice Email with saved invoices** — COMPLETE
+  - New `POST /api/orders/send-invoice-email` endpoint in `school_emails.py`
+  - Generates invoice PDF (fpdf2), saves to new `invoices` MongoDB collection (with base64 PDF for resending)
+  - Determines email type automatically: `invoice` (pending), `overdue` (past due), `confirmation` (paid)
+  - Recipients: Accounts + Principal contacts from `school_contacts`; falls back to primary contact
+  - On resend: uses the same saved PDF (same invoice number, consistent accounting)
+  - `GET /api/orders/{payment_id}/invoice-status` endpoint to check saved invoice status
+  - Frontend: "Send Email" button added to all order rows (single + multi-tranche); shows "Resend" after first send
+  - Confirmation dialog shows: school, tranche, amount, due date, email type badge, recipient note
+  - Activity logged to `school_inquiries.activity_log`
+- **Follow-up Email Template System for Meeting Done Schools** — COMPLETE (iter_50: 15/15 backend, 11/11 frontend tests PASS)
+  - Added `meetingDoneEmailState` state + `buildMeetingDoneTemplate` + `handleSendMeetingDoneEmail` to `AdminSchoolCRM.jsx`
+  - New purple "Send Follow-up Email" section in Follow-up Modal (visible only for `meeting_done` status schools)
+  - 3 templates: "Next Steps for Your School" (5-step onboarding roadmap), "Confirmation Reminder" (purple header, urgency cue), "Custom Message" (free-text)
+  - Template subject auto-fills with school name; preview shows rendered HTML; editable subject before send
+  - Wired to existing `POST /api/schools/{id}/send-meeting-followup` endpoint (school_emails.py)
+  - Bulk email (`POST /api/schools/contacts/bulk-email`) confirmed working
+
+### P0 (Critical)
+- Continue refactoring `server.py` (13,217 lines → extract schools_onboarding ~2500 lines, auth_routes ~700 lines, support ~600 lines)
+- Target: Get server.py under 8,000 lines
+
+### P1 (High Priority)
+- CSV Export button for all major admin data tables
+- Phase 2 & 3 email notification templates
+
+### P2 (Medium Priority)
+- Background job for AI follow-up emails
+- Backend RBAC enforcement
+- Audit logging for sensitive operations
+- AdminSchoolCRM.jsx further reduction (still 10,707 lines)
+- Extracted 4 route groups from server.py into modular files under `backend/routes/`:
+  - `routes/reports.py` — 10 `/admin/reports/*` endpoints (886 lines, includes get_date_range/parse_date_field helpers)
+  - `routes/jobs.py` — 5 `/jobs/*` endpoints (868 lines, includes WhatsApp helpers + notification helpers + PO fetch)
+  - `routes/expenses.py` — 9 `/school-expenses/*` endpoints (392 lines, includes EXPENSE_CATEGORIES constant)
+  - `routes/admin_keys.py` — 10 `/admin/api-keys/*` + `/admin/service-api-keys/*` + `/external/*` endpoints (447 lines)
+- Fixed latent bugs: missing `os`, `asyncio`, `secrets` imports; `verify_external_api_key` dependency added to admin_keys.py; `get_date_range` helpers added to reports.py; notification helpers + `send_whatsapp_notification` added to jobs.py
+- Fixed pre-existing bug: b2b-insights NoneType error on `onboarding_data.get()`
+- server.py: 17,907 → 15,704 lines (−2,203 lines, −12.3%)
+- All routes registered (315 total). Tested: 37/37 backend tests pass (iteration_48). All 4 module groups verified HTTP 200.
+
+### 2026-03-25 — Checkin API Integration (Timetable + Sessions)
+- **New backend** `/app/backend/routes/checkin_api.py` — proxy routes for the external Supabase checkin API:
+  - `GET /schools/checkin/educators` — 64 educators from checkin system
+  - `POST /schools/{id}/timetable` — create/update timetable (maps short day names to full, normalises time_slots format)
+  - `GET /schools/{id}/timetable` — fetch timetable by stored `checkin_timetable_id`
+  - `GET /schools/{id}/checkin-sessions` — sessions with status/date filters
+  - `PUT /schools/{id}/checkin-sessions/{session_id}` — update session status/completed
+- **Timetable builder updated** — added educator dropdown (fetches 64 educators from checkin API). Save button now calls `/api/schools/{id}/timetable` → creates real timetable in checkin system. `checkin_timetable_id` stored on school record.
+- **Sessions button** added to all active school cards. Opens modal showing all sessions (4,731+ for test school). Includes status filter, date range filter, per-row inline editing (status + completed), total count, "Edit Timetable" link.
+- **Credentials**: `CHECKIN_API_KEY` + `CHECKIN_PROJECT_ID` stored in backend `.env`.
+
+### 2026-03-25 — Report Email Duplicate & No-Data Fix
+- **Duplicate emails fix**: Multiple uvicorn workers each ran their own APScheduler, causing all report emails to send twice. Added a MongoDB-based distributed daily lock (`daily_report_locks` collection). Uses `find_one_and_update` with `$setOnInsert` + `upsert=True` — atomically creates the lock only once. Second worker finds the existing doc and skips.
+- **Support "No data" fix**: When 0 queries created today, breakdown tables were all empty. Added 7-day rolling fallback — if `today = []`, fetch last 7 days for breakdowns. Email now shows "Breakdown: Last 7 Days" label when using fallback data.
+
+### 2026-03-25 — Support Report Email Fix
+- **Root cause**: `fetch_support_data` used non-existent field names: `query_type` (→ `main_category`), `related_to` (→ `category`), `user_type` and `source` (neither field exists in the schema).
+- **Fixes**: Corrected all field names. Replaced `user_type`/`source` with actual useful data: `detail_categories` (from `sub_category` field) and `user_types` (B2B vs B2C based on `school_name` presence).
+- **"Unknown" → "Not Categorized"**: Changed fallback label from "Unknown" to "Not Categorized" for empty/null fields.
+- **Open count fix**: Added `"new"` to the open status filter (was missing `new` tickets from the count).
+- **New KPI**: Added "Overall Resolution Rate" (all-time resolved ÷ total) to the support email.
+- **Resolution rate**: Added `resolution_rate` field (21% in test data).
+
+### 2026-03-25 — External API Fix (Settings)
+- **New endpoint**: `GET /api/external/schools/active` — flat format returning: `school_name, address, city, latitude, longitude, contact_person, contact_phone, contact_email, board, status`. Fixed route ordering so `/active` is defined before `/{school_id}` (was returning 404).
+- **Admin test endpoint**: `GET /api/admin/api-keys/{key_id}/test` — lets admin verify any key is working without needing the full raw key. Returns school count + 3 sample records.
+- **Settings UI**: Added "How to Use the API" documentation panel showing exact endpoint URL, required header, all response field names, and a "Test API Key" button that uses the admin endpoint to verify the key and preview sample data.
+
+### 2026-03-25 — AI Chat (Agentic CRM Assistant)
+- New admin tab "AI Chat" added at `/admin/ai-chat` — WhatsApp-style full page chat UI
+- **Agentic capabilities**: create leads, edit leads, delete leads, change statuses, add notes, send emails, convert customers, raise tickets, generate proposals/MOU PDFs
+- **AI model**: GPT-5.2 via Emergent LLM key (emergentintegrations)
+- **Action cards**: Each CRM action shows a colored detail card (amber=Note, violet=Status, emerald=Created/Converted, sky=Email, orange=Ticket, indigo=Proposal, purple=MOU)
+- **PDF generation**: Proposal/MOU PDF download buttons appear inline in chat, using existing `generateProposalDocument`/`generateMOUDocument` frontend utilities
+- **Context-aware**: AI sees all 150 latest school leads on each message for intelligent decision-making
+- **Session management**: Multiple chat sessions with history persistence (MongoDB `ai_chat_sessions` collection)
+- Backend: `/app/backend/routes/ai_chat.py`, Frontend: `/app/frontend/src/pages/admin/AdminAIChat.jsx`
+- Test result: 15/15 backend tests ✅, all frontend features ✅ (iteration_58.json)
+
+
+- **Sessions modal bug fixed (P0)**: Backend endpoint `/api/schools/{school_id}/checkin-sessions` now filters by `timetable_id` (fetched from school's `checkin_timetable_id` field) instead of unreliable `school_name` param. Schools without a timetable return 0 sessions with a clear message.
+- **Educator name in Sessions modal (P2)**: Fixed educator column to show `full_name` from `/api/schools/checkin/educators` list, instead of truncated UUID. `fetchCheckinEducators()` is now also called when Sessions modal opens.
+- **CSV Export (P1)**: Added "Export CSV" button to 4 major admin data tables:
+  - `AdminExpenses.jsx` → exports filtered expense rows (testid: `export-expenses-csv-btn`)
+  - `AdminOrders.jsx` → exports filtered payments for current tab (testid: `export-payments-csv-btn`)
+  - `AdminTeamApplications.jsx` → exports team applications (testid: `export-applications-csv-btn`)
+  - `AdminSchoolCRM.jsx` → exports filtered school leads (testid: `export-schools-csv-btn`)
+- All CSV exports respect current search/filter state and show toast confirmation with count.
+
+
+- **Followup filter**: Removed converted/active/archived schools from "Upcoming Followups (7 Days)" dashboard. Now only `new` and `meeting_done` status schools appear in the followup list.
+- **Unarchive button**: Added blue "Unarchive" button to all archived school cards — restores lead back to `new` status.
+- **Lost lead value**: Added optional "Lead Value (₹)" input field to the Mark as Lost modal. Value is saved as `lead_value` on the school record and reflected in all 3 reports endpoints (`user-stages`, `b2b-insights`, public reports).
+
+### 2026-03-25 — Educator List 500 Error Fix (Production)
+- **Root cause 1**: `EducatorApplication` Pydantic model had `certificate_generated: bool = ""` (wrong type — `str` with `bool` annotation). Pydantic v2 rejects `""` or `None` for `bool` fields → 500 on all production educator API calls.
+- **Root cause 2**: `email: EmailStr` failed validation for legacy production records with non-standard emails.
+- **Root cause 3**: `skills: List[str]` without default failed when field was `None` in older records.
+- **Fix**: Added `@model_validator(mode='before')` sanitizer that coerces None/wrong-type values for all str/list/bool fields. Changed `certificate_generated: bool = ""` → `str = ""`. Changed `email: EmailStr` → `str`. All fields now have safe defaults.
+- **CORS Fix**: `allow_origins=['*'] + allow_credentials=True` is an invalid CORS spec combination. Changed to `allow_origin_regex='.*'` — correctly echoes back requesting origin with credentials.
+- Both endpoints `/api/educators/applications` and `/api/educators/applications?for_assignment=true` now return 200.
+
+### 2026-03-24 — Educator List Rendering Bug Fix
+- **Fixed P0 bug**: Onboarding tab count was showing 0 on initial page load
+- **Root cause**: `fetchOnboardingProgress()` was only called when the Onboarding tab was clicked, so `onboardingData` was empty `[]` on first render. Badge count used `onboardingData.length` which returned 0.
+- **Fix 1**: Added `fetchOnboardingProgress()` to the initial `useEffect` (component mount) in `AdminEducators.jsx` — now Onboarding count shows correctly (19) on page load.
+- **Fix 2**: Added status guard to "Onboarded: date" label — only shown for educators with status `onboarded`/`active`/`onboarding` (was incorrectly showing on `new` status applicants)
+- **Fix 3**: Format `onboarding_date` using `?.split('T')[0]` to handle both date-only and full ISO datetime strings
+
+### 2026-03-25 — AI Chat P0 Fixes
+
+#### Fix 1: "Need Help?" Button Overlap Resolved
+- **Root cause**: `<RaiseQueryButton />` was rendered globally in `App.js` with `fixed bottom-6 right-6 z-50`, overlapping the AI Chat send button.
+- **Fix**: Added early return `null` in `RaiseQueryButton.jsx` when `location.pathname === '/admin/ai-chat'`. Button is still visible on all other pages.
+
+#### Fix 2: AI Meeting & Follow-up Scheduling Tools
+- **Added** `schedule_meeting` tool to `ai_chat.py`: sets `meeting_date`, `meeting_time`, `meeting_mode`, resets reminder flags so scheduler fires again.
+- **Added** `schedule_followup` tool: sets `followup_date`, `followup_comment`.
+- **Updated** AI system prompt with date interpretation rules (e.g. "tomorrow" → YYYY-MM-DD, "2 PM" → "14:00").
+- **Updated** `AdminAIChat.jsx` `ACTION_CFG` with teal "Meeting Scheduled" and cyan "Follow-up Scheduled" action cards with Calendar/CalendarCheck icons.
+
+#### Fix 3: Automated Reminders
+- **Added** `send_school_crm_daily_digest()` in `server.py`: queries tomorrow's meetings + follow-ups from `school_inquiries`, builds HTML email, sends via Gmail SMTP to admin.
+- **Scheduler job**: `school_crm_daily_digest_job` runs daily at 03:00 UTC (8:30 AM IST).
+- **1-hour reminder**: Added `reminder_1h_start/end` window (45–75 min) to `check_school_meeting_reminders()`.
+- **Manual trigger**: `POST /api/admin/trigger/daily-digest` to test on demand.
+
+
+
+### 2026-03-26 — CRM Pipeline & AI Chat Bug Fixes
+
+#### Fix: create_lead + schedule_meeting chain injection
+- When AI creates a lead and schedules a meeting in the same message, `school_id` from `create_lead` is now injected into subsequent actions in the same batch
+- Added `_resolve_school_id()` helper: fallback name-based MongoDB lookup if `school_id` missing
+
+#### Fix: schedule_meeting no longer auto-changes status
+- Removed "ALWAYS set change_status to meeting_done" from system prompt
+- schedule_meeting only sets date/time fields; status changes only when explicitly requested
+
+#### Fix: generate_proposal/generate_mou saves to MongoDB
+- Both executors now save `proposal_data` (and `onboarding_data.grade_pricing`) to the school before returning `frontend_action`
+- Proposal popup and converted/renewal popups now load correctly pre-filled
+
+#### Fix: Proposal PDF grade range shows correctly
+- Fixed "Grades 1 to 1" bug: now uses `grades_from`/`grades_to` (ordinal form) when set
+- Falls back to grade_pricing range; single-grade shows "Grade X" not "Grades X to X"
+
+#### Fix: Proposal/MOU email PDF attachment (School CRM modal)
+- Email modal now auto-generates PDF with `noDownload: true` before sending
+- Hint updated from "Generate proposal first" to "PDF will be auto-generated & attached"
+- `mouPdfGenerator.js` and `proposalPdfGenerator.js` both support `noDownload` flag and return `{ base64, filename }`
+
+#### Fix: Proposal/MOU email PDF attachment (AI Chat)
+- `send_email` executor returns `pending_pdf_send` for proposal/MOU types
+- `AdminAIChat.jsx` intercepts this, generates PDF, calls `send-crm-email` with base64
+
+#### Fix: Raise Ticket goes to wrong collection
+- Was writing to `support_tickets`; changed to `support_queries`
+- Now includes `name`, `phone`, `query_type`, `message`, `viewers`, `comments`
+
+#### Fix: PATCH /schools/inquiry returns 500 for AI-created leads
+- Made `email`, `location`, `school_size`, `fee_range`, `programs_interested`, `support_needed` optional in `SchoolInquiry` Pydantic model
+- Removed `response_model=SchoolInquiry` from PATCH endpoint
+- Added `GET /api/schools/inquiry/{id}` endpoint
+
+#### Pre-deployment test (Iteration 60): 10/10 backend + 6/6 frontend PASS
+- AI Chat tests blocked only by LLM budget exhaustion (billing, not code bug)
+
+
+
+#### Fix: GST Type visibility & Invoice PDF per-grade rows (Iteration 61) — Mar 2026
+- **`AdminSchoolCRM.jsx`**: Added `gst_type` to `showEditOnboardingModal` (Edit School popup for converted/active schools):
+  - `handleEditOnboarding` now includes `gst_type` in all 3 code paths (direct onboard_data, API fetch, empty fallback)
+  - `handleSaveEditOnboarding` now saves `gst_type` to `onboarding_data` via PATCH
+  - GST Type dropdown (inclusive_18, exclusive_18, book_gst_0) added to Payment Details section of the modal
+- **`invoicePdfGenerator.js`**: Comprehensive fix:
+  - `gstType` now reads from `schoolData.onboarding_data.gst_type` (was `payment.gst_type`)
+  - `calculateGST` now handles new values: `'book_gst_0'`, `'inclusive_18'`, `'exclusive_18'`
+  - Invoice table now generates **one row per grade** from `grade_pricing[]` array (was one combined row)
+  - Per-row CGST/SGST/IGST amounts calculated proportionally (scales tranche amounts across grades)
+  - Fallback single-row preserved when no grade_pricing data available
+- Testing: 6/6 frontend tests PASSED (Iteration 61)
+
+#### Feature: Generate MOU from Edit School popup — Mar 2026
+- Added `generateEditMOUPDF()` handler that reuses `generateMOUDocument` with `setEditOnboardData` as state setter
+- Added `generatingEditMOU` state for loading indicator
+- Edit School modal MOU section now shows:
+  - When MOU exists: "MOU uploaded" + View / Remove / Regenerate links
+  - When no MOU: "Generate MOU" primary button + "or upload existing" file input fallback
+- Generated MOU auto-saves `mou_url` to `editOnboardData` and adds to school's Docs collection
+
+### 2026-03-29 — School Team Contacts Overwrite Bug Fix
+**Bug**: School Team Contacts were being erased when moving a lead from "New Lead" to "Meeting Done" via the Edit Lead popup.
+
+**Root Causes Fixed**:
+1. **Backend** (`server.py`): `SchoolInquiryUpdate` model was missing `school_contacts` field, causing the PATCH endpoint to silently ignore any contact updates sent from the frontend. Added `school_contacts: Optional[List[dict]] = None`.
+2. **Frontend view modal** (`AdminSchoolCRM.jsx` line ~5401): Read contacts from `onboarding_data.school_contacts` (always empty for new leads), changed to read from top-level `viewInquiry.school_contacts` with fallback to `onboarding_data.school_contacts`.
+3. **Field mismatch**: View modal referenced `c.phone` but contacts store `c.phone_number`. Fixed to `c.phone_number || c.phone`.
+4. **Edit Lead init** (line 1178, applied in previous session): Already reads `school_contacts` from `inquiry.school_contacts` (top-level) instead of `onboarding_data.school_contacts`.
+
+**Testing**: Verified via API — PATCH `/api/schools/inquiry/{id}` now correctly accepts, saves, and returns `school_contacts`.
+
+
+
+### 2026-03-29 — Summer Camp 2026 Feature
+
+**What was built**:
+- Summer Camps section on Offerings page (Individuals tab) with "Future Skills Summer Camp 2026" card
+- Age Group Selector Modal: 3 groups — Little Explorers (4-8), Tech Creators (9-12), Future Innovators (13-16)
+- 3 landing pages at `/summer-camp/:ageGroup` (explorers, creators, innovators) — futuristic dark tech theme, live countdown timer, curriculum, schedule with weekday/weekend toggle, centers, pricing, testimonials
+- Booking page at `/summer-camp/book?age=<group>` — 3-step flow: child/parent details → batch+center selection → payment (Cashfree online or cash at center)
+- Success page at `/summer-camp/success`
+- Backend routes in `/app/backend/routes/summer_camp.py`: register, initiate-payment, verify, webhook, bookings, stats
+- Admin Student CRM: Summer Camp tab with stats bar + bookings table (lead vs converted status)
+
+**Key details**:
+- Price: ₹1,999/student, all inclusive
+- 4 batch weeks in May 2026 (weekday Mon-Fri 1hr/day or weekend Sat-Sun 2.5hr/day)
+- Centers: Mira Road, Dombivli Pallava, Andheri West Lokhandwala + Online
+- Payment: Cashfree (online) or cash at center (offline only)
+- DB collection: `summer_camp_bookings`
+- CRM status: `lead` (form filled) or `converted` (paid)
+
+**Testing**: 95% pass rate (16/16 backend tests passed, all frontend flows passed). Batch date bug fixed after testing.
+
+### 2026-03-29 — Summer Camp 2026 UX Revamp
+
+- **Home page**: Summer Camp banner section with dark gradient, "Book Now" (no price), As Seen on Shark Tank India badge
+- **Single landing page** at `/summer-camp`: Image gallery (6 photos), curriculum tabs for all 3 age groups, press/media section (Shark Tank India, KBC, NDTV, TOI, YourStory etc.), 8 testimonials
+- **Booking flow**: Full-screen question-by-question (age → mode → center if offline → batch → details+pay)
+- **Location**: All centers display "Mumbai" explicitly; routes `/summer-camp` and `/summer-camp/:ageGroup` both work
+

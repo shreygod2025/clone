@@ -21,6 +21,7 @@ import NotFoundPage from "./pages/NotFoundPage";
 // Public Pages - Lazy loaded
 const StudentFunnel = lazy(() => import("./pages/StudentFunnel"));
 const EducatorFunnel = lazy(() => import("./pages/EducatorFunnel"));
+const EducatorApplyPage = lazy(() => import("./pages/EducatorApplyPage"));
 const SchoolFunnel = lazy(() => import("./pages/SchoolFunnel"));
 const SchoolLandingPage = lazy(() => import("./pages/SchoolLandingPage"));
 const SchoolOfferingsPage = lazy(() => import("./pages/SchoolOfferingsPage"));
@@ -36,6 +37,7 @@ const MyBookingsPage = lazy(() => import("./pages/MyBookingsPage"));
 const InquiryPage = lazy(() => import("./pages/InquiryPage"));
 const GrowthPartnerPage = lazy(() => import("./pages/GrowthPartnerPage"));
 const EducatorDashboard = lazy(() => import("./pages/EducatorDashboard"));
+const EducatorProfile = lazy(() => import("./pages/EducatorProfile"));
 const EducatorOnboarding = lazy(() => import("./pages/EducatorOnboarding"));
 const JoinTeamPage = lazy(() => import("./pages/JoinTeamPage"));
 const OfferingsPage = lazy(() => import("./pages/OfferingsPage"));
@@ -49,10 +51,17 @@ const GPSelfOnboarding = lazy(() => import("./pages/GPSelfOnboarding"));
 const StudentPayment = lazy(() => import("./pages/StudentPayment"));
 const SchoolStudentPayment = lazy(() => import("./pages/SchoolStudentPayment"));
 const SchoolPaymentTrackerPublic = lazy(() => import("./pages/public/SchoolPaymentTrackerPublic"));
+const SchoolStudentLogin = lazy(() => import("./pages/SchoolStudentLogin"));
+const SchoolStudentDashboard = lazy(() => import("./pages/SchoolStudentDashboard"));
+const PublicReports = lazy(() => import("./pages/PublicReports"));
 
 // Course SEO Pages - Lazy loaded
 const CoursesListPage = lazy(() => import("./pages/courses/CoursesListPage"));
 const CoursePage = lazy(() => import("./pages/courses/CoursePage"));
+const SummerCampLandingPage = lazy(() => import("./pages/SummerCampLandingPage"));
+const SummerCampBookingPage = lazy(() => import("./pages/SummerCampBookingPage"));
+const SummerCampSuccessPage = lazy(() => import("./pages/SummerCampSuccessPage"));
+const SummerCampSEOPage = lazy(() => import("./pages/SummerCampSEOPage"));
 
 // Admin Pages - All Lazy loaded (heavy components)
 const AdminLogin = lazy(() => import("./pages/admin/AdminLogin"));
@@ -75,6 +84,7 @@ const AdminDataCenter = lazy(() => import("./pages/admin/AdminDataCenter"));
 const AdminBlogs = lazy(() => import("./pages/admin/AdminBlogs"));
 const CenterDashboard = lazy(() => import("./pages/admin/CenterDashboard"));
 const SchoolPaymentTracker = lazy(() => import("./pages/admin/SchoolPaymentTracker"));
+const AdminAIChat = lazy(() => import("./pages/admin/AdminAIChat"));
 
 // Auth Context
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -106,6 +116,7 @@ function App() {
               <Route path="/" element={<LandingPage />} />
               <Route path="/student" element={<StudentFunnel />} />
               <Route path="/educator" element={<EducatorFunnel />} />
+              <Route path="/educator/apply/:reqId" element={<EducatorApplyPage />} />
               <Route path="/for-schools" element={<SchoolLandingPage />} />
               <Route path="/school" element={<SchoolFunnel />} />
               <Route path="/school-offerings" element={<SchoolOfferingsPage />} />
@@ -146,6 +157,10 @@ function App() {
               <Route path="/school-payment-success/:schoolId" element={<SchoolStudentPayment />} />
               <Route path="/school-payment-tracker-public/:schoolId" element={<SchoolPaymentTrackerPublic />} />
               
+              {/* School Student Login & Dashboard */}
+              <Route path="/school-student/login" element={<SchoolStudentLogin />} />
+              <Route path="/school-student/dashboard" element={<SchoolStudentDashboard />} />
+              
               {/* Public Team Onboarding Tracking */}
               <Route path="/team-track/:token" element={<TeamOnboardingTrack />} />
               
@@ -155,10 +170,14 @@ function App() {
               {/* GP Self Onboarding - Full onboarding form */}
               <Route path="/gp-onboard/:token" element={<GPSelfOnboarding />} />
               
+              {/* Public Reports (Password Protected) */}
+              <Route path="/reports/:token" element={<PublicReports />} />
+              
               {/* User Auth Routes */}
               <Route path="/login" element={<LoginPage />} />
               <Route path="/my-bookings" element={<MyBookingsPage />} />
               <Route path="/educator-dashboard" element={<EducatorDashboard />} />
+              <Route path="/educator-profile" element={<EducatorProfile />} />
               <Route path="/educator-onboarding" element={<EducatorOnboarding />} />
               <Route path="/add" element={<InquiryPage />} />
               <Route path="/add/:username" element={<InquiryPage />} />
@@ -167,6 +186,13 @@ function App() {
               {/* SEO Course Pages */}
               <Route path="/courses" element={<CoursesListPage />} />
               <Route path="/courses/:courseSlug" element={<CoursePage />} />
+
+              {/* Summer Camp 2026 */}
+              <Route path="/summer-camp/book" element={<SummerCampBookingPage />} />
+              <Route path="/summer-camp/success" element={<SummerCampSuccessPage />} />
+              <Route path="/summer-camp/:type/:slug" element={<SummerCampSEOPage />} />
+              <Route path="/summer-camp" element={<SummerCampLandingPage />} />
+              <Route path="/summer-camp/:ageGroup" element={<SummerCampLandingPage />} />
               
               {/* Admin Routes */}
               <Route path="/admin/login" element={<AdminLogin />} />
@@ -188,6 +214,7 @@ function App() {
               <Route path="/admin/data-center" element={<ProtectedRoute><AdminDataCenter /></ProtectedRoute>} />
               <Route path="/admin/blogs" element={<ProtectedRoute><AdminBlogs /></ProtectedRoute>} />
               <Route path="/admin/settings" element={<ProtectedRoute><AdminSettings /></ProtectedRoute>} />
+              <Route path="/admin/ai-chat" element={<ProtectedRoute><AdminAIChat /></ProtectedRoute>} />
               <Route path="/center" element={<ProtectedRoute><CenterDashboard /></ProtectedRoute>} />
               
               {/* 404 Not Found - Must be last */}

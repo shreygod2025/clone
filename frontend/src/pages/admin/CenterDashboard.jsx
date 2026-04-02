@@ -68,6 +68,7 @@ const CenterDashboard = () => {
       return;
     }
     fetchDemos();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, navigate]);
 
   const fetchDemos = async () => {

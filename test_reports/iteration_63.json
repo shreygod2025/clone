@@ -1,0 +1,122 @@
+{
+  "summary": "Iteration 63: Full pre-deployment testing of Summer Camp 2026 features including landing page animations, dynamic centers, booking flow, admin panel, mobile responsiveness, and font changes. Backend 16/16 tests passed. Most features working. One critical bug found: UUID center IDs sent from booking page are stored as center labels in DB. One missing backend endpoint: /api/summer-camp/batches returns 404.",
+
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "POST /api/summer-camp/capture-lead and POST /api/summer-camp/register",
+        "issue": "Booking page now sends UUID center IDs (e.g. '726286f7-1ca7-412f-b7d5-d56e6dacaa00') from /api/centers API, but backend CENTERS dict only maps old slugs (mira_road, dombivli, andheri). center_label falls back to UUID string. Admin panel shows raw UUID in CENTER column.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "GET /api/summer-camp/batches",
+        "issue": "Returns 404 - endpoint does not exist. Listed in test requirements as a feature to test. Batch data exists as hardcoded BATCH_DATES constant but not exposed via API.",
+        "priority": "MEDIUM"
+      }
+    ]
+  },
+
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Admin Student CRM - Summer Camp Bookings tab CENTER column",
+        "issue": "New bookings from dynamic center flow show UUID (e.g. '726286f7-1ca7-412f-b7d5-d56e6dacaa00') as center label instead of readable center name. Caused by UUID center IDs from /api/centers being passed directly to backend which lacks UUID→name mapping.",
+        "selector": "Student CRM → Summer Camp tab → Bookings → CENTER column (row SC2026-957103)",
+        "priority": "HIGH"
+      },
+      {
+        "component": "SummerCampBookingPage.jsx - Step 5 (final details) order summary",
+        "issue": "selectedCenter?.name correctly shows the center name in the UI (frontend OK), but the submitted center ID is UUID which backend stores incorrectly. The user-facing UI shows the right name but admin records are broken.",
+        "selector": "booking page step 5 order summary",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Booking submission with dynamic centers",
+        "issue": "SummerCampBookingPage.jsx line 143-147 fetches centers from /api/centers and uses c.id (UUID) for form.center. Backend register/capture-lead store this UUID as center + center_label. Backend CENTERS dict does not include UUID mappings. Fix: either enrich backend to look up center name by UUID from centers collection, or store center_name alongside center_id in the booking.",
+        "affected_selectors": ["form.center in SummerCampBookingPage.jsx", "CENTERS dict in routes/summer_camp.py line 55-60"]
+      }
+    ],
+    "design_issues": []
+  },
+
+  "features_verified": {
+    "summer_camp_landing_page_loads": "PASS - /summer-camp loads without blank screen or JS errors",
+    "sticky_navbar": "PASS - position: sticky, top: 0px, visible in viewport after 600px scroll",
+    "dynamic_centers_landing": "PASS - 8 centers loaded from API (OLL Andheri, Powai, Koramangala, Indiranagar, Gurgaon, HITEC City, Baner, Dahisar)",
+    "scroll_reveal_animations": "PASS - sr-blur/sr-scale/sr classes animate in on scroll (0→11 visible as user scrolls). IntersectionObserver working.",
+    "booking_page_loads": "PASS - /summer-camp/book loads correctly",
+    "booking_step1_age_group": "PASS - 3 age groups: Little Explorers (4-8), Tech Creators (9-12), Future Innovators (13-16)",
+    "booking_step2_mode": "PASS - At a Center shows dynamic cities (Mumbai · Bangalore · Delhi · Hyderabad · Pune from API) · Online at Home",
+    "booking_step3_centers": "PASS - 8 centers from API shown with area+city format (Andheri West, Mumbai etc.) - online centers correctly excluded",
+    "booking_step4_batch": "PASS - 4 batch weeks shown with weekday/weekend toggle",
+    "booking_step5_phone": "PASS - phone input with validation (min 10 digits)",
+    "admin_login": "PASS - admin@oll.co / Dagaji03@ works, redirects to /admin dashboard",
+    "admin_dashboard": "PASS - loads with stats, overdue items, quick actions",
+    "admin_school_crm": "PASS - loads with meetings, followups sections. No errors.",
+    "admin_orders_page": "PASS - Orders & Payments page loads with School/Student payment tabs",
+    "admin_student_crm_tracking_links": "PASS - Student CRM → Summer Camp tab has Bookings + Tracking Links subtabs",
+    "api_centers_endpoint": "PASS - GET /api/centers returns 8 active centers",
+    "api_summer_camp_batches": "FAIL - GET /api/summer-camp/batches returns 404 (endpoint not implemented)",
+    "mobile_overflow": "PASS - No horizontal overflow at 390px viewport (bodyWidth=390, windowWidth=390)",
+    "nunito_sans_font": "PASS - 'Nunito Sans', sans-serif applied as body font on main div and throughout",
+    "mobile_typed_wrap": "PASS - whiteSpace: normal on mobile (not nowrap), text wraps correctly",
+    "no_console_errors": "PASS - No JS console errors on summer camp landing page",
+    "ticker_font_1_2rem": "PASS - ticker items have font-size: 1.2rem in CSS",
+    "batch_card_dates_font": "PASS - batch card dates use JetBrains Mono at 1.2rem"
+  },
+
+  "test_report_links": [
+    "/app/backend/tests/test_summer_camp.py",
+    "/app/test_reports/pytest/pytest_results_iter63.xml"
+  ],
+
+  "action_items": [
+    "CRITICAL: Fix center_label bug in booking flow. Routes/summer_camp.py capture-lead and register endpoints must look up center name from centers DB when given a UUID center ID. Approach: in both endpoints, query db.centers.find_one({'id': data.center}) to get center name, then use it for center_label. Fall back to old CENTERS dict if not found.",
+    "MEDIUM: Add GET /api/summer-camp/batches endpoint that returns BATCH_DATES data (currently defined in routes/summer_camp.py line 62-67 as a hardcoded dict but not exposed via API)",
+    "INFO: The hardcoded CENTERS constant in SummerCampBookingPage.jsx (lines 18-22) is now unused dead code - can be removed since centers are fetched from API",
+    "INFO: SummerCampLandingPage.jsx also has unused static CENTERS constant (lines 63-68) that can be removed since centers are now fetched from API"
+  ],
+
+  "critical_code_review_comments": [
+    "routes/summer_camp.py lines 55-60: CENTERS dict only maps old slugs (mira_road, dombivli, andheri, online). Now that booking page sends UUID center IDs from /api/centers, these mappings are irrelevant. Backend must be updated to support UUID-based center lookups: query db.centers by id to get the center name.",
+    "SummerCampBookingPage.jsx lines 18-22: Hardcoded CENTERS array is dead code - completely unused since line 143 fetches centers from API. Should be removed to avoid confusion.",
+    "SummerCampLandingPage.jsx lines 63-68: Same dead code - static CENTERS array unused since useEffect at line 248 fetches dynamically.",
+    "routes/summer_camp.py: No /batches endpoint but landing page batch data is hardcoded. If batches need to be configurable, expose them via API."
+  ],
+
+  "updated_files": [
+    "/app/backend/tests/test_summer_camp.py"
+  ],
+
+  "success_rate": {
+    "backend": "94% (16/16 existing tests passed; 1 missing endpoint: /api/summer-camp/batches)",
+    "frontend": "85% (all UI flows work; 1 critical data bug: UUID center_label in admin bookings)"
+  },
+
+  "test_credentials": "admin@oll.co / Dagaji03@",
+
+  "seed_data_creation": "2 test bookings created during UUID center bug confirmation: SC2026-957103 (phone 9111222333, Tech Creators, OLL Andheri Center UUID). Previous iterations' test data also present.",
+
+  "mocked_apis": [
+    "POST /api/summer-camp/initiate-payment — Cashfree not configured, returns 500. Only cash payment flow tested end-to-end. (unchanged from iter 62)"
+  ],
+
+  "retest_needed": true,
+
+  "should_main_agent_self_test": false,
+
+  "context_for_next_testing_agent": "Summer Camp 2026 feature mostly working after recent changes (dynamic centers, Nunito Sans font, scroll animations, mobile overflow fix). Primary bug to retest: UUID center_label in admin Summer Camp bookings (row SC2026-957103 shows UUID in CENTER column). After fix, verify the CENTER column in Student CRM Summer Camp tab shows readable names like 'Andheri West, Mumbai' for new bookings. Also verify /api/summer-camp/batches endpoint if added. All 16 backend tests in test_summer_camp.py continue to pass. Admin login: admin@oll.co / Dagaji03@.",
+
+  "rca_of_the_issue": {
+    "uuid_center_label_bug": {
+      "bug": "Booking page now fetches centers from /api/centers (dynamic) and uses c.id (UUID) as form.center value. Backend capture-lead and register endpoints use CENTERS.get(data.center, data.center) which returns the UUID itself as center_label when given a UUID (not found in old slug-based CENTERS dict).",
+      "root_cause": "The frontend was updated to use dynamic center IDs (UUIDs from /api/centers) but the backend summer_camp.py CENTERS dict was NOT updated to use UUIDs. The CENTERS dict still has old hardcoded slugs: {mira_road: '...', dombivli: '...', andheri: '...', online: '...'}. When a UUID is passed as center, CENTERS.get(UUID, UUID) returns the UUID itself.",
+      "reproduction": "1. Go to /summer-camp/book, select any age group, select 'At a Center', select any center (e.g. OLL Andheri Center), select a batch, enter phone 9111222333, continue. 2. Go to admin/students → Summer Camp tab. The most recent booking will show a UUID in the CENTER column.",
+      "fix": "In routes/summer_camp.py, update both register_summer_camp and capture_lead functions. Before using CENTERS.get(data.center, data.center), first check if data.center is a UUID and look up the center from db.centers: center_doc = await db.centers.find_one({'id': data.center}, {'_id': 0}). If found, use f\"{center_doc.get('area', '')}, {center_doc.get('city', '')}\" as center_label. Otherwise fall back to CENTERS.get(data.center, data.center)."
+    }
+  }
+}

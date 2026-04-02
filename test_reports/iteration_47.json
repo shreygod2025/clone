@@ -1,0 +1,50 @@
+{
+  "summary": "Iteration 47: Tested MOU PDF race condition bug fix and AdminSchoolCRM.jsx P0 refactor. All features verified: (1) Backend add-document endpoint exists and atomically appends documents via $push. (2) AdminSchoolCRM.jsx loads without compilation errors, wrapper functions delegate to utility files. (3) No Content-Type: multipart/form-data header in FormData uploads. (4) All 4 utility files exist. (5) Both logo exports from ollAssets.js verified. (6) send-mou-email endpoint exists. Backend: 9/9 tests pass. Frontend: School CRM renders correctly with no console errors.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter47_add_document_and_mou_email.py",
+    "/app/test_reports/pytest/pytest_results_iter47.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "parentCircularGenerator.js does NOT import from ollAssets.js (has no OLL logo usage) - this is expected since it generates a DOCX with text header, not a PDF. Not a bug.",
+    "ollAssets.js correctly exports both OLL_LOGO_HORIZONTAL (line 4) and OLL_LOGO_B64 (line 9) via export const.",
+    "proposalPdfGenerator.js imports both logos; mouPdfGenerator.js imports only OLL_LOGO_B64 (correct, horizontal logo not needed in MOU header).",
+    "AdminSchoolCRM.jsx reduced to 10,707 lines (from ~12,077). Utility files total 1,161 lines extracted."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter47_add_document_and_mou_email.py"
+  ],
+  "success_rate": {
+    "backend": "100% (9/9 tests pass)",
+    "frontend": "100% (School CRM loads, no compilation errors, no console errors)"
+  },
+  "seed_data_creation": "Added 2 TEST_ documents to school 09dcd297-f09a-4f16-a8eb-e52747b8d46c via backend tests (TEST_Proposal and TEST_VerifyPersist type).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "BugFix+Refactor iteration 47. Verified: (1) POST /api/schools/{school_id}/add-document atomically appends to documents array (uses $push operator). (2) POST /api/schools/{school_id}/send-mou-email exists and sends email via Resend with Cloudinary URL attachment. (3) AdminSchoolCRM.jsx imports generateProposalDocument, generateMOUDocument, generateParentCircularDocument from utils/ and wraps them in local thin functions. (4) All FormData uploads only set Authorization header (no manual Content-Type). (5) ollAssets.js exports OLL_LOGO_B64 (white logo for dark backgrounds) and OLL_LOGO_HORIZONTAL (for proposal light backgrounds). Test credentials: testadmin@oll.co / test123 (falls back to admin@oll.co / Dagaji03@). Test school ID: 09dcd297-f09a-4f16-a8eb-e52747b8d46c. GET school data endpoint: /api/orders/school-details/{school_id} (returns full school record including documents array).",
+  "tested_features": {
+    "backend_add_document_endpoint": "PASS - POST /api/schools/{school_id}/add-document returns 200 with document",
+    "backend_add_document_requires_url": "PASS - Returns 400 when URL missing",
+    "backend_add_document_invalid_school": "PASS - Returns 404 for nonexistent school ID",
+    "backend_add_document_unauthorized": "PASS - Returns 401/403 without auth token",
+    "backend_add_document_persistence": "PASS - Document appears in school documents array after $push",
+    "backend_send_mou_email_endpoint": "PASS - POST /api/schools/{school_id}/send-mou-email endpoint exists",
+    "backend_send_mou_email_unauthorized": "PASS - Returns 401/403 without auth",
+    "backend_send_mou_email_nonexistent_school": "PASS - Returns 404",
+    "frontend_school_crm_loads": "PASS - AdminSchoolCRM.jsx renders with no compilation/console errors",
+    "frontend_wrapper_functions": "PASS - generateProposalPDF, generateMOUPDF, generateParentCircularPDF wrappers exist at lines 1125, 2130, 2146",
+    "frontend_no_content_type_header": "PASS - No 'Content-Type: multipart/form-data' found in FormData axios calls",
+    "utility_files_exist": "PASS - proposalPdfGenerator.js (213 lines), mouPdfGenerator.js (805 lines), parentCircularGenerator.js (136 lines), ollAssets.js (11 lines)",
+    "ollassets_exports": "PASS - Both OLL_LOGO_HORIZONTAL and OLL_LOGO_B64 exported from ollAssets.js",
+    "logo_imports_in_generators": "PASS - proposalPdfGenerator.js imports both; mouPdfGenerator.js imports OLL_LOGO_B64"
+  }
+}

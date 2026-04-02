@@ -5,7 +5,7 @@ import {
   DollarSign, Building2, GraduationCap, Upload, Download, Eye, 
   CheckCircle2, Clock, AlertCircle, Calendar, Search, Filter,
   FileText, Receipt, CreditCard, X, ExternalLink, ChevronDown, ChevronRight,
-  Phone, Mail, User, Trash2, Wallet, BanknoteIcon, RefreshCw, BarChart3
+  Phone, Mail, User, Trash2, Wallet, BanknoteIcon, RefreshCw, BarChart3, FilePlus
 } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
@@ -14,8 +14,23 @@ import { Textarea } from '../../components/ui/textarea';
 import { toast } from 'sonner';
 import { format, isPast, parseISO, differenceInDays } from 'date-fns';
 import axios from 'axios';
+import { generateInvoicePDF } from '../../utils/invoicePdfGenerator';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
+
+// Normalize gst_type values (support both old and new format)
+const getGstLabel = (gst) => {
+  if (!gst) return null;
+  if (gst === 'book_gst_0' || gst === 'book_gst') return 'Book GST';
+  if (gst === 'inclusive_18' || gst === 'inclusive') return 'Inclusive';
+  if (gst === 'exclusive_18' || gst === 'exclusive') return 'Exclusive';
+  return null;
+};
+const getGstColorClass = (gst) => {
+  if (gst === 'book_gst_0' || gst === 'book_gst') return 'bg-blue-100 text-blue-700';
+  if (gst === 'inclusive_18' || gst === 'inclusive') return 'bg-emerald-100 text-emerald-700';
+  return 'bg-orange-100 text-orange-700';
+};
 
 // Helper function to get absolute URL for uploads
 const getAbsoluteUrl = (url) => {
@@ -166,8 +181,14 @@ const AdminOrders = () => {
   const [showViewModal, setShowViewModal] = useState(null);
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [loadingSchoolDetails, setLoadingSchoolDetails] = useState(false);
+  const [generatingInvoice, setGeneratingInvoice] = useState(null);
+  const schoolDataCache = React.useRef({});
   const [uploadingInvoice, setUploadingInvoice] = useState(false);
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  // Send Invoice Email states
+  const [sendEmailModal, setSendEmailModal] = useState(null); // { payment, group }
+  const [sendingEmail, setSendingEmail] = useState(null); // payment_id
+  const [invoiceSentMap, setInvoiceSentMap] = useState({}); // { [payment_id]: { sent_at, count } }
   const [paymentUpdate, setPaymentUpdate] = useState({
     status: '',
     payment_date: '',
@@ -186,6 +207,7 @@ const AdminOrders = () => {
     } else {
       fetchPayments();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
   const fetchPayments = async () => {
@@ -194,10 +216,30 @@ const AdminOrders = () => {
       const response = await axios.get(`${API}/orders/${activeTab}-payments`, {
         headers: getAuthHeaders()
       });
-      setPayments(response.data);
+      const data = response.data;
+      setPayments(data);
+      // Load saved invoice statuses for all school payments
+      if (activeTab === 'school' && Array.isArray(data)) {
+        const statusMap = {};
+        await Promise.all(data.map(async (p) => {
+          try {
+            const r = await axios.get(`${API}/orders/${p.id}/invoice-status`, { headers: getAuthHeaders() });
+            if (r.data.exists) {
+              statusMap[p.id] = {
+                saved: true,
+                invoice_no: r.data.invoice_no,
+                sent_at: r.data.last_sent_at || null,
+                email_type: null,
+              };
+            }
+          } catch { /* ignore */ }
+        }));
+        if (Object.keys(statusMap).length > 0) {
+          setInvoiceSentMap(prev => ({ ...prev, ...statusMap }));
+        }
+      }
     } catch (error) {
       console.error('Error fetching payments:', error);
-      // Initialize with empty array if endpoint doesn't exist yet
       setPayments([]);
     } finally {
       setLoading(false);
@@ -306,14 +348,64 @@ const AdminOrders = () => {
 
   const handleUpdatePayment = async () => {
     if (!showPaymentModal) return;
-    
+    const isPaymentConfirm = ['paid', 'partial'].includes(paymentUpdate.status) && activeTab === 'school';
     try {
       await axios.patch(`${API}/orders/${showPaymentModal.id}`, {
         ...paymentUpdate,
         type: activeTab
       }, { headers: getAuthHeaders() });
-      
+
       toast.success('Payment updated successfully');
+
+      // Auto-send confirmation email if paid or partial
+      if (isPaymentConfirm) {
+        try {
+      // Silently generate & save invoice (always regenerate on paid/partial to reflect updated balance)
+          if (true) {
+            let schoolData = schoolDataCache.current[showPaymentModal.school_id];
+            if (!schoolData) {
+              const r = await axios.get(`${API}/orders/school-details/${showPaymentModal.school_id}`, { headers: getAuthHeaders() });
+              schoolData = r.data;
+              schoolDataCache.current[showPaymentModal.school_id] = schoolData;
+            }
+            const { invoiceNo, base64 } = await generateInvoicePDF(
+              { ...showPaymentModal, status: paymentUpdate.status, paid_amount: paymentUpdate.paid_amount },
+              schoolData, { skipDownload: true }
+            );
+            await axios.post(`${API}/orders/save-invoice-pdf`, {
+              payment_id: showPaymentModal.id,
+              school_id: showPaymentModal.school_id,
+              tranche_index: showPaymentModal.tranche_index ?? 0,
+              invoice_no: invoiceNo,
+              pdf_base64: base64,
+              amount: showPaymentModal.amount,
+              due_date: showPaymentModal.due_date || '',
+              status: paymentUpdate.status,
+              tranche_info: showPaymentModal.tranche_info || `Tranche ${(showPaymentModal.tranche_index ?? 0) + 1}`,
+            }, { headers: getAuthHeaders() });
+            setInvoiceSentMap(prev => ({ ...prev, [showPaymentModal.id]: { ...prev[showPaymentModal.id], invoice_no: invoiceNo, saved: true } }));
+          }
+          // Send confirmation email
+          const sentAmount = paymentUpdate.status === 'partial'
+            ? (paymentUpdate.paid_amount || showPaymentModal.amount)
+            : showPaymentModal.amount;
+          const res = await axios.post(`${API}/orders/send-invoice-email`, {
+            school_id: showPaymentModal.school_id,
+            payment_id: showPaymentModal.id,
+            tranche_index: showPaymentModal.tranche_index,
+            amount: sentAmount,
+            due_date: showPaymentModal.due_date || '',
+            status: paymentUpdate.status,
+            tranche_info: showPaymentModal.tranche_info || `Tranche ${(showPaymentModal.tranche_index ?? 0) + 1}`,
+          }, { headers: getAuthHeaders() });
+          toast.success(`Confirmation email sent to ${res.data.sent_to.length} contact(s)`);
+          setInvoiceSentMap(prev => ({ ...prev, [showPaymentModal.id]: { ...prev[showPaymentModal.id], sent_at: new Date().toISOString(), invoice_no: res.data.invoice_no } }));
+        } catch (emailErr) {
+          console.error('Confirmation email failed:', emailErr);
+          toast.warning('Payment saved but confirmation email failed to send');
+        }
+      }
+
       setShowPaymentModal(null);
       setPaymentUpdate({ status: '', payment_date: '', transaction_id: '', notes: '', invoice_url: '', receipt_url: '', gst_type: '', paid_amount: 0 });
       fetchPayments();
@@ -488,6 +580,108 @@ const AdminOrders = () => {
     receivablesAmount: payments.filter(p => p.status !== 'paid').reduce((sum, p) => sum + (p.amount || 0), 0),
   };
   
+  // Generate Invoice PDF for a school payment tranche
+  const handleGenerateInvoice = async (payment) => {
+    const paymentId = payment.id;
+    setGeneratingInvoice(paymentId);
+    try {
+      let schoolData = schoolDataCache.current[payment.school_id];
+      if (!schoolData) {
+        const res = await axios.get(`${API}/orders/school-details/${payment.school_id}`, {
+          headers: getAuthHeaders()
+        });
+        schoolData = res.data;
+        schoolDataCache.current[payment.school_id] = schoolData;
+      }
+      // Generate, download, and get base64 back
+      const { invoiceNo, base64 } = await generateInvoicePDF(payment, schoolData);
+
+      // Save to invoices collection so Send Email uses the same PDF
+      try {
+        await axios.post(`${API}/orders/save-invoice-pdf`, {
+          payment_id: payment.id,
+          school_id: payment.school_id,
+          tranche_index: payment.tranche_index ?? 0,
+          invoice_no: invoiceNo,
+          pdf_base64: base64,
+          amount: payment.amount,
+          due_date: payment.due_date || '',
+          status: payment.status || 'pending',
+          tranche_info: payment.tranche_info || `Tranche ${(payment.tranche_index ?? 0) + 1}`,
+        }, { headers: getAuthHeaders() });
+        setInvoiceSentMap(prev => ({ ...prev, [payment.id]: { invoice_no: invoiceNo, saved: true } }));
+        toast.success(`Invoice ${invoiceNo} downloaded & saved`);
+      } catch {
+        // Save failed silently — download still succeeded
+        toast.success('Invoice PDF downloaded');
+      }
+    } catch (error) {
+      console.error('Invoice generation error:', error);
+      toast.error('Failed to generate invoice');
+    } finally {
+      setGeneratingInvoice(null);
+    }
+  };
+
+  // Email type helper (mirrors backend logic)
+  const getEmailType = (payment) => {
+    const status = payment.status || 'pending';
+    if (status === 'paid') return 'confirmation';
+    if (status === 'overdue') return 'overdue';
+    if (status === 'pending' && payment.due_date && isPast(parseISO(payment.due_date))) return 'overdue';
+    return 'invoice';
+  };
+
+  // Send Invoice Email handler
+  const handleSendInvoiceEmail = async () => {
+    if (!sendEmailModal) return;
+    const { payment } = sendEmailModal;
+    setSendingEmail(payment.id);
+    try {
+      // If no saved invoice yet, silently generate & save it (jsPDF format, no download)
+      if (!invoiceSentMap[payment.id]?.saved) {
+        let schoolData = schoolDataCache.current[payment.school_id];
+        if (!schoolData) {
+          const r = await axios.get(`${API}/orders/school-details/${payment.school_id}`, { headers: getAuthHeaders() });
+          schoolData = r.data;
+          schoolDataCache.current[payment.school_id] = schoolData;
+        }
+        const { invoiceNo, base64 } = await generateInvoicePDF(payment, schoolData, { skipDownload: true });
+        await axios.post(`${API}/orders/save-invoice-pdf`, {
+          payment_id: payment.id,
+          school_id: payment.school_id,
+          tranche_index: payment.tranche_index ?? 0,
+          invoice_no: invoiceNo,
+          pdf_base64: base64,
+          amount: payment.amount,
+          due_date: payment.due_date || '',
+          status: payment.status || 'pending',
+          tranche_info: payment.tranche_info || `Tranche ${(payment.tranche_index ?? 0) + 1}`,
+        }, { headers: getAuthHeaders() });
+        setInvoiceSentMap(prev => ({ ...prev, [payment.id]: { ...prev[payment.id], invoice_no: invoiceNo, saved: true } }));
+      }
+
+      // Now send email — backend will use the saved jsPDF PDF from invoices collection
+      const res = await axios.post(`${API}/orders/send-invoice-email`, {
+        school_id: payment.school_id,
+        payment_id: payment.id,
+        tranche_index: payment.tranche_index,
+        amount: payment.amount,
+        due_date: payment.due_date || '',
+        status: payment.status || 'pending',
+        tranche_info: payment.tranche_info || `Tranche ${(payment.tranche_index || 0) + 1}`,
+      }, { headers: getAuthHeaders() });
+      const { email_type, sent_to, invoice_no, is_resend } = res.data;
+      toast.success(`Invoice #${invoice_no} emailed to ${sent_to.length} contact(s)`);
+      setInvoiceSentMap(prev => ({ ...prev, [payment.id]: { ...prev[payment.id], sent_at: new Date().toISOString(), email_type, invoice_no } }));
+      setSendEmailModal(null);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to send invoice email');
+    } finally {
+      setSendingEmail(null);
+    }
+  };
+
   // Delete payment handler
   const handleDeletePayment = async (payment) => {
     try {
@@ -525,6 +719,7 @@ const AdminOrders = () => {
       }
     };
     fetchSchedulerStatus();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Sync single payment with Cashfree
@@ -613,6 +808,51 @@ const AdminOrders = () => {
     }
   };
 
+  const exportPaymentsToCSV = () => {
+    const data = activeTab === 'school-students' ? schoolStudentPayments : sortedPayments;
+    let headers, rows;
+    if (activeTab === 'school') {
+      headers = ['School Name', 'Contact', 'Amount (₹)', 'Status', 'Due Date', 'Payment Date', 'Payment Method'];
+      rows = data.map(p => [
+        p.school_name || p.name || '',
+        p.contact_name || p.contact || '',
+        p.amount || 0,
+        p.status || '',
+        p.due_date ? format(parseISO(p.due_date), 'dd MMM yyyy') : '',
+        p.payment_date ? format(parseISO(p.payment_date), 'dd MMM yyyy') : '',
+        p.payment_method || '',
+      ]);
+    } else if (activeTab === 'student') {
+      headers = ['Student Name', 'Parent Name', 'Course', 'Amount (₹)', 'Status', 'Due Date'];
+      rows = data.map(p => [
+        p.student_name || p.name || '',
+        p.parent_name || '',
+        p.course_name || p.program || '',
+        p.amount || 0,
+        p.status || '',
+        p.due_date ? format(parseISO(p.due_date), 'dd MMM yyyy') : '',
+      ]);
+    } else {
+      headers = ['School', 'Student', 'Amount (₹)', 'Status', 'Date'];
+      rows = data.map(p => [
+        p.school_name || '',
+        p.student_name || p.name || '',
+        p.amount || 0,
+        p.status || '',
+        p.created_at ? format(new Date(p.created_at), 'dd MMM yyyy') : '',
+      ]);
+    }
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `payments_${activeTab}_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${data.length} records`);
+  };
+
   return (
     <AdminLayout title="Orders & Payments">
       <div className="space-y-6">
@@ -654,6 +894,17 @@ const AdminOrders = () => {
             <CreditCard className="w-4 h-4" />
             School Student Payments (Online)
           </button>
+          <div className="ml-auto flex items-center pb-1">
+            <Button
+              variant="outline"
+              onClick={exportPaymentsToCSV}
+              className="text-green-700 border-green-300 hover:bg-green-50 text-sm h-8 px-3"
+              data-testid="export-payments-csv-btn"
+            >
+              <Download className="w-3.5 h-3.5 mr-1.5" />
+              Export CSV
+            </Button>
+          </div>
         </div>
 
         {/* Payment Sync Panel - For managing Cashfree payment status sync */}
@@ -990,13 +1241,9 @@ const AdminOrders = () => {
                                   </div>
                                 </div>
                               )}
-                              {group.tranches[0]?.gst_type && group.tranches.length === 1 && (
-                                <span className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full font-medium ${
-                                  group.tranches[0].gst_type === 'book_gst' ? 'bg-blue-100 text-blue-700' :
-                                  group.tranches[0].gst_type === 'inclusive' ? 'bg-emerald-100 text-emerald-700' :
-                                  'bg-amber-100 text-amber-700'
-                                }`}>
-                                  {group.tranches[0].gst_type === 'book_gst' ? 'Book GST' : group.tranches[0].gst_type === 'inclusive' ? 'Inclusive' : 'Exclusive'}
+                              {group.tranches[0]?.gst_type && group.tranches.length === 1 && getGstLabel(group.tranches[0].gst_type) && (
+                                <span className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full font-medium ${getGstColorClass(group.tranches[0].gst_type)}`}>
+                                  {getGstLabel(group.tranches[0].gst_type)}
                                 </span>
                               )}
                             </div>
@@ -1075,6 +1322,33 @@ const AdminOrders = () => {
                                 <Button
                                   variant="outline"
                                   size="sm"
+                                  onClick={(e) => { e.stopPropagation(); handleGenerateInvoice(group.tranches[0]); }}
+                                  disabled={generatingInvoice === group.tranches[0].id}
+                                  className={`${invoiceSentMap[group.tranches[0].id]?.saved ? 'border-emerald-200 text-emerald-700 hover:bg-emerald-50' : 'border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:border-indigo-300'}`}
+                                  data-testid={`generate-invoice-${group.tranches[0].id}`}
+                                  title={invoiceSentMap[group.tranches[0].id]?.saved ? `Saved: ${invoiceSentMap[group.tranches[0].id].invoice_no}` : 'Generate Invoice'}
+                                >
+                                  {invoiceSentMap[group.tranches[0].id]?.saved
+                                    ? <><CheckCircle2 className="w-3.5 h-3.5 mr-1" />{generatingInvoice === group.tranches[0].id ? 'Saving...' : 'Invoice'}</>
+                                    : <><FilePlus className="w-3.5 h-3.5 mr-1" />{generatingInvoice === group.tranches[0].id ? 'Generating...' : 'Invoice'}</>}
+                                </Button>
+                              )}
+                              {group.tranches.length === 1 && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => { e.stopPropagation(); setSendEmailModal({ payment: group.tranches[0], group }); }}
+                                  className={`${invoiceSentMap[group.tranches[0].id]?.sent_at ? 'border-green-200 text-green-700 hover:bg-green-50' : 'border-teal-200 text-teal-600 hover:bg-teal-50 hover:border-teal-300'}`}
+                                  data-testid={`send-invoice-email-${group.tranches[0].id}`}
+                                >
+                                  <Mail className="w-3.5 h-3.5 mr-1" />
+                                  {invoiceSentMap[group.tranches[0].id]?.sent_at ? 'Resend' : 'Send Email'}
+                                </Button>
+                              )}
+                              {group.tranches.length === 1 && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
                                   onClick={(e) => { e.stopPropagation(); openPaymentModal(group.tranches[0]); }}
                                   className="border-orange-200 text-orange-600 hover:bg-orange-50 hover:border-orange-300"
                                   data-testid={`update-payment-${group.tranches[0].id}`}
@@ -1103,16 +1377,11 @@ const AdminOrders = () => {
                                 {payment.gst_amount > 0 && (
                                   <p className="text-xs text-slate-500 mt-0.5">
                                     GST: ₹{(payment.gst_amount || 0).toLocaleString()}
-                                    {payment.gst_rate && ` @ ${payment.gst_rate}%`}
                                   </p>
                                 )}
-                                {payment.gst_type && (
-                                  <span className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full font-medium ${
-                                    payment.gst_type === 'book_gst' ? 'bg-blue-100 text-blue-700' :
-                                    payment.gst_type === 'inclusive' ? 'bg-emerald-100 text-emerald-700' :
-                                    'bg-amber-100 text-amber-700'
-                                  }`}>
-                                    {payment.gst_type === 'book_gst' ? 'Book GST' : payment.gst_type === 'inclusive' ? 'Inclusive' : 'Exclusive'}
+                                {payment.gst_type && getGstLabel(payment.gst_type) && (
+                                  <span className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full font-medium ${getGstColorClass(payment.gst_type)}`}>
+                                    {getGstLabel(payment.gst_type)}
                                   </span>
                                 )}
                               </div>
@@ -1146,6 +1415,29 @@ const AdminOrders = () => {
                                     <Receipt className="w-4 h-4 text-green-600" />
                                   </button>
                                 )}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleGenerateInvoice(payment)}
+                                  disabled={generatingInvoice === payment.id}
+                                  className={`${invoiceSentMap[payment.id]?.saved ? 'border-emerald-200 text-emerald-700 hover:bg-emerald-50' : 'border-indigo-200 text-indigo-600 hover:bg-indigo-50'}`}
+                                  data-testid={`generate-invoice-${payment.id}`}
+                                  title={invoiceSentMap[payment.id]?.saved ? `Saved: ${invoiceSentMap[payment.id].invoice_no}` : 'Generate Invoice'}
+                                >
+                                  {invoiceSentMap[payment.id]?.saved
+                                    ? <><CheckCircle2 className="w-3.5 h-3.5 mr-1" />{generatingInvoice === payment.id ? '...' : 'Invoice'}</>
+                                    : <><FilePlus className="w-3.5 h-3.5 mr-1" />{generatingInvoice === payment.id ? '...' : 'Invoice'}</>}
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setSendEmailModal({ payment, group })}
+                                  className={`${invoiceSentMap[payment.id]?.sent_at ? 'border-green-200 text-green-700 hover:bg-green-50' : 'border-teal-200 text-teal-600 hover:bg-teal-50'}`}
+                                  data-testid={`send-invoice-email-${payment.id}`}
+                                >
+                                  <Mail className="w-3.5 h-3.5 mr-1" />
+                                  {invoiceSentMap[payment.id]?.sent_at ? 'Resend' : 'Send Email'}
+                                </Button>
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -1188,14 +1480,12 @@ const AdminOrders = () => {
                       <td className="px-6 py-5">
                         <div>
                           <p className="font-bold text-lg text-slate-800">₹{(payment.amount || 0).toLocaleString()}</p>
-                          {payment.gst_type && (
-                            <span className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full font-medium ${
-                              payment.gst_type === 'book_gst' ? 'bg-blue-100 text-blue-700' :
-                              payment.gst_type === 'inclusive' ? 'bg-emerald-100 text-emerald-700' :
-                              'bg-amber-100 text-amber-700'
-                            }`}>
-                              {payment.gst_type === 'book_gst' ? 'Book GST' :
-                               payment.gst_type === 'inclusive' ? 'Inclusive' : 'Exclusive'}
+                          {payment.gst_amount > 0 && (
+                            <p className="text-xs text-slate-500 mt-0.5">GST: ₹{(payment.gst_amount || 0).toLocaleString()}</p>
+                          )}
+                          {payment.gst_type && getGstLabel(payment.gst_type) && (
+                            <span className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full font-medium ${getGstColorClass(payment.gst_type)}`}>
+                              {getGstLabel(payment.gst_type)}
                             </span>
                           )}
                         </div>
@@ -1523,6 +1813,12 @@ const AdminOrders = () => {
                   <option value="paid">Paid</option>
                   <option value="cancelled">Cancelled</option>
                 </select>
+                {['paid', 'partial'].includes(paymentUpdate.status) && activeTab === 'school' && (
+                  <p className="text-xs text-green-700 mt-1.5 flex items-center gap-1">
+                    <Mail className="w-3 h-3" />
+                    A payment confirmation email will be sent automatically to school contacts.
+                  </p>
+                )}
               </div>
 
               {/* GST Type */}
@@ -1591,9 +1887,41 @@ const AdminOrders = () => {
                 </div>
               )}
 
-              {/* Invoice Upload */}
+              {/* Invoice Section */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">Invoice</label>
+
+                {/* System-generated invoice (if saved) */}
+                {invoiceSentMap[showPaymentModal?.id]?.saved && (
+                  <div className="mb-2 p-3 bg-indigo-50 rounded-lg border border-indigo-100 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-indigo-700">
+                          System Invoice #{invoiceSentMap[showPaymentModal.id].invoice_no}
+                        </p>
+                        {invoiceSentMap[showPaymentModal.id]?.sent_at && (
+                          <p className="text-xs text-indigo-500">
+                            Emailed {format(new Date(invoiceSentMap[showPaymentModal.id].sent_at), 'MMM d, h:mm a')}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleGenerateInvoice(showPaymentModal)}
+                      disabled={generatingInvoice === showPaymentModal?.id}
+                      className="text-xs border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+                    >
+                      <Download className="w-3.5 h-3.5 mr-1" />
+                      {generatingInvoice === showPaymentModal?.id ? 'Downloading...' : 'Download'}
+                    </Button>
+                  </div>
+                )}
+
+                {/* Manual invoice upload */}
                 {paymentUpdate.invoice_url ? (
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-green-600 flex items-center gap-1">
@@ -2070,19 +2398,14 @@ const AdminOrders = () => {
               </div>
 
               {/* GST Info */}
-              {showViewModal.gst_type && (
+              {showViewModal.gst_type && getGstLabel(showViewModal.gst_type) && (
                 <div className="bg-blue-50 rounded-lg p-4">
                   <h4 className="text-sm font-semibold text-blue-700 mb-3">GST Information</h4>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <p className="text-xs text-slate-500">GST Type</p>
-                      <span className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full font-medium ${
-                        showViewModal.gst_type === 'book_gst' ? 'bg-blue-100 text-blue-700' :
-                        showViewModal.gst_type === 'inclusive' ? 'bg-emerald-100 text-emerald-700' :
-                        'bg-amber-100 text-amber-700'
-                      }`}>
-                        {showViewModal.gst_type === 'book_gst' ? 'Book GST' : 
-                         showViewModal.gst_type === 'inclusive' ? 'Inclusive' : 'Exclusive'}
+                      <span className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full font-medium ${getGstColorClass(showViewModal.gst_type)}`}>
+                        {getGstLabel(showViewModal.gst_type)}
                       </span>
                     </div>
                     {showViewModal.gst_amount > 0 && (
@@ -2138,6 +2461,87 @@ const AdminOrders = () => {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Send Invoice Email Confirmation Modal */}
+      <Dialog open={!!sendEmailModal} onOpenChange={() => setSendEmailModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-teal-700">
+              <Mail className="w-5 h-5" />
+              Send Invoice Email
+            </DialogTitle>
+          </DialogHeader>
+          {sendEmailModal && (() => {
+            const { payment, group } = sendEmailModal;
+            const emailType = getEmailType(payment);
+            const emailTypeLabel = emailType === 'overdue' ? 'Overdue Notice' : emailType === 'confirmation' ? 'Payment Confirmation' : 'Invoice';
+            const emailTypeBadge = emailType === 'overdue'
+              ? 'bg-red-100 text-red-700 border-red-200'
+              : emailType === 'confirmation'
+              ? 'bg-green-100 text-green-700 border-green-200'
+              : 'bg-blue-100 text-blue-700 border-blue-200';
+            return (
+              <div className="space-y-4">
+                <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">School</span>
+                    <span className="font-semibold text-slate-800">{group?.school_name || payment.school_name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Tranche</span>
+                    <span className="font-medium">{payment.tranche_info || `Tranche ${(payment.tranche_index || 0) + 1}`}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Amount</span>
+                    <span className="font-semibold">₹{(payment.amount || 0).toLocaleString()}</span>
+                  </div>
+                  {payment.due_date && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Due Date</span>
+                      <span className={isPast(parseISO(payment.due_date)) && payment.status !== 'paid' ? 'text-red-600 font-medium' : ''}>
+                        {format(parseISO(payment.due_date), 'MMM d, yyyy')}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                  <Mail className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-slate-700">
+                      Email type: <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold border ${emailTypeBadge}`}>{emailTypeLabel}</span>
+                    </p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Invoice PDF will be generated &amp; attached. Sent to Accounts &amp; Principal contacts.
+                    </p>
+                    {invoiceSentMap[payment.id]?.saved && !invoiceSentMap[payment.id]?.sent_at && (
+                      <p className="text-xs text-indigo-700 mt-1 font-medium flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> Invoice already generated — same PDF will be sent.
+                      </p>
+                    )}
+                    {invoiceSentMap[payment.id]?.sent_at && (
+                      <p className="text-xs text-green-700 mt-1 font-medium">Previously sent — this will resend the same invoice.</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-3 pt-1">
+                  <Button variant="outline" onClick={() => setSendEmailModal(null)} className="flex-1">
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleSendInvoiceEmail}
+                    disabled={sendingEmail === payment.id}
+                    className="flex-1 bg-teal-600 hover:bg-teal-700 text-white"
+                    data-testid="confirm-send-invoice-email"
+                  >
+                    <Mail className="w-4 h-4 mr-1" />
+                    {sendingEmail === payment.id ? 'Sending...' : 'Send Email'}
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
 

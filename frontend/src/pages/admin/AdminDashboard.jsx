@@ -16,10 +16,12 @@ const AdminLayout = ({ children, title }) => {
   const navigate = useNavigate();
   const { user, logout, getAuthHeaders } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const isAIChat = location.pathname === '/admin/ai-chat';
 
   // All navigation items with permission keys
   const allNavItems = [
     { path: '/admin', icon: LayoutDashboard, label: 'Dashboard', permission: null }, // Always visible
+    { path: '/admin/ai-chat', icon: MessageSquare, label: 'AI Chat', permission: null }, // Always visible
     { path: '/admin/students', icon: GraduationCap, label: 'Student CRM', permission: 'students' },
     { path: '/admin/schools', icon: Building2, label: 'School CRM', permission: 'schools' },
     { path: '/admin/orders', icon: Receipt, label: 'Orders', permission: 'orders' },
@@ -55,8 +57,8 @@ const AdminLayout = ({ children, title }) => {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-50 bg-[#1E3A5F] text-white px-4 py-3 flex items-center justify-between">
+      {/* Mobile Header — hidden on AI Chat (full-screen mode) */}
+      <div className={`lg:hidden fixed top-0 left-0 right-0 z-50 bg-[#1E3A5F] text-white px-4 py-3 flex items-center justify-between ${isAIChat ? 'hidden' : ''}`}>
         <button onClick={() => setSidebarOpen(true)} data-testid="mobile-menu-toggle">
           <Menu className="w-6 h-6" />
         </button>
@@ -131,9 +133,9 @@ const AdminLayout = ({ children, title }) => {
       </aside>
 
       {/* Main Content */}
-      <main className="lg:ml-64 pt-14 lg:pt-0 min-h-screen">
-        <div className="p-4 lg:p-8">
-          {title && (
+      <main className={`lg:ml-64 ${isAIChat ? 'pt-0' : 'pt-14'} lg:pt-0 min-h-screen`}>
+        <div className={isAIChat ? '' : 'p-4 lg:p-8'}>
+          {title && !isAIChat && (
             <h1 className="text-2xl font-bold text-[#1E3A5F] mb-6" style={{ fontFamily: 'Manrope, sans-serif' }}>
               {title}
             </h1>
@@ -167,6 +169,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     fetchStats();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchStats = async () => {

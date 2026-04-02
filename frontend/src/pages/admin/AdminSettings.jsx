@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
+import CitySearch from '../../components/CitySearch';
 import { 
   MapPin, Building, FileText, Plus, Edit2, Trash2, X, Save, Eye, EyeOff,
   Search, Globe, Calendar, Image, Tag, Briefcase, Users, Video, Play, Key, Copy, RefreshCw,
-  Database, Zap, CheckCircle
+  Database, Zap, CheckCircle, Mail, Download, HardDrive, Clock, Terminal
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -18,7 +19,7 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 const ROLE_TYPES = ['Full-time', 'Part-time', 'Internship', 'Freelance', 'Contract'];
 
 const AdminSettings = () => {
-  const { getAuthHeaders } = useAuth();
+  const { getAuthHeaders, user } = useAuth();
   const [activeTab, setActiveTab] = useState('team-requirements');
   const [loading, setLoading] = useState(true);
   
@@ -36,8 +37,201 @@ const AdminSettings = () => {
   const [revokingKey, setRevokingKey] = useState(null);
   const [optimizing, setOptimizing] = useState(false);
   const [optimizeResult, setOptimizeResult] = useState(null);
+  const [mongoInfo, setMongoInfo] = useState(null);
+  const [loadingMongoInfo, setLoadingMongoInfo] = useState(false);
+  const [currentIP, setCurrentIP] = useState(null);
+  const [ipToWhitelist, setIpToWhitelist] = useState('');
+  // Backup state
+  const [backupStatus, setBackupStatus] = useState(null);
+  const [backupLogs, setBackupLogs] = useState('');
+  const [backupLoading, setBackupLoading] = useState(false);
+  const [backupCreating, setBackupCreating] = useState(false);
+  const [whitelistingIP, setWhitelistingIP] = useState(false);
+  const [testingApiKey, setTestingApiKey] = useState(false);
+  const [apiTestResult, setApiTestResult] = useState(null);
+  
+  // Service API Keys state
+  const [resendApiKey, setResendApiKey] = useState('');
+  const [resendApiKeyMasked, setResendApiKeyMasked] = useState('');
+  const [showResendKey, setShowResendKey] = useState(false);
+  const [savingResendKey, setSavingResendKey] = useState(false);
+  const [loadingServiceKeys, setLoadingServiceKeys] = useState(false);
+  const [testingEmail, setTestingEmail] = useState(false);
+  const [testEmailResult, setTestEmailResult] = useState(null);
+
+  // Load service API keys
+  const loadServiceApiKeys = async () => {
+    setLoadingServiceKeys(true);
+    try {
+      const res = await axios.get(`${API}/admin/service-api-keys`, { headers: getAuthHeaders() });
+      if (res.data.resend_api_key) {
+        setResendApiKeyMasked(res.data.resend_api_key_masked || '****');
+        setResendApiKey(''); // Don't show actual key for security
+      }
+    } catch (error) {
+      console.error('Failed to load service keys:', error);
+    } finally {
+      setLoadingServiceKeys(false);
+    }
+  };
+
+  // Save Resend API key
+  const handleSaveResendKey = async () => {
+    if (!resendApiKey.trim()) {
+      toast.error('Please enter a Resend API key');
+      return;
+    }
+    if (!resendApiKey.startsWith('re_')) {
+      toast.error('Invalid Resend API key format (should start with re_)');
+      return;
+    }
+    setSavingResendKey(true);
+    try {
+      await axios.post(`${API}/admin/service-api-keys/resend`, 
+        { api_key: resendApiKey }, 
+        { headers: getAuthHeaders() }
+      );
+      toast.success('Resend API key updated successfully!');
+      setResendApiKey('');
+      loadServiceApiKeys();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to save Resend API key');
+    } finally {
+      setSavingResendKey(false);
+    }
+  };
+
+  // Test Resend email
+  const handleTestResendEmail = async () => {
+    setTestingEmail(true);
+    setTestEmailResult(null);
+    try {
+      const res = await axios.post(`${API}/admin/service-api-keys/resend/test`,
+        { to_email: user?.email || 'admin@oll.co' },
+        { headers: getAuthHeaders() }
+      );
+      setTestEmailResult(res.data);
+      if (res.data.success) {
+        toast.success(`Test email sent to ${user?.email || 'admin@oll.co'}`);
+      } else {
+        toast.error(res.data.error || 'Test email failed');
+      }
+    } catch (error) {
+      const msg = error.response?.data?.detail || 'Failed to send test email';
+      toast.error(msg);
+      setTestEmailResult({ success: false, error: msg });
+    } finally {
+      setTestingEmail(false);
+    }
+  };
+
+  // Get MongoDB connection info
+  const handleGetMongoInfo = async () => {
+    setLoadingMongoInfo(true);
+    try {
+      const res = await axios.get(`${API}/admin/mongodb-info`, { headers: getAuthHeaders() });
+      setMongoInfo(res.data);
+      setCurrentIP(res.data.your_ip);
+      toast.success('MongoDB connection info retrieved');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to get MongoDB info');
+    } finally {
+      setLoadingMongoInfo(false);
+    }
+  };
+
+  // Whitelist an IP address
+  const handleWhitelistIP = async () => {
+    if (!ipToWhitelist.trim()) {
+      toast.error('Please enter an IP address');
+      return;
+    }
+    setWhitelistingIP(true);
+    try {
+      const res = await axios.post(`${API}/admin/mongodb-whitelist-ip`, 
+        { ip_address: ipToWhitelist, description: 'Added from Admin Panel' }, 
+        { headers: getAuthHeaders() }
+      );
+      toast.success(res.data.message || 'IP whitelisted successfully');
+      setIpToWhitelist('');
+      handleGetMongoInfo(); // Refresh to get updated whitelist
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to whitelist IP');
+    } finally {
+      setWhitelistingIP(false);
+    }
+  };
+
+  // Remove IP from whitelist
+  const handleRemoveWhitelistedIP = async (ip) => {
+    if (!confirm(`Remove ${ip} from whitelist?`)) return;
+    try {
+      await axios.delete(`${API}/admin/mongodb-whitelist-ip/${encodeURIComponent(ip)}`, { headers: getAuthHeaders() });
+      toast.success('IP removed from whitelist');
+      handleGetMongoInfo();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to remove IP');
+    }
+  };
 
   // Database optimization handler
+
+  // Backup functions
+  const fetchBackupStatus = async () => {
+    try {
+      const res = await axios.get(`${API}/admin/db-backup/status`, { headers: getAuthHeaders() });
+      setBackupStatus(res.data);
+    } catch { /* silent */ }
+  };
+
+  const fetchBackupLogs = async () => {
+    setBackupLoading(true);
+    try {
+      const res = await axios.get(`${API}/admin/db-backup/logs?lines=200`, { headers: getAuthHeaders() });
+      setBackupLogs(res.data.logs || 'No logs yet. Backup runs daily at 10:00 PM.');
+    } catch {
+      setBackupLogs('Could not load logs.');
+    } finally {
+      setBackupLoading(false);
+    }
+  };
+
+  const handleCreateBackup = async () => {
+    setBackupCreating(true);
+    try {
+      const res = await axios.post(`${API}/admin/db-backup/create`, {}, { headers: getAuthHeaders() });
+      toast.success(`Backup created: ${res.data.filename} (${res.data.size_mb} MB)`);
+      await fetchBackupStatus();
+      await fetchBackupLogs();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Backup failed');
+    } finally {
+      setBackupCreating(false);
+    }
+  };
+
+  const handleDownloadBackup = () => {
+    const token = getAuthHeaders()['Authorization'];
+    const url = `${API}/admin/db-backup/download`;
+    fetch(url, { headers: { Authorization: token } })
+      .then(r => {
+        const cd = r.headers.get('Content-Disposition');
+        const filename = cd ? cd.split('filename=')[1]?.replace(/"/g, '') : 'oll_db_backup.tar.gz';
+        return r.blob().then(blob => ({ blob, filename }));
+      })
+      .then(({ blob, filename }) => {
+        const objUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = objUrl;
+        link.download = filename;
+        link.click();
+        URL.revokeObjectURL(objUrl);
+        toast.success('Backup downloaded!');
+      })
+      .catch(() => toast.error('Download failed'));
+  };
+
+
   const handleOptimizeDatabase = async () => {
     if (!confirm('This will create database indexes to improve performance. Continue?')) return;
     setOptimizing(true);
@@ -87,6 +281,21 @@ const AdminSettings = () => {
     }
   };
 
+  const handleTestApiKey = async (keyId) => {
+    setTestingApiKey(true);
+    setApiTestResult(null);
+    try {
+      const res = await axios.get(`${API}/admin/api-keys/${keyId}/test`, {
+        headers: getAuthHeaders()
+      });
+      setApiTestResult({ success: true, count: res.data.count_active_schools, sample: res.data.sample, key_name: res.data.key_name });
+    } catch (err) {
+      setApiTestResult({ success: false, error: err.response?.data?.detail || err.message });
+    } finally {
+      setTestingApiKey(false);
+    }
+  };
+
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
     toast.success('Copied to clipboard');
@@ -127,6 +336,8 @@ const AdminSettings = () => {
 
   useEffect(() => {
     fetchData();
+    fetchBackupStatus();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchData = async () => {
@@ -146,6 +357,8 @@ const AdminSettings = () => {
       setTeamRequirements(teamReqRes.data || []);
       setCaseStudies(caseStudiesRes.data || []);
       setApiKeys(apiKeysRes.data || []);
+      // Load service API keys
+      loadServiceApiKeys();
     } catch (error) {
       console.error('Failed to fetch data:', error);
     } finally {
@@ -503,6 +716,109 @@ const AdminSettings = () => {
         {/* System Tab */}
         {activeTab === 'system' && (
           <div className="space-y-6">
+            {/* Database Backup */}
+            <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-100">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-orange-100 rounded-lg flex-shrink-0">
+                  <HardDrive className="w-6 h-6 text-orange-600" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-3 mb-1">
+                    <h3 className="font-semibold text-lg text-[#1E3A5F]">Database Backup</h3>
+                    <span className="inline-flex items-center gap-1.5 text-xs bg-orange-50 text-orange-700 border border-orange-200 px-2 py-0.5 rounded-full font-medium">
+                      <Clock className="w-3 h-3" /> Daily 10:00 PM
+                    </span>
+                  </div>
+                  <p className="text-slate-500 text-sm mb-4">
+                    Automatically backs up the production database every day at 10:00 PM. Only the latest backup is kept. Download it to your computer or cloud storage.
+                  </p>
+
+                  {/* Status row */}
+                  {backupStatus && (
+                    <div className="flex flex-wrap gap-4 p-3 bg-slate-50 rounded-lg border border-slate-100 mb-4 text-sm">
+                      {backupStatus.has_backup ? (
+                        <>
+                          <div>
+                            <span className="text-slate-500 text-xs uppercase tracking-wide">Latest Backup</span>
+                            <p className="font-mono text-xs text-[#1E3A5F] mt-0.5 break-all">{backupStatus.filename}</p>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 text-xs uppercase tracking-wide">Size</span>
+                            <p className="font-semibold text-[#1E3A5F] mt-0.5">{backupStatus.size_mb} MB</p>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 text-xs uppercase tracking-wide">Created</span>
+                            <p className="font-semibold text-[#1E3A5F] mt-0.5">
+                              {new Date(backupStatus.created_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+                            </p>
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-slate-400 text-sm">No backup yet. Click "Backup Now" to create one.</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Action buttons */}
+                  <div className="flex flex-wrap gap-3 mb-5">
+                    <Button
+                      onClick={handleCreateBackup}
+                      disabled={backupCreating}
+                      data-testid="create-backup-btn"
+                      className="bg-orange-600 hover:bg-orange-700 text-white"
+                    >
+                      {backupCreating ? (
+                        <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Creating Backup...</>
+                      ) : (
+                        <><HardDrive className="w-4 h-4 mr-2" />Backup Now</>
+                      )}
+                    </Button>
+
+                    {backupStatus?.has_backup && (
+                      <Button
+                        variant="outline"
+                        onClick={handleDownloadBackup}
+                        data-testid="download-backup-btn"
+                        className="border-[#1E3A5F] text-[#1E3A5F] hover:bg-[#1E3A5F]/5"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download Backup
+                      </Button>
+                    )}
+
+                    <Button
+                      variant="ghost"
+                      onClick={() => { fetchBackupStatus(); fetchBackupLogs(); }}
+                      disabled={backupLoading}
+                      data-testid="refresh-backup-logs-btn"
+                      className="text-slate-500"
+                    >
+                      <RefreshCw className={`w-4 h-4 mr-2 ${backupLoading ? 'animate-spin' : ''}`} />
+                      Refresh Logs
+                    </Button>
+                  </div>
+
+                  {/* Cron Logs */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Terminal className="w-4 h-4 text-slate-400" />
+                      <span className="text-sm font-medium text-slate-600">Backup Logs (last 200 lines)</span>
+                    </div>
+                    <div
+                      data-testid="backup-logs-area"
+                      className="bg-slate-900 rounded-lg p-4 font-mono text-xs text-slate-300 overflow-auto max-h-64 whitespace-pre-wrap"
+                      style={{ lineHeight: '1.6' }}
+                    >
+                      {backupLoading
+                        ? <span className="text-slate-400">Loading logs...</span>
+                        : backupLogs || <span className="text-slate-500">Click "Refresh Logs" to load backup history</span>
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Database Optimization */}
             <div className="bg-white rounded-xl p-6 shadow-sm">
               <div className="flex items-start gap-4">
@@ -577,6 +893,200 @@ const AdminSettings = () => {
                 </div>
               </div>
             </div>
+
+            {/* MongoDB Export/Connection */}
+            <div className="bg-white rounded-xl p-6 shadow-sm">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-green-100 rounded-lg">
+                  <Database className="w-6 h-6 text-green-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-lg text-[#1E3A5F]">MongoDB Connection</h3>
+                  <p className="text-slate-600 text-sm mt-1">
+                    Get your MongoDB connection details to connect from external tools like MongoDB Compass, 
+                    or to migrate your data to your own MongoDB Atlas cluster.
+                  </p>
+                  
+                  {mongoInfo && (
+                    <div className="mt-4 space-y-3">
+                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                        <p className="text-xs text-slate-500 uppercase mb-1">Database Name</p>
+                        <div className="flex items-center gap-2">
+                          <code className="text-sm font-mono text-[#1E3A5F] flex-1">{mongoInfo.db_name}</code>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => copyToClipboard(mongoInfo.db_name)}
+                            className="h-8 px-2"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                        <p className="text-xs text-slate-500 uppercase mb-1">Connection String</p>
+                        <div className="flex items-center gap-2">
+                          <code className="text-xs font-mono text-[#1E3A5F] flex-1 break-all">{mongoInfo.connection_string}</code>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => copyToClipboard(mongoInfo.connection_string)}
+                            className="h-8 px-2"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-sm text-green-800">
+                          <strong>✅ Full Access:</strong> This connection string has read/write access. 
+                          You can use it to export data, import data, or connect from MongoDB Compass.
+                        </p>
+                      </div>
+
+                      <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                        <p className="text-sm text-amber-800">
+                          <strong>⚠️ Security:</strong> Keep this connection string private. Do not share it publicly.
+                          If using Atlas, you may need to whitelist your IP address in Network Access settings.
+                        </p>
+                      </div>
+
+                      {/* IP Whitelisting Section */}
+                      <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                        <h4 className="font-medium text-[#1E3A5F] mb-3 flex items-center gap-2">
+                          <Globe className="w-4 h-4" />
+                          IP Whitelisting
+                        </h4>
+                        
+                        {mongoInfo.your_ip && (
+                          <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p className="text-xs text-blue-600 mb-1">Your Current IP Address:</p>
+                            <div className="flex items-center gap-2">
+                              <code className="text-sm font-mono text-blue-800 font-bold">{mongoInfo.your_ip}</code>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => copyToClipboard(mongoInfo.your_ip)}
+                                className="h-6 px-2"
+                              >
+                                <Copy className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setIpToWhitelist(mongoInfo.your_ip)}
+                                className="h-6 px-2 text-xs"
+                              >
+                                Use This IP
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex gap-2 mb-3">
+                          <Input
+                            placeholder="Enter IP address (e.g., 192.168.1.1 or 0.0.0.0/0 for all)"
+                            value={ipToWhitelist}
+                            onChange={(e) => setIpToWhitelist(e.target.value)}
+                            className="flex-1"
+                          />
+                          <Button
+                            onClick={handleWhitelistIP}
+                            disabled={whitelistingIP || !ipToWhitelist.trim()}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            {whitelistingIP ? (
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Plus className="w-4 h-4 mr-1" />
+                                Whitelist IP
+                              </>
+                            )}
+                          </Button>
+                        </div>
+
+                        {mongoInfo.whitelisted_ips && mongoInfo.whitelisted_ips.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-xs text-slate-500 uppercase">Whitelisted IPs:</p>
+                            {mongoInfo.whitelisted_ips.map((item, idx) => (
+                              <div key={idx} className="flex items-center justify-between p-2 bg-white rounded border">
+                                <div>
+                                  <code className="text-sm font-mono text-[#1E3A5F]">{item.ip}</code>
+                                  {item.description && (
+                                    <span className="text-xs text-slate-500 ml-2">({item.description})</span>
+                                  )}
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleRemoveWhitelistedIP(item.ip)}
+                                  className="h-6 px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <p className="text-xs text-slate-500 mt-3">
+                          💡 Use <code className="bg-slate-200 px-1 rounded">0.0.0.0/0</code> to allow access from any IP (not recommended for production).
+                        </p>
+                      </div>
+
+                      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-sm text-blue-800 font-medium mb-2">Export Commands:</p>
+                        <div className="space-y-2">
+                          <div>
+                            <p className="text-xs text-blue-600 mb-1">Export entire database:</p>
+                            <code className="text-xs font-mono bg-blue-100 p-2 rounded block break-all">
+                              mongodump --uri="{mongoInfo.connection_string}" --archive=backup.gz --gzip
+                            </code>
+                          </div>
+                          <div>
+                            <p className="text-xs text-blue-600 mb-1">Export to your Atlas cluster:</p>
+                            <code className="text-xs font-mono bg-blue-100 p-2 rounded block break-all">
+                              mongodump --uri="{mongoInfo.connection_string}" --archive | mongorestore --uri="YOUR_ATLAS_URI" --archive
+                            </code>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+                        {mongoInfo.collections?.map((col) => (
+                          <div key={col.name} className="p-3 bg-slate-50 rounded-lg">
+                            <p className="text-xs text-slate-500 truncate">{col.name}</p>
+                            <p className="text-lg font-bold text-[#1E3A5F]">{col.count}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <Button
+                    onClick={handleGetMongoInfo}
+                    disabled={loadingMongoInfo}
+                    className="mt-4 bg-green-600 hover:bg-green-700"
+                    data-testid="get-mongo-info-btn"
+                  >
+                    {loadingMongoInfo ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        <Database className="w-4 h-4 mr-2" />
+                        {mongoInfo ? 'Refresh Connection Info' : 'Get MongoDB Connection'}
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -621,9 +1131,16 @@ const AdminSettings = () => {
                               {maskApiKey(apiKey.key)}
                             </code>
                             <button
-                              onClick={() => copyToClipboard(apiKey.key)}
+                              onClick={async () => {
+                                try {
+                                  const res = await axios.get(`${API}/admin/api-keys/${apiKey.id}/reveal`, { headers: getAuthHeaders() });
+                                  copyToClipboard(res.data.key);
+                                } catch (e) {
+                                  toast.error('Failed to reveal key');
+                                }
+                              }}
                               className="p-1 hover:bg-slate-200 rounded text-slate-500"
-                              title="Copy full key"
+                              title="Reveal & copy full key"
                               data-testid={`copy-api-key-${apiKey.id}`}
                             >
                               <Copy className="w-4 h-4" />
@@ -666,6 +1183,229 @@ const AdminSettings = () => {
                 </table>
               </div>
             )}
+
+            {/* API Documentation Panel */}
+            <div className="bg-white rounded-xl shadow-sm p-6 mt-4 border border-slate-100">
+              <h3 className="font-semibold text-lg text-[#1E3A5F] mb-1 flex items-center gap-2">
+                How to Use the API
+              </h3>
+              <p className="text-sm text-slate-500 mb-4">Use your API key to fetch school data from any external app or integration.</p>
+
+              <div className="space-y-4">
+                {/* Endpoint */}
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Endpoint (Active Schools — flat format)</p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 block bg-slate-900 text-green-400 rounded-lg px-4 py-3 text-sm font-mono break-all select-all">
+                      GET {process.env.REACT_APP_BACKEND_URL}/api/external/schools/active
+                    </code>
+                    <button
+                      onClick={() => copyToClipboard(`${process.env.REACT_APP_BACKEND_URL}/api/external/schools/active`)}
+                      className="shrink-0 p-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white"
+                      title="Copy URL"
+                    ><Copy className="w-4 h-4" /></button>
+                  </div>
+                  <p className="text-xs text-amber-600 mt-1">⚠️ The URL must include <code className="bg-amber-50 px-1 rounded">/api</code> — requests without it return the website HTML, not data.</p>
+                </div>
+
+                {/* Header */}
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Required Header</p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 block bg-slate-900 text-yellow-300 rounded-lg px-4 py-3 text-sm font-mono">
+                      X-API-Key: oll_sk_your_key_here
+                    </code>
+                    <button
+                      onClick={() => {
+                        if (apiKeys.length > 0) {
+                          // Reveal and copy the first active key
+                          axios.get(`${API}/admin/api-keys/${apiKeys[0].id}/reveal`, { headers: getAuthHeaders() })
+                            .then(r => copyToClipboard(`X-API-Key: ${r.data.key}`))
+                            .catch(() => toast.error('Could not reveal key'));
+                        }
+                      }}
+                      className="shrink-0 p-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white"
+                      title="Copy header with your key"
+                    ><Copy className="w-4 h-4" /></button>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">Click the copy button on any key above to get your full unmasked key.</p>
+                </div>
+
+                {/* Response fields */}
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Response Fields</p>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                    {['school_name', 'address', 'city', 'latitude', 'longitude', 'contact_person', 'contact_phone', 'contact_email', 'board', 'status'].map(f => (
+                      <code key={f} className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-mono">{f}</code>
+                    ))}
+                  </div>
+                </div>
+
+                {/* All schools endpoint */}
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Full CRM Endpoint (all statuses, paginated)</p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 block bg-slate-900 text-green-400 rounded-lg px-4 py-3 text-sm font-mono break-all select-all">
+                      GET {process.env.REACT_APP_BACKEND_URL}/api/external/schools?status=active&limit=100
+                    </code>
+                    <button
+                      onClick={() => copyToClipboard(`${process.env.REACT_APP_BACKEND_URL}/api/external/schools?status=active&limit=100`)}
+                      className="shrink-0 p-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white"
+                      title="Copy URL"
+                    ><Copy className="w-4 h-4" /></button>
+                  </div>
+                </div>
+
+                {/* Test button */}
+                {apiKeys.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Test your key</p>
+                    <button
+                      onClick={() => {
+                        const activeKey = apiKeys.find(k => k.is_active !== false);
+                        if (activeKey?.id) {
+                          handleTestApiKey(activeKey.id);
+                        } else {
+                          toast.error('No active API key found — generate one first');
+                        }
+                      }}
+                      disabled={testingApiKey}
+                      className="flex items-center gap-2 px-4 py-2 bg-[#1E3A5F] hover:bg-[#152d4a] text-white rounded-lg text-sm font-medium transition-all disabled:opacity-50"
+                      data-testid="test-api-key-btn"
+                    >
+                      {testingApiKey ? (
+                        <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Testing...</>
+                      ) : (
+                        <>Test API Key</>
+                      )}
+                    </button>
+
+                    {apiTestResult && (
+                      <div className={`mt-3 rounded-lg p-3 text-sm ${apiTestResult.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}
+                           data-testid="api-test-result">
+                        {apiTestResult.success ? (
+                          <div>
+                            <p className="text-green-700 font-medium mb-2">API key working — {apiTestResult.count} active school(s) found</p>
+                            {apiTestResult.sample?.map((s, i) => (
+                              <div key={i} className="bg-white rounded p-2 mb-1 text-xs text-slate-700 font-mono">
+                                <span className="font-semibold">{s.school_name}</span> | {s.city} | lat: {s.latitude ?? 'N/A'} | lng: {s.longitude ?? 'N/A'} | {s.contact_person} | {s.contact_phone}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-red-700">Error: {apiTestResult.error}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Service API Keys Section */}
+            <div className="bg-white rounded-xl shadow-sm p-6 mt-6">
+              <h3 className="font-semibold text-lg text-[#1E3A5F] mb-4 flex items-center gap-2">
+                <Mail className="w-5 h-5" />
+                Email Service (Resend) API Key
+              </h3>
+              <p className="text-sm text-slate-600 mb-4">
+                Configure your Resend API key for sending emails (intro emails, proposals, follow-ups, etc.)
+              </p>
+              
+              {resendApiKeyMasked && (
+                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <p className="text-sm text-green-800 flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4" />
+                    Current API Key: <code className="font-mono bg-green-100 px-2 py-0.5 rounded">{resendApiKeyMasked}</code>
+                  </p>
+                </div>
+              )}
+              
+              <div className="flex gap-2">
+                <div className="flex-1 relative">
+                  <Input
+                    type={showResendKey ? "text" : "password"}
+                    placeholder="Enter new Resend API key (re_...)"
+                    value={resendApiKey}
+                    onChange={(e) => setResendApiKey(e.target.value)}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowResendKey(!showResendKey)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showResendKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <Button
+                  onClick={handleSaveResendKey}
+                  disabled={savingResendKey || !resendApiKey.trim()}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {savingResendKey ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4 mr-1" />
+                      Save Key
+                    </>
+                  )}
+                </Button>
+              </div>
+              
+              <div className="mt-4 p-3 bg-slate-50 rounded-lg">
+                <p className="text-xs text-slate-600">
+                  <strong>How to get a Resend API key:</strong>
+                </p>
+                <ol className="text-xs text-slate-500 mt-2 list-decimal list-inside space-y-1">
+                  <li>Go to <a href="https://resend.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">resend.com/api-keys</a></li>
+                  <li>Create a new API key with "Sending access"</li>
+                  <li>Make sure your sending domain is verified at <a href="https://resend.com/domains" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">resend.com/domains</a></li>
+                  <li>Copy the key (starts with <code className="bg-slate-200 px-1 rounded">re_</code>)</li>
+                  <li>Paste it above and click Save</li>
+                </ol>
+              </div>
+
+              {/* Test Email Button */}
+              {resendApiKeyMasked && (
+                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-blue-900">Test Email Configuration</p>
+                      <p className="text-xs text-blue-700 mt-1">Send a test email to verify your API key works correctly</p>
+                    </div>
+                    <Button
+                      data-testid="test-resend-email-btn"
+                      onClick={handleTestResendEmail}
+                      disabled={testingEmail}
+                      variant="outline"
+                      className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                    >
+                      {testingEmail ? (
+                        <><RefreshCw className="w-4 h-4 mr-1 animate-spin" /> Sending...</>
+                      ) : (
+                        <><Mail className="w-4 h-4 mr-1" /> Send Test Email</>
+                      )}
+                    </Button>
+                  </div>
+                  {testEmailResult && (
+                    <div className={`mt-3 p-3 rounded-lg text-sm ${testEmailResult.success ? 'bg-green-50 border border-green-200 text-green-800' : 'bg-red-50 border border-red-200 text-red-800'}`}>
+                      {testEmailResult.success ? (
+                        <p><CheckCircle className="w-4 h-4 inline mr-1" /> Email sent successfully! Key type: <strong>{testEmailResult.key_type}</strong></p>
+                      ) : (
+                        <div>
+                          <p className="font-medium">Failed: {testEmailResult.error}</p>
+                          {testEmailResult.key_type === 'test (restricted)' && (
+                            <p className="mt-2 text-xs">{testEmailResult.fix_instructions}</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -834,6 +1574,23 @@ const AdminSettings = () => {
         {/* Cities Tab */}
         {activeTab === 'cities' && (
           <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+            <div className="px-4 py-3 bg-blue-50 border-b border-blue-100 flex items-center justify-between">
+              <p className="text-sm text-blue-700 font-medium">Cities are shared across Schools, Educators, Students, and all other location fields.</p>
+              <button
+                onClick={async () => {
+                  if (!window.confirm('Seed all India cities and states into the database? Existing cities won\'t be duplicated.')) return;
+                  try {
+                    const res = await axios.post(`${API}/cities/seed-india`, {}, { headers: getAuthHeaders() });
+                    toast.success(res.data.message);
+                    const citiesRes = await axios.get(`${API}/cities`, { headers: getAuthHeaders() });
+                    setCities(citiesRes.data);
+                  } catch (e) { toast.error('Failed to seed cities'); }
+                }}
+                className="text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-1.5 whitespace-nowrap"
+              >
+                <MapPin className="w-3.5 h-3.5" /> Seed All India Cities
+              </button>
+            </div>
             <table className="w-full">
               <thead className="bg-slate-50">
                 <tr>
@@ -1072,16 +1829,11 @@ const AdminSettings = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">City *</label>
-                <select
+                <CitySearch
                   value={centerForm.city}
-                  onChange={(e) => setCenterForm({ ...centerForm, city: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
-                >
-                  <option value="">Select city</option>
-                  {cities.map(city => (
-                    <option key={city.id} value={city.name}>{city.name}</option>
-                  ))}
-                </select>
+                  onChange={(city) => setCenterForm({ ...centerForm, city })}
+                  placeholder="Search city..."
+                />
               </div>
             </div>
             <div>
@@ -1321,10 +2073,10 @@ const AdminSettings = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Location</label>
-                <Input
+                <CitySearch
                   value={teamReqForm.city}
-                  onChange={(e) => setTeamReqForm({ ...teamReqForm, city: e.target.value })}
-                  placeholder="e.g., Remote, Mumbai"
+                  onChange={(city) => setTeamReqForm({ ...teamReqForm, city })}
+                  placeholder="Search city (or type Remote)..."
                 />
               </div>
             </div>

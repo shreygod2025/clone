@@ -5,7 +5,8 @@ import {
   Search, Eye, Phone, Mail, Clock, Plus, ChevronRight, MessageSquare, Archive, 
   CheckCircle2, User, MapPin, Briefcase, Send, UserPlus, Calendar, Settings, 
   Edit2, Trash2, X, FileText, ExternalLink, CreditCard, GraduationCap, Copy,
-  UserX, BarChart3
+  UserX, BarChart3, PhoneCall, Users, UserCheck, Download, Upload, AlertTriangle,
+  Play, Pause, Award, Building2
 } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
@@ -16,20 +17,25 @@ import { Switch } from '../../components/ui/switch';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import axios from 'axios';
+import CitySearch from '../../components/CitySearch';
 import PhoneInput from '../../components/PhoneInput';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const STATUS_CONFIG = {
-  new: { label: 'New', color: 'bg-blue-100 text-blue-700' },
+  applicant: { label: 'Applicant', color: 'bg-blue-100 text-blue-700' },
+  candidate: { label: 'Candidate', color: 'bg-purple-100 text-purple-700' },
+  onboarding: { label: 'Onboarding', color: 'bg-orange-100 text-orange-700' },
+  active: { label: 'Active', color: 'bg-emerald-100 text-emerald-700' },
+  past_member: { label: 'Past Member', color: 'bg-slate-100 text-slate-700' },
+  rejected: { label: 'Rejected', color: 'bg-red-100 text-red-700' },
+  // Legacy statuses for backward compatibility
+  new: { label: 'Applicant', color: 'bg-blue-100 text-blue-700' },
   contacted: { label: 'Contacted', color: 'bg-yellow-100 text-yellow-700' },
   interview_scheduled: { label: 'Interview Scheduled', color: 'bg-purple-100 text-purple-700' },
   interviewed: { label: 'Interviewed', color: 'bg-indigo-100 text-indigo-700' },
   hired: { label: 'Hired', color: 'bg-green-100 text-green-700' },
-  onboarding: { label: 'Onboarding', color: 'bg-orange-100 text-orange-700' },
-  active: { label: 'Active', color: 'bg-emerald-100 text-emerald-700' },
   discontinued: { label: 'Discontinued', color: 'bg-red-100 text-red-700' },
-  rejected: { label: 'Rejected', color: 'bg-red-100 text-red-700' },
   archived: { label: 'Archived', color: 'bg-slate-100 text-slate-700' },
 };
 
@@ -42,7 +48,7 @@ const AdminTeamApplications = () => {
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeSection, setActiveSection] = useState('new');
+  const [activeSection, setActiveSection] = useState('applicant');
   
   // Modal states
   const [viewApplication, setViewApplication] = useState(null);
@@ -53,7 +59,39 @@ const AdminTeamApplications = () => {
   const [editingRequirement, setEditingRequirement] = useState(null);
   const [newComment, setNewComment] = useState('');
   
-  // Onboarding modal states
+  // NEW PIPELINE MODAL STATES
+  // Applicant Stage - Telephonic Round
+  const [showTelephonicModal, setShowTelephonicModal] = useState(null);
+  const [telephonicData, setTelephonicData] = useState({ outcome: '', reject_reason: '', notes: '' });
+  
+  // Candidate Stage - HR Interview & Dept Head
+  const [showHRInterviewModal, setShowHRInterviewModal] = useState(null);
+  const [hrInterviewData, setHRInterviewData] = useState({ scheduled_at: '', notes: '' });
+  const [showDeptHeadModal, setShowDeptHeadModal] = useState(null);
+  const [deptHeadData, setDeptHeadData] = useState({ dept_head_id: '', scheduled_at: '', notes: '' });
+  
+  // Candidate Stage - Interview Outcome Modals
+  const [showHROutcomeModal, setShowHROutcomeModal] = useState(null);
+  const [hrOutcomeData, setHROutcomeData] = useState({ outcome: '', notes: '' });
+  const [showDeptHeadOutcomeModal, setShowDeptHeadOutcomeModal] = useState(null);
+  const [deptHeadOutcomeData, setDeptHeadOutcomeData] = useState({ outcome: '', notes: '' });
+  
+  // Onboarding Stage
+  const [showWelcomeEmailModal, setShowWelcomeEmailModal] = useState(null);
+  const [showOfferLetterModal, setShowOfferLetterModal] = useState(null);
+  const [showCreateAccountModal, setShowCreateAccountModal] = useState(null);
+  const [showTrialPeriodModal, setShowTrialPeriodModal] = useState(null);
+  const [trialPeriodData, setTrialPeriodData] = useState({ duration: '1_week', start_date: '' });
+  const [showExtendTrialModal, setShowExtendTrialModal] = useState(null);
+  const [extendTrialData, setExtendTrialData] = useState({ extension_date: '', reason: '' });
+  
+  // Bulk Upload
+  const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
+  const [bulkUploadFile, setBulkUploadFile] = useState(null);
+  const [bulkUploadLoading, setBulkUploadLoading] = useState(false);
+  const [bulkUploadResults, setBulkUploadResults] = useState(null);
+  
+  // Onboarding modal states (legacy)
   const [showStepModal, setShowStepModal] = useState(null);
   const [showActivateModal, setShowActivateModal] = useState(null);
   const [showDiscontinueModal, setShowDiscontinueModal] = useState(null);
@@ -101,6 +139,7 @@ const AdminTeamApplications = () => {
     fetchTeamUsers();
     fetchTeamRequirements();
     fetchRoles();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchRoles = async () => {
@@ -166,23 +205,537 @@ const AdminTeamApplications = () => {
         headers: getAuthHeaders()
       });
       
-      // If hired, initiate team onboarding
-      if (newStatus === 'hired') {
-        try {
-          await axios.post(`${API}/team-onboarding/init/${application.id}`, {}, {
-            headers: getAuthHeaders()
-          });
-          toast.success('Applicant hired! Onboarding process initiated.');
-        } catch (onboardError) {
-          console.error('Failed to initiate onboarding:', onboardError);
-          toast.success('Status updated. Onboarding may already exist.');
-        }
+      // If moving to active, update activation timestamp
+      if (newStatus === 'active') {
+        await axios.patch(`${API}/team-applications/${application.id}`, {
+          activated_at: new Date().toISOString()
+        }, {
+          headers: getAuthHeaders()
+        });
+        toast.success('Team member activated!');
       } else {
         toast.success('Status updated');
       }
       fetchApplications();
     } catch (error) {
       toast.error('Failed to update status');
+    }
+  };
+
+  // ===============================
+  // NEW PIPELINE HANDLER FUNCTIONS
+  // ===============================
+
+  // APPLICANT STAGE: Complete Telephonic Round
+  const handleTelephonicRound = async () => {
+    if (!showTelephonicModal || !telephonicData.outcome) {
+      toast.error('Please select an outcome');
+      return;
+    }
+    
+    try {
+      const updateData = {
+        telephonic_round: {
+          completed: true,
+          completed_at: new Date().toISOString(),
+          completed_by: user?.name || 'Admin',
+          outcome: telephonicData.outcome,
+          reject_reason: telephonicData.outcome === 'rejected' ? telephonicData.reject_reason : null,
+          notes: telephonicData.notes || null
+        }
+      };
+      
+      // If accepted, move to candidate stage
+      if (telephonicData.outcome === 'accepted') {
+        updateData.status = 'candidate';
+      } else {
+        updateData.status = 'rejected';
+      }
+      
+      await axios.patch(`${API}/team-applications/${showTelephonicModal.id}`, updateData, {
+        headers: getAuthHeaders()
+      });
+      
+      toast.success(telephonicData.outcome === 'accepted' 
+        ? 'Moved to Candidate stage!' 
+        : 'Application rejected');
+      setShowTelephonicModal(null);
+      setTelephonicData({ outcome: '', reject_reason: '', notes: '' });
+      fetchApplications();
+    } catch (error) {
+      console.error('Telephonic round error:', error);
+      toast.error('Failed to update telephonic round');
+    }
+  };
+
+  // CANDIDATE STAGE: Schedule HR Interview
+  const handleScheduleHRInterview = async () => {
+    if (!showHRInterviewModal || !hrInterviewData.scheduled_at) {
+      toast.error('Please select interview date');
+      return;
+    }
+    
+    try {
+      const updateData = {
+        hr_interview: {
+          ...showHRInterviewModal.hr_interview,
+          scheduled: true,
+          scheduled_at: hrInterviewData.scheduled_at,
+          scheduled_by: user?.name || 'Admin',
+          notes: hrInterviewData.notes || null,
+          email_sent: true
+        }
+      };
+      
+      await axios.patch(`${API}/team-applications/${showHRInterviewModal.id}`, updateData, {
+        headers: getAuthHeaders()
+      });
+      
+      // Send email notification (if email exists)
+      if (showHRInterviewModal.email) {
+        try {
+          await axios.post(`${API}/team-applications/${showHRInterviewModal.id}/send-hr-interview-email`, {
+            scheduled_at: hrInterviewData.scheduled_at,
+            notes: hrInterviewData.notes
+          }, { headers: getAuthHeaders() });
+        } catch (emailErr) {
+          console.error('Email failed:', emailErr);
+        }
+      }
+      
+      toast.success('HR Interview scheduled!');
+      setShowHRInterviewModal(null);
+      setHRInterviewData({ scheduled_at: '', notes: '' });
+      fetchApplications();
+    } catch (error) {
+      console.error('HR interview error:', error);
+      toast.error('Failed to schedule HR interview');
+    }
+  };
+
+  // CANDIDATE STAGE: Select Dept Head for Interview
+  const handleSelectDeptHead = async () => {
+    if (!showDeptHeadModal || !deptHeadData.dept_head_id) {
+      toast.error('Please select a department head');
+      return;
+    }
+    
+    const selectedDeptHead = teamUsers.find(u => u.id === deptHeadData.dept_head_id);
+    
+    try {
+      const updateData = {
+        dept_head_interview: {
+          ...showDeptHeadModal.dept_head_interview,
+          assigned: true,
+          dept_head_id: deptHeadData.dept_head_id,
+          dept_head_name: selectedDeptHead?.name || '',
+          scheduled_at: deptHeadData.scheduled_at || null,
+          notes: deptHeadData.notes || null,
+          notification_sent: true
+        }
+      };
+      
+      await axios.patch(`${API}/team-applications/${showDeptHeadModal.id}`, updateData, {
+        headers: getAuthHeaders()
+      });
+      
+      // Send notification to dept head
+      if (selectedDeptHead?.email) {
+        try {
+          await axios.post(`${API}/team-applications/${showDeptHeadModal.id}/notify-dept-head`, {
+            dept_head_email: selectedDeptHead.email,
+            dept_head_name: selectedDeptHead.name,
+            applicant_name: showDeptHeadModal.name,
+            role: showDeptHeadModal.role
+          }, { headers: getAuthHeaders() });
+        } catch (notifyErr) {
+          console.error('Notification failed:', notifyErr);
+        }
+      }
+      
+      toast.success(`${selectedDeptHead?.name || 'Dept Head'} assigned for interview!`);
+      setShowDeptHeadModal(null);
+      setDeptHeadData({ dept_head_id: '', scheduled_at: '', notes: '' });
+      fetchApplications();
+    } catch (error) {
+      console.error('Dept head selection error:', error);
+      toast.error('Failed to assign department head');
+    }
+  };
+
+  // CANDIDATE STAGE: Mark HR Interview Outcome
+  const handleHROutcome = async () => {
+    if (!showHROutcomeModal || !hrOutcomeData.outcome) {
+      toast.error('Please select an outcome');
+      return;
+    }
+    
+    try {
+      const updateData = {
+        hr_interview: {
+          ...showHROutcomeModal.hr_interview,
+          completed: true,
+          completed_at: new Date().toISOString(),
+          outcome: hrOutcomeData.outcome, // 'passed' or 'failed'
+          notes: hrOutcomeData.notes || showHROutcomeModal.hr_interview?.notes || null
+        }
+      };
+      
+      // If failed, automatically reject
+      if (hrOutcomeData.outcome === 'failed') {
+        updateData.status = 'rejected';
+      }
+      
+      await axios.patch(`${API}/team-applications/${showHROutcomeModal.id}`, updateData, {
+        headers: getAuthHeaders()
+      });
+      
+      toast.success(hrOutcomeData.outcome === 'passed' 
+        ? 'HR Interview passed!' 
+        : 'HR Interview failed - Application rejected');
+      setShowHROutcomeModal(null);
+      setHROutcomeData({ outcome: '', notes: '' });
+      fetchApplications();
+    } catch (error) {
+      console.error('HR outcome error:', error);
+      toast.error('Failed to update HR interview outcome');
+    }
+  };
+
+  // CANDIDATE STAGE: Mark Dept Head Interview Outcome
+  const handleDeptHeadOutcome = async () => {
+    if (!showDeptHeadOutcomeModal || !deptHeadOutcomeData.outcome) {
+      toast.error('Please select an outcome');
+      return;
+    }
+    
+    try {
+      const updateData = {
+        dept_head_interview: {
+          ...showDeptHeadOutcomeModal.dept_head_interview,
+          completed: true,
+          completed_at: new Date().toISOString(),
+          outcome: deptHeadOutcomeData.outcome, // 'selected' or 'not_selected'
+          notes: deptHeadOutcomeData.notes || showDeptHeadOutcomeModal.dept_head_interview?.notes || null
+        }
+      };
+      
+      // If not selected, automatically reject
+      if (deptHeadOutcomeData.outcome === 'not_selected') {
+        updateData.status = 'rejected';
+      }
+      
+      await axios.patch(`${API}/team-applications/${showDeptHeadOutcomeModal.id}`, updateData, {
+        headers: getAuthHeaders()
+      });
+      
+      toast.success(deptHeadOutcomeData.outcome === 'selected' 
+        ? 'Candidate selected by department!' 
+        : 'Candidate not selected - Application rejected');
+      setShowDeptHeadOutcomeModal(null);
+      setDeptHeadOutcomeData({ outcome: '', notes: '' });
+      fetchApplications();
+    } catch (error) {
+      console.error('Dept head outcome error:', error);
+      toast.error('Failed to update department interview outcome');
+    }
+  };
+
+  // ONBOARDING STAGE: Send Welcome Email
+  const handleSendWelcomeEmail = async () => {
+    if (!showWelcomeEmailModal) return;
+    
+    try {
+      await axios.post(`${API}/team-applications/${showWelcomeEmailModal.id}/send-welcome-email`, {}, {
+        headers: getAuthHeaders()
+      });
+      
+      await axios.patch(`${API}/team-applications/${showWelcomeEmailModal.id}`, {
+        welcome_email_sent: true,
+        welcome_email_sent_at: new Date().toISOString()
+      }, { headers: getAuthHeaders() });
+      
+      toast.success('Welcome email sent!');
+      setShowWelcomeEmailModal(null);
+      fetchApplications();
+    } catch (error) {
+      console.error('Welcome email error:', error);
+      toast.error('Failed to send welcome email');
+    }
+  };
+
+  // ONBOARDING STAGE: Create OLL Admin Account
+  const handleCreateAccount = async () => {
+    if (!showCreateAccountModal || !selectedRoleId) {
+      toast.error('Please select a role');
+      return;
+    }
+    
+    const selectedRole = roles.find(r => r.id === selectedRoleId);
+    
+    try {
+      const response = await axios.post(`${API}/team-applications/${showCreateAccountModal.id}/create-account`, {
+        role_id: selectedRoleId
+      }, { headers: getAuthHeaders() });
+      
+      await axios.patch(`${API}/team-applications/${showCreateAccountModal.id}`, {
+        admin_account_created: true,
+        admin_role_id: selectedRoleId,
+        admin_role_name: selectedRole?.name || ''
+      }, { headers: getAuthHeaders() });
+      
+      toast.success(`Account created! Username: ${response.data.username}`);
+      if (response.data.temp_password) {
+        navigator.clipboard.writeText(response.data.temp_password);
+        toast.info('Temporary password copied to clipboard');
+      }
+      setShowCreateAccountModal(null);
+      setSelectedRoleId('');
+      fetchApplications();
+    } catch (error) {
+      console.error('Create account error:', error);
+      toast.error(error.response?.data?.detail || 'Failed to create account');
+    }
+  };
+
+  // ONBOARDING STAGE: Generate Offer Letter
+  const handleGenerateOfferLetter = async () => {
+    if (!showOfferLetterModal) return;
+    
+    try {
+      const response = await axios.post(`${API}/team-applications/${showOfferLetterModal.id}/generate-offer-letter`, {}, {
+        headers: getAuthHeaders()
+      });
+      
+      await axios.patch(`${API}/team-applications/${showOfferLetterModal.id}`, {
+        offer_letter_generated: true,
+        offer_letter_url: response.data.url || ''
+      }, { headers: getAuthHeaders() });
+      
+      toast.success('Offer letter generated!');
+      if (response.data.url) {
+        window.open(response.data.url, '_blank');
+      }
+      setShowOfferLetterModal(null);
+      fetchApplications();
+    } catch (error) {
+      console.error('Offer letter error:', error);
+      toast.error('Failed to generate offer letter');
+    }
+  };
+
+  // ONBOARDING STAGE: Toggle Razorpay Setup / Training checkboxes
+  const handleToggleOnboardingStep = async (application, field) => {
+    try {
+      const currentValue = application[field] || false;
+      await axios.patch(`${API}/team-applications/${application.id}`, {
+        [field]: !currentValue
+      }, { headers: getAuthHeaders() });
+      
+      toast.success(currentValue 
+        ? `${field === 'razorpay_setup_done' ? 'Razorpay Setup' : 'Training'} unmarked` 
+        : `${field === 'razorpay_setup_done' ? 'Razorpay Setup' : 'Training'} completed!`);
+      fetchApplications();
+    } catch (error) {
+      console.error('Toggle step error:', error);
+      toast.error('Failed to update step');
+    }
+  };
+
+  // ONBOARDING STAGE: Start Trial Period
+  const handleStartTrialPeriod = async () => {
+    if (!showTrialPeriodModal || !trialPeriodData.start_date) {
+      toast.error('Please select start date');
+      return;
+    }
+    
+    // Calculate end date based on duration
+    const startDate = new Date(trialPeriodData.start_date);
+    let endDate = new Date(startDate);
+    if (trialPeriodData.duration === '1_week') {
+      endDate.setDate(endDate.getDate() + 7);
+    } else {
+      endDate.setMonth(endDate.getMonth() + 1);
+    }
+    
+    try {
+      await axios.patch(`${API}/team-applications/${showTrialPeriodModal.id}`, {
+        trial_period: {
+          duration: trialPeriodData.duration,
+          start_date: trialPeriodData.start_date,
+          end_date: endDate.toISOString().split('T')[0],
+          extended: false,
+          status: 'ongoing'
+        }
+      }, { headers: getAuthHeaders() });
+      
+      toast.success(`${trialPeriodData.duration === '1_week' ? '1 Week' : '1 Month'} trial period started!`);
+      setShowTrialPeriodModal(null);
+      setTrialPeriodData({ duration: '1_week', start_date: '' });
+      fetchApplications();
+    } catch (error) {
+      console.error('Trial period error:', error);
+      toast.error('Failed to start trial period');
+    }
+  };
+
+  // ONBOARDING STAGE: Extend Trial Period
+  const handleExtendTrial = async () => {
+    if (!showExtendTrialModal || !extendTrialData.extension_date) {
+      toast.error('Please select new end date');
+      return;
+    }
+    
+    try {
+      await axios.patch(`${API}/team-applications/${showExtendTrialModal.id}`, {
+        trial_period: {
+          ...showExtendTrialModal.trial_period,
+          extended: true,
+          end_date: extendTrialData.extension_date,
+          extension_reason: extendTrialData.reason || null
+        }
+      }, { headers: getAuthHeaders() });
+      
+      toast.success('Trial period extended!');
+      setShowExtendTrialModal(null);
+      setExtendTrialData({ extension_date: '', reason: '' });
+      fetchApplications();
+    } catch (error) {
+      console.error('Extend trial error:', error);
+      toast.error('Failed to extend trial');
+    }
+  };
+
+  // ACTIVE STAGE: Add to WhatsApp Group
+  const handleWhatsAppGroupAdd = async (application) => {
+    try {
+      await axios.patch(`${API}/team-applications/${application.id}`, {
+        whatsapp_group_added: true,
+        whatsapp_group_added_at: new Date().toISOString()
+      }, { headers: getAuthHeaders() });
+      
+      // Optionally trigger WhatsApp notification
+      try {
+        await axios.post(`${API}/team-applications/${application.id}/whatsapp-group-notification`, {}, {
+          headers: getAuthHeaders()
+        });
+      } catch (waErr) {
+        console.error('WhatsApp notification failed:', waErr);
+      }
+      
+      toast.success('Added to WhatsApp group!');
+      fetchApplications();
+    } catch (error) {
+      console.error('WhatsApp group error:', error);
+      toast.error('Failed to add to WhatsApp group');
+    }
+  };
+
+  // Discontinue/Exit handler update
+  const handleDiscontinueApplication = async () => {
+    if (!showDiscontinueModal || !discontinueReason) {
+      toast.error('Please provide a reason');
+      return;
+    }
+    
+    try {
+      await axios.patch(`${API}/team-applications/${showDiscontinueModal.id}`, {
+        status: 'past_member',
+        exit_date: new Date().toISOString(),
+        exit_reason: discontinueReason,
+        account_deactivated: true
+      }, { headers: getAuthHeaders() });
+      
+      // Deactivate team user if exists
+      if (showDiscontinueModal.admin_account_created) {
+        try {
+          await axios.post(`${API}/team-applications/${showDiscontinueModal.id}/deactivate-account`, {}, {
+            headers: getAuthHeaders()
+          });
+        } catch (deactErr) {
+          console.error('Deactivate account error:', deactErr);
+        }
+      }
+      
+      toast.success('Team member moved to past members');
+      setShowDiscontinueModal(null);
+      setDiscontinueReason('');
+      fetchApplications();
+    } catch (error) {
+      console.error('Discontinue error:', error);
+      toast.error('Failed to discontinue');
+    }
+  };
+
+  // ===============================
+  // BULK UPLOAD HANDLERS
+  // ===============================
+
+  // Download Excel Template
+  const handleDownloadTemplate = () => {
+    // Create template CSV with headers
+    const headers = [
+      'Name*', 'Email*', 'Phone*', 'City*', 'Role', 'Experience', 
+      'Availability', 'LinkedIn', 'Portfolio', 'Message'
+    ];
+    const sampleRow = [
+      'John Doe', 'john@example.com', '+919876543210', 'Mumbai', 
+      'Software Developer', '3-5 years', 'Full-time', 
+      'https://linkedin.com/in/johndoe', 'https://portfolio.com', 
+      'Looking forward to joining the team'
+    ];
+    
+    const csvContent = [
+      headers.join(','),
+      sampleRow.join(','),
+      // Add empty rows for user to fill
+      '', '', ''
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'team_applications_template.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toast.success('Template downloaded! Fill in the data and upload.');
+  };
+
+  // Handle Bulk Upload
+  const handleBulkUpload = async () => {
+    if (!bulkUploadFile) {
+      toast.error('Please select a file');
+      return;
+    }
+    
+    setBulkUploadLoading(true);
+    setBulkUploadResults(null);
+    
+    try {
+      const formData = new FormData();
+      formData.append('file', bulkUploadFile);
+      
+      const response = await axios.post(`${API}/team-applications/bulk-upload`, formData, {
+        headers: {
+          ...getAuthHeaders(),
+        }
+      });
+      
+      setBulkUploadResults(response.data);
+      toast.success(`Uploaded ${response.data.success_count || 0} applications`);
+      if (response.data.success_count > 0) {
+        fetchApplications();
+      }
+    } catch (error) {
+      console.error('Bulk upload error:', error);
+      toast.error(error.response?.data?.detail || 'Failed to upload applications');
+      setBulkUploadResults({ error: error.response?.data?.detail || 'Upload failed' });
+    } finally {
+      setBulkUploadLoading(false);
     }
   };
 
@@ -332,20 +885,28 @@ const AdminTeamApplications = () => {
       app.phone?.includes(searchQuery) ||
       app.role?.toLowerCase().includes(searchQuery.toLowerCase());
     
-    const matchesStatus = activeSection === 'all' || app.status === activeSection;
+    // Status mapping for backward compatibility
+    let matchesStatus = false;
+    if (activeSection === 'all') {
+      matchesStatus = true;
+    } else if (activeSection === 'applicant') {
+      matchesStatus = app.status === 'applicant' || app.status === 'new';
+    } else if (activeSection === 'rejected') {
+      matchesStatus = app.status === 'rejected' || app.status === 'archived';
+    } else {
+      matchesStatus = app.status === activeSection;
+    }
     
     return matchesSearch && matchesStatus;
   });
 
   const sections = [
-    { value: 'new', label: 'New', count: applications.filter(a => a.status === 'new').length, color: 'bg-blue-500' },
-    { value: 'contacted', label: 'Contacted', count: applications.filter(a => a.status === 'contacted').length, color: 'bg-yellow-500' },
-    { value: 'interview_scheduled', label: 'Interview', count: applications.filter(a => a.status === 'interview_scheduled' || a.status === 'interviewed').length, color: 'bg-purple-500' },
-    { value: 'hired', label: 'Hired', count: applications.filter(a => a.status === 'hired').length, color: 'bg-green-500' },
-    { value: 'onboarding', label: 'Onboarding', count: teamOnboardings.filter(o => o.status === 'onboarding').length, color: 'bg-orange-500' },
-    { value: 'active', label: 'Active', count: teamOnboardings.filter(o => o.status === 'active').length, color: 'bg-emerald-500' },
-    { value: 'discontinued', label: 'Discontinued', count: teamOnboardings.filter(o => o.status === 'discontinued').length, color: 'bg-red-500' },
-    { value: 'archived', label: 'Archived', count: applications.filter(a => a.status === 'archived' || a.status === 'rejected').length, color: 'bg-slate-400' },
+    { value: 'applicant', label: 'Applicants', count: applications.filter(a => a.status === 'applicant' || a.status === 'new').length, color: 'bg-blue-500' },
+    { value: 'candidate', label: 'Candidates', count: applications.filter(a => a.status === 'candidate').length, color: 'bg-purple-500' },
+    { value: 'onboarding', label: 'Onboarding', count: applications.filter(a => a.status === 'onboarding').length, color: 'bg-orange-500' },
+    { value: 'active', label: 'Active', count: applications.filter(a => a.status === 'active').length, color: 'bg-emerald-500' },
+    { value: 'past_member', label: 'Past Members', count: applications.filter(a => a.status === 'past_member').length, color: 'bg-slate-400' },
+    { value: 'rejected', label: 'Rejected', count: applications.filter(a => a.status === 'rejected' || a.status === 'archived').length, color: 'bg-red-500' },
   ];
 
   // Helper functions for onboarding
@@ -448,41 +1009,289 @@ const AdminTeamApplications = () => {
   };
 
   const renderActionButtons = (application) => {
-    const statusActions = {
-      new: ['contacted', 'interview_scheduled', 'archived'],
-      contacted: ['interview_scheduled', 'archived'],
-      interview_scheduled: ['interviewed', 'hired', 'rejected'],
-      interviewed: ['hired', 'rejected'],
-      hired: [],
-      rejected: ['new'],
-      archived: ['new'],
-    };
-    const actions = statusActions[application.status] || [];
+    const status = application.status;
     
+    // NEW PIPELINE: applicant -> candidate -> onboarding -> active -> past_member / rejected
     return (
       <div className="flex gap-1 flex-wrap">
-        {actions.map(action => (
+        {/* APPLICANT STAGE ACTIONS */}
+        {(status === 'applicant' || status === 'new') && (
+          <>
+            {/* Telephonic Round */}
+            <button
+              onClick={() => {
+                setTelephonicData({ outcome: '', reject_reason: '', notes: '' });
+                setShowTelephonicModal(application);
+              }}
+              className="text-xs px-3 py-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 flex items-center gap-1 font-medium"
+              data-testid={`telephonic-${application.id}`}
+            >
+              <PhoneCall className="w-3 h-3" />
+              Telephonic Round
+            </button>
+            {/* Call button */}
+            <a
+              href={`tel:${application.phone}`}
+              className="text-xs px-3 py-1.5 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 flex items-center gap-1 font-medium"
+              data-testid={`call-${application.id}`}
+            >
+              <Phone className="w-3 h-3" />
+              Call
+            </a>
+            {/* Reject */}
+            <button
+              onClick={() => handleStatusChange(application, 'rejected')}
+              className="text-xs px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 font-medium"
+              data-testid={`reject-${application.id}`}
+            >
+              <X className="w-3 h-3" />
+              Reject
+            </button>
+          </>
+        )}
+        
+        {/* CANDIDATE STAGE ACTIONS */}
+        {status === 'candidate' && (
+          <>
+            {/* Schedule HR Interview */}
+            {!application.hr_interview?.scheduled && (
+              <button
+                onClick={() => {
+                  setHRInterviewData({ scheduled_at: '', notes: '' });
+                  setShowHRInterviewModal(application);
+                }}
+                className="text-xs px-3 py-1.5 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-700 flex items-center gap-1 font-medium"
+                data-testid={`schedule-hr-${application.id}`}
+              >
+                <Calendar className="w-3 h-3" />
+                Schedule HR Interview
+              </button>
+            )}
+            {/* HR Interview Scheduled - Mark Outcome */}
+            {application.hr_interview?.scheduled && !application.hr_interview?.completed && (
+              <button
+                onClick={() => {
+                  setHROutcomeData({ outcome: '', notes: '' });
+                  setShowHROutcomeModal(application);
+                }}
+                className="text-xs px-3 py-1.5 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-700 flex items-center gap-1 font-medium"
+                data-testid={`hr-outcome-${application.id}`}
+              >
+                <Clock className="w-3 h-3" />
+                HR: {format(new Date(application.hr_interview.scheduled_at), 'MMM d')} - Mark Result
+              </button>
+            )}
+            {/* HR Interview Completed indicator */}
+            {application.hr_interview?.completed && (
+              <span className={`text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 ${
+                application.hr_interview.outcome === 'passed' 
+                  ? 'bg-green-50 text-green-600' 
+                  : 'bg-red-50 text-red-600'
+              }`}>
+                {application.hr_interview.outcome === 'passed' ? (
+                  <><CheckCircle2 className="w-3 h-3" /> HR: Passed</>
+                ) : (
+                  <><X className="w-3 h-3" /> HR: Failed</>
+                )}
+              </span>
+            )}
+            
+            {/* Select Dept Head */}
+            {!application.dept_head_interview?.assigned && (
+              <button
+                onClick={() => {
+                  setDeptHeadData({ dept_head_id: '', scheduled_at: '', notes: '' });
+                  setShowDeptHeadModal(application);
+                }}
+                className="text-xs px-3 py-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 flex items-center gap-1 font-medium"
+                data-testid={`select-depthead-${application.id}`}
+              >
+                <Users className="w-3 h-3" />
+                Select Dept Head
+              </button>
+            )}
+            {/* Dept Head Assigned - Mark Outcome */}
+            {application.dept_head_interview?.assigned && !application.dept_head_interview?.completed && (
+              <button
+                onClick={() => {
+                  setDeptHeadOutcomeData({ outcome: '', notes: '' });
+                  setShowDeptHeadOutcomeModal(application);
+                }}
+                className="text-xs px-3 py-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 flex items-center gap-1 font-medium"
+                data-testid={`depthead-outcome-${application.id}`}
+              >
+                <UserCheck className="w-3 h-3" />
+                {application.dept_head_interview.dept_head_name || 'Dept Head'} - Mark Result
+              </button>
+            )}
+            {/* Dept Head Interview Completed indicator */}
+            {application.dept_head_interview?.completed && (
+              <span className={`text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 ${
+                application.dept_head_interview.outcome === 'selected' 
+                  ? 'bg-green-50 text-green-600' 
+                  : 'bg-red-50 text-red-600'
+              }`}>
+                {application.dept_head_interview.outcome === 'selected' ? (
+                  <><CheckCircle2 className="w-3 h-3" /> Dept: Selected</>
+                ) : (
+                  <><X className="w-3 h-3" /> Dept: Not Selected</>
+                )}
+              </span>
+            )}
+            
+            {/* Move to Onboarding (if both interviews passed) */}
+            {application.hr_interview?.completed && 
+             application.hr_interview?.outcome === 'passed' &&
+             application.dept_head_interview?.completed && 
+             application.dept_head_interview?.outcome === 'selected' && (
+              <button
+                onClick={() => handleStatusChange(application, 'onboarding')}
+                className="text-xs px-3 py-1.5 rounded-lg bg-green-500 hover:bg-green-600 text-white flex items-center gap-1 font-medium"
+                data-testid={`move-onboarding-${application.id}`}
+              >
+                <ChevronRight className="w-3 h-3" />
+                Move to Onboarding
+              </button>
+            )}
+            {/* Reject */}
+            <button
+              onClick={() => handleStatusChange(application, 'rejected')}
+              className="text-xs px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 font-medium"
+              data-testid={`reject-candidate-${application.id}`}
+            >
+              <X className="w-3 h-3" />
+              Reject
+            </button>
+          </>
+        )}
+        
+        {/* ONBOARDING STAGE ACTIONS */}
+        {status === 'onboarding' && (
+          <>
+            {/* Welcome Email with Handbook */}
+            {!application.welcome_email_sent && (
+              <button
+                onClick={() => setShowWelcomeEmailModal(application)}
+                className="text-xs px-3 py-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 flex items-center gap-1 font-medium"
+                data-testid={`welcome-email-${application.id}`}
+              >
+                <Mail className="w-3 h-3" />
+                Send Welcome Email
+              </button>
+            )}
+            {application.welcome_email_sent && (
+              <span className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" />
+                Welcome Sent
+              </span>
+            )}
+            
+            {/* Razorpay Setup Checkbox */}
+            <button
+              onClick={() => handleToggleOnboardingStep(application, 'razorpay_setup')}
+              className={`text-xs px-3 py-1.5 rounded-lg flex items-center gap-2 font-medium transition-all ${
+                application.razorpay_setup_done
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+              }`}
+              data-testid={`razorpay-setup-${application.id}`}
+            >
+              {application.razorpay_setup_done ? (
+                <CheckCircle2 className="w-4 h-4" />
+              ) : (
+                <div className="w-4 h-4 border-2 border-slate-400 rounded" />
+              )}
+              Razorpay Setup
+            </button>
+            
+            {/* Training Checkbox */}
+            <button
+              onClick={() => handleToggleOnboardingStep(application, 'training_done')}
+              className={`text-xs px-3 py-1.5 rounded-lg flex items-center gap-2 font-medium transition-all ${
+                application.training_done
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+              }`}
+              data-testid={`training-${application.id}`}
+            >
+              {application.training_done ? (
+                <CheckCircle2 className="w-4 h-4" />
+              ) : (
+                <div className="w-4 h-4 border-2 border-slate-400 rounded" />
+              )}
+              Training
+            </button>
+            
+            {/* Activate Member - Only shows when Razorpay & Training are both done */}
+            {application.razorpay_setup_done && application.training_done && (
+              <button
+                onClick={() => handleStatusChange(application, 'active')}
+                className="text-xs px-3 py-1.5 rounded-lg bg-green-500 hover:bg-green-600 text-white flex items-center gap-1 font-medium"
+                data-testid={`activate-${application.id}`}
+              >
+                <CheckCircle2 className="w-3 h-3" />
+                Activate Member
+              </button>
+            )}
+            
+            {/* Reject during onboarding */}
+            <button
+              onClick={() => handleStatusChange(application, 'rejected')}
+              className="text-xs px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1 font-medium"
+              data-testid={`reject-onboarding-${application.id}`}
+            >
+              <X className="w-3 h-3" />
+              Reject
+            </button>
+          </>
+        )}
+        
+        {/* ACTIVE STAGE ACTIONS */}
+        {status === 'active' && (
+          <>
+            {/* WhatsApp Group */}
+            {!application.whatsapp_group_added && (
+              <button
+                onClick={() => handleWhatsAppGroupAdd(application)}
+                className="text-xs px-3 py-1.5 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 flex items-center gap-1 font-medium"
+                data-testid={`whatsapp-group-${application.id}`}
+              >
+                <MessageSquare className="w-3 h-3" />
+                Add to WhatsApp Group
+              </button>
+            )}
+            {application.whatsapp_group_added && (
+              <span className="text-xs px-2 py-1 rounded bg-green-50 text-green-600">✓ In WhatsApp Group</span>
+            )}
+            
+            {/* Move to Past Member */}
+            <button
+              onClick={() => setShowDiscontinueModal(application)}
+              className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1 font-medium"
+              data-testid={`discontinue-${application.id}`}
+            >
+              <UserX className="w-3 h-3" />
+              Exit/Discontinue
+            </button>
+          </>
+        )}
+        
+        {/* PAST MEMBER / REJECTED ACTIONS */}
+        {(status === 'past_member' || status === 'rejected' || status === 'archived') && (
           <button
-            key={action}
-            onClick={() => handleStatusChange(application, action)}
-            className={`text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 font-medium ${
-              action === 'archived' || action === 'rejected'
-                ? 'bg-slate-100 hover:bg-slate-200 text-slate-600'
-                : action === 'hired'
-                  ? 'bg-green-100 hover:bg-green-200 text-green-700'
-                  : 'bg-blue-100 hover:bg-blue-200 text-blue-700'
-            }`}
-            data-testid={`${action}-${application.id}`}
+            onClick={() => handleStatusChange(application, 'applicant')}
+            className="text-xs px-3 py-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 flex items-center gap-1 font-medium"
+            data-testid={`restore-${application.id}`}
           >
-            {action === 'archived' || action === 'rejected' ? <Archive className="w-3 h-3" /> : 
-             action === 'hired' ? <CheckCircle2 className="w-3 h-3" /> :
-             <ChevronRight className="w-3 h-3" />}
-            {STATUS_CONFIG[action]?.label || action.replace('_', ' ')}
+            <ChevronRight className="w-3 h-3" />
+            Restore to Applicant
           </button>
-        ))}
+        )}
+        
+        {/* Common actions for all statuses */}
         <button
           onClick={() => setShowAssignModal(application)}
-          className="text-xs px-3 py-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 flex items-center gap-1 font-medium"
+          className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1 font-medium"
           data-testid={`assign-${application.id}`}
         >
           <UserPlus className="w-3 h-3" />
@@ -490,7 +1299,7 @@ const AdminTeamApplications = () => {
         </button>
         <button
           onClick={() => setShowCommentModal(application)}
-          className="text-xs px-3 py-1.5 rounded-lg bg-purple-100 hover:bg-purple-200 text-purple-700 flex items-center gap-1 font-medium"
+          className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1 font-medium"
           data-testid={`comment-${application.id}`}
         >
           <MessageSquare className="w-3 h-3" />
@@ -498,6 +1307,37 @@ const AdminTeamApplications = () => {
         </button>
       </div>
     );
+  };
+
+  const exportApplicationsToCSV = () => {
+    const filtered = applications.filter(app => {
+      const matchesSearch = !searchQuery ||
+        app.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        app.phone?.includes(searchQuery) ||
+        app.role?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesSection = activeSection === 'all' || app.status === activeSection;
+      return matchesSearch && matchesSection;
+    });
+    const headers = ['Name', 'Email', 'Phone', 'Role', 'Status', 'Applied On', 'City', 'Experience'];
+    const rows = filtered.map(app => [
+      app.name || '',
+      app.email || '',
+      app.phone || '',
+      app.role || '',
+      app.status || '',
+      app.created_at ? new Date(app.created_at).toLocaleDateString('en-IN') : '',
+      app.city || '',
+      app.experience || '',
+    ]);
+    const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `team_applications_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Exported ${filtered.length} applications`);
   };
 
   return (
@@ -514,6 +1354,36 @@ const AdminTeamApplications = () => {
             data-testid="search-input"
           />
         </div>
+        {/* Download Template Button */}
+        <Button 
+          variant="outline" 
+          onClick={handleDownloadTemplate}
+          className="border-slate-300 text-slate-700"
+          data-testid="download-template-btn"
+        >
+          <Download className="w-4 h-4 mr-2" />
+          Template
+        </Button>
+        {/* Export CSV Button */}
+        <Button 
+          variant="outline" 
+          onClick={exportApplicationsToCSV}
+          className="border-green-300 text-green-700 hover:bg-green-50"
+          data-testid="export-applications-csv-btn"
+        >
+          <Download className="w-4 h-4 mr-2" />
+          Export CSV
+        </Button>
+        {/* Bulk Upload Button */}
+        <Button 
+          variant="outline" 
+          onClick={() => setShowBulkUploadModal(true)}
+          className="border-emerald-500 text-emerald-600 hover:bg-emerald-50"
+          data-testid="bulk-upload-btn"
+        >
+          <Upload className="w-4 h-4 mr-2" />
+          Bulk Upload
+        </Button>
         <Button 
           variant="outline" 
           onClick={() => setShowRequirementsModal(true)} 
@@ -552,156 +1422,22 @@ const AdminTeamApplications = () => {
         ))}
       </div>
 
-      {/* Applications List / Onboarding List */}
+      {/* Applications List */}
       {loading ? (
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D63031] mx-auto"></div>
         </div>
-      ) : ['onboarding', 'active', 'discontinued'].includes(activeSection) ? (
-        /* Team Onboarding Content */
-        filteredOnboardings.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">
-            <User className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-            <p className="text-slate-500">
-              {activeSection === 'onboarding' ? 'No team members in onboarding. Hire applicants to start onboarding.' :
-               activeSection === 'active' ? 'No active team members yet.' : 'No discontinued team members.'}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {filteredOnboardings.map((member) => (
-              <div key={member.id} className="bg-white rounded-2xl border border-slate-100 p-4 hover:shadow-md transition-shadow">
-                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold text-[#1E3A5F]">{member.name}</h3>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        member.status === 'onboarding' ? 'bg-orange-100 text-orange-700' :
-                        member.status === 'active' ? 'bg-green-100 text-green-700' :
-                        'bg-slate-100 text-slate-700'
-                      }`}>
-                        {member.status === 'onboarding' ? 'Onboarding' :
-                         member.status === 'active' ? 'Active' : 'Discontinued'}
-                      </span>
-                      {member.role && (
-                        <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-700">
-                          {member.role}
-                        </span>
-                      )}
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-3 text-sm text-slate-600">
-                      {member.phone && <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" /> {member.phone}</span>}
-                      {member.email && <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5" /> {member.email}</span>}
-                      {member.city && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {member.city}</span>}
-                    </div>
-
-                    {/* Progress for onboarding */}
-                    {member.status === 'onboarding' && (
-                      <div className="mt-3">
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-orange-500 transition-all"
-                              style={{ width: `${(getCompletedSteps(member.steps) / 4) * 100}%` }}
-                            />
-                          </div>
-                          <span className="text-xs text-slate-500">{getCompletedSteps(member.steps)}/4 steps</span>
-                        </div>
-                        <div className="flex gap-2 flex-wrap">
-                          {ONBOARDING_STEPS.map(step => {
-                            const isCompleted = member.steps?.[step.key]?.completed;
-                            const Icon = step.icon;
-                            return (
-                              <button
-                                key={step.key}
-                                onClick={() => {
-                                  if (!isCompleted) {
-                                    setShowStepModal({ onboardingId: member.id, step: step.key, stepLabel: step.label });
-                                    setStepData({});
-                                  }
-                                }}
-                                data-testid={`step-${step.key}-${member.id}`}
-                                className={`text-xs px-2 py-1 rounded flex items-center gap-1 ${
-                                  isCompleted 
-                                    ? 'bg-green-100 text-green-700 cursor-default' 
-                                    : 'bg-slate-100 text-slate-600 hover:bg-orange-100 hover:text-orange-700'
-                                }`}
-                              >
-                                {isCompleted ? <CheckCircle2 className="w-3 h-3" /> : <Icon className="w-3 h-3" />}
-                                {step.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Discontinued info */}
-                    {member.status === 'discontinued' && member.discontinued_reason && (
-                      <div className="mt-3 p-2 bg-red-50 rounded-lg">
-                        <p className="text-xs text-red-600"><strong>Reason:</strong> {member.discontinued_reason}</p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex gap-2 flex-wrap">
-                    {member.status === 'onboarding' && (
-                      <>
-                        <button
-                          onClick={() => copyTrackingLink(member.tracking_token)}
-                          className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1"
-                          data-testid={`copy-link-${member.id}`}
-                        >
-                          <Copy className="w-3 h-3" /> Copy Link
-                        </button>
-                        {getCompletedSteps(member.steps) === 4 && (
-                          <button
-                            onClick={() => setShowActivateModal(member)}
-                            className="text-xs px-3 py-1.5 rounded-lg bg-green-100 hover:bg-green-200 text-green-700 flex items-center gap-1 font-medium"
-                            data-testid={`activate-${member.id}`}
-                          >
-                            <UserPlus className="w-3 h-3" /> Activate
-                          </button>
-                        )}
-                      </>
-                    )}
-                    {member.status === 'active' && (
-                      <>
-                        <button
-                          onClick={() => fetchTeamMemberReport(member)}
-                          className="text-xs px-3 py-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 flex items-center gap-1"
-                          data-testid={`reports-${member.id}`}
-                        >
-                          <BarChart3 className="w-3 h-3" /> Reports
-                        </button>
-                        <button
-                          onClick={() => setShowDiscontinueModal(member)}
-                          className="text-xs px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 text-red-700 flex items-center gap-1"
-                          data-testid={`discontinue-${member.id}`}
-                        >
-                          <UserX className="w-3 h-3" /> Discontinue
-                        </button>
-                      </>
-                    )}
-                    <button
-                      onClick={() => setViewApplication(applications.find(a => a.id === member.application_id) || member)}
-                      className="text-xs px-3 py-1.5 rounded-lg bg-blue-100 hover:bg-blue-200 text-blue-700 flex items-center gap-1"
-                      data-testid={`view-onboarding-${member.id}`}
-                    >
-                      <Eye className="w-3 h-3" /> View
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )
       ) : filteredApplications.length === 0 ? (
-        <div className="text-center py-12 bg-slate-50 rounded-2xl">
-          <User className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <p className="text-slate-500">No applications found</p>
+        <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">
+          <User className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+          <p className="text-slate-500">
+            {activeSection === 'applicant' ? 'No new applicants.' :
+             activeSection === 'candidate' ? 'No candidates in interview process.' :
+             activeSection === 'onboarding' ? 'No team members in onboarding. Move candidates here after interviews pass.' :
+             activeSection === 'active' ? 'No active team members yet.' :
+             activeSection === 'past_member' ? 'No past members.' :
+             'No rejected applications.'}
+          </p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -1003,10 +1739,10 @@ const AdminTeamApplications = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">City</label>
-                <Input
+                <CitySearch
                   value={newApplication.city}
-                  onChange={(e) => setNewApplication({...newApplication, city: e.target.value})}
-                  placeholder="City"
+                  onChange={(city) => setNewApplication({...newApplication, city})}
+                  placeholder="Search city..."
                   data-testid="new-app-city"
                 />
               </div>
@@ -1485,6 +2221,778 @@ const AdminTeamApplications = () => {
           ) : (
             <p className="text-center text-slate-500 py-8">No report data available</p>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* ============================== */}
+      {/* NEW PIPELINE MODALS */}
+      {/* ============================== */}
+
+      {/* Telephonic Round Modal */}
+      <Dialog open={!!showTelephonicModal} onOpenChange={() => setShowTelephonicModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PhoneCall className="w-5 h-5 text-blue-600" />
+              Telephonic Round - {showTelephonicModal?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <p className="font-medium">{showTelephonicModal?.name}</p>
+              <p className="text-sm text-slate-600">{showTelephonicModal?.role} • {showTelephonicModal?.phone}</p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Outcome *</label>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setTelephonicData({...telephonicData, outcome: 'accepted'})}
+                  className={`flex-1 py-3 px-4 rounded-lg border-2 transition-all ${
+                    telephonicData.outcome === 'accepted'
+                      ? 'border-green-500 bg-green-50 text-green-700'
+                      : 'border-slate-200 hover:border-green-300'
+                  }`}
+                  data-testid="telephonic-accept"
+                >
+                  <CheckCircle2 className="w-5 h-5 mx-auto mb-1" />
+                  <span className="text-sm font-medium">Accept</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTelephonicData({...telephonicData, outcome: 'rejected'})}
+                  className={`flex-1 py-3 px-4 rounded-lg border-2 transition-all ${
+                    telephonicData.outcome === 'rejected'
+                      ? 'border-red-500 bg-red-50 text-red-700'
+                      : 'border-slate-200 hover:border-red-300'
+                  }`}
+                  data-testid="telephonic-reject"
+                >
+                  <X className="w-5 h-5 mx-auto mb-1" />
+                  <span className="text-sm font-medium">Reject</span>
+                </button>
+              </div>
+            </div>
+            
+            {telephonicData.outcome === 'rejected' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Rejection Reason *</label>
+                <select
+                  value={telephonicData.reject_reason}
+                  onChange={(e) => setTelephonicData({...telephonicData, reject_reason: e.target.value})}
+                  className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                  data-testid="telephonic-reject-reason"
+                >
+                  <option value="">Select reason</option>
+                  <option value="Poor communication">Poor communication</option>
+                  <option value="Not fit for role">Not fit for role</option>
+                  <option value="Salary mismatch">Salary mismatch</option>
+                  <option value="Location issues">Location issues</option>
+                  <option value="Availability issues">Availability issues</option>
+                  <option value="Declined by candidate">Declined by candidate</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            )}
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+              <Textarea
+                value={telephonicData.notes}
+                onChange={(e) => setTelephonicData({...telephonicData, notes: e.target.value})}
+                placeholder="Add any notes from the call..."
+                className="min-h-[80px]"
+                data-testid="telephonic-notes"
+              />
+            </div>
+            
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => setShowTelephonicModal(null)} className="flex-1">Cancel</Button>
+              <Button 
+                onClick={handleTelephonicRound} 
+                disabled={!telephonicData.outcome || (telephonicData.outcome === 'rejected' && !telephonicData.reject_reason)}
+                className={`flex-1 ${telephonicData.outcome === 'accepted' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
+                data-testid="telephonic-submit"
+              >
+                {telephonicData.outcome === 'accepted' ? 'Move to Candidate' : 'Reject Application'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* HR Interview Modal */}
+      <Dialog open={!!showHRInterviewModal} onOpenChange={() => setShowHRInterviewModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-purple-600" />
+              Schedule HR Interview
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-purple-50 p-4 rounded-lg">
+              <p className="font-medium">{showHRInterviewModal?.name}</p>
+              <p className="text-sm text-slate-600">{showHRInterviewModal?.role} • {showHRInterviewModal?.email}</p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Interview Date & Time *</label>
+              <Input
+                type="datetime-local"
+                value={hrInterviewData.scheduled_at}
+                onChange={(e) => setHRInterviewData({...hrInterviewData, scheduled_at: e.target.value})}
+                data-testid="hr-interview-date"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+              <Textarea
+                value={hrInterviewData.notes}
+                onChange={(e) => setHRInterviewData({...hrInterviewData, notes: e.target.value})}
+                placeholder="Interview location, video link, etc..."
+                className="min-h-[60px]"
+                data-testid="hr-interview-notes"
+              />
+            </div>
+            
+            <div className="bg-blue-50 p-3 rounded-lg">
+              <p className="text-sm text-blue-700">
+                <Mail className="w-4 h-4 inline mr-1" />
+                An email will be sent to {showHRInterviewModal?.email || 'the candidate'}
+              </p>
+            </div>
+            
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => setShowHRInterviewModal(null)} className="flex-1">Cancel</Button>
+              <Button 
+                onClick={handleScheduleHRInterview} 
+                disabled={!hrInterviewData.scheduled_at}
+                className="flex-1 bg-purple-600 hover:bg-purple-700"
+                data-testid="hr-interview-submit"
+              >
+                Schedule Interview
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dept Head Selection Modal */}
+      <Dialog open={!!showDeptHeadModal} onOpenChange={() => setShowDeptHeadModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-indigo-600" />
+              Select Department Head
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-indigo-50 p-4 rounded-lg">
+              <p className="font-medium">{showDeptHeadModal?.name}</p>
+              <p className="text-sm text-slate-600">Role: {showDeptHeadModal?.role}</p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Select Dept Head *</label>
+              <select
+                value={deptHeadData.dept_head_id}
+                onChange={(e) => setDeptHeadData({...deptHeadData, dept_head_id: e.target.value})}
+                className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                data-testid="dept-head-select"
+              >
+                <option value="">Select team member</option>
+                {teamUsers.filter(u => u.is_active).map(u => (
+                  <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
+                ))}
+              </select>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Interview Date (Optional)</label>
+              <Input
+                type="datetime-local"
+                value={deptHeadData.scheduled_at}
+                onChange={(e) => setDeptHeadData({...deptHeadData, scheduled_at: e.target.value})}
+                data-testid="dept-head-date"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+              <Textarea
+                value={deptHeadData.notes}
+                onChange={(e) => setDeptHeadData({...deptHeadData, notes: e.target.value})}
+                placeholder="Any specific instructions..."
+                className="min-h-[60px]"
+                data-testid="dept-head-notes"
+              />
+            </div>
+            
+            <div className="bg-blue-50 p-3 rounded-lg">
+              <p className="text-sm text-blue-700">
+                <Mail className="w-4 h-4 inline mr-1" />
+                The selected team member will be notified via email
+              </p>
+            </div>
+            
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => setShowDeptHeadModal(null)} className="flex-1">Cancel</Button>
+              <Button 
+                onClick={handleSelectDeptHead} 
+                disabled={!deptHeadData.dept_head_id}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700"
+                data-testid="dept-head-submit"
+              >
+                Assign & Notify
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* HR Interview Outcome Modal */}
+      <Dialog open={!!showHROutcomeModal} onOpenChange={() => setShowHROutcomeModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-purple-600" />
+              HR Interview Result - {showHROutcomeModal?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-purple-50 p-4 rounded-lg">
+              <p className="font-medium">{showHROutcomeModal?.name}</p>
+              <p className="text-sm text-slate-600">{showHROutcomeModal?.role} • {showHROutcomeModal?.email}</p>
+              {showHROutcomeModal?.hr_interview?.scheduled_at && (
+                <p className="text-sm text-purple-600 mt-1">
+                  Interview Date: {format(new Date(showHROutcomeModal.hr_interview.scheduled_at), 'PPp')}
+                </p>
+              )}
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Interview Outcome *</label>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setHROutcomeData({...hrOutcomeData, outcome: 'passed'})}
+                  className={`flex-1 py-3 px-4 rounded-lg border-2 transition-all ${
+                    hrOutcomeData.outcome === 'passed'
+                      ? 'border-green-500 bg-green-50 text-green-700'
+                      : 'border-slate-200 hover:border-green-300'
+                  }`}
+                  data-testid="hr-outcome-passed"
+                >
+                  <CheckCircle2 className="w-5 h-5 mx-auto mb-1" />
+                  <span className="text-sm font-medium">Passed</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHROutcomeData({...hrOutcomeData, outcome: 'failed'})}
+                  className={`flex-1 py-3 px-4 rounded-lg border-2 transition-all ${
+                    hrOutcomeData.outcome === 'failed'
+                      ? 'border-red-500 bg-red-50 text-red-700'
+                      : 'border-slate-200 hover:border-red-300'
+                  }`}
+                  data-testid="hr-outcome-failed"
+                >
+                  <X className="w-5 h-5 mx-auto mb-1" />
+                  <span className="text-sm font-medium">Failed</span>
+                </button>
+              </div>
+            </div>
+            
+            {hrOutcomeData.outcome === 'failed' && (
+              <div className="bg-red-50 p-3 rounded-lg">
+                <p className="text-sm text-red-700">
+                  <AlertTriangle className="w-4 h-4 inline mr-1" />
+                  Marking as "Failed" will automatically reject this application.
+                </p>
+              </div>
+            )}
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+              <Textarea
+                value={hrOutcomeData.notes}
+                onChange={(e) => setHROutcomeData({...hrOutcomeData, notes: e.target.value})}
+                placeholder="Interview feedback, observations..."
+                className="min-h-[80px]"
+                data-testid="hr-outcome-notes"
+              />
+            </div>
+            
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => setShowHROutcomeModal(null)} className="flex-1">Cancel</Button>
+              <Button 
+                onClick={handleHROutcome} 
+                disabled={!hrOutcomeData.outcome}
+                className={`flex-1 ${hrOutcomeData.outcome === 'passed' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
+                data-testid="hr-outcome-submit"
+              >
+                {hrOutcomeData.outcome === 'passed' ? 'Mark as Passed' : 'Mark as Failed'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dept Head Interview Outcome Modal */}
+      <Dialog open={!!showDeptHeadOutcomeModal} onOpenChange={() => setShowDeptHeadOutcomeModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Award className="w-5 h-5 text-indigo-600" />
+              Department Interview Result - {showDeptHeadOutcomeModal?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-indigo-50 p-4 rounded-lg">
+              <p className="font-medium">{showDeptHeadOutcomeModal?.name}</p>
+              <p className="text-sm text-slate-600">{showDeptHeadOutcomeModal?.role}</p>
+              {showDeptHeadOutcomeModal?.dept_head_interview?.dept_head_name && (
+                <p className="text-sm text-indigo-600 mt-1">
+                  Interviewed by: {showDeptHeadOutcomeModal.dept_head_interview.dept_head_name}
+                </p>
+              )}
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Interview Outcome *</label>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDeptHeadOutcomeData({...deptHeadOutcomeData, outcome: 'selected'})}
+                  className={`flex-1 py-3 px-4 rounded-lg border-2 transition-all ${
+                    deptHeadOutcomeData.outcome === 'selected'
+                      ? 'border-green-500 bg-green-50 text-green-700'
+                      : 'border-slate-200 hover:border-green-300'
+                  }`}
+                  data-testid="depthead-outcome-selected"
+                >
+                  <UserCheck className="w-5 h-5 mx-auto mb-1" />
+                  <span className="text-sm font-medium">Selected</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeptHeadOutcomeData({...deptHeadOutcomeData, outcome: 'not_selected'})}
+                  className={`flex-1 py-3 px-4 rounded-lg border-2 transition-all ${
+                    deptHeadOutcomeData.outcome === 'not_selected'
+                      ? 'border-red-500 bg-red-50 text-red-700'
+                      : 'border-slate-200 hover:border-red-300'
+                  }`}
+                  data-testid="depthead-outcome-not-selected"
+                >
+                  <UserX className="w-5 h-5 mx-auto mb-1" />
+                  <span className="text-sm font-medium">Not Selected</span>
+                </button>
+              </div>
+            </div>
+            
+            {deptHeadOutcomeData.outcome === 'not_selected' && (
+              <div className="bg-red-50 p-3 rounded-lg">
+                <p className="text-sm text-red-700">
+                  <AlertTriangle className="w-4 h-4 inline mr-1" />
+                  Marking as "Not Selected" will automatically reject this application.
+                </p>
+              </div>
+            )}
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+              <Textarea
+                value={deptHeadOutcomeData.notes}
+                onChange={(e) => setDeptHeadOutcomeData({...deptHeadOutcomeData, notes: e.target.value})}
+                placeholder="Department head's feedback, recommendations..."
+                className="min-h-[80px]"
+                data-testid="depthead-outcome-notes"
+              />
+            </div>
+            
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => setShowDeptHeadOutcomeModal(null)} className="flex-1">Cancel</Button>
+              <Button 
+                onClick={handleDeptHeadOutcome} 
+                disabled={!deptHeadOutcomeData.outcome}
+                className={`flex-1 ${deptHeadOutcomeData.outcome === 'selected' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}
+                data-testid="depthead-outcome-submit"
+              >
+                {deptHeadOutcomeData.outcome === 'selected' ? 'Mark as Selected' : 'Mark as Not Selected'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Welcome Email Modal */}
+      <Dialog open={!!showWelcomeEmailModal} onOpenChange={() => setShowWelcomeEmailModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="w-5 h-5 text-blue-600" />
+              Send Welcome Email
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <p className="font-medium">{showWelcomeEmailModal?.name}</p>
+              <p className="text-sm text-slate-600">{showWelcomeEmailModal?.email}</p>
+            </div>
+            
+            <div className="bg-slate-50 p-4 rounded-lg">
+              <p className="text-sm font-medium text-slate-700 mb-2">Email Preview:</p>
+              <p className="text-sm text-slate-600">
+                Welcome aboard, {showWelcomeEmailModal?.name}! We're excited to have you join the OLL team.
+                This email will contain onboarding instructions, important links, and next steps.
+              </p>
+            </div>
+            
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => setShowWelcomeEmailModal(null)} className="flex-1">Cancel</Button>
+              <Button 
+                onClick={handleSendWelcomeEmail}
+                className="flex-1 bg-blue-600 hover:bg-blue-700"
+                data-testid="welcome-email-submit"
+              >
+                <Send className="w-4 h-4 mr-2" />
+                Send Welcome Email
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Account Modal */}
+      <Dialog open={!!showCreateAccountModal} onOpenChange={() => setShowCreateAccountModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5 text-indigo-600" />
+              Create OLL Admin Account
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-indigo-50 p-4 rounded-lg">
+              <p className="font-medium">{showCreateAccountModal?.name}</p>
+              <p className="text-sm text-slate-600">{showCreateAccountModal?.email}</p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Select Role *</label>
+              <select
+                value={selectedRoleId}
+                onChange={(e) => setSelectedRoleId(e.target.value)}
+                className="w-full h-10 px-3 border border-slate-200 rounded-lg"
+                data-testid="create-account-role"
+              >
+                <option value="">Select role</option>
+                {roles.map(role => (
+                  <option key={role.id} value={role.id}>{role.name}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="bg-yellow-50 p-3 rounded-lg">
+              <p className="text-sm text-yellow-700">
+                <AlertTriangle className="w-4 h-4 inline mr-1" />
+                A temporary password will be generated and copied to your clipboard.
+                Share it securely with the team member.
+              </p>
+            </div>
+            
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => setShowCreateAccountModal(null)} className="flex-1">Cancel</Button>
+              <Button 
+                onClick={handleCreateAccount}
+                disabled={!selectedRoleId}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700"
+                data-testid="create-account-submit"
+              >
+                Create Account
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Offer Letter Modal */}
+      <Dialog open={!!showOfferLetterModal} onOpenChange={() => setShowOfferLetterModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-orange-600" />
+              Generate Offer Letter
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-orange-50 p-4 rounded-lg">
+              <p className="font-medium">{showOfferLetterModal?.name}</p>
+              <p className="text-sm text-slate-600">Role: {showOfferLetterModal?.role}</p>
+            </div>
+            
+            <div className="bg-slate-50 p-4 rounded-lg">
+              <p className="text-sm text-slate-600">
+                This will generate a formal offer letter with the role details and compensation information.
+                The PDF will be available for download and can be sent to the candidate.
+              </p>
+            </div>
+            
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => setShowOfferLetterModal(null)} className="flex-1">Cancel</Button>
+              <Button 
+                onClick={handleGenerateOfferLetter}
+                className="flex-1 bg-orange-600 hover:bg-orange-700"
+                data-testid="offer-letter-submit"
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                Generate Offer
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Trial Period Modal */}
+      <Dialog open={!!showTrialPeriodModal} onOpenChange={() => setShowTrialPeriodModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Play className="w-5 h-5 text-emerald-600" />
+              Start Trial Period
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-emerald-50 p-4 rounded-lg">
+              <p className="font-medium">{showTrialPeriodModal?.name}</p>
+              <p className="text-sm text-slate-600">Role: {showTrialPeriodModal?.role}</p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Trial Duration *</label>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setTrialPeriodData({...trialPeriodData, duration: '1_week'})}
+                  className={`flex-1 py-3 px-4 rounded-lg border-2 transition-all ${
+                    trialPeriodData.duration === '1_week'
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                      : 'border-slate-200 hover:border-emerald-300'
+                  }`}
+                  data-testid="trial-1-week"
+                >
+                  <span className="font-medium">1 Week</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTrialPeriodData({...trialPeriodData, duration: '1_month'})}
+                  className={`flex-1 py-3 px-4 rounded-lg border-2 transition-all ${
+                    trialPeriodData.duration === '1_month'
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                      : 'border-slate-200 hover:border-emerald-300'
+                  }`}
+                  data-testid="trial-1-month"
+                >
+                  <span className="font-medium">1 Month</span>
+                </button>
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Start Date *</label>
+              <Input
+                type="date"
+                value={trialPeriodData.start_date}
+                onChange={(e) => setTrialPeriodData({...trialPeriodData, start_date: e.target.value})}
+                data-testid="trial-start-date"
+              />
+            </div>
+            
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => setShowTrialPeriodModal(null)} className="flex-1">Cancel</Button>
+              <Button 
+                onClick={handleStartTrialPeriod}
+                disabled={!trialPeriodData.start_date}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                data-testid="trial-submit"
+              >
+                Start Trial Period
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Extend Trial Modal */}
+      <Dialog open={!!showExtendTrialModal} onOpenChange={() => setShowExtendTrialModal(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pause className="w-5 h-5 text-yellow-600" />
+              Extend Trial Period
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-yellow-50 p-4 rounded-lg">
+              <p className="font-medium">{showExtendTrialModal?.name}</p>
+              <p className="text-sm text-slate-600">
+                Current end date: {showExtendTrialModal?.trial_period?.end_date || 'N/A'}
+              </p>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">New End Date *</label>
+              <Input
+                type="date"
+                value={extendTrialData.extension_date}
+                onChange={(e) => setExtendTrialData({...extendTrialData, extension_date: e.target.value})}
+                min={showExtendTrialModal?.trial_period?.end_date}
+                data-testid="extend-trial-date"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Reason for Extension</label>
+              <Textarea
+                value={extendTrialData.reason}
+                onChange={(e) => setExtendTrialData({...extendTrialData, reason: e.target.value})}
+                placeholder="Why is the trial being extended?"
+                className="min-h-[60px]"
+                data-testid="extend-trial-reason"
+              />
+            </div>
+            
+            <div className="flex gap-3 pt-2">
+              <Button variant="outline" onClick={() => setShowExtendTrialModal(null)} className="flex-1">Cancel</Button>
+              <Button 
+                onClick={handleExtendTrial}
+                disabled={!extendTrialData.extension_date}
+                className="flex-1 bg-yellow-600 hover:bg-yellow-700"
+                data-testid="extend-trial-submit"
+              >
+                Extend Trial
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Upload Modal */}
+      <Dialog open={showBulkUploadModal} onOpenChange={setShowBulkUploadModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="w-5 h-5 text-emerald-600" />
+              Bulk Upload Applications
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="bg-slate-50 p-4 rounded-lg">
+              <p className="text-sm text-slate-700 mb-2">
+                <strong>Instructions:</strong>
+              </p>
+              <ol className="text-sm text-slate-600 list-decimal list-inside space-y-1">
+                <li>Download the template using the "Template" button</li>
+                <li>Fill in the data (Name, Email, Phone, City are required)</li>
+                <li>Save as CSV file</li>
+                <li>Upload the file below</li>
+              </ol>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Select CSV File</label>
+              <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center">
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={(e) => setBulkUploadFile(e.target.files[0])}
+                  className="hidden"
+                  id="bulk-upload-input"
+                  data-testid="bulk-upload-input"
+                />
+                <label htmlFor="bulk-upload-input" className="cursor-pointer">
+                  {bulkUploadFile ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <FileText className="w-6 h-6 text-emerald-600" />
+                      <span className="text-sm font-medium">{bulkUploadFile.name}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.preventDefault(); setBulkUploadFile(null); }}
+                        className="p-1 hover:bg-slate-200 rounded"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                      <p className="text-sm text-slate-600">Click to select CSV file</p>
+                    </>
+                  )}
+                </label>
+              </div>
+            </div>
+            
+            {bulkUploadResults && (
+              <div className={`p-4 rounded-lg ${bulkUploadResults.error ? 'bg-red-50' : 'bg-green-50'}`}>
+                {bulkUploadResults.error ? (
+                  <p className="text-sm text-red-700">{bulkUploadResults.error}</p>
+                ) : (
+                  <div className="text-sm">
+                    <p className="text-green-700 font-medium">
+                      ✓ {bulkUploadResults.success_count} applications uploaded successfully
+                    </p>
+                    {bulkUploadResults.failed_count > 0 && (
+                      <p className="text-yellow-700 mt-1">
+                        ⚠ {bulkUploadResults.failed_count} rows failed
+                      </p>
+                    )}
+                    {bulkUploadResults.errors?.length > 0 && (
+                      <ul className="mt-2 text-red-600 text-xs list-disc list-inside">
+                        {bulkUploadResults.errors.slice(0, 5).map((err, i) => (
+                          <li key={i}>{err}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            
+            <div className="flex gap-3 pt-2">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowBulkUploadModal(false);
+                  setBulkUploadFile(null);
+                  setBulkUploadResults(null);
+                }} 
+                className="flex-1"
+              >
+                Close
+              </Button>
+              <Button 
+                onClick={handleBulkUpload}
+                disabled={!bulkUploadFile || bulkUploadLoading}
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700"
+                data-testid="bulk-upload-submit"
+              >
+                {bulkUploadLoading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4 mr-2" />
+                    Upload Applications
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </AdminLayout>

@@ -13,6 +13,7 @@ import { Textarea } from '../../components/ui/textarea';
 import { toast } from 'sonner';
 import axios from 'axios';
 import { format } from 'date-fns';
+import CitySearch from '../../components/CitySearch';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -26,7 +27,6 @@ const STATUSES = {
 
 const AGE_GROUPS = ['6-8 years', '9-12 years', '13-16 years', '17+ years'];
 const SKILLS = ['Robotics', 'Coding', 'AI', 'Entrepreneurship', 'Financial Literacy'];
-const CITIES = ['Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 'Pune', 'Ahmedabad'];
 const FEE_RANGES = ['Under 50k', '50k-1L', '1L-2L', '2L-5L', 'Above 5L'];
 const STUDENT_COUNTS = ['Under 500', '500-1000', '1000-2000', '2000-5000', 'Above 5000'];
 const AVAILABILITY = ['Full Time', 'Part Time', 'Weekends Only', 'Evenings Only'];
@@ -174,6 +174,7 @@ const AdminDataCenter = () => {
   useEffect(() => {
     fetchData();
     fetchStats();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -181,6 +182,7 @@ const AdminDataCenter = () => {
       fetchData();
     }, 300);
     return () => clearTimeout(debounce);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, dataType, statusFilter, cityFilter, ageFilter, skillFilter, feeRangeFilter, studentCountFilter, availabilityFilter]);
 
   const clearFilters = () => {
@@ -393,16 +395,12 @@ const AdminDataCenter = () => {
                 ))}
               </select>
               
-              <select
+              <CitySearch
                 value={cityFilter}
-                onChange={(e) => setCityFilter(e.target.value)}
-                className="h-10 px-3 border border-slate-200 rounded-lg bg-white text-sm"
-              >
-                <option value="">All Cities</option>
-                {CITIES.map(c => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
-              </select>
+                onChange={(city) => setCityFilter(city)}
+                placeholder="Filter by city..."
+                className="w-44"
+              />
               
               {/* Age filter - ONLY for students */}
               {dataType === 'students' && (

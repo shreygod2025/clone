@@ -178,6 +178,7 @@ const AdminSupportUnified = () => {
   const [showAssignModal, setShowAssignModal] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [replyText, setReplyText] = useState('');
+  const [replyAttachment, setReplyAttachment] = useState(null); // {url, filename, original_name, file_type}
   const [newTicket, setNewTicket] = useState({
     name: '', phone: '', email: '', query_type: 'course_info', related_to: 'course_content', inquiry_type: 'student', message: '', priority: 'normal', source: 'admin_created'
   });
@@ -211,15 +212,24 @@ const AdminSupportUnified = () => {
   const recordingIntervalRef = useRef(null);
   const audioPlayerRef = useRef(null);
   const fileInputRef = useRef(null);
+  const replyFileInputRef = useRef(null);
   
   // Autocomplete states
   const [autocompleteSuggestions, setAutocompleteSuggestions] = useState([]);
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [autocompleteField, setAutocompleteField] = useState('');
+  
+  // School contact picker states
+  const [schoolSearchQuery, setSchoolSearchQuery] = useState('');
+  const [schoolSearchResults, setSchoolSearchResults] = useState([]);
+  const [showSchoolDropdown, setShowSchoolDropdown] = useState(false);
+  const [selectedSchool, setSelectedSchool] = useState(null);
+  const [schoolContacts, setSchoolContacts] = useState([]);
 
   useEffect(() => {
     fetchAllQueries();
     fetchTeamUsers();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchTeamUsers = async () => {
@@ -352,6 +362,55 @@ const AdminSupportUnified = () => {
     setShowAutocomplete(false);
   };
 
+  // School search for ticket creation
+  const searchSchools = async (query) => {
+    setSchoolSearchQuery(query);
+    if (!query || query.length < 2) {
+      setSchoolSearchResults([]);
+      setShowSchoolDropdown(false);
+      return;
+    }
+    try {
+      const response = await axios.get(`${API}/schools/inquiries`, {
+        headers: getAuthHeaders()
+      });
+      const allSchools = response.data?.inquiries || response.data || [];
+      const filtered = allSchools.filter(s => 
+        s.school_name?.toLowerCase().includes(query.toLowerCase()) ||
+        s.contact_name?.toLowerCase().includes(query.toLowerCase())
+      ).slice(0, 10);
+      setSchoolSearchResults(filtered);
+      setShowSchoolDropdown(filtered.length > 0);
+    } catch (error) {
+      console.error('School search error:', error);
+    }
+  };
+
+  const selectSchool = (school) => {
+    setSelectedSchool(school);
+    setSchoolSearchQuery(school.school_name || '');
+    setShowSchoolDropdown(false);
+    // Extract contacts from onboarding_data
+    const contacts = school.onboarding_data?.school_contacts || [];
+    // Also include the main contact
+    const mainContact = { name: school.contact_name, phone: school.phone, email: school.email, role: 'Main Contact' };
+    const allContacts = [mainContact, ...contacts].filter(c => c.name || c.phone);
+    setSchoolContacts(allContacts);
+    // If only one contact, auto-select it
+    if (allContacts.length === 1) {
+      selectSchoolContact(allContacts[0]);
+    }
+  };
+
+  const selectSchoolContact = (contact) => {
+    setNewTicket({
+      ...newTicket,
+      name: contact.name || '',
+      phone: contact.phone || '',
+      email: contact.email || '',
+    });
+  };
+
   // Initial effect handled above
 
   const fetchAllQueries = async () => {
@@ -441,8 +500,8 @@ const AdminSupportUnified = () => {
   };
 
   const handleReply = async () => {
-    if (!replyText.trim()) {
-      toast.error('Please enter a reply');
+    if (!replyText.trim() && !replyAttachment) {
+      toast.error('Please enter a reply or attach a file');
       return;
     }
     try {
@@ -457,15 +516,18 @@ const AdminSupportUnified = () => {
         toast.success('Reply sent');
         setShowReplyModal(null);
         setReplyText('');
+        setReplyAttachment(null);
       } else if (showReplyModal._source === 'user_support') {
         // Use new replies endpoint for chat-style conversation
         await axios.post(`${API}/support/queries/${showReplyModal.id}/replies`, { 
-          text: replyText
+          text: replyText,
+          attachment: replyAttachment || null
         }, {
           headers: getAuthHeaders()
         });
         toast.success('Reply sent');
         setReplyText('');
+        setReplyAttachment(null);
         // Refresh replies list
         fetchQueryReplies(showReplyModal.id);
       }
@@ -473,6 +535,33 @@ const AdminSupportUnified = () => {
     } catch (error) {
       console.error('Reply error:', error);
       toast.error('Failed to send reply');
+    }
+  };
+
+  const handleReplyFileSelect = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { toast.error('File too large (max 10MB)'); return; }
+    setUploadingAttachment(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', 'support_reply');
+      const res = await axios.post(`${API}/upload`, formData, {
+        headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' }
+      });
+      setReplyAttachment({
+        url: res.data.url,
+        filename: res.data.filename,
+        original_name: file.name,
+        file_type: file.type
+      });
+      toast.success('File attached');
+    } catch (err) {
+      toast.error('Failed to upload file');
+    } finally {
+      setUploadingAttachment(false);
+      e.target.value = '';
     }
   };
   
@@ -548,6 +637,8 @@ const AdminSupportUnified = () => {
             name: user.name,
             phone: user.phone,
             email: user.email || '',
+            school_name: selectedSchool?.school_name || '',
+            school_id: selectedSchool?.id || '',
             attachments: allAttachments
           }, {
             headers: getAuthHeaders()
@@ -572,6 +663,9 @@ const AdminSupportUnified = () => {
       setAudioBlob(null);
       setAudioUrl(null);
       setRecordingTime(0);
+      setSelectedSchool(null);
+      setSchoolContacts([]);
+      setSchoolSearchQuery('');
       fetchAllQueries();
     } catch (error) {
       toast.error('Failed to create ticket');
@@ -1279,7 +1373,7 @@ const AdminSupportUnified = () => {
       )}
 
       {/* Reply Modal - Chat Style */}
-      <Dialog open={!!showReplyModal} onOpenChange={() => { setShowReplyModal(null); setQueryReplies([]); }}>
+      <Dialog open={!!showReplyModal} onOpenChange={() => { setShowReplyModal(null); setQueryReplies([]); setReplyAttachment(null); }}>
         <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col p-0" preventClose>
           <DialogHeader className="flex-shrink-0 p-6 pb-0">
             <DialogTitle className="flex items-center gap-2">
@@ -1336,7 +1430,23 @@ const AdminSupportUnified = () => {
                           ? 'bg-slate-100 text-slate-800' 
                           : 'bg-[#D63031] text-white'
                       }`}>
-                        <p className="text-sm">{reply.text}</p>
+                        {reply.text && <p className="text-sm">{reply.text}</p>}
+                        {/* Attachment */}
+                        {reply.attachment && (
+                          <div className={`mt-2 flex items-center gap-2 text-xs rounded p-2 ${
+                            reply.role === 'customer' ? 'bg-white border border-slate-200' : 'bg-red-700'
+                          }`}>
+                            <Paperclip className="w-3.5 h-3.5 flex-shrink-0" />
+                            <a
+                              href={reply.attachment.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`truncate underline ${reply.role === 'customer' ? 'text-blue-600' : 'text-red-100 hover:text-white'}`}
+                            >
+                              {reply.attachment.original_name || reply.attachment.filename}
+                            </a>
+                          </div>
+                        )}
                         <div className={`flex items-center gap-2 mt-2 text-xs ${
                           reply.role === 'customer' ? 'text-slate-500' : 'text-red-100'
                         }`}>
@@ -1356,16 +1466,51 @@ const AdminSupportUnified = () => {
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
                   placeholder="Type your reply..."
-                  className="w-full min-h-[60px] max-h-[100px] resize-none mb-3"
+                  className="w-full min-h-[60px] max-h-[100px] resize-none mb-2"
                   data-testid="reply-input"
                 />
+                {/* Attachment preview */}
+                {replyAttachment && (
+                  <div className="flex items-center gap-2 mb-2 p-2 bg-slate-50 rounded-lg border border-slate-200 text-sm">
+                    <Paperclip className="w-4 h-4 text-slate-500 flex-shrink-0" />
+                    <span className="truncate text-slate-700 flex-1">{replyAttachment.original_name}</span>
+                    <button onClick={() => setReplyAttachment(null)} className="text-slate-400 hover:text-red-500">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+                {/* Attach file button row */}
+                <div className="flex items-center gap-2 mb-3">
+                  <input
+                    type="file"
+                    ref={replyFileInputRef}
+                    className="hidden"
+                    accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.xlsx,.xls,.csv"
+                    onChange={handleReplyFileSelect}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => replyFileInputRef.current?.click()}
+                    disabled={uploadingAttachment}
+                    className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
+                    data-testid="reply-attach-btn"
+                  >
+                    {uploadingAttachment ? (
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Paperclip className="w-3.5 h-3.5" />
+                    )}
+                    {uploadingAttachment ? 'Uploading...' : 'Attach File'}
+                  </button>
+                  <span className="text-xs text-slate-400">PDF, DOC, Image, Excel (max 10MB)</span>
+                </div>
                 <div className="flex gap-3">
-                  <Button variant="outline" onClick={() => { setShowReplyModal(null); setQueryReplies([]); }} className="flex-1">
+                  <Button variant="outline" onClick={() => { setShowReplyModal(null); setQueryReplies([]); setReplyAttachment(null); }} className="flex-1">
                     Close
                   </Button>
                   <Button 
                     onClick={handleReply} 
-                    disabled={!replyText.trim()}
+                    disabled={!replyText.trim() && !replyAttachment}
                     className="flex-1 bg-[#D63031] hover:bg-[#b52828]" 
                     data-testid="submit-reply"
                   >
@@ -1496,6 +1641,13 @@ const AdminSupportUnified = () => {
                           query_type: defaults.query_type,
                           related_to: defaults.related_to
                         });
+                        // Reset school picker when switching types
+                        if (type.value !== 'school') {
+                          setSelectedSchool(null);
+                          setSchoolContacts([]);
+                          setSchoolSearchQuery('');
+                          setShowSchoolDropdown(false);
+                        }
                       }}
                       className={`p-3 rounded-lg border text-center transition-all ${
                         newTicket.inquiry_type === type.value
@@ -1510,6 +1662,72 @@ const AdminSupportUnified = () => {
                 })}
               </div>
             </div>
+            
+            {/* School Picker - shown when School type is selected */}
+            {newTicket.inquiry_type === 'school' && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
+                <label className="block text-sm font-medium text-[#1E3A5F]">School Name *</label>
+                <div className="relative">
+                  <Input
+                    value={schoolSearchQuery}
+                    onChange={(e) => searchSchools(e.target.value)}
+                    placeholder="Search school by name..."
+                    className="w-full"
+                    data-testid="school-search-input"
+                  />
+                  {showSchoolDropdown && schoolSearchResults.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {schoolSearchResults.map((school, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => selectSchool(school)}
+                          className="w-full px-3 py-2 text-left hover:bg-amber-50 border-b last:border-b-0"
+                          data-testid={`school-option-${idx}`}
+                        >
+                          <p className="font-medium text-sm">{school.school_name}</p>
+                          <p className="text-xs text-slate-500">{school.location || school.address || ''} {school.status ? `(${school.status})` : ''}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                
+                {/* School Contacts */}
+                {selectedSchool && schoolContacts.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-[#1E3A5F] mb-2">
+                      Select Contact ({schoolContacts.length})
+                    </label>
+                    <div className="space-y-2 max-h-[140px] overflow-y-auto">
+                      {schoolContacts.map((contact, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => selectSchoolContact(contact)}
+                          className={`w-full p-2.5 rounded-lg border text-left transition-all ${
+                            newTicket.phone === contact.phone && newTicket.name === contact.name
+                              ? 'border-[#1E3A5F] bg-blue-50 shadow-sm'
+                              : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'
+                          }`}
+                          data-testid={`school-contact-${idx}`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium text-sm text-[#1E3A5F]">{contact.name || 'N/A'}</p>
+                              <p className="text-xs text-slate-500">{contact.phone || ''} {contact.email ? `| ${contact.email}` : ''}</p>
+                            </div>
+                            {contact.role && (
+                              <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full">{contact.role}</span>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             
             {/* Auto-fill hint */}
             <div className="bg-blue-50 text-blue-700 text-xs p-2 rounded-lg">

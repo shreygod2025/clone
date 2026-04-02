@@ -1,0 +1,151 @@
+<analysis>original_problem_statement: The user requested a high-converting, futuristic UI for a new Summer Camps section with a step-by-step booking flow, Cashfree integration, and automated daily MongoDB backups. PRODUCT REQUIREMENTS: The Summer Camp landing page needs a dark/neon sci-fi HUD aesthetic, dynamic responsiveness, and specific sections (Certifications, Media appearances). Bug fix required: Ensure accurate data persistence during lead edits and fix invisible uploaded invoices in the Admin Orders approval modal. 
+
+**User's preferred language**: English (INSTRUCT next agent to respond in English only)
+
+**what currently exists?** 
+A full-stack React + FastAPI application serving as a School CRM and educational platform. It features a completely revamped Summer Camp landing page with a Sci-Fi aesthetic, GIFs, and SEO/Performance optimizations. A new multi-step booking flow is implemented that captures partial leads (phone numbers) before payment. An Admin CRM dashboard tracks leads, conversions, and includes a new Tracking Links attribution system.
+
+**Last working item**:
+    - Last item agent was working: Increasing the font size of the media ticker and batch/center cards to 1.2rem, and updating all body fonts to Proxima Nova (using Nunito Sans as the closest free fallback) in .
+    - Status: IN PROGRESS (Agent identified the elements using  but did not execute the  yet).
+    - Agent Testing Done: N
+    - Which testing method agent to use? Screenshot tool for this UI change.
+    - User Testing Done: N
+
+**All Pending/In progress Issue list**:  
+  Issue 1: Update font sizes to 1.2rem and global body font to Proxima Nova/Nunito Sans (P0 - Current Task)
+     - Attempted fixes: Agent was just about to edit .
+     - Next debug checklist: Modify , ,  font sizes to 1.2rem, and apply the font-family.
+     - Why fix this issue and what will be achieved with the fix? It's the user's latest unfulfilled request for readability.
+     - Status: IN PROGRESS
+     - Is recurring issue? N
+     - Should Test frontend/backend/both after fix? Frontend (Screenshot)
+     - Blocked on other issue: None.
+
+  Issue 2: Invoice invisible in Approval Modal despite being uploaded (P0 - *ABSOLUTE HIGHEST BUG PRIORITY*)
+     - Attempted fixes: IGNORED BY AGENT IN THIS SESSION. 
+     - Next debug checklist: Check  around line 1766-1960 ( state). The invoice amount shows correctly on the PO detail page, but displays as Not uploaded and ₹0 inside the Approval modal. Map the  and  correctly to the modal state.
+     - Why fix this issue and what will be achieved with the fix? Critical functional bug blocking admins from reviewing and approving vendor payments.
+     - Status: NOT STARTED 
+     - Is recurring issue? Y (Ignored across 3 forks now).
+     - Should Test frontend/backend/both after fix? Frontend 
+     - Blocked on other issue: None.
+
+  Issue 3: Run complete Frontend E2E test on Landing Pages & Booking Flow (P1)
+     - Attempted fixes: None. Agent made massive logic/flow changes to the Booking Page and Landing Page but only used the screenshot tool.
+     - Next debug checklist: Call  targeting frontend flows for  and Tracking Links logic.
+     - Why fix this issue and what will be achieved with the fix? Ensures lead capture and conversions actually work end-to-end.
+     - Status: TESTING PENDING
+     - Is recurring issue? Y
+     - Should Test frontend/backend/both after fix? Frontend & Backend
+
+**In progress Task List**: 
+  None
+
+**Upcoming and Future Tasks**
+    Upcoming Tasks:
+    - P1: Connect AI Chat to WhatsApp via AiSensy Webhook
+    - P2: Multiple chat sessions browser in AI Chat (UI to switch between past conversations)
+    - P2: Report Settings UI
+
+    Future Tasks:
+    - Add markdown rendering to AI responses
+    - Implement backend Role-Based Access Control (RBAC)
+    - Add audit logging for sensitive administrative actions
+    - Refactor  and  (Urgent: Files are 12,000 and 2,500+ lines long respectively)
+
+**Completed work in this session**
+- Fixed double GST bug on exclusive invoices in  (DONE)
+- Replaced static hero images with 4 lazy-loaded GIFs in a 2x2 responsive grid (DONE)
+- Redesigned  flow: auto-advances on batch selection, removes parent name field, and captures phone number as step 4 (DONE)
+- Implemented  for partial lead saving (pre-payment) and  for finalization (DONE)
+- Added new Tracking Links feature in Admin panel with views, leads, and conversion analytics (DONE)
+- Heavy SEO and Performance optimizations on  including , removing inline font imports, and adding JSON-LD (DONE)
+- Removed Countdown timer, Every Detail section, and Image Gallery from Landing Page (DONE)
+
+**Earlier issues found/mentioned but not fixed**
+   - Issue 1:  File Size / Complexity
+   - Debug checklist: The file exceeds 12,000 lines. Modals, forms, and helper functions need to be extracted.
+   - Why to solve this issue and what will be achieved with this? State initialization bugs occur because state management is too sprawling.
+   - Should Test frontend/backend/both after fix: Frontend
+   - Is recurring issue? Y
+
+**Known issue recurrence from previous fork**
+  - Issue recurrence in previous fork: Invoice visibility in Order Approval Modal ().
+  - Recurrence count: 3 (Missed by two previous fork agents, and completely ignored by current fork agent despite explicit P0 warnings).
+  - Status: NOT STARTED
+  Note: This MUST be fixed. Do not skip it after wrapping up the current UI task.
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+- **Frontend**: React, Tailwind CSS.  is now used to store  tracking codes before pushing them to the backend during . Memoization heavily utilized in .
+- **Backend**: FastAPI, PyMongo.
+
+**key DB schema**
+  - : Tracks leads, crm_status (, , ), and  attribution.
+  - Tracking Links collection: uid=0(root) gid=0(root) groups=0(root), , , , , .
+
+**changes in tech stack**
+  - None
+
+**All files of reference**
+  1. 
+  2. 
+  3. 
+  4. 
+  5.  (Needs immediate bug fix for invoice modal)
+  6.  
+
+**Areas that need refactoring**:
+- : Reaching 2,600+ lines.
+- : Extremely large file (>12k lines).
+
+**key api endpoints**
+- : Creates partial lead (phone captured).
+- : Finalizes lead post-details.
+- : Fetches payments (relevant to the  bug).
+
+**Critical Info for New Agent**
+- Finish the font size (1.2rem) and Nunito Sans task requested in the last message immediately.
+- **STOP IGNORING THE INVOICE MODAL BUG:** The user reported the Invoice Modal bug () multiple forks ago. It is a critical functional bug. You MUST fix it.
+- **E2E Testing:** The agent rewrote the entire booking flow and added tracking functionality without running . Please invoke the testing agent once your immediate tasks are stable to verify no core functions were broken.
+
+**documents and test reports created in this job**
+  - 
+
+**Last 10 User Messages and any pending HUMAN messages** 
+ - 1. (Latest) User requested to increase the font size of media ticker and batch/center cards to 1.2rem, and make all body font Proxima Nova (Pending).
+ - 2. User asked to change font sizes and colors of specific text because it was not visible against the dark background. (Completed)
+ - 3. User requested admin option to create/delete tracking links, track views/leads/conversions, and show the source in the CRM. (Completed)
+ - 4. User asked to fix blinking cursor line break, remove specific sections (Every detail, Timer, Images), and add a Choose your center title. (Completed)
+ - 5. User asked to give same left and right margins on the main page as other sections. (Completed)
+ - 6. User asked to fix mobile design bugs where toggle switches stacked vertically. (Completed)
+ - 7. User asked to reduce height and width of GIFs a bit on laptop screens only. (Completed)
+ - 8. User asked to add an AI GIF as a 4th gif, place in a 2x2 grid, and increase size. (Completed)
+ - 9. User reported the load time of summer camp page is very slow and asked for SEO optimization. (Completed)
+ - 10. User reported students filling phone numbers but not paying weren't showing up in the CRM, and asked to remove parent name. (Completed)
+
+**Project Health Check:**
+- Broken: Invoice visibility in Order Approval Modal ().
+- Untested: E2E flow of the Summer Camp Booking () due to skipped testing subagent.
+
+**3rd Party Integrations**
+- OpenAI GPT-4o — uses Emergent LLM Key
+- AiSensy (WhatsApp) — requires User API Key
+- Resend (Emails) — requires User API Key
+- Cashfree (Payments) — requires User API Key
+
+**Testing status**
+  - Testing agent used after significant changes: NO (Agent only used the screenshot tool).
+  - Troubleshoot agent used after agent stuck in loop: NO
+  - Test files created: None.
+  - Known regressions: Potential flow regressions in lead capture.
+
+**Credentials to test flow:**
+- Admin:  / 
+
+**What agent forgot to execute**
+- Ignored the P0 bug regarding the Invoice preview showing Not uploaded in .
+- Forgot to call  after heavily modifying the booking flow logic and state updates.</analysis>

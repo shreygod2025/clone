@@ -123,6 +123,7 @@ const EducatorDashboard = () => {
       fetchAvailableEducators();
       fetchSessions();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn, user, navigate, authLoading]);
 
   const checkOnboardingStatus = async () => {
@@ -623,6 +624,10 @@ const EducatorDashboard = () => {
             <p className="text-slate-500 text-sm">Welcome, {user?.name}</p>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigate('/educator-profile')} className="text-slate-600">
+              <User className="w-4 h-4 mr-1" />
+              <span className="hidden sm:inline">Profile</span>
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setShowQueryModal(true)} className="text-slate-600">
               <HelpCircle className="w-4 h-4 mr-1" />
               <span className="hidden sm:inline">Ask Query</span>

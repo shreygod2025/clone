@@ -1,0 +1,105 @@
+{
+  "summary": "Iteration 53: Tested Move Back (Change Stage) and Raise Ticket features in School CRM. Both features are fully functional.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter53_stage_change_and_tickets.py",
+    "/app/test_reports/pytest/pytest_results_iter53.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_iter53_stage_change_and_tickets.py"
+  ],
+  "success_rate": {
+    "backend": "100% (16/16 tests passed)",
+    "frontend": "100% (All UI elements verified)"
+  },
+  "test_credentials": "admin@oll.co / Dagaji03@",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Move Back and Raise Ticket features are fully implemented. Move Back button appears on meeting_done, converted, active, renewal_meeting, and renewed stages with appropriate rollback options. Raise Ticket button appears on ALL stages including new, meeting_done, converted, active, renewal_meeting, renewed, lost/lost_lead/lost_customer, and archived.",
+  "test_results": {
+    "backend_tests": {
+      "TestAuthAndHealth": {
+        "test_health_check": "PASS",
+        "test_admin_login": "PASS"
+      },
+      "TestMoveBackFunctionality": {
+        "test_get_schools_by_status": "PASS",
+        "test_move_meeting_done_to_new": "PASS",
+        "test_move_converted_to_meeting_done": "PASS",
+        "test_move_active_to_converted": "PASS",
+        "test_move_renewal_meeting_to_active": "PASS",
+        "test_move_renewed_to_active": "PASS"
+      },
+      "TestRaiseTicketFunctionality": {
+        "test_raise_ticket_for_new_lead": "PASS",
+        "test_raise_ticket_for_meeting_done": "PASS",
+        "test_raise_ticket_for_active_school": "PASS",
+        "test_raise_ticket_for_renewed_school": "PASS",
+        "test_raise_ticket_for_lost_school": "PASS",
+        "test_ticket_visible_in_support_center": "PASS"
+      },
+      "TestStageRollbackMap": {
+        "test_status_change_activity_log": "PASS",
+        "test_all_statuses_have_valid_transitions": "PASS"
+      }
+    },
+    "frontend_tests": {
+      "move_back_button_visibility": {
+        "meeting_done": "FOUND - dropdown shows 'New Lead' option",
+        "converted": "FOUND - dropdown shows 'Meeting Done' option",
+        "active": "FOUND - dropdown shows 'Converted' option",
+        "renewal_meeting": "FOUND - dropdown shows 'Active' option",
+        "renewed": "FOUND - dropdown shows 'Active' and 'Renewal Meeting' options"
+      },
+      "raise_ticket_button_visibility": {
+        "new": "FOUND (13 buttons)",
+        "meeting_done": "FOUND (11 buttons)",
+        "converted": "FOUND (12 buttons)",
+        "active": "FOUND (2 buttons)",
+        "renewed": "FOUND (7 buttons)",
+        "lost": "FOUND (2 buttons)",
+        "archived": "FOUND (43 buttons)"
+      },
+      "raise_ticket_modal": {
+        "modal_opens": "VERIFIED",
+        "user_type_selection": "FOUND (School, Teacher, Student)",
+        "contact_fields": "FOUND (Name, Phone, Email)",
+        "query_type_dropdown": "FOUND (Kit Delivery, Payment Query, Teacher Training, Technical Support, etc.)",
+        "subject_field": "FOUND",
+        "description_field": "FOUND",
+        "submit_button": "FOUND (Raise Ticket)"
+      }
+    }
+  },
+  "features_verified": [
+    "Move Back button visible on meeting_done stage with 'New Lead' rollback option",
+    "Move Back button visible on converted stage with 'Meeting Done' rollback option",
+    "Move Back button visible on active stage with 'Converted' rollback option",
+    "Move Back button visible on renewal_meeting stage with 'Active' rollback option",
+    "Move Back button visible on renewed stage with 'Active' and 'Renewal Meeting' rollback options",
+    "PATCH /api/schools/inquiry/{id} successfully changes status to previous stage",
+    "Status changes are logged in activity_log with timestamp and user info",
+    "Raise Ticket button visible on ALL stages (new, meeting_done, converted, active, renewal_meeting, renewed, lost, archived)",
+    "Raise Ticket modal opens with proper form fields",
+    "POST /api/schools/{id}/raise-ticket creates ticket in support_queries collection",
+    "Tickets raised from School CRM are visible in Support Center"
+  ],
+  "stage_rollback_map": {
+    "meeting_done": ["new"],
+    "converted": ["meeting_done"],
+    "active": ["converted"],
+    "renewal_meeting": ["active"],
+    "renewed": ["active", "renewal_meeting"]
+  }
+}

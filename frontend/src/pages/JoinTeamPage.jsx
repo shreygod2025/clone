@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { User, Mail, Phone, MapPin, Briefcase, Send, Check, Users, Clock, Target, Heart, Upload, FileText, X, ChevronRight, Building2 } from 'lucide-react';
 import { Input } from '../components/ui/input';
+import CitySearch from '../components/CitySearch';
 import { Textarea } from '../components/ui/textarea';
 import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
@@ -11,11 +12,6 @@ import Footer from '../components/Footer';
 import PhoneInput from '../components/PhoneInput';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
-
-const CITIES = [
-  'Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Kolkata', 'Hyderabad', 
-  'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow', 'Chandigarh', 'Kochi', 'Other'
-];
 
 const EXPERIENCE_LEVELS = [
   'Student / Intern',
@@ -112,7 +108,18 @@ const JoinTeamPage = () => {
     e.preventDefault();
     
     if (!form.name || !form.email || !form.phone) {
-      toast.error('Please fill in all required fields');
+      toast.error('Please fill in all required fields (Name, Email, Phone)');
+      return;
+    }
+    
+    // Resume and City are now mandatory
+    if (!form.resume_url) {
+      toast.error('Please upload your resume');
+      return;
+    }
+    
+    if (!form.city) {
+      toast.error('Please select your city');
       return;
     }
 
@@ -343,32 +350,15 @@ const JoinTeamPage = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">City</label>
-                  <select
+                  <label className="block text-sm font-medium text-slate-700 mb-1">City *</label>
+                  <CitySearch
                     value={form.city}
-                    onChange={(e) => setForm({ ...form, city: e.target.value })}
-                    className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white"
+                    onChange={(city) => setForm({ ...form, city })}
+                    placeholder="Search city..."
                     data-testid="select-city"
-                  >
-                    <option value="">Select city</option>
-                    {CITIES.map(city => (
-                      <option key={city} value={city}>{city}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {form.city === 'Other' && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Your City</label>
-                  <Input
-                    value={form.otherCity}
-                    onChange={(e) => setForm({ ...form, otherCity: e.target.value })}
-                    placeholder="Enter your city"
-                    data-testid="input-other-city"
                   />
                 </div>
-              )}
+              </div>
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Availability</label>
@@ -408,7 +398,7 @@ const JoinTeamPage = () => {
 
               {/* Resume Upload */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Resume</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Resume *</label>
                 {resumeFile || form.resume_url ? (
                   <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                     <FileText className="w-5 h-5 text-green-600" />

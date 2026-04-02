@@ -6,15 +6,20 @@ import {
   Calendar, RefreshCw, ArrowUpRight, ArrowDownRight,
   UserCheck, Clock, MessageSquare, Target, BarChart3,
   Briefcase, Handshake, Wallet, Receipt, TrendingDown,
-  FileText, Plus, Edit2, Trash2, X, ChevronDown
+  FileText, Plus, Edit2, Trash2, X, ChevronDown, ChevronRight, Link, Copy, Eye, EyeOff, ExternalLink, Lock,
+  PieChart, AlertCircle, Send, MessageCircle, MapPin
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { toast } from 'sonner';
-import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, subMonths } from 'date-fns';
+import { format, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from 'date-fns';
 import axios from 'axios';
+import {
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  LineChart, Line, Area, AreaChart, PieChart as RechartsPie, Pie, Cell
+} from 'recharts';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -56,6 +61,23 @@ const generateYearOptions = () => {
 
 const MONTH_OPTIONS = generateMonthOptions();
 const YEAR_OPTIONS = generateYearOptions();
+
+// Generate week options (last 13 weeks)
+const generateWeekOptions = () => {
+  const weeks = [];
+  const today = new Date();
+  for (let i = 0; i < 13; i++) {
+    const weekEnd = subDays(today, i * 7);
+    const weekStart = subDays(weekEnd, 6);
+    weeks.push({
+      value: format(weekStart, 'yyyy-MM-dd'),
+      end: format(weekEnd, 'yyyy-MM-dd'),
+      label: `${format(weekStart, 'MMM d')} – ${format(weekEnd, 'MMM d, yyyy')}`,
+    });
+  }
+  return weeks;
+};
+const WEEK_OPTIONS = generateWeekOptions();
 
 // Stat Card Component
 const StatCard = ({ title, value, subtitle, icon: Icon, color = 'blue', trend, small = false }) => {
@@ -137,6 +159,79 @@ const FunnelCard = ({ title, icon: Icon, color, stages, total }) => {
   );
 };
 
+// Simple Pie Chart Component (CSS-based)
+const SimplePieChart = ({ title, icon: Icon, data, emptyMessage = "No data" }) => {
+  const total = data?.reduce((sum, item) => sum + (item.count || 0), 0) || 0;
+  
+  // Colors for pie slices
+  const COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b'];
+  
+  // Calculate percentages and angles
+  let cumulativePercent = 0;
+  const slices = data?.map((item, idx) => {
+    const percent = total > 0 ? (item.count / total) * 100 : 0;
+    const startPercent = cumulativePercent;
+    cumulativePercent += percent;
+    return {
+      ...item,
+      percent,
+      startPercent,
+      color: COLORS[idx % COLORS.length]
+    };
+  }) || [];
+
+  // Generate conic gradient for pie chart
+  const gradientStops = slices.map((slice, idx) => {
+    const start = slice.startPercent;
+    const end = start + slice.percent;
+    return `${slice.color} ${start}% ${end}%`;
+  }).join(', ');
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 p-5">
+      <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
+        {Icon && <Icon className="w-5 h-5 text-red-500" />}
+        {title}
+      </h3>
+      
+      {total === 0 ? (
+        <div className="text-center py-8 text-slate-400">
+          <AlertCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+          <p className="text-sm">{emptyMessage}</p>
+        </div>
+      ) : (
+        <div className="flex flex-col md:flex-row items-center gap-6">
+          {/* Pie Chart */}
+          <div 
+            className="w-32 h-32 rounded-full flex-shrink-0"
+            style={{
+              background: gradientStops ? `conic-gradient(${gradientStops})` : '#e2e8f0'
+            }}
+          />
+          
+          {/* Legend */}
+          <div className="flex-1 space-y-2">
+            {slices.map((slice, idx) => (
+              <div key={idx} className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  <span 
+                    className="w-3 h-3 rounded-full flex-shrink-0" 
+                    style={{ backgroundColor: slice.color }}
+                  />
+                  <span className="text-slate-600 truncate">{slice.name?.replace(/_/g, ' ') || 'Unknown'}</span>
+                </div>
+                <span className="font-medium text-[#1E3A5F] ml-2">
+                  {slice.count} ({Math.round(slice.percent)}%)
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Conversion Rate Card
 const ConversionCard = ({ title, icon: Icon, color, rates, totalLeads }) => {
   return (
@@ -167,10 +262,11 @@ const AdminReports = () => {
   const [activeTab, setActiveTab] = useState('overview');
   
   // Date filter states
-  const [dateFilterType, setDateFilterType] = useState('month'); // 'custom', 'month', 'year'
+  const [dateFilterType, setDateFilterType] = useState('month'); // 'custom', 'week', 'month', 'year'
   const [customDateRange, setCustomDateRange] = useState({ start: '', end: '' });
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [selectedYear, setSelectedYear] = useState(String(new Date().getFullYear()));
+  const [selectedWeek, setSelectedWeek] = useState(WEEK_OPTIONS[0]?.value || '');
   
   // Team member filter
   const [teamMembers, setTeamMembers] = useState([]);
@@ -189,10 +285,29 @@ const AdminReports = () => {
     date: format(new Date(), 'yyyy-MM-dd'), payment_method: '', vendor: '', notes: ''
   });
 
+  // Public link management
+  const [showPublicLinkModal, setShowPublicLinkModal] = useState(false);
+  const [publicLinkInfo, setPublicLinkInfo] = useState(null);
+  const [publicLinkPassword, setPublicLinkPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [publicLinkLoading, setPublicLinkLoading] = useState(false);
+
+  // Sub-category drill-down state
+  const [selectedSubcategory, setSelectedSubcategory] = useState(null);
+  const [subcategoryTickets, setSubcategoryTickets] = useState([]);
+  const [subcategoryLoading, setSubcategoryLoading] = useState(false);
+  const [expandedReplies, setExpandedReplies] = useState({});
+  const [supportTimeline, setSupportTimeline] = useState([]);
+
   const getDateParams = () => {
     let params = {};
     if (dateFilterType === 'custom' && customDateRange.start && customDateRange.end) {
       params = { start_date: customDateRange.start, end_date: customDateRange.end };
+    } else if (dateFilterType === 'week') {
+      const weekOpt = WEEK_OPTIONS.find(w => w.value === selectedWeek) || WEEK_OPTIONS[0];
+      if (weekOpt) {
+        params = { start_date: weekOpt.value, end_date: weekOpt.end };
+      }
     } else if (dateFilterType === 'month' && selectedMonth) {
       const [year, month] = selectedMonth.split('-');
       const start = startOfMonth(new Date(parseInt(year), parseInt(month) - 1));
@@ -203,7 +318,6 @@ const AdminReports = () => {
       const end = endOfYear(new Date(parseInt(selectedYear), 0));
       params = { start_date: format(start, 'yyyy-MM-dd'), end_date: format(end, 'yyyy-MM-dd') };
     }
-    // Add team member filter if selected
     if (selectedTeamMember) {
       params.assigned_to = selectedTeamMember;
     }
@@ -222,7 +336,34 @@ const AdminReports = () => {
 
   useEffect(() => {
     fetchTeamMembers();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const fetchSubcategoryTickets = async (subcategory) => {
+    setSubcategoryLoading(true);
+    setExpandedReplies({});
+    try {
+      const params = { ...getDateParams(), subcategory };
+      const res = await axios.get(`${API}/admin/reports/support-subcategory-tickets`, {
+        params, headers: getAuthHeaders()
+      });
+      setSubcategoryTickets(res.data?.tickets || []);
+    } catch (e) {
+      toast.error('Failed to load tickets');
+      setSubcategoryTickets([]);
+    } finally {
+      setSubcategoryLoading(false);
+    }
+  };
+
+  const handleSubcategoryClick = (name) => {
+    setSelectedSubcategory(name);
+    fetchSubcategoryTickets(name);
+  };
+
+  const toggleReplies = (ticketId) => {
+    setExpandedReplies(prev => ({ ...prev, [ticketId]: !prev[ticketId] }));
+  };
 
   const fetchAllData = async () => {
     setLoading(true);
@@ -230,7 +371,7 @@ const AdminReports = () => {
     const headers = getAuthHeaders();
     
     try {
-      const [overviewRes, studentFunnelRes, schoolFunnelRes, educatorRes, supportRes, stagesRes, expensesRes, categoriesRes, b2cInsightsRes, b2bInsightsRes, supportInsightsRes] = await Promise.all([
+      const [overviewRes, studentFunnelRes, schoolFunnelRes, educatorRes, supportRes, stagesRes, expensesRes, categoriesRes, b2cInsightsRes, b2bInsightsRes, supportInsightsRes, supportTimelineRes, cashflowRes] = await Promise.all([
         axios.get(`${API}/admin/reports/overview`, { params, headers }).catch(() => ({ data: null })),
         axios.get(`${API}/admin/reports/sales-funnel`, { params: { ...params, user_type: 'students' }, headers }).catch(() => ({ data: null })),
         axios.get(`${API}/admin/reports/sales-funnel`, { params: { ...params, user_type: 'schools' }, headers }).catch(() => ({ data: null })),
@@ -242,6 +383,8 @@ const AdminReports = () => {
         axios.get(`${API}/admin/reports/b2c-insights`, { params, headers }).catch(() => ({ data: null })),
         axios.get(`${API}/admin/reports/b2b-insights`, { params, headers }).catch(() => ({ data: null })),
         axios.get(`${API}/admin/reports/support-insights`, { params, headers }).catch(() => ({ data: null })),
+        axios.get(`${API}/admin/reports/support-timeline`, { params, headers }).catch(() => ({ data: null })),
+        axios.get(`${API}/admin/reports/cashflow`, { headers }).catch(() => ({ data: null })),
       ]);
       
       setReportData({
@@ -254,7 +397,9 @@ const AdminReports = () => {
         b2cInsights: b2cInsightsRes.data,
         b2bInsights: b2bInsightsRes.data,
         supportInsights: supportInsightsRes.data,
+        cashflow: cashflowRes.data,
       });
+      setSupportTimeline(supportTimelineRes.data?.timeline || []);
       setExpenses(expensesRes.data?.expenses || []);
       setExpenseCategories(categoriesRes.data || { categories: [], subcategories: {} });
     } catch (error) {
@@ -267,6 +412,7 @@ const AdminReports = () => {
 
   useEffect(() => {
     fetchAllData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dateFilterType, customDateRange, selectedMonth, selectedYear, selectedTeamMember]);
 
   const handleSaveExpense = async () => {
@@ -303,18 +449,93 @@ const AdminReports = () => {
     }
   };
 
+  // Public Link Management Functions
+  const fetchPublicLinkInfo = async () => {
+    try {
+      const res = await axios.get(`${API}/admin/reports/public-link`, { headers: getAuthHeaders() });
+      setPublicLinkInfo(res.data);
+    } catch (error) {
+      console.error('Failed to fetch public link info:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchPublicLinkInfo();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleCreateOrUpdatePublicLink = async () => {
+    if (!publicLinkPassword || publicLinkPassword.length < 4) {
+      toast.error('Password must be at least 4 characters');
+      return;
+    }
+    setPublicLinkLoading(true);
+    try {
+      const res = await axios.post(`${API}/admin/reports/public-link`, {
+        password: publicLinkPassword
+      }, { headers: getAuthHeaders() });
+      
+      toast.success('Public report link created/updated!');
+      setPublicLinkInfo({ exists: true, token: res.data.token });
+      setPublicLinkPassword('');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to create public link');
+    } finally {
+      setPublicLinkLoading(false);
+    }
+  };
+
+  const handleUpdatePassword = async () => {
+    if (!publicLinkPassword || publicLinkPassword.length < 4) {
+      toast.error('Password must be at least 4 characters');
+      return;
+    }
+    setPublicLinkLoading(true);
+    try {
+      await axios.patch(`${API}/admin/reports/public-link/password`, {
+        new_password: publicLinkPassword
+      }, { headers: getAuthHeaders() });
+      
+      toast.success('Password updated successfully!');
+      setPublicLinkPassword('');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to update password');
+    } finally {
+      setPublicLinkLoading(false);
+    }
+  };
+
+  const handleDeletePublicLink = async () => {
+    if (!window.confirm('Delete the public report link? Anyone with the link will no longer be able to access reports.')) return;
+    try {
+      await axios.delete(`${API}/admin/reports/public-link`, { headers: getAuthHeaders() });
+      toast.success('Public link deleted');
+      setPublicLinkInfo({ exists: false });
+    } catch (error) {
+      toast.error('Failed to delete public link');
+    }
+  };
+
+  const copyPublicLink = () => {
+    if (publicLinkInfo?.token) {
+      const link = `${window.location.origin}/reports/${publicLinkInfo.token}`;
+      navigator.clipboard.writeText(link);
+      toast.success('Link copied to clipboard!');
+    }
+  };
+
   // Calculate derived metrics
-  const { overview, studentFunnel, schoolFunnel, educator, support, stages } = reportData;
-  
+  const { overview, studentFunnel, schoolFunnel, educator, support, stages, b2cInsights, b2bInsights, supportInsights, cashflow } = reportData;
+
   // School metrics
   const totalSchools = overview?.schools?.total || 0;
   const convertedSchools = overview?.schools?.converted || 0;
-  const activeSchools = stages?.schools?.stages?.find(s => s.name === 'active')?.count || 0;
-  const renewedSchools = stages?.schools?.stages?.find(s => s.name === 'renewed')?.count || 0;
+  const activeSchools = b2bInsights?.active_schools ?? (stages?.schools?.stages?.find(s => s.name === 'active')?.count || 0);
+  const renewedSchools = b2bInsights?.renewed ?? (stages?.schools?.stages?.find(s => s.name === 'renewed')?.count || 0);
   const lostSchools = stages?.schools?.stages?.find(s => s.name === 'lost')?.count || 0;
-  const renewalRatio = (activeSchools + renewedSchools + lostSchools) > 0 
-    ? Math.round((renewedSchools / (activeSchools + renewedSchools + lostSchools)) * 100) 
-    : 0;
+  const renewalRatio = b2bInsights?.renewal_ratio ?? ((activeSchools + renewedSchools) > 0
+    ? Math.round((renewedSchools / (activeSchools + renewedSchools)) * 100)
+    : 0);
   
   // Team metrics
   const teamTotal = stages?.team?.total || 0;
@@ -342,6 +563,7 @@ const AdminReports = () => {
       {/* Filter Type Selector */}
       <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
         {[
+          { value: 'week', label: 'Week' },
           { value: 'month', label: 'Month' },
           { value: 'year', label: 'Year' },
           { value: 'custom', label: 'Custom' },
@@ -358,6 +580,19 @@ const AdminReports = () => {
         ))}
       </div>
       
+      {/* Week Selector */}
+      {dateFilterType === 'week' && (
+        <select
+          value={selectedWeek}
+          onChange={(e) => setSelectedWeek(e.target.value)}
+          className="px-3 py-2 border border-slate-200 rounded-lg text-sm"
+        >
+          {WEEK_OPTIONS.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      )}
+
       {/* Month Selector */}
       {dateFilterType === 'month' && (
         <select
@@ -421,10 +656,22 @@ const AdminReports = () => {
         </select>
       </div>
       
-      <Button variant="outline" size="sm" onClick={fetchAllData} className="ml-auto">
-        <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-        Refresh
-      </Button>
+      <div className="flex items-center gap-2 ml-auto">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => setShowPublicLinkModal(true)}
+          className="border-blue-200 text-blue-600 hover:bg-blue-50"
+          data-testid="share-report-btn"
+        >
+          <Link className="w-4 h-4 mr-2" />
+          Share Report
+        </Button>
+        <Button variant="outline" size="sm" onClick={fetchAllData}>
+          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+      </div>
     </div>
   );
 
@@ -640,19 +887,78 @@ const AdminReports = () => {
     );
   };
 
-  const renderB2BTab = () => (
+  const renderB2BTab = () => {
+    // Merged lost reasons
+    const mergedLostReasons = (() => {
+      const m = {};
+      (stages?.schools?.lost_lead_reasons || []).forEach(r => { m[r.name] = (m[r.name] || 0) + r.count; });
+      (stages?.schools?.lost_customer_reasons || []).forEach(r => { m[r.name] = (m[r.name] || 0) + r.count; });
+      return Object.entries(m).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
+    })();
+
+    const pipelineValue = b2bInsights?.pipeline_value || 0;
+    const totalLostValue = b2bInsights?.total_lost_value || stages?.schools?.total_lost_value || 0;
+    const conversionRatio = b2bInsights?.conversion_ratio || schoolFunnel?.conversion_rates?.overall_conversion || 0;
+
+    return (
     <div className="space-y-6">
-      <h2 className="text-lg font-semibold text-[#1E3A5F]">B2B - School Sales</h2>
-      
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <StatCard title="Total Leads" value={totalSchools} icon={Building2} color="purple" />
-        <StatCard title="Converted" value={convertedSchools} icon={Target} color="orange" />
-        <StatCard title="Active" value={activeSchools} icon={UserCheck} color="green" />
-        <StatCard title="Renewed" value={renewedSchools} icon={RefreshCw} color="blue" />
-        <StatCard title="Renewal Ratio" value={`${renewalRatio}%`} subtitle="Renewed / (Active+Renewed+Lost)" icon={TrendingUp} color={renewalRatio >= 50 ? 'green' : 'orange'} />
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-[#1E3A5F]">B2B - School Sales</h2>
+        {/* B2B Year-Only Filter */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-slate-500">Year:</span>
+          <select
+            value={selectedYear}
+            onChange={(e) => { setSelectedYear(e.target.value); setDateFilterType('year'); }}
+            className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm font-medium"
+            data-testid="b2b-year-filter"
+          >
+            {YEAR_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
       </div>
-      
+
+      {/* Row 1: 5 Key KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <StatCard title="Revenue Generated" value={`₹${schoolRevenue.toLocaleString()}`} icon={DollarSign} color="green" />
+        <StatCard title="Conversions" value={activeSchools + renewedSchools + convertedSchools} subtitle="converted + active + renewed" icon={Target} color="orange" />
+        <StatCard title="Conversion Ratio" value={`${conversionRatio}%`} subtitle="of total leads" icon={TrendingUp} color="blue" />
+        <StatCard title="Value Pipeline" value={`₹${pipelineValue.toLocaleString()}`} subtitle="in-progress deals" icon={Briefcase} color="purple" />
+        <StatCard title="Lost Value" value={`₹${totalLostValue.toLocaleString()}`} subtitle="leads + customers" icon={TrendingDown} color="red" />
+      </div>
+
+      {/* Row 2: Revenue Overview + School Conversion Rates */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
+            <DollarSign className="w-5 h-5 text-green-500" />
+            Revenue Overview
+          </h3>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+              <span className="text-slate-600">Total School Revenue</span>
+              <span className="text-xl font-bold text-green-600">₹{schoolRevenue.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+              <span className="text-slate-600">Avg. Deal Size</span>
+              <span className="text-xl font-bold text-blue-600">
+                ₹{(activeSchools + renewedSchools + convertedSchools) > 0 ? Math.round(schoolRevenue / (activeSchools + renewedSchools + convertedSchools)).toLocaleString() : 0}
+              </span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
+              <span className="text-slate-600">Active Schools</span>
+              <span className="text-xl font-bold text-purple-600">{activeSchools}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-emerald-50 rounded-lg">
+              <span className="text-slate-600">Renewal Rate</span>
+              <span className="text-xl font-bold text-emerald-600">{renewalRatio}%</span>
+            </div>
+            <p className="text-xs text-slate-400 text-right">{renewedSchools} renewed / {activeSchools + renewedSchools} total active</p>
+          </div>
+        </div>
+
         <ConversionCard
           title="School Conversion Rates"
           icon={Building2}
@@ -661,48 +967,172 @@ const AdminReports = () => {
           rates={[
             { label: 'Lead → Meeting', value: schoolFunnel?.conversion_rates?.lead_to_demo || 0, color: '#9333ea' },
             { label: 'Meeting → Convert', value: schoolFunnel?.conversion_rates?.demo_to_conversion || 0, color: '#f97316' },
-            { label: 'Overall', value: schoolFunnel?.conversion_rates?.overall_conversion || 0, color: '#22c55e' },
+            { label: 'Overall', value: conversionRatio, color: '#22c55e' },
           ]}
         />
-        
+      </div>
+
+      {/* Row 3: Source of Leads + Pipeline Stage distribution */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white rounded-2xl border border-slate-100 p-5">
-          <h3 className="font-semibold text-[#1E3A5F] mb-4">School Revenue</h3>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
-              <span className="text-slate-600">Total School Revenue</span>
-              <span className="text-xl font-bold text-purple-600">₹{schoolRevenue.toLocaleString()}</span>
+          <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
+            <Handshake className="w-5 h-5 text-blue-500" />
+            Source of Leads
+          </h3>
+          {(!b2bInsights?.lead_source_breakdown?.length) ? (
+            <p className="text-sm text-slate-400 py-4 text-center">No source data available</p>
+          ) : (
+            <div className="space-y-2">
+              {b2bInsights.lead_source_breakdown.map((src, i) => (
+                <ProgressBar
+                  key={i}
+                  label={src.name}
+                  value={src.count}
+                  total={b2bInsights.lead_source_breakdown.reduce((s, x) => s + x.count, 0)}
+                  color={['#3b82f6','#9333ea','#f97316','#22c55e','#06b6d4','#ec4899'][i % 6]}
+                />
+              ))}
             </div>
-            <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-              <span className="text-slate-600">Avg. Deal Size</span>
-              <span className="text-xl font-bold text-green-600">
-                ₹{convertedSchools > 0 ? Math.round(schoolRevenue / convertedSchools).toLocaleString() : 0}
-              </span>
+          )}
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
+            <TrendingDown className="w-5 h-5 text-red-500" />
+            Lost Overview
+          </h3>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
+              <span className="text-slate-600">Lost Leads</span>
+              <span className="text-xl font-bold text-red-500">{stages?.schools?.lost_leads || 0}</span>
             </div>
-            <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-              <span className="text-slate-600">Lost Schools</span>
-              <span className="text-xl font-bold text-blue-600">{lostSchools}</span>
+            <div className="flex justify-between items-center p-3 bg-red-100 rounded-lg">
+              <span className="text-slate-600">Lost Customers</span>
+              <span className="text-xl font-bold text-red-600">{stages?.schools?.lost_customers || 0}</span>
+            </div>
+            <div className="flex justify-between items-center p-4 bg-red-200 rounded-lg border border-red-300">
+              <span className="font-medium text-red-800">Total Lost Value</span>
+              <span className="text-xl font-bold text-red-800">₹{totalLostValue.toLocaleString()}</span>
             </div>
           </div>
         </div>
       </div>
-      
-      {/* Stage Distribution */}
-      <div className="bg-white rounded-2xl border border-slate-100 p-5">
-        <h3 className="font-semibold text-[#1E3A5F] mb-4">School Stage Distribution</h3>
-        <div className="space-y-3">
-          {stages?.schools?.stages?.map((stage, idx) => (
-            <ProgressBar
-              key={idx}
-              label={stage.name?.replace(/_/g, ' ')}
-              value={stage.count}
-              total={stages?.schools?.total || 1}
-              color={['#9333ea', '#3b82f6', '#f97316', '#22c55e', '#10b981', '#ef4444', '#64748b'][idx % 7]}
-            />
-          ))}
+
+      {/* Row 4: New vs Renewal Pie + City Division */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* New Schools vs Renewal Schools Pie Chart */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
+            <PieChart className="w-5 h-5 text-purple-500" />
+            New Schools vs Renewals
+          </h3>
+          {(() => {
+            const newCount = b2bInsights?.new_vs_renewal?.new || 0;
+            const renewalCount = b2bInsights?.new_vs_renewal?.renewal || 0;
+            const total = newCount + renewalCount;
+            if (total === 0) return <p className="text-sm text-slate-400 py-4 text-center">No data available</p>;
+            const pieData = [
+              { name: 'New Schools', value: newCount },
+              { name: 'Renewals', value: renewalCount }
+            ];
+            const COLORS = ['#3b82f6', '#22c55e'];
+            return (
+              <div className="flex items-center gap-4">
+                <ResponsiveContainer width="50%" height={180}>
+                  <RechartsPie>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={45}
+                      outerRadius={75}
+                      paddingAngle={3}
+                      dataKey="value"
+                    >
+                      {pieData.map((entry, index) => (
+                        <Cell key={index} fill={COLORS[index]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value) => [value, '']} />
+                  </RechartsPie>
+                </ResponsiveContainer>
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-blue-500" />
+                    <span className="text-sm text-slate-600">New Schools</span>
+                    <span className="ml-auto font-bold text-blue-600">{newCount}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full bg-green-500" />
+                    <span className="text-sm text-slate-600">Renewals</span>
+                    <span className="ml-auto font-bold text-green-600">{renewalCount}</span>
+                  </div>
+                  <div className="pt-2 border-t border-slate-100">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500">Total</span>
+                      <span className="font-bold text-[#1E3A5F]">{total}</span>
+                    </div>
+                    <div className="flex justify-between text-sm mt-1">
+                      <span className="text-slate-500">Renewal Rate</span>
+                      <span className="font-bold text-green-600">{total > 0 ? Math.round(renewalCount / total * 100) : 0}%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+
+        {/* City Division of Customers */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
+            <MapPin className="w-5 h-5 text-orange-500" />
+            City Division of Customers
+          </h3>
+          {(!b2bInsights?.customer_cities?.length) ? (
+            <p className="text-sm text-slate-400 py-4 text-center">No city data available</p>
+          ) : (
+            <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+              {b2bInsights.customer_cities.map((city, i) => (
+                <ProgressBar
+                  key={i}
+                  label={city.name}
+                  value={city.count}
+                  total={b2bInsights.customer_cities.reduce((s, x) => s + x.count, 0)}
+                  color={['#f97316','#3b82f6','#9333ea','#22c55e','#06b6d4','#ec4899','#eab308','#14b8a6','#8b5cf6','#f43f5e'][i % 10]}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Row 5: Merged Lost Reasons + Stage Distribution */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <SimplePieChart
+          title="Lost Reasons (All)"
+          icon={PieChart}
+          data={mergedLostReasons}
+          emptyMessage="No lost records"
+        />
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-[#1E3A5F] mb-4">Complete Stage Distribution</h3>
+          <div className="space-y-3">
+            {stages?.schools?.stages?.map((stage, idx) => (
+              <ProgressBar
+                key={idx}
+                label={stage.name?.replace(/_/g, ' ')}
+                value={stage.count}
+                total={stages?.schools?.total || 1}
+                color={['#9333ea', '#3b82f6', '#f97316', '#22c55e', '#10b981', '#06b6d4', '#ef4444', '#f43f5e', '#64748b'][idx % 9]}
+              />
+            ))}
+          </div>
         </div>
       </div>
     </div>
   );
+  };
 
   const renderHRTeamTab = () => (
     <div className="space-y-6">
@@ -832,10 +1262,10 @@ const AdminReports = () => {
         <h2 className="text-lg font-semibold text-[#1E3A5F]">Support Center Analytics</h2>
         
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <StatCard title="Total Tickets" value={supportInsights?.total_queries || support?.total || 0} icon={MessageSquare} color="blue" />
-          <StatCard title="Pending" value={supportInsights?.pending || support?.open || 0} icon={Clock} color="orange" />
-          <StatCard title="In Progress" value={support?.in_progress || 0} icon={UserCheck} color="purple" />
-          <StatCard title="Resolved" value={supportInsights?.resolved || support?.resolved || 0} icon={Target} color="green" />
+          <StatCard title="Total Tickets" value={supportInsights?.total_queries || 0} icon={MessageSquare} color="blue" />
+          <StatCard title="Pending" value={supportInsights?.pending || 0} icon={Clock} color="orange" />
+          <StatCard title="Overdue (>48h)" value={supportInsights?.overdue || 0} icon={UserCheck} color="red" />
+          <StatCard title="Resolved" value={supportInsights?.resolved || 0} icon={Target} color="green" />
           <StatCard 
             title="Resolution Rate" 
             value={`${(supportInsights?.total_queries || 0) > 0 ? Math.round(((supportInsights?.resolved || 0) / supportInsights.total_queries) * 100) : 0}%`} 
@@ -938,12 +1368,264 @@ const AdminReports = () => {
         <div className="bg-white rounded-2xl border border-slate-100 p-5">
           <h3 className="font-semibold text-[#1E3A5F] mb-4">Ticket Status Breakdown</h3>
           <div className="space-y-3">
-            <ProgressBar label="Open" value={support?.open || 0} total={support?.total || 1} color="#3b82f6" />
-            <ProgressBar label="In Progress" value={support?.in_progress || 0} total={support?.total || 1} color="#f97316" />
-            <ProgressBar label="Resolved" value={support?.resolved || 0} total={support?.total || 1} color="#22c55e" />
-            <ProgressBar label="Closed" value={support?.closed || 0} total={support?.total || 1} color="#64748b" />
+            <ProgressBar label="Open" value={supportInsights?.status_breakdown?.find(s => s.name === 'open')?.count || 0} total={supportInsights?.total_queries || 1} color="#3b82f6" />
+            <ProgressBar label="Overdue Queries (>48h)" value={supportInsights?.overdue || 0} total={supportInsights?.total_queries || 1} color="#ef4444" />
+            <ProgressBar label="Resolved" value={supportInsights?.status_breakdown?.find(s => s.name === 'resolved')?.count || 0} total={supportInsights?.total_queries || 1} color="#22c55e" />
+            <ProgressBar label="Closed" value={supportInsights?.status_breakdown?.find(s => s.name === 'closed')?.count || 0} total={supportInsights?.total_queries || 1} color="#64748b" />
           </div>
         </div>
+
+        {/* Query Volume & Status Over Time */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-[#1E3A5F] mb-1 flex items-center gap-2">
+            <BarChart3 className="w-5 h-5 text-blue-500" />
+            Query Volume & Status Breakdown
+          </h3>
+          <p className="text-xs text-slate-400 mb-4">
+            {dateFilterType === 'week' ? 'By day (last 7 days)'
+              : dateFilterType === 'year' ? 'By month'
+              : 'By week'}
+          </p>
+          {supportTimeline.length === 0 ? (
+            <div className="flex items-center justify-center h-40 text-slate-300 text-sm">No data for selected period</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={supportTimeline} margin={{ top: 4, right: 12, left: -18, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#64748b' }} />
+                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} allowDecimals={false} />
+                <Tooltip
+                  contentStyle={{ borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 12 }}
+                  formatter={(value, name) => [value, name.charAt(0).toUpperCase() + name.slice(1).replace(/_/g, ' ')]}
+                />
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12, paddingTop: 8 }} />
+                <Bar dataKey="open" stackId="a" fill="#3b82f6" name="Open" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="in_progress" stackId="a" fill="#f97316" name="In Progress" />
+                <Bar dataKey="resolved" stackId="a" fill="#22c55e" name="Resolved" />
+                <Bar dataKey="closed" stackId="a" fill="#94a3b8" name="Closed" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* Avg Resolution Time Over Time */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-[#1E3A5F] mb-1 flex items-center gap-2">
+            <Clock className="w-5 h-5 text-indigo-500" />
+            Average Resolution Time
+          </h3>
+          <p className="text-xs text-slate-400 mb-4">Hours to resolve per {dateFilterType === 'week' ? 'day' : dateFilterType === 'year' ? 'month' : 'week'}</p>
+          {supportTimeline.length === 0 ? (
+            <div className="flex items-center justify-center h-40 text-slate-300 text-sm">No data for selected period</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={supportTimeline} margin={{ top: 4, right: 12, left: -18, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="resTimeGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#64748b' }} />
+                <YAxis tick={{ fontSize: 11, fill: '#64748b' }} unit="h" />
+                <Tooltip
+                  contentStyle={{ borderRadius: 10, border: '1px solid #e2e8f0', fontSize: 12 }}
+                  formatter={(v) => [`${v}h`, 'Avg Resolution Time']}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="avg_resolution_hours"
+                  stroke="#6366f1"
+                  strokeWidth={2.5}
+                  fill="url(#resTimeGrad)"
+                  dot={{ r: 4, fill: '#6366f1', strokeWidth: 2, stroke: '#fff' }}
+                  activeDot={{ r: 6 }}
+                  name="Avg Resolution"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* Tickets by Sub-Category (clickable drill-down) */}
+        <div className="bg-white rounded-2xl border border-slate-100 p-5">
+          <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
+            <MessageCircle className="w-5 h-5 text-blue-500" />
+            Tickets by Sub-Category
+          </h3>
+          {(!supportInsights?.subcategory_breakdown?.length) ? (
+            <p className="text-sm text-slate-400">No data for the selected period</p>
+          ) : (
+            <div className="space-y-1">
+              {supportInsights.subcategory_breakdown.map((item, i) => (
+                <button
+                  key={i}
+                  data-testid={`subcategory-row-${item.name}`}
+                  onClick={() => handleSubcategoryClick(item.name)}
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-blue-50 transition-colors group text-left"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="w-2 h-2 rounded-full bg-blue-400 group-hover:bg-blue-600 transition-colors" />
+                    <span className="text-sm text-slate-700 capitalize group-hover:text-blue-700 font-medium">
+                      {item.name.replace(/_/g, ' ')}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                      {item.count}
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-500 transition-colors" />
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Sub-Category Ticket Drill-Down Panel */}
+        {selectedSubcategory && (
+          <div className="fixed inset-0 z-50 flex" onClick={() => setSelectedSubcategory(null)}>
+            <div className="flex-1 bg-black/40" />
+            <div
+              className="bg-white w-full max-w-2xl h-full overflow-y-auto shadow-2xl flex flex-col"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between z-10">
+                <div>
+                  <h2 className="text-lg font-bold text-[#1E3A5F] capitalize">
+                    {selectedSubcategory.replace(/_/g, ' ')} Tickets
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {subcategoryLoading ? 'Loading...' : `${subcategoryTickets.length} ticket${subcategoryTickets.length !== 1 ? 's' : ''}`}
+                  </p>
+                </div>
+                <button
+                  data-testid="close-subcategory-panel"
+                  onClick={() => setSelectedSubcategory(null)}
+                  className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
+                >
+                  <X className="w-5 h-5 text-slate-500" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="flex-1 p-5 space-y-3">
+                {subcategoryLoading ? (
+                  <div className="flex items-center justify-center py-20">
+                    <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full" />
+                  </div>
+                ) : subcategoryTickets.length === 0 ? (
+                  <div className="text-center py-16 text-slate-400">No tickets found</div>
+                ) : (
+                  subcategoryTickets.map((ticket) => {
+                    const name = ticket.contact_name || ticket.name || 'Unknown';
+                    const details = ticket.details || ticket.message || ticket.query_details || '';
+                    const replies = ticket.replies || [];
+                    const isExpanded = expandedReplies[ticket.id];
+                    const statusColors = {
+                      resolved: 'bg-green-100 text-green-700',
+                      closed: 'bg-slate-100 text-slate-600',
+                      open: 'bg-blue-100 text-blue-700',
+                      new: 'bg-blue-100 text-blue-700',
+                      in_progress: 'bg-orange-100 text-orange-700',
+                    };
+                    const statusColor = statusColors[ticket.status] || 'bg-slate-100 text-slate-600';
+                    const priorityColors = { high: 'text-red-600', medium: 'text-orange-500', low: 'text-green-600', normal: 'text-slate-500' };
+                    const priorityColor = priorityColors[ticket.priority] || 'text-slate-500';
+
+                    return (
+                      <div
+                        key={ticket.id}
+                        data-testid={`ticket-card-${ticket.id}`}
+                        className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden"
+                      >
+                        {/* Ticket Header */}
+                        <div className="px-4 py-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-slate-800 text-sm">{name}</span>
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${statusColor}`}>
+                                  {ticket.status?.replace(/_/g, ' ')}
+                                </span>
+                                {ticket.priority && (
+                                  <span className={`text-xs font-medium capitalize ${priorityColor}`}>
+                                    {ticket.priority} priority
+                                  </span>
+                                )}
+                              </div>
+                              {ticket.phone && (
+                                <p className="text-xs text-slate-500 mt-0.5">{ticket.phone}</p>
+                              )}
+                              {ticket.email && (
+                                <p className="text-xs text-slate-500">{ticket.email}</p>
+                              )}
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <p className="text-xs text-slate-400">
+                                {ticket.created_at ? new Date(ticket.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                              </p>
+                            </div>
+                          </div>
+                          {details && (
+                            <p className="text-sm text-slate-600 mt-2 line-clamp-2 leading-relaxed">
+                              {details}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* View Replies Toggle */}
+                        <div className="border-t border-slate-200 px-4 py-2 flex items-center justify-between bg-white">
+                          <button
+                            data-testid={`view-replies-${ticket.id}`}
+                            onClick={() => toggleReplies(ticket.id)}
+                            className="flex items-center gap-1.5 text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            {replies.length > 0
+                              ? `${isExpanded ? 'Hide' : 'View'} ${replies.length} repl${replies.length !== 1 ? 'ies' : 'y'}`
+                              : 'No replies yet'}
+                          </button>
+                          {ticket.admin_notes && (
+                            <span className="text-xs text-slate-400 italic truncate max-w-[200px]">
+                              Note: {ticket.admin_notes}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Replies Thread */}
+                        {isExpanded && replies.length > 0 && (
+                          <div className="border-t border-slate-200 bg-slate-50/80 px-4 py-3 space-y-2.5">
+                            {replies.map((reply, ri) => {
+                              const isAdmin = reply.role === 'admin' || reply.by?.toLowerCase().includes('admin');
+                              return (
+                                <div key={reply.id || ri} className={`flex gap-2 ${isAdmin ? 'flex-row-reverse' : ''}`}>
+                                  <div className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white ${isAdmin ? 'bg-[#1E3A5F]' : 'bg-slate-400'}`}>
+                                    {(reply.by || 'U').charAt(0).toUpperCase()}
+                                  </div>
+                                  <div className={`max-w-[80%] ${isAdmin ? 'items-end' : 'items-start'} flex flex-col`}>
+                                    <div className={`px-3 py-2 rounded-xl text-sm ${isAdmin ? 'bg-[#1E3A5F] text-white rounded-tr-sm' : 'bg-white border border-slate-200 text-slate-700 rounded-tl-sm'}`}>
+                                      {reply.text}
+                                    </div>
+                                    <span className="text-xs text-slate-400 mt-0.5 px-1">
+                                      {reply.by} · {reply.created_at ? new Date(reply.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : ''}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -1074,6 +1756,67 @@ const AdminReports = () => {
           </div>
         )}
       </div>
+
+      {/* Cashflow Section */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-5">
+        <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
+          <Wallet className="w-5 h-5 text-indigo-500" />
+          Cashflow
+        </h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+          <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200 text-center">
+            <p className="text-xs text-emerald-600 font-medium uppercase tracking-wide mb-1">Receivables</p>
+            <p className="text-2xl font-bold text-emerald-700">₹{(cashflow?.receivables?.total || 0).toLocaleString()}</p>
+            <p className="text-xs text-emerald-500 mt-1">{cashflow?.receivables?.count || 0} pending school payments</p>
+          </div>
+          <div className="p-4 bg-rose-50 rounded-xl border border-rose-200 text-center">
+            <p className="text-xs text-rose-600 font-medium uppercase tracking-wide mb-1">Payables</p>
+            <p className="text-2xl font-bold text-rose-700">₹{(cashflow?.payables?.total || 0).toLocaleString()}</p>
+            <p className="text-xs text-rose-500 mt-1">{cashflow?.payables?.count || 0} pending expense payments</p>
+          </div>
+          <div className={`p-4 rounded-xl border text-center ${(cashflow?.net_cashflow || 0) >= 0 ? 'bg-blue-50 border-blue-200' : 'bg-amber-50 border-amber-200'}`}>
+            <p className={`text-xs font-medium uppercase tracking-wide mb-1 ${(cashflow?.net_cashflow || 0) >= 0 ? 'text-blue-600' : 'text-amber-600'}`}>Net Cashflow</p>
+            <p className={`text-2xl font-bold ${(cashflow?.net_cashflow || 0) >= 0 ? 'text-blue-700' : 'text-amber-700'}`}>
+              {(cashflow?.net_cashflow || 0) >= 0 ? '+' : ''}₹{Math.abs(cashflow?.net_cashflow || 0).toLocaleString()}
+            </p>
+            <p className={`text-xs mt-1 ${(cashflow?.net_cashflow || 0) >= 0 ? 'text-blue-500' : 'text-amber-500'}`}>receivables − payables</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <h4 className="text-sm font-semibold text-slate-700 mb-3">Receivables by School</h4>
+            {(!cashflow?.receivables?.items?.length) ? (
+              <p className="text-sm text-slate-400 py-3 text-center">No receivables recorded</p>
+            ) : (
+              <div className="space-y-2 max-h-52 overflow-y-auto">
+                {cashflow.receivables.items.map((item, i) => (
+                  <div key={i} className="flex justify-between items-center py-2 border-b border-slate-100 last:border-0 text-sm">
+                    <span className="text-slate-600 truncate max-w-[60%]">{item.name}</span>
+                    <span className="font-semibold text-emerald-600">₹{item.amount.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div>
+            <h4 className="text-sm font-semibold text-slate-700 mb-3">Payables by Category</h4>
+            {(!cashflow?.payables?.breakdown?.length) ? (
+              <p className="text-sm text-slate-400 py-3 text-center">No outstanding payables</p>
+            ) : (
+              <div className="space-y-2 max-h-52 overflow-y-auto">
+                {cashflow.payables.breakdown.map((item, i) => (
+                  <div key={i} className="flex justify-between items-center py-2 border-b border-slate-100 last:border-0 text-sm">
+                    <span className="text-slate-600">{item.category}</span>
+                    <span className="font-semibold text-rose-600">₹{item.amount.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 
@@ -1101,8 +1844,8 @@ const AdminReports = () => {
         })}
       </div>
       
-      {/* Date Filter */}
-      {renderDateFilter()}
+      {/* Date Filter - hide for B2B (has its own year filter) */}
+      {activeTab !== 'b2b' && renderDateFilter()}
 
       {/* Content */}
       <div className="mt-6">
@@ -1230,6 +1973,137 @@ const AdminReports = () => {
                 {editingExpense ? 'Update' : 'Add'} Expense
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Public Report Link Modal */}
+      <Dialog open={showPublicLinkModal} onOpenChange={setShowPublicLinkModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Link className="w-5 h-5 text-blue-600" />
+              Share Reports Externally
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-500">
+              Create a password-protected public link to share reports with external stakeholders. 
+              They can view all tabs and filters with real-time data. Contact details and names are hidden for privacy.
+            </p>
+
+            {publicLinkInfo?.exists ? (
+              <>
+                {/* Existing Link Info */}
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                      <ExternalLink className="w-4 h-4 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-green-800">Public Link Active</p>
+                      <p className="text-xs text-green-600">Anyone with the link and password can view</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-3">
+                    <Input
+                      value={`${window.location.origin}/reports/${publicLinkInfo.token}`}
+                      readOnly
+                      className="text-sm bg-white"
+                    />
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={copyPublicLink}
+                      className="shrink-0"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Change Password */}
+                <div className="border-t pt-4">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    <Lock className="w-4 h-4 inline mr-1" />
+                    Change Password
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        type={showPassword ? 'text' : 'password'}
+                        value={publicLinkPassword}
+                        onChange={(e) => setPublicLinkPassword(e.target.value)}
+                        placeholder="Enter new password"
+                        className="pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    <Button 
+                      onClick={handleUpdatePassword}
+                      disabled={publicLinkLoading || !publicLinkPassword}
+                      className="shrink-0 bg-blue-600 hover:bg-blue-700"
+                    >
+                      {publicLinkLoading ? 'Updating...' : 'Update'}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Delete Link */}
+                <div className="border-t pt-4">
+                  <Button 
+                    variant="outline" 
+                    className="w-full text-red-600 border-red-200 hover:bg-red-50"
+                    onClick={handleDeletePublicLink}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Public Link
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Create New Link */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Set Password for Public Access *
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? 'text' : 'password'}
+                      value={publicLinkPassword}
+                      onChange={(e) => setPublicLinkPassword(e.target.value)}
+                      placeholder="Enter password (min 4 characters)"
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">
+                    This password will be required to view the reports
+                  </p>
+                </div>
+
+                <Button 
+                  onClick={handleCreateOrUpdatePublicLink}
+                  disabled={publicLinkLoading || publicLinkPassword.length < 4}
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                >
+                  {publicLinkLoading ? 'Creating...' : 'Create Public Link'}
+                </Button>
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>
