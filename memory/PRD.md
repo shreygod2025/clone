@@ -12,7 +12,7 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - **Funnels & Login:** OTP-based login for all user types
 - **Admin CRM:** Full school management with bulk import, onboarding workflows, inquiry management
 
-### Architecture (Updated: 2026-04-03 — server.py fully modularized)
+### Architecture (Updated: 2026-04-03 — server.py fully modularized + SEO hooks added)
 ```
 /app/
 ├── backend/
@@ -26,13 +26,21 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 │           expenses.py / summer_camp.py / ai_chat.py / school_emails.py
 │           checkin_api.py / admin_keys.py / daily_report.py / db_backup.py
 └── frontend/
+    ├── public/
+    │   └── sitemap.xml        # Updated with /school, all /courses/*, key /school-offerings/*
     ├── src/
-    │   ├── App.js             # Routes and main app structure
+    │   ├── App.js             # Routes + CourseRedirect (/course/:slug → /courses/:slug)
+    │   ├── hooks/
+    │   │   └── usePageMeta.js # Custom hook for reliable CSR SEO meta injection via useEffect
     │   ├── pages/
     │   │   ├── admin/         # Admin panel pages
-    │   │   ├── public/        # Public pages (tracking, payment)
-    │   │   ├── school/        # School-specific pages
-    │   │   └── student/       # Student dashboard
+    │   │   ├── courses/
+    │   │   │   ├── CourseData.js      # Improved metaTitle/metaDescription for AI, entrepreneurship
+    │   │   │   ├── CoursePage.jsx     # usePageMeta + Course + BreadcrumbList JSON-LD
+    │   │   │   └── CoursesListPage.jsx # usePageMeta + ItemList JSON-LD
+    │   │   ├── SchoolFunnel.jsx       # usePageMeta for /school SEO
+    │   │   ├── SchoolOfferingsPage.jsx # usePageMeta for /school-offerings SEO
+    │   │   └── SchoolOfferingDetailPage.jsx # usePageMeta (before early return)
     │   └── components/        # Reusable UI components
 ```
 
@@ -55,6 +63,18 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 ---
 
 ## CHANGELOG
+
+### 2026-04-03 — SEO Improvements (Google Search Console Data-Driven)
+**Context:** User uploaded GSC performance report showing key pages with high impressions but low CTR.
+**Key Issues Fixed:**
+1. **URL Redirect Fix** (`App.js`): Added `CourseRedirect` component + route `/course/:slug` → `/courses/:slug`. Fixes 615-630 GSC impression English/French course URLs returning 404/blank.
+2. **Meta Tag Injection** (`hooks/usePageMeta.js`): Created `usePageMeta` custom hook using `useEffect` + direct DOM manipulation. Needed because `react-helmet-async` (both v1 and v2) fails to update existing static meta tags in CSR mode. Hook was downgraded to v1.3.0 for compatibility. Direct DOM injection is 100% reliable.
+3. **Schema Improvements**: Added JSON-LD `Course` + `BreadcrumbList` to CoursePage, `EducationalOrganization` to SchoolFunnel, `ItemList` to CoursesListPage, `OfferCatalog` to SchoolOfferingsPage.
+4. **Title + Description Optimization**: Updated `metaTitle`/`metaDescription` in `CourseData.js` for AI and Entrepreneurship courses. Fixed oversized meta descriptions (was 400+ chars) in SchoolOfferingDetailPage.
+5. **Sitemap Update**: Added `/school`, `/courses`, all `/courses/*`, `/school-offerings/robotics/robotics-lab-setup` + other key URLs. Was missing key indexed pages.
+6. **index.html Cleanup**: Removed conflicting static meta tags (og:title, og:description, canonical) and replaced with generic fallbacks. React Helmet can now manage these per-page.
+**GSC Pages Targeted:** `/school` (354 impressions, 1.13% CTR), `/school-offerings/robotics/robotics-lab-setup` (164 imp, 0 clicks), `/courses/ai` + `/courses/entrepreneurship` (ranking well, improving CTR), old `/course/*` URLs (615-630 imp, near-zero CTR due to 404).
+**Testing:** 17/17 frontend tests PASS (iteration_66.json).
 
 ### 2026-04-02 — Invoice Modal Bug Fix (AdminOrders.jsx)
 **Root Cause:** Race condition — Save button was not disabled during file upload. Admin could click "Save" before the async upload completed, sending `invoice_url: ''` to the backend which overwrote valid data.
