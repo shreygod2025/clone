@@ -12,11 +12,19 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - **Funnels & Login:** OTP-based login for all user types
 - **Admin CRM:** Full school management with bulk import, onboarding workflows, inquiry management
 
-### Architecture
+### Architecture (Updated: 2026-04-03 — server.py fully modularized)
 ```
 /app/
 ├── backend/
-│   └── server.py              # FastAPI backend with all endpoints
+│   ├── server.py              # FastAPI app setup ONLY (4,226 lines, was 14,805)
+│   └── routes/                # 20 modular route files (387 routes total)
+│       ├── shared.py          # DB, JWT helpers, auto_assign, email utils
+│       ├── notifications.py   # WhatsApp notification helpers
+│       ├── users.py / students.py / team.py / educators.py
+│       ├── support.py / schools.py / orders.py / misc.py
+│       └── payments.py / gp_onboarding.py / reports.py / jobs.py
+│           expenses.py / summer_camp.py / ai_chat.py / school_emails.py
+│           checkin_api.py / admin_keys.py / daily_report.py / db_backup.py
 └── frontend/
     ├── src/
     │   ├── App.js             # Routes and main app structure

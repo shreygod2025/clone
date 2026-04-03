@@ -1347,12 +1347,6 @@ async def manage_inquiry_query_viewers(query_id: str, data: dict, user: dict = D
 async def health_check():
     return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
 
-# Root-level health endpoint (no /api prefix) — required by Emergent Kubernetes
-# readiness/liveness probes which poll GET /health directly on port 8001.
-@router.get("/health")
-async def root_health_check():
-    return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
-
 @router.post("/admin/optimize-db")
 async def optimize_database(user: dict = Depends(get_current_user)):
     """Manually trigger database index creation for better performance"""
