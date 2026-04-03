@@ -11806,9 +11806,9 @@ async def get_school_payments(
             # Compute gst_amount from gst_type and tranche amount
             gst_amount = 0
             if gst_type in ("exclusive_18", "exclusive"):
-                gst_amount = round(amount * 18 / 118, 2) if amount else 0  # extract 18% from inclusive total
+                gst_amount = round(amount * 18 / 100, 2) if amount else 0  # add 18% on top of base amount
             elif gst_type in ("inclusive_18", "inclusive"):
-                gst_amount = round(amount - amount / 1.18, 2) if amount else 0
+                gst_amount = round(amount - amount / 1.18, 2) if amount else 0  # extract GST from inclusive total
             payment = {
                 "id": existing_payment.get("id") if existing_payment else f"pay-{school.get('id')}-{idx}",
                 "school_id": school.get("id"),
