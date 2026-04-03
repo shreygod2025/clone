@@ -226,8 +226,12 @@ export default function SummerCampBookingPage() {
         return;
       }
 
-      const cashfree = window.Cashfree({ mode: CASHFREE_ENV });
-      const result = await cashfree.checkout({
+      if (!window.Cashfree) {
+        setError('Payment gateway is still loading. Please try again in a moment.');
+        return;
+      }
+      const cashfree_instance = window.Cashfree({ mode: CASHFREE_ENV });
+      const result = await cashfree_instance.checkout({
         paymentSessionId: pay.data.payment_session_id,
         redirectTarget: '_modal',
       });

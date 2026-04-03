@@ -338,8 +338,12 @@ async def initiate_payment(data: PaymentInitRequest):
     order_id = f"SC2026-{booking['id'][:8]}-{int(time.time())}"
     frontend_url = os.getenv("FRONTEND_URL", "https://camp-lead-capture.preview.emergentagent.com")
 
-    parent_name = booking.get("parent_name", "Parent")
-    cf_name = parent_name if len(parent_name) >= 3 else parent_name.ljust(3)
+    parent_name = (booking.get("parent_name") or "").strip()
+    child_name = (booking.get("child_name") or "").strip()
+    # Use child_name as fallback; ensure minimum 3 non-space chars for Cashfree
+    cf_name = parent_name or f"Parent {child_name}".strip() or "OLL Parent"
+    if len(cf_name.replace(" ", "")) < 3:
+        cf_name = "OLL Parent"
 
     try:
         customer = CashfreeCustomerDetails(
