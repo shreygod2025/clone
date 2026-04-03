@@ -76,3 +76,4 @@ watchfiles==1.1.1
 emergentintegrations==0.1.1
 APScheduler==3.11.2
 cachetools==7.0.5
+cashfree-pg==5.0.5
