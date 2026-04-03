@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { usePageMeta } from '../hooks/usePageMeta';
 import { ArrowLeft, ArrowRight, Check, Building2, Users, Award, Clock, Calendar, Send, BookOpen, Cog, Trophy, GraduationCap, Lightbulb, Target, ChevronRight, Play, Star, Phone } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -156,6 +157,16 @@ const SchoolFunnel = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  // Direct DOM meta injection for reliable SEO
+  usePageMeta({
+    title: 'Robotics Lab Setup for Schools India | OLL - STEM & AI Programs',
+    description: 'Set up a robotics lab in your CBSE, ICSE or State Board school. OLL provides robotics, AI, coding & STEM for 500+ schools. Get a free consultation today.',
+    canonical: 'https://oll.co/school',
+    ogTitle: 'Robotics Lab Setup for Schools India | OLL - STEM & AI Programs',
+    ogDescription: 'OLL helps 500+ CBSE, ICSE & State Board schools set up robotics labs, AI & STEM programs. NEP 2020 aligned.',
+    keywords: 'robotics lab setup for schools, robotics program school India, STEM lab school CBSE ICSE, school robotics curriculum, AI program for schools, coding classes school, NEP 2020 robotics'
+  });
   
   const [formData, setFormData] = useState({
     school_name: '',

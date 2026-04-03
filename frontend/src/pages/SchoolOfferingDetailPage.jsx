@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { usePageMeta } from '../hooks/usePageMeta';
 import { 
   ArrowLeft, CheckCircle, Phone, Calendar, Users, Clock, 
   Award, Target, BookOpen, Play, Download, Menu, X,
@@ -614,7 +615,36 @@ const SchoolOfferingDetailPage = () => {
   
   const offering = ALL_OFFERINGS[offeringId];
   const category = CATEGORY_INFO[categoryId];
-  
+
+  // SEO values (computed before hooks - safe with optional chaining)
+  const seoTitle = offering ? `${offering.title} for Schools | OLL - India's Skill Education Partner` : 'School Programs | OLL - Skill Education';
+  const seoRawDesc = offering?.description || 'OLL school programs for CBSE, ICSE & State Board schools.';
+  const seoDesc = seoRawDesc.length > 120
+    ? `${seoRawDesc.substring(0, 117)}... OLL's school program. Free demo!`
+    : `${seoRawDesc} OLL school program. Book a free demo today!`;
+  const seoKeywords = offering && category
+    ? `${offering.title}, ${category.title} for schools, school ${category.title.toLowerCase()} program, ${category.title.toLowerCase()} curriculum India, OLL ${category.title.toLowerCase()}, robotics lab setup for schools, STEM program India`
+    : 'school robotics programs, STEM curriculum India, OLL school partnership';
+
+  // Direct DOM meta injection — MUST be called before any early returns (hooks rules)
+  usePageMeta({
+    title: seoTitle,
+    description: seoDesc.substring(0, 155),
+    canonical: `https://oll.co/school-offerings/${categoryId}/${offeringId}`,
+    ogTitle: seoTitle,
+    ogDescription: seoRawDesc.substring(0, 120),
+    keywords: seoKeywords,
+    jsonLd: offering ? {
+      "@context": "https://schema.org",
+      "@type": "Course",
+      "name": offering.title,
+      "description": offering.description,
+      "provider": { "@type": "Organization", "name": "OLL", "sameAs": "https://oll.co" },
+      "educationalLevel": "K-12",
+      "url": `https://oll.co/school-offerings/${categoryId}/${offeringId}`
+    } : undefined
+  });
+
   if (!offering || !category) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -631,25 +661,19 @@ const SchoolOfferingDetailPage = () => {
 
   const IconComponent = category.icon;
 
-  // Generate rich SEO keywords based on category and offering
-  const seoKeywords = `${offering.title}, ${category.title} for schools, school ${category.title.toLowerCase()} program, ${category.title.toLowerCase()} curriculum India, OLL ${category.title.toLowerCase()}, school skill education, robotics lab setup for schools, STEM program India`;
-
-  // Concise SEO description under 155 chars
-  const seoDesc = offering.description.length > 120
-    ? `${offering.description.substring(0, 117)}... OLL's ${category.title} program for schools India. Free demo!`
-    : `${offering.description} OLL school program. Book a free demo today!`;
+  // (seoKeywords and seoDesc are already computed above)
 
   return (
     <>
       <Helmet>
-        <title>{offering.title} for Schools | OLL - India's Skill Education Partner</title>
+        <title>{seoTitle}</title>
         <meta name="description" content={seoDesc.substring(0, 155)} />
         <meta name="keywords" content={seoKeywords} />
         <link rel="canonical" href={`https://oll.co/school-offerings/${categoryId}/${offeringId}`} />
 
         {/* Open Graph */}
         <meta property="og:title" content={`${offering.title} | OLL School Programs`} />
-        <meta property="og:description" content={offering.description.substring(0, 120)} />
+        <meta property="og:description" content={seoRawDesc.substring(0, 120)} />
         <meta property="og:type" content="product" />
         <meta property="og:url" content={`https://oll.co/school-offerings/${categoryId}/${offeringId}`} />
         <meta property="og:image" content="https://oll.co/og-image.png" />
@@ -657,7 +681,7 @@ const SchoolOfferingDetailPage = () => {
         {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={`${offering.title} | OLL`} />
-        <meta name="twitter:description" content={offering.description.substring(0, 120)} />
+        <meta name="twitter:description" content={seoRawDesc.substring(0, 120)} />
         <meta name="twitter:image" content="https://oll.co/og-image.png" />
 
         {/* Structured Data */}

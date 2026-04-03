@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { usePageMeta } from '../hooks/usePageMeta';
 import { 
   ArrowRight, CheckCircle, Building2, Users, BookOpen, 
   Cpu, Code, Brain, Lightbulb, TrendingUp, Menu, X,
@@ -120,6 +121,15 @@ const SchoolOfferingsPage = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [caseStudies, setCaseStudies] = useState([]);
   const [partnerSchools, setPartnerSchools] = useState([]);
+
+  // Direct DOM meta injection for reliable SEO
+  usePageMeta({
+    title: 'School Programs & Pricing | Robotics Lab, STEM, AI | OLL',
+    description: 'OLL school programs: Robotics Lab Setup, STEM Curriculum, AI & Coding for ICSE, CBSE & State Board schools. 500+ partners, 50K+ students. View pricing & case studies.',
+    canonical: 'https://oll.co/school-offerings',
+    ogTitle: 'School Programs & Pricing | Robotics Lab, STEM, AI | OLL',
+    keywords: 'school robotics programs, STEM curriculum pricing, robotics lab cost India, school AI program, coding for schools, ICSE CBSE robotics, school partnership, robotics lab setup cost'
+  });
 
   useEffect(() => {
     // Fetch case studies from backend

@@ -1,11 +1,19 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { usePageMeta } from '../../hooks/usePageMeta';
 import { ArrowRight, Clock, Users, Menu, X } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '../../components/ui/button';
 import { getAllCourses } from './CourseData';
 
 const CoursesListPage = () => {
+  usePageMeta({
+    title: 'Skill Courses for Kids | Robotics, AI, Coding & More | OLL',
+    description: 'OLL skill courses for kids aged 6-17: Robotics, Coding, AI, Entrepreneurship & Financial Literacy. Expert instructors, hands-on learning. Book a free demo!',
+    canonical: 'https://oll.co/courses',
+    ogTitle: 'Skill Courses for Kids | Robotics, AI, Coding | OLL',
+    keywords: 'OLL courses, robotics classes for kids, coding classes kids India, AI classes students, entrepreneurship program kids, financial literacy course, skill education India'
+  });
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const courses = getAllCourses();

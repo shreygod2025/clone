@@ -1,6 +1,7 @@
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { usePageMeta } from '../../hooks/usePageMeta';
 import { 
   ArrowLeft, 
   ArrowRight, 
@@ -36,6 +37,36 @@ const CoursePage = () => {
       navigate('/courses');
     }
   }, [courseSlug, navigate]);
+
+  // Direct DOM meta injection for reliable SEO (react-helmet-async CSR fallback)
+  usePageMeta(course ? {
+    title: course.metaTitle,
+    description: course.metaDescription,
+    canonical: `https://oll.co/courses/${course.id}`,
+    ogTitle: course.metaTitle,
+    ogDescription: course.metaDescription,
+    keywords: `${course.name} classes for kids, ${course.name} course India, learn ${course.name} online, ${course.name} for kids, OLL ${course.name}`,
+    jsonLd: [
+      {
+        "@context": "https://schema.org",
+        "@type": "Course",
+        "name": course.name,
+        "description": course.description,
+        "provider": { "@type": "Organization", "name": "OLL", "sameAs": "https://oll.co" },
+        "educationalLevel": "K-12",
+        "url": `https://oll.co/courses/${course.id}`
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://oll.co/" },
+          { "@type": "ListItem", "position": 2, "name": "Courses", "item": "https://oll.co/courses" },
+          { "@type": "ListItem", "position": 3, "name": course.name, "item": `https://oll.co/courses/${course.id}` }
+        ]
+      }
+    ]
+  } : {});
 
   if (!course) {
     return (

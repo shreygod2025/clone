@@ -1,0 +1,60 @@
+{
+  "summary": "Frontend-only SEO regression testing for SEO improvements (iteration 66). All 17/17 feature tests PASS. The critical fix from iteration_65 (react-helmet-async v2 not injecting meta tags) has been resolved by: (1) downgrading to v1.3.0, (2) adding usePageMeta hook with useEffect-based direct DOM manipulation. Meta descriptions, canonicals, JSON-LD schemas, and OG tags are now correctly injected on all tested pages.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "/school-offerings page",
+        "issues": ["404 console errors for some resources (likely backend API calls for case studies / data). Not blocking - page renders correctly."]
+      }
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_66.json"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "usePageMeta hook cleanup only restores document.title on unmount, but does NOT restore meta description, canonical, or OG tags to defaults. This means if a user navigates from /courses/ai → homepage, the meta description would remain as the course-specific one until another page's usePageMeta fires. This is acceptable for SEO (crawlers see fresh per-page navigation), but worth noting.",
+    "CoursePage.jsx calls usePageMeta with conditional content (course ? {...} : {}) — hooks rules compliant since hook is always called with object arg. No 'hook called conditionally' errors confirmed."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "N/A (frontend-only test)",
+    "frontend": "100% (17/17 feature tests PASS)"
+  },
+  "test_credentials": "admin@oll.co / Dagaji03@",
+  "seed_data_creation": "",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All SEO improvements are working correctly. usePageMeta hook (useEffect-based DOM injection) successfully injects page-specific meta descriptions, canonicals, OG tags, and JSON-LD schemas. react-helmet-async was downgraded to v1.3.0. Test results: /courses/ai meta[name='description'].content = 'AI & Machine Learning classes for kids aged 9-17 at OLL...' (correct), canonical = 'https://oll.co/courses/ai' (correct), JSON-LD Course + BreadcrumbList both present. CourseRedirect works for /course/:slug. sitemap.xml has all required entries. All regression pages (/for-schools, /summer-camp, /summer-camp/book, /admin/login, /) load correctly.",
+  "test_details": {
+    "test1_redirect_basic_english": "PASS - /course/basic-english → /courses (basic-english is not a valid slug)",
+    "test2_redirect_robotics": "PASS - /course/robotics → /courses/robotics",
+    "test3_courses_ai_title": "PASS - 'AI & Machine Learning Classes for Kids | OLL - Build Real AI Projects'",
+    "test3_courses_ai_desc": "PASS - 'AI & Machine Learning classes for kids aged 9-17 at OLL...'",
+    "test3_courses_ai_canonical": "PASS - 'https://oll.co/courses/ai'",
+    "test4_entrepreneurship_title": "PASS - 'Entrepreneurship Classes for Kids | OLL - Young Entrepreneur Program India'",
+    "test4_entrepreneurship_desc": "PASS - 'OLL Entrepreneurship program for ages 10-17...'",
+    "test5_school_title": "PASS - 'Robotics Lab Setup for Schools India | OLL - STEM & AI Programs'",
+    "test5_school_desc": "PASS - contains 'CBSE, ICSE'",
+    "test5_school_canonical": "PASS - 'https://oll.co/school'",
+    "test6_school_offering_title": "PASS - contains 'Robotics'",
+    "test6_school_offering_desc_len": "PASS - 153 chars (≤160)",
+    "test6_school_offering_canonical": "PASS - contains 'robotics-lab-setup'",
+    "test7_courses_list_title": "PASS - 'Skill Courses for Kids | Robotics, AI, Coding & More | OLL'",
+    "test8_school_offerings_title": "PASS - 'School Programs & Pricing | Robotics Lab, STEM, AI | OLL'",
+    "test9_json_ld_course": "PASS - Course @type found in /courses/ai",
+    "test10_json_ld_breadcrumb": "PASS - BreadcrumbList @type found in /courses/ai",
+    "test11_sitemap_school": "PASS - /school in sitemap.xml",
+    "test11_sitemap_courses_ai": "PASS - /courses/ai in sitemap.xml",
+    "test12_for_schools": "PASS - loads with title 'For Schools | Robotics Lab Setup, AI & STEM Programs | OLL'",
+    "test13_summer_camp": "PASS - loads correctly",
+    "test14_summer_camp_book": "PASS - no React crash",
+    "test15_admin_login": "PASS - login form present",
+    "test16_homepage": "PASS - OLL branding visible",
+    "check_react_hook_errors": "PASS - no hook-related console errors"
+  }
+}
