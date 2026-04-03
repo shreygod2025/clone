@@ -1,4 +1,10 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
+
+// Dynamic redirect: /course/:slug → /courses/:slug (fixes indexed GSC URLs)
+const CourseRedirect = () => {
+  const { courseSlug } = useParams();
+  return <Navigate to={`/courses/${courseSlug}`} replace />;
+};
 import { Toaster } from "./components/ui/sonner";
 import ScrollToTop from "./components/ScrollToTop";
 import { lazy, Suspense } from "react";
@@ -139,6 +145,8 @@ function App() {
               <Route path="/mycoursedetail/:id" element={<Navigate to="/login" replace />} />
               <Route path="/all-courses" element={<Navigate to="/offerings" replace />} />
               <Route path="/about-us" element={<Navigate to="/about" replace />} />
+              {/* Fix old indexed course URLs: /course/:slug → /courses/:slug */}
+              <Route path="/course/:courseSlug" element={<CourseRedirect />} />
               
               {/* Legal Pages */}
               <Route path="/terms" element={<TermsPage />} />

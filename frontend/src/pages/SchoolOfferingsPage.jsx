@@ -136,16 +136,16 @@ const SchoolOfferingsPage = () => {
   return (
     <>
       <Helmet>
-        <title>School Programs & Pricing | Robotics Lab, STEM Curriculum | OLL</title>
-        <meta name="description" content="Explore OLL's school programs: Robotics Lab Setup, STEM Curriculum, AI & Coding, Teacher Training. Pricing for ICSE, CBSE, State Board schools. View case studies from 500+ partner schools." />
-        <meta name="keywords" content="school robotics programs, STEM curriculum pricing, robotics lab cost India, school AI program, coding for schools, ICSE CBSE robotics, school partnership, robotics case study, teacher training program" />
+        <title>School Programs & Pricing | Robotics Lab, STEM, AI | OLL</title>
+        <meta name="description" content="OLL school programs: Robotics Lab Setup, STEM Curriculum, AI & Coding for ICSE, CBSE & State Board schools. 500+ partners, 50K+ students. View pricing & case studies." />
+        <meta name="keywords" content="school robotics programs, STEM curriculum pricing, robotics lab cost India, school AI program, coding for schools, ICSE CBSE robotics, school partnership, robotics case study, teacher training program, robotics lab setup cost" />
         <link rel="canonical" href="https://oll.co/school-offerings" />
-        
+
         {/* Open Graph */}
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://oll.co/school-offerings" />
-        <meta property="og:title" content="School Programs & Pricing | Robotics Lab, STEM Curriculum | OLL" />
-        <meta property="og:description" content="Explore Robotics Lab Setup, STEM Curriculum, AI & Coding programs for schools. View pricing and case studies from 500+ partner schools." />
+        <meta property="og:title" content="School Programs & Pricing | Robotics Lab, STEM, AI | OLL" />
+        <meta property="og:description" content="Robotics Lab Setup, STEM Curriculum, AI & Coding programs for schools. 500+ partner schools, 50K+ students. View pricing & case studies." />
         <meta property="og:image" content="https://oll.co/og-image.png" />
         
         {/* Twitter */}
@@ -153,6 +153,29 @@ const SchoolOfferingsPage = () => {
         <meta name="twitter:title" content="School Programs | Robotics, AI & STEM | OLL" />
         <meta name="twitter:description" content="Robotics Lab Setup, STEM, AI programs for schools. View pricing & case studies." />
         <meta name="twitter:image" content="https://oll.co/og-image.png" />
+
+        {/* Structured Data */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "EducationalOrganization",
+            "name": "OLL School Programs",
+            "url": "https://oll.co/school-offerings",
+            "description": "Complete school STEM education solutions: Robotics Lab Setup, AI programs, Coding curriculum, and Entrepreneurship workshops for CBSE, ICSE & State Board schools.",
+            "areaServed": "IN",
+            "hasOfferCatalog": {
+              "@type": "OfferCatalog",
+              "name": "School Programs Catalog",
+              "itemListElement": [
+                {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Robotics Lab Setup", "url": "https://oll.co/school-offerings/robotics/robotics-lab-setup", "description": "Complete robotics lab infrastructure with kits, curriculum, and teacher training"}},
+                {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Robotics Curriculum with Take-home Kits", "url": "https://oll.co/school-offerings/robotics/robotics-curriculum-kits"}},
+                {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "AI Center of Excellence", "url": "https://oll.co/school-offerings/ai/ai-center-excellence"}},
+                {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Entrepreneurship Workshop", "url": "https://oll.co/school-offerings/financial-literacy/entrepreneurship-workshop"}},
+                {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Coding After School Classes", "url": "https://oll.co/school-offerings/coding/coding-afterschool"}}
+              ]
+            }
+          })}
+        </script>
       </Helmet>
 
       <div className="min-h-screen bg-slate-50">

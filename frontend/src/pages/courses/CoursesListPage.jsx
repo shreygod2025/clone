@@ -13,12 +13,29 @@ const CoursesListPage = () => {
   return (
     <>
       <Helmet>
-        <title>All Courses | OLL - Robotics, Coding, AI & More</title>
-        <meta name="description" content="Explore OLL's skill education courses: Robotics, Coding, AI & Machine Learning, Entrepreneurship, Financial Literacy. Ages 6-17. Book a free demo class today!" />
-        <meta name="keywords" content="OLL courses, robotics classes, coding for kids, AI classes, entrepreneurship program, financial literacy, skill education" />
-        <meta property="og:title" content="All Courses | OLL - Skill Education Platform" />
-        <meta property="og:description" content="Future-ready skill courses for kids aged 6-17. Robotics, Coding, AI, and more." />
+        <title>Skill Courses for Kids | Robotics, AI, Coding & More | OLL</title>
+        <meta name="description" content="OLL skill courses for kids aged 6-17: Robotics, Coding, AI, Entrepreneurship & Financial Literacy. Expert instructors, hands-on learning. Book a free demo!" />
+        <meta name="keywords" content="OLL courses, robotics classes for kids, coding classes kids India, AI classes students, entrepreneurship program kids, financial literacy course, skill education India, after school classes" />
+        <meta property="og:title" content="Skill Courses for Kids | Robotics, AI, Coding | OLL" />
+        <meta property="og:description" content="Future-ready skill courses for kids aged 6-17. Robotics, Coding, AI, Entrepreneurship & more. Expert instructors, hands-on projects." />
+        <meta property="og:site_name" content="OLL" />
         <link rel="canonical" href="https://oll.co/courses" />
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "ItemList",
+            "name": "OLL Skill Courses for Kids",
+            "description": "Future-ready skill education courses for students aged 6-17",
+            "url": "https://oll.co/courses",
+            "itemListElement": [
+              {"@type": "ListItem", "position": 1, "item": {"@type": "Course", "name": "Robotics for Kids", "url": "https://oll.co/courses/robotics", "description": "Hands-on robotics for ages 6-17. Build real robots, learn programming & engineering skills.", "provider": {"@type": "Organization", "name": "OLL"}}},
+              {"@type": "ListItem", "position": 2, "item": {"@type": "Course", "name": "Coding & Programming", "url": "https://oll.co/courses/coding", "description": "Python, Scratch & web development for ages 6-17. Build games, apps & websites.", "provider": {"@type": "Organization", "name": "OLL"}}},
+              {"@type": "ListItem", "position": 3, "item": {"@type": "Course", "name": "AI & Machine Learning", "url": "https://oll.co/courses/ai", "description": "Artificial intelligence classes for ages 9-17. Build AI projects & chatbots.", "provider": {"@type": "Organization", "name": "OLL"}}},
+              {"@type": "ListItem", "position": 4, "item": {"@type": "Course", "name": "Entrepreneurship", "url": "https://oll.co/courses/entrepreneurship", "description": "Young entrepreneur program for ages 10-17. Business fundamentals & startup skills.", "provider": {"@type": "Organization", "name": "OLL"}}},
+              {"@type": "ListItem", "position": 5, "item": {"@type": "Course", "name": "Financial Literacy", "url": "https://oll.co/courses/financial", "description": "Money management for ages 10-17. Budgeting, saving & investing basics.", "provider": {"@type": "Organization", "name": "OLL"}}}
+            ]
+          })}
+        </script>
       </Helmet>
 
       <div className="min-h-screen bg-slate-50">

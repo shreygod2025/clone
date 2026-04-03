@@ -632,27 +632,34 @@ const SchoolOfferingDetailPage = () => {
   const IconComponent = category.icon;
 
   // Generate rich SEO keywords based on category and offering
-  const seoKeywords = `${offering.title}, ${category.title} for schools, school ${category.title.toLowerCase()} program, ${category.title.toLowerCase()} curriculum India, OLL ${category.title.toLowerCase()}, school skill education`;
+  const seoKeywords = `${offering.title}, ${category.title} for schools, school ${category.title.toLowerCase()} program, ${category.title.toLowerCase()} curriculum India, OLL ${category.title.toLowerCase()}, school skill education, robotics lab setup for schools, STEM program India`;
+
+  // Concise SEO description under 155 chars
+  const seoDesc = offering.description.length > 120
+    ? `${offering.description.substring(0, 117)}... OLL's ${category.title} program for schools India. Free demo!`
+    : `${offering.description} OLL school program. Book a free demo today!`;
 
   return (
     <>
       <Helmet>
-        <title>{offering.title} for Schools | OLL - India's #1 Skill Education</title>
-        <meta name="description" content={`${offering.description} Best ${category.title.toLowerCase()} program for schools in India. Duration: ${offering.duration}. Ideal for: ${offering.ideal}. Book a demo today!`} />
+        <title>{offering.title} for Schools | OLL - India's Skill Education Partner</title>
+        <meta name="description" content={seoDesc.substring(0, 155)} />
         <meta name="keywords" content={seoKeywords} />
         <link rel="canonical" href={`https://oll.co/school-offerings/${categoryId}/${offeringId}`} />
-        
+
         {/* Open Graph */}
         <meta property="og:title" content={`${offering.title} | OLL School Programs`} />
-        <meta property="og:description" content={offering.description} />
+        <meta property="og:description" content={offering.description.substring(0, 120)} />
         <meta property="og:type" content="product" />
         <meta property="og:url" content={`https://oll.co/school-offerings/${categoryId}/${offeringId}`} />
-        
+        <meta property="og:image" content="https://oll.co/og-image.png" />
+
         {/* Twitter Card */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={`${offering.title} | OLL`} />
-        <meta name="twitter:description" content={offering.description} />
-        
+        <meta name="twitter:description" content={offering.description.substring(0, 120)} />
+        <meta name="twitter:image" content="https://oll.co/og-image.png" />
+
         {/* Structured Data */}
         <script type="application/ld+json">
           {JSON.stringify({
@@ -662,15 +669,42 @@ const SchoolOfferingDetailPage = () => {
             "description": offering.description,
             "provider": {
               "@type": "Organization",
-              "name": "OLL - Clonefutura Live Solutions",
-              "sameAs": "https://oll.co"
+              "name": "OLL",
+              "sameAs": "https://oll.co",
+              "url": "https://oll.co"
             },
             "educationalLevel": "K-12",
+            "teaches": offering.outcomes,
+            "timeRequired": offering.duration,
+            "url": `https://oll.co/school-offerings/${categoryId}/${offeringId}`,
             "isAccessibleForFree": false,
             "offers": {
               "@type": "Offer",
-              "category": "Educational Program"
+              "category": "Educational Program",
+              "availability": "https://schema.org/InStock",
+              "areaServed": "IN"
+            },
+            "hasCourseInstance": {
+              "@type": "CourseInstance",
+              "courseMode": "Onsite",
+              "courseWorkload": offering.sessionsPerWeek,
+              "instructor": {
+                "@type": "Organization",
+                "name": "OLL Educators"
+              }
             }
+          })}
+        </script>
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://oll.co/"},
+              {"@type": "ListItem", "position": 2, "name": "School Programs", "item": "https://oll.co/school-offerings"},
+              {"@type": "ListItem", "position": 3, "name": category.title, "item": `https://oll.co/school-offerings/${categoryId}/${offeringId}`},
+              {"@type": "ListItem", "position": 4, "name": offering.title, "item": `https://oll.co/school-offerings/${categoryId}/${offeringId}`}
+            ]
           })}
         </script>
       </Helmet>

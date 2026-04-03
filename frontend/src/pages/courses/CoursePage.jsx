@@ -54,12 +54,60 @@ const CoursePage = () => {
       <Helmet>
         <title>{course.metaTitle}</title>
         <meta name="description" content={course.metaDescription} />
-        <meta name="keywords" content={`${course.name}, ${course.name} classes, ${course.name} for kids, learn ${course.name}, ${course.name} course, OLL`} />
+        <meta name="keywords" content={`${course.name} classes for kids, ${course.name} course India, learn ${course.name} online, ${course.name} for kids Mumbai, OLL ${course.name}, ${course.name} after school classes`} />
         <meta property="og:title" content={course.metaTitle} />
         <meta property="og:description" content={course.metaDescription} />
         <meta property="og:image" content={course.heroImage} />
         <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="OLL" />
         <link rel="canonical" href={`https://oll.co/courses/${course.id}`} />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={course.metaTitle} />
+        <meta name="twitter:description" content={course.metaDescription} />
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Course",
+            "name": course.name,
+            "description": course.description,
+            "provider": {
+              "@type": "Organization",
+              "name": "OLL",
+              "sameAs": "https://oll.co",
+              "url": "https://oll.co"
+            },
+            "educationalLevel": "K-12",
+            "teaches": course.outcomes,
+            "url": `https://oll.co/courses/${course.id}`,
+            "isAccessibleForFree": false,
+            "offers": {
+              "@type": "Offer",
+              "availability": "https://schema.org/InStock",
+              "category": "Educational Program",
+              "areaServed": "IN"
+            },
+            "hasCourseInstance": {
+              "@type": "CourseInstance",
+              "courseMode": ["Onsite", "Online"],
+              "courseWorkload": `${course.duration} course, batch size ${course.classSize}`,
+              "instructor": {
+                "@type": "Organization",
+                "name": "OLL Certified Educators"
+              }
+            }
+          })}
+        </script>
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://oll.co/"},
+              {"@type": "ListItem", "position": 2, "name": "Courses", "item": "https://oll.co/courses"},
+              {"@type": "ListItem", "position": 3, "name": course.name, "item": `https://oll.co/courses/${course.id}`}
+            ]
+          })}
+        </script>
       </Helmet>
 
       <div className="min-h-screen bg-slate-50">

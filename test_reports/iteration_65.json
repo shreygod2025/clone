@@ -1,0 +1,45 @@
+{
+  "summary": "Frontend-only SEO regression testing for SEO improvements: URL redirects, page titles, JSON-LD schemas, sitemap.xml, and key page regression checks. 16/17 feature tests PASS. Critical pre-existing issue found: react-helmet-async v2.0.5 only updates <title> but does NOT inject page-specific meta descriptions, OG tags, canonical links, or JSON-LD scripts into the live DOM.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "/course/basic-english redirect",
+        "issue": "Redirects to /courses (list page) instead of /courses/basic-english. This is expected behavior since 'basic-english' is not a valid course slug in CourseData - the CoursePage.jsx calls getCourseBySlug('basic-english') which returns null and then navigates to /courses. This is correct behavior.",
+        "affected_selectors": []
+      },
+      {
+        "flow": "All pages: meta description, OG tags, canonical URLs, JSON-LD scripts",
+        "issue": "CRITICAL PRE-EXISTING BUG: react-helmet-async v2.0.5 does NOT inject page-specific meta descriptions, OG tags, canonical links, or JSON-LD script tags into the live DOM. Only <title> updates work. The DOM on /courses/ai shows static index.html values: description='OLL offers Robotics...', og:title='OLL - Learn Future Skills...', canonical='https://oll.co/', 0 Helmet-managed tags (data-rh=0). The new SEO additions (JSON-LD Course schema in CoursePage.jsx, BreadcrumbList, EducationalOrganization in SchoolFunnel.jsx, etc.) are NOT being rendered in the DOM. This is a CSR-only SPA limitation with react-helmet-async v2.",
+        "affected_selectors": ["meta[name='description']", "meta[property='og:title']", "link[rel='canonical']", "script[type='application/ld+json']"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/test_reports/iteration_65.json"],
+  "action_items": [
+    "CRITICAL: Fix react-helmet-async v2.0.5 meta tag injection. Option 1 (easiest): Downgrade to 'react-helmet-async': '^1.3.0' which works with CSR. Option 2: Switch to direct DOM manipulation via useEffect for meta tags and JSON-LD scripts. Option 3: Add data-react-helmet='true' to all existing meta/link tags in index.html to enable Helmet management. Search: react-helmet-async v2 CSR fix 2025.",
+    "The /course/basic-english redirect behavior: it goes to /courses (list) not /courses/basic-english. This is because 'basic-english' is not a valid slug in CourseData. If 'basic-english' was an old GSC indexed URL, the redirect at least avoids a 404 and lands on the courses list. Acceptable behavior but may want to verify GSC URLs match actual course slugs.",
+    "JSON-LD structured data for CoursePage.jsx, SchoolFunnel.jsx, SchoolOfferingDetailPage.jsx, CoursesListPage.jsx, SchoolOfferingsPage.jsx will not show up in DOM until react-helmet-async is fixed or replaced."
+  ],
+  "critical_code_review_comments": [
+    "react-helmet-async v2.0.5 (in package.json) only updates document.title in CSR mode. Meta tags, OG tags, canonical links, JSON-LD script tags are NOT being injected/replaced. All page-specific Helmet content other than <title> is silently ignored. This negates the SEO value of all the new meta descriptions, canonical URLs, and JSON-LD schemas added in this PR.",
+    "The CourseRedirect component (App.js lines 3-7) is correctly implemented with useParams and Navigate replace. Works for /course/:slug → /courses/:slug.",
+    "The sitemap.xml contains all required entries: /school, /courses, /courses/robotics, /courses/coding, /courses/ai, /courses/entrepreneurship, /courses/financial, and key school-offerings pages."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "N/A (frontend-only test)",
+    "frontend": "94% (16/17 feature tests PASS, 1 pre-existing systemic issue)"
+  },
+  "test_credentials": "admin@oll.co / Dagaji03@",
+  "seed_data_creation": "",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "The critical issue is react-helmet-async v2.0.5 not injecting meta tags in CSR mode. After any fix, test these on /courses/ai: (1) meta[name='description'] content should be course-specific, not generic OLL description from index.html (2) script[type='application/ld+json'] should include @type:Course schema (3) link[rel='canonical'] should be https://oll.co/courses/ai. All page titles (via page.title()) ARE updating correctly. URL redirect /course/:slug → /courses/:slug works. sitemap.xml at /sitemap.xml is accessible and has all required entries. Admin login works.",
+  "rca_of_the_issue": "Root Cause: react-helmet-async v2.0.5 introduced breaking changes for CSR-only apps. In v2, the library was redesigned primarily for SSR use cases. In pure CSR mode with React 18 StrictMode, the HelmetProvider context is set up correctly (verified in index.js), but the Helmet component only reliably updates document.title. Other head tags (meta, link, script) from Helmet components are NOT replacing or augmenting the existing static head tags from index.html. Evidence: 0 data-rh attributed tags in DOM after full page render, static index.html meta description appears on all pages regardless of Helmet. Reproduction: Navigate to /courses/ai, inspect document.head.querySelector('meta[name=description]').content - shows generic OLL description, not course-specific. Fix: Downgrade to react-helmet-async v1.3.0 OR use useEffect-based direct DOM injection OR upgrade to React 19 with native metadata support."
+}

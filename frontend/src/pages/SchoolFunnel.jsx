@@ -710,23 +710,53 @@ const SchoolFunnel = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <Helmet>
-        <title>School Partnership | Schedule Meeting for Robotics Lab | OLL</title>
-        <meta name="description" content="Schedule a free meeting with OLL for Robotics Lab setup, STEM programs, AI curriculum for your ICSE, CBSE or State Board school. Get teacher training & student competitions support." />
-        <meta name="keywords" content="school robotics partnership, STEM lab meeting, school AI program consultation, ICSE robotics program, CBSE STEM curriculum, school partnership inquiry" />
+        <title>Robotics Lab Setup for Schools India | OLL - STEM & AI Programs</title>
+        <meta name="description" content="Set up a robotics lab in your CBSE, ICSE or State Board school. OLL provides robotics, AI, coding & STEM for 500+ schools. Get a free consultation today." />
+        <meta name="keywords" content="robotics lab setup for schools, robotics program school India, STEM lab school CBSE ICSE, school robotics curriculum, AI program for schools, coding classes school, NEP 2020 robotics, robotics lab cost India, school STEM partnership" />
         <link rel="canonical" href="https://oll.co/school" />
-        
+
         {/* Open Graph */}
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://oll.co/school" />
-        <meta property="og:title" content="School Partnership | Schedule Meeting | OLL" />
-        <meta property="og:description" content="Schedule a free meeting for Robotics Lab, STEM programs for your school. Teacher training & competitions support." />
+        <meta property="og:title" content="Robotics Lab Setup for Schools India | OLL - STEM & AI Programs" />
+        <meta property="og:description" content="OLL helps 500+ CBSE, ICSE & State Board schools set up robotics labs, AI & STEM programs. NEP 2020 aligned. Free consultation available." />
         <meta property="og:image" content="https://oll.co/og-image.png" />
-        
+        <meta property="og:site_name" content="OLL" />
+
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="School Partnership | OLL" />
-        <meta name="twitter:description" content="Schedule a meeting for Robotics Lab & STEM programs for your school." />
+        <meta name="twitter:title" content="Robotics Lab for Schools | OLL - STEM Programs India" />
+        <meta name="twitter:description" content="Robotics lab setup, AI & STEM programs for CBSE, ICSE & State Board schools. 500+ partner schools." />
         <meta name="twitter:image" content="https://oll.co/og-image.png" />
+
+        {/* Structured Data */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "EducationalOrganization",
+            "name": "OLL School Programs",
+            "description": "Robotics Lab Setup, AI, Coding & STEM programs for ICSE, CBSE and State Board schools across India. 500+ partner schools, 50,000+ students trained.",
+            "url": "https://oll.co/school",
+            "areaServed": "IN",
+            "numberOfStudents": 50000,
+            "hasOfferCatalog": {
+              "@type": "OfferCatalog",
+              "name": "School Programs",
+              "itemListElement": [
+                {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Robotics Lab Setup", "description": "Complete robotics lab infrastructure with curriculum, kits, and teacher training for CBSE/ICSE schools"}},
+                {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "AI & Coding Programs", "description": "Agentic AI workshops, coding afterschool classes, and AI center of excellence setup"}},
+                {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "STEM Curriculum", "description": "NEP 2020 aligned integrated STEM learning modules"}},
+                {"@type": "Offer", "itemOffered": {"@type": "Service", "name": "Entrepreneurship & Financial Literacy", "description": "E-Cell setup, entrepreneurship workshops, and Skill Titans olympiad"}}
+              ]
+            },
+            "aggregateRating": {
+              "@type": "AggregateRating",
+              "ratingValue": "4.8",
+              "reviewCount": "500",
+              "bestRating": "5"
+            }
+          })}
+        </script>
       </Helmet>
       <Navbar />
 
