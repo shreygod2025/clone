@@ -64,6 +64,29 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+### 2026-04-04 — GST Type Bug Fix + Deployment Hardening
+**Context:** User reported GST type selected in onboarding popup was not being saved and not reflecting in the Update Payment modal or Edit Onboarding modal.
+
+**Root Cause:**
+- `POST /api/schools/onboard` (`schools.py`) was missing `gst_type` in BOTH the `school_onboarding` document and the `school_inquiries.onboarding_data` dict.
+- `GET /api/orders/school-payments` (`orders.py`) only fell back to `school_gst_type` when NO payment record existed; once any payment record was saved (even without GST type), the fallback stopped working.
+- `PATCH /api/orders/{payment_id}` (`orders.py`) overwrote `gst_type` with empty/None when admin saved without selecting it.
+
+**Fixes Applied:**
+1. `schools.py` POST `/schools/onboard`: Added `"gst_type": data.get("gst_type", "")` to both `doc` (school_onboarding collection) and `onboarding_data` dict (school_inquiries).
+2. `schools.py` PUT `/schools/onboarding/{id}`: Added `"onboarding_data.gst_type": data.get("gst_type")` to sync_fields.
+3. `schools.py` POST `/schools/onboarding`: Added `gst_type` to the onboarding document.
+4. `orders.py` GET `school-payments`: Changed `gst_type` lookup to `(existing_payment.get("gst_type") if existing_payment else None) or school_gst_type` — always falls back to school-level GST type.
+5. `orders.py` PATCH `/{payment_id}`: Added `incoming_gst_type` preservation (falls back to existing record's `gst_type` → `onboarding_data.gst_type` when incoming is empty).
+6. Same gst_type fallback fix applied to student payment `gst_type` and `gst_amount` fields.
+
+**Deployment Fixes:**
+- `routes/shared.py`: Added Atlas-safe MongoDB connection timeouts (`serverSelectionTimeoutMS=10000`, `connectTimeoutMS=10000`, `socketTimeoutMS=30000`) to prevent indefinite hangs on cold-start with remote Atlas cluster.
+- `clear_cache` NameError: Already fixed in previous fork (uses `clear_payment_cache` imported from `payments.py`).
+
+**UI Update:**
+- `SummerCampBookingPage.jsx`: Increased center card name and batch item font sizes from 1.05rem/1rem to 1.2rem (user-requested).
+
 ### 2026-04-03 — SEO Improvements (Google Search Console Data-Driven)
 **Context:** User uploaded GSC performance report showing key pages with high impressions but low CTR.
 **Key Issues Fixed:**

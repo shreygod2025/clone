@@ -14,9 +14,14 @@ from datetime import datetime, timezone
 ROOT_DIR = Path(__file__).parent.parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
+# MongoDB connection — explicit timeouts prevent indefinite hangs on Atlas in production
 mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
+client = AsyncIOMotorClient(
+    mongo_url,
+    serverSelectionTimeoutMS=10000,  # 10 s to find a suitable server
+    connectTimeoutMS=10000,           # 10 s to establish TCP connection
+    socketTimeoutMS=30000,            # 30 s for individual socket operations
+)
 db = client[os.environ['DB_NAME']]
 
 # JWT Configuration
