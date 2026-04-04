@@ -348,7 +348,7 @@ async def _execute(action: dict, user: dict) -> dict:
                 }
 
             # All other email types — send directly from backend
-            from server import send_crm_email_for_school
+            from routes.schools import send_crm_email_for_school
             email_data = {"email_type": email_type, "to_email": to_email}
             try:
                 result = await send_crm_email_for_school(sid, email_data, user)

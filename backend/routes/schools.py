@@ -1432,6 +1432,7 @@ async def send_crm_email_for_school(
             "custom_message": data.get("custom_message", "")
         }
 
+        from server import send_school_crm_email  # lazy import to avoid circular dependency
         result = await send_school_crm_email(
             to_email=to_email,
             email_type=email_type,
