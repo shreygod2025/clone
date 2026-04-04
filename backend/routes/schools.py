@@ -798,6 +798,7 @@ async def onboard_school(data: dict, user: dict = Depends(get_current_user)):
         "contract_start": data.get("contract_start"),
         "contract_end": data.get("contract_end"),
         "mou_url": data.get("mou_url", ""),  # MOU document URL
+        "gst_type": data.get("gst_type", ""),  # GST type: exclusive_18, inclusive_18, no_gst
         "status": "draft" if is_draft else "active",
         "is_draft": is_draft,
         "created_by": user.get("email", "admin"),
@@ -822,6 +823,7 @@ async def onboard_school(data: dict, user: dict = Depends(get_current_user)):
         "contract_start": data.get("contract_start"),
         "contract_end": data.get("contract_end"),
         "mou_url": data.get("mou_url", ""),
+        "gst_type": data.get("gst_type", ""),  # GST type for payments and invoices
     }
     
     # Update school inquiry with onboarding data
@@ -940,6 +942,7 @@ async def create_school_onboarding(data: dict, user: dict = Depends(get_current_
         "contract_start": data.get("contract_start", ""),
         "contract_end": data.get("contract_end", ""),
         "mou_url": data.get("mou_url", ""),
+        "gst_type": data.get("gst_type", ""),
         "status": "active",
         "is_draft": False,
         "created_by": user.get("email", "admin"),
@@ -1001,6 +1004,7 @@ async def update_school_onboarding(onboarding_id: str, data: dict, user: dict = 
                 "onboarding_data.gp_share_calc": data.get("gp_share_calc"),
                 "onboarding_data.gp_share_value": data.get("gp_share_value"),
                 "onboarding_data.gp_share_amount": data.get("gp_share_amount"),
+                "onboarding_data.gst_type": data.get("gst_type"),
             }
             # Only update fields that are provided (not None)
             sync_update = {k: v for k, v in sync_fields.items() if v is not None}

@@ -152,7 +152,8 @@ async def get_school_payments(
                 amount = total_amount * float(tranche.get("percentage") or 0) / 100
             
             school_gst_type = onboarding_data.get("gst_type", "")
-            gst_type = existing_payment.get("gst_type") if existing_payment else (tranche.get("gst_type") or school_gst_type)
+            # Always fall back to school-level gst_type if the payment record has none
+            gst_type = (existing_payment.get("gst_type") if existing_payment else None) or tranche.get("gst_type") or school_gst_type
             # Compute gst_amount from gst_type and tranche amount
             gst_amount = 0
             if gst_type in ("exclusive_18", "exclusive"):
@@ -242,8 +243,8 @@ async def get_student_payments(
             # Payment source fields
             "payment_from": existing_payment.get("payment_from", "individual") if existing_payment else "individual",
             "payment_mode": existing_payment.get("payment_mode") if existing_payment else onboarding_data.get("payment_mode"),
-            "gst_type": existing_payment.get("gst_type") if existing_payment else onboarding_data.get("gst_type"),
-            "gst_amount": existing_payment.get("gst_amount") if existing_payment else onboarding_data.get("gst_amount"),
+            "gst_type": (existing_payment.get("gst_type") if existing_payment else None) or onboarding_data.get("gst_type"),
+            "gst_amount": (existing_payment.get("gst_amount") if existing_payment else None) or onboarding_data.get("gst_amount"),
             "batch_name": student.get("batch_name", ""),
             # Additional conversion details
             "conversion_details": {
@@ -343,6 +344,10 @@ async def update_payment(
             incoming_invoice_url = existing_payment_rec.get("invoice_url")
         if not incoming_receipt_url and not data.get("clear_receipt") and existing_payment_rec.get("receipt_url"):
             incoming_receipt_url = existing_payment_rec.get("receipt_url")
+        # Preserve existing gst_type if incoming is empty (fall back to onboarding_data as last resort)
+        incoming_gst_type = data.get("gst_type")
+        if not incoming_gst_type:
+            incoming_gst_type = existing_payment_rec.get("gst_type") or school.get("onboarding_data", {}).get("gst_type", "")
 
         payment_record = {
             "id": payment_id,
@@ -352,7 +357,7 @@ async def update_payment(
             "transaction_id": data.get("transaction_id"),
             "invoice_url": incoming_invoice_url,
             "receipt_url": incoming_receipt_url,
-            "gst_type": data.get("gst_type"),
+            "gst_type": incoming_gst_type,
             "payment_link": data.get("payment_link"),
             "notes": data.get("notes", ""),
             "paid_amount": data.get("paid_amount", 0),

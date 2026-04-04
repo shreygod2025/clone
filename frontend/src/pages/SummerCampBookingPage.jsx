@@ -343,7 +343,7 @@ export default function SummerCampBookingPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                       <span style={{ fontSize: '1.75rem', lineHeight: 1, flexShrink: 0 }}>🏢</span>
                       <div>
-                        <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '1.05rem', color: '#F8FAFC', marginBottom: '0.25rem' }}>{c.name}</div>
+                        <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '1.2rem', color: '#F8FAFC', marginBottom: '0.25rem' }}>{c.name}</div>
                         <div style={{ fontSize: '0.88rem', color: '#64748B', fontFamily: NU }}>{c.area ? `${c.area}, ${c.city}` : c.address}</div>
                       </div>
                     </div>
@@ -375,7 +375,7 @@ export default function SummerCampBookingPage() {
                   >
                     <div>
                       <div style={{ fontSize: '0.72rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '0.3rem', fontFamily: JB }}>Batch {i + 1}</div>
-                      <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '1rem', color: '#F8FAFC' }}>{b[form.batch_type]}</div>
+                      <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '1.2rem', color: '#F8FAFC' }}>{b[form.batch_type]}</div>
                     </div>
                   </ChoiceCard>
                 ))}
