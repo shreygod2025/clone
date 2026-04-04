@@ -22,6 +22,7 @@ from .shared import (
 )
 from .notifications import send_whatsapp_notification
 from .expenses import transform_tracking_url, fetch_po_data, fetch_vendor_products, match_vendor_product, VENDOR_PUBLIC_API
+from .payments import clear_payment_cache
 
 router = APIRouter()
 
@@ -536,7 +537,7 @@ async def update_school_inquiry(
         inquiry['updated_at'] = datetime.fromisoformat(inquiry['updated_at'])
     
     # Clear school payment cache for this school
-    clear_cache(f"school_payment_{inquiry_id}")
+    clear_payment_cache(f"school_payment_{inquiry_id}")
     
     return inquiry
 

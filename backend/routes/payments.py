@@ -72,6 +72,14 @@ def set_cached(key: str, value, ttl: int = 300):
     _payment_cache[key] = value
     return value
 
+def clear_payment_cache(prefix: str = None):
+    """Clear payment cache entries, optionally by key prefix."""
+    if prefix:
+        for k in [k for k in _payment_cache if k.startswith(prefix)]:
+            _payment_cache.pop(k, None)
+    else:
+        _payment_cache.clear()
+
 router = APIRouter()
 
 # ── Student Payment Receipt Email ────────────────────────────────────────────

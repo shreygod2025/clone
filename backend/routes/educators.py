@@ -27,6 +27,23 @@ from .notifications import send_whatsapp_notification, send_demo_confirmation_no
 # OTP types needed by educator routes
 from database import otp_store_new, otp_verify, otp_send_allowed
 
+# Local in-memory blog/content cache (self-contained in this module)
+_blog_cache: dict = {}
+
+def get_cached(key: str):
+    return _blog_cache.get(key)
+
+def set_cached(key: str, value, ttl: int = 300):
+    _blog_cache[key] = value
+    return value
+
+def clear_cache(prefix: str = None):
+    if prefix:
+        for k in [k for k in list(_blog_cache.keys()) if k.startswith(prefix)]:
+            _blog_cache.pop(k, None)
+    else:
+        _blog_cache.clear()
+
 # OTPVerify model (shared with users.py)
 class OTPVerify(BaseModel):
     phone: str
