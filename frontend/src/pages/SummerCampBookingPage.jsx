@@ -17,10 +17,10 @@ const AGE_GROUPS = [
 ];
 
 const BATCH_WEEKS = [
-  { id: 'week1', weekday: 'May 1–5, 2026',   weekend: 'May 2–3 & 9–10, 2026' },
-  { id: 'week2', weekday: 'May 8–12, 2026',  weekend: 'May 9–10 & 16–17, 2026' },
-  { id: 'week3', weekday: 'May 15–19, 2026', weekend: 'May 16–17 & 23–24, 2026' },
-  { id: 'week4', weekday: 'May 22–26, 2026', weekend: 'May 23–24 & 30–31, 2026' },
+  { id: 'week1', weekday: 'May 4–8, 2026',   weekend: 'May 2–3 & 9–10, 2026' },
+  { id: 'week2', weekday: 'May 11–15, 2026',  weekend: 'May 9–10 & 16–17, 2026' },
+  { id: 'week3', weekday: 'May 18–22, 2026', weekend: 'May 16–17 & 23–24, 2026' },
+  { id: 'week4', weekday: 'May 25–29, 2026', weekend: 'May 23–24 & 30–31, 2026' },
 ];
 
 // Steps: 0-Age | 1-Mode | 2-Center(offline) | 3-Batch | 4-Phone | 5-Details+Pay
