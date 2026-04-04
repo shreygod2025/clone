@@ -2425,7 +2425,6 @@ async def upload_lms_students(school_id: str, data: dict, user: dict = Depends(g
     }
 
 # Public tracking endpoint (no auth required)
-@router.get("/track/{tracking_token}")
 @router.post("/schools/{school_id}/po-preview")
 async def preview_po_products(school_id: str, data: dict, user: dict = Depends(get_current_user)):
     """Preview the auto-computed PO products without submitting to vendor"""
