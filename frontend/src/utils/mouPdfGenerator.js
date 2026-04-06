@@ -84,7 +84,7 @@ export async function generateMOUDocument(school, data, { API, getAuthHeaders, u
   // Debug: log what data is available (remove after confirming fix)
   console.log('[MOU Debug] school object:', JSON.stringify({ school_name: school?.school_name, name: school?.name, id: school?.id }));
   console.log('[MOU Debug] data._school_name:', data?._school_name, '| final schoolName:', schoolName);
-  const schoolAddress = data.school_address || school?.location || school?.address || '';
+  const schoolAddress = data.school_address || data.address || school?.location || school?.address || '';
   const contacts = data.school_contacts || [];
   const principal = contacts.find(c => c.role === 'principal') || contacts[0] || {};
   const coordinator = contacts.find(c => ['coordinator', 'program_coordinator'].includes(c.role)) || {};

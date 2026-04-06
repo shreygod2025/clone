@@ -64,6 +64,24 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+### 2026-04-04 — MOU School Address Fix
+**Bug:** School address was blank in generated MOU despite being entered in the onboarding form.
+
+**Root Cause (3 layers):**
+1. **Backend** (`POST /schools/onboard`): `school_address` was NOT saved to either the `school_onboarding` doc or `school_inquiries.onboarding_data` — stripped during server.py refactor
+2. **Frontend** (`AdminSchoolCRM.jsx` `handleEditOnboarding`): `editOnboardData` was initialized with `address` field but NOT `school_address` — MOU generator reads `data.school_address`
+3. **Frontend** (`AdminSchoolCRM.jsx` `handleSaveEditOnboarding`): `school_address` was missing from the `onboardingData` object sent to the backend
+
+**Fixes Applied:**
+1. `mouPdfGenerator.js` line 87: Added `data.address` fallback: `data.school_address || data.address || school?.location || school?.address`
+2. `AdminSchoolCRM.jsx` edit init (both paths): Added `school_address: existingOnboardData.school_address || school.address || school.location`
+3. `AdminSchoolCRM.jsx` save: Added `school_address: editOnboardData.school_address` to `onboardingData`
+4. `schools.py` POST `/schools/onboard`: Added `school_address` to both `doc` and `onboarding_data` dicts; also writes to `school.address`
+5. `schools.py` PUT `/schools/onboarding/{id}`: Added `onboarding_data.school_address` to sync_fields
+6. `schools.py` POST `/schools/onboarding`: Added `school_address` to new doc
+
+**Verified:** `onboarding_data.school_address` and `school.address` now correctly persist from the onboarding form.
+
 ### 2026-04-04 — Support Ticket Bugs Fixed + Deployment Hardening (cont.)
 **Bugs Fixed:**
 1. **Image Upload in Ticket Replies** (`/api/upload`): `misc.py` was missing `from pathlib import Path`, `from io import BytesIO`, and `_get_cloudinary()` function — all causing 500 errors. Added all three.

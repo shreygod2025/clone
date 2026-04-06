@@ -799,6 +799,7 @@ async def onboard_school(data: dict, user: dict = Depends(get_current_user)):
         "contract_end": data.get("contract_end"),
         "mou_url": data.get("mou_url", ""),  # MOU document URL
         "gst_type": data.get("gst_type", ""),  # GST type: exclusive_18, inclusive_18, no_gst
+        "school_address": data.get("school_address", ""),  # Full school address for MOU
         "status": "draft" if is_draft else "active",
         "is_draft": is_draft,
         "created_by": user.get("email", "admin"),
@@ -824,6 +825,7 @@ async def onboard_school(data: dict, user: dict = Depends(get_current_user)):
         "contract_end": data.get("contract_end"),
         "mou_url": data.get("mou_url", ""),
         "gst_type": data.get("gst_type", ""),  # GST type for payments and invoices
+        "school_address": data.get("school_address", ""),  # Full school address for MOU
     }
     
     # Update school inquiry with onboarding data
@@ -834,6 +836,9 @@ async def onboard_school(data: dict, user: dict = Depends(get_current_user)):
         "model": data.get("model"),
         "total_students": data.get("total_students"),
     }
+    # Also update the address on the school record directly for convenience
+    if data.get("school_address"):
+        update_fields["address"] = data.get("school_address")
     if not is_draft:
         update_fields["status"] = "active"
     
@@ -943,6 +948,7 @@ async def create_school_onboarding(data: dict, user: dict = Depends(get_current_
         "contract_end": data.get("contract_end", ""),
         "mou_url": data.get("mou_url", ""),
         "gst_type": data.get("gst_type", ""),
+        "school_address": data.get("school_address", ""),
         "status": "active",
         "is_draft": False,
         "created_by": user.get("email", "admin"),
@@ -1005,6 +1011,7 @@ async def update_school_onboarding(onboarding_id: str, data: dict, user: dict = 
                 "onboarding_data.gp_share_value": data.get("gp_share_value"),
                 "onboarding_data.gp_share_amount": data.get("gp_share_amount"),
                 "onboarding_data.gst_type": data.get("gst_type"),
+                "onboarding_data.school_address": data.get("school_address"),
             }
             # Only update fields that are provided (not None)
             sync_update = {k: v for k, v in sync_fields.items() if v is not None}

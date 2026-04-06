@@ -3541,7 +3541,7 @@ ${FOOTER}</div></body></html>`
         location: school.location,
         board: school.board,
         address: school.address || '',
-        // Spread the existing onboarding data
+        school_address: existingOnboardData.school_address || school.address || school.location || '',
         offering: existingOnboardData.offering || '',
         model: existingOnboardData.model || school.model || '',
         book_type: existingOnboardData.book_type || '',
@@ -3594,6 +3594,7 @@ ${FOOTER}</div></body></html>`
         location: school.location,
         board: school.board,
         address: school.address || '',
+        school_address: response.data.school_address || school.address || school.location || '',
         // Ensure share fields exist
         pricing_type: response.data.pricing_type || 'per_student',
         fixed_price: response.data.fixed_price || '',
@@ -3735,6 +3736,7 @@ ${FOOTER}</div></body></html>`
         gp_share_value: editOnboardData.gp_share_value,
         gp_share_amount: calculatedGpShareAmount,
         gst_type: editOnboardData.gst_type || '',
+        school_address: editOnboardData.school_address || '',
       };
 
       // Update school inquiry basic info AND onboarding_data for renewed/converted schools
