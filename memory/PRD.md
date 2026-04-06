@@ -64,6 +64,11 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+### 2026-04-04 — Support Ticket Bugs Fixed + Deployment Hardening (cont.)
+**Bugs Fixed:**
+1. **Image Upload in Ticket Replies** (`/api/upload`): `misc.py` was missing `from pathlib import Path`, `from io import BytesIO`, and `_get_cloudinary()` function — all causing 500 errors. Added all three.
+2. **Assign Ticket 500 Error** (`/api/support/queries/{id}/assign`): `support.py` was missing `import resend` and `SENDER_EMAIL` import. The assign handler tried to check `resend.api_key` to conditionally send email notifications but `resend` module was undefined — causing NameError and 500. Fixed by adding `import resend` and importing `ensure_resend_api_key, SENDER_EMAIL` from `.shared`.
+
 ### 2026-04-04 — GST Type Bug Fix + Deployment Hardening
 **Context:** User reported GST type selected in onboarding popup was not being saved and not reflecting in the Update Payment modal or Edit Onboarding modal.
 

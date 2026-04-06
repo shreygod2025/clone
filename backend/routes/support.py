@@ -3,12 +3,13 @@ Support Queries, Support Tickets, Batches, and Sessions routes.
 """
 import uuid
 import asyncio
+import resend
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 
-from .shared import db, get_current_user
+from .shared import db, get_current_user, ensure_resend_api_key, SENDER_EMAIL
 from .notifications import send_whatsapp_notification, send_ticket_overdue_notification, send_ticket_overdue_admin_notification
 
 router = APIRouter()
@@ -175,7 +176,8 @@ async def assign_support_query(query_id: str, data: dict, user: dict = Depends(g
             print(f"[ASSIGN] Skipping WhatsApp - no phone for {assignee_name} (phone={assignee_phone})")
         
         # Send Email notification using resend
-        if assignee_email and resend.api_key:
+        resend_ready = await ensure_resend_api_key()
+        if assignee_email and resend_ready:
             try:
                 email_params = {
                     "from": SENDER_EMAIL,

@@ -6,6 +6,8 @@ import uuid
 import asyncio
 import httpx
 import io
+from io import BytesIO
+from pathlib import Path
 import csv
 import json
 import logging
@@ -17,6 +19,24 @@ from pydantic import BaseModel, Field, ConfigDict, EmailStr
 
 from .shared import db, get_current_user
 from .notifications import send_whatsapp_notification
+
+# Cloudinary lazy loader
+_cloudinary_configured = False
+def _get_cloudinary():
+    """Lazy-load and configure cloudinary to avoid slow startup."""
+    global _cloudinary_configured
+    import cloudinary
+    import cloudinary.uploader
+    import cloudinary.utils
+    if not _cloudinary_configured:
+        cloudinary.config(
+            cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+            api_key=os.getenv("CLOUDINARY_API_KEY"),
+            api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+            secure=True
+        )
+        _cloudinary_configured = True
+    return cloudinary
 
 router = APIRouter()
 
