@@ -606,16 +606,21 @@ async def get_summer_camp_dashboard(user: dict = Depends(get_current_user)):
     for b in bookings:
         key = f"{b.get('batch_week', 'unknown')}_{b.get('batch_type', 'unknown')}"
         if key not in batch_stats:
+            batch_week = b.get("batch_week")
+            batch_type = b.get("batch_type", "weekday")
+            # Use canonical dates from BATCH_DATES dict, fallback to stored value
+            canonical_dates = BATCH_DATES.get(batch_week, {}).get(batch_type, b.get("batch_dates", ""))
             batch_stats[key] = {
-                "batch_week": b.get("batch_week"),
-                "batch_type": b.get("batch_type"),
-                "batch_dates": b.get("batch_dates", ""),
+                "batch_week": batch_week,
+                "batch_type": batch_type,
+                "batch_dates": canonical_dates,
                 "total": 0,
                 "converted": 0,
                 "leads": 0,
                 "phone_captured": 0,
                 "lost": 0,
                 "capacity": CAMP_BATCH_CAPACITY,
+                "by_age_group": {"explorers": 0, "creators": 0, "innovators": 0},
             }
         batch_stats[key]["total"] += 1
         status = b.get("crm_status", "")
@@ -627,6 +632,10 @@ async def get_summer_camp_dashboard(user: dict = Depends(get_current_user)):
             batch_stats[key]["phone_captured"] += 1
         elif status == "lost_lead":
             batch_stats[key]["lost"] += 1
+        # age group tracking per batch
+        ag = b.get("age_group", "unknown")
+        if ag in batch_stats[key]["by_age_group"]:
+            batch_stats[key]["by_age_group"][ag] += 1
 
     # Age group summary
     age_summary = {}

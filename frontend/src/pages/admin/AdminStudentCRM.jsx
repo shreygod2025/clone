@@ -1344,12 +1344,14 @@ const AdminStudentCRM = () => {
                           <th className="py-2 text-center">Lead</th>
                           <th className="py-2 text-center">Phone</th>
                           <th className="py-2 text-center">Lost</th>
+                          <th className="py-2 text-left pl-4">Age Groups</th>
                           <th className="py-2 text-center">Spots Left</th>
                         </tr>
                       </thead>
                       <tbody>
                         {campDashboard.batch_stats?.map((b, i) => {
                           const spotsLeft = Math.max(0, (b.capacity || 10) - b.converted);
+                          const ag = b.by_age_group || {};
                           return (
                             <tr key={i} className="border-b border-slate-50 hover:bg-slate-50">
                               <td className="py-2.5 font-medium capitalize">{b.batch_week?.replace('week', 'Week ')} · {b.batch_type}</td>
@@ -1359,6 +1361,28 @@ const AdminStudentCRM = () => {
                               <td className="py-2.5 text-center text-yellow-600">{b.leads}</td>
                               <td className="py-2.5 text-center text-orange-500">{b.phone_captured}</td>
                               <td className="py-2.5 text-center text-red-500">{b.lost}</td>
+                              <td className="py-2.5 pl-4">
+                                <div className="flex flex-wrap gap-1">
+                                  {ag.explorers > 0 && (
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold whitespace-nowrap">
+                                      Explorers {ag.explorers}
+                                    </span>
+                                  )}
+                                  {ag.creators > 0 && (
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 font-semibold whitespace-nowrap">
+                                      Creators {ag.creators}
+                                    </span>
+                                  )}
+                                  {ag.innovators > 0 && (
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 font-semibold whitespace-nowrap">
+                                      Innovators {ag.innovators}
+                                    </span>
+                                  )}
+                                  {!ag.explorers && !ag.creators && !ag.innovators && (
+                                    <span className="text-xs text-slate-400">—</span>
+                                  )}
+                                </div>
+                              </td>
                               <td className="py-2.5 text-center">
                                 <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${spotsLeft <= 2 ? 'bg-red-50 text-red-600' : spotsLeft <= 5 ? 'bg-yellow-50 text-yellow-600' : 'bg-green-50 text-green-600'}`}>
                                   {spotsLeft}
