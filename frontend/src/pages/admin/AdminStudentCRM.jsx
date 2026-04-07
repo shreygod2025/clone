@@ -1425,7 +1425,6 @@ const AdminStudentCRM = () => {
                     </thead>
                     <tbody>
                       {trackingLinks.map(link => {
-                        const baseUrl = process.env.REACT_APP_BACKEND_URL.replace('/api','').replace('8001','3000');
                         const trackUrl = `${window.location.origin}/summer-camp?ref=${link.slug}`;
                         const convRate = link.leads > 0 ? Math.round((link.conversions / link.leads) * 100) : 0;
                         return (

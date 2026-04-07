@@ -12,12 +12,12 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - **Funnels & Login:** OTP-based login for all user types
 - **Admin CRM:** Full school management with bulk import, onboarding workflows, inquiry management
 
-### Architecture (Updated: 2026-04-03 — server.py fully modularized + SEO hooks added)
+### Architecture (Updated: 2026-04-07 — Summer Camp CRM Management + Invoice Fix)
 ```
 /app/
 ├── backend/
 │   ├── server.py              # FastAPI app setup ONLY (4,226 lines, was 14,805)
-│   └── routes/                # 20 modular route files (387 routes total)
+│   └── routes/                # 20 modular route files (387+ routes total)
 │       ├── shared.py          # DB, JWT helpers, auto_assign, email utils
 │       ├── notifications.py   # WhatsApp notification helpers
 │       ├── users.py / students.py / team.py / educators.py
@@ -64,7 +64,14 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
-### 2026-04-04 — MOU School Address Fix
+### 2026-04-07 — Summer Camp CRM Management + Invoice Fix
+**Features Added:**
+1. New backend endpoints in summer_camp.py: edit booking, delete booking, update CRM status (with `lost_lead`), add comment, dashboard analytics
+2. Frontend AdminStudentCRM.jsx: new Dashboard sub-tab, Edit/Delete/Status/Comments action buttons per booking row, 4-stage status modal, revenue by age group bar chart, batch breakdown table with Spots Left
+3. Fixed BATCH_DATES to accurate May 2026 dates
+4. **Invoice Bug Fix:** Added invoice_url/receipt_url preservation for STUDENT payments in orders.py PATCH (was already fixed for school payments only)
+
+
 **Bug:** School address was blank in generated MOU despite being entered in the onboarding form.
 
 **Root Cause (3 layers):**
