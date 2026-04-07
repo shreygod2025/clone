@@ -17,10 +17,10 @@ const AGE_GROUPS = [
 ];
 
 const BATCH_WEEKS = [
-  { id: 'week1', weekday: 'May 4–8, 2026',   weekend: 'May 2–3 & 9–10, 2026' },
-  { id: 'week2', weekday: 'May 11–15, 2026',  weekend: 'May 9–10 & 16–17, 2026' },
-  { id: 'week3', weekday: 'May 18–22, 2026', weekend: 'May 16–17 & 23–24, 2026' },
-  { id: 'week4', weekday: 'May 25–29, 2026', weekend: 'May 23–24 & 30–31, 2026' },
+  { id: 'week1', label: 'Batch 1', date: 'May 4–8, 2026' },
+  { id: 'week2', label: 'Batch 2', date: 'May 11–15, 2026' },
+  { id: 'week3', label: 'Batch 3', date: 'May 18–22, 2026' },
+  { id: 'week4', label: 'Batch 4', date: 'May 25–29, 2026' },
 ];
 
 // Steps: 0-Age | 1-Mode | 2-Center(offline) | 3-Batch | 4-Phone | 5-Details+Pay
@@ -357,25 +357,16 @@ export default function SummerCampBookingPage() {
           {step === 3 && (
             <div style={{ animation: 'fadeSlide 0.35s ease both' }}>
               <BackBtn onClick={goBack} />
-              <StepHeader stepNum={stepsWithCenter ? 4 : 3} total={TOTAL} title="Pick your batch" sub="Select your preferred schedule and start week." />
-
-              {/* Weekday / Weekend toggle */}
-              <div style={{ display: 'flex', flexDirection: 'row', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '12px', padding: '4px', gap: '4px', marginBottom: '1.5rem' }}>
-                {[{ v: 'weekday', l: 'Weekday · Mon–Fri' }, { v: 'weekend', l: 'Weekend · Sat–Sun' }].map(opt => (
-                  <button key={opt.v} onClick={() => update('batch_type')(opt.v)} style={{ flex: 1, minWidth: 0, padding: '0.7rem 0.5rem', borderRadius: '10px', border: 'none', cursor: 'pointer', fontFamily: JB, fontWeight: 700, fontSize: 'clamp(0.68rem, 2.5vw, 0.82rem)', transition: 'all 0.25s', letterSpacing: '0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', ...(form.batch_type === opt.v ? { background: '#00E5FF', color: '#080C16' } : { background: 'transparent', color: '#64748B' }) }}>
-                    {opt.l}
-                  </button>
-                ))}
-              </div>
+              <StepHeader stepNum={stepsWithCenter ? 4 : 3} total={TOTAL} title="Pick your batch" sub="Mon–Fri · 5 days of hands-on learning." />
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {BATCH_WEEKS.map((b, i) => (
                   <ChoiceCard key={b.id} selected={form.batch_week === b.id}
-                    onClick={() => { update('batch_week')(b.id); setTimeout(goNext, 220); }}
+                    onClick={() => { update('batch_week')(b.id); update('batch_type')('weekday'); setTimeout(goNext, 220); }}
                   >
                     <div>
-                      <div style={{ fontSize: '0.72rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '0.3rem', fontFamily: JB }}>Batch {i + 1}</div>
-                      <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '1.2rem', color: '#F8FAFC' }}>{b[form.batch_type]}</div>
+                      <div style={{ fontSize: '0.72rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '0.3rem', fontFamily: JB }}>{b.label}</div>
+                      <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '1.2rem', color: '#F8FAFC' }}>{b.date}</div>
                     </div>
                   </ChoiceCard>
                 ))}

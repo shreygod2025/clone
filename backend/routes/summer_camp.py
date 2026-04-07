@@ -74,10 +74,10 @@ async def _resolve_center_label(center_id: str) -> str:
     return CENTERS.get(center_id, center_id)
 
 BATCH_DATES = {
-    "week1": {"weekday": "May 4-8, 2026 (Mon-Fri)", "weekend": "May 2-3 & 9-10, 2026 (Sat-Sun)"},
-    "week2": {"weekday": "May 11-15, 2026 (Mon-Fri)", "weekend": "May 9-10 & 16-17, 2026 (Sat-Sun)"},
-    "week3": {"weekday": "May 18-22, 2026 (Mon-Fri)", "weekend": "May 16-17 & 23-24, 2026 (Sat-Sun)"},
-    "week4": {"weekday": "May 25-29, 2026 (Mon-Fri)", "weekend": "May 23-24 & 30-31, 2026 (Sat-Sun)"},
+    "week1": {"weekday": "May 4-8, 2026 (Mon-Fri)"},
+    "week2": {"weekday": "May 11-15, 2026 (Mon-Fri)"},
+    "week3": {"weekday": "May 18-22, 2026 (Mon-Fri)"},
+    "week4": {"weekday": "May 25-29, 2026 (Mon-Fri)"},
 }
 
 
@@ -87,7 +87,7 @@ class SummerCampRegistration(BaseModel):
     parent_phone: str
     parent_email: str
     age_group: str  # explorers | creators | innovators
-    batch_type: str  # weekday | weekend
+    batch_type: str = "weekday"  # weekday only
     batch_week: str  # week1 | week2 | week3 | week4
     mode: str       # offline | online
     center: str     # mira_road | dombivli | andheri | online
@@ -288,7 +288,7 @@ async def register_summer_camp(data: SummerCampRegistration):
     """Register a summer camp booking — creates a lead record."""
     if data.age_group not in AGE_GROUPS:
         raise HTTPException(status_code=400, detail="Invalid age group")
-    if data.batch_type not in ("weekday", "weekend"):
+    if data.batch_type not in ("weekday",):
         raise HTTPException(status_code=400, detail="Invalid batch type")
     if data.batch_week not in BATCH_DATES:
         raise HTTPException(status_code=400, detail="Invalid batch week")
@@ -589,71 +589,93 @@ async def add_booking_comment(
 
 @router.get("/summer-camp/dashboard")
 async def get_summer_camp_dashboard(user: dict = Depends(get_current_user)):
-    """Admin dashboard: batch stats, spots, revenue by age group."""
-    CAMP_BATCH_CAPACITY = 10  # max per batch
+    """Admin dashboard: week × age group × center breakdown, 10 spots per group."""
+    SPOTS_PER_BATCH = 10
+
+    AGE_GROUPS = [
+        {"key": "explorers",  "label": "Little Explorers",  "ages": "4–8"},
+        {"key": "creators",   "label": "Tech Creators",     "ages": "9–12"},
+        {"key": "innovators", "label": "Future Innovators", "ages": "13–16"},
+    ]
+
+    WEEK_DATES = {
+        "week1": "May 4–8, 2026",
+        "week2": "May 11–15, 2026",
+        "week3": "May 18–22, 2026",
+        "week4": "May 25–29, 2026",
+    }
 
     bookings = await db.summer_camp_bookings.find({}, {"_id": 0}).to_list(2000)
 
-    # Revenue per age group (converted only)
-    revenue_by_age = {}
-    for b in bookings:
-        if b.get("crm_status") == "converted":
-            ag = b.get("age_group", "unknown")
-            revenue_by_age[ag] = revenue_by_age.get(ag, 0) + CAMP_PRICE
+    # Build nested structure: week → age_group → {stats, by_center}
+    data = {}
+    for wk, wk_dates in WEEK_DATES.items():
+        data[wk] = {
+            "week": wk,
+            "dates": wk_dates,
+            "week_label": f"Week {wk[-1]}",
+            "age_groups": {
+                ag["key"]: {
+                    "label": ag["label"],
+                    "ages": ag["ages"],
+                    "total": 0,
+                    "converted": 0,
+                    "leads": 0,
+                    "phone_captured": 0,
+                    "lost": 0,
+                    "spots_total": SPOTS_PER_BATCH,
+                    "by_center": {},
+                }
+                for ag in AGE_GROUPS
+            },
+        }
 
-    # Batch breakdown: week + type
-    batch_stats = {}
     for b in bookings:
-        key = f"{b.get('batch_week', 'unknown')}_{b.get('batch_type', 'unknown')}"
-        if key not in batch_stats:
-            batch_week = b.get("batch_week")
-            batch_type = b.get("batch_type", "weekday")
-            # Use canonical dates from BATCH_DATES dict, fallback to stored value
-            canonical_dates = BATCH_DATES.get(batch_week, {}).get(batch_type, b.get("batch_dates", ""))
-            batch_stats[key] = {
-                "batch_week": batch_week,
-                "batch_type": batch_type,
-                "batch_dates": canonical_dates,
-                "total": 0,
-                "converted": 0,
-                "leads": 0,
-                "phone_captured": 0,
-                "lost": 0,
-                "capacity": CAMP_BATCH_CAPACITY,
-                "by_age_group": {"explorers": 0, "creators": 0, "innovators": 0},
-            }
-        batch_stats[key]["total"] += 1
+        wk = b.get("batch_week")
+        ag = b.get("age_group")
+        if wk not in data or ag not in data[wk]["age_groups"]:
+            continue
+
+        cell = data[wk]["age_groups"][ag]
+        cell["total"] += 1
         status = b.get("crm_status", "")
         if status == "converted":
-            batch_stats[key]["converted"] += 1
+            cell["converted"] += 1
         elif status == "lead":
-            batch_stats[key]["leads"] += 1
+            cell["leads"] += 1
         elif status == "phone_captured":
-            batch_stats[key]["phone_captured"] += 1
+            cell["phone_captured"] += 1
         elif status == "lost_lead":
-            batch_stats[key]["lost"] += 1
-        # age group tracking per batch
-        ag = b.get("age_group", "unknown")
-        if ag in batch_stats[key]["by_age_group"]:
-            batch_stats[key]["by_age_group"][ag] += 1
+            cell["lost"] += 1
 
-    # Age group summary
-    age_summary = {}
-    for b in bookings:
-        ag = b.get("age_group", "unknown")
-        lbl = b.get("age_group_label", ag)
-        if ag not in age_summary:
-            age_summary[ag] = {"age_group": ag, "label": lbl, "total": 0, "converted": 0, "revenue": 0}
-        age_summary[ag]["total"] += 1
-        if b.get("crm_status") == "converted":
-            age_summary[ag]["converted"] += 1
-            age_summary[ag]["revenue"] += CAMP_PRICE
+        # Center tracking
+        center = b.get("center_label") or b.get("center") or "Unknown"
+        cell["by_center"][center] = cell["by_center"].get(center, 0) + 1
+
+    # Compute spots_left for each cell
+    for wk_data in data.values():
+        for ag_data in wk_data["age_groups"].values():
+            ag_data["spots_left"] = max(0, SPOTS_PER_BATCH - ag_data["converted"])
+
+    # Summary totals
+    total_bookings = len(bookings)
+    total_converted = sum(1 for b in bookings if b.get("crm_status") == "converted")
+    total_revenue = total_converted * CAMP_PRICE
 
     return {
-        "total_bookings": len(bookings),
-        "total_revenue": sum(v["revenue"] for v in age_summary.values()),
-        "converted": sum(1 for b in bookings if b.get("crm_status") == "converted"),
-        "batch_stats": sorted(batch_stats.values(), key=lambda x: (x.get("batch_week", ""), x.get("batch_type", ""))),
-        "age_summary": list(age_summary.values()),
-        "revenue_by_age": revenue_by_age,
+        "total_bookings": total_bookings,
+        "total_revenue": total_revenue,
+        "converted": total_converted,
+        "weeks": sorted(data.values(), key=lambda x: x["week"]),
+        # Keep old age_summary for the revenue bar chart
+        "age_summary": [
+            {
+                "age_group": ag["key"],
+                "label": ag["label"],
+                "total": sum(1 for b in bookings if b.get("age_group") == ag["key"]),
+                "converted": sum(1 for b in bookings if b.get("age_group") == ag["key"] and b.get("crm_status") == "converted"),
+                "revenue": sum(CAMP_PRICE for b in bookings if b.get("age_group") == ag["key"] and b.get("crm_status") == "converted"),
+            }
+            for ag in AGE_GROUPS
+        ],
     }

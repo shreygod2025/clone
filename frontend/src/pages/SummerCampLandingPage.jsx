@@ -61,10 +61,10 @@ const AGE_GROUPS = [
 ];
 
 const BATCH_DATES = [
-  { id: 'week1', weekday: 'May 4–8, 2026',   weekend: 'May 2–3 & 9–10, 2026',   label: 'Batch 1' },
-  { id: 'week2', weekday: 'May 11–15, 2026',  weekend: 'May 9–10 & 16–17, 2026', label: 'Batch 2' },
-  { id: 'week3', weekday: 'May 18–22, 2026',  weekend: 'May 16–17 & 23–24, 2026',label: 'Batch 3' },
-  { id: 'week4', weekday: 'May 25–29, 2026',  weekend: 'May 23–24 & 30–31, 2026',label: 'Batch 4' },
+  { id: 'week1', date: 'May 4–8, 2026',   label: 'Batch 1' },
+  { id: 'week2', date: 'May 11–15, 2026',  label: 'Batch 2' },
+  { id: 'week3', date: 'May 18–22, 2026',  label: 'Batch 3' },
+  { id: 'week4', date: 'May 25–29, 2026',  label: 'Batch 4' },
 ];
 
 const TESTIMONIALS = [
@@ -224,7 +224,7 @@ export default function SummerCampLandingPage() {
     const idx = AGE_GROUPS.findIndex(g => g.slug === ageGroup);
     return idx >= 0 ? idx : 0;
   });
-  const [batchType, setBatchType] = useState('weekday');
+  // Removed batchType state (weekday-only now)
   const [centers, setCenters] = useState([]);
   const activeCamp = AGE_GROUPS[activeAgeIdx];
 
@@ -837,24 +837,6 @@ export default function SummerCampLandingPage() {
               <h2 className="sec-title">Choose Your Schedule</h2>
             </div>
 
-            {/* Toggle */}
-            <div className="sr sr-d1" style={{ display: 'flex', justifyContent: 'center', marginBottom: '2rem' }}>
-              <div className="batch-toggle" style={{ display: 'flex', flexDirection: 'row', background: 'rgba(10,20,40,0.8)', border: '1px solid rgba(0,229,255,0.18)', borderRadius: '999px', padding: 4, gap: 4 }}>
-                {[
-                  { k: 'weekday', label: 'Weekday  Mon–Fri' },
-                  { k: 'weekend', label: 'Weekend  Sat–Sun' },
-                ].map(t => (
-                  <button
-                    key={t.k}
-                    onClick={() => setBatchType(t.k)}
-                    style={{ padding: '0.6rem 1.4rem', borderRadius: '999px', border: 'none', cursor: 'pointer', fontFamily: "'Nunito Sans', sans-serif", fontWeight: 600, fontSize: '0.83rem', transition: 'all 0.25s', whiteSpace: 'nowrap', ...(batchType === t.k ? { background: '#00E5FF', color: '#080C16' } : { background: 'transparent', color: '#64748B' }) }}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Batch cards */}
             <div className="sr-scale sr-d2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))', gap: '0.85rem', marginBottom: '3rem' }}>
               {BATCH_DATES.map(b => (
@@ -863,8 +845,8 @@ export default function SummerCampLandingPage() {
                   onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.07)'; }}
                 >
                   <div style={{ fontSize: '0.6rem', color: '#00E5FF', textTransform: 'uppercase', letterSpacing: '0.18em', fontWeight: 700, marginBottom: '0.4rem' }}>{b.label}</div>
-                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '1.2rem', color: '#F0F4F8', lineHeight: 1.4 }}>{b[batchType]}</div>
-                  <div style={{ fontSize: '0.68rem', color: '#7A9AB8', marginTop: '0.4rem' }}>10 seats only</div>
+                  <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '1.2rem', color: '#F0F4F8', lineHeight: 1.4 }}>{b.date}</div>
+                  <div style={{ fontSize: '0.68rem', color: '#7A9AB8', marginTop: '0.4rem' }}>Mon–Fri · 10 seats only</div>
                 </div>
               ))}
             </div>

@@ -1330,69 +1330,68 @@ const AdminStudentCRM = () => {
                   </div>
                 </div>
 
-                {/* Batch Stats */}
+                {/* Batch Stats — Week × Age Group × Center */}
                 <div className="bg-white rounded-2xl border border-slate-100 p-5">
-                  <h3 className="font-bold text-[#1E3A5F] text-base mb-4 flex items-center gap-2"><BarChart2 className="w-4 h-4 text-orange-500" />Batch Breakdown</h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-slate-100 text-slate-500 text-xs uppercase tracking-wide">
-                          <th className="py-2 text-left">Batch</th>
-                          <th className="py-2 text-left">Dates</th>
-                          <th className="py-2 text-center">Total</th>
-                          <th className="py-2 text-center">Paid</th>
-                          <th className="py-2 text-center">Lead</th>
-                          <th className="py-2 text-center">Phone</th>
-                          <th className="py-2 text-center">Lost</th>
-                          <th className="py-2 text-left pl-4">Age Groups</th>
-                          <th className="py-2 text-center">Spots Left</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {campDashboard.batch_stats?.map((b, i) => {
-                          const spotsLeft = Math.max(0, (b.capacity || 10) - b.converted);
-                          const ag = b.by_age_group || {};
-                          return (
-                            <tr key={i} className="border-b border-slate-50 hover:bg-slate-50">
-                              <td className="py-2.5 font-medium capitalize">{b.batch_week?.replace('week', 'Week ')} · {b.batch_type}</td>
-                              <td className="py-2.5 text-xs text-slate-500">{b.batch_dates || '—'}</td>
-                              <td className="py-2.5 text-center font-bold text-slate-700">{b.total}</td>
-                              <td className="py-2.5 text-center text-green-600 font-semibold">{b.converted}</td>
-                              <td className="py-2.5 text-center text-yellow-600">{b.leads}</td>
-                              <td className="py-2.5 text-center text-orange-500">{b.phone_captured}</td>
-                              <td className="py-2.5 text-center text-red-500">{b.lost}</td>
-                              <td className="py-2.5 pl-4">
-                                <div className="flex flex-wrap gap-1">
-                                  {ag.explorers > 0 && (
-                                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold whitespace-nowrap">
-                                      Explorers {ag.explorers}
-                                    </span>
-                                  )}
-                                  {ag.creators > 0 && (
-                                    <span className="text-xs px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 font-semibold whitespace-nowrap">
-                                      Creators {ag.creators}
-                                    </span>
-                                  )}
-                                  {ag.innovators > 0 && (
-                                    <span className="text-xs px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 font-semibold whitespace-nowrap">
-                                      Innovators {ag.innovators}
-                                    </span>
-                                  )}
-                                  {!ag.explorers && !ag.creators && !ag.innovators && (
-                                    <span className="text-xs text-slate-400">—</span>
-                                  )}
+                  <h3 className="font-bold text-[#1E3A5F] text-base mb-4 flex items-center gap-2">
+                    <BarChart2 className="w-4 h-4 text-orange-500" />Batch Breakdown — Weekday (Mon–Fri) · 10 spots per batch
+                  </h3>
+                  <div className="space-y-6">
+                    {campDashboard.weeks?.map((wk) => (
+                      <div key={wk.week} className="border border-slate-100 rounded-xl overflow-hidden">
+                        {/* Week header */}
+                        <div className="bg-slate-50 px-4 py-2.5 flex items-center gap-3 border-b border-slate-100">
+                          <span className="font-bold text-[#1E3A5F] text-sm">{wk.week_label}</span>
+                          <span className="text-xs text-slate-500 font-mono">{wk.dates}</span>
+                          <span className="ml-auto text-xs text-slate-400">
+                            {Object.values(wk.age_groups).reduce((s, ag) => s + ag.total, 0)} total registrations
+                          </span>
+                        </div>
+                        {/* Age group rows */}
+                        <div className="divide-y divide-slate-50">
+                          {Object.entries(wk.age_groups).map(([agKey, ag]) => {
+                            const fillPct = Math.round((ag.converted / ag.spots_total) * 100);
+                            const spotsLeft = ag.spots_left;
+                            return (
+                              <div key={agKey} className="px-4 py-3 flex flex-wrap items-center gap-3">
+                                {/* Age group label */}
+                                <div className="w-44 shrink-0">
+                                  <div className="text-sm font-semibold text-slate-700">{ag.label}</div>
+                                  <div className="text-xs text-slate-400">Ages {ag.ages}</div>
                                 </div>
-                              </td>
-                              <td className="py-2.5 text-center">
-                                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${spotsLeft <= 2 ? 'bg-red-50 text-red-600' : spotsLeft <= 5 ? 'bg-yellow-50 text-yellow-600' : 'bg-green-50 text-green-600'}`}>
-                                  {spotsLeft}
-                                </span>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                                {/* Spot fill bar */}
+                                <div className="flex-1 min-w-36">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-xs text-slate-500">{ag.converted}/{ag.spots_total} confirmed</span>
+                                    <span className={`text-xs font-bold ml-auto ${spotsLeft <= 2 ? 'text-red-500' : spotsLeft <= 5 ? 'text-yellow-600' : 'text-green-600'}`}>
+                                      {spotsLeft} spots left
+                                    </span>
+                                  </div>
+                                  <div className="bg-slate-100 rounded-full h-2 overflow-hidden">
+                                    <div className="h-2 rounded-full bg-orange-400 transition-all" style={{ width: `${fillPct}%` }} />
+                                  </div>
+                                </div>
+                                {/* Stage badges */}
+                                <div className="flex gap-1 shrink-0">
+                                  {ag.leads > 0 && <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-700 font-semibold">{ag.leads} lead</span>}
+                                  {ag.phone_captured > 0 && <span className="text-xs px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 font-semibold">{ag.phone_captured} form</span>}
+                                  {ag.lost > 0 && <span className="text-xs px-2 py-0.5 rounded-full bg-red-50 text-red-500 font-semibold">{ag.lost} lost</span>}
+                                </div>
+                                {/* Center breakdown */}
+                                {Object.keys(ag.by_center).length > 0 && (
+                                  <div className="flex flex-wrap gap-1 w-full mt-1">
+                                    {Object.entries(ag.by_center).sort((a, b) => b[1] - a[1]).map(([center, count]) => (
+                                      <span key={center} className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
+                                        {center.replace('OLL ', '').replace(' Center', '')} <strong>{count}</strong>
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
