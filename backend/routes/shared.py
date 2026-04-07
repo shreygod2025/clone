@@ -18,9 +18,10 @@ load_dotenv(ROOT_DIR / '.env')
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(
     mongo_url,
-    serverSelectionTimeoutMS=10000,  # 10 s to find a suitable server
-    connectTimeoutMS=10000,           # 10 s to establish TCP connection
-    socketTimeoutMS=30000,            # 30 s for individual socket operations
+    serverSelectionTimeoutMS=5000,   # 5 s to find a suitable server (reduced from 10s)
+    connectTimeoutMS=5000,            # 5 s to establish TCP connection
+    socketTimeoutMS=20000,            # 20 s for individual socket operations
+    waitQueueTimeoutMS=5000,          # 5 s to wait for a connection from the pool
 )
 db = client[os.environ['DB_NAME']]
 

@@ -134,6 +134,12 @@ app = FastAPI(title="OLL Platform API")
 api_router = APIRouter(prefix="/api")
 security = HTTPBearer()
 
+# Fast liveness probe — registered directly on `app` so it responds even
+# before the heavy route modules finish importing. No DB calls.
+@app.get("/api/ping")
+async def ping():
+    return {"ok": True}
+
 # ── Security middleware ───────────────────────────────────────────────────
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi import Request
@@ -4077,8 +4083,12 @@ async def _create_db_indexes():
     """
     Create MongoDB indexes in the background so they don't block server startup.
     Called via asyncio.create_task() from startup_db_client.
+    A short initial sleep lets Uvicorn accept health-check requests before
+    the first Atlas TLS handshake/auth round-trip occurs.
     """
     try:
+        # Yield to the event loop first — lets health checks respond immediately
+        await asyncio.sleep(3)
         # School Inquiries indexes
         await db.school_inquiries.create_index("id", unique=True)
         await db.school_inquiries.create_index("status")
@@ -4183,22 +4193,26 @@ async def startup_db_client():
     )
 
     # Schedule overdue ticket check every 30 minutes
+    # Defer first run by 2 minutes to avoid Atlas cold-start during health-check window
     scheduler.add_job(
         check_overdue_tickets,
         trigger=IntervalTrigger(minutes=30),
         id="overdue_ticket_check_job",
         name="Check Overdue Support Tickets",
-        replace_existing=True
+        replace_existing=True,
+        next_run_time=datetime.now(timezone.utc) + timedelta(minutes=2)
     )
     print("[STARTUP] Overdue ticket check scheduled — runs every 30 minutes")
 
     # Schedule school meeting reminders every 15 minutes
+    # Defer first run by 2 minutes to avoid Atlas cold-start during health-check window
     scheduler.add_job(
         check_school_meeting_reminders,
         trigger=IntervalTrigger(minutes=15),
         id="school_meeting_reminder_job",
         name="School Meeting Reminders",
-        replace_existing=True
+        replace_existing=True,
+        next_run_time=datetime.now(timezone.utc) + timedelta(minutes=2)
     )
     print("[STARTUP] School meeting reminders scheduled — runs every 15 minutes")
 
