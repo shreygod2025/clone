@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Eye, Phone, Calendar, Clock, Plus, ChevronRight, MessageSquare, Archive, CalendarClock, CheckCircle2, X, User, Mail, MapPin, Target, BookOpen, Send, UserPlus, Edit, Save, Video, Navigation, Home, ExternalLink, Bell, Upload, CreditCard, Link2, Copy, Loader2 } from 'lucide-react';
+import { Search, Eye, Phone, Calendar, Clock, Plus, ChevronRight, MessageSquare, Archive, CalendarClock, CheckCircle2, X, User, Mail, MapPin, Target, BookOpen, Send, UserPlus, Edit, Save, Video, Navigation, Home, ExternalLink, Bell, Upload, CreditCard, Link2, Copy, Loader2, Trash2, BarChart2, TrendingUp, AlertCircle, Check } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -67,7 +67,17 @@ const AdminStudentCRM = () => {
   const [trackingLinksLoading, setTrackingLinksLoading] = useState(false);
   const [newLinkName, setNewLinkName] = useState('');
   const [creatingLink, setCreatingLink] = useState(false);
-  const [campSubTab, setCampSubTab] = useState('bookings'); // 'bookings' | 'tracking'
+  const [campSubTab, setCampSubTab] = useState('bookings'); // 'bookings' | 'tracking' | 'dashboard'
+  // Summer Camp CRM Modals
+  const [campEditModal, setCampEditModal] = useState(null);
+  const [campEditData, setCampEditData] = useState({});
+  const [campDeleteModal, setCampDeleteModal] = useState(null);
+  const [campStatusModal, setCampStatusModal] = useState(null);
+  const [campCommentModal, setCampCommentModal] = useState(null);
+  const [campNewComment, setCampNewComment] = useState('');
+  const [campDashboard, setCampDashboard] = useState(null);
+  const [campDashboardLoading, setCampDashboardLoading] = useState(false);
+  const [campSaving, setCampSaving] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [onboardedEducators, setOnboardedEducators] = useState([]);
   const [assignTab, setAssignTab] = useState('team'); // 'team' or 'educator'
@@ -137,6 +147,7 @@ const AdminStudentCRM = () => {
     if (activeSection === 'summer_camp') {
       fetchSummerCampBookings();
       fetchTrackingLinks();
+      if (campSubTab === 'dashboard') fetchCampDashboard();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSection]);
@@ -278,6 +289,86 @@ const AdminStudentCRM = () => {
       toast.error('Failed to delete link');
     }
   };
+
+  // ── Summer Camp CRM Management ──────────────────────────────────────────────
+
+  const fetchCampDashboard = async () => {
+    setCampDashboardLoading(true);
+    try {
+      const res = await axios.get(`${API}/summer-camp/dashboard`, { headers: getAuthHeaders() });
+      setCampDashboard(res.data);
+    } catch {
+      toast.error('Failed to load dashboard');
+    } finally {
+      setCampDashboardLoading(false);
+    }
+  };
+
+  const handleEditBooking = async () => {
+    if (!campEditModal) return;
+    setCampSaving(true);
+    try {
+      await axios.patch(`${API}/summer-camp/bookings/${campEditModal.id}`, campEditData, { headers: getAuthHeaders() });
+      toast.success('Booking updated');
+      setCampEditModal(null);
+      fetchSummerCampBookings();
+    } catch {
+      toast.error('Failed to update booking');
+    } finally {
+      setCampSaving(false);
+    }
+  };
+
+  const handleDeleteBooking = async () => {
+    if (!campDeleteModal) return;
+    setCampSaving(true);
+    try {
+      await axios.delete(`${API}/summer-camp/bookings/${campDeleteModal.id}`, { headers: getAuthHeaders() });
+      toast.success('Booking deleted');
+      setCampDeleteModal(null);
+      fetchSummerCampBookings();
+    } catch {
+      toast.error('Failed to delete booking');
+    } finally {
+      setCampSaving(false);
+    }
+  };
+
+  const handleUpdateStatus = async (bookingId, newStatus) => {
+    try {
+      await axios.patch(`${API}/summer-camp/bookings/${bookingId}/status`, { crm_status: newStatus }, { headers: getAuthHeaders() });
+      toast.success('Status updated');
+      setCampStatusModal(null);
+      fetchSummerCampBookings();
+      if (campSubTab === 'dashboard') fetchCampDashboard();
+    } catch {
+      toast.error('Failed to update status');
+    }
+  };
+
+  const handleAddCampComment = async () => {
+    if (!campCommentModal || !campNewComment.trim()) return;
+    setCampSaving(true);
+    try {
+      await axios.post(`${API}/summer-camp/bookings/${campCommentModal.id}/comment`,
+        { text: campNewComment.trim(), author: user?.name || 'Admin' },
+        { headers: getAuthHeaders() }
+      );
+      toast.success('Comment added');
+      setCampNewComment('');
+      // Refresh to get updated comments
+      const res = await axios.get(`${API}/summer-camp/bookings`, { headers: getAuthHeaders() });
+      setSummerCampBookings(res.data);
+      const updated = res.data.find(b => b.id === campCommentModal.id);
+      if (updated) setCampCommentModal(updated);
+    } catch {
+      toast.error('Failed to add comment');
+    } finally {
+      setCampSaving(false);
+    }
+  };
+
+
 
   const handleStatusChange = async (inquiry, newStatus, additionalData = {}) => {
     try {
@@ -1053,8 +1144,8 @@ const AdminStudentCRM = () => {
         <div>
           {/* Sub-tabs */}
           <div className="flex gap-2 mb-5">
-            {[{ v: 'bookings', l: 'Bookings' }, { v: 'tracking', l: 'Tracking Links' }].map(t => (
-              <button key={t.v} onClick={() => setCampSubTab(t.v)}
+            {[{ v: 'bookings', l: 'Bookings' }, { v: 'tracking', l: 'Tracking Links' }, { v: 'dashboard', l: 'Dashboard' }].map(t => (
+              <button key={t.v} onClick={() => { setCampSubTab(t.v); if (t.v === 'dashboard') fetchCampDashboard(); }}
                 className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${campSubTab === t.v ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
                 {t.l}
               </button>
@@ -1067,12 +1158,13 @@ const AdminStudentCRM = () => {
             ) : (
               <>
                 {/* Stats Bar */}
-                <div className="grid grid-cols-4 gap-4 mb-6">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
                   {[
                     { label: 'Total Registrations', value: summerCampBookings.length, color: 'bg-blue-50 border-blue-200 text-blue-700' },
                     { label: 'Phone Captured', value: summerCampBookings.filter(b => b.crm_status === 'phone_captured').length, color: 'bg-orange-50 border-orange-200 text-orange-700' },
                     { label: 'Leads (Details)', value: summerCampBookings.filter(b => b.crm_status === 'lead').length, color: 'bg-yellow-50 border-yellow-200 text-yellow-700' },
                     { label: 'Converted (Paid)', value: summerCampBookings.filter(b => b.crm_status === 'converted').length, color: 'bg-green-50 border-green-200 text-green-700' },
+                    { label: 'Lost', value: summerCampBookings.filter(b => b.crm_status === 'lost_lead').length, color: 'bg-red-50 border-red-200 text-red-700' },
                   ].map(s => (
                     <div key={s.label} className={`rounded-xl border p-4 text-center ${s.color}`}>
                       <div className="text-2xl font-bold">{s.value}</div>
@@ -1100,6 +1192,7 @@ const AdminStudentCRM = () => {
                           <th className="px-4 py-3 text-left">Source</th>
                           <th className="px-4 py-3 text-left">Status</th>
                           <th className="px-4 py-3 text-left">Date</th>
+                          <th className="px-4 py-3 text-center">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1123,30 +1216,67 @@ const AdminStudentCRM = () => {
                             <td className="px-4 py-3 text-xs text-slate-600">{booking.center_label}</td>
                             <td className="px-4 py-3">
                               <span className={`text-xs px-2 py-1 rounded-full font-semibold ${booking.payment_mode === 'cash' ? 'bg-yellow-50 text-yellow-700' : 'bg-blue-50 text-blue-700'}`}>
-                                {booking.payment_mode === 'cash' ? '💵 Cash' : '💳 Online'}
+                                {booking.payment_mode === 'cash' ? 'Cash' : 'Online'}
                               </span>
                             </td>
                             <td className="px-4 py-3">
                               {booking.source_name && booking.source_name !== 'Direct' ? (
                                 <span className="text-xs px-2 py-1 rounded-full bg-purple-50 text-purple-700 font-semibold">
-                                  🔗 {booking.source_name}
+                                  {booking.source_name}
                                 </span>
                               ) : (
                                 <span className="text-xs text-slate-400">Direct</span>
                               )}
                             </td>
                             <td className="px-4 py-3">
-                              <span className={`text-xs px-2 py-1 rounded-full font-bold ${
-                                booking.crm_status === 'converted' ? 'bg-green-50 text-green-700' :
-                                booking.crm_status === 'phone_captured' ? 'bg-orange-50 text-orange-700' :
-                                'bg-yellow-50 text-yellow-700'
-                              }`}>
-                                {booking.crm_status === 'converted' ? '✓ Paid' :
-                                 booking.crm_status === 'phone_captured' ? '📞 Phone' : '○ Lead'}
-                              </span>
+                              <button
+                                onClick={() => setCampStatusModal(booking)}
+                                data-testid={`camp-status-${booking.id}`}
+                                className={`text-xs px-2 py-1 rounded-full font-bold cursor-pointer hover:opacity-80 transition-opacity ${
+                                  booking.crm_status === 'converted' ? 'bg-green-50 text-green-700' :
+                                  booking.crm_status === 'phone_captured' ? 'bg-orange-50 text-orange-700' :
+                                  booking.crm_status === 'lost_lead' ? 'bg-red-50 text-red-700' :
+                                  'bg-yellow-50 text-yellow-700'
+                                }`}
+                              >
+                                {booking.crm_status === 'converted' ? 'Payment Done' :
+                                 booking.crm_status === 'phone_captured' ? 'Form Filled' :
+                                 booking.crm_status === 'lost_lead' ? 'Lost Lead' : 'Lead Captured'}
+                              </button>
                             </td>
                             <td className="px-4 py-3 text-xs text-slate-400">
                               {new Date(booking.created_at).toLocaleDateString('en-IN')}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-1 justify-center">
+                                <button
+                                  title="Edit"
+                                  data-testid={`camp-edit-${booking.id}`}
+                                  onClick={() => { setCampEditModal(booking); setCampEditData({ child_name: booking.child_name || '', parent_name: booking.parent_name || '', parent_phone: booking.parent_phone || '', parent_email: booking.parent_email || '' }); }}
+                                  className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors"
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  title="Comments"
+                                  data-testid={`camp-comment-${booking.id}`}
+                                  onClick={() => { setCampCommentModal(booking); setCampNewComment(''); }}
+                                  className="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 transition-colors relative"
+                                >
+                                  <MessageSquare className="w-3.5 h-3.5" />
+                                  {(booking.comments?.length > 0) && (
+                                    <span className="absolute -top-1 -right-1 bg-indigo-500 text-white text-[9px] rounded-full w-3.5 h-3.5 flex items-center justify-center font-bold">{booking.comments.length}</span>
+                                  )}
+                                </button>
+                                <button
+                                  title="Delete"
+                                  data-testid={`camp-delete-${booking.id}`}
+                                  onClick={() => setCampDeleteModal(booking)}
+                                  className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 transition-colors"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -1155,6 +1285,93 @@ const AdminStudentCRM = () => {
                   </div>
                 )}
               </>
+            )
+          ) : campSubTab === 'dashboard' ? (
+            /* ── Dashboard Tab ── */
+            campDashboardLoading ? (
+              <div className="text-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto" /></div>
+            ) : !campDashboard ? (
+              <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">
+                <p className="text-slate-500">No data available</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* KPI cards */}
+                <div className="grid grid-cols-3 gap-4">
+                  {[
+                    { label: 'Total Bookings', value: campDashboard.total_bookings, color: 'bg-blue-50 border-blue-200 text-blue-700' },
+                    { label: 'Confirmed (Paid)', value: campDashboard.converted, color: 'bg-green-50 border-green-200 text-green-700' },
+                    { label: 'Total Revenue', value: `₹${(campDashboard.total_revenue || 0).toLocaleString()}`, color: 'bg-orange-50 border-orange-200 text-orange-700' },
+                  ].map(k => (
+                    <div key={k.label} className={`rounded-xl border p-5 text-center ${k.color}`}>
+                      <div className="text-3xl font-bold">{k.value}</div>
+                      <div className="text-xs font-medium mt-1">{k.label}</div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Age Group Breakdown */}
+                <div className="bg-white rounded-2xl border border-slate-100 p-5">
+                  <h3 className="font-bold text-[#1E3A5F] text-base mb-4 flex items-center gap-2"><TrendingUp className="w-4 h-4 text-orange-500" />Revenue by Age Group</h3>
+                  <div className="space-y-3">
+                    {campDashboard.age_summary?.map(ag => (
+                      <div key={ag.age_group} className="flex items-center gap-4">
+                        <div className="w-40 text-sm font-medium text-slate-700 shrink-0">{ag.label}</div>
+                        <div className="flex-1 bg-slate-100 rounded-full h-3 overflow-hidden">
+                          <div
+                            className="h-3 rounded-full bg-orange-400 transition-all"
+                            style={{ width: campDashboard.total_bookings > 0 ? `${(ag.total / campDashboard.total_bookings) * 100}%` : '0%' }}
+                          />
+                        </div>
+                        <div className="text-xs text-slate-600 w-16 text-right">{ag.total} leads</div>
+                        <div className="text-xs font-bold text-green-600 w-24 text-right">₹{ag.revenue.toLocaleString()}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Batch Stats */}
+                <div className="bg-white rounded-2xl border border-slate-100 p-5">
+                  <h3 className="font-bold text-[#1E3A5F] text-base mb-4 flex items-center gap-2"><BarChart2 className="w-4 h-4 text-orange-500" />Batch Breakdown</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-100 text-slate-500 text-xs uppercase tracking-wide">
+                          <th className="py-2 text-left">Batch</th>
+                          <th className="py-2 text-left">Dates</th>
+                          <th className="py-2 text-center">Total</th>
+                          <th className="py-2 text-center">Paid</th>
+                          <th className="py-2 text-center">Lead</th>
+                          <th className="py-2 text-center">Phone</th>
+                          <th className="py-2 text-center">Lost</th>
+                          <th className="py-2 text-center">Spots Left</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {campDashboard.batch_stats?.map((b, i) => {
+                          const spotsLeft = Math.max(0, (b.capacity || 10) - b.converted);
+                          return (
+                            <tr key={i} className="border-b border-slate-50 hover:bg-slate-50">
+                              <td className="py-2.5 font-medium capitalize">{b.batch_week?.replace('week', 'Week ')} · {b.batch_type}</td>
+                              <td className="py-2.5 text-xs text-slate-500">{b.batch_dates || '—'}</td>
+                              <td className="py-2.5 text-center font-bold text-slate-700">{b.total}</td>
+                              <td className="py-2.5 text-center text-green-600 font-semibold">{b.converted}</td>
+                              <td className="py-2.5 text-center text-yellow-600">{b.leads}</td>
+                              <td className="py-2.5 text-center text-orange-500">{b.phone_captured}</td>
+                              <td className="py-2.5 text-center text-red-500">{b.lost}</td>
+                              <td className="py-2.5 text-center">
+                                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${spotsLeft <= 2 ? 'bg-red-50 text-red-600' : spotsLeft <= 5 ? 'bg-yellow-50 text-yellow-600' : 'bg-green-50 text-green-600'}`}>
+                                  {spotsLeft}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
             )
           ) : (
             /* ── Tracking Links Tab ── */
@@ -1251,6 +1468,149 @@ const AdminStudentCRM = () => {
                   </table>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ── Edit Booking Modal ── */}
+          {campEditModal && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
+                <div className="flex justify-between items-center mb-5">
+                  <h3 className="font-bold text-[#1E3A5F] text-lg">Edit Booking</h3>
+                  <button onClick={() => setCampEditModal(null)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                </div>
+                <div className="space-y-4">
+                  {[
+                    { label: "Child's Name", key: 'child_name' },
+                    { label: "Parent's Name", key: 'parent_name' },
+                    { label: "Phone Number", key: 'parent_phone' },
+                    { label: "Email", key: 'parent_email' },
+                  ].map(f => (
+                    <div key={f.key}>
+                      <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">{f.label}</label>
+                      <input
+                        type="text"
+                        value={campEditData[f.key] || ''}
+                        onChange={e => setCampEditData(prev => ({ ...prev, [f.key]: e.target.value }))}
+                        className="mt-1 w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+                        data-testid={`edit-${f.key}`}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-3 mt-6">
+                  <button onClick={() => setCampEditModal(null)} className="flex-1 border border-slate-200 text-slate-600 py-2 rounded-xl text-sm font-semibold hover:bg-slate-50 transition-colors">Cancel</button>
+                  <button onClick={handleEditBooking} disabled={campSaving} data-testid="save-edit-btn"
+                    className="flex-1 bg-orange-500 text-white py-2 rounded-xl text-sm font-bold hover:bg-orange-600 transition-colors disabled:opacity-50">
+                    {campSaving ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Delete Booking Modal ── */}
+          {campDeleteModal && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl text-center">
+                <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                <h3 className="font-bold text-slate-800 text-lg mb-2">Delete Booking?</h3>
+                <p className="text-slate-500 text-sm mb-5">
+                  This will permanently delete the booking for <strong>{campDeleteModal.child_name || 'this lead'}</strong>. This action cannot be undone.
+                </p>
+                <div className="flex gap-3">
+                  <button onClick={() => setCampDeleteModal(null)} className="flex-1 border border-slate-200 text-slate-600 py-2 rounded-xl text-sm font-semibold hover:bg-slate-50 transition-colors">Cancel</button>
+                  <button onClick={handleDeleteBooking} disabled={campSaving} data-testid="confirm-delete-btn"
+                    className="flex-1 bg-red-500 text-white py-2 rounded-xl text-sm font-bold hover:bg-red-600 transition-colors disabled:opacity-50">
+                    {campSaving ? 'Deleting...' : 'Yes, Delete'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Status Update Modal ── */}
+          {campStatusModal && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+                <div className="flex justify-between items-center mb-5">
+                  <h3 className="font-bold text-[#1E3A5F] text-lg">Update Lead Stage</h3>
+                  <button onClick={() => setCampStatusModal(null)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                </div>
+                <p className="text-sm text-slate-500 mb-4">{campStatusModal.child_name || 'Lead'} — {campStatusModal.parent_phone}</p>
+                <div className="space-y-2">
+                  {[
+                    { v: 'phone_captured', l: 'Form Filled', desc: 'Phone number captured', color: 'border-orange-300 bg-orange-50 text-orange-700' },
+                    { v: 'lead', l: 'Lead Captured', desc: 'Full details submitted', color: 'border-yellow-300 bg-yellow-50 text-yellow-700' },
+                    { v: 'converted', l: 'Payment Done', desc: 'Payment completed', color: 'border-green-300 bg-green-50 text-green-700' },
+                    { v: 'lost_lead', l: 'Lost Lead', desc: 'Not interested / lost', color: 'border-red-300 bg-red-50 text-red-700' },
+                  ].map(s => (
+                    <button
+                      key={s.v}
+                      data-testid={`status-option-${s.v}`}
+                      onClick={() => handleUpdateStatus(campStatusModal.id, s.v)}
+                      className={`w-full flex items-center justify-between p-3 rounded-xl border-2 text-left transition-all hover:shadow-sm ${
+                        campStatusModal.crm_status === s.v ? s.color + ' border-current' : 'border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <div>
+                        <div className="font-semibold text-sm">{s.l}</div>
+                        <div className="text-xs text-slate-500">{s.desc}</div>
+                      </div>
+                      {campStatusModal.crm_status === s.v && <Check className="w-4 h-4 text-current" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Comments Modal ── */}
+          {campCommentModal && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-bold text-[#1E3A5F] text-lg">Comments</h3>
+                  <button onClick={() => setCampCommentModal(null)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                </div>
+                <p className="text-xs text-slate-500 mb-4 font-semibold">{campCommentModal.child_name || 'Lead'} · {campCommentModal.parent_phone}</p>
+                {/* Comments list */}
+                <div className="space-y-3 max-h-60 overflow-y-auto mb-4">
+                  {(!campCommentModal.comments || campCommentModal.comments.length === 0) ? (
+                    <p className="text-center text-slate-400 text-sm py-4">No comments yet</p>
+                  ) : (
+                    campCommentModal.comments.map(c => (
+                      <div key={c.id} className="bg-slate-50 rounded-xl p-3">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-xs font-semibold text-slate-700">{c.author}</span>
+                          <span className="text-xs text-slate-400">{new Date(c.created_at).toLocaleDateString('en-IN')}</span>
+                        </div>
+                        <p className="text-sm text-slate-600">{c.text}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+                {/* Add new comment */}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={campNewComment}
+                    onChange={e => setCampNewComment(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleAddCampComment()}
+                    placeholder="Add a comment..."
+                    className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300"
+                    data-testid="new-comment-input"
+                  />
+                  <button
+                    onClick={handleAddCampComment}
+                    disabled={campSaving || !campNewComment.trim()}
+                    data-testid="add-comment-btn"
+                    className="bg-orange-500 text-white px-4 py-2 rounded-xl text-sm font-semibold disabled:opacity-50 hover:bg-orange-600 transition-colors"
+                  >
+                    {campSaving ? '...' : 'Post'}
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>

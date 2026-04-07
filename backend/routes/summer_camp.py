@@ -74,10 +74,10 @@ async def _resolve_center_label(center_id: str) -> str:
     return CENTERS.get(center_id, center_id)
 
 BATCH_DATES = {
-    "week1": {"weekday": "May 1-5, 2026 (Mon-Fri)", "weekend": "May 2-3, 2026 (Sat-Sun)"},
-    "week2": {"weekday": "May 8-12, 2026 (Mon-Fri)", "weekend": "May 9-10, 2026 (Sat-Sun)"},
-    "week3": {"weekday": "May 15-19, 2026 (Mon-Fri)", "weekend": "May 16-17, 2026 (Sat-Sun)"},
-    "week4": {"weekday": "May 22-26, 2026 (Mon-Fri)", "weekend": "May 23-24 & 30-31, 2026 (Sat-Sun)"},
+    "week1": {"weekday": "May 4-8, 2026 (Mon-Fri)", "weekend": "May 2-3 & 9-10, 2026 (Sat-Sun)"},
+    "week2": {"weekday": "May 11-15, 2026 (Mon-Fri)", "weekend": "May 9-10 & 16-17, 2026 (Sat-Sun)"},
+    "week3": {"weekday": "May 18-22, 2026 (Mon-Fri)", "weekend": "May 16-17 & 23-24, 2026 (Sat-Sun)"},
+    "week4": {"weekday": "May 25-29, 2026 (Mon-Fri)", "weekend": "May 23-24 & 30-31, 2026 (Sat-Sun)"},
 }
 
 
@@ -92,6 +92,22 @@ class SummerCampRegistration(BaseModel):
     mode: str       # offline | online
     center: str     # mira_road | dombivli | andheri | online
     payment_mode: str  # cashfree | cash
+
+
+class BookingUpdate(BaseModel):
+    child_name: Optional[str] = None
+    parent_name: Optional[str] = None
+    parent_phone: Optional[str] = None
+    parent_email: Optional[str] = None
+
+
+class StatusUpdate(BaseModel):
+    crm_status: str  # phone_captured | lead | converted | lost_lead
+
+
+class CommentAdd(BaseModel):
+    text: str
+    author: Optional[str] = "Admin"
 
 
 class PartialLeadCapture(BaseModel):
@@ -490,3 +506,145 @@ async def get_summer_camp_stats(user: dict = Depends(get_current_user)):
     converted = await db.summer_camp_bookings.count_documents({"crm_status": "converted"})
     leads = await db.summer_camp_bookings.count_documents({"crm_status": "lead"})
     return {"total": total, "converted": converted, "leads": leads}
+
+
+# ── CRM Management Endpoints ───────────────────────────────────────────────────
+
+@router.patch("/summer-camp/bookings/{booking_id}")
+async def update_booking(
+    booking_id: str,
+    data: BookingUpdate,
+    user: dict = Depends(get_current_user)
+):
+    """Admin: edit booking details."""
+    booking = await db.summer_camp_bookings.find_one({"id": booking_id})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    update_fields = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    if data.child_name is not None:
+        update_fields["child_name"] = data.child_name
+    if data.parent_name is not None:
+        update_fields["parent_name"] = data.parent_name
+    if data.parent_phone is not None:
+        update_fields["parent_phone"] = data.parent_phone
+    if data.parent_email is not None:
+        update_fields["parent_email"] = data.parent_email
+
+    await db.summer_camp_bookings.update_one({"id": booking_id}, {"$set": update_fields})
+    updated = await db.summer_camp_bookings.find_one({"id": booking_id}, {"_id": 0})
+    return updated
+
+
+@router.delete("/summer-camp/bookings/{booking_id}")
+async def delete_booking(booking_id: str, user: dict = Depends(get_current_user)):
+    """Admin: delete a booking."""
+    result = await db.summer_camp_bookings.delete_one({"id": booking_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    return {"message": "Booking deleted"}
+
+
+@router.patch("/summer-camp/bookings/{booking_id}/status")
+async def update_booking_status(
+    booking_id: str,
+    data: StatusUpdate,
+    user: dict = Depends(get_current_user)
+):
+    """Admin: update CRM status (phone_captured | lead | converted | lost_lead)."""
+    valid = {"phone_captured", "lead", "converted", "lost_lead"}
+    if data.crm_status not in valid:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid}")
+
+    result = await db.summer_camp_bookings.update_one(
+        {"id": booking_id},
+        {"$set": {"crm_status": data.crm_status, "updated_at": datetime.now(timezone.utc).isoformat()}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    return {"success": True, "crm_status": data.crm_status}
+
+
+@router.post("/summer-camp/bookings/{booking_id}/comment")
+async def add_booking_comment(
+    booking_id: str,
+    data: CommentAdd,
+    user: dict = Depends(get_current_user)
+):
+    """Admin: add a comment to a booking."""
+    comment = {
+        "id": str(uuid.uuid4()),
+        "text": data.text,
+        "author": data.author or user.get("name", user.get("email", "Admin")),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    result = await db.summer_camp_bookings.update_one(
+        {"id": booking_id},
+        {"$push": {"comments": comment}}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    return comment
+
+
+@router.get("/summer-camp/dashboard")
+async def get_summer_camp_dashboard(user: dict = Depends(get_current_user)):
+    """Admin dashboard: batch stats, spots, revenue by age group."""
+    CAMP_BATCH_CAPACITY = 10  # max per batch
+
+    bookings = await db.summer_camp_bookings.find({}, {"_id": 0}).to_list(2000)
+
+    # Revenue per age group (converted only)
+    revenue_by_age = {}
+    for b in bookings:
+        if b.get("crm_status") == "converted":
+            ag = b.get("age_group", "unknown")
+            revenue_by_age[ag] = revenue_by_age.get(ag, 0) + CAMP_PRICE
+
+    # Batch breakdown: week + type
+    batch_stats = {}
+    for b in bookings:
+        key = f"{b.get('batch_week', 'unknown')}_{b.get('batch_type', 'unknown')}"
+        if key not in batch_stats:
+            batch_stats[key] = {
+                "batch_week": b.get("batch_week"),
+                "batch_type": b.get("batch_type"),
+                "batch_dates": b.get("batch_dates", ""),
+                "total": 0,
+                "converted": 0,
+                "leads": 0,
+                "phone_captured": 0,
+                "lost": 0,
+                "capacity": CAMP_BATCH_CAPACITY,
+            }
+        batch_stats[key]["total"] += 1
+        status = b.get("crm_status", "")
+        if status == "converted":
+            batch_stats[key]["converted"] += 1
+        elif status == "lead":
+            batch_stats[key]["leads"] += 1
+        elif status == "phone_captured":
+            batch_stats[key]["phone_captured"] += 1
+        elif status == "lost_lead":
+            batch_stats[key]["lost"] += 1
+
+    # Age group summary
+    age_summary = {}
+    for b in bookings:
+        ag = b.get("age_group", "unknown")
+        lbl = b.get("age_group_label", ag)
+        if ag not in age_summary:
+            age_summary[ag] = {"age_group": ag, "label": lbl, "total": 0, "converted": 0, "revenue": 0}
+        age_summary[ag]["total"] += 1
+        if b.get("crm_status") == "converted":
+            age_summary[ag]["converted"] += 1
+            age_summary[ag]["revenue"] += CAMP_PRICE
+
+    return {
+        "total_bookings": len(bookings),
+        "total_revenue": sum(v["revenue"] for v in age_summary.values()),
+        "converted": sum(1 for b in bookings if b.get("crm_status") == "converted"),
+        "batch_stats": sorted(batch_stats.values(), key=lambda x: (x.get("batch_week", ""), x.get("batch_type", ""))),
+        "age_summary": list(age_summary.values()),
+        "revenue_by_age": revenue_by_age,
+    }
