@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, ArrowRight, Check, MapPin, Wifi, CreditCard, Banknote, Lock } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, MapPin, CreditCard, Banknote, Lock, Laptop, AlertTriangle } from 'lucide-react';
 import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -10,10 +10,13 @@ const CASHFREE_ENV = 'production';
 const JB = "'JetBrains Mono', monospace";
 const NU = "'Nunito Sans', sans-serif";
 
+// Steps: 0-Age | 1-Center | 2-Batch | 3-Phone | 4-Details+Pay
+const TOTAL = 5;
+
 const AGE_GROUPS = [
-  { slug: 'explorers',  label: 'Little Explorers',  ages: '4 – 8',   icon: '🚀', tagline: 'First steps into robotics & coding',  color: '#00E5FF' },
-  { slug: 'creators',   label: 'Tech Creators',      ages: '9 – 12',  icon: '⚙️', tagline: 'Build robots and write real code',     color: '#D63031' },
-  { slug: 'innovators', label: 'Future Innovators',  ages: '13 – 16', icon: '🤖', tagline: 'AI, 3D Design & advanced robotics',    color: '#7C3AED' },
+  { slug: 'explorers',  label: 'Little Explorers',  ages: '4 – 8',   icon: '🚀', tagline: 'First steps into robotics & coding',  color: '#00E5FF', laptop: false },
+  { slug: 'creators',   label: 'Tech Creators',      ages: '9 – 12',  icon: '⚙️', tagline: 'Build robots and write real code',     color: '#D63031', laptop: true },
+  { slug: 'innovators', label: 'Future Innovators',  ages: '13 – 16', icon: '🤖', tagline: 'AI, 3D Design & advanced robotics',    color: '#7C3AED', laptop: true },
 ];
 
 const BATCH_WEEKS = [
@@ -23,10 +26,8 @@ const BATCH_WEEKS = [
   { id: 'week4', label: 'Batch 4', date: 'May 25–29, 2026' },
 ];
 
-// Steps: 0-Age | 1-Mode | 2-Center(offline) | 3-Batch | 4-Phone | 5-Details+Pay
-
-function ProgressBar({ step, total }) {
-  const pct = Math.round(((step + 1) / total) * 100);
+function ProgressBar({ step }) {
+  const pct = Math.round(((step + 1) / TOTAL) * 100);
   return (
     <div style={{ width: '100%', height: 3, background: 'rgba(255,255,255,0.07)', borderRadius: 999, overflow: 'hidden', marginBottom: '2.75rem' }}>
       <div style={{ height: '100%', width: `${pct}%`, background: 'linear-gradient(90deg,#D63031,#FF6B6B)', borderRadius: 999, transition: 'width 0.5s ease' }} />
@@ -36,30 +37,32 @@ function ProgressBar({ step, total }) {
 
 function BackBtn({ onClick }) {
   return (
-    <button onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 7, color: '#475569', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.88rem', padding: 0, marginBottom: '2rem', fontFamily: NU, fontWeight: 600, letterSpacing: '0.01em' }}>
+    <button onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 7, color: '#475569', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.88rem', padding: 0, marginBottom: '2rem', fontFamily: NU, fontWeight: 600 }}>
       <ArrowLeft style={{ width: 15, height: 15 }} /> Back
     </button>
   );
 }
 
-function ChoiceCard({ selected, onClick, children }) {
+function ChoiceCard({ selected, onClick, children, disabled }) {
   return (
     <button
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
       style={{
         width: '100%',
-        background: selected ? 'rgba(0,229,255,0.08)' : 'rgba(255,255,255,0.03)',
-        border: selected ? '2px solid #00E5FF' : '1px solid rgba(255,255,255,0.09)',
-        borderRadius: '1rem', padding: '1.35rem 1.5rem', cursor: 'pointer',
+        background: disabled ? 'rgba(255,255,255,0.01)' : selected ? 'rgba(0,229,255,0.08)' : 'rgba(255,255,255,0.03)',
+        border: disabled ? '1px solid rgba(255,255,255,0.04)' : selected ? '2px solid #00E5FF' : '1px solid rgba(255,255,255,0.09)',
+        borderRadius: '1rem', padding: '1.35rem 1.5rem', cursor: disabled ? 'not-allowed' : 'pointer',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         transition: 'all 0.2s', textAlign: 'left', boxSizing: 'border-box',
         boxShadow: selected ? '0 0 30px rgba(0,229,255,0.08)' : 'none',
+        opacity: disabled ? 0.5 : 1,
       }}
-      onMouseEnter={e => { if (!selected) e.currentTarget.style.borderColor = 'rgba(0,229,255,0.35)'; }}
-      onMouseLeave={e => { if (!selected) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.09)'; }}
+      onMouseEnter={e => { if (!selected && !disabled) e.currentTarget.style.borderColor = 'rgba(0,229,255,0.35)'; }}
+      onMouseLeave={e => { if (!selected && !disabled) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.09)'; }}
     >
       {children}
-      {selected && (
+      {selected && !disabled && (
         <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#00E5FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: 12 }}>
           <Check style={{ width: 12, height: 12, color: '#080C16' }} />
         </div>
@@ -76,7 +79,7 @@ function InputField({ label, id, type = 'text', value, onChange, placeholder, re
       </label>
       <input
         id={id} type={type} value={value} onChange={onChange} placeholder={placeholder} required={required} autoFocus={autoFocus}
-        style={{ width: '100%', padding: '1rem 1.15rem', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.875rem', color: '#F8FAFC', fontSize: '1.05rem', fontFamily: NU, fontWeight: 600, outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.2s, background 0.2s' }}
+        style={{ width: '100%', padding: '1rem 1.15rem', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '0.875rem', color: '#F8FAFC', fontSize: '1.05rem', fontFamily: NU, fontWeight: 600, outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.2s' }}
         onFocus={e => { e.target.style.borderColor = '#00E5FF'; e.target.style.background = 'rgba(0,229,255,0.05)'; }}
         onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,0.1)'; e.target.style.background = 'rgba(255,255,255,0.04)'; }}
       />
@@ -84,11 +87,11 @@ function InputField({ label, id, type = 'text', value, onChange, placeholder, re
   );
 }
 
-function StepHeader({ stepNum, total, title, sub }) {
+function StepHeader({ stepNum, title, sub }) {
   return (
     <div style={{ marginBottom: '2.25rem' }}>
       <p style={{ fontFamily: JB, fontSize: '0.62rem', letterSpacing: '0.22em', color: '#00E5FF', textTransform: 'uppercase', marginBottom: '0.6rem', fontWeight: 700 }}>
-        Step {stepNum} of {total}
+        Step {stepNum} of {TOTAL}
       </p>
       <h2 style={{ fontFamily: JB, fontSize: 'clamp(1.4rem, 5vw, 2rem)', fontWeight: 800, color: '#F8FAFC', lineHeight: 1.2, marginBottom: sub ? '0.6rem' : 0 }}>
         {title}
@@ -102,7 +105,7 @@ function PrimaryBtn({ onClick, disabled, children, type = 'button' }) {
   return (
     <button
       type={type} onClick={onClick} disabled={disabled}
-      style={{ width: '100%', background: disabled ? '#1E293B' : '#D63031', color: disabled ? '#475569' : '#fff', fontFamily: JB, fontWeight: 700, fontSize: '1rem', padding: '1.1rem', borderRadius: '12px', border: 'none', cursor: disabled ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, boxShadow: disabled ? 'none' : '0 0 28px rgba(214,48,49,0.3)', transition: 'all 0.25s', letterSpacing: '0.02em' }}
+      style={{ width: '100%', background: disabled ? '#1E293B' : '#D63031', color: disabled ? '#475569' : '#fff', fontFamily: JB, fontWeight: 700, fontSize: '1rem', padding: '1.1rem', borderRadius: '12px', border: 'none', cursor: disabled ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, boxShadow: disabled ? 'none' : '0 0 28px rgba(214,48,49,0.3)', transition: 'all 0.25s' }}
       onMouseEnter={e => { if (!disabled) e.currentTarget.style.background = '#e8353f'; }}
       onMouseLeave={e => { if (!disabled) e.currentTarget.style.background = '#D63031'; }}
     >
@@ -116,18 +119,21 @@ export default function SummerCampBookingPage() {
   const navigate = useNavigate();
   const preAge = searchParams.get('age') || '';
 
+  // If preAge is set, skip age step (0) and go to center step (1)
   const [step, setStep] = useState(preAge ? 1 : 0);
   const [capturedBookingId, setCapturedBookingId] = useState(null);
   const [centers, setCenters] = useState([]);
+  const [availability, setAvailability] = useState({});
+  const [showLaptopNotice, setShowLaptopNotice] = useState(false);
+
   const [form, setForm] = useState({
     age_group: preAge || '',
-    mode: '',
+    mode: 'offline',
     center: '',
     batch_week: '',
     batch_type: 'weekday',
     parent_phone: '',
     child_name: '',
-    parent_name: '',
     parent_email: '',
     payment_mode: 'cashfree',
   });
@@ -142,39 +148,35 @@ export default function SummerCampBookingPage() {
       script.async = true;
       document.head.appendChild(script);
     }
-    // Fetch active non-online centers
+    // Fetch active offline centers only
     fetch(`${process.env.REACT_APP_BACKEND_URL}/api/centers`)
       .then(r => r.json())
-      .then(data => setCenters(data.filter(c => c.is_active && !c.name?.toLowerCase().includes('online') && !c.city?.toLowerCase().includes('online'))))
+      .then(data => setCenters(data.filter(c => c.is_active && !c.name?.toLowerCase().includes('online'))))
       .catch(() => {});
   }, []);
 
-  const stepsWithCenter = form.mode === 'offline';
-  // Steps: 0=age 1=mode 2=center(offline) 3=batch 4=phone 5=details+pay
-  const TOTAL = stepsWithCenter ? 6 : 5;
+  // Fetch availability when entering batch step
+  useEffect(() => {
+    if (step === 2 && form.age_group && form.center) {
+      fetch(`${API}/summer-camp/availability?age_group=${form.age_group}&center=${form.center}`)
+        .then(r => r.json())
+        .then(data => setAvailability(data))
+        .catch(() => {});
+    }
+  }, [step, form.age_group, form.center]);
 
   const update = (field) => (val) => setForm(prev => ({ ...prev, [field]: val }));
 
   const goBack = () => {
     setError('');
+    setShowLaptopNotice(false);
     if (step === 0) { navigate('/summer-camp'); return; }
-    if (step === 3 && form.mode === 'online') { setStep(1); return; }
-    if (step === 4 && form.mode === 'online') { setStep(3); return; }
     setStep(s => s - 1);
   };
 
   const goNext = () => {
     setError('');
-    if (step === 2 && form.mode === 'online') { setStep(3); return; }
     setStep(s => s + 1);
-  };
-
-  // Map logical step to visual progress position
-  const visualStep = () => {
-    if (stepsWithCenter) return step;
-    // online: skip center (step 2)
-    if (step <= 1) return step;
-    return step - 1; // step 3→2, step 4→3, step 5→4
   };
 
   const handleSubmit = async (e) => {
@@ -189,7 +191,6 @@ export default function SummerCampBookingPage() {
       let bid = capturedBookingId;
 
       if (bid) {
-        // Update the existing phone-captured lead
         const upd = await axios.patch(`${API}/summer-camp/complete-lead/${bid}`, {
           child_name: form.child_name,
           parent_email: form.parent_email,
@@ -197,20 +198,18 @@ export default function SummerCampBookingPage() {
         });
         bid = upd.data.booking_id;
       } else {
-        // Fallback: full register (e.g. if capture-lead failed silently)
-        const payload = {
+        const reg = await axios.post(`${API}/summer-camp/register`, {
           child_name: form.child_name,
           parent_name: '',
           parent_phone: form.parent_phone,
           parent_email: form.parent_email,
           age_group: form.age_group,
-          batch_type: form.batch_type,
+          batch_type: 'weekday',
           batch_week: form.batch_week,
-          mode: form.mode,
-          center: form.mode === 'online' ? 'online' : form.center,
+          mode: 'offline',
+          center: form.center,
           payment_mode: form.payment_mode,
-        };
-        const reg = await axios.post(`${API}/summer-camp/register`, payload);
+        });
         bid = reg.data.booking_id;
       }
 
@@ -219,7 +218,6 @@ export default function SummerCampBookingPage() {
         return;
       }
 
-      // Initiate Cashfree payment via JS SDK modal
       const pay = await axios.post(`${API}/summer-camp/initiate-payment`, { booking_id: bid });
       if (!pay.data.payment_session_id) {
         setError('Could not initiate payment. Please try again.');
@@ -239,7 +237,6 @@ export default function SummerCampBookingPage() {
       if (result?.error) {
         setError(result.error.message || 'Payment failed. Please try again.');
       }
-      // On success, Cashfree redirects to the return_url (/summer-camp/success)
     } catch (err) {
       setError(err.response?.data?.detail || 'Something went wrong. Please try again.');
     } finally {
@@ -271,7 +268,7 @@ export default function SummerCampBookingPage() {
         </div>
 
         <div style={{ maxWidth: 560, margin: '0 auto', padding: '2.5rem 1.5rem 5rem' }}>
-          <ProgressBar step={visualStep()} total={TOTAL} />
+          <ProgressBar step={step} />
 
           {error && (
             <div style={{ background: 'rgba(214,48,49,0.1)', border: '1px solid rgba(214,48,49,0.3)', borderRadius: '0.875rem', padding: '0.85rem 1.1rem', color: '#FF6B6B', fontSize: '0.95rem', fontFamily: NU, fontWeight: 500, marginBottom: '1.5rem' }}>
@@ -282,10 +279,22 @@ export default function SummerCampBookingPage() {
           {/* ── STEP 0: Age Group ── */}
           {step === 0 && (
             <div style={{ animation: 'fadeSlide 0.35s ease both' }}>
-              <StepHeader stepNum={1} total={TOTAL} title="How old is your child?" sub="Each camp is designed for that specific age group's learning level." />
+              <StepHeader stepNum={1} title="How old is your child?" sub="Each camp is tailored for that specific age group's learning level." />
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
                 {AGE_GROUPS.map(g => (
-                  <ChoiceCard key={g.slug} selected={form.age_group === g.slug} onClick={() => { update('age_group')(g.slug); setTimeout(goNext, 200); }}>
+                  <ChoiceCard
+                    key={g.slug}
+                    selected={form.age_group === g.slug}
+                    onClick={() => {
+                      update('age_group')(g.slug);
+                      if (g.laptop) {
+                        setShowLaptopNotice(true);
+                      } else {
+                        setShowLaptopNotice(false);
+                        setTimeout(goNext, 200);
+                      }
+                    }}
+                  >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                       <span style={{ fontSize: '2.25rem', lineHeight: 1, flexShrink: 0 }}>{g.icon}</span>
                       <div>
@@ -297,53 +306,41 @@ export default function SummerCampBookingPage() {
                   </ChoiceCard>
                 ))}
               </div>
+
+              {/* Laptop notice banner */}
+              {showLaptopNotice && (
+                <div style={{ marginTop: '1.5rem', background: 'rgba(214,48,49,0.08)', border: '1px solid rgba(214,48,49,0.28)', borderRadius: '1rem', padding: '1.1rem 1.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: '1.1rem' }}>
+                    <Laptop style={{ width: 22, height: 22, color: '#D63031', flexShrink: 0, marginTop: 1 }} />
+                    <div>
+                      <p style={{ fontFamily: JB, fontWeight: 700, fontSize: '0.92rem', color: '#D63031', marginBottom: '0.3rem' }}>Laptop Required</p>
+                      <p style={{ fontFamily: NU, fontSize: '0.88rem', color: '#94A3B8', lineHeight: 1.55, fontWeight: 500 }}>
+                        A laptop is compulsory for this age group. Please ensure your child brings their own laptop to every session.
+                      </p>
+                    </div>
+                  </div>
+                  <PrimaryBtn onClick={() => { setShowLaptopNotice(false); goNext(); }}>
+                    Got it, Continue <ArrowRight style={{ width: 17, height: 17 }} />
+                  </PrimaryBtn>
+                </div>
+              )}
             </div>
           )}
 
-          {/* ── STEP 1: Mode ── */}
+          {/* ── STEP 1: Center ── */}
           {step === 1 && (
             <div style={{ animation: 'fadeSlide 0.35s ease both' }}>
               <BackBtn onClick={goBack} />
-              <StepHeader stepNum={2} total={TOTAL} title="How would you like to attend?" sub="At one of our Mumbai centers or from the comfort of home." />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
-                <ChoiceCard selected={form.mode === 'offline'} onClick={() => { update('mode')('offline'); setTimeout(goNext, 200); }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                    <div style={{ width: 48, height: 48, borderRadius: '0.875rem', background: 'rgba(0,229,255,0.08)', border: '1px solid rgba(0,229,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <MapPin style={{ width: 22, height: 22, color: '#00E5FF' }} />
-                    </div>
-                    <div>
-                      <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '1.05rem', color: '#F8FAFC', marginBottom: '0.25rem' }}>At a Center</div>
-                      <div style={{ fontSize: '0.88rem', color: '#64748B', fontFamily: NU }}>{centers.length ? [...new Set(centers.map(c => c.city))].join(' · ') : 'Multiple cities'}</div>
-                    </div>
-                  </div>
-                </ChoiceCard>
-                <ChoiceCard selected={form.mode === 'online'} onClick={() => { update('mode')('online'); update('center')('online'); setTimeout(() => setStep(3), 200); }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                    <div style={{ width: 48, height: 48, borderRadius: '0.875rem', background: 'rgba(214,48,49,0.08)', border: '1px solid rgba(214,48,49,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <Wifi style={{ width: 22, height: 22, color: '#D63031' }} />
-                    </div>
-                    <div>
-                      <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '1.05rem', color: '#F8FAFC', marginBottom: '0.25rem' }}>Online at Home</div>
-                      <div style={{ fontSize: '0.88rem', color: '#64748B', fontFamily: NU }}>Live sessions via Zoom/Meet — from anywhere</div>
-                    </div>
-                  </div>
-                </ChoiceCard>
-              </div>
-            </div>
-          )}
-
-          {/* ── STEP 2: Center (offline only) ── */}
-          {step === 2 && (
-            <div style={{ animation: 'fadeSlide 0.35s ease both' }}>
-              <BackBtn onClick={goBack} />
-              <StepHeader stepNum={3} total={TOTAL} title="Choose your center" sub={centers.length ? `${[...new Set(centers.map(c => c.city))].join(' · ')}` : 'Loading centers...'} />
+              <StepHeader stepNum={2} title="Choose your center" sub={centers.length ? `Available in ${[...new Set(centers.map(c => c.city))].join(' · ')}` : 'Loading centers...'} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem' }}>
                 {centers.map(c => (
                   <ChoiceCard key={c.id} selected={form.center === c.id} onClick={() => { update('center')(c.id); setTimeout(goNext, 200); }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                      <span style={{ fontSize: '1.75rem', lineHeight: 1, flexShrink: 0 }}>🏢</span>
+                      <div style={{ width: 46, height: 46, borderRadius: '0.875rem', background: 'rgba(0,229,255,0.06)', border: '1px solid rgba(0,229,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <MapPin style={{ width: 20, height: 20, color: '#00E5FF' }} />
+                      </div>
                       <div>
-                        <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '1.2rem', color: '#F8FAFC', marginBottom: '0.25rem' }}>{c.name}</div>
+                        <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '1.08rem', color: '#F8FAFC', marginBottom: '0.25rem' }}>{c.name}</div>
                         <div style={{ fontSize: '0.88rem', color: '#64748B', fontFamily: NU }}>{c.area ? `${c.area}, ${c.city}` : c.address}</div>
                       </div>
                     </div>
@@ -353,52 +350,73 @@ export default function SummerCampBookingPage() {
             </div>
           )}
 
-          {/* ── STEP 3: Batch ── */}
-          {step === 3 && (
+          {/* ── STEP 2: Batch + Spots ── */}
+          {step === 2 && (
             <div style={{ animation: 'fadeSlide 0.35s ease both' }}>
               <BackBtn onClick={goBack} />
-              <StepHeader stepNum={stepsWithCenter ? 4 : 3} total={TOTAL} title="Pick your batch" sub="Mon–Fri · 5 days of hands-on learning." />
-
+              <StepHeader stepNum={3} title="Pick your batch" sub="Mon–Fri · 5 days · 2 hours per day" />
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                {BATCH_WEEKS.map((b, i) => (
-                  <ChoiceCard key={b.id} selected={form.batch_week === b.id}
-                    onClick={() => { update('batch_week')(b.id); update('batch_type')('weekday'); setTimeout(goNext, 220); }}
-                  >
-                    <div>
-                      <div style={{ fontSize: '0.72rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '0.3rem', fontFamily: JB }}>{b.label}</div>
-                      <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '1.2rem', color: '#F8FAFC' }}>{b.date}</div>
-                    </div>
-                  </ChoiceCard>
-                ))}
+                {BATCH_WEEKS.map((b) => {
+                  const avail = availability[b.id];
+                  const isFull = avail?.full === true;
+                  const spotsLeft = avail?.spots_left;
+                  const showWarning = spotsLeft !== undefined && spotsLeft <= 3 && !isFull;
+                  return (
+                    <ChoiceCard
+                      key={b.id}
+                      selected={form.batch_week === b.id}
+                      disabled={isFull}
+                      onClick={() => { update('batch_week')(b.id); update('batch_type')('weekday'); setTimeout(goNext, 220); }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '0.72rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '0.3rem', fontFamily: JB }}>{b.label}</div>
+                        <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '1.2rem', color: isFull ? '#475569' : '#F8FAFC' }}>{b.date}</div>
+                      </div>
+                      {/* Spots badge */}
+                      {avail && (
+                        <div style={{ marginLeft: 12, flexShrink: 0 }}>
+                          {isFull ? (
+                            <span style={{ fontFamily: JB, fontSize: '0.72rem', fontWeight: 700, color: '#D63031', background: 'rgba(214,48,49,0.1)', border: '1px solid rgba(214,48,49,0.25)', borderRadius: '0.5rem', padding: '0.3rem 0.7rem', letterSpacing: '0.08em' }}>FULL</span>
+                          ) : showWarning ? (
+                            <span style={{ fontFamily: JB, fontSize: '0.72rem', fontWeight: 700, color: '#F59E0B', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: '0.5rem', padding: '0.3rem 0.7rem', letterSpacing: '0.06em' }}>{spotsLeft} left</span>
+                          ) : (
+                            <span style={{ fontFamily: JB, fontSize: '0.72rem', fontWeight: 600, color: '#22C55E', background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '0.5rem', padding: '0.3rem 0.7rem', letterSpacing: '0.06em' }}>{spotsLeft} spots</span>
+                          )}
+                        </div>
+                      )}
+                    </ChoiceCard>
+                  );
+                })}
               </div>
+              <p style={{ marginTop: '1rem', fontSize: '0.76rem', color: '#334155', fontFamily: JB, textAlign: 'center', letterSpacing: '0.04em' }}>
+                Max 10 students per batch
+              </p>
             </div>
           )}
 
-          {/* ── STEP 4: Phone number only ── */}
-          {step === 4 && (
+          {/* ── STEP 3: Phone ── */}
+          {step === 3 && (
             <div style={{ animation: 'fadeSlide 0.35s ease both' }}>
               <BackBtn onClick={goBack} />
-              <StepHeader stepNum={stepsWithCenter ? 5 : 4} total={TOTAL} title="What's your phone number?" sub="We'll send your booking confirmation on WhatsApp." />
+              <StepHeader stepNum={4} title="What's your phone number?" sub="We'll send your booking confirmation on WhatsApp." />
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 <InputField label="Parent's Phone" id="parent_phone" type="tel" value={form.parent_phone} onChange={e => update('parent_phone')(e.target.value)} placeholder="e.g. 9876543210" required autoFocus />
                 <PrimaryBtn
                   disabled={form.parent_phone.trim().length < 10}
                   onClick={async () => {
-                    // Save partial lead immediately so it appears in admin even if user drops off
                     try {
                       const campRef = sessionStorage.getItem('camp_ref') || '';
                       const res = await axios.post(`${API}/summer-camp/capture-lead`, {
                         parent_phone: form.parent_phone,
                         age_group: form.age_group,
-                        batch_type: form.batch_type,
+                        batch_type: 'weekday',
                         batch_week: form.batch_week,
-                        mode: form.mode,
-                        center: form.mode === 'online' ? 'online' : form.center,
+                        mode: 'offline',
+                        center: form.center,
                         ref: campRef || undefined,
                       });
                       setCapturedBookingId(res.data.booking_id);
                     } catch (err) {
-                      // Don't block the user if capture fails — they can still proceed
                       console.warn('Partial lead capture failed', err);
                     }
                     goNext();
@@ -410,17 +428,17 @@ export default function SummerCampBookingPage() {
             </div>
           )}
 
-          {/* ── STEP 5: Details + Pay ── */}
-          {step === 5 && (
+          {/* ── STEP 4: Details + Pay ── */}
+          {step === 4 && (
             <div style={{ animation: 'fadeSlide 0.35s ease both' }}>
               <BackBtn onClick={goBack} />
-              <StepHeader stepNum={stepsWithCenter ? 6 : 5} total={TOTAL} title="Almost there!" sub="Just a few more details to confirm your spot." />
+              <StepHeader stepNum={5} title="Almost there!" sub="Just a few more details to confirm your spot." />
 
               {/* Order summary */}
               <div style={{ background: 'rgba(0,229,255,0.05)', border: '1px solid rgba(0,229,255,0.15)', borderRadius: '1rem', padding: '1rem 1.25rem', marginBottom: '2rem', display: 'flex', flexWrap: 'wrap', gap: '0.6rem', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: '0.88rem', color: '#94A3B8', fontFamily: NU }}>{selectedAge?.icon} {selectedAge?.label} · Ages {selectedAge?.ages}</span>
-                {selectedBatch && <span style={{ fontSize: '0.88rem', color: '#94A3B8', fontFamily: NU }}>{selectedBatch[form.batch_type]}</span>}
-                <span style={{ fontSize: '0.88rem', color: '#94A3B8', fontFamily: NU }}>{form.mode === 'online' ? '💻 Online' : `🏢 ${selectedCenter?.name || ''}`}</span>
+                {selectedBatch && <span style={{ fontSize: '0.88rem', color: '#94A3B8', fontFamily: NU }}>{selectedBatch.date}</span>}
+                <span style={{ fontSize: '0.88rem', color: '#94A3B8', fontFamily: NU }}>🏢 {selectedCenter?.name || ''}</span>
                 <span style={{ fontFamily: JB, fontWeight: 900, color: '#00E5FF', fontSize: '1.1rem' }}>₹1,999</span>
               </div>
 
@@ -443,19 +461,17 @@ export default function SummerCampBookingPage() {
                         </div>
                       </div>
                     </ChoiceCard>
-                    {form.mode === 'offline' && (
-                      <ChoiceCard selected={form.payment_mode === 'cash'} onClick={() => update('payment_mode')('cash')}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                          <div style={{ width: 42, height: 42, borderRadius: '0.75rem', background: form.payment_mode === 'cash' ? 'rgba(0,229,255,0.12)' : 'rgba(255,255,255,0.04)', border: `1px solid ${form.payment_mode === 'cash' ? 'rgba(0,229,255,0.3)' : 'transparent'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            <Banknote style={{ width: 20, height: 20, color: form.payment_mode === 'cash' ? '#00E5FF' : '#64748B' }} />
-                          </div>
-                          <div>
-                            <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '1rem', color: form.payment_mode === 'cash' ? '#00E5FF' : '#F8FAFC', marginBottom: '0.2rem' }}>Pay at Center</div>
-                            <div style={{ fontSize: '0.85rem', color: '#64748B', fontFamily: NU }}>Cash or UPI at {selectedCenter?.name || 'center'}</div>
-                          </div>
+                    <ChoiceCard selected={form.payment_mode === 'cash'} onClick={() => update('payment_mode')('cash')}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                        <div style={{ width: 42, height: 42, borderRadius: '0.75rem', background: form.payment_mode === 'cash' ? 'rgba(0,229,255,0.12)' : 'rgba(255,255,255,0.04)', border: `1px solid ${form.payment_mode === 'cash' ? 'rgba(0,229,255,0.3)' : 'transparent'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <Banknote style={{ width: 20, height: 20, color: form.payment_mode === 'cash' ? '#00E5FF' : '#64748B' }} />
                         </div>
-                      </ChoiceCard>
-                    )}
+                        <div>
+                          <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '1rem', color: form.payment_mode === 'cash' ? '#00E5FF' : '#F8FAFC', marginBottom: '0.2rem' }}>Pay at Center</div>
+                          <div style={{ fontSize: '0.85rem', color: '#64748B', fontFamily: NU }}>Cash or UPI at {selectedCenter?.name || 'center'}</div>
+                        </div>
+                      </div>
+                    </ChoiceCard>
                   </div>
                 </div>
 

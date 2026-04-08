@@ -248,7 +248,7 @@ export default function SummerCampLandingPage() {
     <>
       <Helmet>
         <title>Future Skills Summer Camp 2026 — Robotics, AI & Coding for Kids | OLL Mumbai</title>
-        <meta name="description" content="India's #1 kids tech summer camp. Robotics, Python Coding, AI & 3D Design for ages 4–16. 10-day intensive camps in Mumbai (Mira Road, Dombivli, Andheri) & Online. STEM.org certified. May 2026. Book now — limited seats." />
+        <meta name="description" content="India's #1 kids tech summer camp. Robotics, Python Coding, AI & 3D Design for ages 4–16. 5-day intensive camps in Mumbai (Mira Road, Dombivli, Andheri, Dahisar). STEM.org certified. May 2026. Book now — limited seats." />
         <meta name="keywords" content="summer camp Mumbai, robotics summer camp, coding camp for kids, AI camp India, kids tech camp 2026, STEM camp Mumbai, summer camp ages 4-16, OLL summer camp, school holiday camp Mumbai" />
         <meta name="robots" content="index, follow" />
         <link rel="canonical" href="https://oll.co/summer-camp" />
@@ -257,7 +257,7 @@ export default function SummerCampLandingPage() {
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://oll.co/summer-camp" />
         <meta property="og:title" content="Future Skills Summer Camp 2026 — Robotics, AI & Coding for Kids | OLL" />
-        <meta property="og:description" content="10-day hands-on tech camps for ages 4–16. Robotics · Coding · AI · 3D Design. Mumbai + Online. STEM.org Certified. As seen on Shark Tank India & KBC." />
+        <meta property="og:description" content="5-day hands-on tech camps for ages 4–16. Robotics · Coding · AI · 3D Design. Mumbai centers. STEM.org Certified. As seen on Shark Tank India & KBC." />
         <meta property="og:image" content="https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/ko80g3wd_images.png" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
@@ -568,17 +568,17 @@ export default function SummerCampLandingPage() {
                 </h1>
 
                 <p className="h-body" style={{ fontSize: '1.12rem', color: '#8899AA', lineHeight: 1.8, maxWidth: 480, marginBottom: '2rem' }}>
-                  Robotics · Coding · AI · 3D Design — 10 days of hands-on learning for{' '}
-                  <strong style={{ color: '#CBD5E1', fontWeight: 600 }}>ages 4–16</strong> at Mumbai centers or online. Batches of just{' '}
+                  Robotics · Coding · AI · 3D Design — 5 days of hands-on learning for{' '}
+                  <strong style={{ color: '#CBD5E1', fontWeight: 600 }}>ages 4–16</strong> at our Mumbai centers. Batches of just{' '}
                   <strong style={{ color: '#CBD5E1', fontWeight: 600 }}>10 students.</strong>
                 </p>
 
                 {/* Stat pills */}
                 <div className="h-pills" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '2rem' }}>
                   {[
-                    { Icon: Clock, text: '10 Days · 1hr/day' },
+                    { Icon: Clock, text: '5 Days · 2hrs/day' },
                     { Icon: Users, text: 'Max 10 per batch' },
-                    { Icon: MapPin, text: 'Mumbai + Online' },
+                    { Icon: MapPin, text: 'Mumbai' },
                   ].map(({ Icon, text }) => (
                     <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '6px 14px', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#94A3B8', fontSize: '0.82rem' }}>
                       <Icon style={{ width: 14, height: 14, color: '#00E5FF', flexShrink: 0 }} />{text}
@@ -902,7 +902,7 @@ export default function SummerCampLandingPage() {
               <button className="neon-btn" onClick={() => navigate('/summer-camp/book')} data-testid="pricing-book-btn" style={{ fontSize: '0.95rem', padding: '1.1rem 3rem' }}>
                 Secure Your Spot Now <ArrowRight style={{ width: 18, height: 18 }} />
               </button>
-              <p style={{ fontSize: '0.72rem', color: '#7A9AB8', marginTop: '0.9rem', letterSpacing: '0.03em' }}>Cash at center · or online via Cashfree (UPI, Card, Net Banking)</p>
+              <p style={{ fontSize: '0.72rem', color: '#7A9AB8', marginTop: '0.9rem', letterSpacing: '0.03em' }}>Cash at center · or via Cashfree (UPI, Card, Net Banking)</p>
             </div>
           </div>
         </section>
@@ -969,7 +969,7 @@ export default function SummerCampLandingPage() {
               <div>
                 <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '0.78rem', fontWeight: 700, color: '#00E5FF', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1rem' }}>Camp by Location</h3>
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {[['andheri-west','Andheri West, Mumbai'],['mira-road','Mira Road, Mumbai'],['dombivli','Dombivli, Mumbai'],['dahisar','Dahisar, Mumbai'],['online','Online – All India']].map(([s,n]) => (
+                  {[['andheri-west','Andheri West, Mumbai'],['mira-road','Mira Road, Mumbai'],['dombivli','Dombivli, Mumbai'],['dahisar','Dahisar, Mumbai']].map(([s,n]) => (
                     <li key={s}><Link to={`/summer-camp/location/${s}`} style={{ color: '#94A3B8', textDecoration: 'none', fontSize: '0.9rem' }}>{n}</Link></li>
                   ))}
                 </ul>

@@ -483,6 +483,28 @@ async def summer_camp_webhook(request: Request):
         return {"status": "error"}
 
 
+@router.get("/summer-camp/availability")
+async def get_batch_availability(age_group: str, center: str):
+    """Public: return spots_left per batch week for a given age_group + center combo."""
+    SPOTS_PER_BATCH = 10
+    result = {}
+    for wk in ["week1", "week2", "week3", "week4"]:
+        count = await db.summer_camp_bookings.count_documents({
+            "batch_week": wk,
+            "age_group": age_group,
+            "center": center,
+            "crm_status": {"$nin": ["lost_lead"]},
+        })
+        spots_left = max(0, SPOTS_PER_BATCH - int(count))
+        result[wk] = {
+            "booked": int(count),
+            "spots_left": spots_left,
+            "spots_total": SPOTS_PER_BATCH,
+            "full": spots_left == 0,
+        }
+    return result
+
+
 @router.get("/summer-camp/bookings")
 async def get_summer_camp_bookings(
     crm_status: Optional[str] = None,

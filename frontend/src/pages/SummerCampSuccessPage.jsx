@@ -43,7 +43,7 @@ const SESSION_DATES = {
   ],
 };
 
-const SESSION_TIME = '9:00 AM – 1:00 PM';
+const SESSION_TIME = '9:00 AM – 11:00 AM';
 const BATCH_LABELS = {
   week1: 'Batch 1', week2: 'Batch 2', week3: 'Batch 3', week4: 'Batch 4',
 };
