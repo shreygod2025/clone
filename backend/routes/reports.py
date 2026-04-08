@@ -34,6 +34,27 @@ def get_date_range(start_date, end_date, period):
     return start, end
 
 
+def school_deal_amount(s: dict) -> float:
+    """
+    Resolve the deal amount for a school record.
+    Priority: conversion_amount → onboarding_data.total_amount → amount_paid → quoted_price
+    Handles None values and comma-formatted strings safely.
+    """
+    od = s.get("onboarding_data") or {}
+    for raw in (
+        s.get("conversion_amount"),
+        od.get("total_amount"),
+        s.get("amount_paid"),
+        s.get("quoted_price"),
+    ):
+        if raw:
+            try:
+                return float(str(raw).replace(",", "").strip())
+            except (ValueError, TypeError):
+                continue
+    return 0.0
+
+
 def parse_date_field(date_val):
     """Parse date field from various formats and ensure timezone awareness"""
     if not date_val:
@@ -128,10 +149,7 @@ async def get_reports_overview(
     school_revenue = 0
     for s in school_inquiries:
         if s.get('status') in ['converted', 'active', 'renewed']:
-            # Check for conversion_amount, onboarding_data.total_amount, or amount_paid
-            onboarding_data = s.get('onboarding_data', {})
-            amount = float(s.get('conversion_amount') or onboarding_data.get('total_amount') or s.get('amount_paid') or 0)
-            school_revenue += amount
+            school_revenue += school_deal_amount(s)
     total_revenue = student_revenue + school_revenue
     
     return {
@@ -863,8 +881,10 @@ async def get_b2b_insights(
         school_type = s.get('school_type') or s.get('type') or 'Unknown'
         types[school_type] = types.get(school_type, 0) + 1
     
-    # Calculate revenue (converted/active/renewed)
-    school_revenue = sum(float(s.get('conversion_amount', 0) or s.get('quoted_price', 0) or 0) for s in all_schools if s.get('status') in ['converted', 'active', 'renewed'])
+    # Calculate revenue (converted/active/renewed) — all-time
+    revenue_schools = [s for s in all_schools if s.get('status') in ['converted', 'active', 'renewed']]
+    school_revenue = sum(school_deal_amount(s) for s in revenue_schools)
+    avg_deal_size = round(school_revenue / len(revenue_schools), 2) if revenue_schools else 0
 
     # Fix renewal_ratio = renewed / (active + renewed)
     actual_active = len([s for s in all_schools if s.get('status') == 'active'])
@@ -881,12 +901,12 @@ async def get_b2b_insights(
     pipeline_statuses = ['new', 'meeting_done', 'followup', 'renewal_meeting', 'contacted',
                          'meeting_scheduled', 'proposal_sent', 'negotiation', 'demo_done']
     pipeline_schools = [s for s in all_schools if s.get('status') in pipeline_statuses]
-    pipeline_value = sum(float(s.get('conversion_amount') or s.get('quoted_price') or 0) for s in pipeline_schools)
+    pipeline_value = sum(school_deal_amount(s) for s in pipeline_schools)
 
-    # Lost value — use explicit lead_value if set, else fall back to conversion amounts
+    # Lost value — use explicit lead_value if set, else fall back to deal amount
     lost_schools = [s for s in all_schools if s.get('status') in ['lost_lead', 'lost_customer', 'lost']]
     total_lost_value = sum(
-        float(s.get('lead_value') or s.get('conversion_amount') or s.get('quoted_price') or (s.get('onboarding_data') or {}).get('total_amount') or 0)
+        float(str(s.get('lead_value') or 0).replace(',', '') or 0) or school_deal_amount(s)
         for s in lost_schools
     )
 
@@ -899,8 +919,8 @@ async def get_b2b_insights(
         source_counts[src_clean] = source_counts.get(src_clean, 0) + 1
     
     # New Schools vs Renewal Schools (all-time)
-    new_schools_count = len([s for s in all_schools if s.get('status') in ['converted', 'active'] and not s.get('onboarding_data', {}).get('renewal_date')])
-    renewal_schools_count = actual_renewed + len([s for s in all_schools if s.get('status') in ['converted', 'active'] and s.get('onboarding_data', {}).get('renewal_date')])
+    new_schools_count = len([s for s in all_schools if s.get('status') in ['converted', 'active'] and not (s.get('onboarding_data') or {}).get('renewal_date')])
+    renewal_schools_count = actual_renewed + len([s for s in all_schools if s.get('status') in ['converted', 'active'] and (s.get('onboarding_data') or {}).get('renewal_date')])
     
     # Customer city division (active + converted + renewed schools)
     customer_cities = {}
@@ -914,6 +934,8 @@ async def get_b2b_insights(
     return {
         "total_schools": len(schools),
         "revenue": school_revenue,
+        "avg_deal_size": avg_deal_size,
+        "total_converted": len([s for s in all_schools if s.get('status') in ['converted', 'active', 'renewed']]),
         "active_schools": actual_active,
         "renewal_meeting": renewal_meeting_count,
         "renewed": actual_renewed,

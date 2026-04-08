@@ -552,10 +552,10 @@ const AdminReports = () => {
     expensesByCategory[e.category] = (expensesByCategory[e.category] || 0) + (e.amount || 0);
   });
   
-  // Revenue
+  // Revenue — prefer B2B insights (all-time, always computed), fall back to overview
   const totalRevenue = (overview?.overview?.total_revenue || 0);
   const studentRevenue = (overview?.overview?.student_revenue || 0);
-  const schoolRevenue = (overview?.overview?.school_revenue || 0);
+  const schoolRevenue = (b2bInsights?.revenue || overview?.overview?.school_revenue || 0);
   const netProfit = totalRevenue - totalExpenses;
 
   const renderDateFilter = () => (
@@ -944,7 +944,7 @@ const AdminReports = () => {
             <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
               <span className="text-slate-600">Avg. Deal Size</span>
               <span className="text-xl font-bold text-blue-600">
-                ₹{(activeSchools + renewedSchools + convertedSchools) > 0 ? Math.round(schoolRevenue / (activeSchools + renewedSchools + convertedSchools)).toLocaleString() : 0}
+                ₹{Math.round(b2bInsights?.avg_deal_size || 0).toLocaleString()}
               </span>
             </div>
             <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
