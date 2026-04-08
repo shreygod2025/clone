@@ -493,7 +493,7 @@ async def fetch_accounts_data():
     schools = await db.school_inquiries.find(
         {"status": {"$in": ["converted", "active", "renewed", "onboarded"]},
          "onboarding_data": {"$ne": None}},
-        {"_id": 0, "school_name": 1, "onboarding_data": 1, "id": 1}
+        {"_id": 0, "school_name": 1, "onboarding_data": 1, "id": 1, "payments": 1}
     ).to_list(500)
 
     rows = []
@@ -504,11 +504,33 @@ async def fetch_accounts_data():
         name = school.get("school_name", "Unknown")
         od = school.get("onboarding_data") or {}
         tranches = od.get("payment_tranches") or []
-        for t in tranches:
-            status = (t.get("status") or "pending").lower()
-            if status in ("paid", "verified"):
+        # The actual payment status lives in school["payments"] (what the Orders UI reads),
+        # keyed by tranche_index — NOT in the tranche definition itself.
+        recorded_payments = school.get("payments") or []
+        paid_indices = {
+            p.get("tranche_index")
+            for p in recorded_payments
+            if (p.get("status") or "").lower() in ("paid", "verified")
+        }
+        # Also check if tranche_index is None (payment without index) → skip by status field
+        # For any unindexed legacy payment, fall back to tranche "status" field
+        total_amount_raw = od.get("total_amount") or od.get("total_value") or 0
+        total_amount = float(str(total_amount_raw).replace(",", "") or 0)
+
+        for idx, t in enumerate(tranches):
+            # Primary check: actual payment record in payments[] by tranche_index
+            if idx in paid_indices:
                 continue
+            # Fallback: check the tranche definition's own status (legacy / manually set)
+            tranche_status = (t.get("status") or "pending").lower()
+            if tranche_status in ("paid", "verified"):
+                continue
+
+            # Resolve amount: fixed amount OR percentage × total
             amount = float(str(t.get("amount") or 0).replace(",", "") or 0)
+            if not amount and t.get("percentage") and total_amount:
+                amount = round(total_amount * float(t.get("percentage") or 0) / 100, 2)
+
             due_date = t.get("due_date") or t.get("date") or "—"
             label = t.get("label") or t.get("description") or "Tranche"
             is_overdue = False
