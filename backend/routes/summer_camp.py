@@ -373,6 +373,7 @@ async def initiate_payment(data: PaymentInitRequest):
             notify_url=f"{frontend_url}/api/summer-camp/webhook",
         )
         create_order_request = CreateOrderRequest(
+            order_id=order_id,  # Pass our order_id so Cashfree can be queried by it later
             order_amount=CAMP_PRICE,
             order_currency="INR",
             customer_details=customer,

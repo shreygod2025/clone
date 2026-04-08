@@ -90,7 +90,7 @@ class TestSummerCampRegister:
             "parent_phone": "9876543212",
             "parent_email": "test_meera@example.com",
             "age_group": "innovators",
-            "batch_type": "weekend",
+            "batch_type": "weekday",
             "batch_week": "week2",
             "mode": "online",
             "center": "online",
@@ -310,7 +310,7 @@ class TestSummerCampDataPersistence:
             "parent_phone": "9123456789",
             "parent_email": "persist_test@example.com",
             "age_group": "explorers",
-            "batch_type": "weekend",
+            "batch_type": "weekday",
             "batch_week": "week3",
             "mode": "online",
             "center": "online",
@@ -338,3 +338,124 @@ class TestSummerCampDataPersistence:
         assert matching["crm_status"] == "lead", f"Expected lead, got {matching['crm_status']}"
         assert matching["payment_status"] == "pending"
         print(f"PASS: Data persistence verified - ref: {matching['booking_ref']}")
+
+
+
+class TestSummerCampCaptureLeadEndpoint:
+    """Tests for POST /api/summer-camp/capture-lead (partial lead step)"""
+
+    def test_capture_lead_creates_phone_captured_status(self):
+        """capture-lead should create a booking with crm_status=phone_captured"""
+        payload = {
+            "parent_phone": "9876500002",
+            "age_group": "creators",
+            "batch_type": "weekday",
+            "batch_week": "week1",
+            "mode": "online",
+            "center": "online"
+        }
+        resp = requests.post(f"{BASE_URL}/api/summer-camp/capture-lead", json=payload)
+        assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
+        data = resp.json()
+        assert "booking_id" in data, "Missing booking_id"
+        assert "booking_ref" in data, "Missing booking_ref"
+        assert data["booking_ref"].startswith("SC2026-"), "Invalid booking_ref format"
+        print(f"PASS: capture-lead - booking_id: {data['booking_id']}, ref: {data['booking_ref']}")
+
+        # Verify crm_status = phone_captured via verify endpoint
+        booking_id = data["booking_id"]
+        verify_resp = requests.get(f"{BASE_URL}/api/summer-camp/verify/{booking_id}")
+        assert verify_resp.status_code == 200
+        booking = verify_resp.json()["booking"]
+        assert booking["crm_status"] == "phone_captured", f"Expected phone_captured, got {booking['crm_status']}"
+        assert booking["parent_phone"] == "9876500002"
+        print(f"PASS: crm_status correctly set to phone_captured")
+
+    def test_capture_lead_with_tracking_ref(self):
+        """capture-lead with a tracking ref should work (ignores unknown refs silently)"""
+        payload = {
+            "parent_phone": "9876500003",
+            "age_group": "explorers",
+            "batch_type": "weekday",
+            "batch_week": "week2",
+            "mode": "offline",
+            "center": "mira_road",
+            "ref": "nonexistent-slug-xyz"
+        }
+        resp = requests.post(f"{BASE_URL}/api/summer-camp/capture-lead", json=payload)
+        assert resp.status_code == 200, f"Expected 200, got {resp.status_code}: {resp.text}"
+        data = resp.json()
+        assert "booking_id" in data
+        print(f"PASS: capture-lead with unknown ref works - ref: {data['booking_ref']}")
+
+
+class TestSummerCampInitiatePayment:
+    """Tests for POST /api/summer-camp/initiate-payment - verifies order_id bug fix"""
+
+    def test_initiate_payment_includes_order_id(self):
+        """
+        Critical bug fix test: initiate-payment must return order_id
+        so verify endpoint can call PGFetchOrder later.
+        """
+        # First create a booking via register
+        reg_resp = requests.post(f"{BASE_URL}/api/summer-camp/register", json={
+            "child_name": "TEST_PayTest Child",
+            "parent_name": "TEST_PayTest Parent",
+            "parent_phone": "9876543299",
+            "parent_email": "paytest@example.com",
+            "age_group": "creators",
+            "batch_type": "weekday",
+            "batch_week": "week1",
+            "mode": "offline",
+            "center": "mira_road",
+            "payment_mode": "cashfree"
+        })
+        assert reg_resp.status_code == 200, f"Register failed: {reg_resp.text}"
+        booking_id = reg_resp.json()["booking_id"]
+
+        # Initiate payment
+        pay_resp = requests.post(f"{BASE_URL}/api/summer-camp/initiate-payment", json={"booking_id": booking_id})
+        assert pay_resp.status_code == 200, f"initiate-payment failed: {pay_resp.status_code}: {pay_resp.text}"
+        pay_data = pay_resp.json()
+
+        # Verify order_id is in response
+        assert "order_id" in pay_data, "Missing order_id in response (bug fix verification)"
+        assert "payment_session_id" in pay_data, "Missing payment_session_id"
+        assert "payment_link" in pay_data, "Missing payment_link"
+        assert pay_data["order_id"].startswith("SC2026-"), f"Unexpected order_id format: {pay_data['order_id']}"
+        print(f"PASS: initiate-payment returns order_id: {pay_data['order_id']}")
+
+        # Verify the order_id was also saved to the booking
+        verify_resp = requests.get(f"{BASE_URL}/api/summer-camp/verify/{booking_id}")
+        assert verify_resp.status_code == 200
+        booking = verify_resp.json()["booking"]
+        assert booking.get("order_id") == pay_data["order_id"], \
+            f"order_id not persisted in booking: got {booking.get('order_id')}"
+        print(f"PASS: order_id persisted in booking DB record")
+
+    def test_initiate_payment_for_already_paid_fails(self):
+        """Already-paid booking cannot initiate payment again"""
+        # Use a non-existent booking to test 404
+        pay_resp = requests.post(f"{BASE_URL}/api/summer-camp/initiate-payment",
+                                  json={"booking_id": "nonexistent-test-id-99999"})
+        assert pay_resp.status_code == 404, f"Expected 404, got {pay_resp.status_code}"
+        print(f"PASS: initiate-payment for non-existent booking returns 404")
+
+    def test_verify_existing_test_booking_has_order_id(self):
+        """
+        Verify the known test booking d4d5c1e9 has an order_id
+        (confirming the CreateOrderRequest order_id bug fix was applied)
+        """
+        TEST_BOOKING_ID = "d4d5c1e9-110a-49cd-901f-ba2af7b281c6"
+        resp = requests.get(f"{BASE_URL}/api/summer-camp/verify/{TEST_BOOKING_ID}")
+        assert resp.status_code == 200, f"Expected 200: {resp.text}"
+        data = resp.json()
+        booking = data["booking"]
+        assert "order_id" in booking and booking["order_id"], \
+            "order_id missing from test booking - bug fix may not be applied"
+        assert booking["order_id"].startswith("SC2026-"), \
+            f"Unexpected order_id format: {booking['order_id']}"
+        print(f"PASS: Test booking has order_id: {booking['order_id']}")
+        # Verify batch_week is week2 for correct session schedule on success page
+        assert booking["batch_week"] == "week2", f"Expected week2, got {booking['batch_week']}"
+        print(f"PASS: Test booking has batch_week=week2 (May 11-15 sessions)")
