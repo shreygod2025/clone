@@ -265,7 +265,11 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
 
   // ─── Bill To / Ship To ───
   const schoolName = schoolData?.school_name || payment.school_name || 'N/A';
-  const schoolAddress = schoolData?.address || schoolData?.city || schoolState || '';
+  const rawAddr = schoolData?.address || schoolData?.onboarding_data?.address || '';
+  const cityVal = schoolData?.city || schoolData?.onboarding_data?.city || '';
+  const pincode = schoolData?.pincode || schoolData?.onboarding_data?.pincode || '';
+  const addrParts = [rawAddr, cityVal, pincode ? `${schoolState} - ${pincode}` : schoolState].filter(Boolean);
+  const schoolAddress = addrParts.join(', ') || schoolState;
   const schoolGSTIN = schoolData?.gstin || schoolData?.onboarding_data?.gstin || '';
   const halfWidth = contentWidth / 2 - 2;
 
@@ -299,7 +303,7 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
   doc.setTextColor(80, 80, 80);
-  if (schoolState) doc.text(schoolState, shipX + 3, y + 16);
+  if (schoolAddress) doc.text(schoolAddress, shipX + 3, y + 16, { maxWidth: halfWidth - 6 });
 
   y += 28;
 
