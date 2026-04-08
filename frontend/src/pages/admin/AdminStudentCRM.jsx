@@ -68,6 +68,7 @@ const AdminStudentCRM = () => {
   const [newLinkName, setNewLinkName] = useState('');
   const [creatingLink, setCreatingLink] = useState(false);
   const [campSubTab, setCampSubTab] = useState('bookings'); // 'bookings' | 'tracking' | 'dashboard'
+  const [selectedDashCenter, setSelectedDashCenter] = useState(null); // null = All Centers
   // Summer Camp CRM Modals
   const [campEditModal, setCampEditModal] = useState(null);
   const [campEditData, setCampEditData] = useState({});
@@ -1330,68 +1331,108 @@ const AdminStudentCRM = () => {
                   </div>
                 </div>
 
-                {/* Batch Stats — Week × Age Group × Center */}
+                {/* Batch Stats — Center sub-tabs + Week × Age Group */}
                 <div className="bg-white rounded-2xl border border-slate-100 p-5">
-                  <h3 className="font-bold text-[#1E3A5F] text-base mb-4 flex items-center gap-2">
-                    <BarChart2 className="w-4 h-4 text-orange-500" />Batch Breakdown — Weekday (Mon–Fri) · 10 spots per batch
+                  <h3 className="font-bold text-[#1E3A5F] text-base mb-3 flex items-center gap-2">
+                    <BarChart2 className="w-4 h-4 text-orange-500" />Batch Breakdown — 10 spots per batch per center
                   </h3>
+
+                  {/* Center Sub-Tabs */}
+                  {campDashboard.centers?.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-5 border-b border-slate-100 pb-3">
+                      <button
+                        onClick={() => setSelectedDashCenter(null)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${selectedDashCenter === null ? 'bg-[#1E3A5F] text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                      >
+                        All Centers
+                      </button>
+                      {campDashboard.centers.map(c => (
+                        <button
+                          key={c}
+                          onClick={() => setSelectedDashCenter(c)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${selectedDashCenter === c ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                        >
+                          {c.replace('OLL ', '').replace(' Center', '')}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
                   <div className="space-y-6">
-                    {campDashboard.weeks?.map((wk) => (
-                      <div key={wk.week} className="border border-slate-100 rounded-xl overflow-hidden">
-                        {/* Week header */}
-                        <div className="bg-slate-50 px-4 py-2.5 flex items-center gap-3 border-b border-slate-100">
-                          <span className="font-bold text-[#1E3A5F] text-sm">{wk.week_label}</span>
-                          <span className="text-xs text-slate-500 font-mono">{wk.dates}</span>
-                          <span className="ml-auto text-xs text-slate-400">
-                            {Object.values(wk.age_groups).reduce((s, ag) => s + ag.total, 0)} total registrations
-                          </span>
-                        </div>
-                        {/* Age group rows */}
-                        <div className="divide-y divide-slate-50">
-                          {Object.entries(wk.age_groups).map(([agKey, ag]) => {
-                            const fillPct = Math.round((ag.converted / ag.spots_total) * 100);
-                            const spotsLeft = ag.spots_left;
-                            return (
-                              <div key={agKey} className="px-4 py-3 flex flex-wrap items-center gap-3">
-                                {/* Age group label */}
-                                <div className="w-44 shrink-0">
-                                  <div className="text-sm font-semibold text-slate-700">{ag.label}</div>
-                                  <div className="text-xs text-slate-400">Ages {ag.ages}</div>
-                                </div>
-                                {/* Spot fill bar */}
-                                <div className="flex-1 min-w-36">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-xs text-slate-500">{ag.converted}/{ag.spots_total} confirmed</span>
-                                    <span className={`text-xs font-bold ml-auto ${spotsLeft <= 2 ? 'text-red-500' : spotsLeft <= 5 ? 'text-yellow-600' : 'text-green-600'}`}>
-                                      {spotsLeft} spots left
-                                    </span>
+                    {campDashboard.weeks?.map((wk) => {
+                      // When a center is selected, compute total registrations for that center this week
+                      const wkTotal = selectedDashCenter
+                        ? Object.values(wk.age_groups).reduce((s, ag) => s + (ag.by_center?.[selectedDashCenter]?.total ?? 0), 0)
+                        : Object.values(wk.age_groups).reduce((s, ag) => s + ag.total, 0);
+
+                      return (
+                        <div key={wk.week} className="border border-slate-100 rounded-xl overflow-hidden">
+                          {/* Week header */}
+                          <div className="bg-slate-50 px-4 py-2.5 flex items-center gap-3 border-b border-slate-100">
+                            <span className="font-bold text-[#1E3A5F] text-sm">{wk.week_label}</span>
+                            <span className="text-xs text-slate-500 font-mono">{wk.dates}</span>
+                            <span className="ml-auto text-xs text-slate-400">{wkTotal} total registrations</span>
+                          </div>
+                          {/* Age group rows */}
+                          <div className="divide-y divide-slate-50">
+                            {Object.entries(wk.age_groups).map(([agKey, ag]) => {
+                              // Use per-center stats if a center is selected
+                              const stats = selectedDashCenter
+                                ? (ag.by_center?.[selectedDashCenter] ?? { total: 0, converted: 0, leads: 0, phone_captured: 0, lost: 0, spots_left: 10 })
+                                : ag;
+                              const spotsTotal = 10;
+                              const spotsLeft = selectedDashCenter
+                                ? (spotsTotal - (stats.converted ?? 0))
+                                : ag.spots_left;
+                              const fillPct = Math.round(((stats.converted ?? 0) / spotsTotal) * 100);
+
+                              return (
+                                <div key={agKey} className="px-4 py-3 flex flex-wrap items-center gap-3">
+                                  {/* Age group label */}
+                                  <div className="w-44 shrink-0">
+                                    <div className="text-sm font-semibold text-slate-700">{ag.label}</div>
+                                    <div className="text-xs text-slate-400">Ages {ag.ages}</div>
                                   </div>
-                                  <div className="bg-slate-100 rounded-full h-2 overflow-hidden">
-                                    <div className="h-2 rounded-full bg-orange-400 transition-all" style={{ width: `${fillPct}%` }} />
-                                  </div>
-                                </div>
-                                {/* Stage badges */}
-                                <div className="flex gap-1 shrink-0">
-                                  {ag.leads > 0 && <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-700 font-semibold">{ag.leads} lead</span>}
-                                  {ag.phone_captured > 0 && <span className="text-xs px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 font-semibold">{ag.phone_captured} form</span>}
-                                  {ag.lost > 0 && <span className="text-xs px-2 py-0.5 rounded-full bg-red-50 text-red-500 font-semibold">{ag.lost} lost</span>}
-                                </div>
-                                {/* Center breakdown */}
-                                {Object.keys(ag.by_center).length > 0 && (
-                                  <div className="flex flex-wrap gap-1 w-full mt-1">
-                                    {Object.entries(ag.by_center).sort((a, b) => b[1] - a[1]).map(([center, count]) => (
-                                      <span key={center} className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100">
-                                        {center.replace('OLL ', '').replace(' Center', '')} <strong>{count}</strong>
+                                  {/* Spot fill bar */}
+                                  <div className="flex-1 min-w-36">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="text-xs text-slate-500">{stats.converted ?? 0}/{spotsTotal} confirmed</span>
+                                      <span className={`text-xs font-bold ml-auto ${spotsLeft <= 2 ? 'text-red-500' : spotsLeft <= 5 ? 'text-yellow-600' : 'text-green-600'}`}>
+                                        {spotsLeft} spots left
                                       </span>
-                                    ))}
+                                    </div>
+                                    <div className="bg-slate-100 rounded-full h-2 overflow-hidden">
+                                      <div className="h-2 rounded-full bg-orange-400 transition-all" style={{ width: `${fillPct}%` }} />
+                                    </div>
                                   </div>
-                                )}
-                              </div>
-                            );
-                          })}
+                                  {/* Stage badges */}
+                                  <div className="flex gap-1 shrink-0">
+                                    {(stats.leads ?? 0) > 0 && <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-50 text-yellow-700 font-semibold">{stats.leads} lead</span>}
+                                    {(stats.phone_captured ?? 0) > 0 && <span className="text-xs px-2 py-0.5 rounded-full bg-orange-50 text-orange-600 font-semibold">{stats.phone_captured} form</span>}
+                                    {(stats.lost ?? 0) > 0 && <span className="text-xs px-2 py-0.5 rounded-full bg-red-50 text-red-500 font-semibold">{stats.lost} lost</span>}
+                                  </div>
+                                  {/* Center breakdown — only show in "All Centers" view */}
+                                  {!selectedDashCenter && Object.keys(ag.by_center).length > 0 && (
+                                    <div className="flex flex-wrap gap-1 w-full mt-1">
+                                      {Object.entries(ag.by_center).sort((a, b) => b[1].total - a[1].total).map(([center, cd]) => (
+                                        <button
+                                          key={center}
+                                          onClick={() => setSelectedDashCenter(center)}
+                                          className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100 hover:bg-blue-100 transition-colors"
+                                          title={`Click to filter by ${center}`}
+                                        >
+                                          {center.replace('OLL ', '').replace(' Center', '')} <strong>{cd.total}</strong>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>

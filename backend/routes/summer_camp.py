@@ -671,24 +671,48 @@ async def get_summer_camp_dashboard(user: dict = Depends(get_current_user)):
         elif status == "lost_lead":
             cell["lost"] += 1
 
-        # Center tracking
+        # Center tracking (track full stats per center, not just count)
         center = b.get("center_label") or b.get("center") or "Unknown"
-        cell["by_center"][center] = cell["by_center"].get(center, 0) + 1
+        if center not in cell["by_center"]:
+            cell["by_center"][center] = {
+                "total": 0, "converted": 0, "leads": 0,
+                "phone_captured": 0, "lost": 0,
+            }
+        by_c = cell["by_center"][center]
+        by_c["total"] += 1
+        if status == "converted":
+            by_c["converted"] += 1
+        elif status == "lead":
+            by_c["leads"] += 1
+        elif status == "phone_captured":
+            by_c["phone_captured"] += 1
+        elif status == "lost_lead":
+            by_c["lost"] += 1
 
-    # Compute spots_left for each cell
+    # Compute spots_left for each cell (aggregate) + per-center
     for wk_data in data.values():
         for ag_data in wk_data["age_groups"].values():
             ag_data["spots_left"] = max(0, SPOTS_PER_BATCH - ag_data["converted"])
+            for by_c in ag_data["by_center"].values():
+                by_c["spots_left"] = max(0, SPOTS_PER_BATCH - by_c["converted"])
 
     # Summary totals
     total_bookings = len(bookings)
     total_converted = sum(1 for b in bookings if b.get("crm_status") == "converted")
     total_revenue = total_converted * CAMP_PRICE
 
+    # Collect unique centers (excluding unknown/online)
+    all_centers = sorted(set(
+        b.get("center_label") or b.get("center") or "Unknown"
+        for b in bookings
+        if b.get("center_label") or b.get("center")
+    ))
+
     return {
         "total_bookings": total_bookings,
         "total_revenue": total_revenue,
         "converted": total_converted,
+        "centers": all_centers,
         "weeks": sorted(data.values(), key=lambda x: x["week"]),
         # Keep old age_summary for the revenue bar chart
         "age_summary": [
