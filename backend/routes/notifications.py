@@ -39,6 +39,8 @@ WHATSAPP_TEMPLATES = {
 
     # Summer Camp follow-up (phone captured but didn't complete)
     "summercamp_followup": "summercamp lead",
+    # Summer Camp payment-pending follow-up (filled details but didn't pay)
+    "summercamp_payment_pending": "summercamppaymentpending",
 }
 
 async def send_whatsapp_notification(
@@ -96,7 +98,7 @@ async def send_whatsapp_notification(
             "location": {},
             "attributes": {},
             "paramsFallbackValue": {
-                "FirstName": "user"
+                "FirstName": user_name if user_name and user_name != "User" else "user"
             }
         }
         

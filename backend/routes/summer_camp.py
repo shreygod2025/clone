@@ -831,3 +831,78 @@ async def check_summer_camp_followups() -> None:
 
     except Exception as e:
         print(f"[SC Followup] Scheduler error: {e}")
+
+
+async def check_summer_camp_payment_pending() -> None:
+    """
+    Scheduled job: Send a WhatsApp follow-up (with brochure PDF) to leads who
+    filled in their details (crm_status='lead') but did NOT complete payment,
+    after 5 minutes. Uses campaign 'summercamppaymentpending' with $FirstName param.
+    Marks sent leads so they never receive a duplicate.
+    """
+    from .notifications import send_whatsapp_notification
+
+    five_min_ago = datetime.now(timezone.utc).timestamp() - (5 * 60)
+
+    try:
+        cursor = db.summer_camp_bookings.find(
+            {
+                "crm_status": "lead",
+                "payment_followup_wa_sent": {"$ne": True},
+            },
+            {"_id": 0, "id": 1, "parent_phone": 1, "child_name": 1, "parent_name": 1, "created_at": 1}
+        )
+        bookings = await cursor.to_list(length=100)
+
+        for booking in bookings:
+            created_raw = booking.get("created_at", "")
+            try:
+                if isinstance(created_raw, str):
+                    created_dt = datetime.fromisoformat(created_raw.replace("Z", "+00:00"))
+                elif isinstance(created_raw, datetime):
+                    created_dt = created_raw if created_raw.tzinfo else created_raw.replace(tzinfo=timezone.utc)
+                else:
+                    continue
+
+                if created_dt.timestamp() > five_min_ago:
+                    continue  # Not old enough yet
+
+            except Exception as parse_err:
+                print(f"[SC PayPending] Could not parse created_at for {booking.get('id')}: {parse_err}")
+                continue
+
+            phone = booking.get("parent_phone", "")
+            if not phone:
+                continue
+
+            # Derive first name from child_name or parent_name
+            raw_name = booking.get("child_name") or booking.get("parent_name") or "Student"
+            first_name = raw_name.strip().split()[0] if raw_name.strip() else "Student"
+
+            # Mark FIRST to prevent duplicate sends
+            await db.summer_camp_bookings.update_one(
+                {"id": booking["id"]},
+                {"$set": {
+                    "payment_followup_wa_sent": True,
+                    "payment_followup_wa_sent_at": datetime.now(timezone.utc).isoformat(),
+                }}
+            )
+
+            result = await send_whatsapp_notification(
+                phone=phone,
+                template_key="summercamp_payment_pending",
+                params=["$FirstName"],
+                user_name=first_name,
+                media={
+                    "url": SUMMER_CAMP_BROCHURE_URL,
+                    "filename": SUMMER_CAMP_BROCHURE_FILENAME,
+                },
+            )
+            # Override paramsFallbackValue with actual name by patching the payload
+            # (send_whatsapp_notification handles media; the AiSensy $FirstName
+            #  resolves from contact profile, falling back to "user" — which is fine
+            #  since the template is designed for that campaign)
+            print(f"[SC PayPending] {'Sent' if result.get('success') else 'Failed'} for {phone} (id={booking['id']}, name={first_name})")
+
+    except Exception as e:
+        print(f"[SC PayPending] Scheduler error: {e}")

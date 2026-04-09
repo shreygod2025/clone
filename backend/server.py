@@ -4010,7 +4010,7 @@ class Role(BaseModel):
 
 
 from routes.payments import router as payments_router, scheduled_payment_sync, scheduler, PAYMENT_SYNC_ENABLED, PAYMENT_SYNC_INTERVAL_MINUTES
-from routes.summer_camp import router as summer_camp_router, check_summer_camp_followups
+from routes.summer_camp import router as summer_camp_router, check_summer_camp_followups, check_summer_camp_payment_pending
 from routes.db_backup import router as db_backup_router
 from routes.gp_onboarding import router as gp_onboarding_router
 from routes.reports import router as reports_router
@@ -4250,6 +4250,18 @@ async def startup_db_client():
         next_run_time=datetime.now(timezone.utc) + timedelta(minutes=1)
     )
     print("[STARTUP] Summer Camp follow-up WhatsApp scheduled — runs every 1 minute")
+
+    # Schedule Summer Camp payment-pending follow-up WhatsApp (every 1 minute)
+    # Sends brochure PDF to leads who filled details but didn't complete payment (5 min threshold)
+    scheduler.add_job(
+        check_summer_camp_payment_pending,
+        trigger=IntervalTrigger(minutes=1),
+        id="summer_camp_payment_pending_job",
+        name="Summer Camp Payment-Pending Follow-Up WhatsApp",
+        replace_existing=True,
+        next_run_time=datetime.now(timezone.utc) + timedelta(minutes=1)
+    )
+    print("[STARTUP] Summer Camp payment-pending WhatsApp scheduled — runs every 1 minute")
 
     if not scheduler.running:
         scheduler.start()
