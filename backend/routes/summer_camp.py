@@ -1031,3 +1031,111 @@ async def check_summer_camp_payment_pending_3() -> None:
 
     except Exception as e:
         print(f"[SC PayPending3] Scheduler error: {e}")
+
+
+def _parse_created_dt(created_raw):
+    """Helper to parse created_at field to timezone-aware datetime."""
+    if isinstance(created_raw, str):
+        return datetime.fromisoformat(created_raw.replace("Z", "+00:00"))
+    if isinstance(created_raw, datetime):
+        return created_raw if created_raw.tzinfo else created_raw.replace(tzinfo=timezone.utc)
+    return None
+
+
+async def check_summer_camp_phone_captured_24h() -> None:
+    """
+    Scheduled job: 2nd follow-up for phone-captured leads (entered phone only),
+    fired 24 hours after creation. No media, no template params.
+    Campaign: 'summer camp phone captured followup 1'
+    """
+    from .notifications import send_whatsapp_notification
+
+    threshold = datetime.now(timezone.utc).timestamp() - (24 * 60 * 60)
+
+    try:
+        cursor = db.summer_camp_bookings.find(
+            {
+                "crm_status": "phone_captured",
+                "phone_captured_followup1_wa_sent": {"$ne": True},
+            },
+            {"_id": 0, "id": 1, "parent_phone": 1, "child_name": 1, "created_at": 1}
+        )
+        for booking in await cursor.to_list(length=100):
+            try:
+                created_dt = _parse_created_dt(booking.get("created_at"))
+                if not created_dt or created_dt.timestamp() > threshold:
+                    continue
+            except Exception:
+                continue
+
+            phone = booking.get("parent_phone", "")
+            if not phone:
+                continue
+
+            await db.summer_camp_bookings.update_one(
+                {"id": booking["id"]},
+                {"$set": {
+                    "phone_captured_followup1_wa_sent": True,
+                    "phone_captured_followup1_wa_sent_at": datetime.now(timezone.utc).isoformat(),
+                }}
+            )
+            result = await send_whatsapp_notification(
+                phone=phone,
+                template_key="summercamp_phone_captured_24h",
+                params=[],
+                user_name=booking.get("child_name", ""),
+            )
+            print(f"[SC PhoneCap24h] {'Sent' if result.get('success') else 'Failed'} for {phone} (id={booking['id']})")
+
+    except Exception as e:
+        print(f"[SC PhoneCap24h] Scheduler error: {e}")
+
+
+async def check_summer_camp_closing_7days() -> None:
+    """
+    Scheduled job: Final 'registrations closing' follow-up for ALL unconverted leads
+    (both phone_captured AND details-filled/lead) fired 7 days after creation.
+    No media, no template params.
+    Campaign: 'summer camp registraitons closing followup'
+    """
+    from .notifications import send_whatsapp_notification
+
+    threshold = datetime.now(timezone.utc).timestamp() - (7 * 24 * 60 * 60)
+
+    try:
+        cursor = db.summer_camp_bookings.find(
+            {
+                "crm_status": {"$in": ["phone_captured", "lead", "hot_lead"]},
+                "closing_followup_wa_sent": {"$ne": True},
+            },
+            {"_id": 0, "id": 1, "parent_phone": 1, "child_name": 1, "created_at": 1}
+        )
+        for booking in await cursor.to_list(length=200):
+            try:
+                created_dt = _parse_created_dt(booking.get("created_at"))
+                if not created_dt or created_dt.timestamp() > threshold:
+                    continue
+            except Exception:
+                continue
+
+            phone = booking.get("parent_phone", "")
+            if not phone:
+                continue
+
+            await db.summer_camp_bookings.update_one(
+                {"id": booking["id"]},
+                {"$set": {
+                    "closing_followup_wa_sent": True,
+                    "closing_followup_wa_sent_at": datetime.now(timezone.utc).isoformat(),
+                }}
+            )
+            result = await send_whatsapp_notification(
+                phone=phone,
+                template_key="summercamp_closing_7days",
+                params=[],
+                user_name=booking.get("child_name", ""),
+            )
+            print(f"[SC Closing7d] {'Sent' if result.get('success') else 'Failed'} for {phone} (id={booking['id']})")
+
+    except Exception as e:
+        print(f"[SC Closing7d] Scheduler error: {e}")

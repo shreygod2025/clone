@@ -4010,7 +4010,15 @@ class Role(BaseModel):
 
 
 from routes.payments import router as payments_router, scheduled_payment_sync, scheduler, PAYMENT_SYNC_ENABLED, PAYMENT_SYNC_INTERVAL_MINUTES
-from routes.summer_camp import router as summer_camp_router, check_summer_camp_followups, check_summer_camp_payment_pending, check_summer_camp_payment_pending_2, check_summer_camp_payment_pending_3
+from routes.summer_camp import (
+    router as summer_camp_router,
+    check_summer_camp_followups,
+    check_summer_camp_payment_pending,
+    check_summer_camp_payment_pending_2,
+    check_summer_camp_payment_pending_3,
+    check_summer_camp_phone_captured_24h,
+    check_summer_camp_closing_7days,
+)
 from routes.db_backup import router as db_backup_router
 from routes.gp_onboarding import router as gp_onboarding_router
 from routes.reports import router as reports_router
@@ -4284,6 +4292,28 @@ async def startup_db_client():
         next_run_time=datetime.now(timezone.utc) + timedelta(minutes=5)
     )
     print("[STARTUP] Summer Camp payment-pending 3rd follow-up WhatsApp scheduled — runs every 30 min (48hr threshold)")
+
+    # Phone-captured 2nd follow-up at 24 hours (every 30 min polling)
+    scheduler.add_job(
+        check_summer_camp_phone_captured_24h,
+        trigger=IntervalTrigger(minutes=30),
+        id="summer_camp_phone_captured_24h_job",
+        name="Summer Camp Phone-Captured 24hr Follow-Up WhatsApp",
+        replace_existing=True,
+        next_run_time=datetime.now(timezone.utc) + timedelta(minutes=5)
+    )
+    print("[STARTUP] Summer Camp phone-captured 24hr follow-up scheduled — runs every 30 min")
+
+    # Closing follow-up at 7 days for ALL unconverted leads (every 6 hours polling)
+    scheduler.add_job(
+        check_summer_camp_closing_7days,
+        trigger=IntervalTrigger(hours=6),
+        id="summer_camp_closing_7days_job",
+        name="Summer Camp Closing 7-Day Follow-Up WhatsApp",
+        replace_existing=True,
+        next_run_time=datetime.now(timezone.utc) + timedelta(minutes=5)
+    )
+    print("[STARTUP] Summer Camp closing 7-day follow-up scheduled — runs every 6 hours")
 
     if not scheduler.running:
         scheduler.start()
