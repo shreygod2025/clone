@@ -12,7 +12,7 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - **Funnels & Login:** OTP-based login for all user types
 - **Admin CRM:** Full school management with bulk import, onboarding workflows, inquiry management
 
-### Architecture (Updated: 2026-04-09 — Summer Camp Follow-Up WhatsApp Automation)
+### Architecture (Updated: 2026-04-09 — Summer Camp Parent Login Portal)
 ```
 /app/
 ├── backend/

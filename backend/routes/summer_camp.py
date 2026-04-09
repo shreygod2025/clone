@@ -263,6 +263,7 @@ async def complete_lead(booking_id: str, data: CompleteLead):
     booking = await db.summer_camp_bookings.find_one({"id": booking_id}, {"_id": 0})
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
+    new_status = "payment_offline" if data.payment_mode == "cash" else "lead"
     await db.summer_camp_bookings.update_one(
         {"id": booking_id},
         {"$set": {
@@ -270,7 +271,7 @@ async def complete_lead(booking_id: str, data: CompleteLead):
             "parent_name": data.parent_name or "",
             "parent_email": data.parent_email,
             "payment_mode": data.payment_mode,
-            "crm_status": "lead",
+            "crm_status": new_status,
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }}
     )
@@ -324,7 +325,7 @@ async def register_summer_camp(data: SummerCampRegistration):
         "payment_mode": data.payment_mode,
         "amount": CAMP_PRICE,
         "payment_status": "pending",
-        "crm_status": "lead",
+        "crm_status": "payment_offline" if data.payment_mode == "cash" else "lead",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }

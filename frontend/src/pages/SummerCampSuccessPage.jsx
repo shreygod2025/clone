@@ -204,7 +204,7 @@ function downloadSummerCampReceipt(booking, isCash) {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(148, 163, 184);
-  doc.text('This is a computer-generated receipt. For any queries contact: info@oll.co | +91 99209 20188', pw / 2, y, { align: 'center' });
+  doc.text('This is a computer-generated receipt. For any queries contact: info@oll.co | +91 9920188188', pw / 2, y, { align: 'center' });
   y += 4;
   doc.text('OLL — One Learner at a time, One Life skill at a time | www.oll.co', pw / 2, y, { align: 'center' });
 
@@ -413,7 +413,7 @@ export default function SummerCampSuccessPage() {
               <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: '1rem', padding: '1.1rem 1.25rem', marginBottom: '2rem' }}>
                 <p style={{ fontFamily: JB, fontSize: '0.65rem', letterSpacing: '0.18em', color: '#475569', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.8rem' }}>Need Help?</p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
-                  <a href="https://wa.me/919920920188" target="_blank" rel="noreferrer"
+                  <a href="https://wa.me/919920188188" target="_blank" rel="noreferrer"
                     style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0.55rem 1rem', borderRadius: '0.6rem', background: 'rgba(37,211,102,0.08)', border: '1px solid rgba(37,211,102,0.18)', color: '#25D366', textDecoration: 'none', fontFamily: JB, fontWeight: 700, fontSize: '0.8rem', transition: 'all 0.2s' }}
                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(37,211,102,0.15)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'rgba(37,211,102,0.08)'}
@@ -421,13 +421,13 @@ export default function SummerCampSuccessPage() {
                     <MessageCircle style={{ width: 15, height: 15 }} />
                     WhatsApp Us
                   </a>
-                  <a href="tel:+919920920188"
+                  <a href="tel:+919920188188"
                     style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0.55rem 1rem', borderRadius: '0.6rem', background: 'rgba(0,229,255,0.06)', border: '1px solid rgba(0,229,255,0.15)', color: '#00E5FF', textDecoration: 'none', fontFamily: JB, fontWeight: 700, fontSize: '0.8rem', transition: 'all 0.2s' }}
                     onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,229,255,0.12)'}
                     onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,229,255,0.06)'}
                   >
                     <Phone style={{ width: 15, height: 15 }} />
-                    +91 99209 20188
+                    +91 9920188188
                   </a>
                 </div>
               </div>

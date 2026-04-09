@@ -8,4 +8,7 @@
 
 ## Test Notes
 - Summer Camp admin section: /admin/students → click "Summer Camp" tab
-- 32 test bookings exist in summer_camp_bookings collection
+- Summer Camp parent login: /login → "Summer Camp Parent" option → phone + OTP (OTP sent via AiSensy WhatsApp)
+- 32+ test bookings in summer_camp_bookings collection
+- To test Summer Camp login, a booking must have crm_status: "converted" or "payment_offline"
+- Cash payment bookings auto-set crm_status: "payment_offline"

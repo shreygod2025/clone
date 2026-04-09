@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Phone, Shield, GraduationCap, User } from 'lucide-react';
+import { ArrowLeft, Phone, Shield, GraduationCap, User, Sun } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { toast } from 'sonner';
@@ -64,7 +64,7 @@ const LoginPage = () => {
         toastShownRef.current = true;
         toast.success('Login successful!');
       }
-      navigate(loginType === 'educator' ? '/educator-dashboard' : '/my-bookings');
+      navigate(loginType === 'educator' ? '/educator-dashboard' : loginType === 'summer_camp' ? '/summer-camp/portal' : '/my-bookings');
     } else {
       toast.error(result.message);
     }
@@ -135,6 +135,20 @@ const LoginPage = () => {
                     <p className="text-sm text-slate-500">View assigned demos</p>
                   </div>
                 </button>
+
+                <button
+                  onClick={() => { setLoginType('summer_camp'); setStep('phone'); }}
+                  className="w-full p-4 rounded-xl border-2 border-slate-200 hover:border-orange-500 transition-all flex items-center gap-4 group"
+                  data-testid="summer-camp-login-btn"
+                >
+                  <div className="w-12 h-12 rounded-lg bg-orange-100 flex items-center justify-center group-hover:bg-orange-200 transition-colors">
+                    <Sun className="w-6 h-6 text-orange-500" />
+                  </div>
+                  <div className="text-left">
+                    <p className="font-semibold text-[#1E3A5F]">Summer Camp Parent</p>
+                    <p className="text-sm text-slate-500">View your child's booking details</p>
+                  </div>
+                </button>
               </div>
             </>
           )}
@@ -143,18 +157,20 @@ const LoginPage = () => {
           {step === 'phone' && (
             <>
               <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 ${
-                loginType === 'educator' ? 'bg-red-100' : 'bg-[#1E3A5F]/10'
+                loginType === 'educator' ? 'bg-red-100' : loginType === 'summer_camp' ? 'bg-orange-100' : 'bg-[#1E3A5F]/10'
               }`}>
                 {loginType === 'educator' 
                   ? <GraduationCap className="w-8 h-8 text-[#D63031]" />
+                  : loginType === 'summer_camp'
+                  ? <Sun className="w-8 h-8 text-orange-500" />
                   : <Phone className="w-8 h-8 text-[#1E3A5F]" />
                 }
               </div>
               <h1 className="text-2xl font-bold text-[#1E3A5F] mb-2 text-center" style={{ fontFamily: 'Manrope, sans-serif' }}>
-                {loginType === 'educator' ? 'Educator Login' : 'Login to OLL'}
+                {loginType === 'educator' ? 'Educator Login' : loginType === 'summer_camp' ? 'Summer Camp Login' : 'Login to OLL'}
               </h1>
               <p className="text-slate-500 mb-6 text-center">
-                Enter your phone number to continue
+                {loginType === 'summer_camp' ? "Enter the phone used during Summer Camp booking" : "Enter your phone number to continue"}
               </p>
 
               <div className="space-y-4">
@@ -240,6 +256,8 @@ const LoginPage = () => {
             <p className="text-center text-sm text-slate-500 mt-6">
               {loginType === 'educator' ? (
                 <>Not an educator? <Link to="/educator" className="text-[#D63031] hover:underline">Apply here</Link></>
+              ) : loginType === 'summer_camp' ? (
+                <>Want to book? <Link to="/summer-camp" className="text-orange-500 hover:underline">View Summer Camp</Link></>
               ) : (
                 <>Don't have a booking? <Link to="/student" className="text-[#D63031] hover:underline">Book a Demo</Link></>
               )}

@@ -421,6 +421,22 @@ async def send_otp(data: OTPRequest):
     allowed, reason = await otp_send_allowed(data.phone)
     if not allowed:
         raise HTTPException(status_code=429, detail=reason)
+
+    # Summer Camp parent login — validate phone against confirmed bookings
+    if data.user_type == "summer_camp":
+        phone_clean = data.phone.replace("+91", "").replace(" ", "").strip()
+        booking = await db.summer_camp_bookings.find_one(
+            {
+                "parent_phone": {"$regex": f"{phone_clean}$"},
+                "crm_status": {"$in": ["converted", "payment_offline"]},
+            },
+            {"_id": 0},
+        )
+        if not booking:
+            raise HTTPException(
+                status_code=400,
+                detail="No confirmed Summer Camp booking found for this phone number. Please ensure you have completed your booking.",
+            )
     
     # Generate cryptographically random 4-digit OTP
     otp = str(random.SystemRandom().randint(1000, 9999))
@@ -495,6 +511,23 @@ async def verify_otp(data: OTPVerify):
     success, error_msg = await otp_verify(data.phone, data.otp)
     if not success:
         raise HTTPException(status_code=400, detail=error_msg)
+
+    # Summer Camp parent — return booking data directly
+    if data.user_type == "summer_camp":
+        phone_clean = data.phone.replace("+91", "").replace(" ", "").strip()
+        booking = await db.summer_camp_bookings.find_one(
+            {
+                "parent_phone": {"$regex": f"{phone_clean}$"},
+                "crm_status": {"$in": ["converted", "payment_offline"]},
+            },
+            {"_id": 0},
+        )
+        return {
+            "phone": data.phone,
+            "user_type": "summer_camp",
+            "user": booking,
+            "is_registered": booking is not None,
+        }
     
     # Find or create user based on phone and type
     collection_map = {

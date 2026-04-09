@@ -171,6 +171,21 @@ async def send_otp(data: OTPRequest):
     
     if len(phone) != 10 or not phone.isdigit():
         raise HTTPException(status_code=400, detail="Invalid phone number. Please enter 10 digit number.")
+
+    # Summer Camp parent login — validate phone against confirmed bookings
+    if data.user_type == "summer_camp":
+        booking = await db.summer_camp_bookings.find_one(
+            {
+                "parent_phone": {"$regex": f"{phone}$"},
+                "crm_status": {"$in": ["converted", "payment_offline"]},
+            },
+            {"_id": 0},
+        )
+        if not booking:
+            raise HTTPException(
+                status_code=400,
+                detail="No confirmed Summer Camp booking found for this phone number. Please ensure you have completed your booking.",
+            )
     
     # Generate OTP (use 1111 for testing)
     otp = "1111"  # In production: str(random.randint(1000, 9999))
@@ -186,7 +201,7 @@ async def send_otp(data: OTPRequest):
     # In production, send via WhatsApp/SMS
     print(f"OTP for {phone}: {otp}")
     
-    return {"message": "OTP sent successfully", "phone": phone}
+    return {"message": "OTP sent successfully", "phone": phone, "sent": True}
 
 @router.post("/verify-otp")
 async def verify_otp(data: OTPVerify):
@@ -218,6 +233,11 @@ async def verify_otp(data: OTPVerify):
         user_data = await db.educator_applications.find_one({"phone": phone}, {"_id": 0})
     elif data.user_type == "school":
         user_data = await db.school_inquiries.find_one({"phone": phone}, {"_id": 0})
+    elif data.user_type == "summer_camp":
+        user_data = await db.summer_camp_bookings.find_one(
+            {"parent_phone": {"$regex": f"{phone}$"}, "crm_status": {"$in": ["converted", "payment_offline"]}},
+            {"_id": 0},
+        )
     
     # Create token
     token_data = {
@@ -228,7 +248,7 @@ async def verify_otp(data: OTPVerify):
     
     if user_data:
         token_data["user_id"] = user_data.get("id")
-        token_data["name"] = user_data.get("name", user_data.get("contact_name", ""))
+        token_data["name"] = user_data.get("name", user_data.get("contact_name", user_data.get("child_name", "")))
     
     if data.user_type == "educator" and user_data:
         token_data["educator_id"] = user_data.get("id")
