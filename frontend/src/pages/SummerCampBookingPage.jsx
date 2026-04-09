@@ -218,7 +218,10 @@ export default function SummerCampBookingPage() {
         return;
       }
 
-      const pay = await axios.post(`${API}/summer-camp/initiate-payment`, { booking_id: bid });
+      const pay = await axios.post(`${API}/summer-camp/initiate-payment`, {
+        booking_id: bid,
+        frontend_url: window.location.origin,
+      });
       if (!pay.data.payment_session_id) {
         setError('Could not initiate payment. Please try again.');
         return;

@@ -320,6 +320,20 @@ const AdminStudentCRM = () => {
     }
   };
 
+  const handleForceVerify = async (bookingId) => {
+    try {
+      const res = await axios.get(`${API}/summer-camp/verify/${bookingId}`, { headers: getAuthHeaders() });
+      if (res.data?.status === 'PAID' || res.data?.booking?.crm_status === 'converted') {
+        alert('Payment verified! Status updated to Paid/Converted.');
+      } else {
+        alert(`Cashfree status: ${res.data?.status || 'unknown'}. If payment was made, manually update the status.`);
+      }
+      fetchCampBookings();
+    } catch {
+      alert('Verification check failed. Try updating status manually.');
+    }
+  };
+
   const handleDeleteBooking = async () => {
     if (!campDeleteModal) return;
     setCampSaving(true);
@@ -1277,6 +1291,16 @@ const AdminStudentCRM = () => {
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
+                                {booking.order_id && booking.crm_status !== 'converted' && (
+                                  <button
+                                    title="Force-verify Cashfree payment"
+                                    data-testid={`camp-verify-${booking.id}`}
+                                    onClick={() => handleForceVerify(booking.id)}
+                                    className="p-1.5 rounded-lg bg-green-50 hover:bg-green-100 text-green-600 transition-colors"
+                                  >
+                                    <Check className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
                               </div>
                             </td>
                           </tr>
