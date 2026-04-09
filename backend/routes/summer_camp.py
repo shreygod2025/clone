@@ -968,3 +968,66 @@ async def check_summer_camp_payment_pending_2() -> None:
 
     except Exception as e:
         print(f"[SC PayPending2] Scheduler error: {e}")
+
+
+async def check_summer_camp_payment_pending_3() -> None:
+    """
+    Scheduled job: 3rd follow-up for unpaid leads — fired 48 hours (2 days) after creation.
+    Campaign: 'summer camp payment pending followup 2' with $FirstName param, no media.
+    """
+    from .notifications import send_whatsapp_notification
+
+    forty_eight_hours_ago = datetime.now(timezone.utc).timestamp() - (48 * 60 * 60)
+
+    try:
+        cursor = db.summer_camp_bookings.find(
+            {
+                "crm_status": "lead",
+                "payment_followup3_wa_sent": {"$ne": True},
+            },
+            {"_id": 0, "id": 1, "parent_phone": 1, "child_name": 1, "parent_name": 1, "created_at": 1}
+        )
+        bookings = await cursor.to_list(length=100)
+
+        for booking in bookings:
+            created_raw = booking.get("created_at", "")
+            try:
+                if isinstance(created_raw, str):
+                    created_dt = datetime.fromisoformat(created_raw.replace("Z", "+00:00"))
+                elif isinstance(created_raw, datetime):
+                    created_dt = created_raw if created_raw.tzinfo else created_raw.replace(tzinfo=timezone.utc)
+                else:
+                    continue
+
+                if created_dt.timestamp() > forty_eight_hours_ago:
+                    continue  # Not old enough yet
+
+            except Exception as parse_err:
+                print(f"[SC PayPending3] Could not parse created_at for {booking.get('id')}: {parse_err}")
+                continue
+
+            phone = booking.get("parent_phone", "")
+            if not phone:
+                continue
+
+            raw_name = booking.get("child_name") or booking.get("parent_name") or "Student"
+            first_name = raw_name.strip().split()[0] if raw_name.strip() else "Student"
+
+            await db.summer_camp_bookings.update_one(
+                {"id": booking["id"]},
+                {"$set": {
+                    "payment_followup3_wa_sent": True,
+                    "payment_followup3_wa_sent_at": datetime.now(timezone.utc).isoformat(),
+                }}
+            )
+
+            result = await send_whatsapp_notification(
+                phone=phone,
+                template_key="summercamp_payment_pending_3",
+                params=["$FirstName"],
+                user_name=first_name,
+            )
+            print(f"[SC PayPending3] {'Sent' if result.get('success') else 'Failed'} for {phone} (id={booking['id']}, name={first_name})")
+
+    except Exception as e:
+        print(f"[SC PayPending3] Scheduler error: {e}")
