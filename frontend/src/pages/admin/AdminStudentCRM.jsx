@@ -76,6 +76,7 @@ const AdminStudentCRM = () => {
   const [campStatusModal, setCampStatusModal] = useState(null);
   const [campCommentModal, setCampCommentModal] = useState(null);
   const [campNewComment, setCampNewComment] = useState('');
+  const [campFilters, setCampFilters] = useState({ status: '', batch: '', center: '', source: '' });
   const [campDashboard, setCampDashboard] = useState(null);
   const [campDashboardLoading, setCampDashboardLoading] = useState(false);
   const [campSaving, setCampSaving] = useState(false);
@@ -1172,93 +1173,179 @@ const AdminStudentCRM = () => {
               <div className="text-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto" /></div>
             ) : (
               <>
-                {/* Stats Bar */}
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
-                  {[
-                    { label: 'Total Registrations', value: summerCampBookings.length, color: 'bg-blue-50 border-blue-200 text-blue-700' },
-                    { label: 'Phone Captured', value: summerCampBookings.filter(b => b.crm_status === 'phone_captured').length, color: 'bg-orange-50 border-orange-200 text-orange-700' },
-                    { label: 'Leads (Details)', value: summerCampBookings.filter(b => b.crm_status === 'lead').length, color: 'bg-yellow-50 border-yellow-200 text-yellow-700' },
-                    { label: 'Converted (Paid)', value: summerCampBookings.filter(b => b.crm_status === 'converted').length, color: 'bg-green-50 border-green-200 text-green-700' },
-                    { label: 'Lost', value: summerCampBookings.filter(b => b.crm_status === 'lost_lead').length, color: 'bg-red-50 border-red-200 text-red-700' },
-                  ].map(s => (
-                    <div key={s.label} className={`rounded-xl border p-4 text-center ${s.color}`}>
-                      <div className="text-2xl font-bold">{s.value}</div>
-                      <div className="text-xs font-medium mt-1">{s.label}</div>
-                    </div>
-                  ))}
-                </div>
+                {/* Stats Bar — clickable filters */}
+                {(() => {
+                  const uniqueSources = [...new Set(summerCampBookings.map(b => b.source_name || 'Direct').filter(Boolean))];
+                  const uniqueCenters = [...new Set(summerCampBookings.map(b => b.center_label).filter(Boolean))];
+                  const kpiCards = [
+                    { label: 'All', value: summerCampBookings.length, filterVal: '', color: 'bg-blue-50 border-blue-200 text-blue-700', activeColor: 'bg-blue-600 border-blue-600 text-white' },
+                    { label: 'Phone Captured', value: summerCampBookings.filter(b => b.crm_status === 'phone_captured').length, filterVal: 'phone_captured', color: 'bg-orange-50 border-orange-200 text-orange-700', activeColor: 'bg-orange-500 border-orange-500 text-white' },
+                    { label: 'Leads', value: summerCampBookings.filter(b => b.crm_status === 'lead').length, filterVal: 'lead', color: 'bg-yellow-50 border-yellow-200 text-yellow-700', activeColor: 'bg-yellow-500 border-yellow-500 text-white' },
+                    { label: 'Paid', value: summerCampBookings.filter(b => b.crm_status === 'converted').length, filterVal: 'converted', color: 'bg-green-50 border-green-200 text-green-700', activeColor: 'bg-green-600 border-green-600 text-white' },
+                    { label: 'Lost', value: summerCampBookings.filter(b => b.crm_status === 'lost_lead').length, filterVal: 'lost_lead', color: 'bg-red-50 border-red-200 text-red-700', activeColor: 'bg-red-500 border-red-500 text-white' },
+                  ];
+                  const filteredCampBookings = summerCampBookings.filter(b => {
+                    if (campFilters.status && b.crm_status !== campFilters.status) return false;
+                    if (campFilters.batch && b.batch_week !== campFilters.batch) return false;
+                    if (campFilters.center && b.center_label !== campFilters.center) return false;
+                    if (campFilters.source) {
+                      const src = b.source_name || 'Direct';
+                      if (src !== campFilters.source) return false;
+                    }
+                    return true;
+                  });
+                  const setFilter = (key, val) => setCampFilters(prev => ({ ...prev, [key]: val }));
 
-                {summerCampBookings.length === 0 ? (
-                  <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">
-                    <p className="text-slate-500">No summer camp bookings yet</p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto bg-white rounded-2xl border border-slate-100">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-slate-100 text-slate-500 text-xs uppercase tracking-wide">
-                          <th className="px-4 py-3 text-left">Ref</th>
-                          <th className="px-4 py-3 text-left">Child</th>
-                          <th className="px-4 py-3 text-left">Parent</th>
-                          <th className="px-4 py-3 text-left">Age Group</th>
-                          <th className="px-4 py-3 text-left">Batch</th>
-                          <th className="px-4 py-3 text-left">Center</th>
-                          <th className="px-4 py-3 text-left">Payment</th>
-                          <th className="px-4 py-3 text-left">Source</th>
-                          <th className="px-4 py-3 text-left">Status</th>
-                          <th className="px-4 py-3 text-left">Date</th>
-                          <th className="px-4 py-3 text-center">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {summerCampBookings.map(booking => (
-                          <tr key={booking.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors" data-testid={`camp-booking-${booking.id}`}>
-                            <td className="px-4 py-3 font-mono text-xs text-slate-600">{booking.booking_ref}</td>
-                            <td className="px-4 py-3 font-semibold text-[#1E3A5F]">{booking.child_name || <span className="text-slate-400 italic">—</span>}</td>
-                            <td className="px-4 py-3">
-                              <div className="text-slate-700">{booking.parent_name || '—'}</div>
-                              <div className="text-xs text-slate-400">{booking.parent_phone}</div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <span className="text-xs font-semibold px-2 py-1 rounded-full bg-blue-50 text-blue-700">
-                                {booking.age_group_label} ({booking.age_group_ages})
-                              </span>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="text-xs">{booking.batch_dates}</div>
-                              <div className="text-xs text-slate-400 capitalize">{booking.batch_type}</div>
-                            </td>
-                            <td className="px-4 py-3 text-xs text-slate-600">{booking.center_label}</td>
-                            <td className="px-4 py-3">
-                              <span className={`text-xs px-2 py-1 rounded-full font-semibold ${booking.payment_mode === 'cash' ? 'bg-yellow-50 text-yellow-700' : 'bg-blue-50 text-blue-700'}`}>
-                                {booking.payment_mode === 'cash' ? 'Cash' : 'Online'}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3">
-                              {booking.source_name && booking.source_name !== 'Direct' ? (
-                                <span className="text-xs px-2 py-1 rounded-full bg-purple-50 text-purple-700 font-semibold">
-                                  {booking.source_name}
-                                </span>
-                              ) : (
-                                <span className="text-xs text-slate-400">Direct</span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3">
-                              <button
-                                onClick={() => setCampStatusModal(booking)}
-                                data-testid={`camp-status-${booking.id}`}
-                                className={`text-xs px-2 py-1 rounded-full font-bold cursor-pointer hover:opacity-80 transition-opacity ${
-                                  booking.crm_status === 'converted' ? 'bg-green-50 text-green-700' :
-                                  booking.crm_status === 'phone_captured' ? 'bg-orange-50 text-orange-700' :
-                                  booking.crm_status === 'lost_lead' ? 'bg-red-50 text-red-700' :
-                                  'bg-yellow-50 text-yellow-700'
-                                }`}
-                              >
-                                {booking.crm_status === 'converted' ? 'Payment Done' :
-                                 booking.crm_status === 'phone_captured' ? 'Form Filled' :
-                                 booking.crm_status === 'lost_lead' ? 'Lost Lead' : 'Lead Captured'}
-                              </button>
-                            </td>
+                  return (
+                    <>
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
+                        {kpiCards.map(k => {
+                          const isActive = campFilters.status === k.filterVal;
+                          return (
+                            <button
+                              key={k.label}
+                              onClick={() => setFilter('status', isActive ? '' : k.filterVal)}
+                              className={`rounded-xl border p-3 text-center transition-all flex flex-col items-center gap-0.5 ${isActive ? k.activeColor + ' shadow-md' : k.color + ' hover:opacity-80'}`}
+                            >
+                              <div className="text-2xl font-bold">{k.value}</div>
+                              <div className="text-xs font-semibold flex items-center gap-1">
+                                {k.label}
+                                <ChevronDown className={`w-3 h-3 transition-transform ${isActive ? 'rotate-180' : ''}`} />
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Filter dropdowns */}
+                      <div className="flex flex-wrap gap-3 mb-5">
+                        <select
+                          value={campFilters.status}
+                          onChange={e => setFilter('status', e.target.value)}
+                          className="text-xs h-8 px-3 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                        >
+                          <option value="">All Statuses</option>
+                          <option value="phone_captured">Phone Captured</option>
+                          <option value="lead">Lead</option>
+                          <option value="converted">Paid</option>
+                          <option value="lost_lead">Lost</option>
+                        </select>
+
+                        <select
+                          value={campFilters.batch}
+                          onChange={e => setFilter('batch', e.target.value)}
+                          className="text-xs h-8 px-3 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                        >
+                          <option value="">All Batches</option>
+                          <option value="week1">Batch 1 — May 4-8</option>
+                          <option value="week2">Batch 2 — May 11-15</option>
+                          <option value="week3">Batch 3 — May 18-22</option>
+                          <option value="week4">Batch 4 — May 25-29</option>
+                        </select>
+
+                        <select
+                          value={campFilters.center}
+                          onChange={e => setFilter('center', e.target.value)}
+                          className="text-xs h-8 px-3 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                        >
+                          <option value="">All Centers</option>
+                          {uniqueCenters.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+
+                        <select
+                          value={campFilters.source}
+                          onChange={e => setFilter('source', e.target.value)}
+                          className="text-xs h-8 px-3 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                        >
+                          <option value="">All Sources</option>
+                          {uniqueSources.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+
+                        {(campFilters.status || campFilters.batch || campFilters.center || campFilters.source) && (
+                          <button
+                            onClick={() => setCampFilters({ status: '', batch: '', center: '', source: '' })}
+                            className="text-xs h-8 px-3 border border-red-200 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors flex items-center gap-1"
+                          >
+                            <X className="w-3 h-3" /> Clear Filters
+                          </button>
+                        )}
+
+                        <span className="ml-auto text-xs text-slate-400 self-center">
+                          {filteredCampBookings.length} of {summerCampBookings.length} shown
+                        </span>
+                      </div>
+
+                      {filteredCampBookings.length === 0 ? (
+                        <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">
+                          <p className="text-slate-500">No bookings match the selected filters</p>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto bg-white rounded-2xl border border-slate-100">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-slate-100 text-slate-500 text-xs uppercase tracking-wide">
+                                <th className="px-4 py-3 text-left">Ref</th>
+                                <th className="px-4 py-3 text-left">Child</th>
+                                <th className="px-4 py-3 text-left">Parent</th>
+                                <th className="px-4 py-3 text-left">Age Group</th>
+                                <th className="px-4 py-3 text-left">Batch</th>
+                                <th className="px-4 py-3 text-left">Center</th>
+                                <th className="px-4 py-3 text-left">Payment</th>
+                                <th className="px-4 py-3 text-left">Source</th>
+                                <th className="px-4 py-3 text-left">Status</th>
+                                <th className="px-4 py-3 text-left">Date</th>
+                                <th className="px-4 py-3 text-center">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {filteredCampBookings.map(booking => (
+                                <tr key={booking.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors" data-testid={`camp-booking-${booking.id}`}>
+                                  <td className="px-4 py-3 font-mono text-xs text-slate-600">{booking.booking_ref}</td>
+                                  <td className="px-4 py-3 font-semibold text-[#1E3A5F]">{booking.child_name || <span className="text-slate-400 italic">—</span>}</td>
+                                  <td className="px-4 py-3">
+                                    <div className="text-slate-700">{booking.parent_name || '—'}</div>
+                                    <div className="text-xs text-slate-400">{booking.parent_phone}</div>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <span className="text-xs font-semibold px-2 py-1 rounded-full bg-blue-50 text-blue-700 whitespace-nowrap">
+                                      Ages {booking.age_group_ages}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <div className="text-xs whitespace-nowrap">{booking.batch_dates}</div>
+                                    <div className="text-xs text-slate-400 capitalize">{booking.batch_type}</div>
+                                  </td>
+                                  <td className="px-4 py-3 text-xs text-slate-600">{booking.center_label}</td>
+                                  <td className="px-4 py-3">
+                                    <span className={`text-xs px-2 py-1 rounded-full font-semibold whitespace-nowrap ${booking.payment_mode === 'cash' ? 'bg-yellow-50 text-yellow-700' : 'bg-blue-50 text-blue-700'}`}>
+                                      {booking.payment_mode === 'cash' ? 'Cash' : 'Online'}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    {booking.source_name && booking.source_name !== 'Direct' ? (
+                                      <span className="text-xs px-2 py-1 rounded-full bg-purple-50 text-purple-700 font-semibold whitespace-nowrap">
+                                        {booking.source_name}
+                                      </span>
+                                    ) : (
+                                      <span className="text-xs text-slate-400">Direct</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <button
+                                      onClick={() => setCampStatusModal(booking)}
+                                      data-testid={`camp-status-${booking.id}`}
+                                      className={`text-xs px-2 py-1 rounded-full font-bold cursor-pointer hover:opacity-80 transition-opacity whitespace-nowrap ${
+                                        booking.crm_status === 'converted' ? 'bg-green-50 text-green-700' :
+                                        booking.crm_status === 'phone_captured' ? 'bg-orange-50 text-orange-700' :
+                                        booking.crm_status === 'lost_lead' ? 'bg-red-50 text-red-700' :
+                                        'bg-yellow-50 text-yellow-700'
+                                      }`}
+                                    >
+                                      {booking.crm_status === 'converted' ? 'Paid' :
+                                       booking.crm_status === 'phone_captured' ? 'Phone Captured' :
+                                       booking.crm_status === 'lost_lead' ? 'Lost' : 'Lead'}
+                                    </button>
+                                  </td>
                             <td className="px-4 py-3 text-xs text-slate-400">
                               {new Date(booking.created_at).toLocaleDateString('en-IN')}
                             </td>
@@ -1305,10 +1392,13 @@ const AdminStudentCRM = () => {
                             </td>
                           </tr>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </>
             )
           ) : campSubTab === 'dashboard' ? (
