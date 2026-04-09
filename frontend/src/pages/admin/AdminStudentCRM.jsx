@@ -1407,8 +1407,7 @@ const AdminStudentCRM = () => {
                                 <div key={agKey} className="px-4 py-3 flex flex-wrap items-center gap-3">
                                   {/* Age group label */}
                                   <div className="w-44 shrink-0">
-                                    <div className="text-sm font-semibold text-slate-700">{ag.label}</div>
-                                    <div className="text-xs text-slate-400">Ages {ag.ages}</div>
+                                    <div className="text-sm font-semibold text-slate-700">Ages {ag.ages}</div>
                                   </div>
                                   {/* Spot fill bar */}
                                   <div className="flex-1 min-w-36">

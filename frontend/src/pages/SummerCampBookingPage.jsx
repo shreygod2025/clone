@@ -301,8 +301,7 @@ export default function SummerCampBookingPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                       <span style={{ fontSize: '2.25rem', lineHeight: 1, flexShrink: 0 }}>{g.icon}</span>
                       <div>
-                        <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '0.9rem', color: g.color, marginBottom: '0.2rem' }}>Ages {g.ages}</div>
-                        <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '1.05rem', color: '#F8FAFC', marginBottom: '0.25rem' }}>{g.label}</div>
+                        <div style={{ fontFamily: JB, fontWeight: 800, fontSize: '1.2rem', color: '#F8FAFC', marginBottom: '0.25rem' }}>Ages {g.ages}</div>
                         <div style={{ fontSize: '0.88rem', color: '#64748B', fontFamily: NU }}>{g.tagline}</div>
                       </div>
                     </div>
