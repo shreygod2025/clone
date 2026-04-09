@@ -1314,18 +1314,11 @@ const AdminStudentCRM = () => {
                 {/* Age Group Breakdown */}
                 <div className="bg-white rounded-2xl border border-slate-100 p-5">
                   <h3 className="font-bold text-[#1E3A5F] text-base mb-4 flex items-center gap-2"><TrendingUp className="w-4 h-4 text-orange-500" />Revenue by Age Group</h3>
-                  <div className="space-y-3">
+                  <div className="divide-y divide-slate-50">
                     {campDashboard.age_summary?.map(ag => (
-                      <div key={ag.age_group} className="flex items-center gap-4">
-                        <div className="w-40 text-sm font-medium text-slate-700 shrink-0">{ag.label}</div>
-                        <div className="flex-1 bg-slate-100 rounded-full h-3 overflow-hidden">
-                          <div
-                            className="h-3 rounded-full bg-orange-400 transition-all"
-                            style={{ width: campDashboard.total_bookings > 0 ? `${(ag.total / campDashboard.total_bookings) * 100}%` : '0%' }}
-                          />
-                        </div>
-                        <div className="text-xs text-slate-600 w-16 text-right">{ag.total} leads</div>
-                        <div className="text-xs font-bold text-green-600 w-24 text-right">₹{ag.revenue.toLocaleString()}</div>
+                      <div key={ag.age_group} className="flex items-center justify-between py-3">
+                        <div className="text-sm font-semibold text-slate-700">{ag.label}</div>
+                        <div className="text-base font-bold text-green-600">₹{ag.revenue.toLocaleString()}</div>
                       </div>
                     ))}
                   </div>
