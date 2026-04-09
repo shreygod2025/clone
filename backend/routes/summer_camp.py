@@ -766,6 +766,15 @@ SUMMER_CAMP_BROCHURE_URL = "https://res.cloudinary.com/dyssfvcmw/raw/upload/v177
 SUMMER_CAMP_BROCHURE_FILENAME = "Summer Camp Brochure 2026"
 
 
+def _parse_created_dt(raw):
+    """Parse an ISO string or datetime to a timezone-aware datetime. Returns None on failure."""
+    if isinstance(raw, str):
+        return datetime.fromisoformat(raw.replace("Z", "+00:00"))
+    if isinstance(raw, datetime):
+        return raw if raw.tzinfo else raw.replace(tzinfo=timezone.utc)
+    return None
+
+
 async def check_summer_camp_followups() -> None:
     """
     Scheduled job: Send a WhatsApp follow-up (with brochure PDF) to leads who
@@ -839,6 +848,8 @@ async def check_summer_camp_payment_pending() -> None:
     filled in their details (crm_status='lead') but did NOT complete payment,
     after 5 minutes. Uses campaign 'summercamppaymentpending' with $FirstName param.
     Marks sent leads so they never receive a duplicate.
+    Uses updated_at (not created_at) so the 5-min timer starts from when they
+    filled their details — preventing overlap with the phone-captured follow-up.
     """
     from .notifications import send_whatsapp_notification
 
@@ -850,25 +861,21 @@ async def check_summer_camp_payment_pending() -> None:
                 "crm_status": "lead",
                 "payment_followup_wa_sent": {"$ne": True},
             },
-            {"_id": 0, "id": 1, "parent_phone": 1, "child_name": 1, "parent_name": 1, "created_at": 1}
+            {"_id": 0, "id": 1, "parent_phone": 1, "child_name": 1, "parent_name": 1,
+             "created_at": 1, "updated_at": 1}
         )
         bookings = await cursor.to_list(length=100)
 
         for booking in bookings:
-            created_raw = booking.get("created_at", "")
+            # Use updated_at (when details were filled) — prevents immediate trigger
+            # for users who just moved from phone_captured → lead
+            ref_raw = booking.get("updated_at") or booking.get("created_at", "")
             try:
-                if isinstance(created_raw, str):
-                    created_dt = datetime.fromisoformat(created_raw.replace("Z", "+00:00"))
-                elif isinstance(created_raw, datetime):
-                    created_dt = created_raw if created_raw.tzinfo else created_raw.replace(tzinfo=timezone.utc)
-                else:
-                    continue
-
-                if created_dt.timestamp() > five_min_ago:
+                ref_dt = _parse_created_dt(ref_raw)
+                if not ref_dt or ref_dt.timestamp() > five_min_ago:
                     continue  # Not old enough yet
-
             except Exception as parse_err:
-                print(f"[SC PayPending] Could not parse created_at for {booking.get('id')}: {parse_err}")
+                print(f"[SC PayPending] Could not parse timestamp for {booking.get('id')}: {parse_err}")
                 continue
 
             phone = booking.get("parent_phone", "")
@@ -898,10 +905,6 @@ async def check_summer_camp_payment_pending() -> None:
                     "filename": SUMMER_CAMP_BROCHURE_FILENAME,
                 },
             )
-            # Override paramsFallbackValue with actual name by patching the payload
-            # (send_whatsapp_notification handles media; the AiSensy $FirstName
-            #  resolves from contact profile, falling back to "user" — which is fine
-            #  since the template is designed for that campaign)
             print(f"[SC PayPending] {'Sent' if result.get('success') else 'Failed'} for {phone} (id={booking['id']}, name={first_name})")
 
     except Exception as e:
@@ -910,13 +913,13 @@ async def check_summer_camp_payment_pending() -> None:
 
 async def check_summer_camp_payment_pending_2() -> None:
     """
-    Scheduled job: 2nd follow-up for leads who filled details but still haven't paid,
-    fired 20 hours after the lead was created. No media, no template params.
-    Campaign: 'summercamp payment pending followup 1'
+    Scheduled job: 2nd follow-up for unpaid leads — 20 hours after they filled details
+    (uses updated_at so timer is relative to when details were submitted, not phone capture).
+    Campaign: 'summercamp payment pending followup 1'. No media, no params.
     """
     from .notifications import send_whatsapp_notification
 
-    twenty_hours_ago = datetime.now(timezone.utc).timestamp() - (20 * 60 * 60)
+    threshold = datetime.now(timezone.utc).timestamp() - (20 * 60 * 60)
 
     try:
         cursor = db.summer_camp_bookings.find(
@@ -924,32 +927,21 @@ async def check_summer_camp_payment_pending_2() -> None:
                 "crm_status": "lead",
                 "payment_followup2_wa_sent": {"$ne": True},
             },
-            {"_id": 0, "id": 1, "parent_phone": 1, "child_name": 1, "created_at": 1}
+            {"_id": 0, "id": 1, "parent_phone": 1, "child_name": 1, "created_at": 1, "updated_at": 1}
         )
-        bookings = await cursor.to_list(length=100)
-
-        for booking in bookings:
-            created_raw = booking.get("created_at", "")
+        for booking in await cursor.to_list(length=100):
             try:
-                if isinstance(created_raw, str):
-                    created_dt = datetime.fromisoformat(created_raw.replace("Z", "+00:00"))
-                elif isinstance(created_raw, datetime):
-                    created_dt = created_raw if created_raw.tzinfo else created_raw.replace(tzinfo=timezone.utc)
-                else:
+                ref_raw = booking.get("updated_at") or booking.get("created_at", "")
+                ref_dt = _parse_created_dt(ref_raw)
+                if not ref_dt or ref_dt.timestamp() > threshold:
                     continue
-
-                if created_dt.timestamp() > twenty_hours_ago:
-                    continue  # Not old enough yet
-
-            except Exception as parse_err:
-                print(f"[SC PayPending2] Could not parse created_at for {booking.get('id')}: {parse_err}")
+            except Exception:
                 continue
 
             phone = booking.get("parent_phone", "")
             if not phone:
                 continue
 
-            # Mark FIRST to prevent duplicate sends
             await db.summer_camp_bookings.update_one(
                 {"id": booking["id"]},
                 {"$set": {
@@ -957,7 +949,6 @@ async def check_summer_camp_payment_pending_2() -> None:
                     "payment_followup2_wa_sent_at": datetime.now(timezone.utc).isoformat(),
                 }}
             )
-
             result = await send_whatsapp_notification(
                 phone=phone,
                 template_key="summercamp_payment_pending_2",
@@ -972,12 +963,13 @@ async def check_summer_camp_payment_pending_2() -> None:
 
 async def check_summer_camp_payment_pending_3() -> None:
     """
-    Scheduled job: 3rd follow-up for unpaid leads — fired 48 hours (2 days) after creation.
-    Campaign: 'summer camp payment pending followup 2' with $FirstName param, no media.
+    Scheduled job: 3rd follow-up for unpaid leads — 48 hours after they filled details
+    (updated_at). $FirstName param, no media.
+    Campaign: 'summer camp payment pending followup 2'
     """
     from .notifications import send_whatsapp_notification
 
-    forty_eight_hours_ago = datetime.now(timezone.utc).timestamp() - (48 * 60 * 60)
+    threshold = datetime.now(timezone.utc).timestamp() - (48 * 60 * 60)
 
     try:
         cursor = db.summer_camp_bookings.find(
@@ -985,25 +977,16 @@ async def check_summer_camp_payment_pending_3() -> None:
                 "crm_status": "lead",
                 "payment_followup3_wa_sent": {"$ne": True},
             },
-            {"_id": 0, "id": 1, "parent_phone": 1, "child_name": 1, "parent_name": 1, "created_at": 1}
+            {"_id": 0, "id": 1, "parent_phone": 1, "child_name": 1, "parent_name": 1,
+             "created_at": 1, "updated_at": 1}
         )
-        bookings = await cursor.to_list(length=100)
-
-        for booking in bookings:
-            created_raw = booking.get("created_at", "")
+        for booking in await cursor.to_list(length=100):
             try:
-                if isinstance(created_raw, str):
-                    created_dt = datetime.fromisoformat(created_raw.replace("Z", "+00:00"))
-                elif isinstance(created_raw, datetime):
-                    created_dt = created_raw if created_raw.tzinfo else created_raw.replace(tzinfo=timezone.utc)
-                else:
+                ref_raw = booking.get("updated_at") or booking.get("created_at", "")
+                ref_dt = _parse_created_dt(ref_raw)
+                if not ref_dt or ref_dt.timestamp() > threshold:
                     continue
-
-                if created_dt.timestamp() > forty_eight_hours_ago:
-                    continue  # Not old enough yet
-
-            except Exception as parse_err:
-                print(f"[SC PayPending3] Could not parse created_at for {booking.get('id')}: {parse_err}")
+            except Exception:
                 continue
 
             phone = booking.get("parent_phone", "")
@@ -1020,7 +1003,6 @@ async def check_summer_camp_payment_pending_3() -> None:
                     "payment_followup3_wa_sent_at": datetime.now(timezone.utc).isoformat(),
                 }}
             )
-
             result = await send_whatsapp_notification(
                 phone=phone,
                 template_key="summercamp_payment_pending_3",
@@ -1031,15 +1013,6 @@ async def check_summer_camp_payment_pending_3() -> None:
 
     except Exception as e:
         print(f"[SC PayPending3] Scheduler error: {e}")
-
-
-def _parse_created_dt(created_raw):
-    """Helper to parse created_at field to timezone-aware datetime."""
-    if isinstance(created_raw, str):
-        return datetime.fromisoformat(created_raw.replace("Z", "+00:00"))
-    if isinstance(created_raw, datetime):
-        return created_raw if created_raw.tzinfo else created_raw.replace(tzinfo=timezone.utc)
-    return None
 
 
 async def check_summer_camp_phone_captured_24h() -> None:

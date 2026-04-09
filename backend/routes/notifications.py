@@ -88,11 +88,26 @@ async def send_whatsapp_notification(
         return {"success": False, "message": f"Unknown template: {template_key}"}
     
     try:
-        # Format phone number
-        phone_number = str(phone).replace("+", "").replace(" ", "")
-        if not phone_number.startswith("91"):
+        # Robust Indian phone normalization
+        # Strip all non-digits, then ensure 91+10-digit format
+        phone_number = ''.join(c for c in str(phone) if c.isdigit())
+        if len(phone_number) == 10:
             phone_number = f"91{phone_number}"
-        
+        elif len(phone_number) == 11 and phone_number.startswith("0"):
+            phone_number = f"91{phone_number[1:]}"
+        elif len(phone_number) == 12 and phone_number.startswith("91"):
+            pass  # already correct
+        elif len(phone_number) == 13 and phone_number.startswith("091"):
+            phone_number = phone_number[1:]  # drop leading 0
+        else:
+            # Fallback: prepend 91 if shorter than 12 digits
+            if not phone_number.startswith("91"):
+                phone_number = f"91{phone_number}"
+
+        if len(phone_number) < 11:
+            print(f"[WhatsApp] Skipped {template_key} - phone too short after normalisation: {phone}")
+            return {"success": False, "message": "Phone number too short"}
+
         payload = {
             "apiKey": AISENSY_API_KEY,
             "campaignName": campaign_name,
