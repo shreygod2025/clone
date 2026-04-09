@@ -125,24 +125,37 @@ async def send_whatsapp_notification(
             }
         }
         
-        print(f"[WhatsApp] Sending {template_key} to {phone_number} - Campaign: {campaign_name} - Params: {params}")
-        
+        print(f"[WhatsApp] Sending {template_key} to {phone_number} - Campaign: {campaign_name}")
+
         async with httpx.AsyncClient() as http_client:
             response = await http_client.post(
                 "https://backend.aisensy.com/campaign/t1/api/v2",
                 json=payload,
                 timeout=30.0
             )
-            
-            if response.status_code == 200:
-                print(f"WhatsApp [{template_key}] sent to {phone_number}")
+
+            resp_body = {}
+            try:
+                resp_body = response.json()
+            except Exception:
+                resp_body = {"raw": response.text}
+
+            # AiSensy returns HTTP 200 even for errors — must check body
+            aisensy_success = (
+                str(resp_body.get("success", "")).lower() == "true"
+                or bool(resp_body.get("submitted_message_id"))
+            )
+
+            if aisensy_success:
+                print(f"[WhatsApp] Queued [{template_key}] → {phone_number} | id={resp_body.get('submitted_message_id', '?')}")
                 return {"success": True, "message": "Notification sent"}
             else:
-                print(f"AiSensy error [{template_key}]: {response.status_code} - {response.text}")
-                return {"success": False, "message": f"API error: {response.status_code}"}
-                
+                err = resp_body.get("message") or resp_body.get("error") or str(resp_body)
+                print(f"[WhatsApp] AiSensy error [{template_key}] → {phone_number} | HTTP {response.status_code} | {err}")
+                return {"success": False, "message": err}
+
     except Exception as e:
-        print(f"WhatsApp notification error [{template_key}]: {str(e)}")
+        print(f"[WhatsApp] Exception [{template_key}] → {str(e)}")
         return {"success": False, "message": str(e)}
 
 

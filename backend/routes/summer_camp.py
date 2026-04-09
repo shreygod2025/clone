@@ -9,6 +9,7 @@ import asyncio
 from datetime import datetime, timezone
 from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 try:
@@ -618,6 +619,17 @@ async def add_booking_comment(
     return comment
 
 
+@router.api_route("/summer-camp/brochure", methods=["GET", "HEAD"])
+async def serve_summer_camp_brochure():
+    """Publicly accessible Summer Camp PDF brochure — used as WhatsApp attachment."""
+    pdf_path = os.path.join(os.path.dirname(__file__), "..", "static", "summer-camp-brochure.pdf")
+    pdf_path = os.path.abspath(pdf_path)
+    if not os.path.exists(pdf_path):
+        raise HTTPException(status_code=404, detail="Brochure not found")
+    return FileResponse(pdf_path, media_type="application/pdf", filename="Summer-Camp-Brochure-2026.pdf")
+
+
+
 @router.get("/summer-camp/dashboard")
 async def get_summer_camp_dashboard(user: dict = Depends(get_current_user)):
     """Admin dashboard: week × age group × center breakdown, 10 spots per group."""
@@ -761,8 +773,10 @@ async def get_summer_camp_dashboard(user: dict = Depends(get_current_user)):
 
 
 # ─── Summer Camp Follow-Up Constants ───────────────────────────────────────────
-# Cloudinary-hosted PDF brochure — permanent URL
-SUMMER_CAMP_BROCHURE_URL = "https://res.cloudinary.com/dyssfvcmw/raw/upload/v1775712371/oll_documents/summer_camp_brochure_2026.pdf"
+# PDF brochure URL — served via the backend's /api/summer-camp/brochure endpoint
+# Uses BACKEND_PUBLIC_URL from env (set to the production/preview domain)
+_BACKEND_PUBLIC_URL = os.environ.get("BACKEND_PUBLIC_URL", os.environ.get("FRONTEND_URL", "")).rstrip("/")
+SUMMER_CAMP_BROCHURE_URL = f"{_BACKEND_PUBLIC_URL}/api/summer-camp/brochure"
 SUMMER_CAMP_BROCHURE_FILENAME = "Summer Camp Brochure 2026"
 
 

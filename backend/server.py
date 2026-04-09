@@ -4061,8 +4061,11 @@ api_router.include_router(misc_router)
 
 app.include_router(api_router)
 
-# Note: Static files mount removed - files are now served from MongoDB via /api/files/{filename}
-# For backward compatibility, /api/uploads/{filename} redirects to /api/files/{filename}
+# Mount /static for publicly accessible assets (e.g. PDF brochures for WhatsApp)
+import os as _os
+_static_dir = _os.path.join(_os.path.dirname(__file__), "static")
+_os.makedirs(_static_dir, exist_ok=True)
+app.mount("/static", StaticFiles(directory=_static_dir), name="static")
 
 # CORS: when env is '*' use allow_origin_regex so it works with allow_credentials=True
 _cors_origins_raw = os.environ.get('CORS_ORIGINS', '*').strip().strip('"\'')
