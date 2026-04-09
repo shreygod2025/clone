@@ -12,7 +12,7 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - **Funnels & Login:** OTP-based login for all user types
 - **Admin CRM:** Full school management with bulk import, onboarding workflows, inquiry management
 
-### Architecture (Updated: 2026-04-08 — Summer Camp Flow Improvements: Remove Online, Spots, Laptop Notice)
+### Architecture (Updated: 2026-04-09 — Summer Camp CRM: New Statuses + Conversion Funnel)
 ```
 /app/
 ├── backend/
@@ -64,7 +64,22 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
-### 2026-04-07 — Summer Camp CRM Management + Invoice Fix
+### 2026-04-09 — Summer Camp CRM: New Statuses + Conversion Funnel
+**Features Added:**
+1. **New statuses** in Summer Camp bookings:
+   - `hot_lead` — "Interested, likely to convert" (shown as purple badge)
+   - `payment_offline` — "Pay at Center" cash confirmed (counts as Converted in KPIs)
+2. **Lost Lead Reason sub-modal**: When marking a lead as Lost, admin selects reason: Phone not picking / Not available during dates / Location too far / Other. Saved to `lost_reason` field in DB.
+3. **Conversion Funnel on Dashboard**: Registrations → Hot Leads → Converted (online + cash) with % ratios between each stage
+4. **Converted KPI card** now shows both online + cash (payment_offline) count with breakdown sub-label
+5. **6 KPI filter cards** (added Hot Lead + renamed Paid→Converted combining both statuses)
+6. **Filter dropdown** updated with all new status options
+7. **Syntax fix**: Fixed broken IIFE closure in `AdminStudentCRM.jsx` causing parse error
+
+**Backend:** `summer_camp.py` — `StatusUpdate` model + `update_booking_status` + `get_summer_camp_dashboard`
+**Frontend:** `AdminStudentCRM.jsx` — status modal, lost reason modal, KPI cards, filter, dashboard
+
+
 **Features Added:**
 1. New backend endpoints in summer_camp.py: edit booking, delete booking, update CRM status (with `lost_lead`), add comment, dashboard analytics
 2. Frontend AdminStudentCRM.jsx: new Dashboard sub-tab, Edit/Delete/Status/Comments action buttons per booking row, 4-stage status modal, revenue by age group bar chart, batch breakdown table with Spots Left

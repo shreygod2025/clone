@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Eye, Phone, Calendar, Clock, Plus, ChevronRight, MessageSquare, Archive, CalendarClock, CheckCircle2, X, User, Mail, MapPin, Target, BookOpen, Send, UserPlus, Edit, Save, Video, Navigation, Home, ExternalLink, Bell, Upload, CreditCard, Link2, Copy, Loader2, Trash2, BarChart2, TrendingUp, AlertCircle, Check } from 'lucide-react';
+import { Search, Eye, Phone, Calendar, Clock, Plus, ChevronRight, ChevronDown, MessageSquare, Archive, CalendarClock, CheckCircle2, X, User, Mail, MapPin, Target, BookOpen, Send, UserPlus, Edit, Save, Video, Navigation, Home, ExternalLink, Bell, Upload, CreditCard, Link2, Copy, Loader2, Trash2, BarChart2, TrendingUp, AlertCircle, Check } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -74,6 +74,8 @@ const AdminStudentCRM = () => {
   const [campEditData, setCampEditData] = useState({});
   const [campDeleteModal, setCampDeleteModal] = useState(null);
   const [campStatusModal, setCampStatusModal] = useState(null);
+  const [campLostReasonModal, setCampLostReasonModal] = useState(null); // { bookingId }
+  const [campLostReason, setCampLostReason] = useState('');
   const [campCommentModal, setCampCommentModal] = useState(null);
   const [campNewComment, setCampNewComment] = useState('');
   const [campFilters, setCampFilters] = useState({ status: '', batch: '', center: '', source: '' });
@@ -350,11 +352,15 @@ const AdminStudentCRM = () => {
     }
   };
 
-  const handleUpdateStatus = async (bookingId, newStatus) => {
+  const handleUpdateStatus = async (bookingId, newStatus, lostReason = null) => {
     try {
-      await axios.patch(`${API}/summer-camp/bookings/${bookingId}/status`, { crm_status: newStatus }, { headers: getAuthHeaders() });
+      const payload = { crm_status: newStatus };
+      if (newStatus === 'lost_lead' && lostReason) payload.lost_reason = lostReason;
+      await axios.patch(`${API}/summer-camp/bookings/${bookingId}/status`, payload, { headers: getAuthHeaders() });
       toast.success('Status updated');
       setCampStatusModal(null);
+      setCampLostReasonModal(null);
+      setCampLostReason('');
       fetchSummerCampBookings();
       if (campSubTab === 'dashboard') fetchCampDashboard();
     } catch {
@@ -1179,13 +1185,18 @@ const AdminStudentCRM = () => {
                   const uniqueCenters = [...new Set(summerCampBookings.map(b => b.center_label).filter(Boolean))];
                   const kpiCards = [
                     { label: 'All', value: summerCampBookings.length, filterVal: '', color: 'bg-blue-50 border-blue-200 text-blue-700', activeColor: 'bg-blue-600 border-blue-600 text-white' },
-                    { label: 'Phone Captured', value: summerCampBookings.filter(b => b.crm_status === 'phone_captured').length, filterVal: 'phone_captured', color: 'bg-orange-50 border-orange-200 text-orange-700', activeColor: 'bg-orange-500 border-orange-500 text-white' },
+                    { label: 'Form Filled', value: summerCampBookings.filter(b => b.crm_status === 'phone_captured').length, filterVal: 'phone_captured', color: 'bg-orange-50 border-orange-200 text-orange-700', activeColor: 'bg-orange-500 border-orange-500 text-white' },
                     { label: 'Leads', value: summerCampBookings.filter(b => b.crm_status === 'lead').length, filterVal: 'lead', color: 'bg-yellow-50 border-yellow-200 text-yellow-700', activeColor: 'bg-yellow-500 border-yellow-500 text-white' },
-                    { label: 'Paid', value: summerCampBookings.filter(b => b.crm_status === 'converted').length, filterVal: 'converted', color: 'bg-green-50 border-green-200 text-green-700', activeColor: 'bg-green-600 border-green-600 text-white' },
+                    { label: 'Hot Lead', value: summerCampBookings.filter(b => b.crm_status === 'hot_lead').length, filterVal: 'hot_lead', color: 'bg-purple-50 border-purple-200 text-purple-700', activeColor: 'bg-purple-600 border-purple-600 text-white' },
+                    { label: 'Converted', value: summerCampBookings.filter(b => b.crm_status === 'converted' || b.crm_status === 'payment_offline').length, filterVal: 'converted_all', color: 'bg-green-50 border-green-200 text-green-700', activeColor: 'bg-green-600 border-green-600 text-white' },
                     { label: 'Lost', value: summerCampBookings.filter(b => b.crm_status === 'lost_lead').length, filterVal: 'lost_lead', color: 'bg-red-50 border-red-200 text-red-700', activeColor: 'bg-red-500 border-red-500 text-white' },
                   ];
                   const filteredCampBookings = summerCampBookings.filter(b => {
-                    if (campFilters.status && b.crm_status !== campFilters.status) return false;
+                    if (campFilters.status) {
+                      if (campFilters.status === 'converted_all') {
+                        if (b.crm_status !== 'converted' && b.crm_status !== 'payment_offline') return false;
+                      } else if (b.crm_status !== campFilters.status) return false;
+                    }
                     if (campFilters.batch && b.batch_week !== campFilters.batch) return false;
                     if (campFilters.center && b.center_label !== campFilters.center) return false;
                     if (campFilters.source) {
@@ -1198,7 +1209,7 @@ const AdminStudentCRM = () => {
 
                   return (
                     <>
-                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-4">
+                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-4">
                         {kpiCards.map(k => {
                           const isActive = campFilters.status === k.filterVal;
                           return (
@@ -1225,9 +1236,12 @@ const AdminStudentCRM = () => {
                           className="text-xs h-8 px-3 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
                         >
                           <option value="">All Statuses</option>
-                          <option value="phone_captured">Phone Captured</option>
+                          <option value="phone_captured">Form Filled</option>
                           <option value="lead">Lead</option>
-                          <option value="converted">Paid</option>
+                          <option value="hot_lead">Hot Lead</option>
+                          <option value="converted_all">Converted (All)</option>
+                          <option value="converted">Paid Online</option>
+                          <option value="payment_offline">Cash at Center</option>
                           <option value="lost_lead">Lost</option>
                         </select>
 
@@ -1336,13 +1350,17 @@ const AdminStudentCRM = () => {
                                       data-testid={`camp-status-${booking.id}`}
                                       className={`text-xs px-2 py-1 rounded-full font-bold cursor-pointer hover:opacity-80 transition-opacity whitespace-nowrap ${
                                         booking.crm_status === 'converted' ? 'bg-green-50 text-green-700' :
+                                        booking.crm_status === 'payment_offline' ? 'bg-teal-50 text-teal-700' :
+                                        booking.crm_status === 'hot_lead' ? 'bg-purple-50 text-purple-700' :
                                         booking.crm_status === 'phone_captured' ? 'bg-orange-50 text-orange-700' :
                                         booking.crm_status === 'lost_lead' ? 'bg-red-50 text-red-700' :
                                         'bg-yellow-50 text-yellow-700'
                                       }`}
                                     >
-                                      {booking.crm_status === 'converted' ? 'Paid' :
-                                       booking.crm_status === 'phone_captured' ? 'Phone Captured' :
+                                      {booking.crm_status === 'converted' ? 'Paid Online' :
+                                       booking.crm_status === 'payment_offline' ? 'Pay at Center' :
+                                       booking.crm_status === 'hot_lead' ? 'Hot Lead' :
+                                       booking.crm_status === 'phone_captured' ? 'Form Filled' :
                                        booking.crm_status === 'lost_lead' ? 'Lost' : 'Lead'}
                                     </button>
                                   </td>
@@ -1412,18 +1430,57 @@ const AdminStudentCRM = () => {
             ) : (
               <div className="space-y-6">
                 {/* KPI cards */}
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   {[
-                    { label: 'Total Bookings', value: campDashboard.total_bookings, color: 'bg-blue-50 border-blue-200 text-blue-700' },
-                    { label: 'Confirmed (Paid)', value: campDashboard.converted, color: 'bg-green-50 border-green-200 text-green-700' },
-                    { label: 'Total Revenue', value: `₹${(campDashboard.total_revenue || 0).toLocaleString()}`, color: 'bg-orange-50 border-orange-200 text-orange-700' },
+                    { label: 'Total Registrations', value: campDashboard.total_bookings, color: 'bg-blue-50 border-blue-200 text-blue-700' },
+                    { label: 'Hot Leads', value: campDashboard.hot_leads || 0, color: 'bg-purple-50 border-purple-200 text-purple-700' },
+                    { label: 'Converted (Total)', value: campDashboard.converted, color: 'bg-green-50 border-green-200 text-green-700', sub: `${campDashboard.converted_online || 0} online · ${campDashboard.converted_offline || 0} cash` },
+                    { label: 'Online Revenue', value: `₹${(campDashboard.total_revenue || 0).toLocaleString()}`, color: 'bg-orange-50 border-orange-200 text-orange-700' },
                   ].map(k => (
                     <div key={k.label} className={`rounded-xl border p-5 text-center ${k.color}`}>
                       <div className="text-3xl font-bold">{k.value}</div>
                       <div className="text-xs font-medium mt-1">{k.label}</div>
+                      {k.sub && <div className="text-xs opacity-70 mt-0.5">{k.sub}</div>}
                     </div>
                   ))}
                 </div>
+
+                {/* Conversion Funnel */}
+                {campDashboard.funnel && (
+                  <div className="bg-white rounded-2xl border border-slate-100 p-5">
+                    <h3 className="font-bold text-[#1E3A5F] text-base mb-4 flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-orange-500" /> Conversion Funnel
+                    </h3>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Registrations */}
+                      <div className="flex-1 min-w-[90px] text-center bg-blue-50 border border-blue-200 rounded-xl p-4">
+                        <div className="text-2xl font-bold text-blue-700">{campDashboard.funnel.registrations}</div>
+                        <div className="text-xs font-semibold text-blue-600 mt-1">Registrations</div>
+                      </div>
+                      {/* Arrow + ratio */}
+                      <div className="text-center">
+                        <div className="text-xs text-slate-400 font-semibold">{campDashboard.funnel.reg_to_hot_pct}%</div>
+                        <div className="text-slate-300 text-lg">→</div>
+                      </div>
+                      {/* Hot Leads */}
+                      <div className="flex-1 min-w-[90px] text-center bg-purple-50 border border-purple-200 rounded-xl p-4">
+                        <div className="text-2xl font-bold text-purple-700">{campDashboard.funnel.hot_leads}</div>
+                        <div className="text-xs font-semibold text-purple-600 mt-1">Hot Leads</div>
+                      </div>
+                      {/* Arrow + ratio */}
+                      <div className="text-center">
+                        <div className="text-xs text-slate-400 font-semibold">{campDashboard.funnel.hot_to_conv_pct}%</div>
+                        <div className="text-slate-300 text-lg">→</div>
+                      </div>
+                      {/* Converted */}
+                      <div className="flex-1 min-w-[90px] text-center bg-green-50 border border-green-200 rounded-xl p-4">
+                        <div className="text-2xl font-bold text-green-700">{campDashboard.funnel.converted}</div>
+                        <div className="text-xs font-semibold text-green-600 mt-1">Converted</div>
+                        <div className="text-xs text-green-500 mt-0.5">{campDashboard.funnel.reg_to_conv_pct}% of reg.</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Age Group Breakdown */}
                 <div className="bg-white rounded-2xl border border-slate-100 p-5">
@@ -1699,7 +1756,7 @@ const AdminStudentCRM = () => {
           )}
 
           {/* ── Status Update Modal ── */}
-          {campStatusModal && (
+          {campStatusModal && !campLostReasonModal && (
             <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
               <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
                 <div className="flex justify-between items-center mb-5">
@@ -1711,13 +1768,22 @@ const AdminStudentCRM = () => {
                   {[
                     { v: 'phone_captured', l: 'Form Filled', desc: 'Phone number captured', color: 'border-orange-300 bg-orange-50 text-orange-700' },
                     { v: 'lead', l: 'Lead Captured', desc: 'Full details submitted', color: 'border-yellow-300 bg-yellow-50 text-yellow-700' },
-                    { v: 'converted', l: 'Payment Done', desc: 'Payment completed', color: 'border-green-300 bg-green-50 text-green-700' },
+                    { v: 'hot_lead', l: 'Hot Lead', desc: 'Interested — likely to convert', color: 'border-purple-300 bg-purple-50 text-purple-700' },
+                    { v: 'converted', l: 'Paid Online', desc: 'Online payment completed', color: 'border-green-300 bg-green-50 text-green-700' },
+                    { v: 'payment_offline', l: 'Pay at Center', desc: 'Cash payment at center', color: 'border-teal-300 bg-teal-50 text-teal-700' },
                     { v: 'lost_lead', l: 'Lost Lead', desc: 'Not interested / lost', color: 'border-red-300 bg-red-50 text-red-700' },
                   ].map(s => (
                     <button
                       key={s.v}
                       data-testid={`status-option-${s.v}`}
-                      onClick={() => handleUpdateStatus(campStatusModal.id, s.v)}
+                      onClick={() => {
+                        if (s.v === 'lost_lead') {
+                          setCampLostReasonModal({ bookingId: campStatusModal.id });
+                          setCampLostReason('');
+                        } else {
+                          handleUpdateStatus(campStatusModal.id, s.v);
+                        }
+                      }}
                       className={`w-full flex items-center justify-between p-3 rounded-xl border-2 text-left transition-all hover:shadow-sm ${
                         campStatusModal.crm_status === s.v ? s.color + ' border-current' : 'border-slate-200 hover:border-slate-300'
                       }`}
@@ -1729,6 +1795,51 @@ const AdminStudentCRM = () => {
                       {campStatusModal.crm_status === s.v && <Check className="w-4 h-4 text-current" />}
                     </button>
                   ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Lost Reason Modal ── */}
+          {campLostReasonModal && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-bold text-[#1E3A5F] text-lg">Reason for Loss</h3>
+                  <button onClick={() => { setCampLostReasonModal(null); setCampLostReason(''); }} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                </div>
+                <p className="text-sm text-slate-500 mb-4">Select the reason this lead was lost:</p>
+                <div className="space-y-2 mb-5">
+                  {[
+                    { v: 'phone_not_picking', l: 'Phone not picking' },
+                    { v: 'not_available_dates', l: 'Not available during dates' },
+                    { v: 'location_too_far', l: 'Location too far' },
+                    { v: 'other', l: 'Other' },
+                  ].map(r => (
+                    <button
+                      key={r.v}
+                      data-testid={`lost-reason-${r.v}`}
+                      onClick={() => setCampLostReason(r.v)}
+                      className={`w-full flex items-center justify-between p-3 rounded-xl border-2 text-left transition-all ${
+                        campLostReason === r.v ? 'border-red-400 bg-red-50 text-red-700' : 'border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <span className="text-sm font-medium">{r.l}</span>
+                      {campLostReason === r.v && <Check className="w-4 h-4 text-red-500" />}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => { setCampLostReasonModal(null); setCampLostReason(''); }}
+                    className="flex-1 h-10 rounded-xl border border-slate-200 text-slate-600 text-sm hover:bg-slate-50"
+                  >Back</button>
+                  <button
+                    data-testid="confirm-lost-lead"
+                    disabled={!campLostReason}
+                    onClick={() => handleUpdateStatus(campLostReasonModal.bookingId, 'lost_lead', campLostReason)}
+                    className="flex-1 h-10 rounded-xl bg-red-500 text-white text-sm font-semibold disabled:opacity-40 hover:bg-red-600 transition-colors"
+                  >Mark as Lost</button>
                 </div>
               </div>
             </div>

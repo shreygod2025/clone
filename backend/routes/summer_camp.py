@@ -102,7 +102,8 @@ class BookingUpdate(BaseModel):
 
 
 class StatusUpdate(BaseModel):
-    crm_status: str  # phone_captured | lead | converted | lost_lead
+    crm_status: str  # phone_captured | lead | hot_lead | converted | payment_offline | lost_lead
+    lost_reason: Optional[str] = None  # phone_not_picking | not_available_dates | location_too_far | other
 
 
 class CommentAdd(BaseModel):
@@ -574,14 +575,21 @@ async def update_booking_status(
     data: StatusUpdate,
     user: dict = Depends(get_current_user)
 ):
-    """Admin: update CRM status (phone_captured | lead | converted | lost_lead)."""
-    valid = {"phone_captured", "lead", "converted", "lost_lead"}
+    """Admin: update CRM status (phone_captured | lead | hot_lead | converted | payment_offline | lost_lead)."""
+    valid = {"phone_captured", "lead", "hot_lead", "converted", "payment_offline", "lost_lead"}
     if data.crm_status not in valid:
         raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of: {valid}")
 
+    update_fields: dict = {
+        "crm_status": data.crm_status,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    if data.crm_status == "lost_lead" and data.lost_reason:
+        update_fields["lost_reason"] = data.lost_reason
+
     result = await db.summer_camp_bookings.update_one(
         {"id": booking_id},
-        {"$set": {"crm_status": data.crm_status, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        {"$set": update_fields}
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Booking not found")
@@ -662,8 +670,10 @@ async def get_summer_camp_dashboard(user: dict = Depends(get_current_user)):
         cell = data[wk]["age_groups"][ag]
         cell["total"] += 1
         status = b.get("crm_status", "")
-        if status == "converted":
+        if status in ("converted", "payment_offline"):
             cell["converted"] += 1
+        elif status == "hot_lead":
+            cell["leads"] += 1
         elif status == "lead":
             cell["leads"] += 1
         elif status == "phone_captured":
@@ -680,9 +690,9 @@ async def get_summer_camp_dashboard(user: dict = Depends(get_current_user)):
             }
         by_c = cell["by_center"][center]
         by_c["total"] += 1
-        if status == "converted":
+        if status in ("converted", "payment_offline"):
             by_c["converted"] += 1
-        elif status == "lead":
+        elif status in ("lead", "hot_lead"):
             by_c["leads"] += 1
         elif status == "phone_captured":
             by_c["phone_captured"] += 1
@@ -698,8 +708,18 @@ async def get_summer_camp_dashboard(user: dict = Depends(get_current_user)):
 
     # Summary totals
     total_bookings = len(bookings)
-    total_converted = sum(1 for b in bookings if b.get("crm_status") == "converted")
-    total_revenue = total_converted * CAMP_PRICE
+    total_registrations = sum(1 for b in bookings)  # all bookings = registrations
+    total_hot_leads = sum(1 for b in bookings if b.get("crm_status") == "hot_lead")
+    total_leads = sum(1 for b in bookings if b.get("crm_status") == "lead")
+    total_converted_online = sum(1 for b in bookings if b.get("crm_status") == "converted")
+    total_converted_offline = sum(1 for b in bookings if b.get("crm_status") == "payment_offline")
+    total_converted = total_converted_online + total_converted_offline
+    total_revenue = total_converted_online * CAMP_PRICE  # Only online payments have actual revenue
+
+    # Conversion funnel ratios
+    reg_to_hot = round((total_hot_leads / total_registrations * 100), 1) if total_registrations else 0
+    hot_to_conv = round((total_converted / max(total_hot_leads, 1) * 100), 1) if total_hot_leads else 0
+    reg_to_conv = round((total_converted / total_registrations * 100), 1) if total_registrations else 0
 
     # Collect unique centers (excluding unknown/online)
     all_centers = sorted(set(
@@ -712,6 +732,18 @@ async def get_summer_camp_dashboard(user: dict = Depends(get_current_user)):
         "total_bookings": total_bookings,
         "total_revenue": total_revenue,
         "converted": total_converted,
+        "converted_online": total_converted_online,
+        "converted_offline": total_converted_offline,
+        "hot_leads": total_hot_leads,
+        "leads": total_leads,
+        "funnel": {
+            "registrations": total_registrations,
+            "hot_leads": total_hot_leads,
+            "converted": total_converted,
+            "reg_to_hot_pct": reg_to_hot,
+            "hot_to_conv_pct": hot_to_conv,
+            "reg_to_conv_pct": reg_to_conv,
+        },
         "centers": all_centers,
         "weeks": sorted(data.values(), key=lambda x: x["week"]),
         # Keep old age_summary for the revenue bar chart
@@ -720,7 +752,7 @@ async def get_summer_camp_dashboard(user: dict = Depends(get_current_user)):
                 "age_group": ag["key"],
                 "label": ag["label"],
                 "total": sum(1 for b in bookings if b.get("age_group") == ag["key"]),
-                "converted": sum(1 for b in bookings if b.get("age_group") == ag["key"] and b.get("crm_status") == "converted"),
+                "converted": sum(1 for b in bookings if b.get("age_group") == ag["key"] and b.get("crm_status") in ("converted", "payment_offline")),
                 "revenue": sum(CAMP_PRICE for b in bookings if b.get("age_group") == ag["key"] and b.get("crm_status") == "converted"),
             }
             for ag in AGE_GROUPS
