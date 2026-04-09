@@ -906,3 +906,65 @@ async def check_summer_camp_payment_pending() -> None:
 
     except Exception as e:
         print(f"[SC PayPending] Scheduler error: {e}")
+
+
+async def check_summer_camp_payment_pending_2() -> None:
+    """
+    Scheduled job: 2nd follow-up for leads who filled details but still haven't paid,
+    fired 20 hours after the lead was created. No media, no template params.
+    Campaign: 'summercamp payment pending followup 1'
+    """
+    from .notifications import send_whatsapp_notification
+
+    twenty_hours_ago = datetime.now(timezone.utc).timestamp() - (20 * 60 * 60)
+
+    try:
+        cursor = db.summer_camp_bookings.find(
+            {
+                "crm_status": "lead",
+                "payment_followup2_wa_sent": {"$ne": True},
+            },
+            {"_id": 0, "id": 1, "parent_phone": 1, "child_name": 1, "created_at": 1}
+        )
+        bookings = await cursor.to_list(length=100)
+
+        for booking in bookings:
+            created_raw = booking.get("created_at", "")
+            try:
+                if isinstance(created_raw, str):
+                    created_dt = datetime.fromisoformat(created_raw.replace("Z", "+00:00"))
+                elif isinstance(created_raw, datetime):
+                    created_dt = created_raw if created_raw.tzinfo else created_raw.replace(tzinfo=timezone.utc)
+                else:
+                    continue
+
+                if created_dt.timestamp() > twenty_hours_ago:
+                    continue  # Not old enough yet
+
+            except Exception as parse_err:
+                print(f"[SC PayPending2] Could not parse created_at for {booking.get('id')}: {parse_err}")
+                continue
+
+            phone = booking.get("parent_phone", "")
+            if not phone:
+                continue
+
+            # Mark FIRST to prevent duplicate sends
+            await db.summer_camp_bookings.update_one(
+                {"id": booking["id"]},
+                {"$set": {
+                    "payment_followup2_wa_sent": True,
+                    "payment_followup2_wa_sent_at": datetime.now(timezone.utc).isoformat(),
+                }}
+            )
+
+            result = await send_whatsapp_notification(
+                phone=phone,
+                template_key="summercamp_payment_pending_2",
+                params=[],
+                user_name=booking.get("child_name", ""),
+            )
+            print(f"[SC PayPending2] {'Sent' if result.get('success') else 'Failed'} for {phone} (id={booking['id']})")
+
+    except Exception as e:
+        print(f"[SC PayPending2] Scheduler error: {e}")

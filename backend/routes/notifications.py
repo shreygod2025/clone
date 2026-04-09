@@ -41,6 +41,8 @@ WHATSAPP_TEMPLATES = {
     "summercamp_followup": "summercamp lead",
     # Summer Camp payment-pending follow-up (filled details but didn't pay)
     "summercamp_payment_pending": "summercamppaymentpending",
+    # Summer Camp payment-pending 2nd follow-up at 20 hours
+    "summercamp_payment_pending_2": "summercamp payment pending followup 1",
 }
 
 async def send_whatsapp_notification(
