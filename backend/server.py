@@ -4010,7 +4010,7 @@ class Role(BaseModel):
 
 
 from routes.payments import router as payments_router, scheduled_payment_sync, scheduler, PAYMENT_SYNC_ENABLED, PAYMENT_SYNC_INTERVAL_MINUTES
-from routes.summer_camp import router as summer_camp_router
+from routes.summer_camp import router as summer_camp_router, check_summer_camp_followups
 from routes.db_backup import router as db_backup_router
 from routes.gp_onboarding import router as gp_onboarding_router
 from routes.reports import router as reports_router
@@ -4238,6 +4238,18 @@ async def startup_db_client():
         replace_existing=True
     )
     print("[STARTUP] School CRM daily digest scheduled — fires at 8:30 AM IST (03:00 UTC)")
+
+    # Schedule Summer Camp follow-up WhatsApp (every 1 minute)
+    # Sends brochure PDF to leads who captured phone but didn't complete registration (5 min threshold)
+    scheduler.add_job(
+        check_summer_camp_followups,
+        trigger=IntervalTrigger(minutes=1),
+        id="summer_camp_followup_job",
+        name="Summer Camp Follow-Up WhatsApp",
+        replace_existing=True,
+        next_run_time=datetime.now(timezone.utc) + timedelta(minutes=1)
+    )
+    print("[STARTUP] Summer Camp follow-up WhatsApp scheduled — runs every 1 minute")
 
     if not scheduler.running:
         scheduler.start()

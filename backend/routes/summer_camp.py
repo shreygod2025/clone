@@ -758,3 +758,76 @@ async def get_summer_camp_dashboard(user: dict = Depends(get_current_user)):
             for ag in AGE_GROUPS
         ],
     }
+
+
+# ─── Summer Camp Follow-Up Constants ───────────────────────────────────────────
+# Cloudinary-hosted PDF brochure — permanent URL
+SUMMER_CAMP_BROCHURE_URL = "https://res.cloudinary.com/dyssfvcmw/raw/upload/v1775712371/oll_documents/summer_camp_brochure_2026.pdf"
+SUMMER_CAMP_BROCHURE_FILENAME = "Summer Camp Brochure 2026"
+
+
+async def check_summer_camp_followups() -> None:
+    """
+    Scheduled job: Send a WhatsApp follow-up (with brochure PDF) to leads who
+    entered their phone number but did NOT complete registration, after 5 minutes.
+    Runs every 1 minute. Marks sent leads so they never receive a duplicate.
+    """
+    from .notifications import send_whatsapp_notification
+
+    five_min_ago = datetime.now(timezone.utc).timestamp() - (5 * 60)
+
+    try:
+        # Find uncompleted leads: phone captured, no follow-up sent, older than 5 min
+        cursor = db.summer_camp_bookings.find(
+            {
+                "crm_status": "phone_captured",
+                "follow_up_wa_sent": {"$ne": True},
+            },
+            {"_id": 0, "id": 1, "parent_phone": 1, "child_name": 1, "created_at": 1}
+        )
+        bookings = await cursor.to_list(length=100)
+
+        for booking in bookings:
+            created_raw = booking.get("created_at", "")
+            try:
+                if isinstance(created_raw, str):
+                    created_dt = datetime.fromisoformat(created_raw.replace("Z", "+00:00"))
+                elif isinstance(created_raw, datetime):
+                    created_dt = created_raw if created_raw.tzinfo else created_raw.replace(tzinfo=timezone.utc)
+                else:
+                    continue
+
+                if created_dt.timestamp() > five_min_ago:
+                    continue  # Not old enough yet
+
+            except Exception as parse_err:
+                print(f"[SC Followup] Could not parse created_at for {booking.get('id')}: {parse_err}")
+                continue
+
+            phone = booking.get("parent_phone", "")
+            if not phone:
+                continue
+
+            # Mark as sent FIRST to prevent duplicates if the API call hangs
+            await db.summer_camp_bookings.update_one(
+                {"id": booking["id"]},
+                {"$set": {
+                    "follow_up_wa_sent": True,
+                    "follow_up_wa_sent_at": datetime.now(timezone.utc).isoformat(),
+                }}
+            )
+
+            result = await send_whatsapp_notification(
+                phone=phone,
+                template_key="summercamp_followup",
+                params=[],
+                user_name=booking.get("child_name", ""),
+                media={
+                    "url": SUMMER_CAMP_BROCHURE_URL,
+                    "filename": SUMMER_CAMP_BROCHURE_FILENAME,
+                }
+            )
+            print(f"[SC Followup] {'Sent' if result.get('success') else 'Failed'} for {phone} (id={booking['id']})")
+
+    except Exception as e:
+        print(f"[SC Followup] Scheduler error: {e}")

@@ -36,13 +36,17 @@ WHATSAPP_TEMPLATES = {
     # School CRM meeting reminders
     "school_meeting_reminder_24hours": "school_meeting_reminder_24hours",
     "school_meeting_reminder_2hours": "school_meeting_reminder_2hours",
+
+    # Summer Camp follow-up (phone captured but didn't complete)
+    "summercamp_followup": "summercamp lead",
 }
 
 async def send_whatsapp_notification(
     phone: str,
     template_key: str,
     params: list = None,
-    user_name: str = "User"
+    user_name: str = "User",
+    media: dict = None,
 ) -> dict:
     """
     Send WhatsApp notification via AiSensy
@@ -52,6 +56,7 @@ async def send_whatsapp_notification(
         template_key: Key from WHATSAPP_TEMPLATES dict
         params: List of template parameters
         user_name: User's name for the message
+        media: Optional dict with {url, filename} for file attachments
     
     Returns:
         dict with success status and message
@@ -85,7 +90,7 @@ async def send_whatsapp_notification(
             "userName": "Clone Futura Live Solutions Ltd",
             "templateParams": params or [],
             "source": "OLL Platform",
-            "media": {},
+            "media": media if media else {},
             "buttons": [],
             "carouselCards": [],
             "location": {},
