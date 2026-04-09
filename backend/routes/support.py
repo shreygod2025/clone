@@ -17,7 +17,39 @@ router = APIRouter()
 # ── Models ─────────────────────────────────────────────────────────────────────
 # (Models are defined inline in the route functions or pulled from server-level schema)
 
-@router.post("/support/school-query")
+@router.get("/support/notification-settings")
+async def get_notification_settings(user: dict = Depends(get_current_user)):
+    """Get admin notification phone numbers for WhatsApp alerts"""
+    doc = await db.settings.find_one({"key": "admin_notification_phones"}, {"_id": 0})
+    phones = doc.get("value", []) if doc else []
+    return {"phones": phones}
+
+
+@router.post("/support/notification-settings")
+async def save_notification_settings(data: dict, user: dict = Depends(get_current_user)):
+    """Save admin notification phone numbers for WhatsApp alerts"""
+    phones = data.get("phones", [])
+    # Clean phone numbers
+    cleaned = [str(p).strip() for p in phones if str(p).strip() and str(p).strip() not in ['', 'None']]
+    await db.settings.update_one(
+        {"key": "admin_notification_phones"},
+        {"$set": {"key": "admin_notification_phones", "value": cleaned, "updated_at": datetime.now(timezone.utc).isoformat()}},
+        upsert=True
+    )
+    return {"message": "Notification settings saved", "phones": cleaned}
+
+
+@router.post("/support/reset-overdue-flags")
+async def reset_overdue_flags(user: dict = Depends(get_current_user)):
+    """Reset overdue_notified for all open tickets so they get re-sent on next scheduler run"""
+    result = await db.support_queries.update_many(
+        {"status": {"$nin": ["resolved", "closed"]}, "overdue_notified": True},
+        {"$set": {"overdue_notified": False}}
+    )
+    return {"message": f"Reset {result.modified_count} tickets", "count": result.modified_count}
+
+
+
 async def create_school_support_query(data: dict):
     query = SchoolSupportQuery(**data)
     doc = query.model_dump()
@@ -174,6 +206,28 @@ async def assign_support_query(query_id: str, data: dict, user: dict = Depends(g
                 traceback.print_exc()
         else:
             print(f"[ASSIGN] Skipping WhatsApp - no phone for {assignee_name} (phone={assignee_phone})")
+            # Fallback: notify admin phones that an assignment was made (so someone with a phone is aware)
+            try:
+                admin_phones_doc = await db.settings.find_one({"key": "admin_notification_phones"})
+                admin_phones = admin_phones_doc.get("value", []) if admin_phones_doc else []
+                if not admin_phones:
+                    fallback_users = await db.team_users.find(
+                        {"is_active": True, "phone": {"$nin": [None, "", "None", "null"]}},
+                        {"_id": 0, "phone": 1}
+                    ).to_list(10)
+                    admin_phones = [u["phone"] for u in fallback_users if u.get("phone") and str(u["phone"]).strip() not in ['', 'None']]
+                ticket_id_short = query_id[:8].upper()
+                subject = query.get("query_type", "Support Request")
+                priority = query.get("priority", "normal").upper()
+                customer_name = query.get("name", "Customer")
+                for phone in admin_phones:
+                    await send_whatsapp_notification(
+                        phone, "ticket_assigned",
+                        params=[assignee_name, ticket_id_short, subject, priority, customer_name],
+                        user_name="Clone Futura Live Solutions Ltd"
+                    )
+            except Exception as e:
+                print(f"[ASSIGN] Admin fallback notification failed: {e}")
         
         # Send Email notification using resend
         resend_ready = await ensure_resend_api_key()

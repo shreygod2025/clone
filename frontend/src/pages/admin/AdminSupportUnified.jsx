@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Phone, Mail, Clock, User, MessageSquare, AlertCircle, CreditCard, Wrench, HelpCircle, ThumbsUp, Building2, Send, AlertTriangle, CheckCircle, UserPlus, Plus, Paperclip, Mic, MicOff, X, FileText, Play, Pause, Upload, History, Edit, Trash2, StickyNote, RefreshCw, GraduationCap, Eye, Users } from 'lucide-react';
+import { Search, Phone, Mail, Clock, User, MessageSquare, AlertCircle, CreditCard, Wrench, HelpCircle, ThumbsUp, Building2, Send, AlertTriangle, CheckCircle, UserPlus, Plus, Paperclip, Mic, MicOff, X, FileText, Play, Pause, Upload, History, Edit, Trash2, StickyNote, RefreshCw, GraduationCap, Eye, Users, Settings, Bell } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -229,8 +229,43 @@ const AdminSupportUnified = () => {
   useEffect(() => {
     fetchAllQueries();
     fetchTeamUsers();
+    fetchNotificationSettings();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const [notificationPhones, setNotificationPhones] = useState([]);
+  const [notifPhoneInput, setNotifPhoneInput] = useState('');
+  const [savingNotif, setSavingNotif] = useState(false);
+  const [notifSaved, setNotifSaved] = useState(false);
+  const [resetingOverdue, setResetingOverdue] = useState(false);
+
+  const fetchNotificationSettings = async () => {
+    try {
+      const res = await axios.get(`${API}/support/notification-settings`, { headers: getAuthHeaders() });
+      setNotificationPhones(res.data.phones || []);
+    } catch {}
+  };
+
+  const saveNotificationSettings = async () => {
+    setSavingNotif(true);
+    try {
+      const phones = notifPhoneInput.split(',').map(p => p.trim()).filter(Boolean);
+      await axios.post(`${API}/support/notification-settings`, { phones }, { headers: getAuthHeaders() });
+      setNotificationPhones(phones);
+      setNotifSaved(true);
+      setTimeout(() => setNotifSaved(false), 3000);
+    } catch {}
+    setSavingNotif(false);
+  };
+
+  const resetOverdueFlags = async () => {
+    setResetingOverdue(true);
+    try {
+      const res = await axios.post(`${API}/support/reset-overdue-flags`, {}, { headers: getAuthHeaders() });
+      alert(`Reset ${res.data.count} tickets. Overdue notifications will re-trigger on next scheduler check.`);
+    } catch {}
+    setResetingOverdue(false);
+  };
 
   const fetchTeamUsers = async () => {
     try {
@@ -1028,9 +1063,21 @@ const AdminSupportUnified = () => {
           <Plus className="w-4 h-4 mr-2" />
           Create Ticket
         </Button>
+        <button
+          onClick={() => setActiveTab('settings')}
+          className={`px-5 py-3 rounded-xl font-medium flex items-center gap-2 transition-all ${
+            activeTab === 'settings'
+              ? 'bg-slate-700 text-white shadow-lg'
+              : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+          }`}
+        >
+          <Settings className="w-4 h-4" />
+          Settings
+        </button>
       </div>
 
-      {/* Filters */}
+      {/* Filters — hide when on settings tab */}
+      {activeTab !== 'settings' && (
       <div className="flex flex-wrap gap-4 mb-6">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -1089,10 +1136,62 @@ const AdminSupportUnified = () => {
           ))}
         </select>
       </div>
+      )} {/* end of filters conditional */}
 
       {loading ? (
         <div className="text-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D63031] mx-auto"></div>
+        </div>
+      ) : activeTab === 'settings' ? (
+        /* ── Notification Settings ── */
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl border border-slate-100 p-6">
+            <h3 className="font-bold text-[#1E3A5F] text-base mb-1 flex items-center gap-2">
+              <Bell className="w-4 h-4 text-orange-500" />WhatsApp Notification Phones
+            </h3>
+            <p className="text-sm text-slate-500 mb-4">
+              Comma-separated phone numbers that receive WhatsApp alerts for overdue queries and assignments (when an assignee has no phone configured). Format: 919876543210 (country code + number, no +).
+            </p>
+            {notificationPhones.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {notificationPhones.map(p => (
+                  <span key={p} className="px-3 py-1 bg-green-50 text-green-700 border border-green-200 rounded-full text-sm font-mono">{p}</span>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-3 items-start">
+              <input
+                type="text"
+                value={notifPhoneInput || notificationPhones.join(', ')}
+                onChange={e => setNotifPhoneInput(e.target.value)}
+                placeholder="e.g. 919920920188, 918369508043"
+                className="flex-1 h-10 px-4 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+              <button
+                onClick={saveNotificationSettings}
+                disabled={savingNotif}
+                className="px-5 h-10 bg-[#1E3A5F] text-white rounded-lg text-sm font-semibold hover:bg-[#2a4f82] transition-colors disabled:opacity-50"
+              >
+                {notifSaved ? 'Saved!' : savingNotif ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-100 p-6">
+            <h3 className="font-bold text-[#1E3A5F] text-base mb-1 flex items-center gap-2">
+              <RefreshCw className="w-4 h-4 text-red-500" />Reset Overdue Notifications
+            </h3>
+            <p className="text-sm text-slate-500 mb-4">
+              All open tickets that were previously marked as "notified" will be reset so they trigger a fresh WhatsApp alert on the next scheduler run (every 30 minutes). Use this if notifications were misconfigured and you want to re-send them.
+            </p>
+            <button
+              onClick={resetOverdueFlags}
+              disabled={resetingOverdue}
+              className="px-5 py-2.5 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm font-semibold hover:bg-red-100 transition-colors disabled:opacity-50"
+            >
+              {resetingOverdue ? 'Resetting...' : 'Reset Overdue Flags for Open Tickets'}
+            </button>
+          </div>
         </div>
       ) : filteredQueries.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-2xl border border-slate-100">
