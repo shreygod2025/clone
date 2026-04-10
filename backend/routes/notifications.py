@@ -49,6 +49,8 @@ WHATSAPP_TEMPLATES = {
     "summercamp_phone_captured_24h": "summer camp phone captured followup 1",
     # Closing follow-up at 7 days (both phone_captured AND lead who never paid)
     "summercamp_closing_7days": "summer camp registraitons closing followup",
+    # Enrollment confirmation (sent immediately on cash payment OR Cashfree webhook PAID)
+    "summercamp_enrolled": "summercamp enrolled",
 }
 
 async def send_whatsapp_notification(

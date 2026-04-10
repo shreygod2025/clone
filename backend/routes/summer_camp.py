@@ -275,6 +275,23 @@ async def complete_lead(booking_id: str, data: CompleteLead):
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }}
     )
+
+    # Send enrollment WhatsApp for cash registrations
+    if data.payment_mode == "cash":
+        try:
+            from .notifications import send_whatsapp_notification
+            phone = booking.get("parent_phone", "")
+            first_name = (data.child_name or "").split()[0] if data.child_name else "there"
+            await send_whatsapp_notification(
+                phone=phone,
+                template_key="summercamp_enrolled",
+                params=[first_name, first_name, first_name, first_name],
+                user_name=first_name,
+            )
+            logging.info(f"[WA] Enrollment message sent for cash booking {booking_id}")
+        except Exception as e:
+            logging.warning(f"[WA] Enrollment message failed for {booking_id}: {e}")
+
     return {
         "booking_id": booking_id,
         "booking_ref": booking.get("booking_ref"),
@@ -332,6 +349,21 @@ async def register_summer_camp(data: SummerCampRegistration):
 
     await db.summer_camp_bookings.insert_one(doc)
     logging.info(f"Summer camp lead created: {booking_ref} - {data.child_name}")
+
+    # Send enrollment WhatsApp for direct cash registrations
+    if data.payment_mode == "cash":
+        try:
+            from .notifications import send_whatsapp_notification
+            first_name = (data.child_name or "").split()[0] if data.child_name else "there"
+            await send_whatsapp_notification(
+                phone=data.parent_phone,
+                template_key="summercamp_enrolled",
+                params=[first_name, first_name, first_name, first_name],
+                user_name=first_name,
+            )
+            logging.info(f"[WA] Enrollment message sent for direct cash registration {booking_ref}")
+        except Exception as e:
+            logging.warning(f"[WA] Enrollment message failed for {booking_ref}: {e}")
 
     return {
         "booking_id": booking_id,
@@ -478,6 +510,22 @@ async def summer_camp_webhook(request: Request):
                 # Increment conversion on tracking link
                 if booking.get("source_ref"):
                     await _increment_tracking(booking["source_ref"], "conversions")
+
+                # Send enrollment WhatsApp confirmation
+                try:
+                    from .notifications import send_whatsapp_notification
+                    phone = booking.get("parent_phone", "")
+                    first_name = (booking.get("child_name") or "").split()[0] or "there"
+                    await send_whatsapp_notification(
+                        phone=phone,
+                        template_key="summercamp_enrolled",
+                        params=[first_name, first_name, first_name, first_name],
+                        user_name=first_name,
+                    )
+                    logging.info(f"[WA] Enrollment message sent for online booking {order_id}")
+                except Exception as e:
+                    logging.warning(f"[WA] Enrollment message failed for {order_id}: {e}")
+
                 logging.info(f"Summer camp payment confirmed via webhook: {order_id}")
 
         return {"status": "ok"}
