@@ -451,10 +451,14 @@ async def initiate_payment(data: PaymentInitRequest):
 
 @router.get("/summer-camp/verify/{booking_id}")
 async def verify_payment(booking_id: str):
-    """Check payment status for a booking."""
+    """Check payment status for a booking. Called by success page after Cashfree redirect."""
     booking = await db.summer_camp_bookings.find_one({"id": booking_id}, {"_id": 0})
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
+
+    # Already converted — return immediately without re-querying Cashfree
+    if booking.get("crm_status") == "converted":
+        return {"status": "PAID", "booking": booking}
 
     order_id = booking.get("order_id")
     if not order_id:
@@ -465,7 +469,7 @@ async def verify_payment(booking_id: str):
         resp = await asyncio.to_thread(cf.PGFetchOrder, CASHFREE_API_VERSION, order_id, None)
         if resp.data:
             new_status = resp.data.order_status
-            if new_status == "PAID":
+            if new_status == "PAID" and booking.get("crm_status") != "converted":
                 await db.summer_camp_bookings.update_one(
                     {"id": booking_id},
                     {"$set": {
@@ -478,6 +482,21 @@ async def verify_payment(booking_id: str):
                     await _increment_tracking(booking["source_ref"], "conversions")
                 booking["payment_status"] = "paid"
                 booking["crm_status"] = "converted"
+
+                # Fire enrollment WhatsApp message
+                try:
+                    from .notifications import send_whatsapp_notification
+                    phone = booking.get("parent_phone", "")
+                    first_name = (booking.get("child_name") or "").split()[0] or "there"
+                    await send_whatsapp_notification(
+                        phone=phone,
+                        template_key="summercamp_enrolled",
+                        params=[first_name, first_name, first_name, first_name],
+                        user_name=first_name,
+                    )
+                except Exception as wa_err:
+                    logging.warning(f"[WA] Enrollment WA failed in verify: {wa_err}")
+
             return {"status": new_status, "booking": booking}
     except Exception as e:
         logging.warning(f"Summer camp verify error: {e}")

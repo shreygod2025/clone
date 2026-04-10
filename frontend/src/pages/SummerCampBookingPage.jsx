@@ -239,7 +239,17 @@ export default function SummerCampBookingPage() {
 
       if (result?.error) {
         setError(result.error.message || 'Payment failed. Please try again.');
+        return;
       }
+
+      // Payment completed inside modal — navigate to success page so verify runs
+      if (result?.paymentDetails || result?.redirect) {
+        navigate(`/summer-camp/success?booking_id=${bid}&order_id=${pay.data.order_id}`);
+        return;
+      }
+
+      // Fallback: navigate anyway (Cashfree sometimes closes modal without result)
+      navigate(`/summer-camp/success?booking_id=${bid}&order_id=${pay.data.order_id}`);
     } catch (err) {
       setError(err.response?.data?.detail || 'Something went wrong. Please try again.');
     } finally {

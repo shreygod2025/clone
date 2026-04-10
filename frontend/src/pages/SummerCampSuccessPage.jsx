@@ -245,13 +245,14 @@ export default function SummerCampSuccessPage() {
         setLoading(false);
       }
       attempts.current += 1;
-      if (attempts.current >= 5) clearInterval(checkInterval.current);
+      if (attempts.current >= 8) clearInterval(checkInterval.current);
     };
 
-    // Poll up to 5× (every 2s) while waiting for Cashfree to confirm
+    // Poll up to 8× (every 3s = 24s total) while waiting for Cashfree to confirm
     verify();
-    checkInterval.current = setInterval(verify, 2000);
+    checkInterval.current = setInterval(verify, 3000);
     return () => clearInterval(checkInterval.current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingId, isCash]);
 
   const sessions = booking ? (SESSION_DATES[booking.batch_week] || []) : [];
