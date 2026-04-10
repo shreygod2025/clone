@@ -848,6 +848,7 @@ async def check_summer_camp_followups() -> None:
     from .notifications import send_whatsapp_notification
 
     five_min_ago = datetime.now(timezone.utc).timestamp() - (5 * 60)
+    max_age = datetime.now(timezone.utc).timestamp() - (30 * 24 * 60 * 60)
 
     try:
         # Find uncompleted leads: phone captured, no follow-up sent, older than 5 min
@@ -872,6 +873,10 @@ async def check_summer_camp_followups() -> None:
 
                 if created_dt.timestamp() > five_min_ago:
                     continue  # Not old enough yet
+
+                # Skip leads older than 30 days — no point messaging ancient leads
+                if created_dt.timestamp() < max_age:
+                    continue
 
             except Exception as parse_err:
                 print(f"[SC Followup] Could not parse created_at for {booking.get('id')}: {parse_err}")
@@ -918,6 +923,7 @@ async def check_summer_camp_payment_pending() -> None:
     from .notifications import send_whatsapp_notification
 
     five_min_ago = datetime.now(timezone.utc).timestamp() - (5 * 60)
+    max_age_ts = datetime.now(timezone.utc).timestamp() - (30 * 24 * 60 * 60)
 
     try:
         cursor = db.summer_camp_bookings.find(
@@ -938,6 +944,10 @@ async def check_summer_camp_payment_pending() -> None:
                 ref_dt = _parse_created_dt(ref_raw)
                 if not ref_dt or ref_dt.timestamp() > five_min_ago:
                     continue  # Not old enough yet
+                # Skip leads older than 30 days
+                created_dt = _parse_created_dt(booking.get("created_at", ""))
+                if created_dt and created_dt.timestamp() < max_age_ts:
+                    continue
             except Exception as parse_err:
                 print(f"[SC PayPending] Could not parse timestamp for {booking.get('id')}: {parse_err}")
                 continue
@@ -977,27 +987,39 @@ async def check_summer_camp_payment_pending() -> None:
 
 async def check_summer_camp_payment_pending_2() -> None:
     """
-    Scheduled job: 2nd follow-up for unpaid leads — 20 hours after they filled details
-    (uses updated_at so timer is relative to when details were submitted, not phone capture).
+    Scheduled job: 2nd follow-up for unpaid leads — 20 hours AFTER the first
+    payment-pending message was sent (payment_followup_wa_sent_at).
+    Sequential dependency: only fires if the 5-min message was already sent.
     Campaign: 'summercamp payment pending followup 1'. No media, no params.
     """
     from .notifications import send_whatsapp_notification
 
-    threshold = datetime.now(timezone.utc).timestamp() - (20 * 60 * 60)
+    twenty_hr_ago = datetime.now(timezone.utc).timestamp() - (20 * 60 * 60)
+    max_age = datetime.now(timezone.utc).timestamp() - (30 * 24 * 60 * 60)  # 30-day cap
 
     try:
         cursor = db.summer_camp_bookings.find(
             {
                 "crm_status": "lead",
+                "payment_followup_wa_sent": True,          # ← must have received step 1
                 "payment_followup2_wa_sent": {"$ne": True},
             },
-            {"_id": 0, "id": 1, "parent_phone": 1, "child_name": 1, "created_at": 1, "updated_at": 1}
+            {"_id": 0, "id": 1, "parent_phone": 1, "child_name": 1,
+             "created_at": 1, "payment_followup_wa_sent_at": 1}
         )
         for booking in await cursor.to_list(length=100):
             try:
-                ref_raw = booking.get("updated_at") or booking.get("created_at", "")
+                # Measure 20h from when step 1 was sent, not from updated_at
+                ref_raw = booking.get("payment_followup_wa_sent_at") or booking.get("created_at", "")
                 ref_dt = _parse_created_dt(ref_raw)
-                if not ref_dt or ref_dt.timestamp() > threshold:
+                if not ref_dt:
+                    continue
+                # Skip if step 1 was sent less than 20h ago
+                if ref_dt.timestamp() > twenty_hr_ago:
+                    continue
+                # Skip ancient leads (older than 30 days) to avoid spam
+                created_dt = _parse_created_dt(booking.get("created_at", ""))
+                if created_dt and created_dt.timestamp() < max_age:
                     continue
             except Exception:
                 continue
@@ -1027,28 +1049,35 @@ async def check_summer_camp_payment_pending_2() -> None:
 
 async def check_summer_camp_payment_pending_3() -> None:
     """
-    Scheduled job: 3rd follow-up for unpaid leads — 48 hours after they filled details
-    (updated_at). $FirstName param, no media.
-    Campaign: 'summer camp payment pending followup 2'
+    Scheduled job: 3rd follow-up for unpaid leads — 48 hours AFTER the 20-hour
+    message was sent (payment_followup2_wa_sent_at).
+    Sequential dependency: only fires if step 2 was already sent.
+    Campaign: 'summer camp payment pending followup 2'. $FirstName param, no media.
     """
     from .notifications import send_whatsapp_notification
 
-    threshold = datetime.now(timezone.utc).timestamp() - (48 * 60 * 60)
+    forty_eight_hr_ago = datetime.now(timezone.utc).timestamp() - (48 * 60 * 60)
+    max_age = datetime.now(timezone.utc).timestamp() - (30 * 24 * 60 * 60)
 
     try:
         cursor = db.summer_camp_bookings.find(
             {
                 "crm_status": "lead",
+                "payment_followup2_wa_sent": True,          # ← must have received step 2
                 "payment_followup3_wa_sent": {"$ne": True},
             },
             {"_id": 0, "id": 1, "parent_phone": 1, "child_name": 1, "parent_name": 1,
-             "created_at": 1, "updated_at": 1}
+             "created_at": 1, "payment_followup2_wa_sent_at": 1}
         )
         for booking in await cursor.to_list(length=100):
             try:
-                ref_raw = booking.get("updated_at") or booking.get("created_at", "")
+                # Measure 48h from when step 2 was sent
+                ref_raw = booking.get("payment_followup2_wa_sent_at") or booking.get("created_at", "")
                 ref_dt = _parse_created_dt(ref_raw)
-                if not ref_dt or ref_dt.timestamp() > threshold:
+                if not ref_dt or ref_dt.timestamp() > forty_eight_hr_ago:
+                    continue
+                created_dt = _parse_created_dt(booking.get("created_at", ""))
+                if created_dt and created_dt.timestamp() < max_age:
                     continue
             except Exception:
                 continue
@@ -1081,26 +1110,35 @@ async def check_summer_camp_payment_pending_3() -> None:
 
 async def check_summer_camp_phone_captured_24h() -> None:
     """
-    Scheduled job: 2nd follow-up for phone-captured leads (entered phone only),
-    fired 24 hours after creation. No media, no template params.
+    Scheduled job: 2nd follow-up for phone-captured leads — 24 hours AFTER the
+    first 5-min follow-up was sent (follow_up_wa_sent_at).
+    Sequential dependency: only fires if the 5-min message was already sent.
     Campaign: 'summer camp phone captured followup 1'
     """
     from .notifications import send_whatsapp_notification
 
-    threshold = datetime.now(timezone.utc).timestamp() - (24 * 60 * 60)
+    twenty_four_hr_ago = datetime.now(timezone.utc).timestamp() - (24 * 60 * 60)
+    max_age = datetime.now(timezone.utc).timestamp() - (30 * 24 * 60 * 60)
 
     try:
         cursor = db.summer_camp_bookings.find(
             {
                 "crm_status": "phone_captured",
+                "follow_up_wa_sent": True,                          # ← must have received 5-min msg
                 "phone_captured_followup1_wa_sent": {"$ne": True},
             },
-            {"_id": 0, "id": 1, "parent_phone": 1, "child_name": 1, "created_at": 1}
+            {"_id": 0, "id": 1, "parent_phone": 1, "child_name": 1,
+             "created_at": 1, "follow_up_wa_sent_at": 1}
         )
         for booking in await cursor.to_list(length=100):
             try:
-                created_dt = _parse_created_dt(booking.get("created_at"))
-                if not created_dt or created_dt.timestamp() > threshold:
+                # Measure 24h from when the 5-min message was sent
+                ref_raw = booking.get("follow_up_wa_sent_at") or booking.get("created_at", "")
+                ref_dt = _parse_created_dt(ref_raw)
+                if not ref_dt or ref_dt.timestamp() > twenty_four_hr_ago:
+                    continue
+                created_dt = _parse_created_dt(booking.get("created_at", ""))
+                if created_dt and created_dt.timestamp() < max_age:
                     continue
             except Exception:
                 continue
@@ -1132,12 +1170,13 @@ async def check_summer_camp_closing_7days() -> None:
     """
     Scheduled job: Final 'registrations closing' follow-up for ALL unconverted leads
     (both phone_captured AND details-filled/lead) fired 7 days after creation.
-    No media, no template params.
+    No media, no template params. Max age cap: 30 days.
     Campaign: 'summer camp registraitons closing followup'
     """
     from .notifications import send_whatsapp_notification
 
-    threshold = datetime.now(timezone.utc).timestamp() - (7 * 24 * 60 * 60)
+    seven_days_ago = datetime.now(timezone.utc).timestamp() - (7 * 24 * 60 * 60)
+    max_age = datetime.now(timezone.utc).timestamp() - (30 * 24 * 60 * 60)
 
     try:
         cursor = db.summer_camp_bookings.find(
@@ -1150,7 +1189,13 @@ async def check_summer_camp_closing_7days() -> None:
         for booking in await cursor.to_list(length=200):
             try:
                 created_dt = _parse_created_dt(booking.get("created_at"))
-                if not created_dt or created_dt.timestamp() > threshold:
+                if not created_dt:
+                    continue
+                # Must be at least 7 days old
+                if created_dt.timestamp() > seven_days_ago:
+                    continue
+                # Skip leads older than 30 days (irrelevant / already stale)
+                if created_dt.timestamp() < max_age:
                     continue
             except Exception:
                 continue
