@@ -9929,13 +9929,16 @@ ${FOOTER}</div></body></html>`
                             const formData = new FormData();
                             formData.append('file', file);
                             try {
-                              const response = await axios.post(`${API}/upload`, formData, {
+                              const response = await axios.post(`${API}/upload?type=mou`, formData, {
                                 headers: getAuthHeaders()
                               });
-                              setEditOnboardData(prev => ({ ...prev, mou_url: response.data.url }));
-                              toast.success('MOU uploaded');
+                              const url = response.data?.url;
+                              if (!url) throw new Error('No URL returned from server');
+                              setEditOnboardData(prev => ({ ...prev, mou_url: url }));
+                              toast.success('MOU uploaded successfully');
                             } catch (error) {
-                              toast.error('Failed to upload MOU');
+                              console.error('MOU upload error:', error);
+                              toast.error(error?.response?.data?.detail || error?.message || 'Failed to upload MOU');
                             }
                           }}
                           className="text-sm"

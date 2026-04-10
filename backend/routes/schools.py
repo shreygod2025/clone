@@ -26,7 +26,21 @@ from .payments import clear_payment_cache
 
 router = APIRouter()
 
-# ── Models ─────────────────────────────────────────────────────────────────────
+# ── Helpers ────────────────────────────────────────────────────────────────────
+def get_followup_weekday_dates(start_date, count: int = 4, interval: int = 4) -> list:
+    """Calculate N followup dates, each `interval` weekdays from the previous."""
+    dates = []
+    current = start_date
+    for _ in range(count):
+        weekdays_added = 0
+        while weekdays_added < interval:
+            current = current + timedelta(days=1)
+            if current.weekday() < 5:  # Mon–Fri
+                weekdays_added += 1
+        dates.append(current)
+    return dates
+
+
 class SchoolInquiry(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
