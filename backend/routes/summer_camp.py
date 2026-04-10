@@ -131,6 +131,7 @@ class CompleteLead(BaseModel):
 
 class PaymentInitRequest(BaseModel):
     booking_id: str
+    frontend_url: str = "https://oll.co"
 
 
 class CreateTrackingLinkRequest(BaseModel):
@@ -387,7 +388,7 @@ async def initiate_payment(data: PaymentInitRequest):
         raise HTTPException(status_code=400, detail="Already paid")
 
     order_id = f"SC2026-{booking['id'][:8]}-{int(time.time())}"
-    frontend_url = data.get("frontend_url") or os.getenv("FRONTEND_URL", "https://oll.co")
+    frontend_url = data.frontend_url or os.getenv("FRONTEND_URL", "https://oll.co")
 
     parent_name = (booking.get("parent_name") or "").strip()
     child_name = (booking.get("child_name") or "").strip()
