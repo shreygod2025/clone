@@ -11,6 +11,9 @@ import httpx
 import os
 
 from .shared import db, get_current_user
+import bcrypt
+import random
+import string
 
 # ── Models (inline copies to avoid circular imports) ─────────────────────
 class TeamUser(BaseModel):
@@ -221,6 +224,131 @@ class GPOnboarding(BaseModel):
 # Expense Model for PnL Reports
 
 router = APIRouter()
+
+@router.post("/gp-onboarding/direct-add-active")
+async def direct_add_active_gp(
+    data: dict,
+    user: dict = Depends(get_current_user)
+):
+    """
+    Directly create an Active Growth Partner, skipping all lead/onboarding stages.
+    Creates: growth_partners record + gp_onboarding record (active) + team_user account.
+    Returns credentials to display to the admin.
+    """
+    name = (data.get("name") or "").strip()
+    email = (data.get("email") or "").strip().lower()
+    phone = (data.get("phone") or "").strip()
+    city = (data.get("city") or "").strip()
+    interest_type = (data.get("interest_type") or "distributor").strip()
+
+    if not name or not email or not phone:
+        raise HTTPException(status_code=400, detail="Name, email, and phone are required.")
+
+    # Check for duplicate email in team_users
+    if await db.team_users.find_one({"email": email}):
+        raise HTTPException(status_code=400, detail="A user with this email already exists.")
+
+    partner_id = str(uuid.uuid4())
+    onboarding_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+
+    # 1. Create growth_partner record (converted/active)
+    partner_doc = {
+        "id": partner_id,
+        "name": name,
+        "email": email,
+        "phone": phone,
+        "city": city,
+        "interest_type": interest_type,
+        "status": "converted",
+        "source": "direct_add",
+        "onboarding_id": onboarding_id,
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.growth_partners.insert_one(partner_doc)
+
+    # 2. Create gp_onboarding record with all steps marked complete
+    completed_steps = {
+        step: {"completed": True, "completed_at": now, "skipped": True}
+        for step in ["personal_info", "bank_details", "contract_signing", "payment", "kit_delivery", "training"]
+    }
+    onboarding_doc = {
+        "id": onboarding_id,
+        "growth_partner_id": partner_id,
+        "name": name,
+        "email": email,
+        "phone": phone,
+        "city": city,
+        "interest_type": interest_type,
+        "status": "active",
+        "steps": completed_steps,
+        "tracking_token": str(uuid.uuid4())[:8],
+        "notes": data.get("notes", ""),
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.gp_onboarding.insert_one(onboarding_doc)
+
+    # 3. Generate credentials
+    base_username = email.split("@")[0].lower().replace(".", "_").replace("-", "_")
+    username = base_username
+    if await db.team_users.find_one({"username": username}):
+        username = f"gp_{base_username}_{str(uuid.uuid4())[:4]}"
+
+    temp_password = "".join(random.choices(string.ascii_letters + string.digits, k=10))
+    password_hash = bcrypt.hashpw(temp_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+
+    # Get or create GP role
+    gp_role = await db.roles.find_one({"name": "Growth Partner"}, {"_id": 0})
+    if not gp_role:
+        gp_role = {
+            "id": str(uuid.uuid4()),
+            "name": "Growth Partner",
+            "permissions": ["dashboard", "students", "schools", "growth_partners"],
+            "created_at": now,
+        }
+        await db.roles.insert_one(gp_role)
+
+    team_user_id = str(uuid.uuid4())
+    team_user_doc = {
+        "id": team_user_id,
+        "email": email,
+        "name": name,
+        "username": username,
+        "password_hash": password_hash,
+        "role_id": gp_role["id"],
+        "city": city,
+        "phone": phone,
+        "permissions": ["dashboard", "students", "schools", "growth_partners"],
+        "is_growth_partner": True,
+        "gp_onboarding_id": onboarding_id,
+        "is_active": True,
+        "created_at": now,
+        "updated_at": now,
+    }
+    await db.team_users.insert_one(team_user_doc)
+
+    # 4. Link team_user back to onboarding & partner
+    await db.gp_onboarding.update_one(
+        {"id": onboarding_id},
+        {"$set": {"team_user_id": team_user_id}}
+    )
+    await db.growth_partners.update_one(
+        {"id": partner_id},
+        {"$set": {"team_user_id": team_user_id}}
+    )
+
+    return {
+        "message": "Growth Partner created and activated",
+        "partner_id": partner_id,
+        "onboarding_id": onboarding_id,
+        "username": username,
+        "email": email,
+        "temp_password": temp_password,
+        "login_url": f"{os.getenv('FRONTEND_URL', 'https://oll.co')}/admin-login",
+    }
+
 
 @router.post("/gp-onboarding/init/{partner_id}")
 async def init_gp_onboarding(

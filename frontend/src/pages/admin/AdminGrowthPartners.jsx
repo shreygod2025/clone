@@ -74,6 +74,12 @@ const AdminGrowthPartners = () => {
   const [stepData, setStepData] = useState({});
   const [showCredentialsModal, setShowCredentialsModal] = useState(null);
   
+  // Direct Add Active Partner states
+  const [showDirectAddModal, setShowDirectAddModal] = useState(false);
+  const [directAddForm, setDirectAddForm] = useState({ name: '', email: '', phone: '', city: '', interest_type: 'distributor', notes: '' });
+  const [directAddLoading, setDirectAddLoading] = useState(false);
+  const [newCredentials, setNewCredentials] = useState(null); // {username, email, temp_password, login_url}
+
   // View/Edit states
   const [editMode, setEditMode] = useState(false);
   const [editData, setEditData] = useState({ name: '', phone: '', email: '', city: '', details: '', notes: '' });
@@ -251,6 +257,24 @@ const AdminGrowthPartners = () => {
       fetchPartners();
     } catch (error) {
       toast.error('Failed to add partner');
+    }
+  };
+
+  const handleDirectAdd = async () => {
+    if (!directAddForm.name || !directAddForm.email || !directAddForm.phone) {
+      toast.error('Name, email, and phone are required');
+      return;
+    }
+    setDirectAddLoading(true);
+    try {
+      const res = await axios.post(`${API}/gp-onboarding/direct-add-active`, directAddForm, { headers: getAuthHeaders() });
+      setShowDirectAddModal(false);
+      setNewCredentials(res.data);
+      fetchPartners();
+    } catch (error) {
+      toast.error(error?.response?.data?.detail || 'Failed to create partner');
+    } finally {
+      setDirectAddLoading(false);
     }
   };
 
@@ -571,6 +595,13 @@ const AdminGrowthPartners = () => {
           data-testid="add-partner-btn"
         >
           <Plus className="w-4 h-4" /> Add Partner
+        </Button>
+        <Button
+          onClick={() => { setDirectAddForm({ name: '', email: '', phone: '', city: '', interest_type: 'distributor', notes: '' }); setShowDirectAddModal(true); }}
+          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+          data-testid="direct-add-active-btn"
+        >
+          <Plus className="w-4 h-4" /> Direct Add (Active)
         </Button>
       </div>
 
@@ -1881,6 +1912,159 @@ const AdminGrowthPartners = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ── Direct Add Active Partner Modal ─────────────────────────── */}
+      <Dialog open={showDirectAddModal} onOpenChange={setShowDirectAddModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-[#1E3A5F] flex items-center gap-2">
+              <span className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
+                <Plus className="w-4 h-4 text-emerald-700" />
+              </span>
+              Direct Add Active Partner
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <p className="text-sm text-slate-500">Creates a Growth Partner account immediately (Active status) with login credentials — no onboarding steps required.</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Full Name *</label>
+                <Input
+                  value={directAddForm.name}
+                  onChange={e => setDirectAddForm(p => ({ ...p, name: e.target.value }))}
+                  placeholder="e.g. Rahul Sharma"
+                  data-testid="direct-add-name"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Email *</label>
+                <Input
+                  type="email"
+                  value={directAddForm.email}
+                  onChange={e => setDirectAddForm(p => ({ ...p, email: e.target.value }))}
+                  placeholder="rahul@email.com"
+                  data-testid="direct-add-email"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Phone *</label>
+                <Input
+                  value={directAddForm.phone}
+                  onChange={e => setDirectAddForm(p => ({ ...p, phone: e.target.value }))}
+                  placeholder="9876543210"
+                  data-testid="direct-add-phone"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">City</label>
+                <Input
+                  value={directAddForm.city}
+                  onChange={e => setDirectAddForm(p => ({ ...p, city: e.target.value }))}
+                  placeholder="Mumbai"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Partner Type</label>
+                <select
+                  value={directAddForm.interest_type}
+                  onChange={e => setDirectAddForm(p => ({ ...p, interest_type: e.target.value }))}
+                  className="mt-1 w-full border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F]"
+                  data-testid="direct-add-type"
+                >
+                  <option value="distributor">Distributor</option>
+                  <option value="franchise">Franchise</option>
+                  <option value="reseller">Reseller</option>
+                  <option value="referral_partner">Referral Partner</option>
+                  <option value="institutional">Institutional</option>
+                </select>
+              </div>
+              <div className="col-span-2">
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Notes (optional)</label>
+                <textarea
+                  value={directAddForm.notes}
+                  onChange={e => setDirectAddForm(p => ({ ...p, notes: e.target.value }))}
+                  placeholder="Any additional notes..."
+                  rows={2}
+                  className="mt-1 w-full border border-slate-200 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E3A5F] resize-none"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 pt-1">
+              <Button variant="outline" className="flex-1" onClick={() => setShowDirectAddModal(false)}>Cancel</Button>
+              <Button
+                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={handleDirectAdd}
+                disabled={directAddLoading}
+                data-testid="direct-add-submit"
+              >
+                {directAddLoading ? 'Creating...' : 'Create Active Partner'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Credentials Modal (shown after direct add) ──────────────── */}
+      {newCredentials && (
+        <Dialog open={!!newCredentials} onOpenChange={() => setNewCredentials(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-emerald-700 flex items-center gap-2">
+                <span className="text-xl">✓</span> Partner Created — Login Credentials
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 mt-2">
+              <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-sm text-emerald-800">
+                Partner account created and set to <strong>Active</strong>. Share these credentials.
+              </div>
+              {[
+                { label: 'Email / Username', value: newCredentials.email },
+                { label: 'Username (login ID)', value: newCredentials.username },
+                { label: 'Temporary Password', value: newCredentials.temp_password, highlight: true },
+                { label: 'Login URL', value: newCredentials.login_url || 'https://oll.co/admin-login' },
+              ].map(({ label, value, highlight }) => (
+                <div key={label} className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{label}</label>
+                  <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${highlight ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'}`}>
+                    <span className={`flex-1 font-mono text-sm font-semibold ${highlight ? 'text-amber-800' : 'text-slate-700'}`}>{value}</span>
+                    <button
+                      onClick={() => { navigator.clipboard.writeText(value); toast.success('Copied!'); }}
+                      className="text-slate-400 hover:text-slate-700 transition-colors p-1 rounded"
+                      title="Copy"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2-2v8a2 2 0 002 2z" /></svg>
+                    </button>
+                  </div>
+                </div>
+              ))}
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                <p className="font-medium mb-1">Important:</p>
+                <p>Share these credentials with the Growth Partner. They should change their password upon first login.</p>
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => {
+                    const text = `OLL Growth Partner Login\nEmail: ${newCredentials.email}\nUsername: ${newCredentials.username}\nPassword: ${newCredentials.temp_password}\nLogin: ${newCredentials.login_url || 'https://oll.co/admin-login'}`;
+                    navigator.clipboard.writeText(text);
+                    toast.success('All credentials copied!');
+                  }}
+                >
+                  Copy All
+                </Button>
+                <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700" onClick={() => setNewCredentials(null)}>
+                  Done
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </AdminLayout>
   );
 };
