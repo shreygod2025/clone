@@ -488,8 +488,10 @@ async def initiate_payment(data: PaymentInitRequest):
     except HTTPException:
         raise
     except Exception as e:
-        logging.error(f"Summer camp payment initiation error: {e}")
-        raise HTTPException(status_code=500, detail="Payment initiation failed")
+        err_msg = str(e)
+        logging.error(f"Summer camp payment initiation error for booking {data.booking_id}: {err_msg}", exc_info=True)
+        # Surface the actual Cashfree error details instead of generic message
+        raise HTTPException(status_code=500, detail=f"Payment initiation failed: {err_msg}")
 
 
 @router.get("/summer-camp/verify/{booking_id}")
