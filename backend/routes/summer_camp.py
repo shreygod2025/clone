@@ -33,6 +33,39 @@ CASHFREE_ENVIRONMENT = os.getenv("CASHFREE_ENVIRONMENT", "SANDBOX")
 CASHFREE_API_VERSION = "2023-08-01"
 CAMP_PRICE = 1999.0
 
+# ── WhatsApp Enrollment Helper ────────────────────────────────────────────────
+async def _build_enrolled_wa_params(booking: dict) -> list:
+    """Build correct params list for the summercamp_enrolled WhatsApp template.
+    Template expects: {1}=child_name, {2}=batch_dates, {3}=center_address, {4}=wa_group_link
+    """
+    first_name = (booking.get("child_name") or "").split()[0] if booking.get("child_name") else "there"
+
+    # Batch dates: use stored batch_dates field, or fall back to BATCH_DATES lookup
+    batch_dates = booking.get("batch_dates") or ""
+    if not batch_dates:
+        bd = BATCH_DATES.get(booking.get("batch_week", ""), {})
+        batch_dates = bd.get("weekday") or booking.get("batch_week", "")
+
+    # Center address: look up in centers collection by center slug/id
+    center_address = booking.get("center_label") or booking.get("center") or ""
+    wa_group_link = ""
+    try:
+        cval = booking.get("center", "")
+        center_rec = await db.centers.find_one(
+            {"$or": [{"id": cval}, {"slug": cval}, {"name": {"$regex": cval, "$options": "i"}}]},
+            {"_id": 0, "address": 1, "wa_group_link": 1}
+        )
+        if center_rec:
+            center_address = center_rec.get("address") or center_address
+            wa_group_link = center_rec.get("wa_group_link") or ""
+    except Exception:
+        pass
+
+    if not wa_group_link:
+        wa_group_link = os.environ.get("SUMMERCAMP_WA_GROUP_LINK", "Contact your center for the WhatsApp group link")
+
+    return [first_name, batch_dates or "See confirmation email for dates", center_address, wa_group_link]
+
 if CASHFREE_AVAILABLE and CASHFREE_APP_ID and CASHFREE_SECRET_KEY:
     Cashfree.XClientId = CASHFREE_APP_ID
     Cashfree.XClientSecret = CASHFREE_SECRET_KEY
@@ -283,10 +316,11 @@ async def complete_lead(booking_id: str, data: CompleteLead):
             from .notifications import send_whatsapp_notification
             phone = booking.get("parent_phone", "")
             first_name = (data.child_name or "").split()[0] if data.child_name else "there"
+            params = await _build_enrolled_wa_params(booking)
             await send_whatsapp_notification(
                 phone=phone,
                 template_key="summercamp_enrolled",
-                params=[first_name, first_name, first_name, first_name],
+                params=params,
                 user_name=first_name,
             )
             logging.info(f"[WA] Enrollment message sent for cash booking {booking_id}")
@@ -356,10 +390,19 @@ async def register_summer_camp(data: SummerCampRegistration):
         try:
             from .notifications import send_whatsapp_notification
             first_name = (data.child_name or "").split()[0] if data.child_name else "there"
+            # Build a minimal booking dict from the submitted data for param lookup
+            booking_dict = {
+                "child_name": data.child_name,
+                "batch_week": data.batch_week,
+                "batch_dates": getattr(data, "batch_dates", None),
+                "center": data.center,
+                "center_label": getattr(data, "center_label", None),
+            }
+            params = await _build_enrolled_wa_params(booking_dict)
             await send_whatsapp_notification(
                 phone=data.parent_phone,
                 template_key="summercamp_enrolled",
-                params=[first_name, first_name, first_name, first_name],
+                params=params,
                 user_name=first_name,
             )
             logging.info(f"[WA] Enrollment message sent for direct cash registration {booking_ref}")
@@ -488,10 +531,11 @@ async def verify_payment(booking_id: str):
                     from .notifications import send_whatsapp_notification
                     phone = booking.get("parent_phone", "")
                     first_name = (booking.get("child_name") or "").split()[0] or "there"
+                    params = await _build_enrolled_wa_params(booking)
                     await send_whatsapp_notification(
                         phone=phone,
                         template_key="summercamp_enrolled",
-                        params=[first_name, first_name, first_name, first_name],
+                        params=params,
                         user_name=first_name,
                     )
                 except Exception as wa_err:
@@ -536,10 +580,11 @@ async def summer_camp_webhook(request: Request):
                     from .notifications import send_whatsapp_notification
                     phone = booking.get("parent_phone", "")
                     first_name = (booking.get("child_name") or "").split()[0] or "there"
+                    params = await _build_enrolled_wa_params(booking)
                     await send_whatsapp_notification(
                         phone=phone,
                         template_key="summercamp_enrolled",
-                        params=[first_name, first_name, first_name, first_name],
+                        params=params,
                         user_name=first_name,
                     )
                     logging.info(f"[WA] Enrollment message sent for online booking {order_id}")

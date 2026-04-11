@@ -27,6 +27,7 @@ const AdminCenters = () => {
     contact_phone: '',
     contact_email: '',
     google_maps_link: '',
+    wa_group_link: '',
     is_active: true
   });
 
@@ -100,6 +101,7 @@ const AdminCenters = () => {
       contact_phone: '',
       contact_email: '',
       google_maps_link: '',
+      wa_group_link: '',
       is_active: true
     });
   };
@@ -114,6 +116,7 @@ const AdminCenters = () => {
       contact_phone: center.contact_phone,
       contact_email: center.contact_email || '',
       google_maps_link: center.google_maps_link || '',
+      wa_group_link: center.wa_group_link || '',
       is_active: center.is_active
     });
     setShowForm(true);
@@ -304,6 +307,15 @@ const AdminCenters = () => {
                 onChange={(e) => setFormData({...formData, google_maps_link: e.target.value})}
                 placeholder="https://maps.google.com/..."
                 data-testid="center-maps"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">WhatsApp Group Link <span className="text-slate-400 font-normal text-xs">(for Summer Camp seat confirmation)</span></label>
+              <Input
+                value={formData.wa_group_link}
+                onChange={(e) => setFormData({...formData, wa_group_link: e.target.value})}
+                placeholder="https://chat.whatsapp.com/..."
+                data-testid="center-wa-group"
               />
             </div>
             <div className="flex items-center justify-between">
