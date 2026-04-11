@@ -176,7 +176,7 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - [x] Admin Payment Tracker enhancements
 - [x] Invoice visibility bug in AdminOrders.jsx - FIXED
 - [x] Add Expense: optional school + invoice upload in popup - DONE 2026-04-11
-- [x] Invoice GST fix: remove auto-Maharashtra default, IGST for inter-state schools - DONE 2026-04-11
+- [x] AI convert_lead: creates onboarding_workflow + payment tranches + GST/state setup - DONE 2026-04-11
 - [x] State field in Convert/Renewal/EditOnboarding modals (Indian states dropdown) - DONE 2026-04-11
 
 ### P1 - High Priority

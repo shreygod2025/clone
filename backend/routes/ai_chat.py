@@ -48,7 +48,17 @@ You are a fast, decisive AI operator for the OLL School CRM. Your job is to GET 
   statuses → new | meeting_done | converted | active | renewal_meeting | renewed | lost | lost_lead | archived
   IMPORTANT: Do NOT use follow_up as a status — it does NOT exist in the CRM. For follow-up requests, use schedule_followup action instead.
 - add_note: { type, school_id, school_name, note }
-- convert_lead: { type, school_id, school_name, conversion_amount? }
+- convert_lead: { type, school_id, school_name, conversion_amount?, gst_type?, state?, payment_tranches? }
+  conversion_amount → total deal value in ₹ (number, no commas/symbols)
+  gst_type → "inclusive_18" | "exclusive_18" | "book_gst_0" (default: "exclusive_18")
+  state → Indian state name e.g. "Haryana", "Maharashtra". Required for correct IGST vs CGST/SGST on invoices.
+  payment_tranches → array of tranche objects: [{ percentage: 100, date: "YYYY-MM-DD", notes?: "" }]
+    - percentages must sum to 100. Use "YYYY-MM-DD" for dates. "11 april" → "2026-04-11"
+    - e.g. single payment: [{ percentage: 100, date: "2026-04-11" }]
+    - e.g. two tranches: [{ percentage: 50, date: "2026-04-11" }, { percentage: 50, date: "2026-05-01" }]
+  IMPORTANT: ALWAYS provide gst_type, state, and payment_tranches when converting a lead. Without payment_tranches, invoices CANNOT be generated.
+  EXAMPLE: user says "mark X as converted, Haryana, GST inclusive, 100% by 11 april" →
+    { type: "convert_lead", school_id: "...", school_name: "X", gst_type: "inclusive_18", state: "Haryana", payment_tranches: [{ percentage: 100, date: "2026-04-11" }] }
 - send_email: { type, school_id, school_name, email_type, to_email? }
   email_type → introduction | meeting_confirmation | proposal | mou | followup
 - raise_ticket: { type, title, description, priority, school_id?, school_name? }
@@ -310,22 +320,101 @@ async def _execute(action: dict, user: dict) -> dict:
         elif t == "convert_lead":
             if not sid:
                 return {"status": "error", "detail": "school_id required"}
-            upd = {"status": "converted", "updated_at": now}
+
+            # Parse conversion amount
+            lead_value = None
             if action.get("conversion_amount"):
                 try:
-                    upd["lead_value"] = float(
+                    lead_value = float(
                         str(action["conversion_amount"]).replace(",", "").replace("₹", "").strip()
                     )
                 except ValueError:
                     pass
+
+            # Build/merge onboarding_data
+            existing = await db.school_inquiries.find_one({"id": sid}, {"_id": 0, "onboarding_data": 1, "onboarding_workflow": 1})
+            merged_onboard = dict((existing or {}).get("onboarding_data") or {})
+
+            gst_type = action.get("gst_type") or merged_onboard.get("gst_type") or "exclusive_18"
+            state = action.get("state") or merged_onboard.get("state") or ""
+            total_amount = lead_value or merged_onboard.get("total_amount") or 0
+
+            # Build payment tranches
+            ai_tranches = action.get("payment_tranches") or []
+            if ai_tranches:
+                built_tranches = []
+                for tr in ai_tranches:
+                    pct = float(tr.get("percentage") or 100)
+                    amt = round(total_amount * pct / 100, 2) if total_amount else 0
+                    built_tranches.append({
+                        "percentage": pct,
+                        "amount": amt,
+                        "date": tr.get("date") or "",
+                        "notes": tr.get("notes") or "",
+                        "status": "pending",
+                    })
+                merged_onboard["payment_tranches"] = built_tranches
+            elif not merged_onboard.get("payment_tranches") and total_amount:
+                merged_onboard["payment_tranches"] = [{
+                    "percentage": 100,
+                    "amount": total_amount,
+                    "date": "",
+                    "notes": "",
+                    "status": "pending",
+                }]
+
+            merged_onboard["gst_type"] = gst_type
+            if state:
+                merged_onboard["state"] = state
+            if total_amount:
+                merged_onboard["total_amount"] = total_amount
+
+            # Build onboarding_workflow if not already present
+            from routes.schools import generate_dynamic_onboarding_steps
+            import copy
+            existing_workflow = (existing or {}).get("onboarding_workflow")
+            if not existing_workflow:
+                tracking_token = f"oll-{uuid.uuid4().hex[:12]}"
+                steps = generate_dynamic_onboarding_steps(merged_onboard, is_renewal=False)
+                # Mark MOU as complete since AI-converted schools skip MOU step
+                if "mou_signing" in steps:
+                    steps["mou_signing"]["completed"] = True
+                    steps["mou_signing"]["completed_date"] = now
+                onboarding_workflow = {
+                    "tracking_token": tracking_token,
+                    "started_at": now,
+                    "completed_at": None,
+                    "current_step": "payment_collection",
+                    "is_renewal": False,
+                    "steps": steps,
+                    "timeline": [
+                        {"action": "School Converted via AI Chat", "date": now,
+                         "by": user.get("name", user.get("email", "Admin"))}
+                    ]
+                }
+            else:
+                onboarding_workflow = existing_workflow
+
+            upd = {
+                "status": "converted",
+                "updated_at": now,
+                "onboarding_data": merged_onboard,
+                "onboarding_workflow": onboarding_workflow,
+            }
+            if state:
+                upd["state"] = state
+            if lead_value is not None:
+                upd["lead_value"] = lead_value
+
             res = await db.school_inquiries.update_one(
                 {"id": sid},
                 {"$set": upd,
-                 "$push": {"activity_log": log("Lead converted to customer via AI Chat")}}
+                 "$push": {"activity_log": log(f"Lead converted via AI Chat. state={state}, gst={gst_type}, tranches={len(merged_onboard.get('payment_tranches',[]))}")}}
             )
             if res.matched_count == 0:
                 return {"status": "error", "detail": "School not found"}
-            return {"status": "success", "detail": "Marked as converted customer"}
+            tranche_count = len(merged_onboard.get("payment_tranches") or [])
+            return {"status": "success", "detail": f"Marked as converted with onboarding tracker. {tranche_count} payment tranche(s) set. State={state or 'not set'}, GST={gst_type}."}
 
         # ── SEND EMAIL ───────────────────────────────────────────────
         elif t == "send_email":
