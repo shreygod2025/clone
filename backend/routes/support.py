@@ -14,6 +14,18 @@ from .notifications import send_whatsapp_notification, send_ticket_overdue_notif
 
 router = APIRouter()
 
+# ── Ticket Number Counter ───────────────────────────────────────────────────────
+async def get_next_ticket_number() -> str:
+    """Atomically increment and return next ticket number as zero-padded string."""
+    result = await db.counters.find_one_and_update(
+        {"key": "ticket_number"},
+        {"$inc": {"seq": 1}},
+        upsert=True,
+        return_document=True,  # return AFTER update
+    )
+    num = result["seq"]
+    return str(num).zfill(4)  # 0001, 0002, ... 9999, 10000, ...
+
 # ── Models ─────────────────────────────────────────────────────────────────────
 # (Models are defined inline in the route functions or pulled from server-level schema)
 
@@ -49,6 +61,28 @@ async def reset_overdue_flags(user: dict = Depends(get_current_user)):
     return {"message": f"Reset {result.modified_count} tickets", "count": result.modified_count}
 
 
+@router.post("/support/backfill-ticket-numbers")
+async def backfill_ticket_numbers(user: dict = Depends(get_current_user)):
+    """One-time migration: assign sequential ticket_number to all tickets missing one."""
+    tickets = await db.support_queries.find(
+        {"ticket_number": {"$in": [None, "", 0]}},
+        {"_id": 0, "id": 1, "created_at": 1}
+    ).sort("created_at", 1).to_list(10000)
+
+    updated = 0
+    for ticket in tickets:
+        num = await get_next_ticket_number()
+        await db.support_queries.update_one(
+            {"id": ticket["id"]},
+            {"$set": {"ticket_number": num}}
+        )
+        updated += 1
+
+    # Find the current max seq
+    counter = await db.counters.find_one({"key": "ticket_number"}, {"_id": 0})
+    return {"message": f"Backfilled {updated} tickets", "next_ticket_number": str((counter or {}).get("seq", 0) + 1).zfill(4)}
+
+
 
 async def create_school_support_query(data: dict):
     query = SchoolSupportQuery(**data)
@@ -61,10 +95,11 @@ async def create_school_support_query(data: dict):
 @router.post("/support/query")
 async def create_support_query(data: dict):
     data['id'] = str(uuid.uuid4())
+    data['ticket_number'] = await get_next_ticket_number()
     data['status'] = 'open'
     data['created_at'] = datetime.now(timezone.utc).isoformat()
     await db.support_queries.insert_one(data)
-    return {"message": "Query submitted successfully", "id": data['id']}
+    return {"message": "Query submitted successfully", "id": data['id'], "ticket_number": data['ticket_number']}
 
 @router.get("/support/queries")
 async def get_support_queries(
@@ -758,6 +793,7 @@ async def create_support_query(data: dict, user: dict = Depends(get_current_user
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "comments": [],
         "assigned_to": data.get("assigned_to"),
+        "ticket_number": await get_next_ticket_number(),
     }
     await db.support_queries.insert_one(doc)
     

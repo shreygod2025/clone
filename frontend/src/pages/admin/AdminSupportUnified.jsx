@@ -1212,6 +1212,12 @@ const AdminSupportUnified = () => {
             >
               <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
                 <div className="flex flex-wrap items-center gap-2">
+                  {/* Ticket Number Badge - prominent */}
+                  {query.ticket_number && (
+                    <span className="font-mono font-bold text-sm px-2.5 py-1 rounded-lg bg-slate-800 text-white tracking-wide" data-testid={`ticket-number-${query.id}`}>
+                      #{query.ticket_number}
+                    </span>
+                  )}
                   {isOverdue(query) && (
                     <span className="badge-status bg-red-100 text-red-700 flex items-center gap-1">
                       <AlertTriangle className="w-3 h-3" />
@@ -1478,6 +1484,11 @@ const AdminSupportUnified = () => {
             <DialogTitle className="flex items-center gap-2">
               <MessageSquare className="w-5 h-5 text-[#D63031]" />
               Query Conversation
+              {showReplyModal?.ticket_number && (
+                <span className="font-mono font-bold text-xs px-2 py-0.5 rounded-md bg-slate-800 text-white ml-1">
+                  #{showReplyModal.ticket_number}
+                </span>
+              )}
             </DialogTitle>
           </DialogHeader>
           {showReplyModal && (

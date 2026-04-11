@@ -64,7 +64,11 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
-### 2026-04-11 — Add Expense: Optional School + Invoice Upload in Popup
+### 2026-04-11 — Ticket Numbers Added to Support Center
+1. **Sequential ticket numbers** — new `ticket_number` field (e.g., `0001`, `0042`) using atomic MongoDB counter in `counters` collection
+2. **Backfilled all 30 existing tickets** — `/api/support/backfill-ticket-numbers` endpoint ran successfully (next ticket = `#0031`)
+3. **UI**: Dark pill badge `#XXXX` shown first on every ticket card in `AdminSupportUnified.jsx`. Also shown in Reply modal dialog title.
+4. Files: `backend/routes/support.py`, `frontend/src/pages/admin/AdminSupportUnified.jsx`
 **Features Added:**
 1. **School field now optional** in Add Expense modal — removed `school_id` from required validation in `AdminExpenses.jsx`. Expenses without a school are saved with `school_name: "General"`.
 2. **Invoice upload visible in Add mode** — previously only shown in Edit mode (`{editingExpense && ...}`). Now always visible in both Add and Edit modals.
