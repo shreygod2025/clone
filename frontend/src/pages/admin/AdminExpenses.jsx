@@ -114,7 +114,7 @@ const AdminExpenses = () => {
   };
 
   const handleSubmit = async () => {
-    if (!expenseForm.school_id || !expenseForm.category || !expenseForm.amount) {
+    if (!expenseForm.category || !expenseForm.amount) {
       toast.error('Please fill in required fields');
       return;
     }
@@ -684,7 +684,7 @@ const AdminExpenses = () => {
           <div className="space-y-4 overflow-y-auto flex-1 pr-2">
             {/* School Selection - Searchable */}
             <div ref={schoolDropdownRef} className="relative">
-              <label className="block text-sm font-medium text-slate-700 mb-1">School *</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">School <span className="text-slate-400 font-normal">(optional)</span></label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
@@ -901,8 +901,8 @@ const AdminExpenses = () => {
               </div>
             )}
 
-            {/* Invoice Upload - only in edit mode */}
-            {editingExpense && (
+            {/* Invoice Upload */}
+            {(
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Upload Invoice Document</label>
                 <div className="space-y-2">
