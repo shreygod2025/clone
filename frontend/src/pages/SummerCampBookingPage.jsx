@@ -124,7 +124,6 @@ export default function SummerCampBookingPage() {
   const [capturedBookingId, setCapturedBookingId] = useState(null);
   const [centers, setCenters] = useState([]);
   const [availability, setAvailability] = useState({});
-  const [showLaptopNotice, setShowLaptopNotice] = useState(false);
 
   const [form, setForm] = useState({
     age_group: preAge || '',
@@ -169,7 +168,6 @@ export default function SummerCampBookingPage() {
 
   const goBack = () => {
     setError('');
-    setShowLaptopNotice(false);
     if (step === 0) { navigate('/summer-camp'); return; }
     setStep(s => s - 1);
   };
@@ -300,12 +298,7 @@ export default function SummerCampBookingPage() {
                     selected={form.age_group === g.slug}
                     onClick={() => {
                       update('age_group')(g.slug);
-                      if (g.laptop) {
-                        setShowLaptopNotice(true);
-                      } else {
-                        setShowLaptopNotice(false);
-                        setTimeout(goNext, 200);
-                      }
+                      setTimeout(goNext, 200);
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -319,23 +312,6 @@ export default function SummerCampBookingPage() {
                 ))}
               </div>
 
-              {/* Laptop notice banner */}
-              {showLaptopNotice && (
-                <div style={{ marginTop: '1.5rem', background: 'rgba(214,48,49,0.08)', border: '1px solid rgba(214,48,49,0.28)', borderRadius: '1rem', padding: '1.1rem 1.25rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: '1.1rem' }}>
-                    <Laptop style={{ width: 22, height: 22, color: '#D63031', flexShrink: 0, marginTop: 1 }} />
-                    <div>
-                      <p style={{ fontFamily: JB, fontWeight: 700, fontSize: '0.92rem', color: '#D63031', marginBottom: '0.3rem' }}>Laptop Required</p>
-                      <p style={{ fontFamily: NU, fontSize: '0.88rem', color: '#94A3B8', lineHeight: 1.55, fontWeight: 500 }}>
-                        A laptop is compulsory for this age group. Please ensure your child brings their own laptop to every session.
-                      </p>
-                    </div>
-                  </div>
-                  <PrimaryBtn onClick={() => { setShowLaptopNotice(false); goNext(); }}>
-                    Got it, Continue <ArrowRight style={{ width: 17, height: 17 }} />
-                  </PrimaryBtn>
-                </div>
-              )}
             </div>
           )}
 
