@@ -440,12 +440,20 @@ async def initiate_payment(data: PaymentInitRequest):
     if len(cf_name.replace(" ", "")) < 3:
         cf_name = "OLL Parent"
 
+    # Sanitize phone: Cashfree requires exactly 10 digits (no country code, no spaces/dashes)
+    raw_phone = booking.get("parent_phone") or "9999999999"
+    cf_phone = re.sub(r'\D', '', raw_phone)  # strip all non-digit chars
+    if len(cf_phone) > 10:
+        cf_phone = cf_phone[-10:]            # strip leading country code (91/+91)
+    if len(cf_phone) < 10:
+        cf_phone = "9999999999"              # fallback for malformed numbers
+
     try:
         customer = CashfreeCustomerDetails(
             customer_id=booking["id"][:50],
             customer_name=cf_name,
             customer_email=booking.get("parent_email") or f"{booking['id'][:8]}@oll.co",
-            customer_phone=booking.get("parent_phone") or "9999999999",
+            customer_phone=cf_phone,
         )
         order_meta = OrderMeta(
             return_url=f"{frontend_url}/summer-camp/success?order_id={order_id}&booking_id={booking['id']}",

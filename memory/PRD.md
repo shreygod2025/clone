@@ -182,6 +182,9 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - [x] Add Expense: optional school + invoice upload in popup - DONE 2026-04-11
 - [x] AI convert_lead: creates onboarding_workflow + payment tranches + GST/state setup - DONE 2026-04-11
 - [x] State field in Convert/Renewal/EditOnboarding modals (Indian states dropdown) - DONE 2026-04-11
+- [x] Cashfree phone sanitization fix (strip +91/country code before API call) - DONE 2026-04-11
+- [x] Laptop Required reminder on Step 4 booking page (no checkbox) - DONE 2026-04-11
+
 
 ### P1 - High Priority
 - [ ] E2E testing of Summer Camp booking flow (testing_agent_v4_fork)

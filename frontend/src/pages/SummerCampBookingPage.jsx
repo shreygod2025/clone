@@ -454,6 +454,19 @@ export default function SummerCampBookingPage() {
                 <span style={{ fontFamily: JB, fontWeight: 900, color: '#00E5FF', fontSize: '1.1rem' }}>₹1,999</span>
               </div>
 
+              {/* Laptop reminder — informational only, no action needed */}
+              {selectedAge?.laptop && (
+                <div style={{ background: 'rgba(214,48,49,0.07)', border: '1px solid rgba(214,48,49,0.22)', borderRadius: '0.875rem', padding: '0.9rem 1.1rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                  <Laptop style={{ width: 18, height: 18, color: '#D63031', flexShrink: 0, marginTop: 2 }} />
+                  <div>
+                    <p style={{ fontFamily: JB, fontWeight: 700, fontSize: '0.82rem', color: '#D63031', marginBottom: '0.2rem' }}>Laptop Required</p>
+                    <p style={{ fontFamily: NU, fontSize: '0.84rem', color: '#94A3B8', lineHeight: 1.5, fontWeight: 500 }}>
+                      Please ensure your child brings their own laptop to every session.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.35rem' }}>
                 <InputField label="Child's Name"   id="child_name"   value={form.child_name}   onChange={e => update('child_name')(e.target.value)}   placeholder="e.g. Aryan Kumar"    required autoFocus />
                 <InputField label="Parent's Email" id="parent_email" type="email" value={form.parent_email} onChange={e => update('parent_email')(e.target.value)} placeholder="e.g. rajesh@gmail.com" required />
