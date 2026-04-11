@@ -231,11 +231,51 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
     ? new Date(payment.due_date).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })
     : invoiceDate;
 
-  const schoolState = schoolData?.state || schoolData?.onboarding_data?.state || '';
+  const INDIAN_STATES_LIST = [
+    'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+    'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+    'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
+    'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
+    'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+    'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Chandigarh', 'Puducherry',
+    'Andaman and Nicobar', 'Lakshadweep', 'Dadra and Nagar Haveli',
+  ];
+
+  const STATE_GST_CODES = {
+    'Andhra Pradesh': '37', 'Arunachal Pradesh': '12', 'Assam': '18', 'Bihar': '10',
+    'Chhattisgarh': '22', 'Goa': '30', 'Gujarat': '24', 'Haryana': '06',
+    'Himachal Pradesh': '02', 'Jharkhand': '20', 'Karnataka': '29', 'Kerala': '32',
+    'Madhya Pradesh': '23', 'Maharashtra': '27', 'Manipur': '14', 'Meghalaya': '17',
+    'Mizoram': '15', 'Nagaland': '13', 'Odisha': '21', 'Punjab': '03',
+    'Rajasthan': '08', 'Sikkim': '11', 'Tamil Nadu': '33', 'Telangana': '36',
+    'Tripura': '16', 'Uttar Pradesh': '09', 'Uttarakhand': '05', 'West Bengal': '19',
+    'Delhi': '07', 'Jammu and Kashmir': '01', 'Ladakh': '38', 'Chandigarh': '04',
+    'Puducherry': '34', 'Andaman and Nicobar': '35', 'Lakshadweep': '31',
+    'Dadra and Nagar Haveli': '26',
+  };
+
+  // Detect state from address text when not explicitly stored
+  const detectStateFromAddress = (addr) => {
+    if (!addr) return '';
+    const lower = addr.toLowerCase();
+    // Check longer names first to avoid partial matches
+    const sorted = [...INDIAN_STATES_LIST].sort((a, b) => b.length - a.length);
+    for (const s of sorted) {
+      if (lower.includes(s.toLowerCase())) return s;
+    }
+    return '';
+  };
+
+  const rawStateField = schoolData?.state || schoolData?.onboarding_data?.state || '';
+  const fullAddressForDetection = [
+    schoolData?.address, schoolData?.onboarding_data?.address,
+    schoolData?.location, schoolData?.city,
+  ].filter(Boolean).join(', ');
+  const schoolState = rawStateField || detectStateFromAddress(fullAddressForDetection);
   const isMaharashtra = schoolState.toLowerCase().includes('maharashtra');
-  const stateCode = isMaharashtra ? '27' : '';
+  const gstStateCode = STATE_GST_CODES[schoolState] || '';
   const placeOfSupply = schoolState
-    ? (stateCode ? `${schoolState} (${stateCode})` : schoolState)
+    ? (gstStateCode ? `${schoolState} (${gstStateCode})` : schoolState)
     : 'Maharashtra (27)';
 
   doc.setFontSize(8);
