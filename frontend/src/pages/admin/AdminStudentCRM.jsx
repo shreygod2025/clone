@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Eye, Phone, Calendar, Clock, Plus, ChevronRight, ChevronDown, MessageSquare, Archive, CalendarClock, CheckCircle2, X, User, Mail, MapPin, Target, BookOpen, Send, UserPlus, Edit, Save, Video, Navigation, Home, ExternalLink, Bell, Upload, CreditCard, Link2, Copy, Loader2, Trash2, BarChart2, TrendingUp, AlertCircle, Check } from 'lucide-react';
+import { Search, Eye, Phone, Calendar, Clock, Plus, ChevronRight, ChevronDown, MessageSquare, Archive, CalendarClock, CheckCircle2, X, User, Mail, MapPin, Target, BookOpen, Send, UserPlus, Edit, Save, Video, Navigation, Home, ExternalLink, Bell, Upload, CreditCard, Link2, Copy, Loader2, Trash2, BarChart2, TrendingUp, AlertCircle, Check, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -927,6 +929,55 @@ const AdminStudentCRM = () => {
     return matchesSearch && matchesSection && matchesAssignee;
   });
 
+  // ── Export Helpers ───────────────────────────────────────────────────────────
+  const exportStudentCRMToExcel = () => {
+    const sectionLabel = STATUS_SECTIONS.find(s => s.value === activeSection)?.label || activeSection;
+    const rows = (activeSection === 'summer_camp' ? [] : filteredInquiries).map(inq => ({
+      'Name': inq.name || '',
+      'Phone': inq.phone || '',
+      'Email': inq.email || '',
+      'Status': inq.status || '',
+      'Age Group': inq.age_group || '',
+      'Skills': Array.isArray(inq.skills) ? inq.skills.join(', ') : (inq.skill || ''),
+      'Learning Mode': inq.learning_mode || '',
+      'City': inq.city || '',
+      'Demo Date': inq.demo_date || '',
+      'Demo Time': inq.demo_time || '',
+      'Source': inq.source || '',
+      'Assigned To': (teamUsers.find(u => u.id === inq.assigned_to)?.name) || inq.assigned_to || 'Unassigned',
+      'Notes': inq.notes || '',
+      'Created At': inq.created_at ? inq.created_at.slice(0, 10) : '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, sectionLabel.slice(0, 31));
+    const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    saveAs(new Blob([buf], { type: 'application/octet-stream' }), `Student_CRM_${sectionLabel}_${new Date().toISOString().slice(0,10)}.xlsx`);
+  };
+
+  const exportSummerCampToExcel = (bookings) => {
+    const rows = bookings.map(b => ({
+      'Name': b.student_name || b.name || '',
+      'Phone': b.phone || '',
+      'Email': b.email || '',
+      'Parent Name': b.parent_name || '',
+      'Age Group': b.age_group || '',
+      'Center': b.center_label || b.center || '',
+      'Batch': b.batch_label || b.batch_week || '',
+      'CRM Status': b.crm_status || '',
+      'Payment Status': b.payment_status || '',
+      'Amount Paid (₹)': b.amount || b.payment_amount || '',
+      'Source': b.source_name || b.source || 'Direct',
+      'Booking Date': b.created_at ? b.created_at.slice(0, 10) : '',
+      'Comments': b.comments || '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Summer Camp');
+    const buf = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    saveAs(new Blob([buf], { type: 'application/octet-stream' }), `SummerCamp_CRM_${new Date().toISOString().slice(0,10)}.xlsx`);
+  };
+
   const getCount = (status) => status === 'summer_camp' ? summerCampBookings.length : inquiries.filter(i => i.status === status).length;
 
   // Notify not joined - for student or educator
@@ -1128,6 +1179,15 @@ const AdminStudentCRM = () => {
             ))}
           </select>
           <Button
+            onClick={exportStudentCRMToExcel}
+            variant="outline"
+            className="flex items-center gap-2 flex-1 sm:flex-none justify-center border-slate-300 text-slate-600 hover:bg-slate-50"
+            data-testid="export-student-crm-btn"
+            disabled={activeSection === 'summer_camp'}
+          >
+            <Download className="w-4 h-4" /> Export
+          </Button>
+          <Button
             onClick={() => setShowAddForm(true)}
             className="btn-primary flex items-center gap-2 flex-1 sm:flex-none justify-center"
             data-testid="add-lead-btn"
@@ -1209,23 +1269,35 @@ const AdminStudentCRM = () => {
 
                   return (
                     <>
-                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 mb-4">
-                        {kpiCards.map(k => {
-                          const isActive = campFilters.status === k.filterVal;
-                          return (
-                            <button
-                              key={k.label}
-                              onClick={() => setFilter('status', isActive ? '' : k.filterVal)}
-                              className={`rounded-xl border p-3 text-center transition-all flex flex-col items-center gap-0.5 ${isActive ? k.activeColor + ' shadow-md' : k.color + ' hover:opacity-80'}`}
-                            >
-                              <div className="text-2xl font-bold">{k.value}</div>
-                              <div className="text-xs font-semibold flex items-center gap-1">
-                                {k.label}
-                                <ChevronDown className={`w-3 h-3 transition-transform ${isActive ? 'rotate-180' : ''}`} />
-                              </div>
-                            </button>
-                          );
-                        })}
+                      {/* KPI cards + Export button row */}
+                      <div className="flex items-center justify-between gap-3 mb-4">
+                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 flex-1">
+                          {kpiCards.map(k => {
+                            const isActive = campFilters.status === k.filterVal;
+                            return (
+                              <button
+                                key={k.label}
+                                onClick={() => setFilter('status', isActive ? '' : k.filterVal)}
+                                className={`rounded-xl border p-3 text-center transition-all flex flex-col items-center gap-0.5 ${isActive ? k.activeColor + ' shadow-md' : k.color + ' hover:opacity-80'}`}
+                              >
+                                <div className="text-2xl font-bold">{k.value}</div>
+                                <div className="text-xs font-semibold flex items-center gap-1">
+                                  {k.label}
+                                  <ChevronDown className={`w-3 h-3 transition-transform ${isActive ? 'rotate-180' : ''}`} />
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <Button
+                          onClick={() => exportSummerCampToExcel(filteredCampBookings)}
+                          variant="outline"
+                          className="flex items-center gap-2 border-orange-300 text-orange-700 hover:bg-orange-50 shrink-0"
+                          data-testid="export-summer-camp-btn"
+                        >
+                          <Download className="w-4 h-4" />
+                          <span className="hidden sm:inline">Export</span> ({filteredCampBookings.length})
+                        </Button>
                       </div>
 
                       {/* Filter dropdowns */}
