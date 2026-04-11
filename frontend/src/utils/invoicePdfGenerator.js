@@ -140,7 +140,7 @@ function calculateGST(amount, gstType, schoolState) {
     gstAmount = amount * gstRate / 100;
   }
 
-  const isIntraState = !schoolState || schoolState.toLowerCase().includes('maharashtra');
+  const isIntraState = schoolState ? schoolState.toLowerCase().includes('maharashtra') : true;
 
   if (isIntraState) {
     return {
@@ -231,9 +231,12 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
     ? new Date(payment.due_date).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })
     : invoiceDate;
 
-  const schoolState = schoolData?.state || schoolData?.onboarding_data?.state || 'Maharashtra';
-  const stateCode = schoolState.toLowerCase().includes('maharashtra') ? '27' : '';
-  const placeOfSupply = stateCode ? `${schoolState} (${stateCode})` : schoolState || 'Maharashtra (27)';
+  const schoolState = schoolData?.state || schoolData?.onboarding_data?.state || '';
+  const isMaharashtra = schoolState.toLowerCase().includes('maharashtra');
+  const stateCode = isMaharashtra ? '27' : '';
+  const placeOfSupply = schoolState
+    ? (stateCode ? `${schoolState} (${stateCode})` : schoolState)
+    : 'Maharashtra (27)';
 
   doc.setFontSize(8);
   const detailsLeft = innerLeft + 2;
@@ -268,8 +271,9 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
   const rawAddr = schoolData?.address || schoolData?.onboarding_data?.address || '';
   const cityVal = schoolData?.city || schoolData?.onboarding_data?.city || '';
   const pincode = schoolData?.pincode || schoolData?.onboarding_data?.pincode || '';
-  const addrParts = [rawAddr, cityVal, pincode ? `${schoolState} - ${pincode}` : schoolState].filter(Boolean);
-  const schoolAddress = addrParts.join(', ') || schoolState;
+  const statePinPart = schoolState && pincode ? `${schoolState} - ${pincode}` : pincode || schoolState;
+  const addrParts = [rawAddr, cityVal, statePinPart].filter(Boolean);
+  const schoolAddress = addrParts.join(', ');
   const schoolGSTIN = schoolData?.gstin || schoolData?.onboarding_data?.gstin || '';
   const halfWidth = contentWidth / 2 - 2;
 

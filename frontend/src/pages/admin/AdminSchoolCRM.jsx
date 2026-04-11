@@ -22,6 +22,16 @@ import { SchoolMapPicker } from '../../components/SchoolMapPicker';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+const INDIAN_STATES = [
+  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
+  'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
+  'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya', 'Mizoram',
+  'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
+  'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+  'Andaman and Nicobar Islands', 'Chandigarh', 'Dadra and Nagar Haveli and Daman and Diu',
+  'Delhi', 'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry'
+];
+
 const TICKET_SOURCE_OPTIONS = [
   { value: 'school_crm', label: 'School CRM' },
   { value: 'phone_call', label: 'Phone Call' },
@@ -611,7 +621,8 @@ const AdminSchoolCRM = () => {
     gp_share_calc: 'lumpsum', // 'per_student', 'lumpsum'
     gp_share_value: '',
     gp_share_amount: 0,
-    address: '' // School address
+    address: '', // School address
+    state: '' // School state for GST determination
   });
   const [uploadingRenewalMOU, setUploadingRenewalMOU] = useState(false);
   const [meetingDoneData, setMeetingDoneData] = useState({ 
@@ -684,7 +695,8 @@ const AdminSchoolCRM = () => {
     course_type: '', // only_robotics, robotics_coding_ai
     training_type: '',
     programs: [],
-    address: ''
+    address: '',
+    state: ''
   });
   const [followupData, setFollowupData] = useState({ 
     followup_type: '', // 'message' or 'meeting'
@@ -1575,6 +1587,7 @@ ${FOOTER}</div></body></html>`
         status: 'converted',
         conversion_amount: convertData.amount,
         address: convertData.address,
+        state: convertData.state,
         initial_onboard_data: {
           model: convertData.model,
           book_type: convertData.book_type,
@@ -1605,7 +1618,7 @@ ${FOOTER}</div></body></html>`
       }
       
       setShowConvertModal(null);
-      setConvertData({ amount: '', model: '', book_type: '', kit_type: '', lab_kit_count: '', course_type: '', training_type: '', programs: [], address: '' });
+      setConvertData({ amount: '', model: '', book_type: '', kit_type: '', lab_kit_count: '', course_type: '', training_type: '', programs: [], address: '', state: '' });
       fetchInquiries();
     } catch (error) {
       toast.error('Failed to convert');
@@ -1741,6 +1754,7 @@ ${FOOTER}</div></body></html>`
       contract_end: '',
       mou_url: '',
       address: inquiry.address || existingData.address || '',
+      state: inquiry.state || existingData.state || '',
       latitude: inquiry.latitude || existingData.latitude || null,
       longitude: inquiry.longitude || existingData.longitude || null,
       geofence_radius: inquiry.geofence_radius || existingData.geofence_radius || 500,
@@ -1864,6 +1878,7 @@ ${FOOTER}</div></body></html>`
         status: 'renewed',
         conversion_amount: String(finalAmount),
         address: renewalConvertData.address,
+        state: renewalConvertData.state || '',
         latitude: renewalConvertData.latitude || null,
         longitude: renewalConvertData.longitude || null,
         geofence_radius: renewalConvertData.geofence_radius || 500,
@@ -1889,6 +1904,7 @@ ${FOOTER}</div></body></html>`
           payment_method: renewalConvertData.payment_mode === 'online' ? 'student' : renewalConvertData.payment_method,
           payment_tranches: renewalConvertData.payment_mode === 'online' ? [] : formattedTranches,
           gst_type: renewalConvertData.gst_type || '',
+          state: renewalConvertData.state || '',
           deadline_date: renewalConvertData.deadline_date,
           parent_circular_url: renewalConvertData.parent_circular_url,
           payment_link: renewalConvertData.payment_link,
@@ -2006,6 +2022,7 @@ ${FOOTER}</div></body></html>`
 
       await axios.patch(`${API}/schools/inquiry/${showRenewalConvertModal.id}`, {
         address: renewalConvertData.address,
+        state: renewalConvertData.state || '',
         latitude: renewalConvertData.latitude || null,
         longitude: renewalConvertData.longitude || null,
         geofence_radius: renewalConvertData.geofence_radius || 500,
@@ -2031,6 +2048,7 @@ ${FOOTER}</div></body></html>`
           payment_method: renewalConvertData.payment_mode === 'online' ? 'student' : renewalConvertData.payment_method,
           payment_tranches: renewalConvertData.payment_mode === 'online' ? [] : formattedTranches,
           gst_type: renewalConvertData.gst_type || '',
+          state: renewalConvertData.state || '',
           deadline_date: renewalConvertData.deadline_date,
           parent_circular_url: renewalConvertData.parent_circular_url,
           payment_link: renewalConvertData.payment_link,
@@ -3574,6 +3592,7 @@ ${FOOTER}</div></body></html>`
         gp_share_value: existingOnboardData.gp_share_value || '',
         gp_share_amount: existingOnboardData.gp_share_amount || 0,
         gst_type: existingOnboardData.gst_type || '',
+        state: existingOnboardData.state || school.state || '',
       });
       setShowEditOnboardingModal(school);
       return;
@@ -3608,6 +3627,7 @@ ${FOOTER}</div></body></html>`
         gp_share_value: response.data.gp_share_value || '',
         gp_share_amount: response.data.gp_share_amount || 0,
         gst_type: response.data.gst_type || '',
+        state: response.data.state || school.state || '',
       });
       setShowEditOnboardingModal(school);
     } catch (error) {
@@ -3649,6 +3669,7 @@ ${FOOTER}</div></body></html>`
         gp_share_value: '',
         gp_share_amount: 0,
         gst_type: '',
+        state: school.state || '',
       });
       setShowEditOnboardingModal(school);
     }
@@ -3736,6 +3757,7 @@ ${FOOTER}</div></body></html>`
         gp_share_value: editOnboardData.gp_share_value,
         gp_share_amount: calculatedGpShareAmount,
         gst_type: editOnboardData.gst_type || '',
+        state: editOnboardData.state || '',
         school_address: editOnboardData.school_address || '',
       };
 
@@ -3749,6 +3771,7 @@ ${FOOTER}</div></body></html>`
         location: editOnboardData.location,
         board: editOnboardData.board,
         address: editOnboardData.address,
+        state: editOnboardData.state || '',
         latitude: editOnboardData.latitude || null,
         longitude: editOnboardData.longitude || null,
         geofence_radius: editOnboardData.geofence_radius || 500,
@@ -6773,6 +6796,20 @@ ${FOOTER}</div></body></html>`
               </div>
             </div>
 
+            {/* State */}
+            <div>
+              <label className="text-sm font-medium text-slate-700">State <span className="text-red-500">*</span> <span className="text-xs text-slate-400 font-normal">(determines CGST/SGST vs IGST on invoices)</span></label>
+              <select
+                value={renewalConvertData.state || ''}
+                onChange={(e) => setRenewalConvertData(prev => ({ ...prev, state: e.target.value }))}
+                className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white mt-1"
+                data-testid="renewal-state"
+              >
+                <option value="">Select state</option>
+                {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+
             {/* MOU Upload */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <label className="text-sm font-medium text-blue-800 flex items-center gap-2">
@@ -7577,6 +7614,20 @@ ${FOOTER}</div></body></html>`
                 rows={2}
                 data-testid="convert-address"
               />
+            </div>
+
+            {/* State */}
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">State <span className="text-red-500">*</span> <span className="text-xs text-slate-400 font-normal">(determines CGST/SGST vs IGST on invoices)</span></label>
+              <select
+                value={convertData.state}
+                onChange={(e) => setConvertData({...convertData, state: e.target.value})}
+                className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white"
+                data-testid="convert-state"
+              >
+                <option value="">Select state</option>
+                {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
             </div>
 
             {/* Programs from Inquiry */}
@@ -10387,6 +10438,20 @@ ${FOOTER}</div></body></html>`
                     <option value="inclusive_18">GST Inclusive @ 18%</option>
                     <option value="exclusive_18">GST Exclusive @ 18%</option>
                     <option value="book_gst_0">Book GST = 0%</option>
+                  </select>
+                </div>
+
+                {/* State */}
+                <div>
+                  <label className="text-sm font-medium text-slate-700">State <span className="text-xs text-slate-400 font-normal">(for IGST vs CGST/SGST)</span></label>
+                  <select
+                    value={editOnboardData.state || ''}
+                    onChange={(e) => setEditOnboardData(prev => ({ ...prev, state: e.target.value }))}
+                    className="w-full h-10 px-3 border border-slate-200 rounded-lg bg-white"
+                    data-testid="edit-onboard-state"
+                  >
+                    <option value="">Select state</option>
+                    {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
 

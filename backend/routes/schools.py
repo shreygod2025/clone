@@ -53,6 +53,7 @@ class SchoolInquiry(BaseModel):
     fee_range: str = ""
     board: str = ""
     address: str = ""  # Full school address
+    state: str = ""   # School state (e.g., Maharashtra, Haryana)
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     geofence_radius: Optional[int] = None
@@ -128,6 +129,7 @@ class SchoolInquiryUpdate(BaseModel):
     location: Optional[str] = None
     board: Optional[str] = None
     address: Optional[str] = None  # Full school address
+    state: Optional[str] = None   # School state (for IGST vs CGST/SGST)
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     geofence_radius: Optional[int] = None
