@@ -574,17 +574,21 @@ async def check_overdue_tickets():
         admin_phones_doc = await db.settings.find_one({"key": "admin_notification_phones"})
         admin_phones = admin_phones_doc.get("value", []) if admin_phones_doc else []
         
-        # Fallback: use all active team_users with phone numbers if no setting configured
+        # Fallback: use only team_users with admin/supervisor role if no setting configured
         if not admin_phones:
             fallback_users = await db.team_users.find(
-                {"is_active": True, "phone": {"$nin": [None, "", "None", "null"]}},
+                {
+                    "is_active": True,
+                    "phone": {"$nin": [None, "", "None", "null"]},
+                    "admin_role_name": {"$in": ["Admin", "Super Admin", "Manager", "Supervisor", "admin", "super_admin", "manager", "supervisor"]}
+                },
                 {"_id": 0, "phone": 1, "name": 1}
             ).to_list(20)
             admin_phones = [u["phone"] for u in fallback_users if u.get("phone") and str(u["phone"]).strip() not in ['', 'None']]
             if admin_phones:
-                print(f"[SCHEDULER] Using {len(admin_phones)} team user phone(s) as fallback admin notification numbers")
+                print(f"[SCHEDULER] Using {len(admin_phones)} admin-role user phone(s) as fallback admin notification numbers")
             else:
-                print("[SCHEDULER] WARNING: No admin notification phones configured. Set via /api/support/notification-settings")
+                print("[SCHEDULER] No admin notification phones configured. Skipping admin overdue alert.")
 
         
         for ticket in overdue_tickets:
