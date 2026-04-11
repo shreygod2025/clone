@@ -20,7 +20,8 @@ from pydantic import BaseModel, Field, ConfigDict, model_validator, field_valida
 from .shared import (
     db, get_current_user, hash_password, verify_password, create_access_token,
     auto_assign_educator, generate_meeting_link, get_relationship_managers,
-    ensure_resend_api_key, EMAIL_TEMPLATES, send_educator_email, SENDER_EMAIL
+    ensure_resend_api_key, EMAIL_TEMPLATES, send_educator_email, SENDER_EMAIL,
+    get_next_ticket_number
 )
 from .notifications import send_whatsapp_notification, send_demo_confirmation_notifications
 
@@ -2788,6 +2789,7 @@ async def create_support_ticket(data: SupportTicketCreate):
     ticket = SupportTicket(**data.model_dump())
     doc = ticket.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
+    doc['ticket_number'] = await get_next_ticket_number()
     await db.support_tickets.insert_one(doc)
     return ticket
 

@@ -18,7 +18,8 @@ from pydantic import BaseModel, Field, ConfigDict, EmailStr
 
 from .shared import (
     db, get_current_user, auto_assign_lead, get_relationship_managers,
-    ensure_resend_api_key, EMAIL_TEMPLATES, send_educator_email, SENDER_EMAIL
+    ensure_resend_api_key, EMAIL_TEMPLATES, send_educator_email, SENDER_EMAIL,
+    get_next_ticket_number
 )
 from .notifications import send_whatsapp_notification
 from .expenses import transform_tracking_url, fetch_po_data, fetch_vendor_products, match_vendor_product, VENDOR_PUBLIC_API
@@ -3032,6 +3033,7 @@ async def create_public_support_ticket(tracking_token: str, ticket_data: dict):
         "priority": ticket_data.get("priority", "medium"),
         "status": "open",
         "source": "tracking_page",
+        "ticket_number": await get_next_ticket_number(),
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat(),
         "responses": []

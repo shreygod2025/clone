@@ -566,3 +566,16 @@ async def send_educator_email(
             return {"success": False, "message": "Resend API key is a TEST key. Update to production key in Admin > Settings > API Keys."}
         return {"success": False, "message": error_msg}
 
+
+
+# ── Ticket Number Counter ───────────────────────────────────────────────────────
+async def get_next_ticket_number() -> str:
+    """Atomically increment and return next ticket number as zero-padded string."""
+    result = await db.counters.find_one_and_update(
+        {"key": "ticket_number"},
+        {"$inc": {"seq": 1}},
+        upsert=True,
+        return_document=True,
+    )
+    num = result["seq"]
+    return str(num).zfill(4)

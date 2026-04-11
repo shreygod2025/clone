@@ -9,22 +9,11 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 
-from .shared import db, get_current_user, ensure_resend_api_key, SENDER_EMAIL
+from .shared import db, get_current_user, ensure_resend_api_key, SENDER_EMAIL, get_next_ticket_number
 from .notifications import send_whatsapp_notification, send_ticket_overdue_notification, send_ticket_overdue_admin_notification
 
 router = APIRouter()
 
-# ── Ticket Number Counter ───────────────────────────────────────────────────────
-async def get_next_ticket_number() -> str:
-    """Atomically increment and return next ticket number as zero-padded string."""
-    result = await db.counters.find_one_and_update(
-        {"key": "ticket_number"},
-        {"$inc": {"seq": 1}},
-        upsert=True,
-        return_document=True,  # return AFTER update
-    )
-    num = result["seq"]
-    return str(num).zfill(4)  # 0001, 0002, ... 9999, 10000, ...
 
 # ── Models ─────────────────────────────────────────────────────────────────────
 # (Models are defined inline in the route functions or pulled from server-level schema)
@@ -64,23 +53,23 @@ async def reset_overdue_flags(user: dict = Depends(get_current_user)):
 @router.post("/support/backfill-ticket-numbers")
 async def backfill_ticket_numbers(user: dict = Depends(get_current_user)):
     """One-time migration: assign sequential ticket_number to all tickets missing one."""
-    tickets = await db.support_queries.find(
-        {"ticket_number": {"$in": [None, "", 0]}},
-        {"_id": 0, "id": 1, "created_at": 1}
-    ).sort("created_at", 1).to_list(10000)
-
     updated = 0
-    for ticket in tickets:
-        num = await get_next_ticket_number()
-        await db.support_queries.update_one(
-            {"id": ticket["id"]},
-            {"$set": {"ticket_number": num}}
-        )
-        updated += 1
+    for collection_name in ["support_queries", "support_tickets"]:
+        tickets = await db[collection_name].find(
+            {"ticket_number": {"$in": [None, "", 0]}},
+            {"_id": 0, "id": 1, "created_at": 1}
+        ).sort("created_at", 1).to_list(10000)
 
-    # Find the current max seq
+        for ticket in tickets:
+            num = await get_next_ticket_number()
+            await db[collection_name].update_one(
+                {"id": ticket["id"]},
+                {"$set": {"ticket_number": num}}
+            )
+            updated += 1
+
     counter = await db.counters.find_one({"key": "ticket_number"}, {"_id": 0})
-    return {"message": f"Backfilled {updated} tickets", "next_ticket_number": str((counter or {}).get("seq", 0) + 1).zfill(4)}
+    return {"message": f"Backfilled {updated} tickets across support_queries + support_tickets", "next_ticket_number": str((counter or {}).get("seq", 0) + 1).zfill(4)}
 
 
 
