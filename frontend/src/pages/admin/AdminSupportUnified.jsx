@@ -625,6 +625,7 @@ const AdminSupportUnified = () => {
   };
 
   const [assignDeadline, setAssignDeadline] = useState('');
+  const [assignSubmitting, setAssignSubmitting] = useState(false);
 
   const handleCreateTicket = async () => {
     // Determine the list of users to create tickets for
@@ -708,7 +709,8 @@ const AdminSupportUnified = () => {
   };
 
   const handleAssignQuery = async (userId) => {
-    if (!showAssignModal) return;
+    if (!showAssignModal || assignSubmitting) return;
+    setAssignSubmitting(true);
     try {
       // Use the correct endpoint based on source
       let endpoint;
@@ -733,6 +735,8 @@ const AdminSupportUnified = () => {
     } catch (error) {
       console.error('Assign error:', error.response?.data || error);
       toast.error(error.response?.data?.detail || 'Failed to assign query');
+    } finally {
+      setAssignSubmitting(false);
     }
   };
 
@@ -1668,11 +1672,12 @@ const AdminSupportUnified = () => {
                       <button
                         key={teamUser.id}
                         onClick={() => handleAssignQuery(teamUser.id)}
+                        disabled={assignSubmitting}
                         className={`w-full p-3 rounded-lg border text-left transition-all hover:border-indigo-300 hover:bg-indigo-50 ${
                           showAssignModal.assigned_to === teamUser.id 
                             ? 'border-indigo-500 bg-indigo-50' 
                             : 'border-slate-200'
-                        }`}
+                        } ${assignSubmitting ? 'opacity-50 cursor-not-allowed' : ''}`}
                         data-testid={`assign-to-${teamUser.id}`}
                       >
                         <div className="flex items-center justify-between">
@@ -1706,16 +1711,17 @@ const AdminSupportUnified = () => {
               </details>
               
               <div className="flex gap-3 pt-2">
-                <Button variant="outline" onClick={() => { setShowAssignModal(null); setAssignDeadline(''); }} className="flex-1">
+                <Button variant="outline" onClick={() => { setShowAssignModal(null); setAssignDeadline(''); }} className="flex-1" disabled={assignSubmitting}>
                   Cancel
                 </Button>
                 {showAssignModal.assigned_to && (
                   <Button 
                     variant="outline" 
                     onClick={() => handleAssignQuery('')}
+                    disabled={assignSubmitting}
                     className="flex-1 text-red-600 border-red-200 hover:bg-red-50"
                   >
-                    Unassign
+                    {assignSubmitting ? 'Processing...' : 'Unassign'}
                   </Button>
                 )}
               </div>
