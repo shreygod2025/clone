@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { 
   Wallet, Plus, Search, Building2, Calendar, Edit, Trash2, 
   ChevronDown, ChevronUp, FileText, Download, Filter, X,
   DollarSign, TrendingUp, BarChart3, RefreshCw, CheckSquare,
-  Upload, Paperclip, ChevronRight
+  Upload, Paperclip, ChevronRight, TrendingDown, BookOpen,
+  Package, Truck, Award, Users, BarChart2
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -19,6 +20,9 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const AdminExpenses = () => {
   const { getAuthHeaders } = useAuth();
+  const [activeTab, setActiveTab] = useState('expenses'); // 'expenses' | 'pnl'
+  const [pnlData, setPnlData] = useState(null);
+  const [pnlLoading, setPnlLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [expenses, setExpenses] = useState([]);
   const [summary, setSummary] = useState({ grand_total: 0, schools: [] });
@@ -112,6 +116,22 @@ const AdminExpenses = () => {
       setLoading(false);
     }
   };
+
+  const fetchPnl = useCallback(async () => {
+    setPnlLoading(true);
+    try {
+      const res = await axios.get(`${API}/school-expenses/pnl-summary`, { headers: getAuthHeaders() });
+      setPnlData(res.data);
+    } catch (e) {
+      toast.error('Failed to load P&L data');
+    } finally {
+      setPnlLoading(false);
+    }
+  }, [getAuthHeaders]);
+
+  useEffect(() => {
+    if (activeTab === 'pnl' && !pnlData) fetchPnl();
+  }, [activeTab, pnlData, fetchPnl]);
 
   const handleSubmit = async () => {
     if (!expenseForm.category || !expenseForm.amount) {
@@ -317,6 +337,7 @@ const AdminExpenses = () => {
             <p className="text-slate-600 text-sm mt-1">Track and manage expenses for each school</p>
           </div>
           <div className="flex gap-2">
+            {activeTab === 'expenses' && <>
             <Button
               variant="outline"
               onClick={exportExpensesToCSV}
@@ -343,8 +364,37 @@ const AdminExpenses = () => {
               <Plus className="w-4 h-4 mr-2" />
               Add Expense
             </Button>
+            </>}
+            {activeTab === 'pnl' && (
+              <Button variant="outline" onClick={fetchPnl} className="text-blue-700 border-blue-300 hover:bg-blue-50">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Refresh
+              </Button>
+            )}
           </div>
         </div>
+
+        {/* Tab Navigation */}
+        <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
+          <button
+            onClick={() => setActiveTab('expenses')}
+            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'expenses' ? 'bg-white text-[#1E3A5F] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            data-testid="tab-expenses"
+          >
+            <span className="flex items-center gap-2"><FileText className="w-4 h-4" />All Expenses</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('pnl')}
+            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'pnl' ? 'bg-white text-[#1E3A5F] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+            data-testid="tab-pnl"
+          >
+            <span className="flex items-center gap-2"><BarChart2 className="w-4 h-4" />School P&amp;L Sheet</span>
+          </button>
+        </div>
+
+        {activeTab === 'pnl' ? (
+          <PnLSheet data={pnlData} loading={pnlLoading} />
+        ) : (<>
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -963,8 +1013,156 @@ const AdminExpenses = () => {
           </div>
         </DialogContent>
       </Dialog>
+      </>) /* end expenses tab */}
       </div>
     </AdminLayout>
+  );
+};
+
+// ─── P&L Sheet Component ──────────────────────────────────────────────────────
+const fmt = (v) => v == null ? '—' : `₹${Number(v).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+const pct = (v) => v == null ? '' : `${v}%`;
+
+const statusBadge = (s) => {
+  const map = {
+    'Paid':           'bg-green-100 text-green-700',
+    'Partially Paid': 'bg-yellow-100 text-yellow-700',
+    'Pending':        'bg-red-100 text-red-600',
+  };
+  return <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${map[s] || 'bg-slate-100 text-slate-600'}`}>{s}</span>;
+};
+
+const PnLSheet = ({ data, loading }) => {
+  if (loading) return (
+    <div className="flex items-center justify-center py-24">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#1E3A5F]" />
+    </div>
+  );
+  if (!data) return (
+    <div className="text-center py-24 text-slate-400">Click "Refresh" to load the P&L sheet.</div>
+  );
+
+  const { rows, totals, cost_keys } = data;
+
+  const COST_ICONS = {
+    kit_cost:              <Package className="w-3.5 h-3.5" />,
+    logistics_cost:        <Truck className="w-3.5 h-3.5" />,
+    books_cost:            <BookOpen className="w-3.5 h-3.5" />,
+    printing_certification:<Award className="w-3.5 h-3.5" />,
+    teacher_cost:          <Users className="w-3.5 h-3.5" />,
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Grand Total Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {[
+          { label: 'Net Revenue',    val: totals.net_revenue,   color: 'from-[#1E3A5F] to-[#2a5a8f]', text: 'white' },
+          { label: 'Total Received', val: totals.received,      color: 'from-green-600 to-green-500', text: 'white' },
+          { label: 'Total Costs',    val: totals.total_costs,   color: 'from-orange-500 to-orange-400', text: 'white' },
+          { label: 'Gross Profit',   val: totals.gross_profit,  color: totals.gross_profit >= 0 ? 'from-emerald-600 to-emerald-500' : 'from-red-600 to-red-500', text: 'white' },
+        ].map(c => (
+          <div key={c.label} className={`bg-gradient-to-br ${c.color} rounded-xl p-4 text-${c.text}`}>
+            <p className="text-white/75 text-xs font-medium mb-1">{c.label}</p>
+            <p className="text-xl font-bold">{fmt(c.val)}</p>
+            {c.label === 'Gross Profit' && <p className="text-white/75 text-xs mt-0.5">{pct(totals.gp_pct)} of Net Rev</p>}
+          </div>
+        ))}
+      </div>
+
+      {rows.length === 0 ? (
+        <div className="bg-white rounded-xl border p-12 text-center text-slate-400">
+          No school payment data found. Add payments in the Orders section to see P&amp;L.
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[1400px]">
+              <thead>
+                <tr className="bg-[#1E3A5F] text-white text-xs">
+                  <th className="px-4 py-3 text-left font-semibold sticky left-0 bg-[#1E3A5F] z-10 min-w-[180px]">School</th>
+                  {/* Revenue columns */}
+                  <th colSpan="7" className="px-4 py-3 text-center font-semibold border-l border-white/20 bg-blue-900">Revenue</th>
+                  {/* Cost columns */}
+                  <th colSpan={cost_keys.length} className="px-4 py-3 text-center font-semibold border-l border-white/20 bg-orange-700">Costs</th>
+                  {/* Profit */}
+                  <th colSpan="2" className="px-4 py-3 text-center font-semibold border-l border-white/20 bg-emerald-700">Profit</th>
+                </tr>
+                <tr className="bg-slate-100 text-slate-600 text-xs border-b">
+                  <th className="px-4 py-2 text-left sticky left-0 bg-slate-100 z-10">School Name</th>
+                  <th className="px-4 py-2 text-right border-l">Students</th>
+                  <th className="px-4 py-2 text-right">Pricing (Gross)</th>
+                  <th className="px-4 py-2 text-right">GST</th>
+                  <th className="px-4 py-2 text-right font-semibold text-blue-800">Net Revenue</th>
+                  <th className="px-4 py-2 text-center">Status</th>
+                  <th className="px-4 py-2 text-right text-green-700">Received</th>
+                  <th className="px-4 py-2 text-right text-red-600">Receivable</th>
+                  {cost_keys.map(([k, label]) => (
+                    <th key={k} className="px-4 py-2 text-right border-l text-orange-700 whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1">{COST_ICONS[k]}{label}</div>
+                    </th>
+                  ))}
+                  <th className="px-4 py-2 text-right border-l font-semibold text-emerald-700">Gross Profit</th>
+                  <th className="px-4 py-2 text-right text-emerald-700">% of Rev</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, i) => (
+                  <tr key={row.school_id} className={`border-b border-slate-100 hover:bg-blue-50/30 transition-colors ${i % 2 === 0 ? '' : 'bg-slate-50/50'}`}>
+                    <td className="px-4 py-3 font-medium text-slate-800 sticky left-0 bg-inherit z-10 border-r border-slate-100">
+                      {row.school_name}
+                    </td>
+                    <td className="px-4 py-3 text-right text-slate-600 border-l">{row.student_count || '—'}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{fmt(row.pricing)}</td>
+                    <td className="px-4 py-3 text-right text-slate-500">{fmt(row.gst)}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-blue-800">{fmt(row.net_revenue)}</td>
+                    <td className="px-4 py-3 text-center">{statusBadge(row.payment_status)}</td>
+                    <td className="px-4 py-3 text-right text-green-700 font-medium">{fmt(row.received)}</td>
+                    <td className="px-4 py-3 text-right text-red-600">{fmt(row.receivable)}</td>
+                    {cost_keys.map(([k]) => {
+                      const c = row.costs?.[k] || {};
+                      return (
+                        <td key={k} className="px-4 py-3 text-right border-l">
+                          <div className="text-slate-700">{fmt(c.amount)}</div>
+                          {c.amount > 0 && <div className="text-xs text-slate-400">{pct(c.pct)}</div>}
+                        </td>
+                      );
+                    })}
+                    <td className={`px-4 py-3 text-right font-bold border-l ${row.gross_profit >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                      {fmt(row.gross_profit)}
+                    </td>
+                    <td className={`px-4 py-3 text-right text-xs font-semibold ${row.gp_pct >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {pct(row.gp_pct)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              {/* Totals row */}
+              <tfoot>
+                <tr className="bg-[#1E3A5F] text-white font-bold text-sm">
+                  <td className="px-4 py-3 sticky left-0 bg-[#1E3A5F] z-10">TOTAL</td>
+                  <td className="px-4 py-3 text-right border-l">{totals.student_count}</td>
+                  <td className="px-4 py-3 text-right">{fmt(totals.pricing)}</td>
+                  <td className="px-4 py-3 text-right">{fmt(totals.gst)}</td>
+                  <td className="px-4 py-3 text-right">{fmt(totals.net_revenue)}</td>
+                  <td className="px-4 py-3"></td>
+                  <td className="px-4 py-3 text-right text-green-300">{fmt(totals.received)}</td>
+                  <td className="px-4 py-3 text-right text-red-300">{fmt(totals.receivable)}</td>
+                  {cost_keys.map(([k]) => (
+                    <td key={k} className="px-4 py-3 text-right border-l">{fmt(totals[k])}</td>
+                  ))}
+                  <td className="px-4 py-3 text-right border-l text-green-300">{fmt(totals.gross_profit)}</td>
+                  <td className="px-4 py-3 text-right text-green-300">{pct(totals.gp_pct)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <div className="px-4 py-3 bg-slate-50 border-t text-xs text-slate-500">
+            Cost % shown below each amount = % of that school's Net Revenue. Data updates automatically from Orders &amp; Expenses sections.
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 

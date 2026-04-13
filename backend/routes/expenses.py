@@ -152,10 +152,157 @@ async def get_single_school_expenses(school_id: str, user: dict = Depends(get_cu
     }
 
 
+@router.get("/school-expenses/pnl-summary")
+async def get_pnl_summary(user: dict = Depends(get_current_user)):
+    """
+    School-wise P&L Master Sheet.
+    Revenue from school_inquiries (payment tranches + paid amounts).
+    Costs from school_expenses aggregated by category.
+    """
+    PNL_COST_KEYS = [
+        ("kit_cost",               "Kit Cost"),
+        ("logistics_cost",         "Logistics Cost"),
+        ("books_cost",             "Book Cost"),
+        ("printing_certification", "Certificate Cost"),
+        ("teacher_cost",           "Educator Cost"),
+    ]
+
+    # ── 1. Build revenue from school_inquiries (same logic as orders endpoint) ──
+    schools = await db.school_inquiries.find(
+        {"status": {"$in": ["converted", "active", "renewed"]}},
+        {"_id": 0, "id": 1, "school_name": 1, "onboarding_data": 1, "payments": 1},
+    ).to_list(1000)
+
+    school_rev: dict = {}
+    for school in schools:
+        sid = school.get("id")
+        od = school.get("onboarding_data") or {}
+        tranches = od.get("payment_tranches", [])
+        school_gst_type = od.get("gst_type", "")
+        total_students = int(od.get("total_students") or 0)
+        existing_payments = school.get("payments", [])
+
+        net_rev = 0.0
+        gst_total = 0.0
+        received = 0.0
+
+        for idx, tranche in enumerate(tranches):
+            amt = float(tranche.get("amount") or 0) or 0.0
+            if not amt and tranche.get("percentage"):
+                total_amt = float(od.get("total_amount") or 0)
+                amt = total_amt * float(tranche.get("percentage") or 0) / 100
+
+            gst_type = tranche.get("gst_type") or school_gst_type
+            if gst_type in ("exclusive_18", "exclusive"):
+                gst_amt = round(amt * 18 / 100, 2)
+            elif gst_type in ("inclusive_18", "inclusive"):
+                gst_amt = round(amt - amt / 1.18, 2)
+            else:
+                gst_amt = 0.0
+
+            ep = next((p for p in existing_payments if p.get("tranche_index") == idx), None)
+            paid = float((ep.get("paid_amount") if ep else 0) or 0)
+
+            net_rev   += amt
+            gst_total += gst_amt
+            received  += paid
+
+        if net_rev == 0 and not tranches:
+            # Fallback: use total_amount from onboarding_data directly
+            net_rev = float(od.get("total_amount") or 0)
+
+        school_rev[sid] = {
+            "school_name":   school.get("school_name", "Unknown"),
+            "student_count": total_students,
+            "net_revenue":   round(net_rev, 2),
+            "gst":           round(gst_total, 2),
+            "received":      round(received, 2),
+        }
+
+    # ── 2. Aggregate expenses from school_expenses ───────────────────────────
+    exp_pipeline = [
+        {"$match": {"school_id": {"$exists": True, "$nin": ["", None]}}},
+        {"$group": {
+            "_id": {"school_id": "$school_id", "category": "$category"},
+            "total": {"$sum": "$amount"},
+        }},
+    ]
+    exp_docs = await db.school_expenses.aggregate(exp_pipeline).to_list(5000)
+    exp_map: dict = {}
+    for row in exp_docs:
+        sid = row["_id"]["school_id"]
+        cat = row["_id"]["category"]
+        exp_map.setdefault(sid, {})[cat] = row["total"]
+
+    # ── 3. Build rows ─────────────────────────────────────────────────────────
+    rows = []
+    for sid, rev in school_rev.items():
+        if rev["net_revenue"] == 0 and exp_map.get(sid) is None:
+            continue  # skip schools with no data at all
+
+        net_rev   = rev["net_revenue"]
+        received  = rev["received"]
+        receivable = max(net_rev - received, 0)
+
+        if received <= 0:
+            pay_status = "Pending"
+        elif received >= net_rev:
+            pay_status = "Paid"
+        else:
+            pay_status = "Partially Paid"
+
+        school_exp = exp_map.get(sid, {})
+        costs = {}
+        total_costs = 0.0
+        for cat_id, cat_label in PNL_COST_KEYS:
+            amt = float(school_exp.get(cat_id, 0))
+            p = round(amt / net_rev * 100, 1) if net_rev else 0
+            costs[cat_id] = {"amount": round(amt, 2), "pct": p, "label": cat_label}
+            total_costs += amt
+
+        gross_profit = round(net_rev - total_costs, 2)
+        gp_pct = round(gross_profit / net_rev * 100, 1) if net_rev else 0
+
+        rows.append({
+            "school_id":      sid,
+            "school_name":    rev["school_name"],
+            "student_count":  rev["student_count"],
+            "pricing":        round(net_rev + rev["gst"], 2),
+            "gst":            rev["gst"],
+            "net_revenue":    net_rev,
+            "payment_status": pay_status,
+            "received":       received,
+            "receivable":     round(receivable, 2),
+            "costs":          costs,
+            "total_costs":    round(total_costs, 2),
+            "gross_profit":   gross_profit,
+            "gp_pct":         gp_pct,
+        })
+
+    rows.sort(key=lambda r: r["school_name"])
+
+    def _sum(field): return round(sum(r[field] for r in rows), 2)
+    total_nr = _sum("net_revenue")
+    totals = {
+        "student_count": sum(r["student_count"] for r in rows),
+        "pricing":       _sum("pricing"),
+        "gst":           _sum("gst"),
+        "net_revenue":   total_nr,
+        "received":      _sum("received"),
+        "receivable":    _sum("receivable"),
+        "total_costs":   _sum("total_costs"),
+        "gross_profit":  _sum("gross_profit"),
+        "gp_pct":        round(_sum("gross_profit") / total_nr * 100, 1) if total_nr else 0,
+    }
+    for cat_id, _ in PNL_COST_KEYS:
+        totals[cat_id] = round(sum(r["costs"].get(cat_id, {}).get("amount", 0) for r in rows), 2)
+
+    return {"rows": rows, "totals": totals, "cost_keys": PNL_COST_KEYS}
+
+
 @router.post("/school-expenses")
 async def create_school_expense(data: dict, user: dict = Depends(get_current_user)):
-    """Create a new expense entry"""
-    # Get school info (optional)
+    """Create a new expense entry"""    # Get school info (optional)
     school = None
     if data.get("school_id"):
         school = await db.school_inquiries.find_one({"id": data.get("school_id")}, {"_id": 0})
