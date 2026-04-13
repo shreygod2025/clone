@@ -1654,8 +1654,8 @@ async def upload_file(file: UploadFile = File(...), type: str = "general"):
     if len(content) > 10 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="File too large (max 10MB)")
     
-    # Generate unique public_id
-    unique_id = f"{type}_{uuid.uuid4().hex}"
+    # Generate unique public_id — include file extension so Cloudinary serves with correct Content-Type
+    unique_id = f"{type}_{uuid.uuid4().hex}{file_ext}"
     folder = f"oll_{type}"
     
     # Determine resource type for Cloudinary
@@ -1677,7 +1677,7 @@ async def upload_file(file: UploadFile = File(...), type: str = "general"):
         
         # Store reference in MongoDB for tracking
         file_doc = {
-            "filename": f"{unique_id}{file_ext}",
+            "filename": unique_id,
             "original_name": file.filename,
             "cloudinary_public_id": result.get("public_id"),
             "cloudinary_url": file_url,
@@ -1688,12 +1688,12 @@ async def upload_file(file: UploadFile = File(...), type: str = "general"):
         }
         await db.uploaded_files.insert_one(file_doc)
         
-        return {"url": file_url, "filename": f"{unique_id}{file_ext}", "public_id": result.get("public_id")}
+        return {"url": file_url, "filename": unique_id, "public_id": result.get("public_id")}
         
     except Exception as e:
         # Fallback to MongoDB storage if Cloudinary fails
         import base64
-        unique_filename = f"{unique_id}{file_ext}"
+        unique_filename = unique_id  # unique_id already includes file_ext
         
         content_types = {
             '.pdf': 'application/pdf',

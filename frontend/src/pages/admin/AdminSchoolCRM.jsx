@@ -192,32 +192,50 @@ const getAbsoluteUrl = (url) => {
 const downloadFile = async (url, filename) => {
   try {
     const absoluteUrl = getAbsoluteUrl(url);
+
+    // Clean target filename: strip any existing extension, then re-add .pdf (or detected ext)
+    const targetExt = filename.match(/\.([a-zA-Z0-9]+)$/) ? `.${filename.match(/\.([a-zA-Z0-9]+)$/)[1].toLowerCase()}` : '.pdf';
+    const cleanFilename = filename.replace(/\.[^/.]+$/, '').replace(/[<>:"/\\|?*]/g, '_') + targetExt;
+
+    // ── Cloudinary raw URL: use fl_attachment transformation ──────────────────
+    // This instructs Cloudinary to serve the file with Content-Disposition: attachment
+    // and avoids CORS restrictions that break fetch()-based downloads on Windows.
+    const cloudinaryRawMatch = absoluteUrl.match(/(https:\/\/res\.cloudinary\.com\/[^/]+\/raw\/upload\/)(.*)/);
+    if (cloudinaryRawMatch) {
+      const base = cloudinaryRawMatch[1];
+      const rest = cloudinaryRawMatch[2];
+      const safeFilename = cleanFilename.replace(/[^a-zA-Z0-9._-]/g, '_');
+      // Only add fl_attachment if not already present
+      const transformedUrl = rest.startsWith('fl_attachment')
+        ? absoluteUrl
+        : `${base}fl_attachment:filename_${safeFilename}/${rest}`;
+      const link = document.createElement('a');
+      link.href = transformedUrl;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => document.body.removeChild(link), 200);
+      return;
+    }
     
-    // First, try to determine extension from URL before fetching
+    // ── Non-Cloudinary URL: fetch + blob ──────────────────────────────────────
+    // Determine extension from URL
     let extensionFromUrl = '';
     const urlPath = absoluteUrl.split('?')[0];
-    
-    // Handle Cloudinary URLs which may have format like /upload/v12345/file.pdf
     const cloudinaryMatch = urlPath.match(/\/([^/]+)\.([a-zA-Z0-9]+)$/);
     if (cloudinaryMatch) {
       extensionFromUrl = `.${cloudinaryMatch[2].toLowerCase()}`;
     } else {
       const urlExtMatch = urlPath.match(/\.([a-zA-Z0-9]+)$/);
-      if (urlExtMatch) {
-        extensionFromUrl = `.${urlExtMatch[1].toLowerCase()}`;
-      }
+      if (urlExtMatch) extensionFromUrl = `.${urlExtMatch[1].toLowerCase()}`;
     }
     
     const response = await fetch(absoluteUrl);
     if (!response.ok) throw new Error('Download failed');
     
     const blob = await response.blob();
-    
-    // Determine file extension from content-type
     const contentType = response.headers.get('content-type') || '';
-    let extension = '';
     
-    // Map content-type to extension
     const contentTypeMap = {
       'application/pdf': '.pdf',
       'image/png': '.png',
@@ -233,52 +251,29 @@ const downloadFile = async (url, filename) => {
       'text/plain': '.txt',
     };
     
-    // Check for exact match first
-    if (contentTypeMap[contentType]) {
-      extension = contentTypeMap[contentType];
-    } else {
-      // Check for partial matches
+    let extension = contentTypeMap[contentType] || '';
+    if (!extension) {
       if (contentType.includes('pdf')) extension = '.pdf';
       else if (contentType.includes('png')) extension = '.png';
       else if (contentType.includes('jpeg') || contentType.includes('jpg')) extension = '.jpg';
-      else if (contentType.includes('webp')) extension = '.webp';
-      else if (contentType.includes('gif')) extension = '.gif';
       else if (contentType.includes('word') || contentType.includes('doc')) extension = '.docx';
-      else if (contentType.includes('excel') || contentType.includes('spreadsheet') || contentType.includes('sheet')) extension = '.xlsx';
-      else if (contentType.includes('csv')) extension = '.csv';
+      else if (contentType.includes('excel') || contentType.includes('spreadsheet')) extension = '.xlsx';
     }
+    if (!extension && extensionFromUrl) extension = extensionFromUrl;
+    if (!extension) extension = targetExt;
     
-    // If content-type didn't give us an extension, use the one from URL
-    if (!extension && extensionFromUrl) {
-      extension = extensionFromUrl;
-    }
-    
-    // Default to .pdf if we still don't have an extension
-    if (!extension) {
-      extension = '.pdf';
-    }
-    
-    // Clean filename and ensure it has the right extension
-    // Remove any existing extension from filename
-    let cleanFilename = filename.replace(/\.[^/.]+$/, '');
-    // Remove any special characters that might cause issues
-    cleanFilename = cleanFilename.replace(/[<>:"/\\|?*]/g, '_');
-    cleanFilename = `${cleanFilename}${extension}`;
-    
-    // Create blob with correct MIME type
-    const mimeType = Object.keys(contentTypeMap).find(key => contentTypeMap[key] === extension) || contentType || 'application/octet-stream';
+    const finalFilename = filename.replace(/\.[^/.]+$/, '').replace(/[<>:"/\\|?*]/g, '_') + extension;
+    const mimeType = Object.keys(contentTypeMap).find(k => contentTypeMap[k] === extension) || contentType || 'application/octet-stream';
     const typedBlob = new Blob([blob], { type: mimeType });
-    
     const blobUrl = window.URL.createObjectURL(typedBlob);
     
     const link = document.createElement('a');
     link.href = blobUrl;
-    link.download = cleanFilename;
+    link.download = finalFilename;
     link.style.display = 'none';
     document.body.appendChild(link);
     link.click();
     
-    // Cleanup after a short delay
     setTimeout(() => {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(blobUrl);
@@ -286,7 +281,7 @@ const downloadFile = async (url, filename) => {
     
   } catch (error) {
     console.error('Download error:', error);
-    // Fallback: open in new tab if download fails
+    // Fallback: open directly in new tab
     window.open(getAbsoluteUrl(url), '_blank');
   }
 };
