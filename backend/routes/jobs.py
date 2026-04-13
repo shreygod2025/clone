@@ -758,18 +758,20 @@ async def sync_po_data_job(secret: str = None):
                 })
                 
                 if not existing_kit and invoice_amount > 0:
-                    # Build attachments from PO files
+                    # Build attachments from PO files — normalize any old preview URLs
+                    po_pdf_url     = transform_tracking_url(detailed_po.get("po_pdf_url") or "")
+                    invoice_url    = transform_tracking_url(detailed_po.get("invoice_file_url") or "")
                     kit_attachments = []
-                    if detailed_po.get("po_pdf_url"):
+                    if po_pdf_url:
                         kit_attachments.append({
                             "name": f"PO-{po_number}.pdf",
-                            "url": detailed_po.get("po_pdf_url"),
+                            "url": po_pdf_url,
                             "type": "po_file"
                         })
-                    if detailed_po.get("invoice_file_url"):
+                    if invoice_url:
                         kit_attachments.append({
                             "name": f"Invoice-{po_number}",
-                            "url": detailed_po.get("invoice_file_url"),
+                            "url": invoice_url,
                             "type": "invoice"
                         })
                     
@@ -791,8 +793,8 @@ async def sync_po_data_job(secret: str = None):
                         "vendor_name": detailed_po.get("vendor_name", ""),
                         "payment_status": invoice_info.get("payment_status", "pending"),
                         "po_number": po_number,
-                        "po_pdf_url": detailed_po.get("po_pdf_url"),
-                        "invoice_file_url": detailed_po.get("invoice_file_url"),
+                        "po_pdf_url": po_pdf_url or None,
+                        "invoice_file_url": invoice_url or None,
                         "attachments": kit_attachments,
                         "created_by": "system",
                         "created_by_name": "Auto-Sync Job",
@@ -811,18 +813,20 @@ async def sync_po_data_job(secret: str = None):
                 })
                 
                 if not existing_logistics and logistics_cost > 0:
-                    # Build attachments for logistics
+                    # Build attachments for logistics — normalize any old preview URLs
+                    logistics_bill_url  = transform_tracking_url(detailed_po.get("logistics_bill_url") or "")
+                    delivery_proof_url  = transform_tracking_url(detailed_po.get("delivery_proof_url") or "")
                     logistics_attachments = []
-                    if detailed_po.get("logistics_bill_url"):
+                    if logistics_bill_url:
                         logistics_attachments.append({
                             "name": f"Logistics-Bill-{po_number}",
-                            "url": detailed_po.get("logistics_bill_url"),
+                            "url": logistics_bill_url,
                             "type": "logistics_bill"
                         })
-                    if detailed_po.get("delivery_proof_url"):
+                    if delivery_proof_url:
                         logistics_attachments.append({
                             "name": f"Delivery-Proof-{po_number}",
-                            "url": detailed_po.get("delivery_proof_url"),
+                            "url": delivery_proof_url,
                             "type": "delivery_proof"
                         })
                     
@@ -839,8 +843,8 @@ async def sync_po_data_job(secret: str = None):
                         "vendor_name": detailed_po.get("vendor_name", ""),
                         "payment_status": "pending",
                         "po_number": po_number,
-                        "logistics_bill_url": detailed_po.get("logistics_bill_url"),
-                        "delivery_proof_url": detailed_po.get("delivery_proof_url"),
+                        "logistics_bill_url": logistics_bill_url or None,
+                        "delivery_proof_url": delivery_proof_url or None,
                         "attachments": logistics_attachments,
                         "created_by": "system",
                         "created_by_name": "Auto-Sync Job",

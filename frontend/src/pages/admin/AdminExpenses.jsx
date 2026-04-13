@@ -18,6 +18,15 @@ import { format } from 'date-fns';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+// Normalize old ProcureWay/preview URLs to the current vendor host
+const VENDOR_HOST = 'https://vendorplus-4.emergent.host';
+const normalizeVendorUrl = (url) => {
+  if (!url) return url;
+  return url
+    .replace(/https?:\/\/[^/]*\.preview\.emergentagent\.com/g, VENDOR_HOST)
+    .replace(/https?:\/\/[^/]*\.stage-preview\.emergentagent\.com/g, VENDOR_HOST);
+};
+
 const AdminExpenses = () => {
   const { getAuthHeaders } = useAuth();
   const [activeTab, setActiveTab] = useState('expenses'); // 'expenses' | 'pnl'
@@ -623,7 +632,7 @@ const AdminExpenses = () => {
                     <div className="flex justify-center gap-1 flex-wrap">
                       {expense.po_pdf_url && expense.po_pdf_url !== 'null' && expense.po_pdf_url.startsWith('http') && (
                         <a
-                          href={expense.po_pdf_url}
+                          href={normalizeVendorUrl(expense.po_pdf_url)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100"
@@ -634,7 +643,7 @@ const AdminExpenses = () => {
                       )}
                       {expense.invoice_file_url && expense.invoice_file_url !== 'null' && expense.invoice_file_url.startsWith('http') && (
                         <a
-                          href={expense.invoice_file_url}
+                          href={normalizeVendorUrl(expense.invoice_file_url)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs px-2 py-1 bg-green-50 text-green-600 rounded hover:bg-green-100"
@@ -645,7 +654,7 @@ const AdminExpenses = () => {
                       )}
                       {expense.logistics_bill_url && expense.logistics_bill_url !== 'null' && expense.logistics_bill_url.startsWith('http') && (
                         <a
-                          href={expense.logistics_bill_url}
+                          href={normalizeVendorUrl(expense.logistics_bill_url)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs px-2 py-1 bg-amber-50 text-amber-600 rounded hover:bg-amber-100"
@@ -656,7 +665,7 @@ const AdminExpenses = () => {
                       )}
                       {expense.delivery_proof_url && expense.delivery_proof_url !== 'null' && expense.delivery_proof_url.startsWith('http') && (
                         <a
-                          href={expense.delivery_proof_url}
+                          href={normalizeVendorUrl(expense.delivery_proof_url)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs px-2 py-1 bg-purple-50 text-purple-600 rounded hover:bg-purple-100"
