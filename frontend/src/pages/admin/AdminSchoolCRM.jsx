@@ -322,71 +322,108 @@ const LMSSetupSection = ({ step, schoolId, onUpdate, authToken }) => {
   const [students, setStudents] = useState(step.data?.students_list || []);
   const [uploading, setUploading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [uploadedFileUrl, setUploadedFileUrl] = useState(step.data?.file_url || '');
+  const [uploadedFileName, setUploadedFileName] = useState(step.data?.file_name || '');
   const fileInputRef = useRef(null);
-  
-  const SAMPLE_TEMPLATE_URL = 'https://customer-assets.emergentagent.com/job_oll-multiuser/artifacts/ohnqw227_student_upload_template%20%288%29.xlsx';
-  
-  const handleFileUpload = (e) => {
+
+  // Try to match column by common name variations (case-insensitive)
+  const _col = (row, ...keys) => {
+    const rowKeys = Object.keys(row);
+    for (const k of keys) {
+      const found = rowKeys.find(rk => rk.trim().toLowerCase() === k.toLowerCase());
+      if (found && row[found]) return String(row[found]).trim();
+    }
+    return '';
+  };
+
+  const parseRows = (rows) => rows
+    .map(row => ({
+      name:     _col(row, 'Name', 'Student Name', 'Full Name', 'StudentName', 'student_name'),
+      username: _col(row, 'Username', 'User Name', 'UserName', 'Login', 'Login ID', 'Email', 'user_id', 'UserID'),
+      password: _col(row, 'Password', 'Pass', 'Pwd', 'password'),
+      class:    _col(row, 'Class', 'Grade', 'Section', 'Standard', 'class'),
+    }))
+    .filter(r => r.name || r.username);   // at least one identifier present
+
+  const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
-    const allowedTypes = [
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      'application/vnd.ms-excel',
-      'text/csv'
-    ];
-    
-    if (!allowedTypes.includes(file.type) && !file.name.endsWith('.csv') && !file.name.endsWith('.xlsx')) {
-      toast.error('Please upload a CSV or Excel file');
+
+    const isXLSX = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+    const isCSV  = file.name.endsWith('.csv');
+
+    if (!isXLSX && !isCSV) {
+      toast.error('Please upload a CSV or Excel (.xlsx) file');
       return;
     }
-    
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (results) => {
-        const parsedStudents = results.data
-          .filter(row => row.Name && row.Username && row.Password)
-          .map(row => ({
-            name: row.Name || row.name || '',
-            username: row.Username || row.username || '',
-            password: row.Password || row.password || '',
-            class: row.Class || row.class || ''
-          }));
-        
-        if (parsedStudents.length === 0) {
-          toast.error('No valid student data found. Please check the file format.');
-          return;
+
+    // ── Upload raw file to cloud storage first ────────────────────────────
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const uploadRes = await axios.post(`${API}/upload`, formData, {
+        headers: { Authorization: `Bearer ${authToken}`, 'Content-Type': 'multipart/form-data' }
+      });
+      const url = uploadRes.data?.url || uploadRes.data?.secure_url || '';
+      setUploadedFileUrl(url);
+      setUploadedFileName(file.name);
+    } catch {
+      // non-fatal — still parse and save student data
+    }
+
+    // ── Parse file ────────────────────────────────────────────────────────
+    if (isXLSX) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const wb    = XLSX.read(ev.target.result, { type: 'array' });
+          const ws    = wb.Sheets[wb.SheetNames[0]];
+          const rows  = XLSX.utils.sheet_to_json(ws, { defval: '' });
+          const parsed = parseRows(rows);
+          if (parsed.length === 0) {
+            toast.error('No student data found. Expected columns: Name, Username, Password (see sample template).');
+            return;
+          }
+          setStudents(parsed);
+          setShowPreview(true);
+          toast.success(`Parsed ${parsed.length} students from Excel`);
+        } catch (err) {
+          toast.error('Could not read Excel file. Please use the sample template.');
         }
-        
-        setStudents(parsedStudents);
-        setShowPreview(true);
-        toast.success(`Parsed ${parsedStudents.length} students`);
-      },
-      error: (error) => {
-        toast.error(`Error parsing file: ${error.message}`);
-      }
-    });
-  };
-  
-  const handleSaveStudents = async () => {
-    if (students.length === 0) {
-      toast.error('No students to upload');
-      return;
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          const parsed = parseRows(results.data);
+          if (parsed.length === 0) {
+            toast.error('No valid student data found. Please check the file format.');
+            return;
+          }
+          setStudents(parsed);
+          setShowPreview(true);
+          toast.success(`Parsed ${parsed.length} students`);
+        },
+        error: (err) => toast.error(`Error parsing file: ${err.message}`),
+      });
     }
-    
+  };
+
+  const handleSaveStudents = async () => {
+    if (students.length === 0) { toast.error('No students to upload'); return; }
     setUploading(true);
     try {
       await axios.post(`${API}/schools/${schoolId}/lms-students`, {
-        students: students
-      }, {
-        headers: { Authorization: `Bearer ${authToken}` }
-      });
-      
+        students,
+        file_url: uploadedFileUrl,
+        file_name: uploadedFileName,
+      }, { headers: { Authorization: `Bearer ${authToken}` } });
       toast.success(`Successfully uploaded ${students.length} student credentials`);
-      onUpdate({ data: { students_list: students, students_uploaded: students.length } });
+      onUpdate({ data: { students_list: students, students_uploaded: students.length, file_url: uploadedFileUrl, file_name: uploadedFileName } });
       setShowPreview(false);
-    } catch (err) {
+    } catch {
       toast.error('Failed to upload student credentials');
     } finally {
       setUploading(false);
@@ -401,19 +438,10 @@ const LMSSetupSection = ({ step, schoolId, onUpdate, authToken }) => {
           Upload Student Credentials
         </h4>
         <p className="text-sm text-blue-700 mb-3">
-          Upload a CSV/Excel file with student names, usernames, and passwords for LMS access.
+          Upload a CSV or Excel (.xlsx) file. Accepted columns: Name, Username, Password, Class (any order/case).
         </p>
-        
+
         <div className="flex flex-wrap gap-2 mb-3">
-          <a 
-            href={SAMPLE_TEMPLATE_URL}
-            download
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-blue-300 text-blue-700 rounded-lg text-sm hover:bg-blue-50 transition-colors"
-          >
-            <Download className="w-4 h-4" />
-            Download Sample Template
-          </a>
-          
           <input
             type="file"
             ref={fileInputRef}
@@ -432,17 +460,31 @@ const LMSSetupSection = ({ step, schoolId, onUpdate, authToken }) => {
             Upload File
           </Button>
         </div>
-        
-        {/* Existing Data */}
+
+        {/* Existing Data — show uploaded count + download link */}
         {step.data?.students_uploaded > 0 && !showPreview && (
           <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-            <div className="flex items-center gap-2 text-green-700">
-              <CheckCircle className="w-4 h-4" />
-              <span className="text-sm font-medium">{step.data.students_uploaded} students uploaded</span>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-green-700">
+                <CheckCircle className="w-4 h-4" />
+                <span className="text-sm font-medium">{step.data.students_uploaded} students uploaded</span>
+              </div>
+              {(uploadedFileUrl || step.data?.file_url) && (
+                <a
+                  href={uploadedFileUrl || step.data.file_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-green-300 text-green-700 rounded-lg text-xs hover:bg-green-50 transition-colors font-medium"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Download File
+                </a>
+              )}
             </div>
             {step.data?.upload_date && (
               <p className="text-xs text-green-600 mt-1">
                 Uploaded on {format(new Date(step.data.upload_date), 'MMM d, yyyy h:mm a')}
+                {(step.data?.file_name || uploadedFileName) && ` · ${step.data.file_name || uploadedFileName}`}
               </p>
             )}
           </div>
