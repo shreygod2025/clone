@@ -214,7 +214,11 @@ async def get_pnl_summary(user: dict = Depends(get_current_user)):
                 tot_rev_amt = amt
 
             ep   = next((p for p in existing_payments if p.get("tranche_index") == idx), None)
+            # Use paid_amount if explicitly set; otherwise fall back to tranche amount when status is paid
             paid = float((ep.get("paid_amount") if ep else 0) or 0)
+            if paid <= 0 and ep and ep.get("status") in ("paid", "completed", "cleared"):
+                # Admin marked as paid without entering paid_amount — use tranche amount
+                paid = tot_rev_amt
 
             total_revenue += tot_rev_amt
             net_rev       += net_rev_amt
@@ -260,12 +264,16 @@ async def get_pnl_summary(user: dict = Depends(get_current_user)):
     for sid, rev in school_rev.items():
         nr = rev["net_revenue"]
         tr = rev["total_revenue"]
+        # Skip schools with no contract value — they are converted but not yet fully set up
+        if tr == 0 and nr == 0:
+            continue
         received   = rev["received"]
-        receivable = max(nr - received, 0)
+        # Compare received to total_revenue (gross incl. GST) — consistent since paid_amount is gross too
+        receivable = max(tr - received, 0)
 
         if received <= 0:
             pay_status = "Pending"
-        elif received >= nr:
+        elif received >= tr * 0.99:   # 1% tolerance for rounding differences
             pay_status = "Paid"
         else:
             pay_status = "Partially Paid"
