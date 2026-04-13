@@ -61,6 +61,53 @@ def count_by(items, field):
     return result
 
 
+# Human-readable label maps for support ticket fields
+_QUERY_TYPE_LABELS = {
+    'demo_related': 'Demo Related',
+    'payment': 'Payment',
+    'course_info': 'Course Info',
+    'ongoing_classes': 'Ongoing Classes',
+    'technical': 'Technical',
+    'partnership': 'Partnership',
+    'feedback': 'Feedback',
+    'educator_query': 'Educator Query',
+    'admission': 'Admission',
+    'scheduling': 'Scheduling',
+    'other': 'Other',
+}
+
+_INQUIRY_TYPE_LABELS = {
+    'student': 'Student',
+    'school': 'School',
+    'educator': 'Educator',
+    'growth_partner': 'Growth Partner',
+    'teacher': 'Teacher',
+    'team': 'Team / Staff',
+}
+
+_PRIORITY_LABELS = {
+    'urgent': 'Urgent',
+    'high': 'High',
+    'normal': 'Normal',
+    'low': 'Low',
+}
+
+
+def count_by_labeled(items, field, label_map=None):
+    """Like count_by but converts raw values to human-readable labels."""
+    raw = count_by(items, field)
+    result = {}
+    for k, v in raw.items():
+        if k == "Not Categorized":
+            result[k] = v
+        elif label_map and k in label_map:
+            result[label_map[k]] = v
+        else:
+            # Auto-convert underscore_case → Title Case
+            result[k.replace('_', ' ').title()] = v
+    return result
+
+
 def pct(a, b):
     return f"{round(a / b * 100)}%" if b else "0%"
 
@@ -181,10 +228,8 @@ async def fetch_support_data(start, end):
         ).to_list(5000)
         breakdown_label = "Last 7 Days"
 
-    # B2B vs B2C user type based on school_name presence
-    user_types = defaultdict(int)
-    for q in breakdown_source:
-        user_types["B2B (School)" if q.get("school_name") else "B2C (Student/Parent)"] += 1
+    # User type division from inquiry_type field (student / school / educator / etc.)
+    user_types = count_by_labeled(breakdown_source, "inquiry_type", _INQUIRY_TYPE_LABELS)
 
     return dict(
         new_queries=len(today),
@@ -194,10 +239,10 @@ async def fetch_support_data(start, end):
         avg_resolution_hrs=avg_res,
         resolution_rate=resolution_rate,
         breakdown_label=breakdown_label,
-        categories=count_by(breakdown_source, "main_category"),
-        sub_categories=count_by(breakdown_source, "category"),
-        detail_categories=count_by(breakdown_source, "sub_category"),
-        user_types=dict(sorted(user_types.items(), key=lambda x: -x[1])),
+        categories=count_by_labeled(breakdown_source, "query_type", _QUERY_TYPE_LABELS),
+        sub_categories=count_by_labeled(breakdown_source, "related_to"),
+        detail_categories=count_by_labeled(breakdown_source, "priority", _PRIORITY_LABELS),
+        user_types=user_types,
     )
 
 
@@ -299,7 +344,7 @@ def build_support_email(d, date_str):
     <p style="color:#888;font-size:12px;margin:0 0 8px;">Breakdown: <strong>{lbl}</strong></p>
     {breakdown_table(d['categories'], "Query Categories")}
     {breakdown_table(d['sub_categories'], "Sub-Categories")}
-    {breakdown_table(d['detail_categories'], "Detail Categories")}
+    {breakdown_table(d['detail_categories'], "Priority Breakdown")}
     {breakdown_table(d['user_types'], "User Type Division")}
     """
     return email_wrap(COLORS["support"], "🎧", "Support Report", date_str, body)
