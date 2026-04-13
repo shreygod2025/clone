@@ -166,8 +166,9 @@ async def get_pnl_summary(user: dict = Depends(get_current_user)):
         ("printing_certification", "Certificate Cost"),
         ("teacher_cost",           "Educator Cost"),
     ]
+    PNL_COST_IDS = {k for k, _ in PNL_COST_KEYS}
 
-    # ── 1. Build revenue from school_inquiries (same logic as orders endpoint) ──
+    # ── 1. Build revenue from school_inquiries ────────────────────────────────
     schools = await db.school_inquiries.find(
         {"status": {"$in": ["converted", "active", "renewed"]}},
         {"_id": 0, "id": 1, "school_name": 1, "onboarding_data": 1, "payments": 1},
@@ -180,46 +181,66 @@ async def get_pnl_summary(user: dict = Depends(get_current_user)):
         tranches = od.get("payment_tranches", [])
         school_gst_type = od.get("gst_type", "")
         total_students = int(od.get("total_students") or 0)
+        payment_method = od.get("payment_method") or od.get("payment_mode") or ""
         existing_payments = school.get("payments", [])
 
-        net_rev = 0.0
-        gst_total = 0.0
-        received = 0.0
+        total_revenue = 0.0   # what school pays (net + gst)
+        net_rev       = 0.0   # base excluding GST
+        gst_total     = 0.0
+        received      = 0.0
+        online_collected = 0.0
 
         for idx, tranche in enumerate(tranches):
             amt = float(tranche.get("amount") or 0) or 0.0
             if not amt and tranche.get("percentage"):
-                total_amt = float(od.get("total_amount") or 0)
-                amt = total_amt * float(tranche.get("percentage") or 0) / 100
+                base = float(od.get("total_amount") or 0)
+                amt = base * float(tranche.get("percentage") or 0) / 100
 
             gst_type = tranche.get("gst_type") or school_gst_type
-            if gst_type in ("exclusive_18", "exclusive"):
-                gst_amt = round(amt * 18 / 100, 2)
-            elif gst_type in ("inclusive_18", "inclusive"):
-                gst_amt = round(amt - amt / 1.18, 2)
-            else:
-                gst_amt = 0.0
 
-            ep = next((p for p in existing_payments if p.get("tranche_index") == idx), None)
+            # ── GST logic ──
+            if gst_type in ("exclusive_18", "exclusive"):
+                gst_amt     = round(amt * 18 / 100, 2)
+                net_rev_amt = amt               # base (excl. GST)
+                tot_rev_amt = amt + gst_amt     # total billed
+            elif gst_type in ("inclusive_18", "inclusive"):
+                gst_amt     = round(amt - amt / 1.18, 2)
+                net_rev_amt = round(amt / 1.18, 2)   # base after extracting GST
+                tot_rev_amt = amt               # as-billed (incl. GST)
+            else:
+                # no GST / book-rate / zero
+                gst_amt     = 0.0
+                net_rev_amt = amt
+                tot_rev_amt = amt
+
+            ep   = next((p for p in existing_payments if p.get("tranche_index") == idx), None)
             paid = float((ep.get("paid_amount") if ep else 0) or 0)
 
-            net_rev   += amt
-            gst_total += gst_amt
-            received  += paid
+            total_revenue += tot_rev_amt
+            net_rev       += net_rev_amt
+            gst_total     += gst_amt
+            received      += paid
+
+            # track online-collected separately
+            if ep and ep.get("payment_mode") in ("online", "razorpay", "cashfree", "upi"):
+                online_collected += paid
 
         if net_rev == 0 and not tranches:
-            # Fallback: use total_amount from onboarding_data directly
-            net_rev = float(od.get("total_amount") or 0)
+            net_rev       = float(od.get("total_amount") or 0)
+            total_revenue = net_rev
 
         school_rev[sid] = {
-            "school_name":   school.get("school_name", "Unknown"),
-            "student_count": total_students,
-            "net_revenue":   round(net_rev, 2),
-            "gst":           round(gst_total, 2),
-            "received":      round(received, 2),
+            "school_name":       school.get("school_name", "Unknown"),
+            "student_count":     total_students,
+            "total_revenue":     round(total_revenue, 2),
+            "net_revenue":       round(net_rev, 2),
+            "gst":               round(gst_total, 2),
+            "received":          round(received, 2),
+            "online_collected":  round(online_collected, 2),
+            "payment_method":    payment_method,
         }
 
-    # ── 2. Aggregate expenses from school_expenses ───────────────────────────
+    # ── 2. Aggregate expenses by school_id & category ─────────────────────────
     exp_pipeline = [
         {"$match": {"school_id": {"$exists": True, "$nin": ["", None]}}},
         {"$group": {
@@ -237,16 +258,14 @@ async def get_pnl_summary(user: dict = Depends(get_current_user)):
     # ── 3. Build rows ─────────────────────────────────────────────────────────
     rows = []
     for sid, rev in school_rev.items():
-        if rev["net_revenue"] == 0 and exp_map.get(sid) is None:
-            continue  # skip schools with no data at all
-
-        net_rev   = rev["net_revenue"]
-        received  = rev["received"]
-        receivable = max(net_rev - received, 0)
+        nr = rev["net_revenue"]
+        tr = rev["total_revenue"]
+        received   = rev["received"]
+        receivable = max(nr - received, 0)
 
         if received <= 0:
             pay_status = "Pending"
-        elif received >= net_rev:
+        elif received >= nr:
             pay_status = "Paid"
         else:
             pay_status = "Partially Paid"
@@ -254,48 +273,70 @@ async def get_pnl_summary(user: dict = Depends(get_current_user)):
         school_exp = exp_map.get(sid, {})
         costs = {}
         total_costs = 0.0
+        misc_cost   = 0.0
+
         for cat_id, cat_label in PNL_COST_KEYS:
             amt = float(school_exp.get(cat_id, 0))
-            p = round(amt / net_rev * 100, 1) if net_rev else 0
+            p   = round(amt / nr * 100, 1) if nr else 0
             costs[cat_id] = {"amount": round(amt, 2), "pct": p, "label": cat_label}
-            total_costs += amt
+            total_costs  += amt
 
-        gross_profit = round(net_rev - total_costs, 2)
-        gp_pct = round(gross_profit / net_rev * 100, 1) if net_rev else 0
+        # Misc = all expense categories NOT in PNL_COST_KEYS
+        for cat_id, cat_amt in school_exp.items():
+            if cat_id not in PNL_COST_IDS:
+                misc_cost += float(cat_amt or 0)
+
+        misc_cost   = round(misc_cost, 2)
+        total_costs = round(total_costs + misc_cost, 2)
+        misc_pct    = round(misc_cost / nr * 100, 1) if nr else 0
+
+        gross_profit = round(nr - total_costs, 2)
+        gp_pct       = round(gross_profit / nr * 100, 1) if nr else 0
+
+        students = rev["student_count"]
+        price_per_student = round(nr / students) if students else 0
 
         rows.append({
-            "school_id":      sid,
-            "school_name":    rev["school_name"],
-            "student_count":  rev["student_count"],
-            "pricing":        round(net_rev + rev["gst"], 2),
-            "gst":            rev["gst"],
-            "net_revenue":    net_rev,
-            "payment_status": pay_status,
-            "received":       received,
-            "receivable":     round(receivable, 2),
-            "costs":          costs,
-            "total_costs":    round(total_costs, 2),
-            "gross_profit":   gross_profit,
-            "gp_pct":         gp_pct,
+            "school_id":         sid,
+            "school_name":       rev["school_name"],
+            "student_count":     students,
+            "price_per_student": price_per_student,
+            "total_revenue":     tr,
+            "gst":               rev["gst"],
+            "net_revenue":       nr,
+            "payment_status":    pay_status,
+            "received":          received,
+            "online_collected":  rev["online_collected"],
+            "payment_method":    rev["payment_method"],
+            "receivable":        round(receivable, 2),
+            "costs":             costs,
+            "misc_cost":         misc_cost,
+            "misc_pct":          misc_pct,
+            "total_costs":       total_costs,
+            "gross_profit":      gross_profit,
+            "gp_pct":            gp_pct,
         })
 
     rows.sort(key=lambda r: r["school_name"])
 
-    def _sum(field): return round(sum(r[field] for r in rows), 2)
+    def _sum(f): return round(sum(r[f] for r in rows), 2)
     total_nr = _sum("net_revenue")
     totals = {
-        "student_count": sum(r["student_count"] for r in rows),
-        "pricing":       _sum("pricing"),
-        "gst":           _sum("gst"),
-        "net_revenue":   total_nr,
-        "received":      _sum("received"),
-        "receivable":    _sum("receivable"),
-        "total_costs":   _sum("total_costs"),
-        "gross_profit":  _sum("gross_profit"),
-        "gp_pct":        round(_sum("gross_profit") / total_nr * 100, 1) if total_nr else 0,
+        "student_count":    sum(r["student_count"] for r in rows),
+        "total_revenue":    _sum("total_revenue"),
+        "gst":              _sum("gst"),
+        "net_revenue":      total_nr,
+        "received":         _sum("received"),
+        "receivable":       _sum("receivable"),
+        "misc_cost":        _sum("misc_cost"),
+        "total_costs":      _sum("total_costs"),
+        "gross_profit":     _sum("gross_profit"),
+        "gp_pct":           round(_sum("gross_profit") / total_nr * 100, 1) if total_nr else 0,
+        "misc_pct":         round(_sum("misc_cost") / total_nr * 100, 1) if total_nr else 0,
     }
     for cat_id, _ in PNL_COST_KEYS:
         totals[cat_id] = round(sum(r["costs"].get(cat_id, {}).get("amount", 0) for r in rows), 2)
+        totals[f"{cat_id}_pct"] = round(totals[cat_id] / total_nr * 100, 1) if total_nr else 0
 
     return {"rows": rows, "totals": totals, "cost_keys": PNL_COST_KEYS}
 
