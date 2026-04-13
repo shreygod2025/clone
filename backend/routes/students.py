@@ -5,7 +5,7 @@ import uuid
 import asyncio
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, BackgroundTasks
 from pydantic import BaseModel, Field, EmailStr, ConfigDict
 
 from .shared import (
@@ -216,7 +216,7 @@ async def create_center_demo(data: StudentInquiryCreate, user: dict = Depends(ge
     return inquiry.model_dump()
 
 @router.post("/students/inquiry", response_model=StudentInquiry)
-async def create_student_inquiry(data: StudentInquiryCreate):
+async def create_student_inquiry(data: StudentInquiryCreate, background_tasks: BackgroundTasks):
     # Check for duplicate booking (same phone, skill, and demo_date within the last hour)
     if data.phone and data.skill:
         one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
@@ -266,21 +266,23 @@ async def create_student_inquiry(data: StudentInquiryCreate):
     doc['updated_at'] = doc['updated_at'].isoformat()
     await db.student_inquiries.insert_one(doc)
     
-    # Send WhatsApp confirmation notifications
-    if data.demo_date and data.demo_time:
-        await send_demo_confirmation_notifications(doc, educator_data)
-    
-    # Send new lead notification to B2C Sales team
-    try:
-        sales_team = await db.users.find(
-            {"department": "sales", "role": {"$in": ["admin", "team_member"]}},
-            {"_id": 0, "phone": 1}
-        ).to_list(10)
-        sales_phones = [u.get("phone") for u in sales_team if u.get("phone")]
-        if sales_phones:
-            await send_student_newlead_notification(doc, sales_phones)
-    except Exception as e:
-        print(f"Failed to send new lead notification: {e}")
+    # Fire WhatsApp notifications in background so they don't block the response
+    # (Prevents timeout-caused duplicate submissions when AiSensy is slow)
+    async def _send_all_notifications(doc_copy, edu_data, has_demo):
+        try:
+            if has_demo:
+                await send_demo_confirmation_notifications(doc_copy, edu_data)
+            sales_team = await db.users.find(
+                {"department": "sales", "role": {"$in": ["admin", "team_member"]}},
+                {"_id": 0, "phone": 1}
+            ).to_list(10)
+            sales_phones = [u.get("phone") for u in sales_team if u.get("phone")]
+            if sales_phones:
+                await send_student_newlead_notification(doc_copy, sales_phones)
+        except Exception as e:
+            print(f"[BG] Student inquiry notifications failed: {e}")
+
+    background_tasks.add_task(_send_all_notifications, doc, educator_data, bool(data.demo_date and data.demo_time))
     
     return inquiry
 

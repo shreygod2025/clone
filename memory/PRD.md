@@ -12,7 +12,7 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - **Funnels & Login:** OTP-based login for all user types
 - **Admin CRM:** Full school management with bulk import, onboarding workflows, inquiry management
 
-### Architecture (Updated: 2026-04-11 — Add Expense optional school + invoice upload)
+### Architecture (Updated: 2026-04-13 — Background notifications, GST invoice fix)
 ```
 /app/
 ├── backend/

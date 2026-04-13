@@ -501,7 +501,7 @@ class BlogUpdate(BaseModel):
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
 @router.post("/educators/apply", response_model=EducatorApplication)
-async def create_educator_application(data: EducatorApplicationCreate):
+async def create_educator_application(data: EducatorApplicationCreate, background_tasks: BackgroundTasks):
     application = EducatorApplication(**data.model_dump())
     
     # If demo_date is provided, set status to demo_scheduled
@@ -524,8 +524,8 @@ async def create_educator_application(data: EducatorApplicationCreate):
     doc['updated_at'] = doc['updated_at'].isoformat()
     await db.educator_applications.insert_one(doc)
     
-    # Send application received email
-    await send_educator_application_received_email(doc)
+    # Fire email in background — don't block response
+    background_tasks.add_task(send_educator_application_received_email, doc)
     
     return application
 
@@ -536,7 +536,7 @@ class EducatorApplyWithOTP(BaseModel):
     application_data: EducatorApplicationCreate
 
 @router.post("/educators/apply-verified")
-async def create_educator_application_verified(data: EducatorApplyWithOTP):
+async def create_educator_application_verified(data: EducatorApplyWithOTP, background_tasks: BackgroundTasks):
     """Create educator application with OTP verification"""
     success, error_msg = await otp_verify(data.phone, data.otp)
     if not success:
@@ -563,8 +563,8 @@ async def create_educator_application_verified(data: EducatorApplyWithOTP):
     
     await db.educator_applications.insert_one(doc)
     
-    # Send application received email
-    await send_educator_application_received_email(doc)
+    # Fire email in background — don't block response
+    background_tasks.add_task(send_educator_application_received_email, doc)
     
     return {
         "success": True,
