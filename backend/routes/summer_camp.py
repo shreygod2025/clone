@@ -6,11 +6,19 @@ import uuid
 import time
 import logging
 import asyncio
+import io
 from datetime import datetime, timezone
 from typing import Optional, List
-from fastapi import APIRouter, HTTPException, Depends, Request
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, HTTPException, Depends, Request, UploadFile, File, BackgroundTasks
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
+
+try:
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment
+    OPENPYXL_AVAILABLE = True
+except ImportError:
+    OPENPYXL_AVAILABLE = False
 
 try:
     from cashfree_pg.models.create_order_request import CreateOrderRequest
@@ -893,6 +901,272 @@ async def get_summer_camp_dashboard(user: dict = Depends(get_current_user)):
             }
             for ag in AGE_GROUPS
         ],
+    }
+
+
+# ─── Bulk Import ───────────────────────────────────────────────────────────────
+
+VALID_AGE_GROUPS = {"explorers", "creators", "innovators"}
+VALID_STATUSES = {"phone_captured", "lead", "hot_lead", "converted", "payment_offline", "lost_lead"}
+VALID_BATCH_WEEKS = {"week1", "week2", "week3", "week4"}
+
+def _normalize_age_group(val: str) -> str:
+    val = (val or "").strip().lower()
+    if val in VALID_AGE_GROUPS:
+        return val
+    if val in ("4-8", "4–8", "littleexplorers", "little explorers", "explorers"):
+        return "explorers"
+    if val in ("9-12", "9–12", "techcreators", "tech creators", "creators"):
+        return "creators"
+    if val in ("13-16", "13–16", "futureinnovators", "future innovators", "innovators"):
+        return "innovators"
+    return ""
+
+def _normalize_batch_week(val: str) -> str:
+    val = (val or "").strip().lower().replace(" ", "")
+    if val in VALID_BATCH_WEEKS:
+        return val
+    mapping = {
+        "batch1": "week1", "batch2": "week2", "batch3": "week3", "batch4": "week4",
+        "1": "week1", "2": "week2", "3": "week3", "4": "week4",
+        "may4-8": "week1", "may11-15": "week2", "may18-22": "week3", "may25-29": "week4",
+    }
+    return mapping.get(val, "week1")
+
+def _normalize_status(val: str) -> str:
+    val = (val or "").strip().lower().replace(" ", "_")
+    if val in VALID_STATUSES:
+        return val
+    return "lead"
+
+
+async def _send_import_wa(booking: dict) -> None:
+    """Fire the appropriate WhatsApp notification for a freshly-imported booking."""
+    from .notifications import send_whatsapp_notification
+    phone = booking.get("parent_phone", "")
+    if not phone:
+        return
+    status = booking.get("crm_status", "lead")
+    child_name = booking.get("child_name") or booking.get("parent_name") or "Student"
+    first_name = child_name.strip().split()[0] if child_name.strip() else "Student"
+
+    try:
+        if status == "phone_captured":
+            await send_whatsapp_notification(
+                phone=phone,
+                template_key="summercamp_followup",
+                params=[],
+                user_name=first_name,
+                media={"url": SUMMER_CAMP_BROCHURE_URL, "filename": SUMMER_CAMP_BROCHURE_FILENAME},
+            )
+        elif status in ("lead", "hot_lead"):
+            await send_whatsapp_notification(
+                phone=phone,
+                template_key="summercamp_payment_pending",
+                params=["$FirstName"],
+                user_name=first_name,
+                media={"url": SUMMER_CAMP_BROCHURE_URL, "filename": SUMMER_CAMP_BROCHURE_FILENAME},
+            )
+        elif status in ("converted", "payment_offline"):
+            params = await _build_enrolled_wa_params(booking)
+            await send_whatsapp_notification(
+                phone=phone,
+                template_key="summercamp_enrolled",
+                params=params,
+                user_name=first_name,
+            )
+        # lost_lead → no notification
+    except Exception as e:
+        logging.warning(f"[BulkImport] WA notification failed for {phone}: {e}")
+
+
+@router.get("/summer-camp/bulk-import-sample")
+async def get_bulk_import_sample(user: dict = Depends(get_current_user)):
+    """Return a sample XLSX file that shows the expected import format."""
+    if not OPENPYXL_AVAILABLE:
+        raise HTTPException(status_code=500, detail="openpyxl not installed")
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Summer Camp Leads"
+
+    headers = [
+        "parent_phone", "child_name", "parent_name", "parent_email",
+        "age_group", "batch_week", "center_name", "crm_status",
+    ]
+    notes = [
+        "Required. 10-digit mobile (no +91)",
+        "Required. Child's full name",
+        "Optional.",
+        "Optional. Parent email",
+        "Required: explorers / creators / innovators",
+        "Required: week1 / week2 / week3 / week4",
+        "Optional. Center name or leave blank",
+        "Optional: lead / hot_lead / phone_captured / converted / payment_offline / lost_lead  (default: lead)",
+    ]
+
+    # Style header row
+    header_fill = PatternFill("solid", fgColor="1E3A5F")
+    header_font = Font(color="FFFFFF", bold=True)
+    for col, (h, n) in enumerate(zip(headers, notes), start=1):
+        cell = ws.cell(row=1, column=col, value=h)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center")
+        ws.column_dimensions[cell.column_letter].width = max(len(h), len(n) // 2 + 5)
+        ws.cell(row=2, column=col, value=n).font = Font(italic=True, color="888888")
+
+    # Two sample rows
+    samples = [
+        ["9876543210", "Aryan Sharma", "Raj Sharma", "raj@gmail.com", "creators", "week1", "OLL Andheri Center", "lead"],
+        ["9123456789", "Priya Patel", "Sunita Patel", "sunita@gmail.com", "explorers", "week2", "", "phone_captured"],
+    ]
+    for row_idx, row in enumerate(samples, start=3):
+        for col_idx, val in enumerate(row, start=1):
+            ws.cell(row=row_idx, column=col_idx, value=val)
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=SummerCamp_Import_Sample.xlsx"},
+    )
+
+
+@router.post("/summer-camp/bulk-import")
+async def bulk_import_leads(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    user: dict = Depends(get_current_user),
+):
+    """
+    Bulk import Summer Camp leads from XLSX.
+    - Skips rows where parent_phone already exists in the DB.
+    - Fires WhatsApp notification (based on crm_status) immediately for each imported lead.
+    """
+    if not OPENPYXL_AVAILABLE:
+        raise HTTPException(status_code=500, detail="openpyxl not installed on server")
+    if not file.filename.endswith((".xlsx", ".xls")):
+        raise HTTPException(status_code=400, detail="Only .xlsx files are supported")
+
+    content = await file.read()
+    try:
+        wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Could not parse file. Please use the sample template.")
+
+    ws = wb.active
+    rows = list(ws.iter_rows(values_only=True))
+    if not rows:
+        raise HTTPException(status_code=400, detail="File is empty")
+
+    # First non-empty row = headers
+    header_row = rows[0]
+    headers_raw = [str(h).strip().lower().replace(" ", "_") if h else "" for h in header_row]
+
+    def col(name):
+        try:
+            return headers_raw.index(name)
+        except ValueError:
+            return -1
+
+    ph_col = col("parent_phone")
+    if ph_col == -1:
+        raise HTTPException(status_code=400, detail="Column 'parent_phone' is required")
+
+    imported, skipped, errors = [], [], []
+
+    for row_num, row in enumerate(rows[1:], start=2):
+        if not any(row):
+            continue  # skip empty rows
+
+        def get(c):
+            if c == -1 or c >= len(row):
+                return ""
+            val = row[c]
+            return str(val).strip() if val is not None else ""
+
+        raw_phone = re.sub(r'\D', '', get(ph_col))
+        if len(raw_phone) > 10:
+            raw_phone = raw_phone[-10:]
+        if len(raw_phone) < 10:
+            errors.append(f"Row {row_num}: invalid phone '{get(ph_col)}'")
+            continue
+
+        # Skip duplicate
+        existing = await db.summer_camp_bookings.find_one({"parent_phone": raw_phone}, {"_id": 0, "id": 1})
+        if existing:
+            skipped.append(raw_phone)
+            continue
+
+        child_name  = get(col("child_name"))
+        parent_name = get(col("parent_name"))
+        parent_email = get(col("parent_email"))
+        age_group   = _normalize_age_group(get(col("age_group"))) or "explorers"
+        batch_week  = _normalize_batch_week(get(col("batch_week")))
+        center_name = get(col("center_name"))
+        crm_status  = _normalize_status(get(col("crm_status")))
+
+        # Resolve center
+        center_id = ""
+        center_label = center_name
+        if center_name:
+            center_doc = await db.centers.find_one(
+                {"name": {"$regex": center_name, "$options": "i"}},
+                {"_id": 0, "id": 1, "name": 1, "area": 1, "city": 1},
+            )
+            if center_doc:
+                center_id = center_doc.get("id", "")
+                area = center_doc.get("area", "")
+                city = center_doc.get("city", "")
+                center_label = f"{center_doc['name']} ({area}, {city})" if area and city else center_doc["name"]
+
+        ref_num = str(int(time.time() * 1000))[-6:]
+        booking_id = str(uuid.uuid4())
+        booking_ref = f"SC2026-{ref_num}"
+        batch_dates = BATCH_DATES.get(batch_week, {}).get("weekday", "")
+
+        doc = {
+            "id": booking_id,
+            "booking_ref": booking_ref,
+            "parent_phone": raw_phone,
+            "child_name": child_name,
+            "parent_name": parent_name,
+            "parent_email": parent_email,
+            "age_group": age_group,
+            "age_group_label": AGE_GROUPS.get(age_group, {}).get("label", ""),
+            "age_group_ages": AGE_GROUPS.get(age_group, {}).get("ages", ""),
+            "batch_type": "weekday",
+            "batch_week": batch_week,
+            "batch_dates": batch_dates,
+            "mode": "offline",
+            "center": center_id,
+            "center_label": center_label,
+            "payment_mode": "cashfree" if crm_status not in ("converted", "payment_offline") else "cash",
+            "amount": CAMP_PRICE,
+            "payment_status": "paid" if crm_status in ("converted", "payment_offline") else "pending",
+            "crm_status": crm_status,
+            "source_ref": "",
+            "source_name": "Bulk Import",
+            "imported_by": user.get("email", "admin"),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        await db.summer_camp_bookings.insert_one(doc)
+        imported.append(booking_id)
+
+        # Fire WA notification in background so import doesn't block
+        background_tasks.add_task(_send_import_wa, doc)
+
+        logging.info(f"[BulkImport] Imported {raw_phone} ({crm_status}) ref={booking_ref}")
+
+    return {
+        "imported": len(imported),
+        "skipped": len(skipped),
+        "errors": errors,
+        "message": f"Successfully imported {len(imported)} leads. {len(skipped)} skipped (duplicate phone). {len(errors)} errors.",
     }
 
 

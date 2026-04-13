@@ -64,6 +64,12 @@ const AdminStudentCRM = () => {
   // Summer Camp
   const [summerCampBookings, setSummerCampBookings] = useState([]);
   const [summerCampLoading, setSummerCampLoading] = useState(false);
+  // Bulk import
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importPreview, setImportPreview] = useState([]);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
   // Tracking links
   const [trackingLinks, setTrackingLinks] = useState([]);
   const [trackingLinksLoading, setTrackingLinksLoading] = useState(false);
@@ -978,6 +984,53 @@ const AdminStudentCRM = () => {
     saveAs(new Blob([buf], { type: 'application/octet-stream' }), `SummerCamp_CRM_${new Date().toISOString().slice(0,10)}.xlsx`);
   };
 
+  const downloadImportSample = async () => {
+    try {
+      const res = await axios.get(`${API}/summer-camp/bulk-import-sample`, {
+        headers: getAuthHeaders(), responseType: 'blob',
+      });
+      saveAs(new Blob([res.data]), 'SummerCamp_Import_Sample.xlsx');
+    } catch { toast.error('Could not download sample file'); }
+  };
+
+  const handleImportFileChange = (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    setImportFile(f);
+    setImportResult(null);
+    // Parse locally for preview using XLSX
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const wb = XLSX.read(ev.target.result, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+        setImportPreview(rows.slice(0, 5)); // show first 5 rows as preview
+      } catch { toast.error('Could not parse file'); }
+    };
+    reader.readAsArrayBuffer(f);
+  };
+
+  const handleBulkImport = async () => {
+    if (!importFile) return;
+    setImporting(true);
+    setImportResult(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', importFile);
+      const res = await axios.post(`${API}/summer-camp/bulk-import`, formData, {
+        headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' },
+      });
+      setImportResult(res.data);
+      fetchSummerCampBookings();
+      toast.success(res.data.message);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Import failed');
+    } finally {
+      setImporting(false);
+    }
+  };
+
   const getCount = (status) => status === 'summer_camp' ? summerCampBookings.length : inquiries.filter(i => i.status === status).length;
 
   // Notify not joined - for student or educator
@@ -1297,6 +1350,15 @@ const AdminStudentCRM = () => {
                         >
                           <Download className="w-4 h-4" />
                           <span className="hidden sm:inline">Export</span> ({filteredCampBookings.length})
+                        </Button>
+                        <Button
+                          onClick={() => { setShowImportModal(true); setImportFile(null); setImportPreview([]); setImportResult(null); }}
+                          variant="outline"
+                          className="flex items-center gap-2 border-blue-300 text-blue-700 hover:bg-blue-50 shrink-0"
+                          data-testid="import-summer-camp-btn"
+                        >
+                          <Upload className="w-4 h-4" />
+                          <span className="hidden sm:inline">Import</span>
                         </Button>
                       </div>
 
@@ -1961,6 +2023,102 @@ const AdminStudentCRM = () => {
                   >
                     {campSaving ? '...' : 'Post'}
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Bulk Import Modal ── */}
+          {showImportModal && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) setShowImportModal(false); }}>
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between p-5 border-b">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">Bulk Import Leads</h3>
+                    <p className="text-sm text-slate-500 mt-0.5">Upload an XLSX file to import Summer Camp leads</p>
+                  </div>
+                  <button onClick={() => setShowImportModal(false)} className="text-slate-400 hover:text-slate-600 p-1"><X className="w-5 h-5" /></button>
+                </div>
+
+                <div className="p-5 space-y-5">
+                  {/* Step 1: Download sample */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="font-semibold text-blue-900 text-sm">Step 1 — Download Sample File</p>
+                        <p className="text-xs text-blue-600 mt-1">Use this template to fill your data. Required columns: <code className="bg-blue-100 px-1 rounded">parent_phone</code>, <code className="bg-blue-100 px-1 rounded">child_name</code>, <code className="bg-blue-100 px-1 rounded">age_group</code>, <code className="bg-blue-100 px-1 rounded">batch_week</code></p>
+                        <p className="text-xs text-blue-500 mt-1">crm_status options: lead · hot_lead · phone_captured · converted · payment_offline · lost_lead</p>
+                      </div>
+                      <button
+                        onClick={downloadImportSample}
+                        className="flex items-center gap-2 bg-blue-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors shrink-0"
+                        data-testid="download-sample-btn"
+                      >
+                        <Download className="w-4 h-4" /> Sample
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Step 2: Upload file */}
+                  <div>
+                    <p className="font-semibold text-slate-800 text-sm mb-2">Step 2 — Upload Your XLSX</p>
+                    <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:border-orange-400 hover:bg-orange-50 transition-colors">
+                      <Upload className="w-6 h-6 text-slate-400 mb-1" />
+                      <span className="text-sm text-slate-500">{importFile ? importFile.name : 'Click to select .xlsx file'}</span>
+                      <input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportFileChange} data-testid="import-file-input" />
+                    </label>
+                  </div>
+
+                  {/* Preview */}
+                  {importPreview.length > 0 && !importResult && (
+                    <div>
+                      <p className="font-semibold text-slate-800 text-sm mb-2">Preview (first {importPreview.length} rows)</p>
+                      <div className="overflow-x-auto rounded-xl border border-slate-200">
+                        <table className="w-full text-xs">
+                          <thead className="bg-slate-50">
+                            <tr>{Object.keys(importPreview[0]).map(k => <th key={k} className="px-3 py-2 text-left font-semibold text-slate-600 whitespace-nowrap">{k}</th>)}</tr>
+                          </thead>
+                          <tbody>
+                            {importPreview.map((row, i) => (
+                              <tr key={i} className="border-t border-slate-100">
+                                {Object.values(row).map((v, j) => <td key={j} className="px-3 py-2 text-slate-700 whitespace-nowrap">{String(v)}</td>)}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Result */}
+                  {importResult && (
+                    <div className={`rounded-xl p-4 border ${importResult.imported > 0 ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
+                      <p className="font-bold text-slate-900 text-sm mb-2">Import Complete</p>
+                      <div className="grid grid-cols-3 gap-3 mb-3">
+                        <div className="text-center"><div className="text-2xl font-bold text-green-600">{importResult.imported}</div><div className="text-xs text-slate-500">Imported</div></div>
+                        <div className="text-center"><div className="text-2xl font-bold text-yellow-600">{importResult.skipped}</div><div className="text-xs text-slate-500">Skipped (duplicate)</div></div>
+                        <div className="text-center"><div className="text-2xl font-bold text-red-600">{importResult.errors?.length || 0}</div><div className="text-xs text-slate-500">Errors</div></div>
+                      </div>
+                      {importResult.errors?.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {importResult.errors.map((e, i) => <p key={i} className="text-xs text-red-600">{e}</p>)}
+                        </div>
+                      )}
+                      <p className="text-xs text-slate-500 mt-2">WhatsApp notifications have been sent based on each lead's status.</p>
+                    </div>
+                  )}
+
+                  <div className="flex gap-3 pt-2">
+                    <Button variant="outline" onClick={() => setShowImportModal(false)} className="flex-1">Close</Button>
+                    <Button
+                      onClick={handleBulkImport}
+                      disabled={!importFile || importing || !!importResult}
+                      className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
+                      data-testid="confirm-import-btn"
+                    >
+                      {importing ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Importing...</> : 'Import & Notify'}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>
