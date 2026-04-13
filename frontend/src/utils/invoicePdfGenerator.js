@@ -130,12 +130,17 @@ function calculateGST(amount, gstType, schoolState) {
   const halfRate = gstRate / 2;
   let baseAmount, gstAmount;
 
-  // inclusive_18: price already includes GST — extract base
-  if (gstType === 'inclusive_18' || gstType === 'inclusive') {
+  // payment.amount always represents the INCLUSIVE total (what the school actually pays).
+  // For both inclusive_18 and exclusive_18: extract the base by dividing by (1 + GST rate).
+  // The difference is only in DISPLAY:
+  //   inclusive_18 → GST shown per line item inside the table
+  //   exclusive_18 → GST shown as separate line items below the subtotal
+  if (gstType === 'inclusive_18' || gstType === 'inclusive' ||
+      gstType === 'exclusive_18' || gstType === 'exclusive') {
     baseAmount = amount / (1 + gstRate / 100);
     gstAmount = amount - baseAmount;
   } else {
-    // exclusive_18 (default): GST is added on top of base
+    // Unknown / legacy: add GST on top of base
     baseAmount = amount;
     gstAmount = amount * gstRate / 100;
   }
