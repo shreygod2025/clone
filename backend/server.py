@@ -4022,6 +4022,10 @@ from routes.summer_camp import (
     check_summer_camp_payment_pending_3,
     check_summer_camp_phone_captured_24h,
     check_summer_camp_closing_7days,
+    check_sc_email_1h,
+    check_sc_email_24h,
+    check_sc_email_2d,
+    check_sc_email_5d,
 )
 from routes.db_backup import router as db_backup_router
 from routes.gp_onboarding import router as gp_onboarding_router
@@ -4321,6 +4325,41 @@ async def startup_db_client():
         next_run_time=datetime.now(timezone.utc) + timedelta(minutes=5)
     )
     print("[STARTUP] Summer Camp closing 7-day follow-up scheduled — runs every 6 hours")
+
+    # ── Summer Camp EMAIL follow-ups ──────────────────────────────────────────
+    scheduler.add_job(
+        check_sc_email_1h,
+        trigger=IntervalTrigger(minutes=10),
+        id="sc_email_1h_job",
+        name="Summer Camp Email Follow-Up 1hr",
+        replace_existing=True,
+        next_run_time=datetime.now(timezone.utc) + timedelta(minutes=2)
+    )
+    scheduler.add_job(
+        check_sc_email_24h,
+        trigger=IntervalTrigger(minutes=30),
+        id="sc_email_24h_job",
+        name="Summer Camp Email Follow-Up 24hr",
+        replace_existing=True,
+        next_run_time=datetime.now(timezone.utc) + timedelta(minutes=3)
+    )
+    scheduler.add_job(
+        check_sc_email_2d,
+        trigger=IntervalTrigger(hours=2),
+        id="sc_email_2d_job",
+        name="Summer Camp Email Follow-Up 2 days",
+        replace_existing=True,
+        next_run_time=datetime.now(timezone.utc) + timedelta(minutes=4)
+    )
+    scheduler.add_job(
+        check_sc_email_5d,
+        trigger=IntervalTrigger(hours=6),
+        id="sc_email_5d_job",
+        name="Summer Camp Email Follow-Up 5 days",
+        replace_existing=True,
+        next_run_time=datetime.now(timezone.utc) + timedelta(minutes=5)
+    )
+    print("[STARTUP] Summer Camp email follow-ups scheduled — 1h(10min), 24h(30min), 2d(2hr), 5d(6hr) intervals")
 
     if not scheduler.running:
         scheduler.start()

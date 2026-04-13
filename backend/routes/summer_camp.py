@@ -1592,3 +1592,213 @@ async def check_summer_camp_closing_7days() -> None:
 
     except Exception as e:
         print(f"[SC Closing7d] Scheduler error: {e}")
+
+
+# ─── Email Follow-Up Helpers ───────────────────────────────────────────────────
+
+BOOKING_URL = os.getenv("FRONTEND_URL", "https://oll.co") + "/summer-camp/book"
+_SC_EMAIL_FROM = "OLL Summer Camp <noreply@oll.co>"
+
+def _sc_email_html(child_first: str, heading: str, body_html: str, cta_label: str = "Complete Registration") -> str:
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  body{{margin:0;padding:0;background:#0B1120;font-family:'Segoe UI',Arial,sans-serif;color:#E2E8F0}}
+  .wrap{{max-width:560px;margin:32px auto;background:#111827;border-radius:16px;overflow:hidden;border:1px solid #1e2d3d}}
+  .header{{background:linear-gradient(135deg,#0B1E3D 0%,#1a3a6e 100%);padding:32px 32px 24px;text-align:center}}
+  .logo{{font-size:22px;font-weight:800;letter-spacing:1px;color:#38BDF8;margin-bottom:4px}}
+  .subtitle{{color:#64748B;font-size:12px;text-transform:uppercase;letter-spacing:2px}}
+  .body{{padding:32px}}
+  h1{{font-size:22px;font-weight:700;color:#F1F5F9;margin:0 0 16px}}
+  p{{font-size:15px;line-height:1.7;color:#94A3B8;margin:0 0 16px}}
+  .cta{{display:block;width:fit-content;margin:24px auto 0;padding:14px 36px;background:#38BDF8;color:#0B1120;border-radius:30px;font-weight:700;font-size:15px;text-decoration:none}}
+  .footer{{padding:20px 32px;border-top:1px solid #1e2d3d;font-size:12px;color:#475569;text-align:center}}
+  .badge{{display:inline-block;background:#1e3a5f;color:#38BDF8;border-radius:20px;padding:4px 14px;font-size:12px;font-weight:600;margin-bottom:20px}}
+</style></head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <div class="logo">OLL</div>
+      <div class="subtitle">Summer Camp 2026</div>
+    </div>
+    <div class="body">
+      <span class="badge">Summer Camp 2026</span>
+      <h1>Hi {child_first}, {heading}</h1>
+      {body_html}
+      <a href="{BOOKING_URL}" class="cta">{cta_label} &rarr;</a>
+    </div>
+    <div class="footer">
+      One Lakh Learners &bull; Mumbai &bull; <a href="https://oll.co" style="color:#38BDF8">oll.co</a><br>
+      You're receiving this because you expressed interest in OLL Summer Camp 2026.
+    </div>
+  </div>
+</body></html>"""
+
+
+async def _send_sc_followup_email(booking: dict, step_key: str, subject: str, heading: str, body_html: str, cta: str = "Complete Registration") -> bool:
+    """Send a summer camp follow-up email. Returns True if sent successfully."""
+    email = (booking.get("parent_email") or "").strip()
+    if not email or "@" not in email:
+        return False
+
+    child = booking.get("child_name") or booking.get("parent_name") or "there"
+    first = child.strip().split()[0] if child.strip() else "there"
+    html = _sc_email_html(first, heading, body_html, cta)
+
+    try:
+        from .shared import get_resend_api_key, SENDER_EMAIL
+        import resend as _resend
+
+        key = await get_resend_api_key()
+        if key:
+            _resend.api_key = key
+            params = {"from": _SC_EMAIL_FROM, "to": [email], "subject": subject, "html": html}
+            await asyncio.to_thread(_resend.Emails.send, params)
+            print(f"[SC Email {step_key}] Sent via Resend to {email}")
+            return True
+
+        print(f"[SC Email {step_key}] Resend not configured — skipping {email}")
+        return False
+
+    except Exception as exc:
+        print(f"[SC Email {step_key}] Failed for {email}: {exc}")
+        return False
+
+
+async def _run_sc_email_followup(
+    step_key: str,
+    min_age_seconds: int,
+    max_age_seconds: int,
+    subject: str,
+    heading: str,
+    body_html: str,
+    cta: str = "Complete Registration",
+) -> None:
+    """
+    Generic scheduler function for summer camp email follow-ups.
+    Finds unconverted leads with `parent_email` that haven't received this step,
+    and sends the email once they've been in the DB long enough.
+    """
+    now = datetime.now(timezone.utc).timestamp()
+    cutoff_old = now - min_age_seconds
+    cutoff_max = now - max_age_seconds
+
+    UNCONVERTED = ["phone_captured", "lead", "hot_lead"]
+    sent_flag   = f"email_{step_key}_sent"
+
+    try:
+        cursor = db.summer_camp_bookings.find(
+            {
+                "crm_status": {"$in": UNCONVERTED},
+                "parent_email": {"$exists": True, "$nin": ["", None]},
+                sent_flag: {"$ne": True},
+            },
+            {"_id": 0, "id": 1, "parent_email": 1, "child_name": 1, "parent_name": 1, "created_at": 1}
+        )
+        bookings = await cursor.to_list(length=200)
+
+        for booking in bookings:
+            created_dt = _parse_created_dt(booking.get("created_at"))
+            if not created_dt:
+                continue
+            ts = created_dt.timestamp()
+            if ts > cutoff_old:
+                continue   # too new — not time yet
+            if ts < cutoff_max:
+                continue   # too old — skip stale leads
+
+            # Mark FIRST to prevent duplicate sends
+            await db.summer_camp_bookings.update_one(
+                {"id": booking["id"]},
+                {"$set": {
+                    sent_flag: True,
+                    f"email_{step_key}_sent_at": datetime.now(timezone.utc).isoformat(),
+                }}
+            )
+
+            ok = await _send_sc_followup_email(booking, step_key, subject, heading, body_html, cta)
+            print(f"[SC Email {step_key}] {'✓' if ok else '✗'} {booking.get('parent_email')} (id={booking['id']})")
+
+    except Exception as exc:
+        print(f"[SC Email {step_key}] Scheduler error: {exc}")
+
+
+# ── Scheduled email jobs (called by APScheduler) ──────────────────────────────
+
+async def check_sc_email_1h() -> None:
+    """1-hour follow-up email after summer camp form fill."""
+    await _run_sc_email_followup(
+        step_key="1h",
+        min_age_seconds=60 * 60,          # 1 hour
+        max_age_seconds=30 * 24 * 60 * 60,
+        subject="Your OLL Summer Camp spot is still available!",
+        heading="your Summer Camp spot is waiting",
+        body_html="""
+            <p>You recently filled out an interest form for <strong>OLL Summer Camp 2026</strong> — 
+            that's exciting! We'd love to have your child join us.</p>
+            <p>Seats are filling up fast. Tap below to complete your registration and lock in your spot.</p>
+            <p><strong>What your child gets:</strong> live coding sessions, robotics, AI projects, 
+            and a certificate — all in just 5 days.</p>
+        """,
+        cta="Book My Spot Now",
+    )
+
+
+async def check_sc_email_24h() -> None:
+    """24-hour follow-up email for unconverted summer camp leads."""
+    await _run_sc_email_followup(
+        step_key="24h",
+        min_age_seconds=24 * 60 * 60,
+        max_age_seconds=30 * 24 * 60 * 60,
+        subject="⏳ Limited seats left — OLL Summer Camp 2026",
+        heading="a few seats are still open",
+        body_html="""
+            <p>It's been a day since you showed interest in <strong>OLL Summer Camp 2026</strong>. 
+            We just wanted to let you know — seats are limited and going fast.</p>
+            <p>Past campers built games, programmed robots, and went home with hands-on AI skills. 
+            Your child could be next.</p>
+            <p>Don't let the spot slip away!</p>
+        """,
+        cta="Reserve Your Seat",
+    )
+
+
+async def check_sc_email_2d() -> None:
+    """2-day follow-up email for unconverted summer camp leads."""
+    await _run_sc_email_followup(
+        step_key="2d",
+        min_age_seconds=2 * 24 * 60 * 60,
+        max_age_seconds=30 * 24 * 60 * 60,
+        subject="Your child could be coding this summer 🚀",
+        heading="imagine what your child could build",
+        body_html="""
+            <p>In just 5 days at <strong>OLL Summer Camp 2026</strong>, kids age 4–16 learn to code, 
+            build robots, and explore AI — no prior experience needed.</p>
+            <ul style="color:#94A3B8;font-size:15px;line-height:2;padding-left:20px">
+              <li>Ages 4–8: Block coding &amp; creative storytelling</li>
+              <li>Ages 9–12: Python, games &amp; hardware projects</li>
+              <li>Ages 13–16: AI, machine learning &amp; app development</li>
+            </ul>
+            <p>Spots are limited. Registration takes under 2 minutes.</p>
+        """,
+        cta="Start Registration",
+    )
+
+
+async def check_sc_email_5d() -> None:
+    """5-day follow-up email for unconverted summer camp leads."""
+    await _run_sc_email_followup(
+        step_key="5d",
+        min_age_seconds=5 * 24 * 60 * 60,
+        max_age_seconds=30 * 24 * 60 * 60,
+        subject="Last reminder: OLL Summer Camp 2026",
+        heading="we'd still love to have you join us",
+        body_html="""
+            <p>It's been 5 days since you expressed interest in <strong>OLL Summer Camp 2026</strong>. 
+            If you've been on the fence, now is the time to decide — registrations close soon.</p>
+            <p>Thousands of kids have already signed up. Secure the last few remaining seats 
+            for your child before they're gone.</p>
+            <p>If you have any questions, just reply to this email — we're happy to help.</p>
+        """,
+        cta="Complete Registration Now",
+    )
