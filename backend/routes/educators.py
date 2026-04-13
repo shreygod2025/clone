@@ -178,7 +178,7 @@ class EducatorApplication(BaseModel):
 
 class EducatorApplicationCreate(BaseModel):
     name: str
-    email: EmailStr
+    email: Optional[str] = ""   # Optional — EmailStr was too strict, empty email is valid for applications
     phone: str
     skills: List[str]
     experience: str = ""
