@@ -2046,8 +2046,9 @@ const AdminStudentCRM = () => {
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <p className="font-semibold text-blue-900 text-sm">Step 1 — Download Sample File</p>
-                        <p className="text-xs text-blue-600 mt-1">Use this template to fill your data. Required columns: <code className="bg-blue-100 px-1 rounded">parent_phone</code>, <code className="bg-blue-100 px-1 rounded">child_name</code>, <code className="bg-blue-100 px-1 rounded">age_group</code>, <code className="bg-blue-100 px-1 rounded">batch_week</code></p>
-                        <p className="text-xs text-blue-500 mt-1">crm_status options: lead · hot_lead · phone_captured · converted · payment_offline · lost_lead</p>
+                        <p className="text-xs text-blue-600 mt-1">Only <code className="bg-blue-100 px-1 rounded">parent_phone</code> is required. Everything else is optional.</p>
+                        <p className="text-xs text-blue-500 mt-1">age_group: <strong>4-8 / 9-12 / 13-16</strong> &nbsp;|&nbsp; batch_week: week1–week4 &nbsp;|&nbsp; phone: with or without +91</p>
+                        <p className="text-xs text-blue-500 mt-1">crm_status: lead · hot_lead · phone_captured · converted · payment_offline · lost_lead</p>
                       </div>
                       <button
                         onClick={downloadImportSample}

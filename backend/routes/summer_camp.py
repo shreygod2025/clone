@@ -994,36 +994,45 @@ async def get_bulk_import_sample(user: dict = Depends(get_current_user)):
         "parent_phone", "child_name", "parent_name", "parent_email",
         "age_group", "batch_week", "center_name", "crm_status",
     ]
-    notes = [
-        "Required. 10-digit mobile (no +91)",
-        "Required. Child's full name",
-        "Optional.",
-        "Optional. Parent email",
-        "Required: explorers / creators / innovators",
-        "Required: week1 / week2 / week3 / week4",
-        "Optional. Center name or leave blank",
-        "Optional: lead / hot_lead / phone_captured / converted / payment_offline / lost_lead  (default: lead)",
-    ]
 
-    # Style header row
+    # Style header row (no notes/description row — it caused import errors)
     header_fill = PatternFill("solid", fgColor="1E3A5F")
     header_font = Font(color="FFFFFF", bold=True)
-    for col, (h, n) in enumerate(zip(headers, notes), start=1):
-        cell = ws.cell(row=1, column=col, value=h)
+    col_widths  = [18, 20, 20, 28, 14, 12, 28, 20]
+    for col_idx, (h, w) in enumerate(zip(headers, col_widths), start=1):
+        cell = ws.cell(row=1, column=col_idx, value=h)
         cell.fill = header_fill
         cell.font = header_font
         cell.alignment = Alignment(horizontal="center")
-        ws.column_dimensions[cell.column_letter].width = max(len(h), len(n) // 2 + 5)
-        ws.cell(row=2, column=col, value=n).font = Font(italic=True, color="888888")
+        ws.column_dimensions[cell.column_letter].width = w
 
-    # Two sample rows
+    # Sample rows — age_group uses human-readable age ranges
     samples = [
-        ["9876543210", "Aryan Sharma", "Raj Sharma", "raj@gmail.com", "creators", "week1", "OLL Andheri Center", "lead"],
-        ["9123456789", "Priya Patel", "Sunita Patel", "sunita@gmail.com", "explorers", "week2", "", "phone_captured"],
+        ["+919876543210", "Aryan Sharma", "Raj Sharma", "raj@gmail.com", "9-12", "week1", "OLL Andheri Center", "lead"],
+        ["9123456789",    "Priya Patel",  "Sunita Patel", "sunita@gmail.com", "4-8",  "week2", "",                  "phone_captured"],
+        ["8800001234",    "",             "Neha Singh",  "",               "13-16", "",      "",                  "lead"],
     ]
-    for row_idx, row in enumerate(samples, start=3):
+    for row_idx, row in enumerate(samples, start=2):
         for col_idx, val in enumerate(row, start=1):
             ws.cell(row=row_idx, column=col_idx, value=val)
+
+    # Legend row with light background
+    legend = [
+        "With or without +91",
+        "Optional",
+        "Optional",
+        "Optional",
+        "4-8 / 9-12 / 13-16",
+        "week1/week2/week3/week4 (optional)",
+        "Optional",
+        "lead/hot_lead/phone_captured/converted/payment_offline/lost_lead",
+    ]
+    legend_fill = PatternFill("solid", fgColor="EFF6FF")
+    legend_font = Font(italic=True, color="6B7280", size=9)
+    for col_idx, note in enumerate(legend, start=1):
+        cell = ws.cell(row=len(samples) + 2, column=col_idx, value=note)
+        cell.fill = legend_fill
+        cell.font = legend_font
 
     buf = io.BytesIO()
     wb.save(buf)
@@ -1080,7 +1089,7 @@ async def bulk_import_leads(
 
     for row_num, row in enumerate(rows[1:], start=2):
         if not any(row):
-            continue  # skip empty rows
+            continue  # skip fully empty rows
 
         def get(c):
             if c == -1 or c >= len(row):
@@ -1088,11 +1097,25 @@ async def bulk_import_leads(
             val = row[c]
             return str(val).strip() if val is not None else ""
 
-        raw_phone = re.sub(r'\D', '', get(ph_col))
-        if len(raw_phone) > 10:
-            raw_phone = raw_phone[-10:]
-        if len(raw_phone) < 10:
-            errors.append(f"Row {row_num}: invalid phone '{get(ph_col)}'")
+        raw_phone_val = get(ph_col)
+
+        # Skip rows that look like header/notes rows (first char is a letter, not a digit/+)
+        first_char = raw_phone_val[0] if raw_phone_val else ""
+        if first_char and first_char not in "0123456789+":
+            continue  # silently skip notes/description rows
+
+        # Sanitize phone: accept +91…, 91…(12 digits), or 10 digits plain
+        raw_phone = re.sub(r'\D', '', raw_phone_val)
+        if len(raw_phone) == 12 and raw_phone.startswith("91"):
+            raw_phone = raw_phone[2:]   # strip 91 prefix
+        elif len(raw_phone) == 13 and raw_phone.startswith("091"):
+            raw_phone = raw_phone[3:]
+        elif len(raw_phone) > 10:
+            raw_phone = raw_phone[-10:]  # fallback: take last 10 digits
+
+        if len(raw_phone) != 10:
+            if raw_phone_val:  # only error if the cell had something
+                errors.append(f"Row {row_num}: invalid phone '{raw_phone_val}' (need 10 digits)")
             continue
 
         # Skip duplicate
