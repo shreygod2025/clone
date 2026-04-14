@@ -1957,3 +1957,106 @@ async def test_whatsapp_notification(
     user: dict = Depends(get_current_user)
 ):
     """Test WhatsApp notification - send any template"""
+
+
+# ── File Proxy ──────────────────────────────────────────────────────────────
+# Proxies authenticated file downloads so the browser never needs to handle
+# auth headers directly.  Trusted sources:
+#   • res.cloudinary.com   → uses Cloudinary signed URL to bypass 401
+#   • *.emergent.host      → adds X-API-Key (VENDORPLUS_API_KEY)
+
+import re as _re
+
+_TRUSTED = [
+    r'res\.cloudinary\.com',
+    r'[^.]+\.emergent\.host',
+]
+
+
+def _is_trusted(url: str) -> bool:
+    return any(_re.search(p, url) for p in _TRUSTED)
+
+
+@router.get("/proxy/file")
+async def proxy_file(
+    url: str,
+    filename: Optional[str] = None,
+    user: dict = Depends(get_current_user),
+):
+    """Proxy a remote file through the backend with appropriate auth headers.
+
+    Supported sources:
+    - Cloudinary raw resources (generates signed URL to bypass 401)
+    - VendorPlus / emergent.host files (adds X-API-Key header)
+    """
+    if not url or not _is_trusted(url):
+        raise HTTPException(status_code=400, detail="URL is not from a trusted source")
+
+    fetch_url = url
+    fetch_headers: dict = {}
+
+    # ── Cloudinary: generate signed URL so raw resources are accessible ──────
+    if "cloudinary.com" in url:
+        try:
+            cl = _get_cloudinary()
+            # Extract resource type and public_id from URL
+            # e.g. /raw/upload/v123/oll_invoice/invoice_abc.pdf
+            m = _re.search(r'/(image|raw|video)/upload/(?:v\d+/)?(.+?)(\?|$)', url)
+            if m:
+                resource_type = m.group(1)
+                public_id_raw = m.group(2)
+                # Strip any Cloudinary transformation prefix (e.g. fl_attachment:...)
+                public_id = _re.sub(r'^[a-z_]+:[^/]+/', '', public_id_raw)
+                signed_url, _ = cl.utils.cloudinary_url(
+                    public_id,
+                    resource_type=resource_type,
+                    sign_url=True,
+                    secure=True,
+                    type="upload",
+                )
+                fetch_url = signed_url
+        except Exception as e:
+            logging.warning(f"[Proxy] Cloudinary sign failed ({e}), trying direct fetch")
+            # Fall through with original URL
+
+    # ── VendorPlus / emergent.host: add API key ───────────────────────────────
+    elif "emergent.host" in url:
+        vp_key = os.environ.get("VENDORPLUS_API_KEY", "")
+        if vp_key:
+            fetch_headers["X-API-Key"] = vp_key
+
+    # ── Fetch and stream ──────────────────────────────────────────────────────
+    try:
+        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+            resp = await client.get(fetch_url, headers=fetch_headers)
+
+        if resp.status_code not in (200, 206):
+            raise HTTPException(
+                status_code=resp.status_code,
+                detail=f"Remote file returned HTTP {resp.status_code}",
+            )
+
+        content_type = resp.headers.get("content-type", "application/octet-stream")
+        # Normalise: treat PDF API endpoints as application/pdf
+        url_path = url.lower().split("?")[0]
+        if url_path.endswith(".pdf") or url_path.endswith("/pdf") or "invoice" in url_path:
+            content_type = "application/pdf"
+
+        disp_name = (
+            filename
+            or url.rstrip("/").split("/")[-1].split("?")[0]
+            or "file"
+        )
+        if not disp_name.endswith(".pdf") and "pdf" in content_type:
+            disp_name += ".pdf"
+
+        return StreamingResponse(
+            iter([resp.content]),
+            media_type=content_type,
+            headers={
+                "Content-Disposition": f'inline; filename="{disp_name}"',
+                "Cache-Control": "private, max-age=3600",
+            },
+        )
+    except httpx.RequestError as exc:
+        raise HTTPException(status_code=502, detail=f"Failed to fetch remote file: {exc}")

@@ -27,6 +27,13 @@ const normalizeVendorUrl = (url) => {
     .replace(/https?:\/\/[^/]*\.stage-preview\.emergentagent\.com/g, VENDOR_HOST);
 };
 
+// Route all vendor/Cloudinary file URLs through backend proxy (handles auth headers)
+const proxyFileUrl = (url, filename = '') => {
+  if (!url) return url;
+  const normalized = normalizeVendorUrl(url);
+  return `${API}/proxy/file?url=${encodeURIComponent(normalized)}&filename=${encodeURIComponent(filename)}`;
+};
+
 const AdminExpenses = () => {
   const { getAuthHeaders } = useAuth();
   const [activeTab, setActiveTab] = useState('expenses'); // 'expenses' | 'pnl'
@@ -632,7 +639,7 @@ const AdminExpenses = () => {
                     <div className="flex justify-center gap-1 flex-wrap">
                       {expense.po_pdf_url && expense.po_pdf_url !== 'null' && expense.po_pdf_url.startsWith('http') && (
                         <a
-                          href={normalizeVendorUrl(expense.po_pdf_url)}
+                          href={proxyFileUrl(expense.po_pdf_url, `PO-${expense.po_number || expense.id}.pdf`)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100"
@@ -643,7 +650,7 @@ const AdminExpenses = () => {
                       )}
                       {expense.invoice_file_url && expense.invoice_file_url !== 'null' && expense.invoice_file_url.startsWith('http') && (
                         <a
-                          href={normalizeVendorUrl(expense.invoice_file_url)}
+                          href={proxyFileUrl(expense.invoice_file_url, `Invoice-${expense.po_number || expense.id}.pdf`)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs px-2 py-1 bg-green-50 text-green-600 rounded hover:bg-green-100"
@@ -654,7 +661,7 @@ const AdminExpenses = () => {
                       )}
                       {expense.logistics_bill_url && expense.logistics_bill_url !== 'null' && expense.logistics_bill_url.startsWith('http') && (
                         <a
-                          href={normalizeVendorUrl(expense.logistics_bill_url)}
+                          href={proxyFileUrl(expense.logistics_bill_url, `Logistics-${expense.po_number || expense.id}.pdf`)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs px-2 py-1 bg-amber-50 text-amber-600 rounded hover:bg-amber-100"
@@ -665,7 +672,7 @@ const AdminExpenses = () => {
                       )}
                       {expense.delivery_proof_url && expense.delivery_proof_url !== 'null' && expense.delivery_proof_url.startsWith('http') && (
                         <a
-                          href={normalizeVendorUrl(expense.delivery_proof_url)}
+                          href={proxyFileUrl(expense.delivery_proof_url, `DeliveryProof-${expense.po_number || expense.id}.pdf`)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-xs px-2 py-1 bg-purple-50 text-purple-600 rounded hover:bg-purple-100"
