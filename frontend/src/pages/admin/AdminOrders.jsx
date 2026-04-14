@@ -56,23 +56,26 @@ const getAbsoluteUrl = (url) => {
 const downloadFile = async (url, filename) => {
   try {
     const absoluteUrl = getAbsoluteUrl(url);
-    
-    // First, try to determine extension from URL before fetching
+
+    // Determine extension from URL
     let extensionFromUrl = '';
     const urlPath = absoluteUrl.split('?')[0];
-    
-    // Handle Cloudinary URLs which may have format like /upload/v12345/file.pdf
     const cloudinaryMatch = urlPath.match(/\/([^/]+)\.([a-zA-Z0-9]+)$/);
     if (cloudinaryMatch) {
       extensionFromUrl = `.${cloudinaryMatch[2].toLowerCase()}`;
     } else {
       const urlExtMatch = urlPath.match(/\.([a-zA-Z0-9]+)$/);
-      if (urlExtMatch) {
-        extensionFromUrl = `.${urlExtMatch[1].toLowerCase()}`;
-      }
+      if (urlExtMatch) extensionFromUrl = `.${urlExtMatch[1].toLowerCase()}`;
     }
-    
-    const response = await fetch(absoluteUrl);
+
+    // Route Cloudinary and VendorPlus/emergent.host URLs through the backend proxy
+    // to avoid CORS + auth issues in the browser
+    const isTrusted = absoluteUrl.includes('cloudinary.com') || absoluteUrl.includes('emergent.host');
+    const fetchUrl = isTrusted
+      ? `${API}/proxy/file?url=${encodeURIComponent(absoluteUrl)}&filename=${encodeURIComponent(filename || '')}`
+      : absoluteUrl;
+
+    const response = await fetch(fetchUrl, isTrusted ? { credentials: 'include' } : {});
     if (!response.ok) throw new Error('Download failed');
     
     const blob = await response.blob();

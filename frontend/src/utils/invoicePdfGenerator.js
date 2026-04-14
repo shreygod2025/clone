@@ -179,6 +179,18 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
   const innerRight = pageWidth - margin;
   let y = margin;
 
+  // ── Determine seller: OLL or Distributor ─────────────────────────────────
+  const onboardingData = schoolData?.onboarding_data || {};
+  const isDistributor = onboardingData.payment_mode === 'from_distributor';
+  const SELLER = isDistributor ? {
+    name: onboardingData.distributor_name || 'Distributor',
+    address: onboardingData.distributor_address || '',
+    phone: '',
+    email: '',
+    gstin: onboardingData.distributor_gstin || '',
+    website: '',
+  } : COMPANY;
+
   // Load images
   let logoImg = null;
   let signImg = null;
@@ -190,26 +202,26 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
   doc.setLineWidth(0.5);
   doc.rect(margin - 2, margin - 2, contentWidth + 4, pageHeight - margin * 2 + 4);
 
-  // ─── Header: Logo (aspect-ratio preserved) + Company Info ───
+  // ─── Header: Logo (aspect-ratio preserved) + Company/Distributor Info ────
   // Logo is 1080x1920 (portrait). Height=30mm, Width=30*(1080/1920)=16.9mm
   const logoH = 30;
   const logoW = 16.9;
-  if (logoImg) {
+  if (logoImg && !isDistributor) {
     doc.addImage(logoImg, 'JPEG', innerLeft + 2, y, logoW, logoH);
   }
 
-  const companyX = innerLeft + logoW + 6;
+  const companyX = isDistributor ? innerLeft + 2 : innerLeft + logoW + 6;
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 58, 95);
-  doc.text(COMPANY.name, companyX, y + 8);
+  doc.text(SELLER.name, companyX, y + 8);
 
   doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(80, 80, 80);
-  doc.text(COMPANY.address, companyX, y + 14);
-  doc.text(`Phone: ${COMPANY.phone}  |  Email: ${COMPANY.email}`, companyX, y + 19);
-  doc.text(`GSTIN: ${COMPANY.gstin}  |  ${COMPANY.website}`, companyX, y + 24);
+  if (SELLER.address) doc.text(SELLER.address, companyX, y + 14);
+  if (SELLER.phone || SELLER.email) doc.text(`${SELLER.phone ? `Phone: ${SELLER.phone}` : ''}${SELLER.phone && SELLER.email ? '  |  ' : ''}${SELLER.email ? `Email: ${SELLER.email}` : ''}`, companyX, y + 19);
+  if (SELLER.gstin || SELLER.website) doc.text(`${SELLER.gstin ? `GSTIN: ${SELLER.gstin}` : ''}${SELLER.gstin && SELLER.website ? '  |  ' : ''}${SELLER.website || ''}`, companyX, y + 24);
 
   // TAX INVOICE title (no "TAX" prefix for book_gst)
   const headerGstType = schoolData?.onboarding_data?.gst_type || payment.gst_type || 'exclusive_18';
@@ -600,7 +612,11 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(80, 80, 80);
   doc.setFontSize(6.5);
-  const terms = [
+  const terms = isDistributor ? [
+    `All Payment has to be made in the name of '${SELLER.name}'`,
+    SELLER.gstin ? `GSTIN: ${SELLER.gstin}` : '',
+    SELLER.address ? `Address: ${SELLER.address}` : '',
+  ].filter(Boolean) : [
     `All Payment has to be made in the name of '${COMPANY.name}'`,
     `Company CINO : ${COMPANY.cin}`,
     `Company PAN No. ${COMPANY.pan}`,
@@ -623,7 +639,7 @@ export async function generateInvoicePDF(payment, schoolData, { skipDownload = f
   doc.setFontSize(7);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 100, 100);
-  doc.text(`For ${COMPANY.name}`, signX, y + 3);
+  doc.text(`For ${SELLER.name}`, signX, y + 3);
 
   if (signImg) {
     doc.addImage(signImg, 'JPEG', signX + 5, y + 5, 30, 15);

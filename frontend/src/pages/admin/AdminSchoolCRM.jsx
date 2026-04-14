@@ -642,6 +642,9 @@ const AdminSchoolCRM = () => {
     payment_mode: 'from_school',
     payment_method: '',
     payment_tranches: [{ amount: '', percentage: '', date: '', notes: '' }],
+    distributor_name: '',
+    distributor_address: '',
+    distributor_gstin: '',
     deadline_date: '', // Deadline for online payments
     contract_start: '',
     contract_end: '',
@@ -795,6 +798,9 @@ const AdminSchoolCRM = () => {
     payment_mode: 'from_school', // from_school, from_student, online
     payment_method: '', // cheque, neft, online, cash
     payment_tranches: [{ amount: '', percentage: '', date: '', notes: '' }],
+    distributor_name: '',
+    distributor_address: '',
+    distributor_gstin: '',
     deadline_date: '', // Deadline for online payments
     contract_start: '',
     contract_end: '',
@@ -1174,6 +1180,9 @@ const AdminSchoolCRM = () => {
       payment_tranches: existingOnboardData.payment_tranches?.length > 0 
         ? existingOnboardData.payment_tranches 
         : [{ amount: '', percentage: '', date: '', notes: '' }],
+      distributor_name: existingOnboardData.distributor_name || '',
+      distributor_address: existingOnboardData.distributor_address || '',
+      distributor_gstin: existingOnboardData.distributor_gstin || '',
       deadline_date: existingOnboardData.deadline_date || '',
       contract_start: existingOnboardData.contract_start || '',
       contract_end: existingOnboardData.contract_end || '',
@@ -1786,6 +1795,9 @@ ${FOOTER}</div></body></html>`
       payment_tranches: existingData.payment_tranches?.length > 0
         ? existingData.payment_tranches
         : [{ amount: '', percentage: '', date: '', notes: '' }],
+      distributor_name: existingData.distributor_name || '',
+      distributor_address: existingData.distributor_address || '',
+      distributor_gstin: existingData.distributor_gstin || '',
       deadline_date: existingData.deadline_date || '',
       contract_start: '',
       contract_end: '',
@@ -1940,6 +1952,9 @@ ${FOOTER}</div></body></html>`
           payment_mode: renewalConvertData.payment_mode,
           payment_method: renewalConvertData.payment_mode === 'online' ? 'student' : renewalConvertData.payment_method,
           payment_tranches: renewalConvertData.payment_mode === 'online' ? [] : formattedTranches,
+          distributor_name: renewalConvertData.payment_mode === 'from_distributor' ? (renewalConvertData.distributor_name || '') : '',
+          distributor_address: renewalConvertData.payment_mode === 'from_distributor' ? (renewalConvertData.distributor_address || '') : '',
+          distributor_gstin: renewalConvertData.payment_mode === 'from_distributor' ? (renewalConvertData.distributor_gstin || '') : '',
           gst_type: renewalConvertData.gst_type || '',
           state: renewalConvertData.state || '',
           deadline_date: renewalConvertData.deadline_date,
@@ -2084,6 +2099,9 @@ ${FOOTER}</div></body></html>`
           payment_mode: renewalConvertData.payment_mode,
           payment_method: renewalConvertData.payment_mode === 'online' ? 'student' : renewalConvertData.payment_method,
           payment_tranches: renewalConvertData.payment_mode === 'online' ? [] : formattedTranches,
+          distributor_name: renewalConvertData.payment_mode === 'from_distributor' ? (renewalConvertData.distributor_name || '') : '',
+          distributor_address: renewalConvertData.payment_mode === 'from_distributor' ? (renewalConvertData.distributor_address || '') : '',
+          distributor_gstin: renewalConvertData.payment_mode === 'from_distributor' ? (renewalConvertData.distributor_gstin || '') : '',
           gst_type: renewalConvertData.gst_type || '',
           state: renewalConvertData.state || '',
           deadline_date: renewalConvertData.deadline_date,
@@ -2599,6 +2617,9 @@ ${FOOTER}</div></body></html>`
         payment_mode: String(onboardData.payment_mode || ''),
         payment_method: onboardData.payment_mode === 'online' ? 'student' : String(onboardData.payment_method || ''),
         payment_tranches: formattedTranches,
+        distributor_name: onboardData.payment_mode === 'from_distributor' ? String(onboardData.distributor_name || '') : '',
+        distributor_address: onboardData.payment_mode === 'from_distributor' ? String(onboardData.distributor_address || '') : '',
+        distributor_gstin: onboardData.payment_mode === 'from_distributor' ? String(onboardData.distributor_gstin || '') : '',
         gst_type: String(onboardData.gst_type || ''),
         school_address: String(onboardData.school_address || ''),
         latitude: onboardData.latitude || null,
@@ -3613,6 +3634,9 @@ ${FOOTER}</div></body></html>`
         payment_mode: existingOnboardData.payment_mode || 'from_school',
         payment_method: existingOnboardData.payment_method || '',
         payment_tranches: existingOnboardData.payment_tranches || [],
+        distributor_name: existingOnboardData.distributor_name || '',
+        distributor_address: existingOnboardData.distributor_address || '',
+        distributor_gstin: existingOnboardData.distributor_gstin || '',
         deadline_date: existingOnboardData.deadline_date || '',
         contract_start: existingOnboardData.contract_start || '',
         contract_end: existingOnboardData.contract_end || '',
@@ -3779,6 +3803,9 @@ ${FOOTER}</div></body></html>`
           }
           return t;
         }),
+        distributor_name: editOnboardData.payment_mode === 'from_distributor' ? (editOnboardData.distributor_name || '') : '',
+        distributor_address: editOnboardData.payment_mode === 'from_distributor' ? (editOnboardData.distributor_address || '') : '',
+        distributor_gstin: editOnboardData.payment_mode === 'from_distributor' ? (editOnboardData.distributor_gstin || '') : '',
         deadline_date: editOnboardData.deadline_date,
         contract_start: editOnboardData.contract_start,
         contract_end: editOnboardData.contract_end,
@@ -7269,6 +7296,41 @@ ${FOOTER}</div></body></html>`
                 </select>
               </div>
 
+              {/* Distributor Details (only when From Distributor is selected) */}
+              {renewalConvertData.payment_mode === 'from_distributor' && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-3">
+                  <p className="text-sm font-medium text-amber-800">Distributor Details</p>
+                  <p className="text-xs text-amber-600">Invoice will be raised in the distributor's name.</p>
+                  <div>
+                    <label className="text-xs font-medium text-slate-700">Distributor Name *</label>
+                    <Input
+                      placeholder="e.g. ABC Distributors Pvt Ltd"
+                      value={renewalConvertData.distributor_name || ''}
+                      onChange={(e) => setRenewalConvertData(prev => ({ ...prev, distributor_name: e.target.value }))}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-700">Distributor Address *</label>
+                    <Input
+                      placeholder="Full address of distributor"
+                      value={renewalConvertData.distributor_address || ''}
+                      onChange={(e) => setRenewalConvertData(prev => ({ ...prev, distributor_address: e.target.value }))}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-700">Distributor GSTIN</label>
+                    <Input
+                      placeholder="e.g. 27XXXXX1234X1ZX"
+                      value={renewalConvertData.distributor_gstin || ''}
+                      onChange={(e) => setRenewalConvertData(prev => ({ ...prev, distributor_gstin: e.target.value }))}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* Online Student Payment Info */}
               {renewalConvertData.payment_mode === 'online' && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3">
@@ -9414,6 +9476,41 @@ ${FOOTER}</div></body></html>`
                 </select>
               </div>
 
+              {/* Distributor Details (only when From Distributor is selected) */}
+              {onboardData.payment_mode === 'from_distributor' && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-3">
+                  <p className="text-sm font-medium text-amber-800">Distributor Details</p>
+                  <p className="text-xs text-amber-600">Invoice will be raised in the distributor's name.</p>
+                  <div>
+                    <label className="text-xs font-medium text-slate-700">Distributor Name *</label>
+                    <Input
+                      placeholder="e.g. ABC Distributors Pvt Ltd"
+                      value={onboardData.distributor_name || ''}
+                      onChange={(e) => setOnboardData(prev => ({ ...prev, distributor_name: e.target.value }))}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-700">Distributor Address *</label>
+                    <Input
+                      placeholder="Full address of distributor"
+                      value={onboardData.distributor_address || ''}
+                      onChange={(e) => setOnboardData(prev => ({ ...prev, distributor_address: e.target.value }))}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-700">Distributor GSTIN</label>
+                    <Input
+                      placeholder="e.g. 27XXXXX1234X1ZX"
+                      value={onboardData.distributor_gstin || ''}
+                      onChange={(e) => setOnboardData(prev => ({ ...prev, distributor_gstin: e.target.value }))}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* Online Student Payment Info */}
               {onboardData.payment_mode === 'online' && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3">
@@ -10441,6 +10538,7 @@ ${FOOTER}</div></body></html>`
                     >
                       <option value="from_school">From School</option>
                       <option value="from_student">From Student (Offline)</option>
+                      <option value="from_distributor">From Distributor</option>
                       <option value="online">Online (Student Payment via Cashfree)</option>
                     </select>
                   </div>
@@ -10477,6 +10575,41 @@ ${FOOTER}</div></body></html>`
                     <option value="book_gst_0">Book GST = 0%</option>
                   </select>
                 </div>
+
+                {/* Distributor Details */}
+                {editOnboardData.payment_mode === 'from_distributor' && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-3">
+                    <p className="text-sm font-medium text-amber-800">Distributor Details</p>
+                    <p className="text-xs text-amber-600">Invoice will be raised in the distributor's name.</p>
+                    <div>
+                      <label className="text-xs font-medium text-slate-700">Distributor Name *</label>
+                      <Input
+                        placeholder="e.g. ABC Distributors Pvt Ltd"
+                        value={editOnboardData.distributor_name || ''}
+                        onChange={(e) => setEditOnboardData(prev => ({ ...prev, distributor_name: e.target.value }))}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-700">Distributor Address *</label>
+                      <Input
+                        placeholder="Full address of distributor"
+                        value={editOnboardData.distributor_address || ''}
+                        onChange={(e) => setEditOnboardData(prev => ({ ...prev, distributor_address: e.target.value }))}
+                        className="mt-1"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-slate-700">Distributor GSTIN</label>
+                      <Input
+                        placeholder="e.g. 27XXXXX1234X1ZX"
+                        value={editOnboardData.distributor_gstin || ''}
+                        onChange={(e) => setEditOnboardData(prev => ({ ...prev, distributor_gstin: e.target.value }))}
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {/* State */}
                 <div>

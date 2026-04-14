@@ -12,7 +12,7 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - **Funnels & Login:** OTP-based login for all user types
 - **Admin CRM:** Full school management with bulk import, onboarding workflows, inquiry management
 
-### Architecture (Updated: 2026-04-13 — Background notifications, GST invoice fix)
+### Architecture (Updated: 2026-04-14 — Distributor Invoice Feature, Proxy Download Fix)
 ```
 /app/
 ├── backend/
@@ -21,7 +21,7 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 │       ├── shared.py          # DB, JWT helpers, auto_assign, email utils
 │       ├── notifications.py   # WhatsApp notification helpers
 │       ├── users.py / students.py / team.py / educators.py
-│       ├── support.py / schools.py / orders.py / misc.py
+│       ├── support.py / schools.py / orders.py / misc.py  ← Proxy endpoint /api/proxy/file
 │       └── payments.py / gp_onboarding.py / reports.py / jobs.py
 │           expenses.py / summer_camp.py / ai_chat.py / school_emails.py
 │           checkin_api.py / admin_keys.py / daily_report.py / db_backup.py
@@ -30,18 +30,12 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
     │   └── sitemap.xml        # Updated with /school, all /courses/*, key /school-offerings/*
     ├── src/
     │   ├── App.js             # Routes + CourseRedirect (/course/:slug → /courses/:slug)
-    │   ├── hooks/
-    │   │   └── usePageMeta.js # Custom hook for reliable CSR SEO meta injection via useEffect
     │   ├── pages/
-    │   │   ├── admin/         # Admin panel pages
-    │   │   ├── courses/
-    │   │   │   ├── CourseData.js      # Improved metaTitle/metaDescription for AI, entrepreneurship
-    │   │   │   ├── CoursePage.jsx     # usePageMeta + Course + BreadcrumbList JSON-LD
-    │   │   │   └── CoursesListPage.jsx # usePageMeta + ItemList JSON-LD
-    │   │   ├── SchoolFunnel.jsx       # usePageMeta for /school SEO
-    │   │   ├── SchoolOfferingsPage.jsx # usePageMeta for /school-offerings SEO
-    │   │   └── SchoolOfferingDetailPage.jsx # usePageMeta (before early return)
-    │   └── components/        # Reusable UI components
+    │   │   ├── admin/
+    │   │   │   ├── AdminSchoolCRM.jsx  # Distributor details fields in all 3 payment modals
+    │   │   │   └── AdminOrders.jsx     # downloadFile routes Cloudinary/emergent.host via proxy
+    │   └── utils/
+    │       └── invoicePdfGenerator.js  # Uses distributor name/address/GST when from_distributor
 ```
 
 ### Key Integrations
@@ -204,9 +198,15 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - [ ] AI Follow-up Emails background job
 - [ ] Lead scoring system
 
----
+## Implementation Log
 
-## Known Issues
+### 2026-04-14 — Distributor Invoice Feature + Download Proxy Fix
+- **Distributor Details Fields**: When "From Distributor" is selected as Payment Mode in all 3 school modals (Convert, New Onboard, Edit Onboard), shows amber-highlighted section with Distributor Name, Address, and GSTIN fields
+- **Invoice PDF Generator**: When `payment_mode === 'from_distributor'`, invoice PDF header uses distributor's name/address/GST instead of OLL's details. Terms section also reflects distributor name.
+- **downloadFile Proxy**: Updated `downloadFile` in AdminOrders.jsx to route Cloudinary and emergent.host URLs through `/api/proxy/file` endpoint to avoid CORS/auth failures
+- **Invoice Modal Verified**: Update Payment modal correctly shows "Invoice uploaded" when invoice_url exists in DB
+
+### Known Issues
 1. **File Downloads:** Downloads have incorrect names/types (recurring - 3+ attempts)
 2. **Jitsi Moderator:** Limited control with public meet.jit.si server
 3. **Gmail SMTP:** Non-functional, blocked on user credentials
