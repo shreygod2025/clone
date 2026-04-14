@@ -1044,6 +1044,145 @@ async def get_bulk_import_sample(user: dict = Depends(get_current_user)):
     )
 
 
+
+
+class AddIndividualLeadRequest(BaseModel):
+    child_name: str
+    parent_name: Optional[str] = ""
+    parent_phone: str
+    parent_email: Optional[str] = ""
+    age_group: Optional[str] = ""    # explorers | creators | innovators
+    batch_week: Optional[str] = ""   # week1-week4
+    mode: Optional[str] = "offline"  # offline | online
+    center: Optional[str] = ""
+    payment_mode: str = "cash"       # cash | cashfree
+    source: Optional[str] = "admin"  # tracking source
+    send_notifications: bool = True  # whether to fire WA + email
+
+
+@router.post("/summer-camp/add-lead")
+async def add_individual_lead(
+    background_tasks: BackgroundTasks,
+    data: AddIndividualLeadRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Admin endpoint to add a single Summer Camp lead with optional WA + email notifications."""
+    # Sanitize phone
+    phone = re.sub(r"[^0-9+]", "", data.parent_phone or "")
+    if phone.startswith("91") and len(phone) == 12:
+        phone = "+" + phone
+    elif not phone.startswith("+"):
+        phone = "+91" + phone.lstrip("0")
+
+    ref_num = str(int(time.time()))[-6:]
+    booking_ref = f"SC2026-{ref_num}"
+    booking_id = str(uuid.uuid4())
+
+    batch_dates = ""
+    if data.batch_week and data.batch_week in BATCH_DATES:
+        batch_dates = BATCH_DATES[data.batch_week].get("weekday", "")
+
+    center_label = await _resolve_center_label(data.center) if data.center else ""
+
+    doc = {
+        "id": booking_id,
+        "booking_ref": booking_ref,
+        "child_name": data.child_name,
+        "parent_name": data.parent_name or "",
+        "parent_phone": phone,
+        "parent_email": data.parent_email or "",
+        "age_group": data.age_group or "",
+        "age_group_label": AGE_GROUPS.get(data.age_group or "", {}).get("label", ""),
+        "age_group_ages": AGE_GROUPS.get(data.age_group or "", {}).get("ages", ""),
+        "batch_type": "weekday",
+        "batch_week": data.batch_week or "",
+        "batch_dates": batch_dates,
+        "mode": data.mode or "offline",
+        "center": data.center or "",
+        "center_label": center_label,
+        "payment_mode": data.payment_mode,
+        "amount": CAMP_PRICE,
+        "payment_status": "pending",
+        "crm_status": "payment_offline" if data.payment_mode == "cash" else "lead",
+        "source": data.source or "admin",
+        "added_by": user.get("name") or user.get("email", "Admin"),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    await db.summer_camp_bookings.insert_one(doc)
+    logging.info(f"[Admin] Individual lead added: {booking_ref} — {data.child_name} by {doc['added_by']}")
+
+    if data.send_notifications:
+        async def _fire_notifications(d: dict):
+            first_name = (d.get("child_name") or "").split()[0] or "there"
+            # ── WhatsApp ─────────────────────────────────────────────────────
+            try:
+                from .notifications import send_whatsapp_notification
+                if d.get("batch_week"):
+                    # Enrolled — send enrolled template
+                    params = await _build_enrolled_wa_params(d)
+                    tpl = "summercamp_enrolled"
+                else:
+                    # No batch yet — send followup/interest template
+                    params = [first_name]
+                    tpl = "summercamp_followup"
+                await send_whatsapp_notification(
+                    phone=d["parent_phone"],
+                    template_key=tpl,
+                    params=params,
+                    user_name=first_name,
+                )
+                logging.info(f"[Admin Lead WA] Sent {tpl} to {d['parent_phone']}")
+            except Exception as e:
+                logging.warning(f"[Admin Lead WA] Failed: {e}")
+
+            # ── Email ─────────────────────────────────────────────────────────
+            try:
+                if d.get("parent_email"):
+                    from .shared import get_resend_api_key, SENDER_EMAIL
+                    import resend as _resend
+                    key = await get_resend_api_key()
+                    if key:
+                        _resend.api_key = key
+                        child = d.get("child_name", "your child")
+                        batch_info = d.get("batch_dates") or d.get("batch_week") or "TBD"
+                        center_info = d.get("center_label") or d.get("center") or "TBD"
+                        body = f"""<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
+<h2 style="color:#f97316">OLL Summer Camp 2026 — Registration Confirmed</h2>
+<p>Hi {d.get('parent_name') or 'there'},</p>
+<p>We've registered <strong>{child}</strong> for the OLL AI Summer Camp 2026!</p>
+<table style="width:100%;border-collapse:collapse;margin:16px 0">
+  <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:bold;background:#fef9f0">Booking Ref</td><td style="padding:8px;border:1px solid #e5e7eb">{d.get('booking_ref','')}</td></tr>
+  <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:bold;background:#fef9f0">Batch</td><td style="padding:8px;border:1px solid #e5e7eb">{batch_info}</td></tr>
+  <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:bold;background:#fef9f0">Center</td><td style="padding:8px;border:1px solid #e5e7eb">{center_info}</td></tr>
+  <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:bold;background:#fef9f0">Age Group</td><td style="padding:8px;border:1px solid #e5e7eb">{d.get('age_group_label') or d.get('age_group','')}</td></tr>
+  <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:bold;background:#fef9f0">Amount</td><td style="padding:8px;border:1px solid #e5e7eb">₹{int(d.get('amount',1999))}</td></tr>
+</table>
+<p>If you have any questions, reply to this email or WhatsApp us.</p>
+<p style="color:#6b7280;font-size:12px">— OLL Team</p>
+</div>"""
+                        import asyncio as _asyncio
+                        await _asyncio.to_thread(_resend.Emails.send, {
+                            "from": SENDER_EMAIL,
+                            "to": [d["parent_email"]],
+                            "subject": f"OLL Summer Camp 2026 — {child} is Registered! ({d.get('booking_ref','')})",
+                            "html": body,
+                        })
+                        logging.info(f"[Admin Lead Email] Sent to {d['parent_email']}")
+            except Exception as e:
+                logging.warning(f"[Admin Lead Email] Failed: {e}")
+
+        background_tasks.add_task(_fire_notifications, doc)
+
+    return {
+        "success": True,
+        "booking_id": booking_id,
+        "booking_ref": booking_ref,
+        "message": f"Lead added successfully. {'Notifications queued.' if data.send_notifications else 'No notifications sent.'}",
+    }
+
+
 @router.post("/summer-camp/bulk-import")
 async def bulk_import_leads(
     background_tasks: BackgroundTasks,

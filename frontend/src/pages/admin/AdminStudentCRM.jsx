@@ -70,6 +70,14 @@ const AdminStudentCRM = () => {
   const [importPreview, setImportPreview] = useState([]);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
+  // Add Individual Lead modal
+  const [showAddLeadModal, setShowAddLeadModal] = useState(false);
+  const [addLeadSubmitting, setAddLeadSubmitting] = useState(false);
+  const [addLeadForm, setAddLeadForm] = useState({
+    child_name: '', parent_name: '', parent_phone: '', parent_email: '',
+    age_group: 'creators', batch_week: 'week1', mode: 'offline',
+    center: 'mira_road', payment_mode: 'cash', send_notifications: true,
+  });
   // Tracking links
   const [trackingLinks, setTrackingLinks] = useState([]);
   const [trackingLinksLoading, setTrackingLinksLoading] = useState(false);
@@ -1031,6 +1039,29 @@ const AdminStudentCRM = () => {
     }
   };
 
+  const handleAddIndividualLead = async () => {
+    if (!addLeadForm.child_name.trim()) return toast.error('Child name is required');
+    if (!addLeadForm.parent_phone.trim()) return toast.error('Parent phone is required');
+    setAddLeadSubmitting(true);
+    try {
+      const res = await axios.post(`${API}/summer-camp/add-lead`, addLeadForm, {
+        headers: getAuthHeaders(),
+      });
+      toast.success(res.data.message || 'Lead added successfully!');
+      setShowAddLeadModal(false);
+      setAddLeadForm({
+        child_name: '', parent_name: '', parent_phone: '', parent_email: '',
+        age_group: 'creators', batch_week: 'week1', mode: 'offline',
+        center: 'mira_road', payment_mode: 'cash', send_notifications: true,
+      });
+      fetchSummerCampBookings();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to add lead');
+    } finally {
+      setAddLeadSubmitting(false);
+    }
+  };
+
   const getCount = (status) => status === 'summer_camp' ? summerCampBookings.length : inquiries.filter(i => i.status === status).length;
 
   // Notify not joined - for student or educator
@@ -1359,6 +1390,14 @@ const AdminStudentCRM = () => {
                         >
                           <Upload className="w-4 h-4" />
                           <span className="hidden sm:inline">Import</span>
+                        </Button>
+                        <Button
+                          onClick={() => setShowAddLeadModal(true)}
+                          className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white shrink-0"
+                          data-testid="add-individual-lead-btn"
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span className="hidden sm:inline">Add Lead</span>
                         </Button>
                       </div>
 
@@ -2120,6 +2159,168 @@ const AdminStudentCRM = () => {
                       {importing ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Importing...</> : 'Import & Notify'}
                     </Button>
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Add Individual Lead Modal ── */}
+          {showAddLeadModal && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget) setShowAddLeadModal(false); }}>
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between p-5 border-b sticky top-0 bg-white rounded-t-2xl">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">Add Individual Lead</h3>
+                    <p className="text-xs text-slate-500 mt-0.5">Manually add a summer camp lead. WhatsApp & email will be sent.</p>
+                  </div>
+                  <button onClick={() => setShowAddLeadModal(false)} className="text-slate-400 hover:text-slate-600 p-1"><X className="w-5 h-5" /></button>
+                </div>
+                <div className="p-5 space-y-4">
+                  {/* Child info */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600 mb-1 block">Child Name *</label>
+                      <input
+                        value={addLeadForm.child_name}
+                        onChange={e => setAddLeadForm(f => ({ ...f, child_name: e.target.value }))}
+                        placeholder="e.g. Aryan Sharma"
+                        className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                        data-testid="add-lead-child-name"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600 mb-1 block">Parent Name</label>
+                      <input
+                        value={addLeadForm.parent_name}
+                        onChange={e => setAddLeadForm(f => ({ ...f, parent_name: e.target.value }))}
+                        placeholder="e.g. Rahul Sharma"
+                        className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600 mb-1 block">Parent Phone *</label>
+                      <input
+                        value={addLeadForm.parent_phone}
+                        onChange={e => setAddLeadForm(f => ({ ...f, parent_phone: e.target.value }))}
+                        placeholder="+91 98765 43210"
+                        className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                        data-testid="add-lead-phone"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600 mb-1 block">Parent Email</label>
+                      <input
+                        value={addLeadForm.parent_email}
+                        onChange={e => setAddLeadForm(f => ({ ...f, parent_email: e.target.value }))}
+                        placeholder="parent@email.com"
+                        type="email"
+                        className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                        data-testid="add-lead-email"
+                      />
+                    </div>
+                  </div>
+                  {/* Camp details */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600 mb-1 block">Age Group</label>
+                      <select
+                        value={addLeadForm.age_group}
+                        onChange={e => setAddLeadForm(f => ({ ...f, age_group: e.target.value }))}
+                        className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                        data-testid="add-lead-age-group"
+                      >
+                        <option value="">-- Select --</option>
+                        <option value="explorers">Explorers (6–8 yrs)</option>
+                        <option value="creators">Creators (9–12 yrs)</option>
+                        <option value="innovators">Innovators (13–17 yrs)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600 mb-1 block">Batch Week</label>
+                      <select
+                        value={addLeadForm.batch_week}
+                        onChange={e => setAddLeadForm(f => ({ ...f, batch_week: e.target.value }))}
+                        className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                        data-testid="add-lead-batch"
+                      >
+                        <option value="">-- Select --</option>
+                        <option value="week1">Week 1 (May 5–9)</option>
+                        <option value="week2">Week 2 (May 12–16)</option>
+                        <option value="week3">Week 3 (May 19–23)</option>
+                        <option value="week4">Week 4 (May 26–30)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600 mb-1 block">Mode</label>
+                      <select
+                        value={addLeadForm.mode}
+                        onChange={e => setAddLeadForm(f => ({ ...f, mode: e.target.value }))}
+                        className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                      >
+                        <option value="offline">Offline (At Center)</option>
+                        <option value="online">Online</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-600 mb-1 block">Center</label>
+                      <select
+                        value={addLeadForm.center}
+                        onChange={e => setAddLeadForm(f => ({ ...f, center: e.target.value }))}
+                        className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-300"
+                        data-testid="add-lead-center"
+                      >
+                        <option value="">-- Select Center --</option>
+                        <option value="mira_road">Mira Road</option>
+                        <option value="borivali">Borivali</option>
+                        <option value="andheri">Andheri</option>
+                        <option value="thane">Thane</option>
+                        <option value="online">Online</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600 mb-1 block">Payment Mode</label>
+                    <div className="flex gap-3">
+                      {[['cash','Cash at Center'],['cashfree','Online Payment']].map(([val, lbl]) => (
+                        <button
+                          key={val}
+                          onClick={() => setAddLeadForm(f => ({ ...f, payment_mode: val }))}
+                          className={`flex-1 text-sm py-2 rounded-lg border font-medium transition-colors ${addLeadForm.payment_mode === val ? 'bg-orange-500 text-white border-orange-500' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                        >
+                          {lbl}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Notifications toggle */}
+                  <div className="flex items-center justify-between bg-slate-50 rounded-xl p-3 border border-slate-200">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-700">Send Notifications</p>
+                      <p className="text-xs text-slate-500">WhatsApp + email to parent after adding</p>
+                    </div>
+                    <button
+                      onClick={() => setAddLeadForm(f => ({ ...f, send_notifications: !f.send_notifications }))}
+                      className={`relative w-11 h-6 rounded-full transition-colors ${addLeadForm.send_notifications ? 'bg-orange-500' : 'bg-slate-300'}`}
+                      data-testid="add-lead-notify-toggle"
+                    >
+                      <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${addLeadForm.send_notifications ? 'translate-x-5' : 'translate-x-0'}`} />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex gap-3 p-5 pt-0">
+                  <Button variant="outline" onClick={() => setShowAddLeadModal(false)} className="flex-1">Cancel</Button>
+                  <Button
+                    onClick={handleAddIndividualLead}
+                    disabled={addLeadSubmitting}
+                    className="flex-1 bg-orange-500 hover:bg-orange-600 text-white"
+                    data-testid="confirm-add-lead-btn"
+                  >
+                    {addLeadSubmitting ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Adding...</> : 'Add Lead'}
+                  </Button>
                 </div>
               </div>
             </div>
