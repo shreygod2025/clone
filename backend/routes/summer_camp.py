@@ -95,24 +95,19 @@ AGE_GROUPS = {
 }
 
 CENTERS = {
-    "mira_road": "Mira Road, Mumbai",
-    "dombivli": "Dombivli – Pallava, Mumbai",
-    "andheri": "Andheri West – Lokhandwala, Mumbai",
+    "mira_road": "Mira Road",
+    "dombivli": "Dombivli",
+    "andheri": "Andheri West",
     "online": "Online",
 }
 
 async def _resolve_center_label(center_id: str) -> str:
-    """Resolve a center ID (UUID or legacy slug) to a human-readable label."""
+    """Resolve a center ID (UUID or legacy slug) to a human-readable label (just the name)."""
     if not center_id:
         return ""
-    doc = await db.centers.find_one({"id": center_id}, {"_id": 0, "name": 1, "area": 1, "city": 1})
+    doc = await db.centers.find_one({"id": center_id}, {"_id": 0, "name": 1})
     if doc:
-        area = doc.get("area", "")
-        city = doc.get("city", "")
-        name = doc.get("name", center_id)
-        if area and city:
-            return f"{name} ({area}, {city})"
-        return name
+        return doc.get("name", center_id)
     return CENTERS.get(center_id, center_id)
 
 BATCH_DATES = {
@@ -361,8 +356,13 @@ async def complete_lead(booking_id: str, data: CompleteLead):
         }}
     )
 
-    # Send enrollment WhatsApp for cash registrations
+    # For cash bookings: increment tracking conversion + send WhatsApp
     if data.payment_mode == "cash":
+        # Increment tracking link conversion (cash bypasses Cashfree webhook)
+        source_ref = booking.get("source_ref") or booking.get("ref")
+        if source_ref:
+            await _increment_tracking(source_ref, "conversions")
+
         try:
             from .notifications import send_whatsapp_notification
             phone = booking.get("parent_phone", "")
@@ -667,11 +667,13 @@ async def get_batch_availability(age_group: str, center: str):
     SPOTS_PER_BATCH = 10
     result = {}
     for wk in ["week1", "week2", "week3", "week4"]:
+        # Only count CONFIRMED students (online paid + cash at center)
+        # Leads and phone-captures should NOT block spots
         count = await db.summer_camp_bookings.count_documents({
             "batch_week": wk,
             "age_group": age_group,
             "center": center,
-            "crm_status": {"$nin": ["lost_lead"]},
+            "crm_status": {"$in": ["converted", "payment_offline"]},
         })
         spots_left = max(0, SPOTS_PER_BATCH - int(count))
         result[wk] = {
