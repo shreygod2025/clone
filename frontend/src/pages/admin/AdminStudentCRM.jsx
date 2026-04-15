@@ -1488,7 +1488,20 @@ const AdminStudentCRM = () => {
                               {filteredCampBookings.map(booking => (
                                 <tr key={booking.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors" data-testid={`camp-booking-${booking.id}`}>
                                   <td className="px-4 py-3 font-mono text-xs text-slate-600">{booking.booking_ref}</td>
-                                  <td className="px-4 py-3 font-semibold text-[#1E3A5F]">{booking.child_name || <span className="text-slate-400 italic">—</span>}</td>
+                                  <td className="px-4 py-3 font-semibold text-[#1E3A5F]">
+                                    <div className="flex items-center gap-1.5">
+                                      {booking.child_name || <span className="text-slate-400 italic">—</span>}
+                                      {booking.return_count > 1 && (
+                                        <span
+                                          title={`Filled the form ${booking.return_count} times`}
+                                          className="inline-flex items-center gap-0.5 text-xs font-bold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-200"
+                                          data-testid={`return-badge-${booking.id}`}
+                                        >
+                                          ×{booking.return_count}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
                                   <td className="px-4 py-3">
                                     <div className="text-slate-700">{booking.parent_name || '—'}</div>
                                     <div className="text-xs text-slate-400">{booking.parent_phone}</div>

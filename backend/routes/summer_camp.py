@@ -305,6 +305,48 @@ async def complete_lead(booking_id: str, data: CompleteLead):
     booking = await db.summer_camp_bookings.find_one({"id": booking_id}, {"_id": 0})
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
+
+    # ── Deduplication: same phone + same child name ───────────────────────────
+    # Normalize for comparison (case-insensitive, trimmed)
+    norm_child = (data.child_name or "").strip().lower()
+    norm_phone = (booking.get("parent_phone") or "").strip()
+
+    if norm_child and norm_phone:
+        existing = await db.summer_camp_bookings.find_one(
+            {
+                "id": {"$ne": booking_id},
+                "parent_phone": norm_phone,
+                "child_name": {"$regex": f"^{norm_child}$", "$options": "i"},
+                "crm_status": {"$in": ["lead", "hot_lead", "converted", "payment_offline"]},
+            },
+            {"_id": 0}
+        )
+        if existing:
+            # Same person filled the form again — increment return_count, drop the duplicate
+            return_count = existing.get("return_count", 1) + 1
+            await db.summer_camp_bookings.update_one(
+                {"id": existing["id"]},
+                {"$set": {
+                    "return_count": return_count,
+                    "last_returned_at": datetime.now(timezone.utc).isoformat(),
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }}
+            )
+            # Remove the duplicate phone_captured entry
+            await db.summer_camp_bookings.delete_one({"id": booking_id})
+            logging.info(f"[SC] Duplicate lead suppressed for phone {norm_phone} / {data.child_name}. Existing: {existing['id']}, return_count={return_count}")
+            return {
+                "booking_id": existing["id"],
+                "booking_ref": existing.get("booking_ref"),
+                "payment_mode": data.payment_mode,
+                "amount": CAMP_PRICE,
+                "center_label": existing.get("center_label"),
+                "batch_dates": existing.get("batch_dates"),
+                "message": "Already registered",
+                "is_duplicate": True,
+            }
+    # ─────────────────────────────────────────────────────────────────────────
+
     new_status = "payment_offline" if data.payment_mode == "cash" else "lead"
     await db.summer_camp_bookings.update_one(
         {"id": booking_id},
@@ -314,6 +356,7 @@ async def complete_lead(booking_id: str, data: CompleteLead):
             "parent_email": data.parent_email,
             "payment_mode": data.payment_mode,
             "crm_status": new_status,
+            "return_count": 1,
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }}
     )
@@ -343,6 +386,7 @@ async def complete_lead(booking_id: str, data: CompleteLead):
         "center_label": booking.get("center_label"),
         "batch_dates": booking.get("batch_dates"),
         "message": "Lead updated successfully",
+        "is_duplicate": False,
     }
 
 
