@@ -52,14 +52,19 @@ async def reset_overdue_flags(user: dict = Depends(get_current_user)):
 
 @router.post("/support/backfill-ticket-numbers")
 async def backfill_ticket_numbers(user: dict = Depends(get_current_user)):
-    """One-time migration: assign sequential ticket_number to all tickets missing one."""
+    """Assign sequential ticket_number to all tickets missing one across all collections."""
     updated = 0
-    for collection_name in ["support_queries", "support_tickets"]:
+    collection_stats = {}
+    for collection_name in ["support_queries", "support_tickets", "inquiry_queries"]:
         tickets = await db[collection_name].find(
-            {"ticket_number": {"$in": [None, "", 0]}},
+            {"$or": [
+                {"ticket_number": {"$in": [None, "", 0]}},
+                {"ticket_number": {"$exists": False}}
+            ]},
             {"_id": 0, "id": 1, "created_at": 1}
         ).sort("created_at", 1).to_list(10000)
 
+        count = 0
         for ticket in tickets:
             num = await get_next_ticket_number()
             await db[collection_name].update_one(
@@ -67,9 +72,17 @@ async def backfill_ticket_numbers(user: dict = Depends(get_current_user)):
                 {"$set": {"ticket_number": num}}
             )
             updated += 1
+            count += 1
+        collection_stats[collection_name] = count
 
     counter = await db.counters.find_one({"key": "ticket_number"}, {"_id": 0})
-    return {"message": f"Backfilled {updated} tickets across support_queries + support_tickets", "next_ticket_number": str((counter or {}).get("seq", 0) + 1).zfill(4)}
+    next_num = str((counter or {}).get("seq", 0) + 1).zfill(4)
+    return {
+        "message": f"Assigned ticket IDs to {updated} tickets",
+        "updated": updated,
+        "breakdown": collection_stats,
+        "next_ticket_number": next_num
+    }
 
 
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Phone, Mail, Clock, User, MessageSquare, AlertCircle, CreditCard, Wrench, HelpCircle, ThumbsUp, Building2, Send, AlertTriangle, CheckCircle, UserPlus, Plus, Paperclip, Mic, MicOff, X, FileText, Play, Pause, Upload, History, Edit, Trash2, StickyNote, RefreshCw, GraduationCap, Eye, Users, Settings, Bell } from 'lucide-react';
+import { Search, Phone, Mail, Clock, User, MessageSquare, AlertCircle, CreditCard, Wrench, HelpCircle, ThumbsUp, Building2, Send, AlertTriangle, CheckCircle, UserPlus, Plus, Paperclip, Mic, MicOff, X, FileText, Play, Pause, Upload, History, Edit, Trash2, StickyNote, RefreshCw, GraduationCap, Eye, Users, Settings, Bell, Hash } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -238,6 +238,8 @@ const AdminSupportUnified = () => {
   const [savingNotif, setSavingNotif] = useState(false);
   const [notifSaved, setNotifSaved] = useState(false);
   const [resetingOverdue, setResetingOverdue] = useState(false);
+  const [backfillingTickets, setBackfillingTickets] = useState(false);
+  const [backfillResult, setBackfillResult] = useState(null);
 
   const fetchNotificationSettings = async () => {
     try {
@@ -265,6 +267,20 @@ const AdminSupportUnified = () => {
       alert(`Reset ${res.data.count} tickets. Overdue notifications will re-trigger on next scheduler check.`);
     } catch {}
     setResetingOverdue(false);
+  };
+
+  const backfillTicketIds = async () => {
+    setBackfillingTickets(true);
+    setBackfillResult(null);
+    try {
+      const res = await axios.post(`${API}/support/backfill-ticket-numbers`, {}, { headers: getAuthHeaders() });
+      setBackfillResult(res.data);
+      // Refresh queries so new ticket numbers appear immediately
+      fetchQueries();
+    } catch (err) {
+      setBackfillResult({ error: err.response?.data?.detail || 'Something went wrong' });
+    }
+    setBackfillingTickets(false);
   };
 
   const fetchTeamUsers = async () => {
@@ -1196,6 +1212,57 @@ const AdminSupportUnified = () => {
             >
               {resetingOverdue ? 'Resetting...' : 'Reset Overdue Flags for Open Tickets'}
             </button>
+          </div>
+
+          {/* ── Assign Missing Ticket IDs ── */}
+          <div className="bg-white rounded-2xl border border-slate-100 p-6">
+            <h3 className="font-bold text-[#1E3A5F] text-base mb-1 flex items-center gap-2">
+              <Hash className="w-4 h-4 text-indigo-500" />Assign Missing Ticket IDs
+            </h3>
+            <p className="text-sm text-slate-500 mb-4">
+              Scans all tickets across every support collection and assigns a sequential ticket ID to any that are missing one. Tickets already having an ID are left untouched. The list refreshes automatically after running.
+            </p>
+            <button
+              onClick={backfillTicketIds}
+              disabled={backfillingTickets}
+              data-testid="backfill-ticket-ids-btn"
+              className="px-5 py-2.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-lg text-sm font-semibold hover:bg-indigo-100 transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              {backfillingTickets ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  Scanning & assigning...
+                </>
+              ) : (
+                <>
+                  <Hash className="w-4 h-4" />
+                  Assign Missing Ticket IDs
+                </>
+              )}
+            </button>
+            {backfillResult && (
+              <div className={`mt-4 p-4 rounded-xl text-sm ${backfillResult.error ? 'bg-red-50 border border-red-200 text-red-700' : 'bg-green-50 border border-green-200 text-green-800'}`}
+                data-testid="backfill-result">
+                {backfillResult.error ? (
+                  <p>{backfillResult.error}</p>
+                ) : (
+                  <>
+                    <p className="font-semibold mb-2">
+                      {backfillResult.updated === 0
+                        ? 'All tickets already have IDs — nothing to update.'
+                        : `${backfillResult.updated} ticket${backfillResult.updated !== 1 ? 's' : ''} assigned new IDs. Next ID: #${backfillResult.next_ticket_number}`}
+                    </p>
+                    {backfillResult.breakdown && backfillResult.updated > 0 && (
+                      <ul className="space-y-1 text-xs text-green-700">
+                        {Object.entries(backfillResult.breakdown).filter(([,v]) => v > 0).map(([col, count]) => (
+                          <li key={col}>• {col.replace(/_/g, ' ')}: {count} ticket{count !== 1 ? 's' : ''}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
       ) : filteredQueries.length === 0 ? (
