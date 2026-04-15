@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, LogIn } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -8,6 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 
 const AdminLogin = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, register } = useAuth();
   const [isRegister, setIsRegister] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -17,6 +18,14 @@ const AdminLogin = () => {
     password: '',
     name: '',
   });
+
+  // Show session expired banner when redirected due to expired token
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('reason') === 'session_expired') {
+      toast.warning('Your session has expired. Please log in again.');
+    }
+  }, [location.search]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

@@ -18,24 +18,21 @@ axios.interceptors.response.use(
     } else if (error.request) {
       console.error('Network Error:', error.message);
     }
-    
-    // Only redirect to login on explicit 401 from auth endpoints
-    // This prevents logout loops on other API failures
+
     if (error.response?.status === 401) {
-      const isAuthEndpoint = error.config?.url?.includes('/auth/');
+      const errorDetail = (error.response?.data?.detail || '').toLowerCase();
       const currentPath = window.location.pathname;
-      
-      // Don't redirect if already on login page or if it's a non-auth endpoint
-      if (!currentPath.includes('/login') && !currentPath.includes('/admin/login')) {
-        // Only clear token on explicit auth endpoint failures
-        if (isAuthEndpoint) {
-          console.warn('Auth token invalid, clearing...');
-          localStorage.removeItem('oll_token');
-          localStorage.removeItem('oll_user');
-        }
+      const alreadyOnLogin = currentPath.includes('/login') || currentPath.includes('/admin/login');
+
+      // Redirect to login when token is explicitly expired or invalid
+      if (!alreadyOnLogin && (errorDetail.includes('expired') || errorDetail.includes('invalid') || errorDetail.includes('not authenticated'))) {
+        localStorage.removeItem('oll_token');
+        localStorage.removeItem('oll_user');
+        const isAdmin = currentPath.startsWith('/admin');
+        window.location.href = isAdmin ? '/admin/login?reason=session_expired' : '/login?reason=session_expired';
       }
     }
-    
+
     return Promise.reject(error);
   }
 );

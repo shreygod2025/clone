@@ -28,7 +28,7 @@ db = client[os.environ['DB_NAME']]
 # JWT Configuration
 SECRET_KEY = os.environ.get('JWT_SECRET', 'oll-secret-key-change-in-production')
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_HOURS = 24
+ACCESS_TOKEN_EXPIRE_HOURS = 72
 
 # Security
 security = HTTPBearer()
@@ -133,7 +133,7 @@ def verify_password(password: str, hashed: str) -> bool:
 
 def create_access_token(data: dict) -> str:
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(hours=int(os.environ.get("ACCESS_TOKEN_EXPIRE_HOURS", "24")))
+    expire = datetime.now(timezone.utc) + timedelta(hours=int(os.environ.get("ACCESS_TOKEN_EXPIRE_HOURS", str(ACCESS_TOKEN_EXPIRE_HOURS))))
     to_encode.update({"exp": expire})
     return _jwt.encode(to_encode, os.environ.get("JWT_SECRET", ""), algorithm="HS256")
 
