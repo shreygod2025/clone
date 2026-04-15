@@ -3,6 +3,7 @@ Support Queries, Support Tickets, Batches, and Sessions routes.
 """
 import uuid
 import asyncio
+import logging
 import resend
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional

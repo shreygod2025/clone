@@ -275,7 +275,7 @@ const AdminSupportUnified = () => {
     try {
       const res = await axios.post(`${API}/support/backfill-ticket-numbers`, {}, { headers: getAuthHeaders() });
       setBackfillResult(res.data);
-      fetchQueries();
+      fetchAllQueries();
     } catch (err) {
       const detail = err.response?.data?.detail
         || err.response?.data?.message
