@@ -102,6 +102,10 @@ const SchoolStudentPayment = () => {
       toast.error('Please enter a valid 10-digit phone number');
       return false;
     }
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error('Please enter a valid email address');
+      return false;
+    }
     if (!grade) {
       toast.error('Please select grade');
       return false;
@@ -542,11 +546,11 @@ const SchoolStudentPayment = () => {
                   <p className="text-xs text-slate-500 mt-1">Payment receipt will be sent to this number</p>
                 </div>
 
-                {/* Email (optional) */}
+                {/* Email (required) */}
                 <div>
                   <Label className="text-slate-700 flex items-center gap-2 mb-2 font-medium">
                     <Mail className="w-4 h-4" />
-                    Email Address <span className="text-slate-400 font-normal text-xs">(optional – for receipt)</span>
+                    Email Address <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     type="email"
@@ -554,6 +558,7 @@ const SchoolStudentPayment = () => {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="parent@example.com"
                     className="h-12 border-slate-200 focus:border-[#C53030] focus:ring-[#C53030]"
+                    required
                     data-testid="email-input"
                   />
                   <p className="text-xs text-slate-500 mt-1">A payment confirmation will be emailed here</p>
@@ -590,7 +595,7 @@ const SchoolStudentPayment = () => {
                     onChange={(e) => setDivision(e.target.value.toUpperCase())}
                     placeholder="e.g., A, B, C"
                     className="h-12 border-slate-200 focus:border-[#C53030] focus:ring-[#C53030]"
-                    maxLength={5}
+                    maxLength={15}
                     required
                     data-testid="division-input"
                   />
