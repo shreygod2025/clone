@@ -17,7 +17,7 @@ from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Query, 
 from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 
-from .shared import db, get_current_user
+from .shared import db, get_current_user, get_next_ticket_number
 from .notifications import send_whatsapp_notification
 
 # Cloudinary lazy loader
@@ -1046,6 +1046,7 @@ class InquiryLead(BaseModel):
 class InquiryQuery(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    ticket_number: str = ""
     inquiry_type: str  # student, school, growth_partner, teacher, team
     action_type: str = "query"
     name: str = ""
@@ -1175,7 +1176,8 @@ async def create_inquiry_query(data: dict):
     query = InquiryQuery(**data)
     doc = query.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
-    
+    doc['ticket_number'] = await get_next_ticket_number()
+
     # Get added_by user info and add as viewer
     added_by = data.get('added_by', '')
     if added_by:
@@ -1189,11 +1191,11 @@ async def create_inquiry_query(data: dict):
             doc['added_by_name'] = user.get('name', '')
     else:
         doc['viewers'] = []
-    
+
     # Store in inquiry_queries collection (ticketing system)
     await db.inquiry_queries.insert_one(doc)
-    
-    return {"message": "Query submitted successfully", "id": doc['id']}
+
+    return {"message": "Query submitted successfully", "id": doc['id'], "ticket_number": doc['ticket_number']}
 
 @router.get("/inquiry/leads")
 async def get_inquiry_leads(
