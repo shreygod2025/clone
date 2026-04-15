@@ -275,10 +275,13 @@ const AdminSupportUnified = () => {
     try {
       const res = await axios.post(`${API}/support/backfill-ticket-numbers`, {}, { headers: getAuthHeaders() });
       setBackfillResult(res.data);
-      // Refresh queries so new ticket numbers appear immediately
       fetchQueries();
     } catch (err) {
-      setBackfillResult({ error: err.response?.data?.detail || 'Something went wrong' });
+      const detail = err.response?.data?.detail
+        || err.response?.data?.message
+        || err.message
+        || 'Request failed';
+      setBackfillResult({ error: `Error ${err.response?.status || ''}: ${detail}` });
     }
     setBackfillingTickets(false);
   };

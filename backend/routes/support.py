@@ -56,24 +56,32 @@ async def backfill_ticket_numbers(user: dict = Depends(get_current_user)):
     updated = 0
     collection_stats = {}
     for collection_name in ["support_queries", "support_tickets", "inquiry_queries"]:
-        tickets = await db[collection_name].find(
-            {"$or": [
-                {"ticket_number": {"$in": [None, "", 0]}},
-                {"ticket_number": {"$exists": False}}
-            ]},
-            {"_id": 0, "id": 1, "created_at": 1}
-        ).sort("created_at", 1).to_list(10000)
+        try:
+            # Fetch tickets with missing/empty/null ticket_number
+            tickets = await db[collection_name].find(
+                {"$or": [
+                    {"ticket_number": {"$exists": False}},
+                    {"ticket_number": None},
+                    {"ticket_number": ""},
+                ]},
+                {"_id": 0, "id": 1, "created_at": 1}
+            ).sort("created_at", 1).to_list(10000)
 
-        count = 0
-        for ticket in tickets:
-            num = await get_next_ticket_number()
-            await db[collection_name].update_one(
-                {"id": ticket["id"]},
-                {"$set": {"ticket_number": num}}
-            )
-            updated += 1
-            count += 1
-        collection_stats[collection_name] = count
+            count = 0
+            for ticket in tickets:
+                if not ticket.get("id"):
+                    continue
+                num = await get_next_ticket_number()
+                await db[collection_name].update_one(
+                    {"id": ticket["id"]},
+                    {"$set": {"ticket_number": num}}
+                )
+                updated += 1
+                count += 1
+            collection_stats[collection_name] = count
+        except Exception as e:
+            logging.warning(f"[Backfill] Skipped collection '{collection_name}': {e}")
+            collection_stats[collection_name] = 0
 
     counter = await db.counters.find_one({"key": "ticket_number"}, {"_id": 0})
     next_num = str((counter or {}).get("seq", 0) + 1).zfill(4)
