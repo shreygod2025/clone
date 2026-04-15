@@ -10,6 +10,7 @@ import csv
 import base64
 import re
 import json
+import logging
 from io import BytesIO
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Dict
@@ -502,6 +503,27 @@ class BlogUpdate(BaseModel):
 # ── Routes ─────────────────────────────────────────────────────────────────────
 @router.post("/educators/apply", response_model=EducatorApplication)
 async def create_educator_application(data: EducatorApplicationCreate, background_tasks: BackgroundTasks):
+    # ── Deduplication: same phone OR email already exists (non-archived) ───
+    phone_norm = (data.phone or "").strip()
+    email_norm = (data.email or "").strip().lower()
+    query_filters = []
+    if phone_norm:
+        query_filters.append({"phone": phone_norm})
+    if email_norm and "@educator.oll" not in email_norm:
+        query_filters.append({"email": email_norm})
+    if query_filters:
+        existing = await db.educator_applications.find_one(
+            {"$and": [
+                {"$or": query_filters},
+                {"status": {"$nin": ["archived", "rejected"]}},
+            ]},
+            {"_id": 0}
+        )
+        if existing:
+            logging.info(f"[Educators] Duplicate suppressed for phone={phone_norm} / email={email_norm}. Returning existing {existing['id']}")
+            return EducatorApplication(**existing)
+    # ────────────────────────────────────────────────────────────────────────
+
     application = EducatorApplication(**data.model_dump())
     
     # If demo_date is provided, set status to demo_scheduled
@@ -542,9 +564,39 @@ async def create_educator_application_verified(data: EducatorApplyWithOTP, backg
     if not success:
         raise HTTPException(status_code=400, detail=error_msg)
     
+    phone_norm = data.phone.strip()
+    email_norm = (data.application_data.email or "").strip().lower()
+
+    # ── Deduplication: same phone OR email already exists (non-archived) ───
+    query_filters = [{"phone": phone_norm}]
+    if email_norm and "@educator.oll" not in email_norm:
+        query_filters.append({"email": email_norm})
+    existing = await db.educator_applications.find_one(
+        {"$and": [
+            {"$or": query_filters},
+            {"status": {"$nin": ["archived", "rejected"]}},
+        ]},
+        {"_id": 0}
+    )
+    if existing:
+        logging.info(f"[Educators-OTP] Duplicate suppressed for phone={phone_norm}. Returning existing {existing['id']}")
+        return {
+            "success": True,
+            "message": "Application already submitted",
+            "application": {
+                "id": existing["id"],
+                "name": existing.get("name"),
+                "status": existing.get("status"),
+                "demo_date": existing.get("demo_date"),
+                "demo_time": existing.get("demo_time"),
+                "meeting_link": existing.get("meeting_link"),
+            }
+        }
+    # ────────────────────────────────────────────────────────────────────────
+
     # Create the application
     app_data = data.application_data.model_dump()
-    app_data['phone'] = data.phone  # Ensure phone matches verified phone
+    app_data['phone'] = phone_norm  # Ensure phone matches verified phone
     
     application = EducatorApplication(**app_data)
     
@@ -1016,6 +1068,48 @@ async def add_active_educator(data: dict, user: dict = Depends(get_current_user)
         del educator["_id"]
     
     return {"message": "Educator added successfully", "educator": educator}
+
+@router.post("/educators/deduplicate")
+async def deduplicate_educator_applications(user: dict = Depends(get_current_user)):
+    """
+    Scan all educator applications and merge duplicates that share the same phone number.
+    Keeps the oldest (first submitted) record, deletes the rest.
+    """
+    all_apps = await db.educator_applications.find(
+        {"status": {"$nin": ["archived", "rejected"]}},
+        {"_id": 0}
+    ).sort("created_at", 1).to_list(10000)
+
+    # Group by phone
+    phone_map = {}
+    for app in all_apps:
+        phone = (app.get("phone") or "").strip()
+        if not phone:
+            continue
+        if phone not in phone_map:
+            phone_map[phone] = []
+        phone_map[phone].append(app)
+
+    deleted_count = 0
+    merged_phones = []
+    for phone, apps in phone_map.items():
+        if len(apps) <= 1:
+            continue
+        # Keep the first (oldest), delete the rest
+        keeper = apps[0]
+        dupes = apps[1:]
+        ids_to_delete = [d["id"] for d in dupes]
+        await db.educator_applications.delete_many({"id": {"$in": ids_to_delete}})
+        deleted_count += len(ids_to_delete)
+        merged_phones.append({"phone": phone, "kept": keeper["id"], "deleted": len(ids_to_delete), "name": keeper.get("name", "")})
+        logging.info(f"[Educators-Dedup] Deleted {len(ids_to_delete)} duplicates for phone {phone}, kept {keeper['id']}")
+
+    return {
+        "message": f"Removed {deleted_count} duplicate applications",
+        "deleted": deleted_count,
+        "affected_phones": merged_phones,
+    }
+
 
 @router.post("/educators/bulk-import")
 async def bulk_import_educators(file: UploadFile = File(...), user: dict = Depends(get_current_user)):

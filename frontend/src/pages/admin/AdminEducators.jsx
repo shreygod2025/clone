@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Eye, Phone, Mail, Calendar, Clock, Plus, ChevronRight, MessageSquare, Archive, CalendarClock, CheckCircle2, User, Users, Briefcase, MapPin, UserPlus, Send, Edit, Save, Video, Star, FileText, X, Download, Copy, Link, Trash2, XCircle } from 'lucide-react';
+import { Search, Eye, Phone, Mail, Calendar, Clock, Plus, ChevronRight, MessageSquare, Archive, CalendarClock, CheckCircle2, User, Users, Briefcase, MapPin, UserPlus, Send, Edit, Save, Video, Star, FileText, X, Download, Copy, Link, Trash2, XCircle, RefreshCw } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -83,6 +83,7 @@ const AdminEducators = () => {
   const [bulkImportFile, setBulkImportFile] = useState(null);
   const [bulkImportPreview, setBulkImportPreview] = useState([]);
   const [bulkImportLoading, setBulkImportLoading] = useState(false);
+  const [deduplicating, setDeduplicating] = useState(false);
   
   // Modal states
   const [viewEducator, setViewEducator] = useState(null);
@@ -270,6 +271,25 @@ const AdminEducators = () => {
       toast.error(error.response?.data?.detail || 'Failed to import educators');
     } finally {
       setBulkImportLoading(false);
+    }
+  };
+
+  const handleDeduplicate = async () => {
+    if (!window.confirm('This will remove duplicate educator applications (same phone number), keeping only the oldest entry. Continue?')) return;
+    setDeduplicating(true);
+    try {
+      const res = await axios.post(`${API}/educators/deduplicate`, {}, { headers: { Authorization: `Bearer ${localStorage.getItem('oll_token')}` } });
+      const { deleted, affected_phones } = res.data;
+      if (deleted === 0) {
+        toast.success('No duplicates found — all clean!');
+      } else {
+        toast.success(`Removed ${deleted} duplicate application${deleted !== 1 ? 's' : ''} across ${affected_phones.length} phone number${affected_phones.length !== 1 ? 's' : ''}`);
+        fetchEducators();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Deduplication failed');
+    } finally {
+      setDeduplicating(false);
     }
   };
 
@@ -1077,6 +1097,16 @@ const AdminEducators = () => {
               >
                 <FileText className="w-4 h-4 mr-2" />
                 <span className="hidden sm:inline">Bulk</span> Import
+              </Button>
+              <Button
+                onClick={handleDeduplicate}
+                disabled={deduplicating}
+                variant="outline"
+                className="border-orange-400 text-orange-600 hover:bg-orange-50"
+                title="Remove duplicate educator entries (same phone number)"
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${deduplicating ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">{deduplicating ? 'Cleaning...' : 'Remove Duplicates'}</span>
               </Button>
             </div>
           )}
