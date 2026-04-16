@@ -611,6 +611,9 @@ async def create_educator_application(data: EducatorApplicationCreate, backgroun
     # ────────────────────────────────────────────────────────────────────────
 
     application = EducatorApplication(**data.model_dump())
+    # Ensure status has a meaningful default (sanitize_nullable_fields may blank it)
+    if not application.status:
+        application.status = "new"
     
     # If demo_date is provided, set status to demo_scheduled
     if data.demo_date:
@@ -623,11 +626,10 @@ async def create_educator_application(data: EducatorApplicationCreate, backgroun
             application.assigned_to = assigned['user_id']
     
     # Generate meeting link for the educator demo
-    application_dict = application.model_dump()
     meeting_link = generate_meeting_link(application.id)
+    application.meeting_link = meeting_link  # Set on object so response includes it
     
-    doc = application_dict
-    doc['meeting_link'] = meeting_link
+    doc = application.model_dump()
     doc['created_at'] = doc['created_at'].isoformat()
     doc['updated_at'] = doc['updated_at'].isoformat()
     await db.educator_applications.insert_one(doc)

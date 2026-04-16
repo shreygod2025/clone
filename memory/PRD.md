@@ -200,7 +200,17 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## Implementation Log
 
-### 2026-04-14 — Distributor Invoice Feature + Download Proxy Fix
+### 2026-04-16 — Educator Application Deduplication & Update Fix
+**Bugs Fixed:**
+1. **`/educators/apply` — Stale re-apply response**: When an existing applicant reapplied (same phone/email), the old record was returned silently without updating. Now properly updates the existing record with fresh name, skills, experience, city, teaching_mode, demo_date etc. and returns updated data.
+2. **`/educators/apply-verified` — AttributeError crash on re-apply**: Update path referenced `application.subject` and `application.qualification` which don't exist on `EducatorApplication` model, causing 500 errors. Fixed with correct field references.
+3. **Missing email helper functions**: `send_educator_application_received_email`, `send_educator_demo_scheduled_email` etc. were called but never defined. Added all 6 helper functions.
+4. **`status=''` for new applications**: `sanitize_nullable_fields` model validator was blanking the `status` default. Fixed by explicitly setting status after construction.
+5. **`meeting_link=''` in response**: Meeting link was set on `doc` dict but not on the `application` object returned. Fixed by setting `application.meeting_link = meeting_link` before return.
+
+**Verified:** No duplicate records created on re-apply. Admin panel shows correct updated data.
+
+
 - **Distributor Details Fields**: When "From Distributor" is selected as Payment Mode in all 3 school modals (Convert, New Onboard, Edit Onboard), shows amber-highlighted section with Distributor Name, Address, and GSTIN fields
 - **Invoice PDF Generator**: When `payment_mode === 'from_distributor'`, invoice PDF header uses distributor's name/address/GST instead of OLL's details. Terms section also reflects distributor name.
 - **downloadFile Proxy**: Updated `downloadFile` in AdminOrders.jsx to route Cloudinary and emergent.host URLs through `/api/proxy/file` endpoint to avoid CORS/auth failures
