@@ -1,0 +1,58 @@
+{
+  "summary": "Tested educator apply deduplication fix, admin panel, and educator funnel page. Primary fix (re-apply updates existing record instead of creating duplicates) is working correctly. 11/13 backend tests pass. 2 minor response-level bugs found in the new application path.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "POST /api/educators/apply",
+        "issue": "New application (first-time) returns status='' instead of status='new'. Root cause: sanitize_nullable_fields model validator in EducatorApplication sets status='' when input dict (from EducatorApplicationCreate.model_dump()) doesn't include 'status' key, overriding the Pydantic default 'new'. Fix: After 'application = EducatorApplication(**data.model_dump())', add 'if not application.status: application.status = \"new\"'. OR remove 'status' from str_fields in sanitize_nullable_fields.",
+        "priority": "LOW"
+      },
+      {
+        "endpoint": "POST /api/educators/apply",
+        "issue": "New application (first-time) response returns meeting_link='' even though DB stores the correct link. Root cause: code sets meeting_link on 'doc' dict (stored to DB) but returns 'application' Pydantic object whose .meeting_link attribute is never set. Fix: Add 'application.meeting_link = meeting_link' before 'return application'. The re-apply path correctly returns meeting_link because it fetches from DB.",
+        "priority": "LOW"
+      },
+      {
+        "endpoint": "Backend email helper",
+        "issue": "Email notification error: 'GMAIL_APP_PASSWORD is not defined' — non-critical background task failure. Emails won't send but API calls succeed. Pre-existing issue unrelated to this fix.",
+        "priority": "LOW"
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter70_educator_apply.py",
+    "/app/test_reports/pytest/pytest_iter70.xml"
+  ],
+  "action_items": [
+    "Fix new application response: set application.status = 'new' explicitly in create_educator_application when no status is provided (line ~613 in educators.py)",
+    "Fix new application response: set application.meeting_link = meeting_link before returning (line ~638 in educators.py)",
+    "Optional cleanup: dev test records with phones 9999000001, 9999000002 and TEST_* phones (8888100001-8888900002) can be removed from DB"
+  ],
+  "critical_code_review_comments": [
+    "In EducatorApplication.sanitize_nullable_fields: 'status' is in str_fields, so when creating a NEW application from EducatorApplicationCreate (which has no 'status' field), values.get('status') returns None and gets set to '' — overriding the model field default 'new'. This makes new applications show up with empty status in API responses. The sanitizer should not override fields that have meaningful defaults.",
+    "In create_educator_application: meeting_link is set on 'doc' dict but NOT on 'application' object before return. So API response always has empty meeting_link for new applications even though DB stores it correctly."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter70_educator_apply.py"
+  ],
+  "success_rate": {
+    "backend": "85% (11/13 tests pass; 2 minor failures are bugs in code, not test issues)",
+    "frontend": "100% (educator funnel page loads, admin panel loads with all tabs, applicants list shows no duplicates)"
+  },
+  "test_credentials": "admin@oll.co / Dagaji03@",
+  "seed_data_creation": "Created TEST_ educator records with phones 8888100001-8888900002 during testing. Multiple re-apply submissions confirmed only 1 record per phone exists.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Primary fix tested: deduplication on re-apply works (re-apply with same phone or email UPDATES existing record, not creates duplicate). Admin panel /admin/educators loads with all tabs (Requirements 2, Applicants 20, Onboarding 15, Active Educators 5, Archived 3). 2 minor response bugs: (1) status='' instead of 'new' for new apps (2) meeting_link='' in response even though stored in DB. Previous NameError for send_educator_application_received_email is now fixed. Test file: /app/backend/tests/test_iter70_educator_apply.py",
+  "rca_of_issues": {
+    "duplicate_registration_fix": "VERIFIED FIXED - the re-apply path in /educators/apply now correctly calls update_one instead of returning stale data or creating a new record. Confirmed by: (1) test_reapply_same_phone_no_duplicate_created (3 submissions = 1 DB record), (2) test_reapply_same_email_no_duplicate, (3) visual verification in admin panel showing unique phone appears exactly once.",
+    "status_empty_bug": "Root cause: EducatorApplication.sanitize_nullable_fields model validator includes 'status' in str_fields. When EducatorApplicationCreate (which has no status field) is model_dump()'d, 'status' key is absent. The validator then sets values['status'] = '' because values.get('status') is None. This overrides the Pydantic field default of 'new'. Only affects the API response — the admin panel still shows correct data since EducatorApplicationCreate path doesn't set demo_scheduled either (demo_scheduled IS correctly set explicitly).",
+    "meeting_link_empty_bug": "Root cause: create_educator_application creates 'application' Pydantic object, then creates 'doc' dict from model_dump(), sets doc['meeting_link'] = meeting_link (saves to DB correctly), but returns 'application' object which still has meeting_link=''. The re-apply path correctly returns meeting_link because it reads from DB after update."
+  }
+}

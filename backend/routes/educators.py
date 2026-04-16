@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field, ConfigDict, model_validator, field_valida
 
 from .shared import (
     db, get_current_user, hash_password, verify_password, create_access_token,
-    auto_assign_educator, generate_meeting_link, get_relationship_managers,
+    auto_assign_educator, auto_assign_lead, generate_meeting_link, get_relationship_managers,
     ensure_resend_api_key, EMAIL_TEMPLATES, send_educator_email, SENDER_EMAIL,
     get_next_ticket_number
 )
@@ -500,6 +500,65 @@ class BlogUpdate(BaseModel):
     order: Optional[int] = None
     tags: Optional[List[str]] = None
 
+# ── Email helper functions ─────────────────────────────────────────────────────
+async def send_educator_application_received_email(doc: dict):
+    email = doc.get("email", "")
+    if not email:
+        return
+    skills = doc.get("skills", [])
+    await send_educator_email(email, "application_received", {
+        "name": doc.get("name", ""),
+        "skills": ", ".join(skills) if isinstance(skills, list) else str(skills),
+        "experience": doc.get("experience", ""),
+        "city": doc.get("city", ""),
+    })
+
+async def send_educator_demo_scheduled_email(doc: dict):
+    email = doc.get("email", "")
+    if not email:
+        return
+    await send_educator_email(email, "demo_scheduled", {
+        "name": doc.get("name", ""),
+        "demo_date": doc.get("demo_date", ""),
+        "demo_time": doc.get("demo_time", ""),
+        "meeting_link": doc.get("meeting_link", ""),
+    })
+
+async def send_educator_demo_reminder_email(doc: dict):
+    email = doc.get("email", "")
+    if not email:
+        return
+    await send_educator_email(email, "demo_reminder", {
+        "name": doc.get("name", ""),
+        "demo_date": doc.get("demo_date", ""),
+        "demo_time": doc.get("demo_time", ""),
+        "meeting_link": doc.get("meeting_link", ""),
+    })
+
+async def send_educator_demo_completed_email(doc: dict):
+    email = doc.get("email", "")
+    if not email:
+        return
+    await send_educator_email(email, "demo_completed", {
+        "name": doc.get("name", ""),
+    })
+
+async def send_educator_onboarded_email(doc: dict):
+    email = doc.get("email", "")
+    if not email:
+        return
+    await send_educator_email(email, "onboarded", {
+        "name": doc.get("name", ""),
+    })
+
+async def send_educator_rejected_email(doc: dict):
+    email = doc.get("email", "")
+    if not email:
+        return
+    await send_educator_email(email, "rejected", {
+        "name": doc.get("name", ""),
+    })
+
 # ── Routes ─────────────────────────────────────────────────────────────────────
 @router.post("/educators/apply", response_model=EducatorApplication)
 async def create_educator_application(data: EducatorApplicationCreate, background_tasks: BackgroundTasks):
@@ -520,8 +579,35 @@ async def create_educator_application(data: EducatorApplicationCreate, backgroun
             {"_id": 0}
         )
         if existing:
-            logging.info(f"[Educators] Duplicate suppressed for phone={phone_norm} / email={email_norm}. Returning existing {existing['id']}")
-            return EducatorApplication(**existing)
+            # Re-application: update existing record with fresh data instead of returning stale info
+            update_fields = {
+                "name": data.name or existing.get("name", ""),
+                "email": email_norm or existing.get("email", ""),
+                "skills": data.skills or existing.get("skills", []),
+                "experience": data.experience or existing.get("experience", ""),
+                "grades_comfortable": data.grades_comfortable or existing.get("grades_comfortable", []),
+                "city": data.city or existing.get("city", ""),
+                "teaching_mode": data.teaching_mode or existing.get("teaching_mode", ""),
+                "availability": data.availability or existing.get("availability", ""),
+                "notes": data.notes or existing.get("notes", ""),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+            if data.demo_date:
+                update_fields["demo_date"] = data.demo_date
+                update_fields["demo_time"] = data.demo_time
+                update_fields["status"] = "demo_scheduled"
+                update_fields["meeting_link"] = generate_meeting_link(existing["id"])
+            await db.educator_applications.update_one(
+                {"id": existing["id"]},
+                {"$set": update_fields}
+            )
+            updated = await db.educator_applications.find_one({"id": existing["id"]}, {"_id": 0})
+            logging.info(f"[Educators] Re-application updated for phone={phone_norm}, id={existing['id']}")
+            if isinstance(updated.get('created_at'), str):
+                updated['created_at'] = datetime.fromisoformat(updated['created_at'])
+            if isinstance(updated.get('updated_at'), str):
+                updated['updated_at'] = datetime.fromisoformat(updated['updated_at'])
+            return EducatorApplication(**updated)
     # ────────────────────────────────────────────────────────────────────────
 
     application = EducatorApplication(**data.model_dump())
@@ -590,12 +676,15 @@ async def create_educator_application_verified(data: EducatorApplyWithOTP, backg
     if existing:
         # Re-application: update the existing record with fresh details
         update_fields = {
-            "name": application.name,
+            "name": application.name or existing.get("name", ""),
             "email": application.email or existing.get("email", ""),
-            "subject": application.subject or existing.get("subject", ""),
-            "city": application.city or existing.get("city", ""),
+            "skills": application.skills or existing.get("skills", []),
             "experience": application.experience or existing.get("experience", ""),
-            "qualification": application.qualification or existing.get("qualification", ""),
+            "grades_comfortable": application.grades_comfortable or existing.get("grades_comfortable", []),
+            "city": application.city or existing.get("city", ""),
+            "teaching_mode": application.teaching_mode or existing.get("teaching_mode", ""),
+            "availability": application.availability or existing.get("availability", ""),
+            "notes": application.notes or existing.get("notes", ""),
             "phone_verified": True,
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }
