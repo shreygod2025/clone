@@ -559,15 +559,23 @@ class EducatorApplyWithOTP(BaseModel):
 
 @router.post("/educators/apply-verified")
 async def create_educator_application_verified(data: EducatorApplyWithOTP, background_tasks: BackgroundTasks):
-    """Create educator application with OTP verification"""
+    """Create educator application with OTP verification. Re-application updates existing record."""
     success, error_msg = await otp_verify(data.phone, data.otp)
     if not success:
         raise HTTPException(status_code=400, detail=error_msg)
-    
+
     phone_norm = data.phone.strip()
     email_norm = (data.application_data.email or "").strip().lower()
 
-    # ── Deduplication: same phone OR email already exists (non-archived) ───
+    # Build the new application fields
+    app_data = data.application_data.model_dump()
+    app_data['phone'] = phone_norm
+    application = EducatorApplication(**app_data)
+    if data.application_data.demo_date:
+        application.status = "demo_scheduled"
+    meeting_link = generate_meeting_link(application.id)
+
+    # ── Check if already exists (non-archived/rejected) ──────────────────────
     query_filters = [{"phone": phone_norm}]
     if email_norm and "@educator.oll" not in email_norm:
         query_filters.append({"email": email_norm})
@@ -578,46 +586,78 @@ async def create_educator_application_verified(data: EducatorApplyWithOTP, backg
         ]},
         {"_id": 0}
     )
+
     if existing:
-        logging.info(f"[Educators-OTP] Duplicate suppressed for phone={phone_norm}. Returning existing {existing['id']}")
+        # Re-application: update the existing record with fresh details
+        update_fields = {
+            "name": application.name,
+            "email": application.email or existing.get("email", ""),
+            "subject": application.subject or existing.get("subject", ""),
+            "city": application.city or existing.get("city", ""),
+            "experience": application.experience or existing.get("experience", ""),
+            "qualification": application.qualification or existing.get("qualification", ""),
+            "phone_verified": True,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+        # Only update demo date if a new one was actually selected
+        if data.application_data.demo_date:
+            update_fields["demo_date"] = application.demo_date
+            update_fields["demo_time"] = application.demo_time
+            update_fields["status"] = "demo_scheduled"
+            # Generate a fresh meeting link for the new demo
+            new_link = generate_meeting_link(existing["id"])
+            update_fields["meeting_link"] = new_link
+            meeting_link = new_link
+
+        await db.educator_applications.update_one(
+            {"id": existing["id"]},
+            {"$set": update_fields}
+        )
+        logging.info(f"[Educators-OTP] Re-application updated for phone={phone_norm}, id={existing['id']}")
         return {
             "success": True,
-            "message": "Application already submitted",
+            "message": "Application updated successfully",
             "application": {
                 "id": existing["id"],
-                "name": existing.get("name"),
-                "status": existing.get("status"),
-                "demo_date": existing.get("demo_date"),
-                "demo_time": existing.get("demo_time"),
-                "meeting_link": existing.get("meeting_link"),
+                "name": update_fields.get("name", existing.get("name")),
+                "status": update_fields.get("status", existing.get("status")),
+                "demo_date": update_fields.get("demo_date", existing.get("demo_date")),
+                "demo_time": update_fields.get("demo_time", existing.get("demo_time")),
+                "meeting_link": meeting_link,
             }
         }
-    # ────────────────────────────────────────────────────────────────────────
+    # ─────────────────────────────────────────────────────────────────────────
 
-    # Create the application
-    app_data = data.application_data.model_dump()
-    app_data['phone'] = phone_norm  # Ensure phone matches verified phone
-    
-    application = EducatorApplication(**app_data)
-    
-    # If demo_date is provided, set status to demo_scheduled
-    if data.application_data.demo_date:
-        application.status = "demo_scheduled"
-    
-    # Generate meeting link
-    meeting_link = generate_meeting_link(application.id)
-    
     doc = application.model_dump()
     doc['meeting_link'] = meeting_link
     doc['phone_verified'] = True
     doc['created_at'] = doc['created_at'].isoformat()
     doc['updated_at'] = doc['updated_at'].isoformat()
-    
-    await db.educator_applications.insert_one(doc)
-    
-    # Fire email in background — don't block response
+
+    try:
+        await db.educator_applications.insert_one(doc)
+    except Exception as e:
+        # Handle race condition: another concurrent request may have just inserted
+        if "duplicate" in str(e).lower() or "E11000" in str(e):
+            existing_after = await db.educator_applications.find_one({"phone": phone_norm}, {"_id": 0})
+            if existing_after:
+                logging.info(f"[Educators-OTP] Race condition handled for {phone_norm}")
+                return {
+                    "success": True,
+                    "message": "Application submitted successfully",
+                    "application": {
+                        "id": existing_after["id"],
+                        "name": existing_after.get("name"),
+                        "status": existing_after.get("status"),
+                        "demo_date": existing_after.get("demo_date"),
+                        "demo_time": existing_after.get("demo_time"),
+                        "meeting_link": existing_after.get("meeting_link"),
+                    }
+                }
+        raise HTTPException(status_code=500, detail="Failed to save application. Please try again.")
+
     background_tasks.add_task(send_educator_application_received_email, doc)
-    
+
     return {
         "success": True,
         "message": "Application submitted successfully",
