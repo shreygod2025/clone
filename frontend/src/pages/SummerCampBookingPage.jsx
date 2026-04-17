@@ -179,7 +179,8 @@ export default function SummerCampBookingPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.child_name || !form.parent_phone || !form.parent_email) {
+    // Validate required fields (email optional — backend generates placeholder)
+    if (!form.child_name || !form.parent_phone) {
       setError('Please fill in all required fields.');
       return;
     }
@@ -305,8 +306,7 @@ export default function SummerCampBookingPage() {
                       <span style={{ fontSize: '2.25rem', lineHeight: 1, flexShrink: 0 }}>{g.icon}</span>
                       <div>
                         <div style={{ fontFamily: JB, fontWeight: 800, fontSize: '1.2rem', color: '#F8FAFC', marginBottom: '0.2rem' }}>Ages {g.ages}</div>
-                        <div style={{ fontSize: '0.88rem', color: '#64748B', fontFamily: NU, marginBottom: '0.2rem' }}>{g.tagline}</div>
-                        <div style={{ fontSize: '0.78rem', color: '#00E5FF', fontFamily: JB, fontWeight: 600, letterSpacing: '0.04em', opacity: 0.85 }}>⏰ {g.timing}</div>
+                        <div style={{ fontSize: '0.88rem', color: '#64748B', fontFamily: NU }}>{g.tagline}</div>
                       </div>
                     </div>
                   </ChoiceCard>
@@ -449,7 +449,6 @@ export default function SummerCampBookingPage() {
 
               <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.35rem' }}>
                 <InputField label="Child's Name"   id="child_name"   value={form.child_name}   onChange={e => update('child_name')(e.target.value)}   placeholder="e.g. Aryan Kumar"    required autoFocus />
-                <InputField label="Parent's Email" id="parent_email" type="email" value={form.parent_email} onChange={e => update('parent_email')(e.target.value)} placeholder="e.g. rajesh@gmail.com" required />
 
                 {/* Payment method */}
                 <div>

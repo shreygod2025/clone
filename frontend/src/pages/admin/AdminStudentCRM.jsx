@@ -1697,6 +1697,7 @@ const AdminStudentCRM = () => {
                             <thead>
                               <tr className="border-b border-slate-100 text-slate-500 text-xs uppercase tracking-wide">
                                 <th className="px-4 py-3 text-left">Ref</th>
+                                <th className="px-4 py-3 text-left">Date</th>
                                 <th className="px-4 py-3 text-left">Child</th>
                                 <th className="px-4 py-3 text-left">Parent</th>
                                 <th className="px-4 py-3 text-left">Age Group</th>
@@ -1707,14 +1708,16 @@ const AdminStudentCRM = () => {
                                 <th className="px-4 py-3 text-left">Status</th>
                                 <th className="px-4 py-3 text-left">Follow-up</th>
                                 <th className="px-4 py-3 text-left">Last Activity</th>
-                                <th className="px-4 py-3 text-left">Date</th>
                                 <th className="px-4 py-3 text-center">Actions</th>
                               </tr>
                             </thead>
                             <tbody>
                               {filteredCampBookings.map(booking => (
                                 <tr key={booking.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors" data-testid={`camp-booking-${booking.id}`}>
-                                  <td className="px-4 py-3 font-mono text-xs text-slate-600">{booking.booking_ref}</td>
+                                  <td className="px-4 py-3 font-mono text-xs text-slate-600 font-bold">{booking.booking_ref}</td>
+                                  <td className="px-4 py-3 text-xs text-slate-400 whitespace-nowrap">
+                                    {new Date(booking.created_at).toLocaleDateString('en-IN')}
+                                  </td>
                                   <td className="px-4 py-3 font-semibold text-[#1E3A5F]">
                                     <div className="flex items-center gap-1.5">
                                       {booking.child_name || <span className="text-slate-400 italic">—</span>}
@@ -1815,9 +1818,6 @@ const AdminStudentCRM = () => {
                               ) : (
                                 <span className="text-xs text-slate-300">—</span>
                               )}
-                            </td>
-                            <td className="px-4 py-3 text-xs text-slate-400">
-                              {new Date(booking.created_at).toLocaleDateString('en-IN')}
                             </td>
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-1 justify-center">

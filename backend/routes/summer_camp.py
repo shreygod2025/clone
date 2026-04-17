@@ -784,7 +784,28 @@ async def update_booking_status(
     return {"success": True, "crm_status": data.crm_status}
 
 
-@router.post("/summer-camp/bookings/{booking_id}/comment")
+@router.post("/summer-camp/backfill-refs")
+async def backfill_booking_refs(user: dict = Depends(get_current_user)):
+    """One-time admin utility: assign clean 4-digit sequential booking_ref to all records that have old SC2026-* format."""
+    # Fetch all bookings ordered by created_at ascending to maintain chronological numbering
+    all_bookings = await db.summer_camp_bookings.find(
+        {}, {"_id": 0, "id": 1, "booking_ref": 1, "created_at": 1}
+    ).sort("created_at", 1).to_list(length=None)
+
+    updated = 0
+    for idx, booking in enumerate(all_bookings, start=1):
+        new_ref = f"{idx:04d}"
+        if booking.get("booking_ref") != new_ref:
+            await db.summer_camp_bookings.update_one(
+                {"id": booking["id"]},
+                {"$set": {"booking_ref": new_ref}}
+            )
+            updated += 1
+
+    return {"success": True, "total": len(all_bookings), "updated": updated, "message": f"Assigned 4-digit refs to {updated} bookings"}
+
+
+
 async def add_booking_comment(
     booking_id: str,
     data: CommentAdd,
