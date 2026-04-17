@@ -14,9 +14,9 @@ const NU = "'Nunito Sans', sans-serif";
 const TOTAL = 5;
 
 const AGE_GROUPS = [
-  { slug: 'explorers',  label: 'Little Explorers',  ages: '4 – 8',   icon: '🚀', tagline: 'First steps into robotics & coding',  color: '#00E5FF', laptop: false },
-  { slug: 'creators',   label: 'Tech Creators',      ages: '9 – 12',  icon: '⚙️', tagline: 'Build robots and write real code',     color: '#D63031', laptop: true },
-  { slug: 'innovators', label: 'Future Innovators',  ages: '13 – 16', icon: '🤖', tagline: 'AI, 3D Design & advanced robotics',    color: '#7C3AED', laptop: true },
+  { slug: 'explorers',  label: 'Little Explorers',  ages: '4 – 8',   icon: '🚀', tagline: 'First steps into robotics & coding',  color: '#00E5FF', laptop: false, timing: '12:00 PM – 2:00 PM' },
+  { slug: 'creators',   label: 'Tech Creators',      ages: '9 – 12',  icon: '⚙️', tagline: 'Build robots and write real code',     color: '#D63031', laptop: true,  timing: '2:30 PM – 4:30 PM' },
+  { slug: 'innovators', label: 'Future Innovators',  ages: '13 – 16', icon: '🤖', tagline: 'AI, 3D Design & advanced robotics',    color: '#7C3AED', laptop: true,  timing: '5:00 PM – 7:00 PM' },
 ];
 
 const BATCH_WEEKS = [
@@ -304,8 +304,9 @@ export default function SummerCampBookingPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                       <span style={{ fontSize: '2.25rem', lineHeight: 1, flexShrink: 0 }}>{g.icon}</span>
                       <div>
-                        <div style={{ fontFamily: JB, fontWeight: 800, fontSize: '1.2rem', color: '#F8FAFC', marginBottom: '0.25rem' }}>Ages {g.ages}</div>
-                        <div style={{ fontSize: '0.88rem', color: '#64748B', fontFamily: NU }}>{g.tagline}</div>
+                        <div style={{ fontFamily: JB, fontWeight: 800, fontSize: '1.2rem', color: '#F8FAFC', marginBottom: '0.2rem' }}>Ages {g.ages}</div>
+                        <div style={{ fontSize: '0.88rem', color: '#64748B', fontFamily: NU, marginBottom: '0.2rem' }}>{g.tagline}</div>
+                        <div style={{ fontSize: '0.78rem', color: '#00E5FF', fontFamily: JB, fontWeight: 600, letterSpacing: '0.04em', opacity: 0.85 }}>⏰ {g.timing}</div>
                       </div>
                     </div>
                   </ChoiceCard>
@@ -342,7 +343,7 @@ export default function SummerCampBookingPage() {
           {step === 2 && (
             <div style={{ animation: 'fadeSlide 0.35s ease both' }}>
               <BackBtn onClick={goBack} />
-              <StepHeader stepNum={3} title="Pick your batch" sub="Mon–Fri · 5 days · 2 hours per day" />
+              <StepHeader stepNum={3} title="Pick your batch" sub={`Mon–Fri · 5 days · ${AGE_GROUPS.find(g => g.slug === form.age_group)?.timing || '2 hours per day'}`} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {BATCH_WEEKS.map((b) => {
                   const avail = availability[b.id];

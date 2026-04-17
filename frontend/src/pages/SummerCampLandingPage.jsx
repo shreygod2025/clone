@@ -28,6 +28,7 @@ const AGE_GROUPS = [
   {
     slug: 'explorers', label: 'Little Explorers', ages: '4 – 8',
     tagline: 'First steps into robotics & coding',
+    timing: '12:00 PM – 2:00 PM',
     color: '#00E5FF', accentBg: 'rgba(0,229,255,0.08)',
     subjects: [
       { icon: Cpu,   name: 'Junior Robotics',  desc: 'Build and control their first robot using drag-and-drop programming', level: 'Beginner' },
@@ -39,6 +40,7 @@ const AGE_GROUPS = [
   {
     slug: 'creators', label: 'Tech Creators', ages: '9 – 12',
     tagline: 'Build robots and write real code',
+    timing: '2:30 PM – 4:30 PM',
     color: '#D63031', accentBg: 'rgba(214,48,49,0.08)',
     subjects: [
       { icon: Cpu,   name: 'Arduino Robotics',  desc: 'Build sensor-driven robots and program them with real code', level: 'Intermediate' },
@@ -50,6 +52,7 @@ const AGE_GROUPS = [
   {
     slug: 'innovators', label: 'Future Innovators', ages: '13 – 16',
     tagline: 'AI, 3D Design & advanced robotics',
+    timing: '5:00 PM – 7:00 PM',
     color: '#7C3AED', accentBg: 'rgba(124,58,237,0.08)',
     subjects: [
       { icon: Cpu,   name: 'Advanced Robotics', desc: 'Build autonomous robots with vision systems and IoT connectivity', level: 'Advanced' },
@@ -258,7 +261,7 @@ export default function SummerCampLandingPage() {
         <meta property="og:url" content="https://oll.co/summer-camp" />
         <meta property="og:title" content="Future Skills Summer Camp 2026 — Robotics, AI & Coding for Kids | OLL" />
         <meta property="og:description" content="5-day hands-on tech camps for ages 4–16. Robotics · Coding · AI · 3D Design. Mumbai centers. STEM.org Certified. As seen on Shark Tank India & KBC." />
-        <meta property="og:image" content="https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/ko80g3wd_images.png" />
+        <meta property="og:image" content="https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/x3ipatnb_Summer%20Camp%20Poster%202026%20%20%28A3%29.png" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta property="og:locale" content="en_IN" />
@@ -782,7 +785,7 @@ export default function SummerCampLandingPage() {
             </div>
 
             {/* Age tabs */}
-            <div className="age-tabs-row sr sr-d1" style={{ display: 'flex', justifyContent: 'center', gap: '0.6rem', marginBottom: '2.5rem', flexWrap: 'wrap' }}>
+            <div className="age-tabs-row sr sr-d1" style={{ display: 'flex', justifyContent: 'center', gap: '0.6rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
               {AGE_GROUPS.map((g, i) => (
                 <button
                   key={g.slug}
@@ -797,6 +800,12 @@ export default function SummerCampLandingPage() {
                   Ages {g.ages}
                 </button>
               ))}
+            </div>
+            {/* Timing for active age */}
+            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(0,229,255,0.06)', border: `1px solid ${AGE_GROUPS[activeAgeIdx].color}30`, borderRadius: '2rem', padding: '0.35rem 1.1rem', fontFamily: "'JetBrains Mono', monospace", fontSize: '0.82rem', fontWeight: 700, color: AGE_GROUPS[activeAgeIdx].color, letterSpacing: '0.04em' }}>
+                ⏰ Camp Timing: {AGE_GROUPS[activeAgeIdx].timing}
+              </span>
             </div>
 
             {/* Cards */}
@@ -838,7 +847,7 @@ export default function SummerCampLandingPage() {
             </div>
 
             {/* Batch cards */}
-            <div className="sr-scale sr-d2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))', gap: '0.85rem', marginBottom: '3rem' }}>
+            <div className="sr-scale sr-d2" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))', gap: '0.85rem', marginBottom: '2rem' }}>
               {BATCH_DATES.map(b => (
                 <div key={b.id} className="camp-card" style={{ padding: '1.25rem' }}
                   onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(0,229,255,0.35)'; }}
@@ -847,6 +856,18 @@ export default function SummerCampLandingPage() {
                   <div style={{ fontSize: '0.6rem', color: '#00E5FF', textTransform: 'uppercase', letterSpacing: '0.18em', fontWeight: 700, marginBottom: '0.4rem' }}>{b.label}</div>
                   <div style={{ fontFamily: 'JetBrains Mono, monospace', fontWeight: 700, fontSize: '1.2rem', color: '#F0F4F8', lineHeight: 1.4 }}>{b.date}</div>
                   <div style={{ fontSize: '0.68rem', color: '#7A9AB8', marginTop: '0.4rem' }}>Mon–Fri · 10 seats only</div>
+                </div>
+              ))}
+            </div>
+            {/* Timings by age group */}
+            <div className="sr sr-d3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.7rem', marginBottom: '3rem' }}>
+              {AGE_GROUPS.map(g => (
+                <div key={g.slug} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'rgba(255,255,255,0.03)', border: `1px solid ${g.color}22`, borderRadius: '0.875rem', padding: '0.85rem 1.1rem' }}>
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${g.color}15`, border: `1px solid ${g.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '1.1rem' }}>⏰</div>
+                  <div>
+                    <div style={{ fontSize: '0.72rem', fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: g.color, letterSpacing: '0.06em', marginBottom: '0.15rem' }}>Ages {g.ages}</div>
+                    <div style={{ fontSize: '0.9rem', fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, color: '#F0F4F8' }}>{g.timing}</div>
+                  </div>
                 </div>
               ))}
             </div>

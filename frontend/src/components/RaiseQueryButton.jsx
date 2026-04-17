@@ -425,6 +425,60 @@ const PAGE_QUERY_CONFIG = {
     ]
   },
   
+  // Summer Camp page - specific to camp bookings & queries
+  summer_camp: {
+    label: 'Summer Camp Help',
+    queries: [
+      { 
+        value: 'camp_registration', label: 'Registration & Booking', icon: '📋',
+        subCategories: [
+          { value: 'how_to_book', label: 'How to Book a Seat' },
+          { value: 'batch_availability', label: 'Batch Availability' },
+          { value: 'center_location', label: 'Center Location / Address' },
+          { value: 'age_eligibility', label: 'Age Eligibility' },
+          { value: 'other', label: 'Other' },
+        ]
+      },
+      { 
+        value: 'batch_timing', label: 'Batch & Timings', icon: '⏰',
+        subCategories: [
+          { value: 'timing_4_8', label: 'Timings for Ages 4–8' },
+          { value: 'timing_9_12', label: 'Timings for Ages 9–12' },
+          { value: 'timing_13_16', label: 'Timings for Ages 13–16' },
+          { value: 'reschedule', label: 'Change Batch / Reschedule' },
+          { value: 'other', label: 'Other' },
+        ]
+      },
+      { 
+        value: 'fee_payment', label: 'Fee & Payment', icon: '💳',
+        subCategories: [
+          { value: 'fee_structure', label: 'Fee Structure' },
+          { value: 'payment_issue', label: 'Payment Not Confirmed' },
+          { value: 'refund', label: 'Refund Request' },
+          { value: 'group_discount', label: 'Sibling / Group Discount' },
+          { value: 'other', label: 'Other' },
+        ]
+      },
+      { 
+        value: 'camp_query', label: 'Camp Activities', icon: '🤖',
+        subCategories: [
+          { value: 'curriculum', label: 'What Will My Child Learn?' },
+          { value: 'laptop', label: 'Do They Need a Laptop?' },
+          { value: 'materials', label: 'Materials / Kit Provided' },
+          { value: 'other', label: 'Other' },
+        ]
+      },
+      { 
+        value: 'other', label: 'Other Query', icon: '❓',
+        subCategories: [
+          { value: 'feedback', label: 'Feedback' },
+          { value: 'complaint', label: 'Complaint' },
+          { value: 'general', label: 'General Question' },
+        ]
+      },
+    ]
+  },
+  
   // Default/General - Home page options
   general: {
     label: 'How can we help?',
@@ -483,7 +537,12 @@ const getPageConfig = (path, isLoggedIn) => {
     return PAGE_QUERY_CONFIG['school-payment'];
   }
   
-  // PRIORITY 2: Course landing pages (also public, need specific FAQs)
+  // PRIORITY 2: Summer camp pages - specific camp FAQs
+  if (path.includes('/summer-camp')) {
+    return PAGE_QUERY_CONFIG.summer_camp;
+  }
+  
+  // PRIORITY 3: Course landing pages (also public, need specific FAQs)
   if (path.includes('/robotics') || path.includes('/coding') || path.includes('/ai') || 
       path.includes('/course') || path.includes('/program')) {
     return PAGE_QUERY_CONFIG.course;

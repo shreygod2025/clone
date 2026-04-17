@@ -200,6 +200,12 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## Implementation Log
 
+### 2026-04-17 — Summer Camp Timings, FAQ & OG Image Update
+**Features Added:**
+1. **Batch Timings**: Added timing to each age group (4–8: 12–2pm, 9–12: 2:30–4:30pm, 13–16: 5–7pm). Shows in: booking step 0 cards, booking step 2 header, landing page curriculum timing indicator (per-age), and a timings grid in the batch section
+2. **Summer Camp FAQ**: New summer_camp config in `RaiseQueryButton.jsx` with 5 camp-specific categories (Registration & Booking, Batch & Timings, Fee & Payment, Camp Activities, Other Query). Triggers on any `/summer-camp` route
+3. **OG Image for Link Sharing**: Updated `public/index.html` default OG meta tags to use the Summer Camp 2026 poster. Also updated Helmet in `SummerCampLandingPage.jsx`. Now shows camp poster when sharing on WhatsApp/social media
+
 ### 2026-04-17 — Multi-Feature Update
 **Features Added / Bugs Fixed:**
 1. **Role Dropdowns**: Added "Primary Coordinator" and "Secondary Coordinator" to all 5 contact role selects in AdminSchoolCRM.jsx (edit modal, renewal modal, new lead, conversion, onboarding)
