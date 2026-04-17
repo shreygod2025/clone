@@ -1413,18 +1413,20 @@ const AdminStudentCRM = () => {
                   return (
                     <>
                       {/* KPI cards + Export button row */}
-                      <div className="flex items-center justify-between gap-3 mb-4">
-                        <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 flex-1">
+                      <div className="mb-4">
+                        {/* Scrollable KPI cards */}
+                        <div className="flex gap-2 overflow-x-auto pb-2 mb-3" style={{ scrollbarWidth: 'none' }}>
                           {kpiCards.map(k => {
                             const isActive = campFilters.status === k.filterVal;
                             return (
                               <button
                                 key={k.label}
                                 onClick={() => setFilter('status', isActive ? '' : k.filterVal)}
-                                className={`rounded-xl border p-3 text-center transition-all flex flex-col items-center gap-0.5 ${isActive ? k.activeColor + ' shadow-md' : k.color + ' hover:opacity-80'}`}
+                                className={`rounded-xl border px-3 py-2.5 text-center transition-all flex flex-col items-center gap-0.5 shrink-0 ${isActive ? k.activeColor + ' shadow-md' : k.color + ' hover:opacity-80'}`}
+                                style={{ minWidth: 80 }}
                               >
-                                <div className="text-2xl font-bold">{k.value}</div>
-                                <div className="text-xs font-semibold flex items-center gap-1">
+                                <div className="text-xl font-bold leading-tight">{k.value}</div>
+                                <div className="text-[11px] font-semibold whitespace-nowrap flex items-center gap-0.5">
                                   {k.label}
                                   <ChevronDown className={`w-3 h-3 transition-transform ${isActive ? 'rotate-180' : ''}`} />
                                 </div>
@@ -1432,32 +1434,35 @@ const AdminStudentCRM = () => {
                             );
                           })}
                         </div>
-                        <Button
-                          onClick={() => exportSummerCampToExcel(filteredCampBookings)}
-                          variant="outline"
-                          className="flex items-center gap-2 border-orange-300 text-orange-700 hover:bg-orange-50 shrink-0"
-                          data-testid="export-summer-camp-btn"
-                        >
-                          <Download className="w-4 h-4" />
-                          <span className="hidden sm:inline">Export</span> ({filteredCampBookings.length})
-                        </Button>
-                        <Button
-                          onClick={() => { setShowImportModal(true); setImportFile(null); setImportPreview([]); setImportResult(null); }}
-                          variant="outline"
-                          className="flex items-center gap-2 border-blue-300 text-blue-700 hover:bg-blue-50 shrink-0"
-                          data-testid="import-summer-camp-btn"
-                        >
-                          <Upload className="w-4 h-4" />
-                          <span className="hidden sm:inline">Import</span>
-                        </Button>
-                        <Button
-                          onClick={() => setShowAddLeadModal(true)}
-                          className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white shrink-0"
-                          data-testid="add-individual-lead-btn"
-                        >
-                          <Plus className="w-4 h-4" />
-                          <span className="hidden sm:inline">Add Lead</span>
-                        </Button>
+                        {/* Action buttons row */}
+                        <div className="flex items-center gap-2">
+                          <Button
+                            onClick={() => exportSummerCampToExcel(filteredCampBookings)}
+                            variant="outline"
+                            className="flex items-center gap-2 border-orange-300 text-orange-700 hover:bg-orange-50 shrink-0"
+                            data-testid="export-summer-camp-btn"
+                          >
+                            <Download className="w-4 h-4" />
+                            <span className="hidden sm:inline">Export</span> ({filteredCampBookings.length})
+                          </Button>
+                          <Button
+                            onClick={() => { setShowImportModal(true); setImportFile(null); setImportPreview([]); setImportResult(null); }}
+                            variant="outline"
+                            className="flex items-center gap-2 border-blue-300 text-blue-700 hover:bg-blue-50 shrink-0"
+                            data-testid="import-summer-camp-btn"
+                          >
+                            <Upload className="w-4 h-4" />
+                            <span className="hidden sm:inline">Import</span>
+                          </Button>
+                          <Button
+                            onClick={() => setShowAddLeadModal(true)}
+                            className="flex items-center gap-2 bg-orange-500 hover:bg-orange-600 text-white shrink-0"
+                            data-testid="add-individual-lead-btn"
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span className="hidden sm:inline">Add Lead</span>
+                          </Button>
+                        </div>
                       </div>
 
                       {/* Filter dropdowns */}

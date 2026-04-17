@@ -359,7 +359,10 @@ export default function SummerCampBookingPage() {
                     >
                       <div style={{ flex: 1 }}>
                         <div style={{ fontSize: '0.72rem', color: '#475569', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '0.3rem', fontFamily: JB }}>{b.label}</div>
-                        <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '1.2rem', color: isFull ? '#475569' : '#F8FAFC' }}>{b.date}</div>
+                        <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '1.2rem', color: isFull ? '#475569' : '#F8FAFC', marginBottom: '0.3rem' }}>{b.date}</div>
+                        <div style={{ fontSize: '0.68rem', color: '#00E5FF', fontFamily: JB, fontWeight: 600, letterSpacing: '0.04em', opacity: isFull ? 0.4 : 0.9 }}>
+                          ⏰ {AGE_GROUPS.find(g => g.slug === form.age_group)?.timing || ''}
+                        </div>
                       </div>
                       {/* Spots badge */}
                       {avail && (

@@ -908,8 +908,8 @@ async def get_summer_camp_dashboard(user: dict = Depends(get_current_user)):
         elif status == "lost_lead":
             cell["lost"] += 1
 
-        # Center tracking (track full stats per center, not just count)
-        center = b.get("center_label") or b.get("center") or "Unknown"
+        # Center tracking (track full stats per center, not just count) — normalize label
+        center = _normalize_center_display(b.get("center_label") or b.get("center") or "Unknown")
         if center not in cell["by_center"]:
             cell["by_center"][center] = {
                 "total": 0, "converted": 0, "leads": 0,
@@ -948,9 +948,9 @@ async def get_summer_camp_dashboard(user: dict = Depends(get_current_user)):
     hot_to_conv = round((total_converted / max(total_hot_leads, 1) * 100), 1) if total_hot_leads else 0
     reg_to_conv = round((total_converted / total_registrations * 100), 1) if total_registrations else 0
 
-    # Collect unique centers (excluding unknown/online)
+    # Collect unique centers (normalized to canonical names)
     all_centers = sorted(set(
-        b.get("center_label") or b.get("center") or "Unknown"
+        _normalize_center_display(b.get("center_label") or b.get("center") or "")
         for b in bookings
         if b.get("center_label") or b.get("center")
     ))
@@ -1010,7 +1010,28 @@ VALID_AGE_GROUPS = {"explorers", "creators", "innovators"}
 VALID_STATUSES = {"phone_captured", "lead", "hot_lead", "converted", "payment_offline", "lost_lead"}
 VALID_BATCH_WEEKS = {"week1", "week2", "week3", "week4"}
 
-def _normalize_age_group(val: str) -> str:
+def _normalize_center_display(label: str) -> str:
+    """Normalize messy historical center_label variants to canonical display names."""
+    if not label:
+        return "Unknown"
+    low = label.lower().strip()
+    # Strip parenthesized address suffixes, e.g. "Andheri West (Azad Nagar, Mumbai)"
+    # Keep only the first part before "("
+    core = low.split("(")[0].strip()
+    if "andheri" in core or "azad nagar" in core:
+        return "OLL Andheri Center"
+    if "mira road" in core or "mira-road" in core:
+        return "OLL Mira Road Center"
+    if "borivali" in core or "kandivali" in core:
+        return "OLL Borivali Center"
+    if "malad" in core:
+        return "OLL Malad Center"
+    if "thane" in core:
+        return "OLL Thane Center"
+    if "online" in core:
+        return "Online"
+    # Fall back to original with parenthesis stripped
+    return label.split("(")[0].strip() or label
     val = (val or "").strip().lower()
     if val in VALID_AGE_GROUPS:
         return val
