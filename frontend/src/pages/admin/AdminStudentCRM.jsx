@@ -112,6 +112,7 @@ const AdminStudentCRM = () => {
   const [campCallbackDate, setCampCallbackDate] = useState('');
   const [campCallbackTime, setCampCallbackTime] = useState('');
   const [campFilters, setCampFilters] = useState({ status: '', batch: '', center: '', source: '' });
+  const [campSearch, setCampSearch] = useState('');
   const [campDashboard, setCampDashboard] = useState(null);
   const [campDashboardLoading, setCampDashboardLoading] = useState(false);
   const [campSaving, setCampSaving] = useState(false);
@@ -1395,6 +1396,16 @@ const AdminStudentCRM = () => {
                     { label: 'Lost', value: summerCampBookings.filter(b => b.crm_status === 'lost_lead').length, filterVal: 'lost_lead', color: 'bg-red-50 border-red-200 text-red-700', activeColor: 'bg-red-500 border-red-500 text-white' },
                   ];
                   const filteredCampBookings = summerCampBookings.filter(b => {
+                    // Search filter (name, phone, booking_ref)
+                    if (campSearch.trim()) {
+                      const q = campSearch.trim().toLowerCase();
+                      const matchSearch =
+                        b.child_name?.toLowerCase().includes(q) ||
+                        b.parent_name?.toLowerCase().includes(q) ||
+                        b.parent_phone?.includes(campSearch.trim()) ||
+                        b.booking_ref?.toLowerCase().includes(q);
+                      if (!matchSearch) return false;
+                    }
                     if (campFilters.status) {
                       if (campFilters.status === 'converted_all') {
                         if (b.crm_status !== 'converted' && b.crm_status !== 'payment_offline') return false;
@@ -1467,6 +1478,23 @@ const AdminStudentCRM = () => {
 
                       {/* Filter dropdowns */}
                       <div className="flex flex-wrap gap-3 mb-5">
+                        {/* Search box */}
+                        <div className="relative">
+                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                          <input
+                            type="text"
+                            value={campSearch}
+                            onChange={e => setCampSearch(e.target.value)}
+                            placeholder="Search name / phone..."
+                            className="h-8 pl-8 pr-8 text-xs border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-300 w-48"
+                            data-testid="camp-search-input"
+                          />
+                          {campSearch && (
+                            <button onClick={() => setCampSearch('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
                         <select
                           value={campFilters.status}
                           onChange={e => setFilter('status', e.target.value)}
@@ -1512,12 +1540,12 @@ const AdminStudentCRM = () => {
                           {uniqueSources.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
 
-                        {(campFilters.status || campFilters.batch || campFilters.center || campFilters.source) && (
+                        {(campFilters.status || campFilters.batch || campFilters.center || campFilters.source || campSearch) && (
                           <button
-                            onClick={() => setCampFilters({ status: '', batch: '', center: '', source: '' })}
+                            onClick={() => { setCampFilters({ status: '', batch: '', center: '', source: '' }); setCampSearch(''); }}
                             className="text-xs h-8 px-3 border border-red-200 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors flex items-center gap-1"
                           >
-                            <X className="w-3 h-3" /> Clear Filters
+                            <X className="w-3 h-3" /> Clear All
                           </button>
                         )}
 

@@ -257,8 +257,8 @@ async def track_view(slug: str):
 @router.post("/summer-camp/capture-lead")
 async def capture_lead(data: PartialLeadCapture):
     """Save a partial lead at the phone number step — before full details are entered."""
-    ref_num = str(int(time.time()))[-6:]
-    booking_ref = f"SC2026-{ref_num}"
+    count = await db.summer_camp_bookings.count_documents({})
+    booking_ref = f"{count + 1:04d}"
     booking_id = str(uuid.uuid4())
 
     batch_dates = BATCH_DATES.get(data.batch_week, {}).get(data.batch_type, "")
@@ -411,9 +411,9 @@ async def register_summer_camp(data: SummerCampRegistration):
     if data.mode not in ("offline", "online"):
         raise HTTPException(status_code=400, detail="Invalid mode")
 
-    # Generate short booking ref
-    ref_num = str(int(time.time()))[-6:]
-    booking_ref = f"SC2026-{ref_num}"
+    # Generate sequential booking ref
+    _ref_count = await db.summer_camp_bookings.count_documents({})
+    booking_ref = f"{_ref_count + 1:04d}"
     booking_id = str(uuid.uuid4())
 
     batch_dates = BATCH_DATES[data.batch_week][data.batch_type]
@@ -1195,8 +1195,8 @@ async def add_individual_lead(
     elif not phone.startswith("+"):
         phone = "+91" + phone.lstrip("0")
 
-    ref_num = str(int(time.time()))[-6:]
-    booking_ref = f"SC2026-{ref_num}"
+    _ref_count2 = await db.summer_camp_bookings.count_documents({})
+    booking_ref = f"{_ref_count2 + 1:04d}"
     booking_id = str(uuid.uuid4())
 
     batch_dates = ""
@@ -1406,9 +1406,9 @@ async def bulk_import_leads(
                 city = center_doc.get("city", "")
                 center_label = f"{center_doc['name']} ({area}, {city})" if area and city else center_doc["name"]
 
-        ref_num = str(int(time.time() * 1000))[-6:]
+        _ref_cnt = await db.summer_camp_bookings.count_documents({})
         booking_id = str(uuid.uuid4())
-        booking_ref = f"SC2026-{ref_num}"
+        booking_ref = f"{_ref_cnt + 1:04d}"
         batch_dates = BATCH_DATES.get(batch_week, {}).get("weekday", "")
 
         doc = {
