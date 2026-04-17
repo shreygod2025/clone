@@ -143,9 +143,18 @@ class StatusUpdate(BaseModel):
     lost_reason: Optional[str] = None  # phone_not_picking | not_available_dates | location_too_far | other
 
 
+class FollowupStatusUpdate(BaseModel):
+    followup_status: str  # not_contacted | call_not_picked | call_cut | callback_requested | interested | non_serviceable
+    callback_date: Optional[str] = None   # ISO date string when followup_status = callback_requested
+    callback_time: Optional[str] = None
+
+
 class CommentAdd(BaseModel):
     text: str
     author: Optional[str] = "Admin"
+    comment_type: Optional[str] = "comment"  # "comment" | "call_done"
+    call_date: Optional[str] = None   # ISO date when call was made
+    call_time: Optional[str] = None   # HH:MM time of call
 
 
 class PartialLeadCapture(BaseModel):
@@ -781,13 +790,17 @@ async def add_booking_comment(
     data: CommentAdd,
     user: dict = Depends(get_current_user)
 ):
-    """Admin: add a comment to a booking."""
+    """Admin: add a comment or call log entry to a booking."""
     comment = {
         "id": str(uuid.uuid4()),
         "text": data.text,
         "author": data.author or user.get("name", user.get("email", "Admin")),
+        "comment_type": data.comment_type or "comment",
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
+    if data.comment_type == "call_done":
+        comment["call_date"] = data.call_date or datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        comment["call_time"] = data.call_time or datetime.now(timezone.utc).strftime("%H:%M")
     result = await db.summer_camp_bookings.update_one(
         {"id": booking_id},
         {"$push": {"comments": comment}}
@@ -795,6 +808,30 @@ async def add_booking_comment(
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Booking not found")
     return comment
+
+
+@router.patch("/summer-camp/bookings/{booking_id}/followup-status")
+async def update_followup_status(
+    booking_id: str,
+    data: FollowupStatusUpdate,
+    user: dict = Depends(get_current_user)
+):
+    """Admin: update the CRM follow-up status for a booking."""
+    update_fields = {
+        "followup_status": data.followup_status,
+        "followup_status_updated_at": datetime.now(timezone.utc).isoformat(),
+        "followup_status_updated_by": user.get("name", user.get("email", "Admin")),
+    }
+    if data.followup_status == "callback_requested" and data.callback_date:
+        update_fields["callback_date"] = data.callback_date
+        update_fields["callback_time"] = data.callback_time or ""
+    result = await db.summer_camp_bookings.update_one(
+        {"id": booking_id},
+        {"$set": update_fields}
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    return {"success": True, "followup_status": data.followup_status}
 
 
 @router.api_route("/summer-camp/brochure", methods=["GET", "HEAD"])
@@ -918,6 +955,22 @@ async def get_summer_camp_dashboard(user: dict = Depends(get_current_user)):
         if b.get("center_label") or b.get("center")
     ))
 
+    # Followup status breakdown
+    followup_counts = {
+        "not_contacted": 0,
+        "call_not_picked": 0,
+        "call_cut": 0,
+        "callback_requested": 0,
+        "interested": 0,
+        "non_serviceable": 0,
+    }
+    for b in bookings:
+        fs = b.get("followup_status") or "not_contacted"
+        if fs in followup_counts:
+            followup_counts[fs] += 1
+        else:
+            followup_counts["not_contacted"] += 1
+
     return {
         "total_bookings": total_bookings,
         "total_revenue": total_revenue,
@@ -926,6 +979,7 @@ async def get_summer_camp_dashboard(user: dict = Depends(get_current_user)):
         "converted_offline": total_converted_offline,
         "hot_leads": total_hot_leads,
         "leads": total_leads,
+        "followup_status": followup_counts,
         "funnel": {
             "registrations": total_registrations,
             "hot_leads": total_hot_leads,
