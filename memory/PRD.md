@@ -200,6 +200,13 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## Implementation Log
 
+### 2026-04-17 — Multi-Feature Update
+**Features Added / Bugs Fixed:**
+1. **Role Dropdowns**: Added "Primary Coordinator" and "Secondary Coordinator" to all 5 contact role selects in AdminSchoolCRM.jsx (edit modal, renewal modal, new lead, conversion, onboarding)
+2. **AI Chat Ticket IDs**: `raise_ticket` action in `ai_chat.py` now calls `get_next_ticket_number()` and stores `ticket_number` on every ticket raised via AI chat
+3. **AI Chat Textarea Auto-resize**: Input box now grows up to 128px as user types multi-line messages. Resets to single line after sending. Uses `handleInputChange` with `scrollHeight`-based resize
+4. **Summer Camp CRM Mobile Responsive**: Added dual-view layout — mobile card grid (`block md:hidden`) replaces the table below `md` breakpoint; desktop table (`hidden md:block`) visible at >= `md`
+
 ### 2026-04-16 — Educator Application Deduplication & Update Fix
 **Bugs Fixed:**
 1. **`/educators/apply` — Stale re-apply response**: When an existing applicant reapplied (same phone/email), the old record was returned silently without updating. Now properly updates the existing record with fresh name, skills, experience, city, teaching_mode, demo_date etc. and returns updated data.
