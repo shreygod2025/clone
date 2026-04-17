@@ -6346,6 +6346,8 @@ ${FOOTER}</div></body></html>`
                         <option value="director">Director</option>
                         <option value="coordinator">Coordinator</option>
                         <option value="accounts">Accounts</option>
+                        <option value="primary_coordinator">Primary Coordinator</option>
+                        <option value="secondary_coordinator">Secondary Coordinator</option>
                       </select>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
@@ -7212,6 +7214,8 @@ ${FOOTER}</div></body></html>`
                         <option value="director">Director</option>
                         <option value="coordinator">Coordinator</option>
                         <option value="accounts">Accounts</option>
+                        <option value="primary_coordinator">Primary Coordinator</option>
+                        <option value="secondary_coordinator">Secondary Coordinator</option>
                       </select>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
@@ -7945,6 +7949,8 @@ ${FOOTER}</div></body></html>`
                         <option value="director">Director</option>
                         <option value="coordinator">Coordinator</option>
                         <option value="accounts">Accounts</option>
+                        <option value="primary_coordinator">Primary Coordinator</option>
+                        <option value="secondary_coordinator">Secondary Coordinator</option>
                       </select>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
@@ -9319,6 +9325,8 @@ ${FOOTER}</div></body></html>`
                         <option value="director">Director</option>
                         <option value="coordinator">Coordinator</option>
                         <option value="accounts">Accounts</option>
+                        <option value="primary_coordinator">Primary Coordinator</option>
+                        <option value="secondary_coordinator">Secondary Coordinator</option>
                       </select>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
@@ -10474,6 +10482,8 @@ ${FOOTER}</div></body></html>`
                           <option value="director">Director</option>
                           <option value="coordinator">Coordinator</option>
                           <option value="accounts">Accounts</option>
+                          <option value="primary_coordinator">Primary Coordinator</option>
+                          <option value="secondary_coordinator">Secondary Coordinator</option>
                         </select>
                       </div>
                       <div className="grid grid-cols-2 gap-2">

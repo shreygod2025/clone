@@ -1467,7 +1467,101 @@ const AdminStudentCRM = () => {
                           <p className="text-slate-500">No bookings match the selected filters</p>
                         </div>
                       ) : (
-                        <div className="overflow-x-auto bg-white rounded-2xl border border-slate-100">
+                        <>
+                          {/* ── Mobile card view (< md) ── */}
+                          <div className="flex flex-col gap-3 md:hidden">
+                            {filteredCampBookings.map(booking => (
+                              <div key={booking.id} className="bg-white rounded-2xl border border-slate-100 p-4 shadow-sm" data-testid={`camp-booking-${booking.id}`}>
+                                {/* Header row */}
+                                <div className="flex items-start justify-between gap-2 mb-3">
+                                  <div>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="font-semibold text-[#1E3A5F] text-base">
+                                        {booking.child_name || <span className="text-slate-400 italic">—</span>}
+                                      </span>
+                                      {booking.return_count > 1 && (
+                                        <span title={`Filled the form ${booking.return_count} times`} className="inline-flex items-center gap-0.5 text-xs font-bold px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-200" data-testid={`return-badge-${booking.id}`}>×{booking.return_count}</span>
+                                      )}
+                                    </div>
+                                    <div className="text-xs text-slate-400 font-mono mt-0.5">{booking.booking_ref}</div>
+                                  </div>
+                                  <button
+                                    onClick={() => setCampStatusModal(booking)}
+                                    data-testid={`camp-status-${booking.id}`}
+                                    className={`text-xs px-2.5 py-1 rounded-full font-bold cursor-pointer hover:opacity-80 transition-opacity whitespace-nowrap shrink-0 ${
+                                      booking.crm_status === 'converted' ? 'bg-green-50 text-green-700' :
+                                      booking.crm_status === 'payment_offline' ? 'bg-teal-50 text-teal-700' :
+                                      booking.crm_status === 'hot_lead' ? 'bg-purple-50 text-purple-700' :
+                                      booking.crm_status === 'phone_captured' ? 'bg-orange-50 text-orange-700' :
+                                      booking.crm_status === 'lost_lead' ? 'bg-red-50 text-red-700' :
+                                      'bg-yellow-50 text-yellow-700'
+                                    }`}
+                                  >
+                                    {booking.crm_status === 'converted' ? 'Paid Online' :
+                                     booking.crm_status === 'payment_offline' ? 'Pay at Center' :
+                                     booking.crm_status === 'hot_lead' ? 'Hot Lead' :
+                                     booking.crm_status === 'phone_captured' ? 'Form Filled' :
+                                     booking.crm_status === 'lost_lead' ? 'Lost' : 'Lead'}
+                                  </button>
+                                </div>
+                                {/* Details grid */}
+                                <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs mb-3">
+                                  <div>
+                                    <span className="text-slate-400 block">Parent</span>
+                                    <span className="text-slate-700 font-medium">{booking.parent_name || '—'}</span>
+                                    <span className="text-slate-400 block">{booking.parent_phone}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-slate-400 block">Center</span>
+                                    <span className="text-slate-700 font-medium">{booking.center_label}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-slate-400 block">Batch</span>
+                                    <span className="text-slate-700">{booking.batch_dates}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-slate-400 block">Age Group</span>
+                                    <span className="text-slate-700">Ages {booking.age_group_ages}</span>
+                                  </div>
+                                </div>
+                                {/* Tags row */}
+                                <div className="flex flex-wrap gap-1.5 mb-3">
+                                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${booking.payment_mode === 'cash' ? 'bg-yellow-50 text-yellow-700' : 'bg-blue-50 text-blue-700'}`}>
+                                    {booking.payment_mode === 'cash' ? 'Cash' : 'Online'}
+                                  </span>
+                                  {booking.source_name && booking.source_name !== 'Direct' && (
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 font-semibold">{booking.source_name}</span>
+                                  )}
+                                  <span className="text-xs text-slate-400 capitalize">{booking.batch_type}</span>
+                                  <span className="text-xs text-slate-400 ml-auto">{new Date(booking.created_at).toLocaleDateString('en-IN')}</span>
+                                </div>
+                                {/* Actions */}
+                                <div className="flex items-center gap-2 pt-2 border-t border-slate-50">
+                                  <button title="Edit" data-testid={`camp-edit-${booking.id}`} onClick={() => { setCampEditModal(booking); setCampEditData({ child_name: booking.child_name || '', parent_name: booking.parent_name || '', parent_phone: booking.parent_phone || '', parent_email: booking.parent_email || '' }); }} className="flex-1 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors flex items-center justify-center gap-1 text-xs font-medium">
+                                    <Edit className="w-3.5 h-3.5" /> Edit
+                                  </button>
+                                  <button title="Comments" data-testid={`camp-comment-${booking.id}`} onClick={() => { setCampCommentModal(booking); setCampNewComment(''); }} className="flex-1 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 transition-colors flex items-center justify-center gap-1 text-xs font-medium relative">
+                                    <MessageSquare className="w-3.5 h-3.5" />
+                                    Comments
+                                    {(booking.comments?.length > 0) && (
+                                      <span className="bg-indigo-500 text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center font-bold">{booking.comments.length}</span>
+                                    )}
+                                  </button>
+                                  <button title="Delete" data-testid={`camp-delete-${booking.id}`} onClick={() => setCampDeleteModal(booking)} className="p-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 transition-colors">
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                  {booking.order_id && booking.crm_status !== 'converted' && (
+                                    <button title="Force-verify Cashfree payment" data-testid={`camp-verify-${booking.id}`} onClick={() => handleForceVerify(booking.id)} className="p-2 rounded-lg bg-green-50 hover:bg-green-100 text-green-600 transition-colors">
+                                      <Check className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* ── Desktop table view (>= md) ── */}
+                          <div className="hidden md:block overflow-x-auto bg-white rounded-2xl border border-slate-100">
                           <table className="w-full text-sm">
                             <thead>
                               <tr className="border-b border-slate-100 text-slate-500 text-xs uppercase tracking-wide">
@@ -1598,7 +1692,8 @@ const AdminStudentCRM = () => {
                         ))}
                             </tbody>
                           </table>
-                        </div>
+                          </div>
+                        </>
                       )}
                     </>
                   );

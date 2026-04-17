@@ -220,6 +220,10 @@ export default function AdminAIChat() {
     };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
+    // Reset textarea height after sending
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto';
+    }
     setLoading(true);
 
     try {
@@ -346,6 +350,14 @@ export default function AdminAIChat() {
       e.preventDefault();
       sendMessage();
     }
+  };
+
+  const handleInputChange = (e) => {
+    setInput(e.target.value);
+    // Auto-resize textarea
+    const ta = e.target;
+    ta.style.height = 'auto';
+    ta.style.height = Math.min(ta.scrollHeight, 128) + 'px';
   };
 
   const handleGeneratePDF = async (action) => {
@@ -559,11 +571,12 @@ export default function AdminAIChat() {
             <textarea
               ref={inputRef}
               value={input}
-              onChange={e => setInput(e.target.value)}
+              onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               placeholder={isListening ? 'Listening…' : 'Ask me anything about your CRM...'}
               rows={1}
-              className="flex-1 text-sm text-slate-800 bg-transparent outline-none resize-none max-h-28 leading-5 placeholder:text-slate-400"
+              style={{ height: 'auto', overflowY: 'hidden' }}
+              className="flex-1 text-sm text-slate-800 bg-transparent outline-none resize-none leading-5 placeholder:text-slate-400"
               data-testid="ai-chat-input"
             />
           </div>

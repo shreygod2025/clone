@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from database import db
 from routes.auth import get_current_user
+from routes.shared import get_next_ticket_number
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -450,6 +451,7 @@ async def _execute(action: dict, user: dict) -> dict:
         # ── RAISE TICKET ─────────────────────────────────────────────
         elif t == "raise_ticket":
             ticket_id = str(uuid.uuid4())
+            ticket_number = await get_next_ticket_number()
 
             # Enrich with school contact info if school is referenced
             school = None
@@ -467,6 +469,7 @@ async def _execute(action: dict, user: dict) -> dict:
 
             query_doc = {
                 "id":              ticket_id,
+                "ticket_number":   ticket_number,
                 "name":            contact_name,
                 "phone":           contact_phone,
                 "email":           contact_email,
@@ -491,8 +494,9 @@ async def _execute(action: dict, user: dict) -> dict:
             }
             await db.support_queries.insert_one(query_doc)
             return {"status": "success",
-                    "detail": f"Ticket raised: \"{action.get('title', 'Support Request')}\"",
-                    "ticket_id": ticket_id}
+                    "detail": f"Ticket #{ticket_number} raised: \"{action.get('title', 'Support Request')}\"",
+                    "ticket_id": ticket_id,
+                    "ticket_number": ticket_number}
 
         # ── SCHEDULE MEETING ─────────────────────────────────────────
         elif t == "schedule_meeting":
