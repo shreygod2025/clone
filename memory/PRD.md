@@ -170,6 +170,7 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 ### P0 - Critical (Current)
 - [x] Success page timing fix — age-group-specific timing shown dynamically (2026-04-18)
 - [x] WhatsApp confirmation now includes batch timing appended to batch_dates param (2026-04-18)
+- [x] "Add to Calendar" on Success Page — Google Calendar (opens pre-filled recurring event) + Apple/iCal (.ics download, 5 VEVENT entries, TZID=Asia/Kolkata) (2026-04-18)
 - [x] Individual Student Payment Flow - FIXED
 - [x] School Student Payment Flow (Initial)
 - [x] Email Notification System for School CRM

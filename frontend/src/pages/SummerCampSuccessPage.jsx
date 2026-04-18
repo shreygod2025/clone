@@ -52,6 +52,89 @@ const BATCH_LABELS = {
   week1: 'Batch 1', week2: 'Batch 2', week3: 'Batch 3', week4: 'Batch 4',
 };
 
+// ── Calendar Helpers ─────────────────────────────────────────────────────────
+function parseTimeToHM(timeStr) {
+  const [time, period] = timeStr.trim().split(' ');
+  const [hStr, mStr] = time.split(':');
+  let h = parseInt(hStr, 10);
+  const m = parseInt(mStr || '0', 10);
+  if (period === 'PM' && h !== 12) h += 12;
+  if (period === 'AM' && h === 12) h = 0;
+  return { h, m };
+}
+
+function parseDateToYMD(dateStr) {
+  const MONTHS = { Jan:'01', Feb:'02', Mar:'03', Apr:'04', May:'05', Jun:'06',
+                   Jul:'07', Aug:'08', Sep:'09', Oct:'10', Nov:'11', Dec:'12' };
+  const parts = dateStr.replace(',', '').split(' ');
+  return `${parts[2]}${MONTHS[parts[0]] || '01'}${parts[1].padStart(2, '0')}`;
+}
+
+function fmtDT(dateStr, h, m) {
+  return `${parseDateToYMD(dateStr)}T${String(h).padStart(2,'0')}${String(m).padStart(2,'0')}00`;
+}
+
+function generateGoogleCalendarUrl(booking, sessions, sessionTime) {
+  if (!sessions || !sessions.length) return '#';
+  const [startStr, endStr] = sessionTime.split('–').map(s => s.trim());
+  const start = parseTimeToHM(startStr);
+  const end   = parseTimeToHM(endStr);
+  const title    = `OLL Summer Camp 2026 — ${booking.age_group_label || ''}`;
+  const location = booking.mode === 'online' ? 'Online (Zoom/Google Meet)' : (booking.center_label || '');
+  const details  = `OLL Future Skills Summer Camp 2026\nAge Group: ${booking.age_group_label} (Ages ${booking.age_group_ages})\nBatch: ${BATCH_LABELS[booking.batch_week] || ''}\nTiming: ${sessionTime} (Mon–Fri)\nBooking Ref: ${booking.booking_ref}\n\nFor queries: info@oll.co | +91 9920188188`;
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: title,
+    dates: `${fmtDT(sessions[0].date, start.h, start.m)}/${fmtDT(sessions[0].date, end.h, end.m)}`,
+    recur: 'RRULE:FREQ=DAILY;COUNT=5',
+    details,
+    location,
+    ctz: 'Asia/Kolkata',
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+function downloadICSFile(booking, sessions, sessionTime) {
+  if (!sessions || !sessions.length) return;
+  const [startStr, endStr] = sessionTime.split('–').map(s => s.trim());
+  const start = parseTimeToHM(startStr);
+  const end   = parseTimeToHM(endStr);
+  const title    = `OLL Summer Camp 2026 — ${booking.age_group_label || booking.age_group}`;
+  const location = booking.mode === 'online' ? 'Online (Zoom/Google Meet)' : (booking.center_label || '');
+  const desc     = `OLL Future Skills Summer Camp 2026 | Age: ${booking.age_group_label} (Ages ${booking.age_group_ages}) | Timing: ${sessionTime} | Ref: ${booking.booking_ref} | info@oll.co`;
+  const now      = new Date().toISOString().replace(/[-:.]/g, '').slice(0, 15) + 'Z';
+
+  const events = sessions.map((s, i) => [
+    'BEGIN:VEVENT',
+    `DTSTART;TZID=Asia/Kolkata:${fmtDT(s.date, start.h, start.m)}`,
+    `DTEND;TZID=Asia/Kolkata:${fmtDT(s.date, end.h, end.m)}`,
+    `SUMMARY:${title}`,
+    `DESCRIPTION:${desc}`,
+    `LOCATION:${location}`,
+    `UID:oll-camp-${booking.booking_ref}-d${i + 1}@oll.co`,
+    `DTSTAMP:${now}`,
+    'END:VEVENT',
+  ].join('\r\n')).join('\r\n');
+
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//OLL//Future Skills Summer Camp 2026//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    events,
+    'END:VCALENDAR',
+  ].join('\r\n');
+
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `OLL_SummerCamp_${booking.booking_ref || 'sessions'}.ics`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function downloadSummerCampReceipt(booking, isCash) {
   const sessionTime = AGE_GROUP_TIMINGS[booking.age_group] || '—';
   const doc = new jsPDF('p', 'mm', 'a4');
@@ -414,6 +497,39 @@ export default function SummerCampSuccessPage() {
                   <Download style={{ width: 17, height: 17 }} />
                   Download Receipt
                 </button>
+              )}
+
+              {/* ── Add to Calendar ── */}
+              {booking && sessions.length > 0 && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <p style={{ fontFamily: JB, fontSize: '0.62rem', letterSpacing: '0.18em', color: '#475569', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.65rem', textAlign: 'center' }}>
+                    Add Sessions to Calendar
+                  </p>
+                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <a
+                      href={generateGoogleCalendarUrl(booking, sessions, sessionTime)}
+                      target="_blank"
+                      rel="noreferrer"
+                      data-testid="add-google-calendar-btn"
+                      style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '0.85rem', borderRadius: '0.875rem', background: 'rgba(66,133,244,0.08)', border: '1px solid rgba(66,133,244,0.22)', color: '#4285F4', textDecoration: 'none', fontFamily: JB, fontWeight: 700, fontSize: '0.82rem', transition: 'all 0.2s' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(66,133,244,0.16)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(66,133,244,0.08)'; }}
+                    >
+                      <Calendar style={{ width: 15, height: 15 }} />
+                      Google Calendar
+                    </a>
+                    <button
+                      onClick={() => downloadICSFile(booking, sessions, sessionTime)}
+                      data-testid="add-apple-calendar-btn"
+                      style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '0.85rem', borderRadius: '0.875rem', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.13)', color: '#CBD5E1', cursor: 'pointer', fontFamily: JB, fontWeight: 700, fontSize: '0.82rem', transition: 'all 0.2s' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.09)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+                    >
+                      <Calendar style={{ width: 15, height: 15 }} />
+                      Apple / iCal
+                    </button>
+                  </div>
+                </div>
               )}
 
               {/* ── Support ── */}
