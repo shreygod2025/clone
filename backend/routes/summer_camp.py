@@ -808,7 +808,7 @@ async def backfill_booking_refs(user: dict = Depends(get_current_user)):
     return {"success": True, "total": len(all_bookings), "updated": updated, "message": f"Assigned 4-digit refs to {updated} bookings"}
 
 
-
+@router.post("/summer-camp/bookings/{booking_id}/comment")
 async def add_booking_comment(
     booking_id: str,
     data: CommentAdd,

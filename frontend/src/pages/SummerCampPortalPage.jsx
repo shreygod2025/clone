@@ -39,7 +39,11 @@ const SESSION_DATES = {
 };
 
 const BATCH_LABELS = { week1: 'Batch 1', week2: 'Batch 2', week3: 'Batch 3', week4: 'Batch 4' };
-const SESSION_TIME = '9:00 AM – 11:00 AM';
+const AGE_GROUP_TIMINGS = {
+  explorers:  '12:00 PM – 2:00 PM',
+  creators:   '2:30 PM – 4:30 PM',
+  innovators: '5:00 PM – 7:00 PM',
+};
 
 const STATUS_MAP = {
   converted:       { label: 'Paid Online',     color: '#22C55E', bg: 'rgba(34,197,94,0.1)',   border: 'rgba(34,197,94,0.25)' },
@@ -59,6 +63,10 @@ export default function SummerCampPortalPage() {
 
   const booking = user?.user;
   const sessions = booking ? (SESSION_DATES[booking.batch_week] || []) : [];
+  const sessionTime = booking ? (AGE_GROUP_TIMINGS[booking.age_group] || '—') : '—';
+  const firstSessionDate = sessions.length > 0 ? sessions[0].date.split(', ')[0].replace(/\w+ /, m => m) : '';
+  // Extract just "Month Day" portion e.g. "May 4" from "May 4, 2026"
+  const day1Label = sessions.length > 0 ? sessions[0].date.replace(/, \d{4}$/, '') : 'Day 1';
   const status = STATUS_MAP[booking?.crm_status] || STATUS_MAP['payment_offline'];
   const isCash = booking?.payment_mode === 'cash' || booking?.crm_status === 'payment_offline';
 
@@ -155,7 +163,7 @@ export default function SummerCampPortalPage() {
               <div style={{ padding: '0.7rem 1.25rem', background: 'rgba(214,48,49,0.06)', borderBottom: '1px solid rgba(214,48,49,0.12)', display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Clock style={{ width: 14, height: 14, color: '#D63031' }} />
                 <span style={{ fontFamily: JB, fontSize: '0.65rem', letterSpacing: '0.2em', color: '#D63031', textTransform: 'uppercase', fontWeight: 700 }}>Session Schedule</span>
-                <span style={{ marginLeft: 'auto', fontFamily: JB, fontSize: '0.65rem', color: '#64748B', fontWeight: 600 }}>{SESSION_TIME}</span>
+                <span style={{ marginLeft: 'auto', fontFamily: JB, fontSize: '0.65rem', color: '#64748B', fontWeight: 600 }}>{sessionTime}</span>
               </div>
               <div style={{ padding: '0 1.25rem' }}>
                 {sessions.map((s, i) => (
@@ -166,7 +174,7 @@ export default function SummerCampPortalPage() {
                       </div>
                       <span style={{ fontFamily: NU, fontSize: '0.9rem', color: '#CBD5E1', fontWeight: 600 }}>{s.date}</span>
                     </div>
-                    <span style={{ fontFamily: JB, fontSize: '0.7rem', color: '#475569', fontWeight: 600 }}>{SESSION_TIME}</span>
+                    <span style={{ fontFamily: JB, fontSize: '0.7rem', color: '#475569', fontWeight: 600 }}>{sessionTime}</span>
                   </div>
                 ))}
               </div>
@@ -180,7 +188,7 @@ export default function SummerCampPortalPage() {
               <div>
                 <p style={{ fontFamily: JB, fontWeight: 700, fontSize: '0.88rem', color: '#00E5FF', marginBottom: '0.25rem' }}>{booking.center_label}</p>
                 <p style={{ fontFamily: NU, fontSize: '0.83rem', color: '#64748B', lineHeight: 1.5, fontWeight: 500 }}>
-                  Please arrive 10 minutes before 9:00 AM on Day 1 (May 4).{isCash ? ' Carry ₹1,999 in cash or UPI for payment.' : ''}
+                  Please arrive 10 minutes before {sessionTime.split('–')[0].trim()} on Day 1 ({day1Label}).{isCash ? ' Carry ₹1,999 in cash or UPI for payment.' : ''}
                 </p>
               </div>
             </div>
