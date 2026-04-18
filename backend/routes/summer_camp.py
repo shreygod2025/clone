@@ -72,7 +72,10 @@ async def _build_enrolled_wa_params(booking: dict) -> list:
     if not wa_group_link:
         wa_group_link = os.environ.get("SUMMERCAMP_WA_GROUP_LINK", "Contact your center for the WhatsApp group link")
 
-    return [first_name, batch_dates or "See confirmation email for dates", center_address, wa_group_link]
+    timing = AGE_GROUPS.get(booking.get("age_group", ""), {}).get("timing", "")
+    batch_dates_with_timing = f"{batch_dates} ({timing})" if timing and batch_dates else (batch_dates or timing or "")
+
+    return [first_name, batch_dates_with_timing or "See confirmation email for dates", center_address, wa_group_link]
 
 if CASHFREE_AVAILABLE and CASHFREE_APP_ID and CASHFREE_SECRET_KEY:
     Cashfree.XClientId = CASHFREE_APP_ID
@@ -89,9 +92,9 @@ def get_cf_client():
     return Cashfree(cf_env)
 
 AGE_GROUPS = {
-    "explorers": {"label": "Little Explorers", "ages": "4-8"},
-    "creators": {"label": "Tech Creators", "ages": "9-12"},
-    "innovators": {"label": "Future Innovators", "ages": "13-16"},
+    "explorers": {"label": "Little Explorers", "ages": "4-8", "timing": "12:00 PM – 2:00 PM"},
+    "creators": {"label": "Tech Creators", "ages": "9-12", "timing": "2:30 PM – 4:30 PM"},
+    "innovators": {"label": "Future Innovators", "ages": "13-16", "timing": "5:00 PM – 7:00 PM"},
 }
 
 CENTERS = {

@@ -43,12 +43,17 @@ const SESSION_DATES = {
   ],
 };
 
-const SESSION_TIME = '9:00 AM – 11:00 AM';
+const AGE_GROUP_TIMINGS = {
+  explorers:  '12:00 PM – 2:00 PM',
+  creators:   '2:30 PM – 4:30 PM',
+  innovators: '5:00 PM – 7:00 PM',
+};
 const BATCH_LABELS = {
   week1: 'Batch 1', week2: 'Batch 2', week3: 'Batch 3', week4: 'Batch 4',
 };
 
 function downloadSummerCampReceipt(booking, isCash) {
+  const sessionTime = AGE_GROUP_TIMINGS[booking.age_group] || '—';
   const doc = new jsPDF('p', 'mm', 'a4');
   const pw = doc.internal.pageSize.getWidth();
   const margin = 18;
@@ -152,7 +157,7 @@ function downloadSummerCampReceipt(booking, isCash) {
   row('Batch:', `${batchLabel} — ${booking.batch_dates || ''}`, leftC, ry);
   const modeDisplay = booking.mode === 'online' ? 'Online at Home' : `At Center — ${booking.center_label || ''}`;
   row('Mode:', modeDisplay, leftC, ry + 8);
-  row('Timings:', `${SESSION_TIME} (Mon – Fri)`, rightC, ry);
+  row('Timings:', `${sessionTime} (Mon – Fri)`, rightC, ry);
   row('Booking Ref:', booking.booking_ref || '—', rightC, ry + 8);
 
   y += 48;
@@ -180,7 +185,7 @@ function downloadSummerCampReceipt(booking, isCash) {
       doc.text(`${s.day}  ${s.date}`, margin + 6, y + 5.5);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(100, 116, 139);
-      doc.text(SESSION_TIME, pw - margin - 6, y + 5.5, { align: 'right' });
+      doc.text(sessionTime, pw - margin - 6, y + 5.5, { align: 'right' });
       y += 8;
     });
     y += 4;
@@ -256,6 +261,7 @@ export default function SummerCampSuccessPage() {
   }, [bookingId, isCash]);
 
   const sessions = booking ? (SESSION_DATES[booking.batch_week] || []) : [];
+  const sessionTime = booking ? (AGE_GROUP_TIMINGS[booking.age_group] || '—') : '—';
 
   return (
     <>
@@ -353,7 +359,7 @@ export default function SummerCampSuccessPage() {
                       <div style={{ padding: '0.7rem 1.25rem', background: 'rgba(214,48,49,0.06)', borderBottom: '1px solid rgba(214,48,49,0.12)', display: 'flex', alignItems: 'center', gap: 8 }}>
                         <Clock style={{ width: 14, height: 14, color: '#D63031', flexShrink: 0 }} />
                         <span style={{ fontFamily: JB, fontSize: '0.65rem', letterSpacing: '0.2em', color: '#D63031', textTransform: 'uppercase', fontWeight: 700 }}>Session Schedule</span>
-                        <span style={{ marginLeft: 'auto', fontFamily: JB, fontSize: '0.65rem', color: '#64748B', fontWeight: 600 }}>{SESSION_TIME}</span>
+                        <span style={{ marginLeft: 'auto', fontFamily: JB, fontSize: '0.65rem', color: '#64748B', fontWeight: 600 }}>{sessionTime}</span>
                       </div>
                       <div style={{ padding: '0 1.25rem' }}>
                         {sessions.map((s, i) => (
@@ -364,7 +370,7 @@ export default function SummerCampSuccessPage() {
                               </div>
                               <span style={{ fontFamily: NU, fontSize: '0.92rem', color: '#CBD5E1', fontWeight: 600 }}>{s.date}</span>
                             </div>
-                            <span style={{ fontFamily: JB, fontSize: '0.72rem', color: '#475569', fontWeight: 600 }}>{SESSION_TIME}</span>
+                            <span style={{ fontFamily: JB, fontSize: '0.72rem', color: '#475569', fontWeight: 600 }}>{sessionTime}</span>
                           </div>
                         ))}
                       </div>
@@ -383,7 +389,7 @@ export default function SummerCampSuccessPage() {
                       <p style={{ fontFamily: NU, fontSize: '0.85rem', color: '#64748B', lineHeight: 1.5, fontWeight: 500 }}>
                         {booking.mode === 'online'
                           ? 'Zoom/Google Meet link will be shared on WhatsApp before Day 1.'
-                          : 'Please arrive 10 minutes before 9:00 AM on Day 1.'}
+                          : `Please arrive 10 minutes before ${sessionTime.split('–')[0].trim()} on Day 1.`}
                       </p>
                     </div>
                   </div>
