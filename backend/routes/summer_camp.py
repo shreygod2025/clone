@@ -1051,8 +1051,6 @@ def _normalize_center_display(label: str) -> str:
     if not label:
         return "Unknown"
     low = label.lower().strip()
-    # Strip parenthesized address suffixes, e.g. "Andheri West (Azad Nagar, Mumbai)"
-    # Keep only the first part before "("
     core = low.split("(")[0].strip()
     if "andheri" in core or "azad nagar" in core:
         return "OLL Andheri Center"
@@ -1066,8 +1064,11 @@ def _normalize_center_display(label: str) -> str:
         return "OLL Thane Center"
     if "online" in core:
         return "Online"
-    # Fall back to original with parenthesis stripped
     return label.split("(")[0].strip() or label
+
+
+def _normalize_age_group(val: str) -> str:
+    """Map human-readable age strings to internal slugs. Returns '' if unrecognised."""
     val = (val or "").strip().lower()
     if val in VALID_AGE_GROUPS:
         return val
@@ -1079,8 +1080,11 @@ def _normalize_center_display(label: str) -> str:
         return "innovators"
     return ""
 
+
 def _normalize_batch_week(val: str) -> str:
     val = (val or "").strip().lower().replace(" ", "")
+    if not val:
+        return ""   # optional — no default forced
     if val in VALID_BATCH_WEEKS:
         return val
     mapping = {
@@ -1088,7 +1092,7 @@ def _normalize_batch_week(val: str) -> str:
         "1": "week1", "2": "week2", "3": "week3", "4": "week4",
         "may4-8": "week1", "may11-15": "week2", "may18-22": "week3", "may25-29": "week4",
     }
-    return mapping.get(val, "week1")
+    return mapping.get(val, "")   # unknown batch week → empty (optional)
 
 def _normalize_status(val: str) -> str:
     val = (val or "").strip().lower().replace(" ", "_")
@@ -1152,22 +1156,25 @@ async def get_bulk_import_sample(user: dict = Depends(get_current_user)):
         "age_group", "batch_week", "center_name", "crm_status",
     ]
 
-    # Style header row (no notes/description row — it caused import errors)
+    # Style header row
     header_fill = PatternFill("solid", fgColor="1E3A5F")
     header_font = Font(color="FFFFFF", bold=True)
-    col_widths  = [18, 20, 20, 28, 14, 12, 28, 20]
+    optional_fill = PatternFill("solid", fgColor="0F4C75")   # darker blue for optional cols
+    col_widths  = [18, 20, 20, 28, 18, 18, 28, 22]
+    optional_cols = {4, 5, 6}  # age_group, batch_week, center_name are optional (1-indexed)
     for col_idx, (h, w) in enumerate(zip(headers, col_widths), start=1):
-        cell = ws.cell(row=1, column=col_idx, value=h)
-        cell.fill = header_fill
+        cell = ws.cell(row=1, column=col_idx, value=h if col_idx not in optional_cols else f"{h} (optional)")
+        cell.fill = optional_fill if col_idx in optional_cols else header_fill
         cell.font = header_font
         cell.alignment = Alignment(horizontal="center")
         ws.column_dimensions[cell.column_letter].width = w
 
-    # Sample rows — age_group uses human-readable age ranges
+    # Sample rows — show that age_group, batch_week, center_name are optional
     samples = [
-        ["+919876543210", "Aryan Sharma", "Raj Sharma", "raj@gmail.com", "9-12", "week1", "OLL Andheri Center", "lead"],
-        ["9123456789",    "Priya Patel",  "Sunita Patel", "sunita@gmail.com", "4-8",  "week2", "",                  "phone_captured"],
-        ["8800001234",    "",             "Neha Singh",  "",               "13-16", "",      "",                  "lead"],
+        ["+919876543210", "Aryan Sharma",  "Raj Sharma",   "raj@gmail.com",   "9-12",  "week1", "OLL Andheri Center", "lead"],
+        ["9123456789",    "Priya Patel",   "Sunita Patel", "sunita@gmail.com", "4-8",   "week2", "",                   "phone_captured"],
+        ["8800001234",    "",              "Neha Singh",   "",                 "",      "",      "",                   "lead"],
+        ["7900005678",    "Rohan Mehta",   "Amit Mehta",   "",                 "13-16", "",      "OLL Mira Road",      "hot_lead"],
     ]
     for row_idx, row in enumerate(samples, start=2):
         for col_idx, val in enumerate(row, start=1):
@@ -1369,7 +1376,10 @@ async def bulk_import_leads(
 
     # First non-empty row = headers
     header_row = rows[0]
-    headers_raw = [str(h).strip().lower().replace(" ", "_") if h else "" for h in header_row]
+    headers_raw = [
+        re.sub(r'\s*\(optional\)', '', str(h).strip().lower().replace(" ", "_")) if h else ""
+        for h in header_row
+    ]
 
     def col(name):
         try:
@@ -1423,8 +1433,8 @@ async def bulk_import_leads(
         child_name  = get(col("child_name"))
         parent_name = get(col("parent_name"))
         parent_email = get(col("parent_email"))
-        age_group   = _normalize_age_group(get(col("age_group"))) or "explorers"
-        batch_week  = _normalize_batch_week(get(col("batch_week")))
+        age_group   = _normalize_age_group(get(col("age_group")))    # optional — "" if blank
+        batch_week  = _normalize_batch_week(get(col("batch_week")))  # optional — "" if blank
         center_name = get(col("center_name"))
         crm_status  = _normalize_status(get(col("crm_status")))
 
@@ -1445,7 +1455,7 @@ async def bulk_import_leads(
         _ref_cnt = await db.summer_camp_bookings.count_documents({})
         booking_id = str(uuid.uuid4())
         booking_ref = f"{_ref_cnt + 1:04d}"
-        batch_dates = BATCH_DATES.get(batch_week, {}).get("weekday", "")
+        batch_dates = BATCH_DATES.get(batch_week, {}).get("weekday", "") if batch_week else ""
 
         doc = {
             "id": booking_id,
