@@ -1103,11 +1103,13 @@ async def get_school_payment_info(school_id: str):
         "city": school.get("city", ""),
         "grade_pricing": transformed_pricing,
         "total_students": onboarding_data.get("total_students", 0),
-        "total_amount": onboarding_data.get("total_amount", 0)
+        "total_amount": onboarding_data.get("total_amount", 0),
+        "payment_link_disabled": onboarding_data.get("payment_link_disabled", False),
+        "disabled_grades": onboarding_data.get("disabled_grades", []),
     }
     
-    # Cache for 5 minutes
-    set_cached(cache_key, result, 300)
+    # Cache for 30 seconds so admin link-setting changes reflect quickly
+    set_cached(cache_key, result, 30)
     return result
 
 @router.post("/school-payment/create-session")

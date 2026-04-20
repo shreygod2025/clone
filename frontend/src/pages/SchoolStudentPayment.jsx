@@ -58,7 +58,13 @@ const SchoolStudentPayment = () => {
     const fetchSchoolInfo = async () => {
       try {
         const response = await axios.get(`${API}/school-payment/${schoolId}`);
-        setSchoolInfo(response.data);
+        const data = response.data;
+        setSchoolInfo(data);
+        // Handle full link deactivation
+        if (data.payment_link_disabled) {
+          setError('LINK_CLOSED');
+          return;
+        }
         setError(null);
       } catch (err) {
         console.error('Failed to fetch school info:', err);
@@ -310,16 +316,23 @@ const SchoolStudentPayment = () => {
   }
 
   if (error) {
+    const isLinkClosed = error === 'LINK_CLOSED';
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex flex-col">
         <Header />
         <div className="flex-1 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <AlertCircle className="w-8 h-8 text-red-500" />
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${isLinkClosed ? 'bg-amber-100' : 'bg-red-100'}`}>
+              <AlertCircle className={`w-8 h-8 ${isLinkClosed ? 'text-amber-500' : 'text-red-500'}`} />
             </div>
-            <h1 className="text-xl font-bold text-slate-800 mb-2">Payment Not Available</h1>
-            <p className="text-slate-600 mb-6">{error}</p>
+            <h1 className="text-xl font-bold text-slate-800 mb-2">
+              {isLinkClosed ? 'Payment Link Has Been Closed' : 'Payment Not Available'}
+            </h1>
+            <p className="text-slate-600 mb-6">
+              {isLinkClosed
+                ? 'This payment link has been deactivated. Please contact your school or OLL for assistance.'
+                : error}
+            </p>
             <Link to="/" className="text-[#C53030] hover:underline font-medium">
               Return to Home
             </Link>
@@ -570,16 +583,23 @@ const SchoolStudentPayment = () => {
                     <GraduationCap className="w-4 h-4" />
                     Grade / Class <span className="text-red-500">*</span>
                   </Label>
-                  <Select value={grade} onValueChange={setGrade}>
+                  <Select value={grade} onValueChange={(v) => {
+                    const isClosed = (schoolInfo?.disabled_grades || []).includes(v);
+                    if (!isClosed) setGrade(v);
+                  }}>
                     <SelectTrigger className="h-12 border-slate-200" data-testid="grade-select">
                       <SelectValue placeholder="Select student's grade" />
                     </SelectTrigger>
                     <SelectContent>
-                      {schoolInfo?.grade_pricing?.filter(g => g.grade && g.grade.toString().trim() !== '').map((g) => (
-                        <SelectItem key={g.grade} value={g.grade.toString()}>
-                          Grade {g.grade}
-                        </SelectItem>
-                      ))}
+                      {schoolInfo?.grade_pricing?.filter(g => g.grade && g.grade.toString().trim() !== '').map((g) => {
+                        const isClosed = (schoolInfo?.disabled_grades || []).includes(g.grade.toString());
+                        return (
+                          <SelectItem key={g.grade} value={g.grade.toString()} disabled={isClosed}
+                            className={isClosed ? 'text-slate-400' : ''}>
+                            Grade {g.grade}{isClosed ? ' — Registration Closed' : ''}
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>

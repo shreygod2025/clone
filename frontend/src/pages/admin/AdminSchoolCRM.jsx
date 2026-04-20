@@ -1809,6 +1809,8 @@ ${FOOTER}</div></body></html>`
       geofence_radius: inquiry.geofence_radius || existingData.geofence_radius || 500,
       parent_circular_url: existingData.parent_circular_url || '',
       payment_link: existingData.payment_link || '',
+      payment_link_disabled: existingData.payment_link_disabled || false,
+      disabled_grades: existingData.disabled_grades || [],
       school_share_type: existingData.school_share_type || 'none',
       school_share_calc: existingData.school_share_calc || 'lumpsum',
       school_share_value: existingData.school_share_value || '',
@@ -1960,6 +1962,8 @@ ${FOOTER}</div></body></html>`
           deadline_date: renewalConvertData.deadline_date,
           parent_circular_url: renewalConvertData.parent_circular_url,
           payment_link: renewalConvertData.payment_link,
+          payment_link_disabled: renewalConvertData.payment_link_disabled || false,
+          disabled_grades: renewalConvertData.disabled_grades || [],
           renewal_date: new Date().toISOString(),
           // Share details
           school_share_type: renewalConvertData.school_share_type,
@@ -2005,6 +2009,7 @@ ${FOOTER}</div></body></html>`
         deadline_date: '',
         contract_start: '', contract_end: '', mou_url: '',
         parent_circular_url: '', payment_link: '',
+        payment_link_disabled: false, disabled_grades: [],
         school_share_type: 'none', school_share_calc: 'lumpsum', school_share_value: '', school_share_amount: 0,
         gp_share_type: 'none', gp_share_calc: 'lumpsum', gp_share_value: '', gp_share_amount: 0,
         address: ''
@@ -3643,6 +3648,8 @@ ${FOOTER}</div></body></html>`
         mou_url: existingOnboardData.mou_url || '',
         parent_circular_url: existingOnboardData.parent_circular_url || '',
         payment_link: existingOnboardData.payment_link || '',
+        payment_link_disabled: existingOnboardData.payment_link_disabled || false,
+        disabled_grades: existingOnboardData.disabled_grades || [],
         // Share fields
         school_share_type: existingOnboardData.school_share_type || 'none',
         school_share_calc: existingOnboardData.school_share_calc || 'lumpsum',
@@ -3679,6 +3686,8 @@ ${FOOTER}</div></body></html>`
         pricing_type: response.data.pricing_type || 'per_student',
         fixed_price: response.data.fixed_price || '',
         deadline_date: response.data.deadline_date || '',
+        payment_link_disabled: response.data.payment_link_disabled || false,
+        disabled_grades: response.data.disabled_grades || [],
         school_share_type: response.data.school_share_type || 'none',
         school_share_calc: response.data.school_share_calc || 'lumpsum',
         school_share_value: response.data.school_share_value || '',
@@ -3812,6 +3821,8 @@ ${FOOTER}</div></body></html>`
         mou_url: editOnboardData.mou_url,
         parent_circular_url: editOnboardData.parent_circular_url,
         payment_link: editOnboardData.payment_link,
+        payment_link_disabled: editOnboardData.payment_link_disabled || false,
+        disabled_grades: editOnboardData.disabled_grades || [],
         school_share_type: editOnboardData.school_share_type,
         school_share_calc: editOnboardData.school_share_calc,
         school_share_value: editOnboardData.school_share_value,
@@ -7357,6 +7368,51 @@ ${FOOTER}</div></body></html>`
                       className="bg-white"
                     />
                   </div>
+
+                  {/* Deactivate full link */}
+                  <div className="mt-3 pt-3 border-t border-green-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-red-700">Deactivate Payment Link</p>
+                        <p className="text-xs text-red-500">Students will see "Payment link has been closed"</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setRenewalConvertData(prev => ({ ...prev, payment_link_disabled: !prev.payment_link_disabled }))}
+                        className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none ${renewalConvertData.payment_link_disabled ? 'bg-red-500' : 'bg-gray-200'}`}
+                      >
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${renewalConvertData.payment_link_disabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Grade-level closure */}
+                  {renewalConvertData.grade_pricing?.filter(g => g.grade).length > 0 && !renewalConvertData.payment_link_disabled && (
+                    <div className="mt-3 pt-3 border-t border-green-200">
+                      <p className="text-sm font-medium text-amber-700 mb-1">Close for Specific Grades</p>
+                      <p className="text-xs text-amber-600 mb-2">Checked grades will show "Registration Closed" on the payment page</p>
+                      <div className="flex flex-wrap gap-2">
+                        {renewalConvertData.grade_pricing.filter(g => g.grade).map(gp => {
+                          const key = String(gp.grade);
+                          const isClosed = (renewalConvertData.disabled_grades || []).includes(key);
+                          return (
+                            <label key={key} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border cursor-pointer text-xs font-medium ${isClosed ? 'bg-red-50 border-red-300 text-red-700' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                              <input
+                                type="checkbox"
+                                checked={isClosed}
+                                onChange={() => setRenewalConvertData(prev => {
+                                  const grades = prev.disabled_grades || [];
+                                  return { ...prev, disabled_grades: isClosed ? grades.filter(g => g !== key) : [...grades, key] };
+                                })}
+                                className="rounded w-3 h-3"
+                              />
+                              Grade {gp.grade}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               
@@ -10660,6 +10716,51 @@ ${FOOTER}</div></body></html>`
                         >
                           <BarChart3 className="w-3 h-3" /> Payment Tracker
                         </a>
+                      </div>
+                    )}
+
+                    {/* Deactivate full link */}
+                    <div className="mt-3 pt-3 border-t border-green-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-red-700">Deactivate Payment Link</p>
+                          <p className="text-xs text-red-500">Students will see "Payment link has been closed"</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setEditOnboardData(prev => ({ ...prev, payment_link_disabled: !prev.payment_link_disabled }))}
+                          className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none ${editOnboardData?.payment_link_disabled ? 'bg-red-500' : 'bg-gray-200'}`}
+                        >
+                          <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${editOnboardData?.payment_link_disabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Grade-level closure */}
+                    {editOnboardData?.grade_pricing?.filter(g => g.grade).length > 0 && !editOnboardData?.payment_link_disabled && (
+                      <div className="mt-3 pt-3 border-t border-green-200">
+                        <p className="text-sm font-medium text-amber-700 mb-1">Close for Specific Grades</p>
+                        <p className="text-xs text-amber-600 mb-2">Checked grades will show "Registration Closed" on the payment page</p>
+                        <div className="flex flex-wrap gap-2">
+                          {editOnboardData.grade_pricing.filter(g => g.grade).map(gp => {
+                            const key = String(gp.grade);
+                            const isClosed = (editOnboardData.disabled_grades || []).includes(key);
+                            return (
+                              <label key={key} className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border cursor-pointer text-xs font-medium ${isClosed ? 'bg-red-50 border-red-300 text-red-700' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                                <input
+                                  type="checkbox"
+                                  checked={isClosed}
+                                  onChange={() => setEditOnboardData(prev => {
+                                    const grades = prev.disabled_grades || [];
+                                    return { ...prev, disabled_grades: isClosed ? grades.filter(g => g !== key) : [...grades, key] };
+                                  })}
+                                  className="rounded w-3 h-3"
+                                />
+                                Grade {gp.grade}
+                              </label>
+                            );
+                          })}
+                        </div>
                       </div>
                     )}
                   </div>
