@@ -40,6 +40,7 @@ CASHFREE_SECRET_KEY = os.getenv("CASHFREE_SECRET_KEY", "")
 CASHFREE_ENVIRONMENT = os.getenv("CASHFREE_ENVIRONMENT", "SANDBOX")
 CASHFREE_API_VERSION = "2023-08-01"
 CAMP_PRICE = 1999.0
+SEAT_RESERVE_AMOUNT = 500.0   # partial seat reservation deposit
 
 # ── WhatsApp Enrollment Helper ────────────────────────────────────────────────
 async def _build_enrolled_wa_params(booking: dict) -> list:
@@ -180,6 +181,7 @@ class CompleteLead(BaseModel):
 class PaymentInitRequest(BaseModel):
     booking_id: str
     frontend_url: str = "https://oll.co"
+    amount: Optional[float] = None   # override for seat reservation (₹500)
 
 
 class CreateTrackingLinkRequest(BaseModel):
@@ -497,6 +499,9 @@ async def initiate_payment(data: PaymentInitRequest):
     order_id = f"SC2026-{booking['id'][:8]}-{int(time.time())}"
     frontend_url = data.frontend_url or os.getenv("FRONTEND_URL", "https://oll.co")
 
+    # Use requested amount (₹500 for seat_reserve, full price otherwise)
+    effective_amount = data.amount if data.amount and data.amount > 0 else CAMP_PRICE
+
     parent_name = (booking.get("parent_name") or "").strip()
     child_name = (booking.get("child_name") or "").strip()
     # Use child_name as fallback; ensure minimum 3 non-space chars for Cashfree
@@ -524,8 +529,8 @@ async def initiate_payment(data: PaymentInitRequest):
             notify_url=f"{frontend_url}/api/summer-camp/webhook",
         )
         create_order_request = CreateOrderRequest(
-            order_id=order_id,  # Pass our order_id so Cashfree can be queried by it later
-            order_amount=CAMP_PRICE,
+            order_id=order_id,
+            order_amount=effective_amount,
             order_currency="INR",
             customer_details=customer,
             order_meta=order_meta,
@@ -574,7 +579,7 @@ async def verify_payment(booking_id: str):
         raise HTTPException(status_code=404, detail="Booking not found")
 
     # Already converted — return immediately without re-querying Cashfree
-    if booking.get("crm_status") == "converted":
+    if booking.get("crm_status") in ("converted", "seat_reserved"):
         return {"status": "PAID", "booking": booking}
 
     order_id = booking.get("order_id")
@@ -586,19 +591,21 @@ async def verify_payment(booking_id: str):
         resp = await asyncio.to_thread(cf.PGFetchOrder, CASHFREE_API_VERSION, order_id, None)
         if resp.data:
             new_status = resp.data.order_status
-            if new_status == "PAID" and booking.get("crm_status") != "converted":
-                await db.summer_camp_bookings.update_one(
-                    {"id": booking_id},
-                    {"$set": {
-                        "payment_status": "paid",
-                        "crm_status": "converted",
-                        "updated_at": datetime.now(timezone.utc).isoformat(),
-                    }}
-                )
+            if new_status == "PAID" and booking.get("crm_status") not in ("converted", "seat_reserved"):
+                is_seat_reserve = booking.get("payment_mode") == "seat_reserve"
+                new_crm = "seat_reserved" if is_seat_reserve else "converted"
+                pay_status = "partial" if is_seat_reserve else "paid"
+                update_fields = {
+                    "payment_status": pay_status,
+                    "crm_status": new_crm,
+                    "amount_paid": SEAT_RESERVE_AMOUNT if is_seat_reserve else CAMP_PRICE,
+                    "amount_due": (CAMP_PRICE - SEAT_RESERVE_AMOUNT) if is_seat_reserve else 0,
+                    "updated_at": datetime.now(timezone.utc).isoformat(),
+                }
+                await db.summer_camp_bookings.update_one({"id": booking_id}, {"$set": update_fields})
                 if booking.get("source_ref"):
                     await _increment_tracking(booking["source_ref"], "conversions")
-                booking["payment_status"] = "paid"
-                booking["crm_status"] = "converted"
+                booking.update(update_fields)
 
                 # Fire enrollment WhatsApp message
                 try:
@@ -636,12 +643,17 @@ async def summer_camp_webhook(request: Request):
 
         if order_status == "PAID":
             booking = await db.summer_camp_bookings.find_one({"order_id": order_id}, {"_id": 0})
-            if booking:
+            if booking and booking.get("crm_status") not in ("converted", "seat_reserved"):
+                is_seat_reserve = booking.get("payment_mode") == "seat_reserve"
+                new_crm = "seat_reserved" if is_seat_reserve else "converted"
+                pay_status = "partial" if is_seat_reserve else "paid"
                 await db.summer_camp_bookings.update_one(
                     {"order_id": order_id},
                     {"$set": {
-                        "payment_status": "paid",
-                        "crm_status": "converted",
+                        "payment_status": pay_status,
+                        "crm_status": new_crm,
+                        "amount_paid": SEAT_RESERVE_AMOUNT if is_seat_reserve else CAMP_PRICE,
+                        "amount_due": (CAMP_PRICE - SEAT_RESERVE_AMOUNT) if is_seat_reserve else 0,
                         "updated_at": datetime.now(timezone.utc).isoformat(),
                     }}
                 )

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { ArrowLeft, ArrowRight, Check, MapPin, CreditCard, Banknote, Lock, Laptop, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, MapPin, CreditCard, Banknote, Lock, Laptop, AlertTriangle, Shield } from 'lucide-react';
 import axios from 'axios';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -134,7 +134,7 @@ export default function SummerCampBookingPage() {
     parent_phone: '',
     child_name: '',
     parent_email: '',
-    payment_mode: 'cashfree',
+    payment_mode: 'seat_reserve',
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -220,6 +220,7 @@ export default function SummerCampBookingPage() {
       const pay = await axios.post(`${API}/summer-camp/initiate-payment`, {
         booking_id: bid,
         frontend_url: window.location.origin,
+        amount: form.payment_mode === 'seat_reserve' ? 500 : undefined,
       });
       if (!pay.data.payment_session_id) {
         setError('Could not initiate payment. Please try again.');
@@ -454,34 +455,50 @@ export default function SummerCampBookingPage() {
                 <div>
                   <p style={{ fontSize: '0.72rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.14em', marginBottom: '0.85rem', fontFamily: JB }}>Payment Method</p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+
+                    {/* ── Seat Reserve (HIGHLIGHTED) ── */}
+                    <div
+                      className={form.payment_mode === 'seat_reserve' ? 'seat-reserve-card-active' : 'seat-reserve-card'}
+                      onClick={() => update('payment_mode')('seat_reserve')}
+                      style={{ position: 'relative', borderRadius: '1rem', cursor: 'pointer', padding: '1rem 1.1rem', background: form.payment_mode === 'seat_reserve' ? 'rgba(245,158,11,0.08)' : 'rgba(255,255,255,0.03)', border: `2px solid ${form.payment_mode === 'seat_reserve' ? '#F59E0B' : 'rgba(245,158,11,0.35)'}`, transition: 'all 0.25s' }}
+                    >
+                      {/* Recommended badge */}
+                      <span style={{ position: 'absolute', top: -10, right: 14, background: 'linear-gradient(90deg,#F59E0B,#FBBF24)', color: '#000', fontFamily: JB, fontWeight: 800, fontSize: '0.62rem', letterSpacing: '0.12em', padding: '0.2rem 0.65rem', borderRadius: '1rem', textTransform: 'uppercase' }}>
+                        Recommended
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                        <div style={{ width: 44, height: 44, borderRadius: '0.75rem', background: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <Shield style={{ width: 21, height: 21, color: '#F59E0B' }} />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontFamily: JB, fontWeight: 800, fontSize: '1rem', color: '#FBBF24', marginBottom: '0.18rem' }}>Lock Your Seat — Pay ₹500 Now</div>
+                          <div style={{ fontSize: '0.83rem', color: '#94A3B8', fontFamily: NU, lineHeight: 1.45 }}>
+                            Secure your child's spot instantly. Pay ₹1,499 balance on Day 1.
+                          </div>
+                        </div>
+                        <div style={{ fontFamily: JB, fontWeight: 900, fontSize: '1.1rem', color: '#FBBF24', flexShrink: 0 }}>₹500</div>
+                      </div>
+                    </div>
+
+                    {/* ── Pay Full Online ── */}
                     <ChoiceCard selected={form.payment_mode === 'cashfree'} onClick={() => update('payment_mode')('cashfree')}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                         <div style={{ width: 42, height: 42, borderRadius: '0.75rem', background: form.payment_mode === 'cashfree' ? 'rgba(0,229,255,0.12)' : 'rgba(255,255,255,0.04)', border: `1px solid ${form.payment_mode === 'cashfree' ? 'rgba(0,229,255,0.3)' : 'transparent'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                           <CreditCard style={{ width: 20, height: 20, color: form.payment_mode === 'cashfree' ? '#00E5FF' : '#64748B' }} />
                         </div>
-                        <div>
-                          <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '1rem', color: form.payment_mode === 'cashfree' ? '#00E5FF' : '#F8FAFC', marginBottom: '0.2rem' }}>Pay Online</div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '1rem', color: form.payment_mode === 'cashfree' ? '#00E5FF' : '#F8FAFC', marginBottom: '0.2rem' }}>Pay in Full — ₹1,999</div>
                           <div style={{ fontSize: '0.85rem', color: '#64748B', fontFamily: NU }}>UPI, Card, Net Banking via Cashfree</div>
                         </div>
                       </div>
                     </ChoiceCard>
-                    <ChoiceCard selected={form.payment_mode === 'cash'} onClick={() => update('payment_mode')('cash')}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                        <div style={{ width: 42, height: 42, borderRadius: '0.75rem', background: form.payment_mode === 'cash' ? 'rgba(0,229,255,0.12)' : 'rgba(255,255,255,0.04)', border: `1px solid ${form.payment_mode === 'cash' ? 'rgba(0,229,255,0.3)' : 'transparent'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <Banknote style={{ width: 20, height: 20, color: form.payment_mode === 'cash' ? '#00E5FF' : '#64748B' }} />
-                        </div>
-                        <div>
-                          <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '1rem', color: form.payment_mode === 'cash' ? '#00E5FF' : '#F8FAFC', marginBottom: '0.2rem' }}>Pay at Center</div>
-                          <div style={{ fontSize: '0.85rem', color: '#64748B', fontFamily: NU }}>Cash or UPI at {selectedCenter?.name || 'center'}</div>
-                        </div>
-                      </div>
-                    </ChoiceCard>
+
                   </div>
                 </div>
 
                 <PrimaryBtn type="submit" disabled={submitting}>
                   <Lock style={{ width: 15, height: 15 }} />
-                  {submitting ? 'Processing...' : form.payment_mode === 'cash' ? 'Confirm Booking' : 'Pay ₹1,999'}
+                  {submitting ? 'Processing...' : form.payment_mode === 'seat_reserve' ? 'Lock My Seat — Pay ₹500 Now' : 'Pay ₹1,999 — Complete Enrollment'}
                 </PrimaryBtn>
                 <p style={{ fontSize: '0.78rem', color: '#334155', textAlign: 'center', fontFamily: NU }}>
                   Secured by Cashfree · SSL encrypted · No hidden charges
@@ -498,6 +515,13 @@ export default function SummerCampBookingPage() {
           from { opacity: 0; transform: translateY(18px); }
           to   { opacity: 1; transform: translateY(0); }
         }
+        @keyframes seatGlow {
+          0%, 100% { box-shadow: 0 0 0 0px rgba(245,158,11,0.4), 0 0 18px rgba(245,158,11,0.12); }
+          50%       { box-shadow: 0 0 0 3px rgba(245,158,11,0.3), 0 0 32px rgba(245,158,11,0.28); }
+        }
+        .seat-reserve-card        { animation: seatGlow 2.4s ease-in-out infinite; }
+        .seat-reserve-card-active { animation: seatGlow 1.6s ease-in-out infinite; }
+        .seat-reserve-card:hover  { background: rgba(245,158,11,0.06) !important; }
         input::placeholder { color: #334155; }
       `}</style>
     </>

@@ -280,8 +280,18 @@ function downloadSummerCampReceipt(booking, isCash) {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
-  doc.text(isCash ? 'Amount Due (Pay at Center)' : 'Total Paid', margin + 8, y + 10.5);
-  doc.text('Rs. 1,999', pw - margin - 8, y + 10.5, { align: 'right' });
+  const isSeatReservePdf = booking.payment_mode === 'seat_reserve';
+  if (isSeatReservePdf) {
+    doc.text('Deposit Paid (Seat Reserved)', margin + 8, y + 7);
+    doc.text('Rs. 500', pw - margin - 8, y + 7, { align: 'right' });
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Balance Due at Center on Day 1:', margin + 8, y + 13);
+    doc.text('Rs. 1,499', pw - margin - 8, y + 13, { align: 'right' });
+  } else {
+    doc.text(isCash ? 'Amount Due (Pay at Center)' : 'Total Paid', margin + 8, y + 10.5);
+    doc.text('Rs. 1,999', pw - margin - 8, y + 10.5, { align: 'right' });
+  }
 
   y += 22;
 
@@ -313,6 +323,7 @@ export default function SummerCampSuccessPage() {
   const attempts = useRef(0);
 
   const isCash = paymentMode === 'cash';
+  const isSeatReserve = booking?.payment_mode === 'seat_reserve';
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -323,7 +334,7 @@ export default function SummerCampSuccessPage() {
         const res = await axios.get(`${API}/summer-camp/verify/${bookingId}`);
         const b = res.data.booking;
         setBooking(b);
-        if (res.data.status === 'PAID' || b?.payment_status === 'paid' || isCash) {
+        if (res.data.status === 'PAID' || b?.payment_status === 'paid' || b?.payment_status === 'partial' || isCash) {
           setVerified(true);
           clearInterval(checkInterval.current);
         }
@@ -393,11 +404,13 @@ export default function SummerCampSuccessPage() {
                 </div>
 
                 <h1 style={{ fontFamily: JB, fontSize: 'clamp(1.6rem, 5vw, 2.25rem)', fontWeight: 900, color: '#F8FAFC', lineHeight: 1.15, marginBottom: '0.65rem' }}>
-                  {isCash ? 'Booking Confirmed!' : 'Payment Successful!'}
+                  {isCash ? 'Booking Confirmed!' : isSeatReserve ? 'Seat Locked!' : 'Payment Successful!'}
                 </h1>
                 <p style={{ color: '#64748B', fontSize: '1rem', fontFamily: NU, fontWeight: 500, lineHeight: 1.6, maxWidth: 400, margin: '0 auto' }}>
                   {isCash
                     ? "Your spot is reserved. Please pay ₹1,999 at the center on Day 1."
+                    : isSeatReserve
+                    ? '₹500 received! Your seat is locked. Pay the remaining ₹1,499 at the center on Day 1.'
                     : 'Your payment is confirmed and your spot is secured. See you at camp!'}
                 </p>
               </div>
@@ -472,6 +485,8 @@ export default function SummerCampSuccessPage() {
                       <p style={{ fontFamily: NU, fontSize: '0.85rem', color: '#64748B', lineHeight: 1.5, fontWeight: 500 }}>
                         {booking.mode === 'online'
                           ? 'Zoom/Google Meet link will be shared on WhatsApp before Day 1.'
+                          : isSeatReserve
+                          ? `Please arrive 10 minutes before ${sessionTime.split('–')[0].trim()} on Day 1. Bring ₹1,499 cash or UPI for the balance.`
                           : `Please arrive 10 minutes before ${sessionTime.split('–')[0].trim()} on Day 1.`}
                       </p>
                     </div>
