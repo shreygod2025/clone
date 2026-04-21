@@ -213,9 +213,10 @@ async def initiate_payment(data: PaymentInitRequest):
     if not Cashfree:
         raise HTTPException(503, "Payment gateway unavailable")
 
+    cf_env = Cashfree.PRODUCTION if CASHFREE_ENV == "production" else Cashfree.SANDBOX
     Cashfree.XClientId = CASHFREE_APP_ID
     Cashfree.XClientSecret = CASHFREE_SECRET_KEY
-    Cashfree.XEnvironment = Cashfree.PRODUCTION if CASHFREE_ENV == "production" else Cashfree.SANDBOX
+    Cashfree.XEnvironment = cf_env
 
     effective_amount = data.amount if data.amount and data.amount > 0 else (
         SEAT_DEPOSIT if lead.get("payment_mode") == "seat_reserve" else PROGRAM_PRICE
@@ -247,7 +248,7 @@ async def initiate_payment(data: PaymentInitRequest):
     )
 
     try:
-        resp = Cashfree().PGCreateOrder("2023-08-01", create_order)
+        resp = Cashfree(cf_env).PGCreateOrder("2023-08-01", create_order)
         session_id = resp.data.payment_session_id
         await db[COLLECTION].update_one(
             {"id": data.lead_id},
@@ -276,10 +277,11 @@ async def verify_payment(lead_id: str, background_tasks: BackgroundTasks):
         return {"status": "PENDING", "lead": lead}
 
     try:
+        cf_env = Cashfree.PRODUCTION if CASHFREE_ENV == "production" else Cashfree.SANDBOX
         Cashfree.XClientId = CASHFREE_APP_ID
         Cashfree.XClientSecret = CASHFREE_SECRET_KEY
-        Cashfree.XEnvironment = Cashfree.PRODUCTION if CASHFREE_ENV == "production" else Cashfree.SANDBOX
-        resp = Cashfree().PGFetchOrder("2023-08-01", order_id)
+        Cashfree.XEnvironment = cf_env
+        resp = Cashfree(cf_env).PGFetchOrder("2023-08-01", order_id)
         status = resp.data.order_status
     except Exception:
         return {"status": "PENDING", "lead": lead}

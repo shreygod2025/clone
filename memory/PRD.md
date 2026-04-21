@@ -58,6 +58,21 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+### 2026-04-21 — Social Media Internship Readiness Program (NEW FEATURE)
+**Features Added:**
+1. **Landing Page** (`/social-media-intern`) — GenZ dark sci-fi HUD aesthetic (Archetype 7: Electric & Neon) with JetBrains Mono + Nunito Sans, countdown timer, bento curriculum grid, pricing card (₹19,900), FAQ accordion
+2. **3-Step Booking Wizard** (`/social-media-intern/apply`): phone capture → student details (name, age, school, parent, email, mode, Instagram/YouTube) → payment selection (Full ₹19,900 or Seat Reserve ₹2,000)
+3. **Success Page** (`/social-media-intern/success`) — polls `/verify/{lead_id}`, shows confirmation with booking_ref, payment details, and next-steps checklist
+4. **Cashfree Integration** — sequential booking refs (SMI-XXXX), supports both full payment and ₹2,000 seat deposit with balance at center
+5. **Admin CRM Tab** — new `section-social_media_intern` inside AdminStudentCRM with KPIs (Total, Phone Captured, Lead, Seat Reserved, Converted, Lost, Revenue), search, filter, status update modal (with lost reason), comment thread, delete, and CSV export
+6. **WhatsApp Templates** — added 3 new template keys: `social_media_intern_confirmation`, `social_media_intern_seat_reserved`, `social_media_intern_lead_followup` (user to create in AiSensy dashboard)
+7. **Home + Offerings CTA** — new promo section on home page and dedicated card on /offerings with `homepage-smi-apply-btn` and `social-media-intern-cta-btn`
+
+**Backend:** `/app/backend/routes/social_media_intern.py` — 11 endpoints (capture, register, initiate-payment, verify, webhook, crm, followup, comment, crm-status, delete, lead/{id})
+**Frontend:** `SocialMediaInternPage.jsx`, `SocialMediaInternApplyPage.jsx`, `SocialMediaInternSuccessPage.jsx`, `admin/SocialMediaInternCRM.jsx`
+**DB Collection:** `social_media_intern_registrations` with crm_status transitions: phone_captured → lead → (converted | seat_reserved | lost)
+**Tested:** 23/23 pytest passed including Cashfree payment init, webhook, CRM auth, and summer-camp regression. Frontend 3-step wizard verified with Playwright.
+
 ### 2026-04-11 — Ticket Numbers Added to Support Center
 1. **Sequential ticket numbers** — new `ticket_number` field (e.g., `0001`, `0042`) using atomic MongoDB counter in `counters` collection
 2. **Backfilled all 30 existing tickets** — `/api/support/backfill-ticket-numbers` endpoint ran successfully (next ticket = `#0031`)
@@ -184,10 +199,12 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 
 ### P1 - High Priority
+- [ ] Fix Invoice Modal bug in AdminOrders.jsx (4+ ignores — invoice_url/invoice_amount not mapped to showPaymentModal state, shows ₹0 and "Not uploaded" even when saved)
 - [ ] E2E testing of Summer Camp booking flow (testing_agent_v4_fork)
 - [ ] Connect AI Chat to WhatsApp via AiSensy Webhook
 - [ ] Multiple chat sessions browser in AI Chat
 - [ ] Report Settings UI
+- [ ] User to create 3 WhatsApp templates in AiSensy for Social Media Intern: `social_media_intern_confirmation`, `social_media_intern_seat_reserved`, `social_media_intern_lead_followup`
 
 ### P2 - Medium Priority
 - [ ] CSV Export for all major tables
