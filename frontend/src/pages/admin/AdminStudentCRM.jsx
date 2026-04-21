@@ -1392,6 +1392,7 @@ const AdminStudentCRM = () => {
                     { label: 'Form Filled', value: summerCampBookings.filter(b => b.crm_status === 'phone_captured').length, filterVal: 'phone_captured', color: 'bg-orange-50 border-orange-200 text-orange-700', activeColor: 'bg-orange-500 border-orange-500 text-white' },
                     { label: 'Leads', value: summerCampBookings.filter(b => b.crm_status === 'lead').length, filterVal: 'lead', color: 'bg-yellow-50 border-yellow-200 text-yellow-700', activeColor: 'bg-yellow-500 border-yellow-500 text-white' },
                     { label: 'Hot Lead', value: summerCampBookings.filter(b => b.crm_status === 'hot_lead').length, filterVal: 'hot_lead', color: 'bg-purple-50 border-purple-200 text-purple-700', activeColor: 'bg-purple-600 border-purple-600 text-white' },
+                    { label: '₹500 Reserved', value: summerCampBookings.filter(b => b.crm_status === 'seat_reserved').length, filterVal: 'seat_reserved', color: 'bg-amber-50 border-amber-200 text-amber-700', activeColor: 'bg-amber-500 border-amber-500 text-white' },
                     { label: 'Converted', value: summerCampBookings.filter(b => b.crm_status === 'converted' || b.crm_status === 'payment_offline').length, filterVal: 'converted_all', color: 'bg-green-50 border-green-200 text-green-700', activeColor: 'bg-green-600 border-green-600 text-white' },
                     { label: 'Lost', value: summerCampBookings.filter(b => b.crm_status === 'lost_lead').length, filterVal: 'lost_lead', color: 'bg-red-50 border-red-200 text-red-700', activeColor: 'bg-red-500 border-red-500 text-white' },
                   ];
@@ -1408,10 +1409,9 @@ const AdminStudentCRM = () => {
                     }
                     if (campFilters.status) {
                       if (campFilters.status === 'converted_all') {
-                        if (b.crm_status !== 'converted' && b.crm_status !== 'payment_offline') return false;
+                        if (b.crm_status !== 'converted' && b.crm_status !== 'payment_offline' && b.crm_status !== 'seat_reserved') return false;
                       } else if (b.crm_status !== campFilters.status) return false;
                     }
-                    if (campFilters.batch && b.batch_week !== campFilters.batch) return false;
                     if (campFilters.center && b.center_label !== campFilters.center) return false;
                     if (campFilters.source) {
                       const src = b.source_name || 'Direct';
@@ -1505,6 +1505,7 @@ const AdminStudentCRM = () => {
                           <option value="lead">Lead</option>
                           <option value="hot_lead">Hot Lead</option>
                           <option value="converted_all">Converted (All)</option>
+                      <option value="seat_reserved">₹500 Reserved</option>
                           <option value="converted">Paid Online</option>
                           <option value="payment_offline">Cash at Center</option>
                           <option value="lost_lead">Lost</option>
@@ -1582,6 +1583,7 @@ const AdminStudentCRM = () => {
                                     data-testid={`camp-status-${booking.id}`}
                                     className={`text-xs px-2.5 py-1 rounded-full font-bold cursor-pointer hover:opacity-80 transition-opacity whitespace-nowrap shrink-0 ${
                                       booking.crm_status === 'converted' ? 'bg-green-50 text-green-700' :
+                                      booking.crm_status === 'seat_reserved' ? 'bg-amber-50 text-amber-700' :
                                       booking.crm_status === 'payment_offline' ? 'bg-teal-50 text-teal-700' :
                                       booking.crm_status === 'hot_lead' ? 'bg-purple-50 text-purple-700' :
                                       booking.crm_status === 'phone_captured' ? 'bg-orange-50 text-orange-700' :
@@ -1590,6 +1592,7 @@ const AdminStudentCRM = () => {
                                     }`}
                                   >
                                     {booking.crm_status === 'converted' ? 'Paid Online' :
+                                     booking.crm_status === 'seat_reserved' ? '₹500 Reserved' :
                                      booking.crm_status === 'payment_offline' ? 'Pay at Center' :
                                      booking.crm_status === 'hot_lead' ? 'Hot Lead' :
                                      booking.crm_status === 'phone_captured' ? 'Form Filled' :
@@ -1681,7 +1684,7 @@ const AdminStudentCRM = () => {
                                   <button title="Delete" data-testid={`camp-delete-${booking.id}`} onClick={() => setCampDeleteModal(booking)} className="p-2 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 transition-colors">
                                     <Trash2 className="w-3.5 h-3.5" />
                                   </button>
-                                  {booking.order_id && booking.crm_status !== 'converted' && (
+                                  {booking.order_id && booking.crm_status !== 'converted' && booking.crm_status !== 'seat_reserved' && (
                                     <button title="Force-verify Cashfree payment" data-testid={`camp-verify-${booking.id}`} onClick={() => handleForceVerify(booking.id)} className="p-2 rounded-lg bg-green-50 hover:bg-green-100 text-green-600 transition-colors">
                                       <Check className="w-3.5 h-3.5" />
                                     </button>
@@ -1766,6 +1769,7 @@ const AdminStudentCRM = () => {
                                       data-testid={`camp-status-${booking.id}`}
                                       className={`text-xs px-2 py-1 rounded-full font-bold cursor-pointer hover:opacity-80 transition-opacity whitespace-nowrap ${
                                         booking.crm_status === 'converted' ? 'bg-green-50 text-green-700' :
+                                        booking.crm_status === 'seat_reserved' ? 'bg-amber-50 text-amber-700' :
                                         booking.crm_status === 'payment_offline' ? 'bg-teal-50 text-teal-700' :
                                         booking.crm_status === 'hot_lead' ? 'bg-purple-50 text-purple-700' :
                                         booking.crm_status === 'phone_captured' ? 'bg-orange-50 text-orange-700' :
@@ -1774,6 +1778,7 @@ const AdminStudentCRM = () => {
                                       }`}
                                     >
                                       {booking.crm_status === 'converted' ? 'Paid Online' :
+                                       booking.crm_status === 'seat_reserved' ? '₹500 Reserved' :
                                        booking.crm_status === 'payment_offline' ? 'Pay at Center' :
                                        booking.crm_status === 'hot_lead' ? 'Hot Lead' :
                                        booking.crm_status === 'phone_captured' ? 'Form Filled' :
@@ -2256,7 +2261,8 @@ const AdminStudentCRM = () => {
                     { v: 'phone_captured', l: 'Form Filled', desc: 'Phone number captured', color: 'border-orange-300 bg-orange-50 text-orange-700' },
                     { v: 'lead', l: 'Lead Captured', desc: 'Full details submitted', color: 'border-yellow-300 bg-yellow-50 text-yellow-700' },
                     { v: 'hot_lead', l: 'Hot Lead', desc: 'Interested — likely to convert', color: 'border-purple-300 bg-purple-50 text-purple-700' },
-                    { v: 'converted', l: 'Paid Online', desc: 'Online payment completed', color: 'border-green-300 bg-green-50 text-green-700' },
+                    { v: 'seat_reserved', l: '₹500 Reserved', desc: '₹500 deposit paid — balance at center', color: 'border-amber-300 bg-amber-50 text-amber-700' },
+                    { v: 'converted', l: 'Paid Online', desc: 'Full ₹1,999 payment completed', color: 'border-green-300 bg-green-50 text-green-700' },
                     { v: 'payment_offline', l: 'Pay at Center', desc: 'Cash payment at center', color: 'border-teal-300 bg-teal-50 text-teal-700' },
                     { v: 'lost_lead', l: 'Lost Lead', desc: 'Not interested / lost', color: 'border-red-300 bg-red-50 text-red-700' },
                   ].map(s => (
@@ -2504,7 +2510,7 @@ const AdminStudentCRM = () => {
                         <p className="font-semibold text-blue-900 text-sm">Step 1 — Download Sample File</p>
                         <p className="text-xs text-blue-600 mt-1">Only <code className="bg-blue-100 px-1 rounded">parent_phone</code> is required. Everything else is optional.</p>
                         <p className="text-xs text-blue-500 mt-1">age_group: <strong>4-8 / 9-12 / 13-16</strong> &nbsp;|&nbsp; batch_week: week1–week4 &nbsp;|&nbsp; phone: with or without +91</p>
-                        <p className="text-xs text-blue-500 mt-1">crm_status: lead · hot_lead · phone_captured · converted · payment_offline · lost_lead</p>
+                        <p className="text-xs text-blue-500 mt-1">crm_status: lead · hot_lead · phone_captured · seat_reserved · converted · payment_offline · lost_lead</p>
                       </div>
                       <button
                         onClick={downloadImportSample}
