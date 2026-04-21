@@ -4022,7 +4022,8 @@ from routes.summer_camp import (
     check_summer_camp_payment_pending_3,
     check_summer_camp_phone_captured_24h,
     check_summer_camp_closing_7days,
-    check_sc_email_1h,
+)
+from routes.social_media_intern import router as social_media_intern_router    check_sc_email_1h,
     check_sc_email_24h,
     check_sc_email_2d,
     check_sc_email_5d,
@@ -4052,6 +4053,7 @@ api_router.include_router(expenses_router)
 api_router.include_router(admin_keys_router)
 api_router.include_router(payments_router)
 api_router.include_router(summer_camp_router)
+api_router.include_router(social_media_intern_router)
 api_router.include_router(db_backup_router)
 api_router.include_router(gp_onboarding_router)
 api_router.include_router(daily_report_router)
