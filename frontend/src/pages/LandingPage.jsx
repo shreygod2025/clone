@@ -309,6 +309,83 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* ── Social Media Internship Readiness Program (Ages 12-18) ── */}
+      <section style={{ background: '#050505', borderTop: '1px solid #1A1A1A', padding: '4rem 1rem' }} data-testid="homepage-smi-section">
+        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+          <div
+            onClick={() => navigate('/social-media-intern')}
+            style={{
+              position: 'relative',
+              background: 'linear-gradient(135deg, #050505 0%, #0F1205 50%, #050505 100%)',
+              border: '1px solid rgba(204,255,0,0.3)',
+              borderRadius: '1.5rem',
+              padding: '2.5rem',
+              cursor: 'pointer',
+              overflow: 'hidden',
+              transition: 'all 0.4s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = '#CCFF00'; e.currentTarget.style.boxShadow = '0 0 60px rgba(204,255,0,0.12)'; e.currentTarget.style.transform = 'translateY(-3px)'; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(204,255,0,0.3)'; e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(0)'; }}
+          >
+            <div style={{ position: 'absolute', inset: 0, opacity: 0.04, pointerEvents: 'none',
+              backgroundImage: 'linear-gradient(#CCFF00 1px, transparent 1px), linear-gradient(90deg, #CCFF00 1px, transparent 1px)',
+              backgroundSize: '40px 40px' }} />
+            <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(204,255,0,0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem', alignItems: 'center', justifyContent: 'space-between', position: 'relative' }}>
+              <div style={{ flex: '1 1 400px' }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: '1rem' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: '999px', background: 'rgba(204,255,0,0.12)', border: '1px solid #CCFF00', color: '#CCFF00', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em' }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#CCFF00', display: 'inline-block' }} />
+                    NEW PROGRAM
+                  </span>
+                  <span style={{ padding: '4px 12px', borderRadius: '999px', background: 'rgba(0,255,102,0.1)', border: '1px solid rgba(0,255,102,0.3)', color: '#00FF66', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em' }}>
+                    Ages 12–18
+                  </span>
+                </div>
+                <h2 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 'clamp(1.4rem, 3.5vw, 2.2rem)', fontWeight: 900, color: '#F8FAFC', lineHeight: 1.2, marginBottom: '0.75rem' }}>
+                  Turn Screen Time<br />Into a <span style={{ color: '#CCFF00' }}>Skill That Pays</span>
+                </h2>
+                <p style={{ color: '#A1A1AA', fontSize: '0.95rem', lineHeight: 1.65, marginBottom: '1.25rem', maxWidth: 480, fontFamily: 'Nunito Sans, sans-serif' }}>
+                  India's first 1-month offline Social Media Internship Readiness Program for teens. Learn. Create. Get placed as a paid intern.
+                </p>
+                <button
+                  data-testid="homepage-smi-apply-btn"
+                  onClick={(e) => { e.stopPropagation(); navigate('/social-media-intern'); }}
+                  style={{
+                    background: '#CCFF00', color: '#000',
+                    fontFamily: "'JetBrains Mono', monospace", fontWeight: 800, fontSize: '0.85rem',
+                    padding: '0.85rem 1.75rem', borderRadius: 4, border: 'none', cursor: 'pointer',
+                    boxShadow: '0 0 28px rgba(204,255,0,0.35)',
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    transition: 'all 0.3s', letterSpacing: '0.06em',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 44px rgba(204,255,0,0.55)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 28px rgba(204,255,0,0.35)'; }}
+                >
+                  Apply Now · ₹19,900
+                  <ArrowRight style={{ width: 16, height: 16 }} />
+                </button>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, minWidth: 260 }}>
+                {[
+                  { k: '1 Month', v: 'Duration', c: '#CCFF00' },
+                  { k: '15', v: 'Seats / Batch', c: '#00FF66' },
+                  { k: '32 Hrs', v: 'Training', c: '#CCFF00' },
+                  { k: '70%+', v: 'Placement', c: '#00FF66' },
+                ].map(s => (
+                  <div key={s.k} style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${s.c}33`, borderRadius: 8, padding: '0.85rem 1rem', textAlign: 'center', minWidth: 110 }}>
+                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 900, fontSize: '1.1rem', color: s.c }}>{s.k}</div>
+                    <div style={{ fontSize: '0.68rem', color: '#71717A', fontFamily: "'Nunito Sans', sans-serif", textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 2 }}>{s.v}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Footer - Always visible */}
       <Footer />
     </div>

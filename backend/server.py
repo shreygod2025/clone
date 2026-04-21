@@ -4022,12 +4022,12 @@ from routes.summer_camp import (
     check_summer_camp_payment_pending_3,
     check_summer_camp_phone_captured_24h,
     check_summer_camp_closing_7days,
-)
-from routes.social_media_intern import router as social_media_intern_router    check_sc_email_1h,
+    check_sc_email_1h,
     check_sc_email_24h,
     check_sc_email_2d,
     check_sc_email_5d,
 )
+from routes.social_media_intern import router as social_media_intern_router
 from routes.db_backup import router as db_backup_router
 from routes.gp_onboarding import router as gp_onboarding_router
 from routes.reports import router as reports_router

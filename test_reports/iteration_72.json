@@ -1,0 +1,58 @@
+{
+  "summary": "Comprehensive backend + frontend testing for Social Media Internship Readiness Program (iteration 72). 21/23 pytest tests passed; 2 skipped due to ONE CRITICAL bug in Cashfree SDK init (breaks /initiate-payment). All other SMI flows work: capture-lead (sequential SMI-XXXX refs), duplicate detection, register, verify, webhook, CRM KPIs, CRM auth enforcement, status patch, comments, delete, public lead lookup. Summer-camp regression passed (no breakage from server.py import change). Frontend: landing page, 3-step apply wizard, admin CRM tab, homepage SMI section, offerings card, and graceful Success-not-found all verified with data-testids.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "POST /api/social-media-intern/initiate-payment",
+        "issue": "Cashfree SDK instantiated incorrectly — 'Cashfree()' missing required positional arg 'XEnvironment'. Returns 500: \"Payment initiation failed: Cashfree.__init__() missing 1 required positional argument: 'XEnvironment'\". This completely blocks payment. Fix: follow summer_camp.py pattern in /app/backend/routes/summer_camp.py:89-93 — use `cf_env = Cashfree.PRODUCTION if CASHFREE_ENV == 'production' else Cashfree.SANDBOX` and call `Cashfree(cf_env).PGCreateOrder(...)`. Same fix needed in verify_payment() at line 282.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "POST /api/social-media-intern/webhook",
+        "issue": "Notify URL is built from env BACKEND_URL with fallback https://oll.co — if BACKEND_URL env missing in prod, Cashfree would call a non-existent webhook path. Consider using REACT_APP_BACKEND_URL or frontend_url param for notify_url."
+      },
+      {
+        "endpoint": "POST /api/social-media-intern/register",
+        "issue": "No validation on payment_mode (accepts arbitrary strings), no age range check (supposed to be 12-18), no email format check. Non-blocking but recommended."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "3-step apply → payment submit",
+        "issue": "Clicking 'Pay Securely via Cashfree' (pay-now-btn) will fail with 500 because backend initiate-payment is broken (see critical backend issue). Wizard itself renders & navigates correctly.",
+        "affected_selectors": ["[data-testid='pay-now-btn']"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_social_media_intern.py",
+    "/app/test_reports/pytest/smi_results.xml"
+  ],
+  "action_items": [
+    "HIGH PRIORITY: Fix Cashfree initialization in /app/backend/routes/social_media_intern.py lines 216-218 AND 279-282. Replace `Cashfree().PGCreateOrder(...)` with the pattern used in summer_camp.py: instantiate via `cf = Cashfree(cf_env)` where cf_env = Cashfree.PRODUCTION or Cashfree.SANDBOX. After fixing, re-run /app/backend/tests/test_social_media_intern.py to verify TestSMIPayment::test_initiate_payment_full and TestSMIWebhook::test_webhook_marks_lead_as_paid pass (currently skipped).",
+    "Consider adding input validation on /register (payment_mode enum, email format, age bounds)."
+  ],
+  "critical_code_review_comments": [
+    "Cashfree SDK instantiation pattern differs from summer_camp.py — copy-paste drift. Recommend extracting a shared `get_cf_client()` helper in a common module so both routes use identical init.",
+    "Duplicate Cashfree env init logic (lines 216-218 and 279-281) — DRY violation, will double any future fix.",
+    "webhook endpoint has no HMAC/signature verification — any unauthenticated POST can mark a lead as paid. For production, add Cashfree webhook signature verification.",
+    "_send_confirmation_wa logs but swallows exception silently — OK for non-critical notification, but template 'social_media_intern_confirmation' is user-created so expect 'Unknown template' logs (expected per problem statement)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_social_media_intern.py (new)",
+    "/app/test_reports/pytest/smi_results.xml (new)"
+  ],
+  "success_rate": {"backend": "91% (21/23 pytest passed, 2 skipped due to Cashfree bug)", "frontend": "100% (all data-testids found, all 3 wizard steps navigate, admin CRM tab loads with KPIs & lead table)"},
+  "test_credentials": "admin@oll.co / Dagaji03@ (worked)",
+  "seed_data_creation": "Created ~5 test SMI leads with phones starting 9/8/7/6xxxxxxxxx and student_name prefix 'TEST '. Cleanup fixture deletes them at session end. A few leftover 'Phone Captured' entries (SMI-0001..SMI-0005) visible in admin CRM from initial manual curl tests — can be cleaned via DELETE /api/social-media-intern/{lead_id}.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "SMI backend structure: collection='social_media_intern_registrations', sequential booking_ref 'SMI-XXXX', crm_status transitions: phone_captured -> lead -> (converted | seat_reserved | lost). Cashfree init bug (line 216-218 of /app/backend/routes/social_media_intern.py) is the ONLY blocker. Once fixed, the 2 skipped tests in TestSMIPayment + TestSMIWebhook will run and should pass because webhook/verify code paths are otherwise correct. Frontend wizard has all needed data-testids. Admin CRM tab testid is 'section-social_media_intern' and the backend CRM endpoint returns {leads[], kpis{total, phone_captured, lead, converted, seat_reserved, lost, revenue}}.",
+  "rca of the issue": "RCA for /initiate-payment 500: In /app/backend/routes/social_media_intern.py line 216-218 the code sets `Cashfree.XEnvironment` as a class attribute and then calls `Cashfree()` on line 250 WITHOUT any positional args. But the cashfree_pg SDK's Cashfree.__init__ requires XEnvironment as a required positional argument. The working pattern in summer_camp.py:93 is `Cashfree(cf_env)`. Reproduction: POST /api/social-media-intern/initiate-payment with a valid lead_id → 500 'Cashfree.__init__() missing 1 required positional argument: XEnvironment'. Fix: change `Cashfree().PGCreateOrder(...)` to `Cashfree(cf_env).PGCreateOrder(...)` where `cf_env = Cashfree.PRODUCTION if CASHFREE_ENV == 'production' else Cashfree.SANDBOX`. Apply same fix at line 282 for verify_payment."
+}

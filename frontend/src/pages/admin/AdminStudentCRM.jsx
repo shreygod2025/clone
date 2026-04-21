@@ -14,6 +14,7 @@ import { format, addDays, parseISO, isAfter, isBefore, addHours } from 'date-fns
 import axios from 'axios';
 import PhoneInput from '../../components/PhoneInput';
 import CitySearch from '../../components/CitySearch';
+import SocialMediaInternCRM from './SocialMediaInternCRM';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -33,6 +34,7 @@ const STATUS_SECTIONS = [
   { value: 'converted', label: 'Converted', color: 'bg-green-500' },
   { value: 'archived', label: 'Archived', color: 'bg-slate-400' },
   { value: 'summer_camp', label: '🏕️ Summer Camp', color: 'bg-orange-500' },
+  { value: 'social_media_intern', label: '🎬 Social Media Intern', color: 'bg-lime-500' },
 ];
 
 const SKILLS = ['Robotics', 'Coding', 'AI', 'Entrepreneurship', 'Financial Literacy', 'Other'];
@@ -1122,7 +1124,11 @@ const AdminStudentCRM = () => {
     }
   };
 
-  const getCount = (status) => status === 'summer_camp' ? summerCampBookings.length : inquiries.filter(i => i.status === status).length;
+  const getCount = (status) => {
+    if (status === 'summer_camp') return summerCampBookings.length;
+    if (status === 'social_media_intern') return '';
+    return inquiries.filter(i => i.status === status).length;
+  };
 
   // Notify not joined - for student or educator
   const handleNotifyNotJoined = async (inquiry, notifyType) => {
@@ -1366,7 +1372,9 @@ const AdminStudentCRM = () => {
       </div>
 
       {/* Lead Cards */}
-      {activeSection === 'summer_camp' ? (
+      {activeSection === 'social_media_intern' ? (
+        <SocialMediaInternCRM getAuthHeaders={getAuthHeaders} />
+      ) : activeSection === 'summer_camp' ? (
         <div>
           {/* Sub-tabs */}
           <div className="flex gap-2 mb-5">

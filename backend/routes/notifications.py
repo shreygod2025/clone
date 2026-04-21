@@ -51,6 +51,11 @@ WHATSAPP_TEMPLATES = {
     "summercamp_closing_7days": "summer camp registraitons closing followup",
     # Enrollment confirmation (sent immediately on cash payment OR Cashfree webhook PAID)
     "summercamp_enrolled": "summercamp enrolled",
+
+    # Social Media Internship Readiness Program
+    "social_media_intern_confirmation": "social_media_intern_confirmation",
+    "social_media_intern_seat_reserved": "social_media_intern_seat_reserved",
+    "social_media_intern_lead_followup": "social_media_intern_lead_followup",
 }
 
 async def send_whatsapp_notification(

@@ -70,6 +70,11 @@ const SummerCampSuccessPage = lazy(() => import("./pages/SummerCampSuccessPage")
 const SummerCampSEOPage = lazy(() => import("./pages/SummerCampSEOPage"));
 const SummerCampPortalPage = lazy(() => import("./pages/SummerCampPortalPage"));
 
+// Social Media Internship Readiness Program
+const SocialMediaInternPage = lazy(() => import("./pages/SocialMediaInternPage"));
+const SocialMediaInternApplyPage = lazy(() => import("./pages/SocialMediaInternApplyPage"));
+const SocialMediaInternSuccessPage = lazy(() => import("./pages/SocialMediaInternSuccessPage"));
+
 // Admin Pages - All Lazy loaded (heavy components)
 const AdminLogin = lazy(() => import("./pages/admin/AdminLogin"));
 const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
@@ -203,6 +208,11 @@ function App() {
               <Route path="/summer-camp/:type/:slug" element={<SummerCampSEOPage />} />
               <Route path="/summer-camp" element={<SummerCampLandingPage />} />
               <Route path="/summer-camp/:ageGroup" element={<SummerCampLandingPage />} />
+
+              {/* Social Media Internship Readiness Program */}
+              <Route path="/social-media-intern" element={<SocialMediaInternPage />} />
+              <Route path="/social-media-intern/apply" element={<SocialMediaInternApplyPage />} />
+              <Route path="/social-media-intern/success" element={<SocialMediaInternSuccessPage />} />
               
               {/* Admin Routes */}
               <Route path="/admin/login" element={<AdminLogin />} />
