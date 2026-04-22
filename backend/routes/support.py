@@ -12,6 +12,8 @@ from pydantic import BaseModel, Field, ConfigDict, EmailStr
 
 from .shared import db, get_current_user, ensure_resend_api_key, SENDER_EMAIL, get_next_ticket_number
 from .notifications import send_whatsapp_notification, send_ticket_overdue_notification, send_ticket_overdue_admin_notification
+from .expenses import transform_tracking_url, VENDOR_PUBLIC_API
+import httpx
 
 router = APIRouter()
 
@@ -1083,4 +1085,123 @@ async def get_educator_sessions(user: dict = Depends(get_current_user)):
 
 # ========================
 # SCHOOL ONBOARDING
+
+
+# ============================================================================
+# Raise PO for a Support Query (typically kit_related issues)
+# ============================================================================
+@router.post("/support/queries/{query_id}/raise-po")
+async def raise_po_for_support_query(query_id: str, data: dict, user: dict = Depends(get_current_user)):
+    """
+    Raise a PO to the vendor panel for a kit-related support query.
+    Used when a kit component is missing / damaged / delayed and needs replacement.
+    Looks up the query across support_queries / support_tickets / inquiry_queries.
+    """
+    if user.get("role") not in ["admin", "super_admin"]:
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    delivery_date = data.get("delivery_date")
+    products = data.get("products") or []
+    delivery_address = (data.get("delivery_address") or "").strip()
+    contact_person = (data.get("contact_person") or "").strip()
+    contact_number = (data.get("contact_number") or "").strip()
+    notes = data.get("notes") or ""
+
+    if not delivery_date:
+        raise HTTPException(status_code=400, detail="Delivery date is required")
+    if not delivery_address:
+        raise HTTPException(status_code=400, detail="Delivery address is required")
+    if not contact_person or not contact_number:
+        raise HTTPException(status_code=400, detail="Contact person and number are required")
+    cleaned = [
+        {"product_name": (p.get("product_name") or "").strip(), "quantity": int(p.get("quantity") or 0)}
+        for p in products if (p.get("product_name") or "").strip() and int(p.get("quantity") or 0) > 0
+    ]
+    if not cleaned:
+        raise HTTPException(status_code=400, detail="At least one product with quantity is required")
+
+    # Locate the query across the three collections
+    query, collection_name = None, None
+    for coll in ("support_queries", "support_tickets", "inquiry_queries"):
+        doc = await db[coll].find_one({"id": query_id}, {"_id": 0})
+        if doc:
+            query, collection_name = doc, coll
+            break
+    if not query:
+        raise HTTPException(status_code=404, detail="Query not found")
+
+    # Build PO payload for vendor panel (same shape as school onboarding raise-po)
+    po_payload = {
+        "requester_name": user.get("name") or user.get("email", "OLL Support"),
+        "delivery_date": delivery_date,
+        "delivery_address": delivery_address,
+        "contact_person": contact_person,
+        "contact_number": contact_number,
+        "school_name": query.get("school_name") or query.get("user_name") or contact_person,
+        "city": query.get("city") or "",
+        "notes": notes or f"Replacement PO raised from support ticket #{query_id[-8:]}",
+        "source_system": "oll_support",
+        "products": cleaned,
+    }
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(
+                f"{VENDOR_PUBLIC_API}/po-request",
+                json=po_payload,
+                timeout=15.0,
+            )
+            response.raise_for_status()
+            po_result = response.json()
+        except httpx.HTTPStatusError as e:
+            err_text = e.response.text if hasattr(e.response, 'text') else str(e)
+            logging.error(f"Vendor PO API error from support: {e.response.status_code} - {err_text}")
+            raise HTTPException(status_code=502, detail=f"Vendor API error: {err_text}")
+        except Exception as e:
+            logging.error(f"Vendor PO API error from support: {str(e)}")
+            raise HTTPException(status_code=502, detail=f"Failed to reach vendor API: {str(e)}")
+
+    po_info = {
+        "po_number": po_result.get("po_number"),
+        "po_id": po_result.get("po_id"),
+        "tracking_token": po_result.get("tracking_token"),
+        "tracking_url": transform_tracking_url(po_result.get("tracking_url")),
+        "status": po_result.get("status"),
+        "products": cleaned,
+        "delivery_date": delivery_date,
+        "delivery_address": delivery_address,
+        "contact_person": contact_person,
+        "contact_number": contact_number,
+        "raised_at": datetime.now(timezone.utc).isoformat(),
+        "raised_by": user.get("email"),
+    }
+
+    await db[collection_name].update_one(
+        {"id": query_id},
+        {
+            "$set": {
+                "po_info": po_info,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            "$push": {
+                "activity_history": {
+                    "id": str(uuid.uuid4()),
+                    "action": "raise_po",
+                    "details": f"PO {po_result.get('po_number')} raised for {len(cleaned)} product(s)",
+                    "by": user.get("email"),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }
+            },
+        },
+    )
+
+    return {
+        "success": True,
+        "po_number": po_result.get("po_number"),
+        "tracking_url": transform_tracking_url(po_result.get("tracking_url")),
+        "products_count": len(cleaned),
+        "po_info": po_info,
+        "message": f"PO {po_result.get('po_number')} raised successfully with {len(cleaned)} product(s)",
+    }
+
 # ========================

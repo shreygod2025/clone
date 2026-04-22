@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Phone, Mail, Clock, User, MessageSquare, AlertCircle, CreditCard, Wrench, HelpCircle, ThumbsUp, Building2, Send, AlertTriangle, CheckCircle, UserPlus, Plus, Paperclip, Mic, MicOff, X, FileText, Play, Pause, Upload, History, Edit, Trash2, StickyNote, RefreshCw, GraduationCap, Eye, Users, Settings, Bell, Hash } from 'lucide-react';
+import { Search, Phone, Mail, Clock, User, MessageSquare, AlertCircle, CreditCard, Wrench, HelpCircle, ThumbsUp, Building2, Send, AlertTriangle, CheckCircle, UserPlus, Plus, Paperclip, Mic, MicOff, X, FileText, Play, Pause, Upload, History, Edit, Trash2, StickyNote, RefreshCw, GraduationCap, Eye, Users, Settings, Bell, Hash, Package, Truck, Calendar, Loader2 } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -31,6 +31,7 @@ const QUERY_TYPES = [
   { value: 'course_info', label: 'Course Info', icon: HelpCircle, color: 'bg-purple-100 text-purple-700' },
   { value: 'ongoing_classes', label: 'Ongoing Classes', icon: HelpCircle, color: 'bg-indigo-100 text-indigo-700' },
   { value: 'technical', label: 'Technical', icon: Wrench, color: 'bg-orange-100 text-orange-700' },
+  { value: 'kit_related', label: 'Kit Related', icon: Package, color: 'bg-amber-100 text-amber-800' },
   { value: 'partnership', label: 'Partnership', icon: Building2, color: 'bg-cyan-100 text-cyan-700' },
   { value: 'feedback', label: 'Feedback', icon: ThumbsUp, color: 'bg-yellow-100 text-yellow-700' },
   { value: 'educator_query', label: 'Educator Query', icon: UserPlus, color: 'bg-red-100 text-red-700' },
@@ -84,6 +85,14 @@ const RELATED_TO_OPTIONS = {
     { value: 'notification_issue', label: 'Notification Issue' },
     { value: 'other', label: 'Other' },
   ],
+  kit_related: [
+    { value: 'components_missing', label: 'Components Missing' },
+    { value: 'delivery_delay', label: 'Delivery Delay' },
+    { value: 'component_damaged', label: 'Component Damaged' },
+    { value: 'quality_issues', label: 'Quality Issues' },
+    { value: 'other', label: 'Other' },
+  ],
+
   partnership: [
     { value: 'school_partnership', label: 'School Partnership' },
     { value: 'center_partnership', label: 'Center Partnership' },
@@ -198,6 +207,74 @@ const AdminSupportUnified = () => {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [loadingViewers, setLoadingViewers] = useState(false);
   const [selectedViewerToAdd, setSelectedViewerToAdd] = useState('');
+
+  // ── Raise PO (for kit_related queries) ───────────────────────────
+  const [showPOModal, setShowPOModal] = useState(null);
+  const [poForm, setPoForm] = useState({
+    delivery_date: '',
+    contact_person: '',
+    contact_number: '',
+    delivery_address: '',
+    notes: '',
+    products: [{ product_name: '', quantity: 1 }],
+  });
+  const [raisingPO, setRaisingPO] = useState(false);
+
+  const openRaisePOModal = (query) => {
+    setPoForm({
+      delivery_date: '',
+      contact_person: query.contact_name || query.name || query.parent_name || query.user_name || '',
+      contact_number: query.phone || query.contact_phone || query.mobile || '',
+      delivery_address: query.address || query.city || query.school_name || '',
+      notes: `Replacement for kit issue: ${(query.category_label || query.subcategory_label || query.related_to || query.query_type || '').toString().replace(/_/g, ' ')}`,
+      products: [{ product_name: '', quantity: 1 }],
+    });
+    setShowPOModal(query);
+  };
+
+  const addPoProductRow = () => {
+    setPoForm(p => ({ ...p, products: [...p.products, { product_name: '', quantity: 1 }] }));
+  };
+
+  const removePoProductRow = (idx) => {
+    setPoForm(p => ({ ...p, products: p.products.filter((_, i) => i !== idx) || [] }));
+  };
+
+  const updatePoProduct = (idx, field, value) => {
+    setPoForm(p => {
+      const next = [...p.products];
+      next[idx] = { ...next[idx], [field]: field === 'quantity' ? Number(value) || 0 : value };
+      return { ...p, products: next };
+    });
+  };
+
+  const handleRaisePO = async () => {
+    if (!poForm.delivery_date) return toast.error('Please select a delivery date');
+    if (!poForm.delivery_address.trim()) return toast.error('Delivery address is required');
+    if (!poForm.contact_person.trim()) return toast.error('Contact person is required');
+    if (!poForm.contact_number.trim()) return toast.error('Contact number is required');
+    const clean = poForm.products.filter(p => p.product_name?.trim() && p.quantity > 0);
+    if (!clean.length) return toast.error('Add at least one product');
+    setRaisingPO(true);
+    try {
+      const res = await axios.post(
+        `${API}/support/queries/${showPOModal.id}/raise-po`,
+        { ...poForm, products: clean },
+        { headers: getAuthHeaders() }
+      );
+      toast.success(res.data.message || `PO ${res.data.po_number} raised`);
+      // Patch the query in state so the Raise PO button turns into the tracking link
+      setShowReplyModal(prev => prev ? { ...prev, po_info: res.data.po_info } : prev);
+      setShowPOModal(null);
+      fetchAllQueries?.();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to raise PO');
+    } finally {
+      setRaisingPO(false);
+    }
+  };
+
+
   
   // Attachment & Voice Note states
   const [attachments, setAttachments] = useState([]);
@@ -1624,6 +1701,37 @@ const AdminSupportUnified = () => {
                     )}
                   </p>
                 </div>
+
+                {/* Raise PO button — only for kit_related queries */}
+                {showReplyModal.query_type === 'kit_related' && (
+                  <div className="mt-3 flex items-center justify-between bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <div className="flex items-center gap-2">
+                      <Package className="w-4 h-4 text-amber-700" />
+                      <span className="text-sm text-amber-900 font-medium">Need to send replacement kit components?</span>
+                    </div>
+                    {showReplyModal.po_info?.po_number ? (
+                      <a
+                        href={showReplyModal.po_info.tracking_url || '#'}
+                        target="_blank"
+                        rel="noreferrer"
+                        data-testid="view-po-link"
+                        className="text-xs font-semibold px-3 py-1.5 rounded-md bg-green-100 text-green-700 border border-green-200 inline-flex items-center gap-1"
+                      >
+                        <CheckCircle className="w-3 h-3" /> PO {showReplyModal.po_info.po_number}
+                      </a>
+                    ) : (
+                      <Button
+                        type="button"
+                        onClick={() => openRaisePOModal(showReplyModal)}
+                        data-testid="raise-po-btn"
+                        className="bg-amber-600 hover:bg-amber-700 text-white text-xs px-3 py-1.5 h-auto"
+                      >
+                        <Truck className="w-3 h-3 mr-1" />
+                        Raise PO
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
               
               {/* Chat Messages Area */}
@@ -2638,6 +2746,141 @@ const AdminSupportUnified = () => {
             <p className="text-xs text-slate-500">
               Viewers can see this query even if it's not assigned to them. The creator is automatically added as a viewer.
             </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Raise PO Dialog (for kit_related queries) ─────────────────────── */}
+      <Dialog open={!!showPOModal} onOpenChange={(open) => !open && setShowPOModal(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="raise-po-modal">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Truck className="w-5 h-5 text-amber-600" />
+              Raise PO — Kit Replacement
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 mt-4">
+            {/* Context line */}
+            {showPOModal && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-900">
+                <div className="flex items-center gap-2 font-semibold mb-0.5">
+                  <Package className="w-3.5 h-3.5" />
+                  Issue: {(showPOModal.category_label || showPOModal.subcategory_label || (showPOModal.related_to || '').replace(/_/g,' ') || 'Kit Related').toString()}
+                </div>
+                <div className="text-xs text-amber-700">Ticket #{showPOModal.id?.slice(-8)} · {showPOModal.user_name || showPOModal.name || ''}</div>
+              </div>
+            )}
+
+            {/* Products */}
+            <div>
+              <label className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
+                <Package className="w-4 h-4" /> Products to Send
+              </label>
+              <div className="space-y-2">
+                {poForm.products.map((p, idx) => (
+                  <div key={idx} className="flex gap-2 items-start">
+                    <Input
+                      value={p.product_name}
+                      onChange={e => updatePoProduct(idx, 'product_name', e.target.value)}
+                      placeholder="e.g. Robotics Kit Grade 6, Arduino Board, Sensor Module"
+                      data-testid={`po-product-name-${idx}`}
+                      className="flex-1"
+                    />
+                    <Input
+                      type="number"
+                      min="1"
+                      value={p.quantity}
+                      onChange={e => updatePoProduct(idx, 'quantity', e.target.value)}
+                      placeholder="Qty"
+                      data-testid={`po-product-qty-${idx}`}
+                      className="w-24"
+                    />
+                    {poForm.products.length > 1 && (
+                      <Button type="button" variant="ghost" size="sm" onClick={() => removePoProductRow(idx)} className="text-red-600">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={addPoProductRow} className="mt-2" data-testid="po-add-product">
+                <Plus className="w-3.5 h-3.5 mr-1" /> Add Product
+              </Button>
+            </div>
+
+            {/* Delivery Date */}
+            <div>
+              <label className="text-sm font-semibold text-slate-700 mb-1 flex items-center gap-2">
+                <Calendar className="w-4 h-4" /> Expected Delivery Date <span className="text-red-500">*</span>
+              </label>
+              <Input
+                type="date"
+                value={poForm.delivery_date}
+                min={new Date().toISOString().split('T')[0]}
+                onChange={e => setPoForm(p => ({ ...p, delivery_date: e.target.value }))}
+                data-testid="po-delivery-date"
+              />
+            </div>
+
+            {/* Address */}
+            <div>
+              <label className="text-sm font-semibold text-slate-700 mb-1 block">Delivery Address <span className="text-red-500">*</span></label>
+              <Textarea
+                rows={2}
+                value={poForm.delivery_address}
+                onChange={e => setPoForm(p => ({ ...p, delivery_address: e.target.value }))}
+                placeholder="Full address including city & pincode"
+                data-testid="po-address"
+              />
+            </div>
+
+            {/* Contact person + number */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-semibold text-slate-700 mb-1 block">Contact Person <span className="text-red-500">*</span></label>
+                <Input
+                  value={poForm.contact_person}
+                  onChange={e => setPoForm(p => ({ ...p, contact_person: e.target.value }))}
+                  placeholder="Receiver name"
+                  data-testid="po-contact-person"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-semibold text-slate-700 mb-1 block">Contact Number <span className="text-red-500">*</span></label>
+                <Input
+                  value={poForm.contact_number}
+                  onChange={e => setPoForm(p => ({ ...p, contact_number: e.target.value }))}
+                  placeholder="10-digit phone"
+                  data-testid="po-contact-number"
+                />
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label className="text-sm font-semibold text-slate-700 mb-1 block">Notes (optional)</label>
+              <Textarea
+                rows={2}
+                value={poForm.notes}
+                onChange={e => setPoForm(p => ({ ...p, notes: e.target.value }))}
+                placeholder="Any special instructions for the vendor"
+                data-testid="po-notes"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-2 pt-2 border-t">
+              <Button type="button" variant="outline" onClick={() => setShowPOModal(null)} disabled={raisingPO}>
+                Cancel
+              </Button>
+              <Button type="button" onClick={handleRaisePO} disabled={raisingPO} className="bg-amber-600 hover:bg-amber-700 text-white" data-testid="po-confirm-btn">
+                {raisingPO ? (
+                  <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Raising PO...</>
+                ) : (
+                  <><CheckCircle className="w-4 h-4 mr-2" /> Raise PO to Vendor</>
+                )}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
