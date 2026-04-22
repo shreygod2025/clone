@@ -339,7 +339,7 @@ const LandingPage = () => {
             paddingLeft: '1rem', paddingRight: '1rem',
           }}>
             Social Media Internship Readiness<br />
-            <span style={{ color: '#CCFF00' }}>Program for School Students</span>
+            <span style={{ color: '#CCFF00' }}>Program for Teens</span>
           </h2>
           <p style={{ color: '#94A3B8', fontSize: '1rem', maxWidth: 520, margin: '0 auto', lineHeight: 1.6, fontFamily: "'Nunito Sans', sans-serif" }}>
             1-month offline program where teens turn screen time into a skill that pays — and get placed as paid social media interns.

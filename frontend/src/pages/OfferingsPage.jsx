@@ -622,7 +622,7 @@ const OfferingsPage = () => {
                       <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 'clamp(1.25rem, 3.5vw, 2rem)', fontWeight: 900, color: '#F8FAFC', lineHeight: 1.2, marginBottom: '0.75rem' }}>
                         Social Media Internship<br />
                         <span style={{ color: '#CCFF00' }}>Readiness Program</span><br />
-                        <span style={{ fontSize: '0.8em', color: '#CBD5E1' }}>for School Students</span>
+                        <span style={{ fontSize: '0.8em', color: '#CBD5E1' }}>for Teens</span>
                       </h3>
                       <p style={{ color: '#94A3B8', fontSize: '0.95rem', lineHeight: 1.6, marginBottom: '1.5rem', fontFamily: 'Nunito Sans, sans-serif', maxWidth: 380 }}>
                         India's first 1-month offline program where teens learn content creation and get placed as paid social media interns with real startups.
