@@ -310,74 +310,135 @@ const LandingPage = () => {
       </section>
 
       {/* ── Social Media Internship Readiness Program (Ages 12-18) ── */}
-      <section style={{ background: '#050505', borderTop: '1px solid #1A1A1A', padding: '4rem 1rem' }} data-testid="homepage-smi-section">
-        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-          <div
-            onClick={() => navigate('/social-media-intern')}
-            style={{
-              position: 'relative',
-              background: 'linear-gradient(135deg, #050505 0%, #0F1205 50%, #050505 100%)',
-              border: '1px solid rgba(204,255,0,0.3)',
-              borderRadius: '1.5rem',
-              padding: '2.5rem',
-              cursor: 'pointer',
-              overflow: 'hidden',
-              transition: 'all 0.4s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = '#CCFF00'; e.currentTarget.style.boxShadow = '0 0 60px rgba(204,255,0,0.12)'; e.currentTarget.style.transform = 'translateY(-3px)'; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(204,255,0,0.3)'; e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(0)'; }}
-          >
-            <div style={{ position: 'absolute', inset: 0, opacity: 0.04, pointerEvents: 'none',
+      {/* Gradient continues from Summer Camp's #0f172a downward into deep void */}
+      <section style={{
+        background: 'linear-gradient(to bottom, #0f172a 0%, #0a0d18 40%, #050505 100%)',
+        position: 'relative',
+        overflow: 'hidden',
+        paddingTop: '4rem',
+        paddingBottom: '5rem',
+      }} data-testid="homepage-smi-section">
+
+        {/* Header above card */}
+        <div style={{ textAlign: 'center', paddingBottom: '2.5rem', paddingLeft: '1rem', paddingRight: '1rem' }}>
+          <p style={{
+            fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase',
+            color: '#CCFF00', marginBottom: '0.75rem', fontFamily: "'Nunito Sans', sans-serif",
+          }}>
+            NEW · LIMITED TO 15 STUDENTS
+          </p>
+          <h2 style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: 'clamp(1.7rem, 4.5vw, 3rem)',
+            fontWeight: 900,
+            color: '#F8FAFC',
+            lineHeight: 1.15,
+            marginBottom: '0.75rem',
+            maxWidth: 900,
+            margin: '0 auto 0.75rem',
+            paddingLeft: '1rem', paddingRight: '1rem',
+          }}>
+            Social Media Internship Readiness<br />
+            <span style={{ color: '#CCFF00' }}>Program for School Students</span>
+          </h2>
+          <p style={{ color: '#94A3B8', fontSize: '1rem', maxWidth: 520, margin: '0 auto', lineHeight: 1.6, fontFamily: "'Nunito Sans', sans-serif" }}>
+            1-month offline program where teens turn screen time into a skill that pays — and get placed as paid social media interns.
+          </p>
+        </div>
+
+        {/* Dark card - same dimensions as Summer Camp */}
+        <div style={{ maxWidth: 1000, margin: '0 auto', paddingLeft: '1.5rem', paddingRight: '1.5rem' }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #0B1205 0%, #111809 50%, #0B1205 100%)',
+            borderRadius: '1.5rem',
+            border: '1px solid rgba(204,255,0,0.2)',
+            boxShadow: '0 40px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04)',
+            position: 'relative',
+            overflow: 'hidden',
+            padding: '2.5rem',
+          }}>
+            {/* Grid pattern overlay */}
+            <div style={{ position: 'absolute', inset: 0, opacity: 0.06, pointerEvents: 'none',
               backgroundImage: 'linear-gradient(#CCFF00 1px, transparent 1px), linear-gradient(90deg, #CCFF00 1px, transparent 1px)',
               backgroundSize: '40px 40px' }} />
-            <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(204,255,0,0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
+            {/* Glows */}
+            <div style={{ position: 'absolute', top: '-60px', right: '8%', width: 280, height: 280, borderRadius: '50%', background: 'radial-gradient(circle, rgba(204,255,0,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
+            <div style={{ position: 'absolute', bottom: '-40px', left: '5%', width: 220, height: 220, borderRadius: '50%', background: 'radial-gradient(circle, rgba(0,255,102,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem', alignItems: 'center', justifyContent: 'space-between', position: 'relative' }}>
-              <div style={{ flex: '1 1 400px' }}>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: '1rem' }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: '999px', background: 'rgba(204,255,0,0.12)', border: '1px solid #CCFF00', color: '#CCFF00', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em' }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#CCFF00', display: 'inline-block' }} />
-                    NEW PROGRAM
+            <div className="grid md:grid-cols-[1fr_280px] gap-8" style={{ position: 'relative' }}>
+              {/* Left: content */}
+              <div>
+                {/* Badges */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: '1.25rem' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 12px', borderRadius: '999px', background: 'rgba(204,255,0,0.15)', border: '1px solid #CCFF00', color: '#CCFF00', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em' }}>
+                    <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#CCFF00', display: 'inline-block' }} />
+                    New Program
                   </span>
-                  <span style={{ padding: '4px 12px', borderRadius: '999px', background: 'rgba(0,255,102,0.1)', border: '1px solid rgba(0,255,102,0.3)', color: '#00FF66', fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 12px', borderRadius: '999px', background: 'rgba(0,255,102,0.12)', border: '1px solid rgba(0,255,102,0.35)', color: '#00FF66', fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em' }}>
                     Ages 12–18
                   </span>
                 </div>
-                <h2 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 'clamp(1.4rem, 3.5vw, 2.2rem)', fontWeight: 900, color: '#F8FAFC', lineHeight: 1.2, marginBottom: '0.75rem' }}>
-                  Turn Screen Time<br />Into a <span style={{ color: '#CCFF00' }}>Skill That Pays</span>
-                </h2>
-                <p style={{ color: '#A1A1AA', fontSize: '0.95rem', lineHeight: 1.65, marginBottom: '1.25rem', maxWidth: 480, fontFamily: 'Nunito Sans, sans-serif' }}>
-                  India's first 1-month offline Social Media Internship Readiness Program for teens. Learn. Create. Get placed as a paid intern.
+
+                {/* Heading */}
+                <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 'clamp(1.5rem, 3.5vw, 2.25rem)', fontWeight: 900, lineHeight: 1.15, marginBottom: '0.75rem' }}>
+                  <span style={{ color: '#F8FAFC', display: 'block' }}>Turn Screen Time</span>
+                  <span style={{ background: 'linear-gradient(90deg, #CCFF00, #00FF66)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+                    Into a Skill That Pays
+                  </span>
+                </h3>
+
+                <p style={{ color: '#94A3B8', fontSize: '0.9rem', lineHeight: 1.65, marginBottom: '1.25rem', maxWidth: 400, fontFamily: "'Nunito Sans', sans-serif" }}>
+                  Content creation, script writing, reels & shooting, editing, growth — taught hands-on with real startup briefs. Top students get placed as paid interns.
                 </p>
+
+                {/* Feature pills */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: '1.75rem' }}>
+                  {['Mumbai + Online', 'Real Internships', '15 Seats/Batch', '4 Weeks'].map(text => (
+                    <span key={text} style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 12px', borderRadius: '0.5rem', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', color: '#CBD5E1', fontSize: '0.75rem', fontFamily: "'Nunito Sans', sans-serif" }}>
+                      {text}
+                    </span>
+                  ))}
+                </div>
+
+                {/* CTA */}
                 <button
+                  onClick={() => navigate('/social-media-intern')}
                   data-testid="homepage-smi-apply-btn"
-                  onClick={(e) => { e.stopPropagation(); navigate('/social-media-intern'); }}
                   style={{
                     background: '#CCFF00', color: '#000',
                     fontFamily: "'JetBrains Mono', monospace", fontWeight: 800, fontSize: '0.85rem',
-                    padding: '0.85rem 1.75rem', borderRadius: 4, border: 'none', cursor: 'pointer',
-                    boxShadow: '0 0 28px rgba(204,255,0,0.35)',
+                    padding: '0.85rem 2rem', borderRadius: '999px', border: 'none', cursor: 'pointer',
+                    boxShadow: '0 0 28px rgba(204,255,0,0.4)',
                     display: 'inline-flex', alignItems: 'center', gap: 8,
-                    transition: 'all 0.3s', letterSpacing: '0.06em',
+                    transition: 'all 0.3s', letterSpacing: '0.05em',
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 44px rgba(204,255,0,0.55)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 28px rgba(204,255,0,0.35)'; }}
+                  onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 44px rgba(204,255,0,0.6)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 0 28px rgba(204,255,0,0.4)'; e.currentTarget.style.transform = 'translateY(0)'; }}
                 >
-                  Apply Now · ₹19,900
+                  Apply Now
                   <ArrowRight style={{ width: 16, height: 16 }} />
                 </button>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, minWidth: 260 }}>
+              {/* Right: outcome tiles */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 220 }}>
                 {[
-                  { k: '1 Month', v: 'Duration', c: '#CCFF00' },
-                  { k: '15', v: 'Seats / Batch', c: '#00FF66' },
-                  { k: '32 Hrs', v: 'Training', c: '#CCFF00' },
-                  { k: '70%+', v: 'Placement', c: '#00FF66' },
+                  { k: '1 Month', v: 'Duration',          icon: '⏱' },
+                  { k: '32 Hrs',  v: 'Hands-on Training', icon: '⚡' },
+                  { k: '15',      v: 'Seats Per Batch',   icon: '🎯' },
+                  { k: '70%+',    v: 'Placement Target',  icon: '🏆' },
                 ].map(s => (
-                  <div key={s.k} style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${s.c}33`, borderRadius: 8, padding: '0.85rem 1rem', textAlign: 'center', minWidth: 110 }}>
-                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 900, fontSize: '1.1rem', color: s.c }}>{s.k}</div>
-                    <div style={{ fontSize: '0.68rem', color: '#71717A', fontFamily: "'Nunito Sans', sans-serif", textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: 2 }}>{s.v}</div>
+                  <div key={s.k}
+                    onClick={() => navigate('/social-media-intern')}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.09)'; e.currentTarget.style.borderColor = 'rgba(204,255,0,0.35)'; e.currentTarget.style.transform = 'translateX(3px)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.09)'; e.currentTarget.style.transform = 'translateX(0)'; }}
+                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)', borderRadius: '0.65rem', padding: '0.65rem 0.9rem', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.65rem' }}
+                  >
+                    <span style={{ fontSize: '1.15rem', lineHeight: 1, flexShrink: 0 }}>{s.icon}</span>
+                    <div>
+                      <div style={{ color: '#CCFF00', fontSize: '0.78rem', fontWeight: 800, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.2, whiteSpace: 'nowrap' }}>{s.k}</div>
+                      <div style={{ color: '#64748B', fontSize: '0.7rem', fontFamily: "'Nunito Sans', sans-serif", marginTop: '0.1rem' }}>{s.v}</div>
+                    </div>
                   </div>
                 ))}
               </div>
