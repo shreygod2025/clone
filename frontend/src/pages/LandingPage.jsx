@@ -381,9 +381,9 @@ const LandingPage = () => {
 
                 {/* Heading */}
                 <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 'clamp(1.5rem, 3.5vw, 2.25rem)', fontWeight: 900, lineHeight: 1.15, marginBottom: '0.75rem' }}>
-                  <span style={{ color: '#F8FAFC', display: 'block' }}>Turn Screen Time</span>
+                  <span style={{ color: '#F8FAFC', display: 'block' }}>Social Media Internship</span>
                   <span style={{ background: 'linear-gradient(90deg, #CCFF00, #00FF66)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-                    Into a Skill That Pays
+                    Readiness Program for Teens
                   </span>
                 </h3>
 
