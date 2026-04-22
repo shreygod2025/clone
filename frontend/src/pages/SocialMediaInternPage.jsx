@@ -128,12 +128,14 @@ export default function SocialMediaInternPage() {
 
       {/* Inline styles for animations, ticker, fades */}
       <style>{`
+        html, body { overflow-x: hidden; max-width: 100vw; }
         @keyframes smi-pulse { 0%,100%{opacity:1} 50%{opacity:0.55} }
         @keyframes smi-marquee { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
         @keyframes smi-marquee-slow { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
         @keyframes smi-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
         .smi-marquee-track { display:flex; gap:3rem; animation: smi-marquee 35s linear infinite; width: max-content; }
         .smi-marquee-slow   { display:flex; gap:2.5rem; animation: smi-marquee-slow 50s linear infinite; width: max-content; }
+        .smi-marquee-wrap { overflow: hidden; width: 100%; position: relative; }
         .sr-reveal { opacity:0; transform: translateY(24px); transition: opacity 0.8s ease, transform 0.8s ease; }
         .sr-reveal.sr-in { opacity:1; transform: translateY(0); }
         .sr-delay-1 { transition-delay: 0.08s; }
@@ -146,21 +148,29 @@ export default function SocialMediaInternPage() {
         .smi-media-card img { width:100%; height:100%; object-fit:cover; transition: transform 0.6s ease; }
         .smi-media-card:hover img { transform: scale(1.06); }
         .smi-hero-title span.smi-grad { background: linear-gradient(90deg, ${LIME}, ${GREEN}); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .smi-countdown-cell { min-width: 54px; padding: 0.7rem 0.7rem; }
+        @media (max-width: 640px) {
+          .smi-nav-label { display: none !important; }
+          .smi-nav-sep   { display: none !important; }
+          .smi-hero-title { font-size: clamp(2rem, 9vw, 3rem) !important; }
+          .smi-countdown-cell { min-width: 46px !important; padding: 0.55rem 0.5rem !important; }
+          .smi-countdown-num { font-size: 1.35rem !important; }
+          .smi-reviews-video-tile { aspect-ratio: 9 / 12 !important; }
+        }
         @media (prefers-reduced-motion: reduce) {
           .smi-marquee-track, .smi-marquee-slow { animation: none !important; }
           .sr-reveal { opacity:1; transform:none; }
         }
       `}</style>
 
-      <div style={{ background: BG, color: '#F4F4F5', fontFamily: NU, minHeight: '100vh' }}>
+      <div style={{ background: BG, color: '#F4F4F5', fontFamily: NU, minHeight: '100vh', overflowX: 'hidden', maxWidth: '100vw' }}>
 
         {/* ── STICKY NAV ── */}
         <nav style={{ position: 'sticky', top: 0, zIndex: 100, background: 'rgba(5,5,5,0.85)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderBottom: '1px solid rgba(204,255,0,0.12)', padding: '0.85rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer' }}>
-            <img src={OLL_LOGO} alt="OLL" data-testid="smi-oll-logo" style={{ height: 26, width: 'auto' }} />
-            <span style={{ display: 'none' }} className="md:block" />
-            <span style={{ width: 1, height: 20, background: '#27272A' }} />
-            <span style={{ fontFamily: JB, fontSize: '0.72rem', fontWeight: 700, color: LIME, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Social Media Intern Program</span>
+          <div onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer', minWidth: 0, flexShrink: 1 }}>
+            <img src={OLL_LOGO} alt="OLL" data-testid="smi-oll-logo" style={{ height: 26, width: 'auto', flexShrink: 0 }} />
+            <span className="smi-nav-sep" style={{ width: 1, height: 20, background: '#27272A' }} />
+            <span className="smi-nav-label" style={{ fontFamily: JB, fontSize: '0.72rem', fontWeight: 700, color: LIME, letterSpacing: '0.14em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Social Media Intern Program</span>
           </div>
           <button
             onClick={goBook}
@@ -189,7 +199,7 @@ export default function SocialMediaInternPage() {
                   <span style={{ fontFamily: JB, fontSize: '0.65rem', fontWeight: 700, color: LIME, letterSpacing: '0.18em', textTransform: 'uppercase' }}>Ages 12–18 · Mumbai + Online · June 2026</span>
                 </div>
 
-                <h1 className="smi-hero-title" style={{ fontFamily: JB, fontSize: 'clamp(2.25rem,5.5vw,4rem)', fontWeight: 900, lineHeight: 1.05, marginBottom: '1.25rem', letterSpacing: '-0.02em' }}>
+                <h1 className="smi-hero-title" style={{ fontFamily: JB, fontSize: 'clamp(2rem,8vw,4rem)', fontWeight: 900, lineHeight: 1.05, marginBottom: '1.25rem', letterSpacing: '-0.02em', wordBreak: 'break-word' }}>
                   <span style={{ display: 'block', color: '#F4F4F5' }}>Turn Your</span>
                   <span style={{ display: 'block' }} className="smi-grad">Screen Time</span>
                   <span style={{ display: 'block', color: '#F4F4F5' }}>Into a Skill</span>
@@ -238,10 +248,10 @@ export default function SocialMediaInternPage() {
               <div className="sr-reveal sr-delay-2" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 <div style={{ background: '#121212', border: '1px solid rgba(204,255,0,0.25)', borderRadius: 12, padding: '1.5rem', textAlign: 'center', boxShadow: '0 0 40px rgba(204,255,0,0.05) inset' }}>
                   <p style={{ fontFamily: JB, fontSize: '0.65rem', fontWeight: 700, color: LIME, letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: '1rem' }}>Next Batch Starts In</p>
-                  <div style={{ display: 'flex', justifyContent: 'center', gap: '0.65rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'nowrap' }}>
                     {[['d', 'DAYS'], ['h', 'HRS'], ['m', 'MIN'], ['s', 'SEC']].map(([k, lbl]) => (
-                      <div key={k} style={{ background: BG, border: '1px solid #27272A', borderRadius: 8, padding: '0.8rem 0.9rem', minWidth: 62 }}>
-                        <div style={{ fontFamily: JB, fontWeight: 900, fontSize: '1.75rem', color: LIME, lineHeight: 1 }}>{String(countdown[k]).padStart(2,'0')}</div>
+                      <div key={k} className="smi-countdown-cell" style={{ background: BG, border: '1px solid #27272A', borderRadius: 8 }}>
+                        <div className="smi-countdown-num" style={{ fontFamily: JB, fontWeight: 900, fontSize: '1.75rem', color: LIME, lineHeight: 1 }}>{String(countdown[k]).padStart(2,'0')}</div>
                         <div style={{ fontFamily: NU, fontSize: '0.62rem', color: '#71717A', textTransform: 'uppercase', letterSpacing: '0.15em', marginTop: 2 }}>{lbl}</div>
                       </div>
                     ))}
@@ -325,7 +335,7 @@ export default function SocialMediaInternPage() {
               <div style={{ marginBottom: '0.75rem', textAlign: 'center' }}>
                 <span style={{ fontFamily: JB, fontSize: '0.62rem', color: '#52525B', letterSpacing: '0.22em', textTransform: 'uppercase', fontWeight: 700 }}>// Also covered by</span>
               </div>
-              <div style={{ position: 'relative', maskImage: 'linear-gradient(to right, transparent, #000 10%, #000 90%, transparent)', WebkitMaskImage: 'linear-gradient(to right, transparent, #000 10%, #000 90%, transparent)' }}>
+              <div style={{ position: 'relative', overflow: 'hidden', width: '100%', maskImage: 'linear-gradient(to right, transparent, #000 10%, #000 90%, transparent)', WebkitMaskImage: 'linear-gradient(to right, transparent, #000 10%, #000 90%, transparent)' }}>
                 <div className="smi-marquee-slow">
                   {[...PRESS_ITEMS, ...PRESS_ITEMS].map((name, i) => (
                     <span key={i} style={{ fontFamily: JB, fontSize: '0.9rem', color: '#64748B', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
@@ -419,7 +429,7 @@ export default function SocialMediaInternPage() {
             </p>
           </div>
 
-          <div style={{ position: 'relative', maskImage: 'linear-gradient(to right, transparent, #000 8%, #000 92%, transparent)', WebkitMaskImage: 'linear-gradient(to right, transparent, #000 8%, #000 92%, transparent)' }}>
+          <div style={{ position: 'relative', overflow: 'hidden', width: '100%', maskImage: 'linear-gradient(to right, transparent, #000 8%, #000 92%, transparent)', WebkitMaskImage: 'linear-gradient(to right, transparent, #000 8%, #000 92%, transparent)' }}>
             <div className="smi-marquee-track">
               {[...GALLERY, ...GALLERY].map((src, i) => (
                 <div key={i} style={{ flexShrink: 0, width: 340, height: 240, borderRadius: 14, overflow: 'hidden', border: '1px solid #1A1A1A', position: 'relative', background: '#0B0B0B' }}>
@@ -439,7 +449,7 @@ export default function SocialMediaInternPage() {
             <p style={{ fontFamily: NU, color: '#71717A', fontSize: '0.9rem', marginTop: '0.5rem' }}>Real brands · Real stipends · Real portfolios</p>
           </div>
 
-          <div style={{ position: 'relative', maskImage: 'linear-gradient(to right, transparent, #000 10%, #000 90%, transparent)', WebkitMaskImage: 'linear-gradient(to right, transparent, #000 10%, #000 90%, transparent)' }}>
+          <div style={{ position: 'relative', overflow: 'hidden', width: '100%', maskImage: 'linear-gradient(to right, transparent, #000 10%, #000 90%, transparent)', WebkitMaskImage: 'linear-gradient(to right, transparent, #000 10%, #000 90%, transparent)' }}>
             <div className="smi-marquee-track">
               {[...PLACEHOLDER_COMPANIES, ...PLACEHOLDER_COMPANIES, ...PLACEHOLDER_COMPANIES].map((c, i) => (
                 <div key={i} style={{ flexShrink: 0, padding: '0.9rem 2rem', border: '1px solid #27272A', borderRadius: 10, background: '#121212', fontFamily: JB, fontSize: '0.95rem', fontWeight: 800, color: '#A1A1AA', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
