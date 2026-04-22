@@ -1253,6 +1253,16 @@ async def update_inquiry_lead(lead_id: str, data: dict, user: dict = Depends(get
 @router.patch("/inquiry/queries/{query_id}")
 async def update_inquiry_query(query_id: str, data: dict, user: dict = Depends(get_current_user)):
     update_data = {k: v for k, v in data.items() if v is not None}
+    update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
+
+    # Auto-set resolved_at when status → resolved/closed (if not already set)
+    if data.get("status") in ("resolved", "closed"):
+        existing = await db.inquiry_queries.find_one({"id": query_id}, {"_id": 0, "resolved_at": 1})
+        if not (existing or {}).get("resolved_at"):
+            update_data["resolved_at"] = datetime.now(timezone.utc).isoformat()
+    elif data.get("status") in ("new", "open", "in_progress"):
+        update_data["resolved_at"] = None
+
     await db.inquiry_queries.update_one({"id": query_id}, {"$set": update_data})
     return {"message": "Query updated successfully"}
 

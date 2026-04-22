@@ -778,6 +778,21 @@ const AdminSupportUnified = () => {
     return hoursSinceCreation > 24;
   };
 
+  // Human-friendly resolution duration (created → resolved_at)
+  const formatResolutionTime = (query) => {
+    if (!['resolved', 'closed'].includes(query.status)) return null;
+    const resolvedAt = query.resolved_at || query.updated_at;
+    if (!query.created_at || !resolvedAt) return null;
+    const mins = Math.max(0, Math.round((new Date(resolvedAt) - new Date(query.created_at)) / 60000));
+    if (mins < 60) return `${mins} min`;
+    const hrs = Math.floor(mins / 60);
+    const remMins = mins % 60;
+    if (hrs < 24) return remMins ? `${hrs}h ${remMins}m` : `${hrs}h`;
+    const days = Math.floor(hrs / 24);
+    const remHrs = hrs % 24;
+    return remHrs ? `${days}d ${remHrs}h` : `${days}d`;
+  };
+
   // Add Note handler
   const handleAddNote = async () => {
     if (!noteText.trim() || !showNotesModal) {
@@ -1302,6 +1317,16 @@ const AdminSupportUnified = () => {
                   <span className={`badge-status ${query.status === 'open' ? 'bg-blue-100 text-blue-700' : query.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' : query.status === 'resolved' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600'}`}>
                     {query.status?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                   </span>
+                  {formatResolutionTime(query) && (
+                    <span
+                      className="badge-status bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1"
+                      title="Time from created to resolved"
+                      data-testid={`resolution-time-${query.id}`}
+                    >
+                      <Clock className="w-3 h-3" />
+                      Resolved in {formatResolutionTime(query)}
+                    </span>
+                  )}
                   {getQueryTypeBadge(query.query_type)}
                   {/* Related To Sub-category */}
                   {query.related_to && (
@@ -1587,8 +1612,16 @@ const AdminSupportUnified = () => {
                 <div className="bg-white rounded-lg p-3 border border-slate-200 mt-3">
                   <p className="text-xs font-medium text-slate-500 mb-1">Original Message</p>
                   <p className="text-sm text-slate-700">{showReplyModal.message || showReplyModal.details || 'No details provided'}</p>
-                  <p className="text-xs text-slate-400 mt-2">
-                    Created {showReplyModal.created_at ? format(new Date(showReplyModal.created_at), 'MMM d, yyyy h:mm a') : ''}
+                  <p className="text-xs text-slate-400 mt-2 flex items-center gap-3 flex-wrap">
+                    <span>Created {showReplyModal.created_at ? format(new Date(showReplyModal.created_at), 'MMM d, yyyy h:mm a') : ''}</span>
+                    {formatResolutionTime(showReplyModal) && (
+                      <span className="inline-flex items-center gap-1 text-emerald-700 font-semibold">
+                        <Clock className="w-3 h-3" /> Resolved in {formatResolutionTime(showReplyModal)}
+                        {showReplyModal.resolved_at && (
+                          <span className="text-slate-400 font-normal ml-1">({format(new Date(showReplyModal.resolved_at), 'MMM d, h:mm a')})</span>
+                        )}
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>

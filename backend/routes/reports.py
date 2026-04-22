@@ -1026,39 +1026,78 @@ async def get_support_insights(
     period: Optional[str] = None,
     user: dict = Depends(get_current_user)
 ):
-    """Get Support insights - resolution time, query types, team member performance"""
+    """Get Support insights - resolution time, query types, team member performance.
+    Aggregates across support_queries + support_tickets + inquiry_queries so NO ticket is missed.
+    """
     start, end = get_date_range(start_date, end_date, period)
-    
-    all_queries = await db.support_queries.find({}, {"_id": 0}).to_list(10000)
+
+    # ── Fetch & NORMALIZE tickets across all 3 collections ────────────
+    raw_queries = await db.support_queries.find({}, {"_id": 0}).to_list(10000)
+    raw_tickets = await db.support_tickets.find({}, {"_id": 0}).to_list(10000)
+    raw_inquiries = await db.inquiry_queries.find({}, {"_id": 0}).to_list(10000)
+
+    def _norm(doc: dict, kind: str) -> dict:
+        """Flatten a ticket/query into a unified shape."""
+        status = (doc.get('status') or 'open').lower()
+        if status == 'new':
+            status = 'open'
+        # type / category
+        qtype = (
+            doc.get('query_type') or doc.get('type') or doc.get('category')
+            or doc.get('main_category') or doc.get('inquiry_type') or 'General'
+        )
+        # source
+        source = (
+            doc.get('source') or doc.get('user_type') or doc.get('inquiry_type')
+            or kind  # fallback to collection name
+        )
+        return {
+            'id': doc.get('id'),
+            'source': source,
+            'status': status,
+            'query_type': qtype,
+            'category': doc.get('category') or doc.get('query_type') or doc.get('main_category') or 'general',
+            'priority': (doc.get('priority') or 'medium').lower(),
+            'assigned_to': doc.get('assigned_to'),
+            'created_at': doc.get('created_at'),
+            'resolved_at': doc.get('resolved_at') or doc.get('updated_at'),
+            'updated_at': doc.get('updated_at'),
+            'origin_collection': kind,
+        }
+
+    all_items = (
+        [_norm(d, 'support_queries') for d in raw_queries]
+        + [_norm(d, 'support_tickets') for d in raw_tickets]
+        + [_norm(d, 'inquiry_queries') for d in raw_inquiries]
+    )
+
     queries = []
-    for q in all_queries:
+    for q in all_items:
         created = parse_date_field(q.get('created_at'))
         if created and start <= created <= end:
             queries.append(q)
-    
+
     # Query type breakdown
     query_types = {}
     for q in queries:
-        qtype = q.get('query_type') or q.get('type') or q.get('category') or 'General'
+        qtype = q.get('query_type') or 'General'
         query_types[qtype] = query_types.get(qtype, 0) + 1
-    
+
     # Status breakdown
     status_counts = {'open': 0, 'in_progress': 0, 'resolved': 0, 'closed': 0}
     for q in queries:
         status = q.get('status', 'open').lower()
-        if status == 'new':
-            status = 'open'  # Treat 'new' as 'open'
         if status in status_counts:
             status_counts[status] += 1
         else:
             status_counts['open'] += 1
-    
-    # Calculate resolution times (use resolved_at, fallback to updated_at)
+
+    # Resolution time — from created_at → resolved_at (fallback to updated_at only if resolved_at absent)
     resolution_times = []
     for q in queries:
         if q.get('status') in ['resolved', 'closed']:
             created = parse_date_field(q.get('created_at'))
-            resolved = parse_date_field(q.get('resolved_at') or q.get('updated_at'))
+            resolved = parse_date_field(q.get('resolved_at'))
             if created and resolved and resolved > created:
                 delta = (resolved - created).total_seconds() / 3600  # Hours
                 resolution_times.append(delta)

@@ -148,7 +148,16 @@ async def update_support_query(query_id: str, data: dict, user: dict = Depends(g
     update_data = {k: v for k, v in data.items() if v is not None}
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     update_data["updated_by"] = user.get("email", "admin")
-    
+
+    # Auto-set resolved_at when status → resolved/closed (if not already set)
+    if data.get("status") in ("resolved", "closed"):
+        existing = await db.support_queries.find_one({"id": query_id}, {"_id": 0, "resolved_at": 1})
+        if not (existing or {}).get("resolved_at"):
+            update_data["resolved_at"] = datetime.now(timezone.utc).isoformat()
+    elif data.get("status") in ("new", "open", "in_progress"):
+        # Re-opened — clear resolved_at so resolution-time recalculates on next close
+        update_data["resolved_at"] = None
+
     # Track status change in activity history
     if "status" in data:
         activity = {
@@ -739,7 +748,15 @@ async def update_support_ticket(ticket_id: str, data: dict, user: dict = Depends
     update_data = {k: v for k, v in data.items() if v is not None}
     update_data["updated_at"] = datetime.now(timezone.utc).isoformat()
     update_data["updated_by"] = user.get("email", "admin")
-    
+
+    # Auto-set resolved_at when status → resolved/closed (if not already set)
+    if data.get("status") in ("resolved", "closed"):
+        existing = await db.support_tickets.find_one({"id": ticket_id}, {"_id": 0, "resolved_at": 1})
+        if not (existing or {}).get("resolved_at"):
+            update_data["resolved_at"] = datetime.now(timezone.utc).isoformat()
+    elif data.get("status") in ("new", "open", "in_progress"):
+        update_data["resolved_at"] = None
+
     # Track activity if status changed
     if "status" in data:
         activity = {
