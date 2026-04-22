@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, memo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { Cpu, Code, Brain, Box, Clock, Users, MapPin, ArrowRight, Check, Star } from 'lucide-react';
+import { Cpu, Code, Brain, Box, Clock, Users, MapPin, ArrowRight, Check, Star, ChevronDown, Download } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
@@ -31,10 +31,17 @@ const AGE_GROUPS = [
     timing: '12:00 PM – 2:00 PM',
     color: '#00E5FF', accentBg: 'rgba(0,229,255,0.08)',
     subjects: [
-      { icon: Cpu,   name: 'Junior Robotics',  desc: 'Build and control their first robot using drag-and-drop programming', level: 'Beginner' },
-      { icon: Code,  name: 'Block Coding',      desc: 'Visual coding with Scratch — create games, stories, and animations', level: 'Beginner' },
-      { icon: Brain, name: 'AI for Kids',        desc: 'Train a simple AI model to recognize objects and voices', level: 'Intro' },
-      { icon: Box,   name: '3D Thinking',        desc: 'Design and print simple 3D objects using kid-friendly tools', level: 'Intro' },
+      { icon: Cpu,   name: 'Robotics & Engineering', desc: 'Build See-Saw, Ball Shooter & Shadow Projector using the OLL Robotic Kit. Learn balance, force, circuits & how LEDs work.', level: 'Robotic Kit' },
+      { icon: Box,   name: '3D Designing',            desc: 'Create a Name Tag, Toy Block Tower & Simple Car using a 3D Pen. Build spatial awareness & fine motor skills.', level: '3D Pen' },
+      { icon: Code,  name: 'Coding Games',            desc: 'Play Pattern Detective, Treasure Map Coding & Challenge Maze on a physical coding bot. Learn loops, sequencing & logic.', level: 'Coding Bot' },
+      { icon: Brain, name: 'AI Tools',                desc: 'Convert your own drawings into animated movies using Meta Animate. First steps into AI & visual creativity.', level: 'Meta Animate' },
+    ],
+    outcomes: [
+      'Build 3 working robotic machines (See-Saw, Ball Shooter, Shadow Projector)',
+      'Create 3 physical objects with a 3D pen',
+      'Solve 3 logic games with a coding bot',
+      'Turn their own drawings into an AI animation',
+      'Grasp balance, force, circuits, loops & sequencing',
     ],
   },
   {
@@ -43,23 +50,74 @@ const AGE_GROUPS = [
     timing: '2:30 PM – 4:30 PM',
     color: '#D63031', accentBg: 'rgba(214,48,49,0.08)',
     subjects: [
-      { icon: Cpu,   name: 'Arduino Robotics',  desc: 'Build sensor-driven robots and program them with real code', level: 'Intermediate' },
-      { icon: Code,  name: 'Python Basics',      desc: 'Write real Python programs — games, automations, and web scripts', level: 'Intermediate' },
-      { icon: Brain, name: 'Machine Learning',   desc: 'Train ML models to classify images and make predictions', level: 'Intermediate' },
-      { icon: Box,   name: '3D Designing',       desc: 'Design 3D models in Tinkercad and understand engineering basics', level: 'Intermediate' },
+      { icon: Cpu,   name: 'Robotics with Sensors', desc: 'Build a Circle-Drawing Robot, Sensor-Controlled Ball Vending Machine & Edge-Avoiding Robot. Sensor-triggered outputs & multi-sensor logic.', level: 'OLL Robotic Kit' },
+      { icon: Box,   name: '3D Designing',           desc: 'Design a 3D House Blueprint, Pencil Holder & Mini Bridge in Tinkercad. Learn scaling, blueprints & load distribution.', level: 'Tinkercad' },
+      { icon: Code,  name: 'App Development',        desc: 'Build 3 real apps — Flashlight, To-Do List & Quiz Me — using MIT App Inventor. Device sensors, storage & conditional logic.', level: 'MIT App Inventor' },
+      { icon: Brain, name: 'AI Comic Book',          desc: 'Generate consistent characters & create your own AI Comic Book using Gemini Nano Banana. Prompt engineering for visuals.', level: 'Nano Banana' },
+    ],
+    outcomes: [
+      'Build 3 sensor-driven robots',
+      'Design 3 Tinkercad models (house, pencil holder, bridge)',
+      'Ship 3 working mobile apps',
+      'Publish an AI-generated comic book',
+      'Master generative AI prompting & basic UI design',
     ],
   },
   {
     slug: 'innovators', label: 'Future Innovators', ages: '13 – 16',
-    tagline: 'AI, 3D Design & advanced robotics',
+    tagline: 'AI, Vibe Coding & advanced robotics',
     timing: '5:00 PM – 7:00 PM',
     color: '#7C3AED', accentBg: 'rgba(124,58,237,0.08)',
     subjects: [
-      { icon: Cpu,   name: 'Advanced Robotics', desc: 'Build autonomous robots with vision systems and IoT connectivity', level: 'Advanced' },
-      { icon: Code,  name: 'Python + Web Dev',  desc: 'Full Python programming with real-world project deployment', level: 'Advanced' },
-      { icon: Brain, name: 'Deep Learning & AI',desc: 'Build neural networks, chatbots, and AI-powered applications', level: 'Advanced' },
-      { icon: Box,   name: 'Pro 3D Design',     desc: 'Master Fusion 360 for engineering-grade product design', level: 'Advanced' },
+      { icon: Cpu,   name: 'Robotics & Coding',   desc: 'Build a Hand-Motion Door, Smartdraw Bridge & Obstacle Avoider. Gesture input, servo control & distance sensing.', level: 'OLL Robotic Kit' },
+      { icon: Box,   name: '3D Designing',         desc: 'Design a 3D Room, Prosthetic-Style Gripper & Miniature City Layout. Human-inspired engineering & basic city planning.', level: 'Tinkercad' },
+      { icon: Code,  name: 'Vibe Coding + AI',     desc: 'Create a website with Bolt.new, build an Inventory Tracker App on Emergent. Learn prompt design & language models.', level: 'Bolt.new · Emergent' },
+      { icon: Brain, name: 'AI + Python Projects', desc: 'Code an AI School Chatbot and an AI Smart Money Manager & Spending Predictor in Python. Basic + intermediate Python.', level: 'Python' },
     ],
+    outcomes: [
+      'Ship a live website using Vibe Coding (Bolt.new)',
+      'Build a functional Inventory Tracker App',
+      'Code an AI School Chatbot with NLP basics',
+      'Create an AI Smart Money Manager that predicts spending',
+      'Cover basic + intermediate Python & prompt engineering',
+    ],
+  },
+];
+
+const CURRICULUM_PDF = 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/1projd8h_Summer%20Camp%20Curriculum%20Brochure%202026%20%282%29%20%281%29.pdf';
+
+const CAMP_FAQS = [
+  {
+    q: 'Which AI tools will be used in the program?',
+    a: 'Ages 4–8 use Meta Animate to turn their physical drawings into animated movies. Ages 9–12 use Gemini Nano Banana to generate consistent characters and build their own AI Comic Book. Ages 13–16 use Bolt.new for Vibe Coding (landing page), Emergent for an Inventory Management App, and Python to build their own language-model-powered AI School Chatbot and AI Smart Money Manager.',
+  },
+  {
+    q: 'Will the camp cover basic Python coding?',
+    a: 'Yes. For Ages 13–16 the camp covers basic + intermediate Python coding — used to build the AI School Chatbot and the AI Smart Money Manager & Spending Predictor.',
+  },
+  {
+    q: 'Will students be able to take their projects/activities home after the sessions?',
+    a: 'Software projects — Yes, saved on their laptop. 3D pen projects (Ages 4–8) — Yes, they keep all of them. 3D printing (Ages 9–16) — Yes, they can take 1 project home. Robotics projects — No, the kits stay with the center.',
+  },
+  {
+    q: 'Is the center fully air-conditioned?',
+    a: 'Yes. All OLL centers are fully air-conditioned — comfortable even in peak summer.',
+  },
+  {
+    q: 'In a 5-day program, what coding and AI skills will my child actually learn that will be useful in the future?',
+    a: 'It\'s a 5 days × 2 hours = 10-hour program where students complete a total of 10 hands-on projects. Robotics, Coding & AI is the most important skill of the future — our goal is to spark an interest so your child takes the initiative to pursue it further as they grow up.',
+  },
+  {
+    q: 'Is it mandatory to bring a laptop, or will it be arranged at the center?',
+    a: 'For Ages 9–16, students must bring a laptop for 3 out of the 5 days (used for app development, 3D designing and Vibe Coding / Python). Ages 4–8 do not need a laptop.',
+  },
+  {
+    q: 'Will notes be provided in soft copy or hard copy?',
+    a: 'Both. Every student gets hardcopy workbooks at the center and softcopy notes shared over WhatsApp/email for revision.',
+  },
+  {
+    q: 'Will session recordings be available for every class?',
+    a: 'Yes. All sessions are streamed live on YouTube and recordings are shared afterwards, so students can revise any session anytime.',
   },
 ];
 
@@ -201,6 +259,56 @@ const CUnitSep = memo(function CUnitSep() {
     </div>
   );
 });
+
+// ── FAQ row component ────────────────────────────────────────────────────────
+function FaqRow({ q, a, idx }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div
+      data-testid={`faq-item-${idx}`}
+      onClick={() => setOpen(o => !o)}
+      className="camp-card"
+      style={{
+        padding: '1.1rem 1.4rem',
+        cursor: 'pointer',
+        transition: 'all 0.25s ease',
+        borderColor: open ? 'rgba(0,229,255,0.35)' : 'rgba(255,255,255,0.07)',
+        background: open ? 'rgba(0,229,255,0.04)' : 'rgba(8,18,38,0.6)',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+        <span style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontWeight: 700,
+          fontSize: '0.98rem',
+          color: open ? '#00E5FF' : '#F0F4F8',
+          transition: 'color 0.25s',
+          lineHeight: 1.4,
+        }}>
+          {q}
+        </span>
+        <ChevronDown style={{
+          width: 18, height: 18, color: '#00E5FF', flexShrink: 0,
+          transform: open ? 'rotate(180deg)' : 'rotate(0)',
+          transition: 'transform 0.3s ease',
+        }} />
+      </div>
+      {open && (
+        <p style={{
+          marginTop: '0.9rem',
+          color: '#94A3B8',
+          fontFamily: "'Nunito Sans', sans-serif",
+          fontSize: '0.92rem',
+          lineHeight: 1.75,
+          whiteSpace: 'pre-wrap',
+        }}>
+          {a}
+        </p>
+      )}
+    </div>
+  );
+}
+
 
 // ── Isolated countdown — has its own timer, doesn't cause parent to re-render ──
 const CountdownDisplay = memo(function CountdownDisplay() {
@@ -835,6 +943,67 @@ export default function SummerCampLandingPage() {
                 );
               })}
             </div>
+
+            {/* Learning Outcomes panel */}
+            <div style={{
+              marginTop: '2rem',
+              background: 'rgba(255,255,255,0.03)',
+              border: `1px solid ${activeCamp.color}22`,
+              borderRadius: '1rem',
+              padding: '1.75rem 1.75rem',
+              display: 'grid',
+              gridTemplateColumns: 'auto 1fr',
+              gap: '1.5rem',
+              alignItems: 'start',
+            }}>
+              <div style={{ minWidth: 160 }}>
+                <p className="sec-label" style={{ marginBottom: '0.35rem' }}>Outcomes</p>
+                <h3 style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '1.1rem', fontWeight: 700, color: '#F0F4F8', lineHeight: 1.2 }}>
+                  By the end of camp,<br />your child will:
+                </h3>
+              </div>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '0.55rem' }}>
+                {activeCamp.outcomes.map((o, i) => (
+                  <li key={i} style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', color: '#CBD5E1', fontSize: '0.93rem', lineHeight: 1.55, fontFamily: "'Nunito Sans', sans-serif" }}>
+                    <span style={{ width: 18, height: 18, borderRadius: '50%', background: `${activeCamp.color}15`, border: `1px solid ${activeCamp.color}55`, color: activeCamp.color, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 2, fontSize: 11, fontWeight: 800 }}>✓</span>
+                    {o}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Download Syllabus CTA */}
+            <div style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.65rem' }}>
+              <a
+                href={CURRICULUM_PDF}
+                download="OLL-Summer-Camp-Curriculum-2026.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                data-testid="download-syllabus-btn"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 10,
+                  padding: '0.95rem 2rem',
+                  borderRadius: '999px',
+                  background: `linear-gradient(135deg, ${activeCamp.color}, ${activeCamp.color}cc)`,
+                  color: '#080C16',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontWeight: 800,
+                  fontSize: '0.9rem',
+                  textDecoration: 'none',
+                  boxShadow: `0 8px 28px ${activeCamp.color}40`,
+                  transition: 'all 0.25s',
+                  letterSpacing: '0.05em',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = `0 12px 36px ${activeCamp.color}60`; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)';   e.currentTarget.style.boxShadow = `0 8px 28px ${activeCamp.color}40`; }}
+              >
+                <Download style={{ width: 16, height: 16 }} />
+                Download Full Curriculum PDF
+              </a>
+              <p style={{ fontSize: '0.78rem', color: '#7A9AB8', fontFamily: "'Nunito Sans', sans-serif" }}>
+                Day-wise breakdown · All 10 projects · Learning outcomes · Tools used
+              </p>
+            </div>
           </div>
         </section>
 
@@ -956,6 +1125,55 @@ export default function SummerCampLandingPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </section>
+
+        {/* ── FAQ ──────────────────────────────────────────────────────── */}
+        <section data-testid="camp-faq" style={{ padding: '6rem 0', position: 'relative', zIndex: 1 }}>
+          <div style={{ maxWidth: 820, margin: '0 auto', padding: '0 1.5rem' }}>
+            <div className="sr-blur" style={{ textAlign: 'center', marginBottom: '3rem' }}>
+              <p className="sec-label">Got Questions?</p>
+              <h2 className="sec-title" style={{ marginBottom: '0.75rem' }}>Frequently Asked Questions</h2>
+              <p style={{ color: '#94A3B8', maxWidth: 460, margin: '0 auto', fontSize: '0.95rem', lineHeight: 1.65 }}>
+                Everything parents typically ask us. Still have questions? Call <a href="tel:+919920188188" style={{ color: '#00E5FF', textDecoration: 'none' }}>+91 99201 88188</a>.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {CAMP_FAQS.map((faq, i) => (
+                <FaqRow key={i} q={faq.q} a={faq.a} idx={i} />
+              ))}
+            </div>
+
+            {/* Download syllabus repeat CTA */}
+            <div style={{ textAlign: 'center', marginTop: '3rem' }}>
+              <a
+                href={CURRICULUM_PDF}
+                download="OLL-Summer-Camp-Curriculum-2026.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                data-testid="download-syllabus-faq-btn"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 10,
+                  padding: '0.85rem 1.85rem',
+                  borderRadius: '999px',
+                  background: 'rgba(0,229,255,0.08)',
+                  border: '1px solid rgba(0,229,255,0.4)',
+                  color: '#00E5FF',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  textDecoration: 'none',
+                  letterSpacing: '0.04em',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(0,229,255,0.15)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(0,229,255,0.08)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+              >
+                <Download style={{ width: 15, height: 15 }} />
+                Download Detailed Syllabus
+              </a>
             </div>
           </div>
         </section>
