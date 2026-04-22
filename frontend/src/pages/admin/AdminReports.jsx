@@ -233,23 +233,26 @@ const SimplePieChart = ({ title, icon: Icon, data, emptyMessage = "No data" }) =
 };
 
 // Conversion Rate Card
-const ConversionCard = ({ title, icon: Icon, color, rates, totalLeads }) => {
+const ConversionCard = ({ title, icon: Icon, color, rates, totalLeads, totalLabel = 'Total Leads' }) => {
   return (
     <div className="bg-white rounded-2xl border border-slate-100 p-5">
       <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
         <Icon className="w-5 h-5" style={{ color }} />
         {title}
       </h3>
-      <div className="grid grid-cols-3 gap-3">
+      <div className={`grid ${rates.length === 3 ? 'grid-cols-3' : rates.length === 2 ? 'grid-cols-2' : 'grid-cols-1'} gap-3`}>
         {rates.map((rate, idx) => (
           <div key={idx} className={`text-center p-3 rounded-xl`} style={{ backgroundColor: `${rate.color}15` }}>
             <p className="text-2xl font-bold" style={{ color: rate.color }}>{rate.value}%</p>
             <p className="text-xs text-slate-500 mt-1">{rate.label}</p>
+            {rate.countLabel && (
+              <p className="text-[11px] text-slate-400 mt-0.5 font-mono">{rate.countLabel}</p>
+            )}
           </div>
         ))}
       </div>
       <div className="mt-4 pt-4 border-t flex justify-between items-center">
-        <span className="text-sm text-slate-600">Total Leads</span>
+        <span className="text-sm text-slate-600">{totalLabel}</span>
         <span className="text-xl font-bold text-[#1E3A5F]">{totalLeads}</span>
       </div>
     </div>
@@ -938,36 +941,60 @@ const AdminReports = () => {
           </h3>
           <div className="space-y-3">
             <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-              <span className="text-slate-600">Total School Revenue</span>
+              <div>
+                <div className="text-slate-600">Total School Revenue</div>
+                <div className="text-xs text-slate-400 mt-0.5">New Revenue + Renewed Revenue</div>
+              </div>
               <span className="text-xl font-bold text-green-600">₹{schoolRevenue.toLocaleString()}</span>
             </div>
             <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+              <div>
+                <div className="text-slate-600">New Schools</div>
+                <div className="text-xs text-slate-400 mt-0.5">Converted section count</div>
+              </div>
+              <span className="text-xl font-bold text-blue-600">{b2bInsights?.new_schools_count ?? convertedSchools}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-indigo-50 rounded-lg">
+              <div>
+                <div className="text-slate-600">New Revenue</div>
+                <div className="text-xs text-slate-400 mt-0.5">From converted schools</div>
+              </div>
+              <span className="text-xl font-bold text-indigo-600">₹{(b2bInsights?.new_revenue || 0).toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-emerald-50 rounded-lg">
+              <div>
+                <div className="text-slate-600">Renewal Rate</div>
+                <div className="text-xs text-slate-400 mt-0.5">Renewed / (Renewal Meeting + Active)</div>
+              </div>
+              <span className="text-xl font-bold text-emerald-600">{renewalRatio}%</span>
+            </div>
+            <p className="text-xs text-slate-400 text-right">
+              {renewedSchools} renewed / {(b2bInsights?.renewal_base || (activeSchools + (b2bInsights?.renewal_meeting || 0)))} total
+            </p>
+            <div className="flex justify-between items-center p-3 bg-amber-50 rounded-lg">
               <span className="text-slate-600">Avg. Deal Size</span>
-              <span className="text-xl font-bold text-blue-600">
+              <span className="text-xl font-bold text-amber-600">
                 ₹{Math.round(b2bInsights?.avg_deal_size || 0).toLocaleString()}
               </span>
             </div>
-            <div className="flex justify-between items-center p-3 bg-purple-50 rounded-lg">
-              <span className="text-slate-600">Active Schools</span>
-              <span className="text-xl font-bold text-purple-600">{activeSchools}</span>
-            </div>
-            <div className="flex justify-between items-center p-3 bg-emerald-50 rounded-lg">
-              <span className="text-slate-600">Renewal Rate</span>
-              <span className="text-xl font-bold text-emerald-600">{renewalRatio}%</span>
-            </div>
-            <p className="text-xs text-slate-400 text-right">{renewedSchools} renewed / {activeSchools + renewedSchools} total active</p>
           </div>
         </div>
 
         <ConversionCard
-          title="School Conversion Rates"
+          title="School Conversion Rate"
           icon={Building2}
           color="#9333ea"
-          totalLeads={totalSchools}
+          totalLabel="New + Meeting Done"
+          totalLeads={(b2bInsights?.school_conversion_denominator || 0)}
           rates={[
-            { label: 'Lead → Meeting', value: schoolFunnel?.conversion_rates?.lead_to_demo || 0, color: '#9333ea' },
-            { label: 'Meeting → Convert', value: schoolFunnel?.conversion_rates?.demo_to_conversion || 0, color: '#f97316' },
-            { label: 'Overall', value: conversionRatio, color: '#22c55e' },
+            {
+              label: `Converted / (New + Meeting Done)`,
+              value: b2bInsights?.school_conversion_rate || 0,
+              color: '#22c55e',
+              countLabel: `${b2bInsights?.school_conversion_numerator || 0} / ${b2bInsights?.school_conversion_denominator || 0}`,
+            },
+            { label: 'Lead → Meeting',     value: schoolFunnel?.conversion_rates?.lead_to_demo || 0,       color: '#9333ea' },
+            { label: 'Meeting → Convert',  value: schoolFunnel?.conversion_rates?.demo_to_conversion || 0, color: '#f97316' },
           ]}
         />
       </div>
@@ -975,10 +1002,11 @@ const AdminReports = () => {
       {/* Row 3: Source of Leads + Pipeline Stage distribution */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white rounded-2xl border border-slate-100 p-5">
-          <h3 className="font-semibold text-[#1E3A5F] mb-4 flex items-center gap-2">
+          <h3 className="font-semibold text-[#1E3A5F] mb-1 flex items-center gap-2">
             <Handshake className="w-5 h-5 text-blue-500" />
             Source of Leads
           </h3>
+          <p className="text-xs text-slate-400 mb-4">From New Leads, Meeting Done & Converted schools</p>
           {(!b2bInsights?.lead_source_breakdown?.length) ? (
             <p className="text-sm text-slate-400 py-4 text-center">No source data available</p>
           ) : (
@@ -1013,6 +1041,33 @@ const AdminReports = () => {
             <div className="flex justify-between items-center p-4 bg-red-200 rounded-lg border border-red-300">
               <span className="font-medium text-red-800">Total Lost Value</span>
               <span className="text-xl font-bold text-red-800">₹{totalLostValue.toLocaleString()}</span>
+            </div>
+
+            {/* Merged Lost Reasons */}
+            <div className="pt-3 border-t border-red-100">
+              <div className="flex items-center gap-2 mb-2">
+                <PieChart className="w-4 h-4 text-red-500" />
+                <span className="text-sm font-semibold text-red-700">Top Lost Reasons</span>
+              </div>
+              {mergedLostReasons.length === 0 ? (
+                <p className="text-xs text-slate-400 text-center py-3">No lost records</p>
+              ) : (
+                <div className="space-y-2">
+                  {mergedLostReasons.slice(0, 6).map((r, i) => {
+                    const tot = mergedLostReasons.reduce((s, x) => s + x.count, 0) || 1;
+                    const pct = Math.round((r.count / tot) * 100);
+                    const COLORS = ['#ef4444', '#f97316', '#eab308', '#dc2626', '#c2410c', '#a16207'];
+                    return (
+                      <div key={i} className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: COLORS[i % COLORS.length] }} />
+                        <span className="text-xs text-slate-700 flex-1 truncate">{r.name || 'Unknown'}</span>
+                        <span className="text-xs font-mono text-slate-500">{r.count}</span>
+                        <span className="text-xs font-semibold text-red-600 min-w-[38px] text-right">{pct}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1107,14 +1162,8 @@ const AdminReports = () => {
         </div>
       </div>
 
-      {/* Row 5: Merged Lost Reasons + Stage Distribution */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <SimplePieChart
-          title="Lost Reasons (All)"
-          icon={PieChart}
-          data={mergedLostReasons}
-          emptyMessage="No lost records"
-        />
+      {/* Row 5: Complete Stage Distribution (full width) */}
+      <div className="grid grid-cols-1 gap-4">
         <div className="bg-white rounded-2xl border border-slate-100 p-5">
           <h3 className="font-semibold text-[#1E3A5F] mb-4">Complete Stage Distribution</h3>
           <div className="space-y-3">

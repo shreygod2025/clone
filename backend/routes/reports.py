@@ -881,18 +881,28 @@ async def get_b2b_insights(
         school_type = s.get('school_type') or s.get('type') or 'Unknown'
         types[school_type] = types.get(school_type, 0) + 1
     
-    # Calculate revenue (converted/active/renewed) — all-time
-    revenue_schools = [s for s in all_schools if s.get('status') in ['converted', 'active', 'renewed']]
-    school_revenue = sum(school_deal_amount(s) for s in revenue_schools)
+    # Calculate revenue — NEW logic: Total = Converted-only + Renewed-only
+    converted_only_schools = [s for s in all_schools if s.get('status') == 'converted']
+    renewed_only_schools = [s for s in all_schools if s.get('status') == 'renewed']
+    new_revenue = sum(school_deal_amount(s) for s in converted_only_schools)
+    renewed_revenue = sum(school_deal_amount(s) for s in renewed_only_schools)
+    school_revenue = new_revenue + renewed_revenue
+    revenue_schools = converted_only_schools + renewed_only_schools
     avg_deal_size = round(school_revenue / len(revenue_schools), 2) if revenue_schools else 0
 
-    # Fix renewal_ratio = renewed / (active + renewed)
-    actual_active = len([s for s in all_schools if s.get('status') == 'active'])
-    actual_renewed = len([s for s in all_schools if s.get('status') == 'renewed'])
-    renewal_base = actual_active + actual_renewed
+    # NEW Renewal Ratio = renewed / (renewal_meeting + active) — as of right now
+    actual_active = active_count
+    actual_renewed = renewed_count
+    renewal_base = renewal_meeting_count + actual_active
     renewal_ratio = round((actual_renewed / renewal_base * 100) if renewal_base > 0 else 0, 1)
 
-    # Conversion ratio = converted / total leads (non-archived)
+    # School Conversion Rate = converted / (new + meeting_done)  — user-requested funnel metric
+    new_leads_count = status_counts.get('new', 0)
+    meeting_done_count = status_counts.get('meeting_done', 0)
+    conv_funnel_denom = new_leads_count + meeting_done_count
+    school_conversion_rate = round((converted_count / conv_funnel_denom * 100) if conv_funnel_denom > 0 else 0, 1)
+
+    # Legacy conversion ratio (kept for backwards compat) = converted / total non-archived
     total_leads = len([s for s in all_schools if s.get('status') not in ['archived']])
     total_converted = len([s for s in all_schools if s.get('status') in ['converted', 'active', 'renewed']])
     conversion_ratio = round((total_converted / total_leads * 100) if total_leads > 0 else 0, 1)
@@ -910,9 +920,12 @@ async def get_b2b_insights(
         for s in lost_schools
     )
 
-    # Lead source breakdown (all-time, not filtered by date)
+    # Lead source breakdown — ONLY new leads + meeting done + converted schools
     source_counts = {}
+    lead_source_statuses = {'new', 'meeting_done', 'converted'}
     for s in all_schools:
+        if s.get('status') not in lead_source_statuses:
+            continue
         src = s.get('source') or 'Direct'
         # Clean up source labels
         src_clean = src.replace('_', ' ').title()
@@ -934,6 +947,14 @@ async def get_b2b_insights(
     return {
         "total_schools": len(schools),
         "revenue": school_revenue,
+        "new_revenue": new_revenue,
+        "renewed_revenue": renewed_revenue,
+        "new_schools_count": converted_count,
+        "new_leads_count": new_leads_count,
+        "meeting_done_count": meeting_done_count,
+        "school_conversion_rate": school_conversion_rate,
+        "school_conversion_numerator": converted_count,
+        "school_conversion_denominator": conv_funnel_denom,
         "avg_deal_size": avg_deal_size,
         "total_converted": len([s for s in all_schools if s.get('status') in ['converted', 'active', 'renewed']]),
         "active_schools": actual_active,
@@ -942,6 +963,7 @@ async def get_b2b_insights(
         "lost": lost_count,
         "converted": converted_count,
         "renewal_ratio": renewal_ratio,
+        "renewal_base": renewal_base,
         "conversion_ratio": conversion_ratio,
         "pipeline_value": pipeline_value,
         "total_lost_value": total_lost_value,
