@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, ConfigDict, EmailStr
 
 from .shared import db, get_current_user, ensure_resend_api_key, SENDER_EMAIL, get_next_ticket_number
 from .notifications import send_whatsapp_notification, send_ticket_overdue_notification, send_ticket_overdue_admin_notification
-from .expenses import transform_tracking_url, VENDOR_PUBLIC_API
+from .expenses import transform_tracking_url, VENDOR_PUBLIC_API, fetch_vendor_products
 import httpx
 
 router = APIRouter()
@@ -1114,7 +1114,11 @@ async def raise_po_for_support_query(query_id: str, data: dict, user: dict = Dep
     if not contact_person or not contact_number:
         raise HTTPException(status_code=400, detail="Contact person and number are required")
     cleaned = [
-        {"product_name": (p.get("product_name") or "").strip(), "quantity": int(p.get("quantity") or 0)}
+        {
+            "product_name": (p.get("product_name") or "").strip(),
+            "product_id": (p.get("product_id") or "").strip() or None,
+            "quantity": int(p.get("quantity") or 0),
+        }
         for p in products if (p.get("product_name") or "").strip() and int(p.get("quantity") or 0) > 0
     ]
     if not cleaned:
@@ -1203,5 +1207,40 @@ async def raise_po_for_support_query(query_id: str, data: dict, user: dict = Dep
         "po_info": po_info,
         "message": f"PO {po_result.get('po_number')} raised successfully with {len(cleaned)} product(s)",
     }
+
+
+
+# Cached vendor catalog (60s)
+_vendor_catalog_cache = {"data": [], "at": 0}
+
+
+@router.get("/support/vendor-products")
+async def list_vendor_products(_user: dict = Depends(get_current_user)):
+    """
+    Fetch vendor product catalog for the Raise-PO dropdown in Support Center.
+    Lightweight 60s cache to avoid hitting vendor API on every keystroke.
+    """
+    import time as _time
+    now = _time.time()
+    if _vendor_catalog_cache["data"] and (now - _vendor_catalog_cache["at"]) < 60:
+        return {"products": _vendor_catalog_cache["data"]}
+
+    catalog = await fetch_vendor_products()
+    # Normalise to the minimum shape the frontend needs
+    simplified = [
+        {
+            "id": p.get("id") or p.get("_id") or p.get("product_id"),
+            "name": p.get("name") or p.get("product_name") or "",
+            "sku": p.get("sku") or "",
+            "price": p.get("price") or p.get("unit_price"),
+            "category": p.get("category") or p.get("type") or "",
+        }
+        for p in (catalog or [])
+        if (p.get("name") or p.get("product_name"))
+    ]
+    simplified.sort(key=lambda p: p["name"].lower())
+    _vendor_catalog_cache["data"] = simplified
+    _vendor_catalog_cache["at"] = now
+    return {"products": simplified}
 
 # ========================

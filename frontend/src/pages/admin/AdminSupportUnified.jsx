@@ -216,28 +216,44 @@ const AdminSupportUnified = () => {
     contact_number: '',
     delivery_address: '',
     notes: '',
-    products: [{ product_name: '', quantity: 1 }],
+    products: [{ product_name: '', product_id: '', quantity: 1 }],
   });
   const [raisingPO, setRaisingPO] = useState(false);
+  const [vendorProducts, setVendorProducts] = useState([]);
+  const [productSearch, setProductSearch] = useState({});      // { [rowIdx]: searchText }
+  const [productDropdownOpen, setProductDropdownOpen] = useState({});  // { [rowIdx]: boolean }
 
-  const openRaisePOModal = (query) => {
+  const openRaisePOModal = async (query) => {
     setPoForm({
       delivery_date: '',
       contact_person: query.contact_name || query.name || query.parent_name || query.user_name || '',
       contact_number: query.phone || query.contact_phone || query.mobile || '',
       delivery_address: query.address || query.city || query.school_name || '',
       notes: `Replacement for kit issue: ${(query.category_label || query.subcategory_label || query.related_to || query.query_type || '').toString().replace(/_/g, ' ')}`,
-      products: [{ product_name: '', quantity: 1 }],
+      products: [{ product_name: '', product_id: '', quantity: 1 }],
     });
+    setProductSearch({});
+    setProductDropdownOpen({});
     setShowPOModal(query);
+    // Fetch vendor catalog (will be near-instant thanks to backend cache)
+    if (vendorProducts.length === 0) {
+      try {
+        const res = await axios.get(`${API}/support/vendor-products`, { headers: getAuthHeaders() });
+        setVendorProducts(res.data.products || []);
+      } catch (err) {
+        toast.error('Could not load vendor product catalog — you can still type a product name manually.');
+      }
+    }
   };
 
   const addPoProductRow = () => {
-    setPoForm(p => ({ ...p, products: [...p.products, { product_name: '', quantity: 1 }] }));
+    setPoForm(p => ({ ...p, products: [...p.products, { product_name: '', product_id: '', quantity: 1 }] }));
   };
 
   const removePoProductRow = (idx) => {
     setPoForm(p => ({ ...p, products: p.products.filter((_, i) => i !== idx) || [] }));
+    setProductSearch(s => { const n = { ...s }; delete n[idx]; return n; });
+    setProductDropdownOpen(s => { const n = { ...s }; delete n[idx]; return n; });
   };
 
   const updatePoProduct = (idx, field, value) => {
@@ -246,6 +262,16 @@ const AdminSupportUnified = () => {
       next[idx] = { ...next[idx], [field]: field === 'quantity' ? Number(value) || 0 : value };
       return { ...p, products: next };
     });
+  };
+
+  const selectVendorProduct = (idx, product) => {
+    setPoForm(p => {
+      const next = [...p.products];
+      next[idx] = { ...next[idx], product_name: product.name, product_id: product.id };
+      return { ...p, products: next };
+    });
+    setProductSearch(s => ({ ...s, [idx]: product.name }));
+    setProductDropdownOpen(s => ({ ...s, [idx]: false }));
   };
 
   const handleRaisePO = async () => {
@@ -2803,33 +2829,89 @@ const AdminSupportUnified = () => {
             <div>
               <label className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
                 <Package className="w-4 h-4" /> Products to Send
+                {vendorProducts.length > 0 && (
+                  <span className="text-xs font-normal text-slate-400">· {vendorProducts.length} vendor products available</span>
+                )}
               </label>
               <div className="space-y-2">
-                {poForm.products.map((p, idx) => (
-                  <div key={idx} className="flex gap-2 items-start">
-                    <Input
-                      value={p.product_name}
-                      onChange={e => updatePoProduct(idx, 'product_name', e.target.value)}
-                      placeholder="e.g. Robotics Kit Grade 6, Arduino Board, Sensor Module"
-                      data-testid={`po-product-name-${idx}`}
-                      className="flex-1"
-                    />
-                    <Input
-                      type="number"
-                      min="1"
-                      value={p.quantity}
-                      onChange={e => updatePoProduct(idx, 'quantity', e.target.value)}
-                      placeholder="Qty"
-                      data-testid={`po-product-qty-${idx}`}
-                      className="w-24"
-                    />
-                    {poForm.products.length > 1 && (
-                      <Button type="button" variant="ghost" size="sm" onClick={() => removePoProductRow(idx)} className="text-red-600">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                ))}
+                {poForm.products.map((p, idx) => {
+                  const searchText = productSearch[idx] ?? p.product_name ?? '';
+                  const filtered = searchText.trim()
+                    ? vendorProducts.filter(vp =>
+                        vp.name.toLowerCase().includes(searchText.toLowerCase()) ||
+                        (vp.sku || '').toLowerCase().includes(searchText.toLowerCase())
+                      ).slice(0, 40)
+                    : vendorProducts.slice(0, 40);
+                  const isOpen = !!productDropdownOpen[idx];
+                  return (
+                    <div key={idx} className="flex gap-2 items-start">
+                      <div className="flex-1 relative">
+                        <Input
+                          value={searchText}
+                          onChange={e => {
+                            const v = e.target.value;
+                            setProductSearch(s => ({ ...s, [idx]: v }));
+                            setProductDropdownOpen(s => ({ ...s, [idx]: true }));
+                            // Keep product_name in sync; clear product_id if manually edited
+                            updatePoProduct(idx, 'product_name', v);
+                            if (p.product_id) updatePoProduct(idx, 'product_id', '');
+                          }}
+                          onFocus={() => setProductDropdownOpen(s => ({ ...s, [idx]: true }))}
+                          onBlur={() => setTimeout(() => setProductDropdownOpen(s => ({ ...s, [idx]: false })), 180)}
+                          placeholder={vendorProducts.length ? 'Search vendor catalog… or type a custom name' : 'e.g. Robotics Kit Grade 6'}
+                          data-testid={`po-product-name-${idx}`}
+                          className="w-full"
+                        />
+                        {p.product_id && (
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-semibold text-green-600 bg-green-50 border border-green-200 rounded px-1.5 py-0.5 pointer-events-none">
+                            ✓ Vendor SKU
+                          </span>
+                        )}
+                        {isOpen && vendorProducts.length > 0 && (
+                          <div className="absolute z-30 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-64 overflow-y-auto" data-testid={`po-product-dropdown-${idx}`}>
+                            {filtered.length === 0 ? (
+                              <div className="px-3 py-2 text-xs text-slate-500 italic">
+                                No vendor product matches. You can still submit with this custom name.
+                              </div>
+                            ) : (
+                              filtered.map(vp => (
+                                <button
+                                  key={vp.id || vp.name}
+                                  type="button"
+                                  onMouseDown={(e) => { e.preventDefault(); selectVendorProduct(idx, vp); }}
+                                  data-testid={`po-product-option-${vp.id || vp.name}`}
+                                  className="w-full text-left px-3 py-2 hover:bg-amber-50 border-b border-slate-100 last:border-b-0 flex items-center justify-between gap-2"
+                                >
+                                  <div className="min-w-0">
+                                    <div className="text-sm text-slate-800 truncate">{vp.name}</div>
+                                    {vp.sku && <div className="text-[10px] text-slate-500 font-mono uppercase">{vp.sku}</div>}
+                                  </div>
+                                  {vp.price != null && (
+                                    <span className="text-xs text-slate-500 font-mono whitespace-nowrap">₹{Number(vp.price).toLocaleString('en-IN')}</span>
+                                  )}
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={p.quantity}
+                        onChange={e => updatePoProduct(idx, 'quantity', e.target.value)}
+                        placeholder="Qty"
+                        data-testid={`po-product-qty-${idx}`}
+                        className="w-20 flex-shrink-0"
+                      />
+                      {poForm.products.length > 1 && (
+                        <Button type="button" variant="ghost" size="sm" onClick={() => removePoProductRow(idx)} className="text-red-600 flex-shrink-0">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
               <Button type="button" variant="outline" size="sm" onClick={addPoProductRow} className="mt-2" data-testid="po-add-product">
                 <Plus className="w-3.5 h-3.5 mr-1" /> Add Product
