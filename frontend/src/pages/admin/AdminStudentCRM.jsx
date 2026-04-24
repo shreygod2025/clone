@@ -2641,6 +2641,7 @@ const AdminStudentCRM = () => {
                                 <button
                                   key={s.v}
                                   onClick={() => setBroadcastStatuses(prev => prev.includes(s.v) ? prev.filter(x => x !== s.v) : [...prev, s.v])}
+                                  data-testid={`broadcast-status-${s.v}`}
                                   className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${checked ? 'bg-green-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                                 >{s.l}</button>
                               );
@@ -2656,6 +2657,7 @@ const AdminStudentCRM = () => {
                             value={broadcastAssignee}
                             onChange={e => setBroadcastAssignee(e.target.value)}
                             className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm"
+                            data-testid="broadcast-assignee-select"
                           >
                             <option value="">— Pick an assignee —</option>
                             <option value="unassigned">Unassigned leads</option>

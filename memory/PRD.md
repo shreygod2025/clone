@@ -58,6 +58,19 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+### 2026-04-24 (pt 4) — Summer Camp: WhatsApp Broadcast + add-lead/bulk-import fixes
+**Root cause of "WhatsApp not sending" on bulk-import / add-lead:**
+- Code was firing sends correctly. AiSensy account returns **HTTP 402 `ERR402: Insufficient WhatsApp Conversation Credits (WCC)!`** — out of credits. Code path verified end-to-end in logs. **User must top up AiSensy.**
+
+**Also fixed:**
+- `bulk-import` used `count_documents + 1` for `booking_ref` — switched to atomic `_next_booking_ref()`.
+
+**New feature — WhatsApp Broadcast:**
+- Backend: `GET /api/summer-camp/broadcast/templates` (returns 7 templates), `POST /api/summer-camp/broadcast` (filters: booking_ids / crm_statuses / assigned_to / center / batch_week, dedup by phone, background task), `GET /api/summer-camp/broadcast/history`. Persists history in `summer_camp_broadcasts` collection + stamps `last_broadcast_*` fields on each booking.
+- Frontend: new green "Broadcast" button in Summer Camp CRM action row opens modal with template picker, 4 target modes (filtered / all / status / assignee), live preview count, background send + success state.
+
+**Tested:** 100% (backend 10/10 + frontend playwright). `/app/test_reports/iteration_75.json`. Pytest at `/app/backend/tests/test_iter75_broadcast.py`.
+
 ### 2026-04-24 (pt 3) — Summer Camp CRM: Booking Ref Uniqueness Fix
 **Bug:** Duplicate `booking_ref` values (e.g., 0517, 0517, 0516, 0516) were showing in the CRM because refs were generated with `count_documents + 1` — which breaks after deletes / cleanups and under concurrent writes.
 
