@@ -271,6 +271,29 @@ async def track_view(slug: str):
 @router.post("/summer-camp/capture-lead")
 async def capture_lead(data: PartialLeadCapture):
     """Save a partial lead at the phone number step — before full details are entered."""
+    # ── Deduplication: if a booking already exists for this phone (any status),
+    # return the existing booking instead of creating a new phone_captured row.
+    # This prevents inflated "Form Filled" counts when a user re-enters their phone.
+    norm_phone = (data.parent_phone or "").strip()
+    if norm_phone:
+        existing = await db.summer_camp_bookings.find_one(
+            {"parent_phone": norm_phone},
+            {"_id": 0},
+            sort=[("created_at", -1)]
+        )
+        if existing:
+            # Bump return_count only if the user had already fully registered before
+            if existing.get("crm_status") in ("lead", "hot_lead", "converted", "payment_offline", "seat_reserved"):
+                await db.summer_camp_bookings.update_one(
+                    {"id": existing["id"]},
+                    {"$set": {
+                        "return_count": existing.get("return_count", 1) + 1,
+                        "last_returned_at": datetime.now(timezone.utc).isoformat(),
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                    }}
+                )
+            return {"booking_id": existing["id"], "booking_ref": existing.get("booking_ref")}
+
     count = await db.summer_camp_bookings.count_documents({})
     booking_ref = f"{count + 1:04d}"
     booking_id = str(uuid.uuid4())
@@ -731,7 +754,7 @@ async def get_summer_camp_bookings(
     if age_group:
         query["age_group"] = age_group
 
-    bookings = await db.summer_camp_bookings.find(query, {"_id": 0}).sort("created_at", -1).to_list(500)
+    bookings = await db.summer_camp_bookings.find(query, {"_id": 0}).sort("created_at", -1).to_list(2000)
     return bookings
 
 
@@ -806,6 +829,90 @@ async def update_booking_status(
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Booking not found")
     return {"success": True, "crm_status": data.crm_status}
+
+
+class AssignBookingBody(BaseModel):
+    assigned_to: Optional[str] = None  # team user id; None/empty = unassign
+
+
+@router.patch("/summer-camp/bookings/{booking_id}/assign")
+async def assign_booking(
+    booking_id: str,
+    data: AssignBookingBody,
+    user: dict = Depends(get_current_user),
+):
+    """Admin: assign a Summer Camp booking to a team user (or unassign)."""
+    booking = await db.summer_camp_bookings.find_one({"id": booking_id}, {"_id": 0})
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found")
+
+    assigned_to_id = (data.assigned_to or "").strip() or None
+    update_fields = {"updated_at": datetime.now(timezone.utc).isoformat()}
+
+    if assigned_to_id:
+        team_user = await db.team_users.find_one({"id": assigned_to_id}, {"_id": 0, "name": 1, "email": 1})
+        if not team_user:
+            raise HTTPException(status_code=404, detail="Team user not found")
+        update_fields["assigned_to"] = assigned_to_id
+        update_fields["assigned_to_name"] = team_user.get("name", "")
+        update_fields["assigned_at"] = datetime.now(timezone.utc).isoformat()
+    else:
+        update_fields["assigned_to"] = None
+        update_fields["assigned_to_name"] = None
+        update_fields["assigned_at"] = None
+
+    await db.summer_camp_bookings.update_one(
+        {"id": booking_id}, {"$set": update_fields}
+    )
+    return {
+        "success": True,
+        "assigned_to": update_fields.get("assigned_to"),
+        "assigned_to_name": update_fields.get("assigned_to_name"),
+    }
+
+
+@router.post("/summer-camp/cleanup-duplicates")
+async def cleanup_duplicate_phone_captured(user: dict = Depends(get_current_user)):
+    """Admin: one-time cleanup — remove stale phone_captured rows where the
+    same parent_phone already has a progressed record (lead/hot_lead/converted/
+    payment_offline/seat_reserved). Also merges duplicate phone_captured rows
+    for the same phone keeping only the earliest one."""
+    removed = 0
+
+    # 1) Remove phone_captured rows that have a progressed sibling with same phone
+    pc_rows = await db.summer_camp_bookings.find(
+        {"crm_status": "phone_captured"},
+        {"_id": 0, "id": 1, "parent_phone": 1, "created_at": 1}
+    ).to_list(5000)
+
+    for row in pc_rows:
+        phone = (row.get("parent_phone") or "").strip()
+        if not phone:
+            continue
+        has_progressed = await db.summer_camp_bookings.count_documents({
+            "parent_phone": phone,
+            "crm_status": {"$in": ["lead", "hot_lead", "converted", "payment_offline", "seat_reserved"]},
+        })
+        if has_progressed > 0:
+            res = await db.summer_camp_bookings.delete_one({"id": row["id"]})
+            removed += res.deleted_count
+
+    # 2) For remaining phone_captured duplicates (same phone, multiple pc rows),
+    # keep only the earliest and drop the rest
+    pipeline = [
+        {"$match": {"crm_status": "phone_captured"}},
+        {"$group": {"_id": "$parent_phone", "ids": {"$push": {"id": "$id", "created_at": "$created_at"}}, "count": {"$sum": 1}}},
+        {"$match": {"count": {"$gt": 1}}},
+    ]
+    async for grp in db.summer_camp_bookings.aggregate(pipeline):
+        entries = sorted(grp["ids"], key=lambda x: x.get("created_at") or "")
+        # keep entries[0], delete the rest
+        to_delete = [e["id"] for e in entries[1:]]
+        if to_delete:
+            res = await db.summer_camp_bookings.delete_many({"id": {"$in": to_delete}})
+            removed += res.deleted_count
+
+    return {"success": True, "removed": removed}
 
 
 @router.post("/summer-camp/backfill-refs")

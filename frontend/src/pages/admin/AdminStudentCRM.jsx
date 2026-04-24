@@ -113,6 +113,8 @@ const AdminStudentCRM = () => {
   const [campCallbackModal, setCampCallbackModal] = useState(null); // {bookingId, pendingStatus}
   const [campCallbackDate, setCampCallbackDate] = useState('');
   const [campCallbackTime, setCampCallbackTime] = useState('');
+  const [campAssignModal, setCampAssignModal] = useState(null); // booking object
+  const [campAssigneeFilter, setCampAssigneeFilter] = useState(''); // '' | 'unassigned' | user_id
   const [campFilters, setCampFilters] = useState({ status: '', batch: '', center: '', source: '' });
   const [campSearch, setCampSearch] = useState('');
   const [campDashboard, setCampDashboard] = useState(null);
@@ -388,8 +390,28 @@ const AdminStudentCRM = () => {
     }
   };
 
-  const handleUpdateStatus = async (bookingId, newStatus, lostReason = null) => {
+  const handleAssignCampBooking = async (userId) => {
+    if (!campAssignModal) return;
     try {
+      const res = await axios.patch(
+        `${API}/summer-camp/bookings/${campAssignModal.id}/assign`,
+        { assigned_to: userId || null },
+        { headers: getAuthHeaders() }
+      );
+      toast.success(userId ? 'Lead assigned' : 'Lead unassigned');
+      setCampAssignModal(null);
+      // Optimistic update
+      setSummerCampBookings(prev => prev.map(b =>
+        b.id === campAssignModal.id
+          ? { ...b, assigned_to: res.data?.assigned_to || null, assigned_to_name: res.data?.assigned_to_name || null }
+          : b
+      ));
+    } catch {
+      toast.error('Failed to assign lead');
+    }
+  };
+
+  const handleUpdateStatus = async (bookingId, newStatus, lostReason = null) => {    try {
       const payload = { crm_status: newStatus };
       if (newStatus === 'lost_lead' && lostReason) payload.lost_reason = lostReason;
       await axios.patch(`${API}/summer-camp/bookings/${bookingId}/status`, payload, { headers: getAuthHeaders() });
@@ -1432,6 +1454,13 @@ const AdminStudentCRM = () => {
                       const src = b.source_name || 'Direct';
                       if (src !== campFilters.source) return false;
                     }
+                    if (campAssigneeFilter) {
+                      if (campAssigneeFilter === 'unassigned') {
+                        if (b.assigned_to) return false;
+                      } else if (b.assigned_to !== campAssigneeFilter) {
+                        return false;
+                      }
+                    }
                     return true;
                   });
                   const setFilter = (key, val) => setCampFilters(prev => ({ ...prev, [key]: val }));
@@ -1556,9 +1585,22 @@ const AdminStudentCRM = () => {
                           {uniqueSources.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
 
-                        {(campFilters.status || campFilters.batch || campFilters.center || campFilters.source || campSearch) && (
+                        <select
+                          value={campAssigneeFilter}
+                          onChange={e => setCampAssigneeFilter(e.target.value)}
+                          className="text-xs h-8 px-3 border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                          data-testid="camp-assignee-filter"
+                        >
+                          <option value="">All Assignees</option>
+                          <option value="unassigned">Unassigned</option>
+                          {teamUsers.filter(u => u.is_active).map(u => (
+                            <option key={u.id} value={u.id}>{u.name}</option>
+                          ))}
+                        </select>
+
+                        {(campFilters.status || campFilters.batch || campFilters.center || campFilters.source || campSearch || campAssigneeFilter) && (
                           <button
-                            onClick={() => { setCampFilters({ status: '', batch: '', center: '', source: '' }); setCampSearch(''); }}
+                            onClick={() => { setCampFilters({ status: '', batch: '', center: '', source: '' }); setCampSearch(''); setCampAssigneeFilter(''); }}
                             className="text-xs h-8 px-3 border border-red-200 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors flex items-center gap-1"
                           >
                             <X className="w-3 h-3" /> Clear All
@@ -1642,6 +1684,11 @@ const AdminStudentCRM = () => {
                                   {booking.source_name && booking.source_name !== 'Direct' && (
                                     <span className="text-xs px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 font-semibold">{booking.source_name}</span>
                                   )}
+                                  {booking.assigned_to_name && (
+                                    <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-semibold inline-flex items-center gap-1" data-testid={`camp-assignee-tag-${booking.id}`}>
+                                      <UserPlus className="w-3 h-3" /> {booking.assigned_to_name}
+                                    </span>
+                                  )}
                                   <span className="text-xs text-slate-400 capitalize">{booking.batch_type}</span>
                                   <span className="text-xs text-slate-400 ml-auto">{new Date(booking.created_at).toLocaleDateString('en-IN')}</span>
                                 </div>
@@ -1689,6 +1736,9 @@ const AdminStudentCRM = () => {
                                       <Phone className="w-3.5 h-3.5" />
                                     </a>
                                   )}
+                                  <button title={booking.assigned_to_name ? `Assigned: ${booking.assigned_to_name}` : 'Assign to team member'} data-testid={`camp-assign-${booking.id}`} onClick={() => setCampAssignModal(booking)} className={`p-2 rounded-lg transition-colors flex items-center justify-center ${booking.assigned_to ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-50 hover:bg-slate-100 text-slate-500'}`}>
+                                    <UserPlus className="w-3.5 h-3.5" />
+                                  </button>
                                   <button title="Comments" data-testid={`camp-comment-${booking.id}`} onClick={() => { setCampCommentModal(booking); setCampNewComment(''); setCampCommentTab('comment'); setCampCallDate(new Date().toISOString().split('T')[0]); setCampCallTime(new Date().toTimeString().slice(0,5)); setCampCallComment(''); }} className="flex-1 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 transition-colors flex items-center justify-center gap-1 text-xs font-medium relative">
                                     <MessageSquare className="w-3.5 h-3.5" />
                                     Comments
@@ -1723,6 +1773,7 @@ const AdminStudentCRM = () => {
                                 <th className="px-4 py-3 text-left">Center</th>
                                 <th className="px-4 py-3 text-left">Payment</th>
                                 <th className="px-4 py-3 text-left">Source</th>
+                                <th className="px-4 py-3 text-left">Assigned</th>
                                 <th className="px-4 py-3 text-left">Status</th>
                                 <th className="px-4 py-3 text-left">Follow-up</th>
                                 <th className="px-4 py-3 text-left">Last Activity</th>
@@ -1777,6 +1828,16 @@ const AdminStudentCRM = () => {
                                     ) : (
                                       <span className="text-xs text-slate-400">Direct</span>
                                     )}
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <button
+                                      onClick={() => setCampAssignModal(booking)}
+                                      data-testid={`camp-assign-cell-${booking.id}`}
+                                      className={`text-xs px-2 py-1 rounded-full font-semibold whitespace-nowrap inline-flex items-center gap-1 transition-opacity hover:opacity-80 ${booking.assigned_to_name ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-50 text-slate-400 border border-dashed border-slate-200'}`}
+                                    >
+                                      <UserPlus className="w-3 h-3" />
+                                      {booking.assigned_to_name || 'Unassigned'}
+                                    </button>
                                   </td>
                                   <td className="px-4 py-3">
                                     <button
@@ -1872,6 +1933,14 @@ const AdminStudentCRM = () => {
                                   className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 transition-colors"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  title={booking.assigned_to_name ? `Assigned: ${booking.assigned_to_name}` : 'Assign to team member'}
+                                  data-testid={`camp-assign-btn-${booking.id}`}
+                                  onClick={() => setCampAssignModal(booking)}
+                                  className={`p-1.5 rounded-lg transition-colors ${booking.assigned_to ? 'bg-indigo-100 hover:bg-indigo-200 text-indigo-700' : 'bg-slate-50 hover:bg-slate-100 text-slate-500'}`}
+                                >
+                                  <UserPlus className="w-3.5 h-3.5" />
                                 </button>
                                 {booking.order_id && booking.crm_status !== 'converted' && (
                                   <button
@@ -2257,6 +2326,65 @@ const AdminStudentCRM = () => {
                     className="flex-1 bg-red-500 text-white py-2 rounded-xl text-sm font-bold hover:bg-red-600 transition-colors disabled:opacity-50">
                     {campSaving ? 'Deleting...' : 'Yes, Delete'}
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Assign Lead Modal (Summer Camp) ── */}
+          {campAssignModal && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl max-h-[90vh] flex flex-col">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="font-bold text-[#1E3A5F] text-lg flex items-center gap-2">
+                      <UserPlus className="w-5 h-5 text-indigo-600" /> Assign Lead
+                    </h3>
+                    <p className="text-sm text-slate-500 mt-0.5">
+                      {campAssignModal.child_name || campAssignModal.parent_name || 'Lead'} — {campAssignModal.parent_phone}
+                    </p>
+                  </div>
+                  <button onClick={() => setCampAssignModal(null)} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5" /></button>
+                </div>
+                {campAssignModal.assigned_to_name && (
+                  <div className="bg-indigo-50 rounded-lg p-3 mb-3 flex items-center justify-between">
+                    <div className="text-sm text-indigo-700">
+                      Currently assigned to <strong>{campAssignModal.assigned_to_name}</strong>
+                    </div>
+                    <button
+                      onClick={() => handleAssignCampBooking(null)}
+                      className="text-xs px-2.5 py-1 bg-white border border-indigo-200 text-indigo-600 rounded-lg hover:bg-indigo-100"
+                      data-testid="camp-unassign-btn"
+                    >
+                      Unassign
+                    </button>
+                  </div>
+                )}
+                <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+                  {teamUsers.filter(u => u.is_active).length === 0 ? (
+                    <p className="text-sm text-slate-500 py-4 text-center">No active team members found.</p>
+                  ) : (
+                    teamUsers.filter(u => u.is_active).map(tu => (
+                      <button
+                        key={tu.id}
+                        onClick={() => handleAssignCampBooking(tu.id)}
+                        data-testid={`camp-assign-to-${tu.id}`}
+                        className={`w-full p-3 rounded-lg border text-left transition-all hover:border-indigo-300 hover:bg-indigo-50 ${
+                          campAssignModal.assigned_to === tu.id ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium text-slate-900 text-sm">{tu.name}</p>
+                            <p className="text-xs text-slate-500">{tu.email}</p>
+                          </div>
+                          {campAssignModal.assigned_to === tu.id && (
+                            <span className="text-[10px] px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded font-bold">Current</span>
+                          )}
+                        </div>
+                      </button>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
