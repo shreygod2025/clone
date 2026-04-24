@@ -115,6 +115,16 @@ const AdminStudentCRM = () => {
   const [campCallbackTime, setCampCallbackTime] = useState('');
   const [campAssignModal, setCampAssignModal] = useState(null); // booking object
   const [campAssigneeFilter, setCampAssigneeFilter] = useState(''); // '' | 'unassigned' | user_id
+  // Broadcast WhatsApp modal
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+  const [broadcastTemplates, setBroadcastTemplates] = useState([]);
+  const [broadcastTemplateKey, setBroadcastTemplateKey] = useState('');
+  const [broadcastTarget, setBroadcastTarget] = useState('filtered'); // 'filtered' | 'all' | 'status' | 'assignee'
+  const [broadcastStatuses, setBroadcastStatuses] = useState([]); // array of crm_status
+  const [broadcastAssignee, setBroadcastAssignee] = useState('');
+  const [broadcastPreviewCount, setBroadcastPreviewCount] = useState(0);
+  const [broadcastSending, setBroadcastSending] = useState(false);
+  const [broadcastResult, setBroadcastResult] = useState(null);
   const [campFilters, setCampFilters] = useState({ status: '', batch: '', center: '', source: '' });
   const [campSearch, setCampSearch] = useState('');
   const [campDashboard, setCampDashboard] = useState(null);
@@ -193,6 +203,14 @@ const AdminStudentCRM = () => {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSection]);
+
+  // Auto-refresh broadcast preview count when target/filters change
+  useEffect(() => {
+    if (!showBroadcastModal) return;
+    // eslint-disable-next-line no-use-before-define
+    handleBroadcastSend(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [broadcastTarget, broadcastStatuses, broadcastAssignee, showBroadcastModal]);
 
   const fetchTeamUsers = async () => {
     try {
@@ -408,6 +426,78 @@ const AdminStudentCRM = () => {
       ));
     } catch {
       toast.error('Failed to assign lead');
+    }
+  };
+
+  const fetchBroadcastTemplates = async () => {
+    try {
+      const res = await axios.get(`${API}/summer-camp/broadcast/templates`, { headers: getAuthHeaders() });
+      setBroadcastTemplates(res.data?.templates || []);
+    } catch {
+      toast.error('Failed to load broadcast templates');
+    }
+  };
+
+  const computeBroadcastPayload = () => {
+    // Returns {booking_ids?, crm_statuses?, assigned_to?} based on selected target
+    if (broadcastTarget === 'filtered') {
+      // Use current filtered set
+      const ids = (summerCampBookings
+        .filter(b => {
+          // mirror the same filter logic used in the UI
+          if (campSearch.trim()) {
+            const q = campSearch.trim().toLowerCase();
+            const matchSearch =
+              b.child_name?.toLowerCase().includes(q) ||
+              b.parent_name?.toLowerCase().includes(q) ||
+              b.parent_phone?.includes(campSearch.trim()) ||
+              b.booking_ref?.toLowerCase().includes(q);
+            if (!matchSearch) return false;
+          }
+          if (campFilters.status) {
+            if (campFilters.status === 'converted_all') {
+              if (b.crm_status !== 'converted' && b.crm_status !== 'payment_offline' && b.crm_status !== 'seat_reserved') return false;
+            } else if (b.crm_status !== campFilters.status) return false;
+          }
+          if (campFilters.center && b.center_label !== campFilters.center) return false;
+          if (campFilters.source) {
+            const src = b.source_name || 'Direct';
+            if (src !== campFilters.source) return false;
+          }
+          if (campAssigneeFilter) {
+            if (campAssigneeFilter === 'unassigned') {
+              if (b.assigned_to) return false;
+            } else if (b.assigned_to !== campAssigneeFilter) return false;
+          }
+          return true;
+        })
+        .map(b => b.id));
+      return { booking_ids: ids };
+    }
+    if (broadcastTarget === 'all') return {};
+    if (broadcastTarget === 'status') return { crm_statuses: broadcastStatuses };
+    if (broadcastTarget === 'assignee') return { assigned_to: broadcastAssignee || null };
+    return {};
+  };
+
+  const handleBroadcastSend = async (dryRun = false) => {    if (!broadcastTemplateKey) {
+      toast.error('Please select a template');
+      return;
+    }
+    const payload = { template_key: broadcastTemplateKey, ...computeBroadcastPayload(), dry_run: dryRun };
+    try {
+      setBroadcastSending(true);
+      const res = await axios.post(`${API}/summer-camp/broadcast`, payload, { headers: getAuthHeaders() });
+      if (dryRun) {
+        setBroadcastPreviewCount(res.data?.target_count || 0);
+      } else {
+        setBroadcastResult(res.data);
+        toast.success(`Broadcast queued for ${res.data?.target_count || 0} leads`);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Broadcast failed');
+    } finally {
+      setBroadcastSending(false);
     }
   };
 
@@ -1517,6 +1607,14 @@ const AdminStudentCRM = () => {
                             <Plus className="w-4 h-4" />
                             <span className="hidden sm:inline">Add Lead</span>
                           </Button>
+                          <Button
+                            onClick={() => { setShowBroadcastModal(true); fetchBroadcastTemplates(); setBroadcastTarget('filtered'); setBroadcastTemplateKey(''); setBroadcastPreviewCount(filteredCampBookings.length); setBroadcastResult(null); }}
+                            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white shrink-0"
+                            data-testid="broadcast-whatsapp-btn"
+                          >
+                            <Send className="w-4 h-4" />
+                            <span className="hidden sm:inline">Broadcast</span>
+                          </Button>
                         </div>
                       </div>
 
@@ -2450,6 +2548,164 @@ const AdminStudentCRM = () => {
                     ))
                   )}
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── WhatsApp Broadcast Modal ── */}
+          {showBroadcastModal && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={e => { if (e.target === e.currentTarget && !broadcastSending) setShowBroadcastModal(false); }}>
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[92vh] flex flex-col">
+                <div className="flex items-center justify-between p-5 border-b">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                      <Send className="w-5 h-5 text-green-600" /> WhatsApp Broadcast
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">Send a template to a group of Summer Camp leads</p>
+                  </div>
+                  <button onClick={() => setShowBroadcastModal(false)} className="text-slate-400 hover:text-slate-600 p-1" data-testid="close-broadcast-modal"><X className="w-5 h-5" /></button>
+                </div>
+
+                <div className="p-5 space-y-5 overflow-y-auto">
+                  {broadcastResult ? (
+                    <div className="text-center py-6">
+                      <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-3" />
+                      <h4 className="font-bold text-slate-800 text-lg mb-1">Broadcast queued</h4>
+                      <p className="text-sm text-slate-600">
+                        Message template queued for <strong>{broadcastResult.target_count}</strong> leads. WhatsApp delivery runs in the background; check the AiSensy dashboard for delivery receipts.
+                      </p>
+                      <button
+                        onClick={() => { setShowBroadcastModal(false); setBroadcastResult(null); }}
+                        className="mt-5 px-6 py-2 rounded-xl bg-slate-800 text-white text-sm font-semibold hover:bg-slate-900"
+                      >Done</button>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Template picker */}
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5 block">Template</label>
+                        <select
+                          value={broadcastTemplateKey}
+                          onChange={e => setBroadcastTemplateKey(e.target.value)}
+                          className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-300"
+                          data-testid="broadcast-template-select"
+                        >
+                          <option value="">— Select a template —</option>
+                          {broadcastTemplates.map(t => (
+                            <option key={t.key} value={t.key}>{t.label}</option>
+                          ))}
+                        </select>
+                        {broadcastTemplateKey && (
+                          <p className="text-xs text-slate-500 mt-1.5 italic">
+                            {broadcastTemplates.find(t => t.key === broadcastTemplateKey)?.description}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Target selector */}
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5 block">Send to</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          {[
+                            { v: 'filtered', l: 'Current filtered set' },
+                            { v: 'all', l: 'All leads' },
+                            { v: 'status', l: 'By status' },
+                            { v: 'assignee', l: 'By assignee' },
+                          ].map(opt => (
+                            <button
+                              key={opt.v}
+                              onClick={() => setBroadcastTarget(opt.v)}
+                              data-testid={`broadcast-target-${opt.v}`}
+                              className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors ${broadcastTarget === opt.v ? 'border-green-500 bg-green-50 text-green-700' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                            >{opt.l}</button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Secondary selectors */}
+                      {broadcastTarget === 'status' && (
+                        <div>
+                          <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5 block">CRM statuses</label>
+                          <div className="flex flex-wrap gap-1.5">
+                            {[
+                              { v: 'phone_captured', l: 'Form Filled' },
+                              { v: 'lead', l: 'Lead' },
+                              { v: 'hot_lead', l: 'Hot Lead' },
+                              { v: 'seat_reserved', l: '₹500 Reserved' },
+                              { v: 'converted', l: 'Paid Online' },
+                              { v: 'payment_offline', l: 'Cash at Center' },
+                              { v: 'lost_lead', l: 'Lost' },
+                            ].map(s => {
+                              const checked = broadcastStatuses.includes(s.v);
+                              return (
+                                <button
+                                  key={s.v}
+                                  onClick={() => setBroadcastStatuses(prev => prev.includes(s.v) ? prev.filter(x => x !== s.v) : [...prev, s.v])}
+                                  className={`px-2.5 py-1 rounded-full text-xs font-semibold transition-colors ${checked ? 'bg-green-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                                >{s.l}</button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {broadcastTarget === 'assignee' && (
+                        <div>
+                          <label className="text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1.5 block">Assignee</label>
+                          <select
+                            value={broadcastAssignee}
+                            onChange={e => setBroadcastAssignee(e.target.value)}
+                            className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm"
+                          >
+                            <option value="">— Pick an assignee —</option>
+                            <option value="unassigned">Unassigned leads</option>
+                            {teamUsers.filter(u => u.is_active).map(u => (
+                              <option key={u.id} value={u.id}>{u.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {/* Preview count */}
+                      <div className="bg-slate-50 rounded-xl p-3.5 flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold">Estimated reach</p>
+                          <p className="text-2xl font-bold text-slate-800 mt-0.5">{broadcastPreviewCount}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">unique phone numbers</p>
+                        </div>
+                        <button
+                          onClick={() => handleBroadcastSend(true)}
+                          disabled={broadcastSending}
+                          className="text-xs px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 font-medium disabled:opacity-50"
+                          data-testid="broadcast-preview-count"
+                        >{broadcastSending ? 'Counting…' : 'Refresh count'}</button>
+                      </div>
+
+                      {/* Warning */}
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+                        <strong>Heads up:</strong> Delivery depends on your AiSensy WhatsApp Conversation Credits (WCC). If you see 0 sent on the dashboard, your account likely ran out of credits — top up in AiSensy.
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {!broadcastResult && (
+                  <div className="flex gap-3 p-5 border-t bg-slate-50">
+                    <button
+                      onClick={() => setShowBroadcastModal(false)}
+                      disabled={broadcastSending}
+                      className="flex-1 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-semibold hover:bg-slate-100 disabled:opacity-50"
+                    >Cancel</button>
+                    <button
+                      onClick={() => handleBroadcastSend(false)}
+                      disabled={broadcastSending || !broadcastTemplateKey || broadcastPreviewCount === 0}
+                      className="flex-1 py-2.5 rounded-xl bg-green-600 text-white text-sm font-bold hover:bg-green-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                      data-testid="broadcast-send-btn"
+                    >
+                      {broadcastSending ? <><Loader2 className="w-4 h-4 animate-spin" /> Sending…</> : <><Send className="w-4 h-4" /> Send to {broadcastPreviewCount}</>}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}

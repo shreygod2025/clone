@@ -956,6 +956,178 @@ async def backfill_booking_refs(user: dict = Depends(get_current_user)):
     return {"success": True, "total": total, "updated": updated, "next_ref": f"{total + 1:04d}", "message": f"Reassigned {updated} refs; counter synced to {total}"}
 
 
+# ─── Broadcast Templates (available for bulk send) ──────────────────────────
+SUMMER_CAMP_BROADCAST_TEMPLATES = [
+    {"key": "summercamp_followup",           "label": "Follow-up (Phone Captured)",        "description": "For phone_captured leads who didn't complete the form. Includes brochure PDF."},
+    {"key": "summercamp_payment_pending",    "label": "Payment Pending — 1st Nudge",        "description": "For leads who filled form but didn't pay. Includes brochure PDF."},
+    {"key": "summercamp_payment_pending_2",  "label": "Payment Pending — 20hr Follow-up",   "description": "Second nudge for unpaid leads."},
+    {"key": "summercamp_payment_pending_3",  "label": "Payment Pending — 48hr Follow-up",   "description": "Third nudge for unpaid leads."},
+    {"key": "summercamp_phone_captured_24h", "label": "Phone Captured — 24hr Follow-up",    "description": "Nudge for leads stuck at phone-captured stage."},
+    {"key": "summercamp_closing_7days",      "label": "Closing Follow-up (7 days)",         "description": "Final closing message before registrations close."},
+    {"key": "summercamp_enrolled",           "label": "Enrollment Confirmation",            "description": "Sends batch dates + center address + WhatsApp group link."},
+]
+
+
+@router.get("/summer-camp/broadcast/templates")
+async def list_broadcast_templates(user: dict = Depends(get_current_user)):
+    """Return the list of WhatsApp templates that admins can send as a bulk broadcast."""
+    return {"templates": SUMMER_CAMP_BROADCAST_TEMPLATES}
+
+
+class BroadcastRequest(BaseModel):
+    template_key: str
+    crm_statuses: Optional[List[str]] = None  # filter: only these statuses (None = all)
+    assigned_to: Optional[str] = None         # filter: only this team user id ("unassigned" = unassigned only; None = no filter)
+    center: Optional[str] = None              # filter: only this center_label
+    batch_week: Optional[str] = None          # filter: only this batch week
+    booking_ids: Optional[List[str]] = None   # explicit booking id list (takes precedence over filters)
+    dry_run: bool = False                     # if true, only returns the target count without sending
+
+
+@router.post("/summer-camp/broadcast")
+async def broadcast_whatsapp(
+    data: BroadcastRequest,
+    background_tasks: BackgroundTasks,
+    user: dict = Depends(get_current_user),
+):
+    """Admin: send a WhatsApp template to a batch of Summer Camp leads.
+
+    Runs in the background so the HTTP call returns quickly. Uses the same
+    `send_whatsapp_notification` helper as every other code path.
+    Duplicates protection: filters to unique parent_phone across the target set.
+    """
+    # Validate template
+    valid_keys = {t["key"] for t in SUMMER_CAMP_BROADCAST_TEMPLATES}
+    if data.template_key not in valid_keys:
+        raise HTTPException(status_code=400, detail=f"Invalid template_key. Valid: {sorted(valid_keys)}")
+
+    # Build target query
+    query: dict = {}
+    if data.booking_ids:
+        query["id"] = {"$in": data.booking_ids}
+    else:
+        if data.crm_statuses:
+            query["crm_status"] = {"$in": data.crm_statuses}
+        if data.assigned_to == "unassigned":
+            query["$or"] = [{"assigned_to": {"$in": [None, ""]}}, {"assigned_to": {"$exists": False}}]
+        elif data.assigned_to:
+            query["assigned_to"] = data.assigned_to
+        if data.center:
+            query["center_label"] = data.center
+        if data.batch_week:
+            query["batch_week"] = data.batch_week
+
+    # Fetch targets (unique phones)
+    bookings = await db.summer_camp_bookings.find(
+        query,
+        {"_id": 0, "id": 1, "parent_phone": 1, "child_name": 1, "parent_name": 1,
+         "crm_status": 1, "batch_week": 1, "batch_dates": 1, "center": 1, "center_label": 1, "age_group": 1, "age_group_label": 1, "age_group_ages": 1}
+    ).to_list(length=5000)
+
+    seen_phones: set = set()
+    targets: List[dict] = []
+    for b in bookings:
+        phone = (b.get("parent_phone") or "").strip()
+        if not phone or phone in seen_phones:
+            continue
+        seen_phones.add(phone)
+        targets.append(b)
+
+    if data.dry_run:
+        return {"success": True, "target_count": len(targets), "dry_run": True}
+
+    if not targets:
+        return {"success": True, "target_count": 0, "queued": 0, "message": "No matching leads."}
+
+    async def _run_broadcast(items: List[dict], template_key: str, admin_email: str):
+        from .notifications import send_whatsapp_notification
+        sent, failed = 0, 0
+        broadcast_id = str(uuid.uuid4())
+        started_at = datetime.now(timezone.utc).isoformat()
+        for booking in items:
+            phone = booking.get("parent_phone", "")
+            if not phone:
+                continue
+            first_name = (booking.get("child_name") or booking.get("parent_name") or "there").split()[0] or "there"
+            params: list = []
+            media = None
+            # Provide sensible defaults per template
+            if template_key == "summercamp_enrolled":
+                params = await _build_enrolled_wa_params(booking)
+            elif template_key in ("summercamp_followup", "summercamp_phone_captured_24h", "summercamp_closing_7days"):
+                params = []
+                media = {"url": SUMMER_CAMP_BROCHURE_URL, "filename": SUMMER_CAMP_BROCHURE_FILENAME}
+            elif template_key in ("summercamp_payment_pending", "summercamp_payment_pending_2", "summercamp_payment_pending_3"):
+                params = [first_name]
+                if template_key == "summercamp_payment_pending":
+                    media = {"url": SUMMER_CAMP_BROCHURE_URL, "filename": SUMMER_CAMP_BROCHURE_FILENAME}
+
+            try:
+                res = await send_whatsapp_notification(
+                    phone=phone,
+                    template_key=template_key,
+                    params=params,
+                    user_name=first_name,
+                    media=media or {},
+                )
+                if res.get("success"):
+                    sent += 1
+                    await db.summer_camp_bookings.update_one(
+                        {"id": booking["id"]},
+                        {"$set": {
+                            "last_broadcast_template": template_key,
+                            "last_broadcast_at": datetime.now(timezone.utc).isoformat(),
+                            "last_broadcast_by": admin_email,
+                        }}
+                    )
+                else:
+                    failed += 1
+                    logging.warning(f"[Broadcast] failed for {phone}: {res.get('message')}")
+            except Exception as e:
+                failed += 1
+                logging.warning(f"[Broadcast] exception for {phone}: {e}")
+
+        # Record broadcast history
+        try:
+            await db.summer_camp_broadcasts.insert_one({
+                "id": broadcast_id,
+                "template_key": template_key,
+                "target_count": len(items),
+                "sent": sent,
+                "failed": failed,
+                "started_at": started_at,
+                "finished_at": datetime.now(timezone.utc).isoformat(),
+                "triggered_by": admin_email,
+            })
+        except Exception as e:
+            logging.warning(f"[Broadcast] history insert failed: {e}")
+
+        logging.info(f"[Broadcast] {template_key} — sent={sent}, failed={failed}, total={len(items)} by {admin_email}")
+
+    background_tasks.add_task(
+        _run_broadcast,
+        targets,
+        data.template_key,
+        user.get("email", user.get("name", "admin")),
+    )
+
+    return {
+        "success": True,
+        "target_count": len(targets),
+        "queued": len(targets),
+        "message": f"Broadcast queued for {len(targets)} leads. Delivery may take a few minutes.",
+    }
+
+
+@router.get("/summer-camp/broadcast/history")
+async def broadcast_history(limit: int = 20, user: dict = Depends(get_current_user)):
+    """Return the most recent Summer Camp broadcast runs."""
+    runs = await db.summer_camp_broadcasts.find(
+        {}, {"_id": 0}
+    ).sort("started_at", -1).to_list(length=max(1, min(limit, 100)))
+    return {"runs": runs}
+
+
 @router.post("/summer-camp/bookings/{booking_id}/comment")
 async def add_booking_comment(
     booking_id: str,
@@ -1633,9 +1805,8 @@ async def bulk_import_leads(
                 city = center_doc.get("city", "")
                 center_label = f"{center_doc['name']} ({area}, {city})" if area and city else center_doc["name"]
 
-        _ref_cnt = await db.summer_camp_bookings.count_documents({})
         booking_id = str(uuid.uuid4())
-        booking_ref = f"{_ref_cnt + 1:04d}"
+        booking_ref = await _next_booking_ref()
         batch_dates = BATCH_DATES.get(batch_week, {}).get("weekday", "") if batch_week else ""
 
         doc = {
