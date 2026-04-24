@@ -58,6 +58,16 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+### 2026-04-24 — Summer Camp CRM: Lead Assignment + Count Fix
+**Features Added / Bugs Fixed:**
+1. **Lead counts now accurate** — `/api/summer-camp/capture-lead` now dedupes by phone (returns existing booking_id if phone already captured). Added `POST /api/summer-camp/cleanup-duplicates` admin endpoint which removed 14 stale `phone_captured` rows (was: 79 total with 24 inflated phone_captured; now: 65 total with 10 genuine phone_captured).
+2. **Assign Lead feature** — admin can assign any Summer Camp booking to a team user:
+   - Backend: `PATCH /api/summer-camp/bookings/{id}/assign` body `{assigned_to: <user_id> | null}` → writes `assigned_to`, `assigned_to_name`, `assigned_at` (or clears them on unassign).
+   - Frontend (`AdminStudentCRM.jsx`): new `campAssignModal` state, `handleAssignCampBooking`, Assign button in desktop row actions + mobile card actions, new `Assigned` column in desktop table, new `All Assignees / Unassigned / <team users>` filter dropdown, assignee badge in mobile card tags row.
+3. Bumped `/api/summer-camp/bookings` list limit from 500 → 2000.
+
+**Tested:** 100% pass (backend 5/5, frontend flows) — `/app/test_reports/iteration_73.json`. Pytest added at `/app/backend/tests/test_summer_camp_assign.py`.
+
 ### 2026-04-21 — Social Media Internship Readiness Program (NEW FEATURE)
 **Features Added:**
 1. **Landing Page** (`/social-media-intern`) — GenZ dark sci-fi HUD aesthetic (Archetype 7: Electric & Neon) with JetBrains Mono + Nunito Sans, countdown timer, bento curriculum grid, pricing card (₹19,900), FAQ accordion
