@@ -1647,6 +1647,34 @@ const AdminSupportUnified = () => {
                     <Trash2 className="w-4 h-4" />
                     Delete
                   </Button>
+
+                  {/* Raise PO — only for kit_related tickets */}
+                  {query.query_type === 'kit_related' && (
+                    query.po_info?.po_number ? (
+                      <a
+                        href={query.po_info.tracking_url || '#'}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-md bg-green-50 text-green-700 border border-green-200 hover:bg-green-100"
+                        data-testid={`view-po-${query.id}`}
+                        title={`PO ${query.po_info.po_number} raised · Click to track`}
+                      >
+                        <CheckCircle className="w-3.5 h-3.5" />
+                        PO {query.po_info.po_number}
+                      </a>
+                    ) : (
+                      <Button
+                        size="sm"
+                        onClick={() => openRaisePOModal(query)}
+                        className="flex items-center gap-1 bg-amber-600 hover:bg-amber-700 text-white"
+                        data-testid={`raise-po-${query.id}`}
+                        title="Raise a PO to the vendor panel for kit replacement"
+                      >
+                        <Truck className="w-4 h-4" />
+                        Raise PO
+                      </Button>
+                    )
+                  )}
                 </div>
               </div>
             </div>
