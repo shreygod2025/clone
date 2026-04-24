@@ -1033,19 +1033,26 @@ const AdminStudentCRM = () => {
 
   const exportSummerCampToExcel = (bookings) => {
     const rows = bookings.map(b => ({
-      'Name': b.student_name || b.name || '',
-      'Phone': b.phone || '',
-      'Email': b.email || '',
+      'Booking Ref': b.booking_ref || '',
+      'Child Name': b.child_name || b.student_name || b.name || '',
       'Parent Name': b.parent_name || '',
-      'Age Group': b.age_group || '',
+      'Parent Phone': b.parent_phone || b.phone || '',
+      'Parent Email': b.parent_email || b.email || '',
+      'Age Group': b.age_group_label || b.age_group || '',
       'Center': b.center_label || b.center || '',
-      'Batch': b.batch_label || b.batch_week || '',
+      'Batch': b.batch_week || '',
+      'Batch Dates': b.batch_dates || '',
+      'Mode': b.mode || '',
       'CRM Status': b.crm_status || '',
       'Payment Status': b.payment_status || '',
-      'Amount Paid (₹)': b.amount || b.payment_amount || '',
-      'Source': b.source_name || b.source || 'Direct',
-      'Booking Date': b.created_at ? b.created_at.slice(0, 10) : '',
-      'Comments': b.comments || '',
+      'Payment Mode': b.payment_mode || '',
+      'Amount Paid (₹)': b.amount || '',
+      'Source': b.source_name || 'Direct',
+      'Source Ref': b.source_ref || '',
+      'Booking Date': b.created_at ? String(b.created_at).slice(0, 10) : '',
+      'Comments': Array.isArray(b.comments)
+        ? b.comments.map(c => `[${String(c.created_at || '').slice(0, 10)}] ${c.author || 'Admin'}: ${c.text || ''}`).join(' | ')
+        : (b.comments || ''),
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
