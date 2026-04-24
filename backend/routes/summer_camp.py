@@ -51,6 +51,19 @@ def camp_price_for_center(center_id: str) -> float:
     """Return the correct price based on the selected center (partner center override or default)."""
     return CENTER_PRICING.get((center_id or "").strip(), CAMP_PRICE)
 
+
+async def _next_booking_ref() -> str:
+    """Atomic, monotonically-increasing 4-digit booking_ref using the `counters` collection.
+    Guarantees no duplicates even under concurrent inserts or after deletes/cleanups."""
+    res = await db.counters.find_one_and_update(
+        {"_id": "summer_camp_booking_ref"},
+        {"$inc": {"seq": 1}},
+        upsert=True,
+        return_document=True,
+    )
+    seq = int(res.get("seq", 1)) if res else 1
+    return f"{seq:04d}"
+
 # ── WhatsApp Enrollment Helper ────────────────────────────────────────────────
 async def _build_enrolled_wa_params(booking: dict) -> list:
     """Build correct params list for the summercamp_enrolled WhatsApp template.
@@ -294,8 +307,7 @@ async def capture_lead(data: PartialLeadCapture):
                 )
             return {"booking_id": existing["id"], "booking_ref": existing.get("booking_ref")}
 
-    count = await db.summer_camp_bookings.count_documents({})
-    booking_ref = f"{count + 1:04d}"
+    booking_ref = await _next_booking_ref()
     booking_id = str(uuid.uuid4())
 
     batch_dates = BATCH_DATES.get(data.batch_week, {}).get(data.batch_type, "")
@@ -448,9 +460,8 @@ async def register_summer_camp(data: SummerCampRegistration):
     if data.mode not in ("offline", "online"):
         raise HTTPException(status_code=400, detail="Invalid mode")
 
-    # Generate sequential booking ref
-    _ref_count = await db.summer_camp_bookings.count_documents({})
-    booking_ref = f"{_ref_count + 1:04d}"
+    # Generate sequential booking ref (atomic counter)
+    booking_ref = await _next_booking_ref()
     booking_id = str(uuid.uuid4())
 
     batch_dates = BATCH_DATES[data.batch_week][data.batch_type]
@@ -917,7 +928,8 @@ async def cleanup_duplicate_phone_captured(user: dict = Depends(get_current_user
 
 @router.post("/summer-camp/backfill-refs")
 async def backfill_booking_refs(user: dict = Depends(get_current_user)):
-    """One-time admin utility: assign clean 4-digit sequential booking_ref to all records that have old SC2026-* format."""
+    """Admin utility: reassign clean 4-digit sequential booking_ref to ALL records in chronological
+    order and sync the atomic counter so future refs continue from max+1."""
     # Fetch all bookings ordered by created_at ascending to maintain chronological numbering
     all_bookings = await db.summer_camp_bookings.find(
         {}, {"_id": 0, "id": 1, "booking_ref": 1, "created_at": 1}
@@ -933,7 +945,15 @@ async def backfill_booking_refs(user: dict = Depends(get_current_user)):
             )
             updated += 1
 
-    return {"success": True, "total": len(all_bookings), "updated": updated, "message": f"Assigned 4-digit refs to {updated} bookings"}
+    # Sync the atomic counter so next booking_ref = total + 1
+    total = len(all_bookings)
+    await db.counters.update_one(
+        {"_id": "summer_camp_booking_ref"},
+        {"$set": {"seq": total}},
+        upsert=True,
+    )
+
+    return {"success": True, "total": total, "updated": updated, "next_ref": f"{total + 1:04d}", "message": f"Reassigned {updated} refs; counter synced to {total}"}
 
 
 @router.post("/summer-camp/bookings/{booking_id}/comment")
@@ -1400,8 +1420,7 @@ async def add_individual_lead(
     elif not phone.startswith("+"):
         phone = "+91" + phone.lstrip("0")
 
-    _ref_count2 = await db.summer_camp_bookings.count_documents({})
-    booking_ref = f"{_ref_count2 + 1:04d}"
+    booking_ref = await _next_booking_ref()
     booking_id = str(uuid.uuid4())
 
     batch_dates = ""

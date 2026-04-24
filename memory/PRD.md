@@ -58,6 +58,17 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+### 2026-04-24 (pt 3) — Summer Camp CRM: Booking Ref Uniqueness Fix
+**Bug:** Duplicate `booking_ref` values (e.g., 0517, 0517, 0516, 0516) were showing in the CRM because refs were generated with `count_documents + 1` — which breaks after deletes / cleanups and under concurrent writes.
+
+**Fix:**
+1. Added atomic counter helper `_next_booking_ref()` using MongoDB `counters` collection (`find_one_and_update` with `$inc`).
+2. Replaced 3 call sites (`capture-lead`, `register`, admin add-lead) with the atomic helper.
+3. Backfill endpoint `/api/summer-camp/backfill-refs` now also syncs the counter to `total` so future refs continue from max+1.
+4. Ran backfill: reassigned 53 refs, 1 duplicate removed (0065), counter synced to 65, next ref = 0066.
+
+**Verified:** Concurrent capture-lead calls now produce sequential 0066, 0067; repeat of same phone correctly returns existing ref (0066).
+
 ### 2026-04-24 (pt 2) — Summer Camp CRM: Assignee visibility + Team Performance Dashboard
 **Feedback fixes:**
 1. **Mobile assignee always visible** — mobile booking card now renders either the assignee name badge OR a dashed-border "Assign" button in the tags row (regardless of crm_status).
