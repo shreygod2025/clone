@@ -573,6 +573,8 @@ export default function SummerCampLandingPage() {
           .neon-btn { font-size:0.85rem; padding:0.95rem 1.9rem; }
           .center-grid { grid-template-columns:1fr 1fr !important; }
           .stats-row { grid-template-columns:repeat(3,1fr) !important; }
+          .outcomes-panel { grid-template-columns: 1fr !important; gap: 1rem !important; padding: 1.25rem !important; }
+          .outcomes-panel .outcomes-heading { min-width: 0 !important; }
         }
 
         /* ── Cert 3D flip-in reveal ── */
@@ -945,7 +947,7 @@ export default function SummerCampLandingPage() {
             </div>
 
             {/* Learning Outcomes panel */}
-            <div style={{
+            <div className="outcomes-panel" style={{
               marginTop: '2rem',
               background: 'rgba(255,255,255,0.03)',
               border: `1px solid ${activeCamp.color}22`,
@@ -956,7 +958,7 @@ export default function SummerCampLandingPage() {
               gap: '1.5rem',
               alignItems: 'start',
             }}>
-              <div style={{ minWidth: 160 }}>
+              <div className="outcomes-heading" style={{ minWidth: 160 }}>
                 <p className="sec-label" style={{ marginBottom: '0.35rem' }}>Outcomes</p>
                 <h3 style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '1.1rem', fontWeight: 700, color: '#F0F4F8', lineHeight: 1.2 }}>
                   By the end of camp,<br />your child will:
