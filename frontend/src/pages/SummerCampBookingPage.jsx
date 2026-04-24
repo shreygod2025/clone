@@ -139,6 +139,22 @@ export default function SummerCampBookingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
+  // Hardcoded partner center — premium pricing, online-payment only
+  const NSCI_CENTER = {
+    id: 'oll_nsci_south_mumbai',
+    name: 'OLL x NSCI — South Mumbai',
+    address_line1: 'Lala Lajpatrai Marg, Lotus Colony, Worli',
+    city: 'Mumbai',
+    area: 'Worli',
+    pincode: '400018',
+    is_active: true,
+    is_partner: true,
+    price: 8500,
+  };
+  const REGULAR_PRICE = 1999;
+  const isPartnerCenter = form.center === NSCI_CENTER.id;
+  const selectedPrice = isPartnerCenter ? NSCI_CENTER.price : REGULAR_PRICE;
+
   useEffect(() => {
     // Load Cashfree JS SDK
     if (!window.Cashfree) {
@@ -147,12 +163,22 @@ export default function SummerCampBookingPage() {
       script.async = true;
       document.head.appendChild(script);
     }
-    // Fetch active offline centers only
+    // Fetch active offline centers only; prepend the hardcoded partner center
     fetch(`${process.env.REACT_APP_BACKEND_URL}/api/centers`)
       .then(r => r.json())
-      .then(data => setCenters(data.filter(c => c.is_active && !c.name?.toLowerCase().includes('online'))))
-      .catch(() => {});
+      .then(data => {
+        const regular = data.filter(c => c.is_active && !c.name?.toLowerCase().includes('online'));
+        setCenters([NSCI_CENTER, ...regular]);
+      })
+      .catch(() => setCenters([NSCI_CENTER]));
   }, []);
+
+  // Force payment mode to cashfree when partner center is selected (cash-at-center disabled there)
+  useEffect(() => {
+    if (isPartnerCenter && form.payment_mode === 'cash') {
+      setForm(prev => ({ ...prev, payment_mode: 'cashfree' }));
+    }
+  }, [isPartnerCenter, form.payment_mode]);
 
   // Fetch availability when entering batch step
   useEffect(() => {
@@ -220,6 +246,7 @@ export default function SummerCampBookingPage() {
       const pay = await axios.post(`${API}/summer-camp/initiate-payment`, {
         booking_id: bid,
         frontend_url: window.location.origin,
+        amount: selectedPrice,
       });
       if (!pay.data.payment_session_id) {
         setError('Could not initiate payment. Please try again.');
@@ -427,12 +454,24 @@ export default function SummerCampBookingPage() {
               <StepHeader stepNum={5} title="Almost there!" sub="Just a few more details to confirm your spot." />
 
               {/* Order summary */}
-              <div style={{ background: 'rgba(0,229,255,0.05)', border: '1px solid rgba(0,229,255,0.15)', borderRadius: '1rem', padding: '1rem 1.25rem', marginBottom: '2rem', display: 'flex', flexWrap: 'wrap', gap: '0.6rem', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ background: isPartnerCenter ? 'rgba(204,255,0,0.06)' : 'rgba(0,229,255,0.05)', border: `1px solid ${isPartnerCenter ? 'rgba(204,255,0,0.25)' : 'rgba(0,229,255,0.15)'}`, borderRadius: '1rem', padding: '1rem 1.25rem', marginBottom: '2rem', display: 'flex', flexWrap: 'wrap', gap: '0.6rem', alignItems: 'center', justifyContent: 'space-between' }}>
                 <span style={{ fontSize: '0.88rem', color: '#94A3B8', fontFamily: NU }}>{selectedAge?.icon} {selectedAge?.label} · Ages {selectedAge?.ages}</span>
                 {selectedBatch && <span style={{ fontSize: '0.88rem', color: '#94A3B8', fontFamily: NU }}>{selectedBatch.date}</span>}
                 <span style={{ fontSize: '0.88rem', color: '#94A3B8', fontFamily: NU }}>🏢 {selectedCenter?.name || ''}</span>
-                <span style={{ fontFamily: JB, fontWeight: 900, color: '#00E5FF', fontSize: '1.1rem' }}>₹1,999</span>
+                <span style={{ fontFamily: JB, fontWeight: 900, color: isPartnerCenter ? '#CCFF00' : '#00E5FF', fontSize: '1.1rem' }}>₹{selectedPrice.toLocaleString('en-IN')}</span>
               </div>
+
+              {isPartnerCenter && (
+                <div style={{ background: 'rgba(204,255,0,0.06)', border: '1px solid rgba(204,255,0,0.25)', borderRadius: '0.875rem', padding: '0.85rem 1.1rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                  <MapPin style={{ width: 18, height: 18, color: '#CCFF00', flexShrink: 0, marginTop: 2 }} />
+                  <div>
+                    <p style={{ fontFamily: JB, fontWeight: 700, fontSize: '0.82rem', color: '#CCFF00', marginBottom: '0.2rem' }}>Premium Partner Center · Online Payment Only</p>
+                    <p style={{ fontFamily: NU, fontSize: '0.84rem', color: '#94A3B8', lineHeight: 1.5, fontWeight: 500 }}>
+                      NSCI Worli · Lala Lajpatrai Marg, Lotus Colony, Worli, Mumbai 400018. Includes premium facilities & NSCI access.
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Laptop reminder — informational only, no action needed */}
               {selectedAge?.laptop && (
@@ -462,31 +501,33 @@ export default function SummerCampBookingPage() {
                           <CreditCard style={{ width: 20, height: 20, color: form.payment_mode === 'cashfree' ? '#00E5FF' : '#64748B' }} />
                         </div>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '1rem', color: form.payment_mode === 'cashfree' ? '#00E5FF' : '#F8FAFC', marginBottom: '0.2rem' }}>Pay Online — ₹1,999</div>
+                          <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '1rem', color: form.payment_mode === 'cashfree' ? '#00E5FF' : '#F8FAFC', marginBottom: '0.2rem' }}>Pay Online — ₹{selectedPrice.toLocaleString('en-IN')}</div>
                           <div style={{ fontSize: '0.85rem', color: '#64748B', fontFamily: NU }}>UPI, Card, Net Banking via Cashfree</div>
                         </div>
                       </div>
                     </ChoiceCard>
 
-                    {/* ── Pay Cash at Center ── */}
-                    <ChoiceCard selected={form.payment_mode === 'cash'} onClick={() => update('payment_mode')('cash')}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                        <div style={{ width: 42, height: 42, borderRadius: '0.75rem', background: form.payment_mode === 'cash' ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.04)', border: `1px solid ${form.payment_mode === 'cash' ? 'rgba(34,197,94,0.3)' : 'transparent'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          <Banknote style={{ width: 20, height: 20, color: form.payment_mode === 'cash' ? '#22C55E' : '#64748B' }} />
+                    {/* ── Pay Cash at Center — hidden for premium partner center ── */}
+                    {!isPartnerCenter && (
+                      <ChoiceCard selected={form.payment_mode === 'cash'} onClick={() => update('payment_mode')('cash')}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                          <div style={{ width: 42, height: 42, borderRadius: '0.75rem', background: form.payment_mode === 'cash' ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.04)', border: `1px solid ${form.payment_mode === 'cash' ? 'rgba(34,197,94,0.3)' : 'transparent'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <Banknote style={{ width: 20, height: 20, color: form.payment_mode === 'cash' ? '#22C55E' : '#64748B' }} />
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '1rem', color: form.payment_mode === 'cash' ? '#22C55E' : '#F8FAFC', marginBottom: '0.2rem' }}>Pay Cash at Center</div>
+                            <div style={{ fontSize: '0.85rem', color: '#64748B', fontFamily: NU }}>Pay ₹{selectedPrice.toLocaleString('en-IN')} in cash on Day 1 at the center</div>
+                          </div>
                         </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '1rem', color: form.payment_mode === 'cash' ? '#22C55E' : '#F8FAFC', marginBottom: '0.2rem' }}>Pay Cash at Center</div>
-                          <div style={{ fontSize: '0.85rem', color: '#64748B', fontFamily: NU }}>Pay ₹1,999 in cash on Day 1 at the center</div>
-                        </div>
-                      </div>
-                    </ChoiceCard>
+                      </ChoiceCard>
+                    )}
 
                   </div>
                 </div>
 
                 <PrimaryBtn type="submit" disabled={submitting}>
                   <Lock style={{ width: 15, height: 15 }} />
-                  {submitting ? 'Processing...' : form.payment_mode === 'cash' ? 'Confirm Booking — Pay at Center' : 'Pay ₹1,999 — Complete Enrollment'}
+                  {submitting ? 'Processing...' : form.payment_mode === 'cash' ? 'Confirm Booking — Pay at Center' : `Pay ₹${selectedPrice.toLocaleString('en-IN')} — Complete Enrollment`}
                 </PrimaryBtn>
                 <p style={{ fontSize: '0.78rem', color: '#334155', textAlign: 'center', fontFamily: NU }}>
                   Secured by Cashfree · SSL encrypted · No hidden charges

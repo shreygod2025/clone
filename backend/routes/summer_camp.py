@@ -42,6 +42,15 @@ CASHFREE_API_VERSION = "2023-08-01"
 CAMP_PRICE = 1999.0
 SEAT_RESERVE_AMOUNT = 500.0   # partial seat reservation deposit
 
+# Premium partner centers — per-center override pricing (cash-at-center disabled server-side too)
+CENTER_PRICING = {
+    "oll_nsci_south_mumbai": 8500.0,
+}
+
+def camp_price_for_center(center_id: str) -> float:
+    """Return the correct price based on the selected center (partner center override or default)."""
+    return CENTER_PRICING.get((center_id or "").strip(), CAMP_PRICE)
+
 # ── WhatsApp Enrollment Helper ────────────────────────────────────────────────
 async def _build_enrolled_wa_params(booking: dict) -> list:
     """Build correct params list for the summercamp_enrolled WhatsApp template.
@@ -295,7 +304,7 @@ async def capture_lead(data: PartialLeadCapture):
         "center": data.center,
         "center_label": center_label,
         "payment_mode": "cashfree",
-        "amount": CAMP_PRICE,
+        "amount": camp_price_for_center(data.center),
         "payment_status": "pending",
         "crm_status": "phone_captured",
         "source_ref": data.ref or "",
@@ -440,10 +449,10 @@ async def register_summer_camp(data: SummerCampRegistration):
         "mode": data.mode,
         "center": data.center,
         "center_label": center_label,
-        "payment_mode": data.payment_mode,
-        "amount": CAMP_PRICE,
+        "payment_mode": "cashfree" if data.center == "oll_nsci_south_mumbai" else data.payment_mode,
+        "amount": camp_price_for_center(data.center),
         "payment_status": "pending",
-        "crm_status": "payment_offline" if data.payment_mode == "cash" else "lead",
+        "crm_status": "payment_offline" if (data.payment_mode == "cash" and data.center != "oll_nsci_south_mumbai") else "lead",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
@@ -451,8 +460,8 @@ async def register_summer_camp(data: SummerCampRegistration):
     await db.summer_camp_bookings.insert_one(doc)
     logging.info(f"Summer camp lead created: {booking_ref} - {data.child_name}")
 
-    # Send enrollment WhatsApp for direct cash registrations
-    if data.payment_mode == "cash":
+    # Send enrollment WhatsApp for direct cash registrations (never for the premium partner center)
+    if data.payment_mode == "cash" and data.center != "oll_nsci_south_mumbai":
         try:
             from .notifications import send_whatsapp_notification
             first_name = (data.child_name or "").split()[0] if data.child_name else "there"
@@ -479,7 +488,7 @@ async def register_summer_camp(data: SummerCampRegistration):
         "booking_id": booking_id,
         "booking_ref": booking_ref,
         "payment_mode": data.payment_mode,
-        "amount": CAMP_PRICE,
+        "amount": camp_price_for_center(data.center),
         "center_label": center_label,
         "batch_dates": batch_dates,
         "message": "Registration successful",
@@ -499,8 +508,8 @@ async def initiate_payment(data: PaymentInitRequest):
     order_id = f"SC2026-{booking['id'][:8]}-{int(time.time())}"
     frontend_url = data.frontend_url or os.getenv("FRONTEND_URL", "https://oll.co")
 
-    # Use requested amount (₹500 for seat_reserve, full price otherwise)
-    effective_amount = data.amount if data.amount and data.amount > 0 else CAMP_PRICE
+    # Use requested amount (₹500 for seat_reserve, center-based full price otherwise)
+    effective_amount = data.amount if data.amount and data.amount > 0 else camp_price_for_center(booking.get("center", ""))
 
     parent_name = (booking.get("parent_name") or "").strip()
     child_name = (booking.get("child_name") or "").strip()
