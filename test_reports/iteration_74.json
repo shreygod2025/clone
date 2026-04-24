@@ -1,0 +1,24 @@
+{
+  "summary": "Verified user-feedback fixes on Summer Camp CRM: Assigned column visible across all stages (desktop + mobile), Assign modal lists active team members, assignee filter works, and new Dashboard 'Team Performance' card renders with per-user rows + Unassigned row. 6/6 backend pytest + full frontend playwright flow passed.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iter74_team_performance.py",
+    "/app/test_reports/pytest/pytest_iter74.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "AdminStudentCRM.jsx is now >4400 lines — strongly recommend splitting Summer Camp block into its own component (SummerCampCRM.jsx) for maintainability.",
+    "Dashboard sub-tab button uses plain text 'Dashboard' which collides with sidebar 'Dashboard' nav link when selecting via role=button. Consider adding data-testid='camp-subtab-dashboard' (and 'camp-subtab-bookings', 'camp-subtab-tracking') to improve test robustness.",
+    "Assign modal lacks a 'camp-unassign-btn' when opened from an unassigned booking (expected) — confirm placement is only shown when booking.assigned_to is truthy; current behavior verified correct.",
+    "Dashboard endpoint does team_performance aggregation in Python in-memory per request; fine at 65 bookings but consider a Mongo $group pipeline when scale grows."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter74_team_performance.py"],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin@oll.co / Dagaji03@",
+  "seed_data_creation": "No new seed data. One assign/unassign cycle against an existing booking during backend test (clean state restored).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend test file /app/backend/tests/test_iter74_team_performance.py covers GET /api/summer-camp/dashboard (team_performance schema, unassigned schema, sort order, totals reconciliation) and PATCH /api/summer-camp/bookings/{id}/assign end-to-end (body key is 'assigned_to', not 'team_user_id'). Team users endpoint is /api/team-users (flat list). Dashboard observed values: 3 team members (TEST_Hire_Trigger_6739e6a4, Anushree Sharma, Shreyaan Test) each 1 lead 0 converted; Unassigned 62 leads 5 converted 8.1% rate; total_bookings=65. Data-testids confirmed present: team-performance-card, team-perf-row-<user_id>, team-perf-row-unassigned, camp-assign-cell-<id> (desktop), camp-assignee-tag-<id> & camp-assignee-unassigned-<id> (mobile), camp-assign-to-<user_id> (modal cards), camp-assignee-filter (select with options per user + 'unassigned'). Assignee filter correctly shrinks list to only matching leads. Mobile (390px) showed 3 assigned tags + 62 unassigned badges = 65 markers, matching total bookings.",
+  "rca of the issue": "N/A — feature verification passed"
+}

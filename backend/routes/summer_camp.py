@@ -1123,6 +1123,46 @@ async def get_summer_camp_dashboard(user: dict = Depends(get_current_user)):
         else:
             followup_counts["not_contacted"] += 1
 
+    # ── Team performance: per-user leads/conversions/ratio ─────────────────
+    team_perf: dict = {}
+    unassigned_total = 0
+    unassigned_converted = 0
+    for b in bookings:
+        uid = b.get("assigned_to")
+        name = b.get("assigned_to_name") or ""
+        status = b.get("crm_status", "")
+        is_converted = status in ("converted", "payment_offline")
+        if not uid:
+            unassigned_total += 1
+            if is_converted:
+                unassigned_converted += 1
+            continue
+        if uid not in team_perf:
+            team_perf[uid] = {
+                "user_id": uid,
+                "name": name or "Unknown",
+                "leads": 0,
+                "converted": 0,
+                "hot_leads": 0,
+                "lost": 0,
+            }
+        # Keep most recent name
+        if name:
+            team_perf[uid]["name"] = name
+        team_perf[uid]["leads"] += 1
+        if is_converted:
+            team_perf[uid]["converted"] += 1
+        if status == "hot_lead":
+            team_perf[uid]["hot_leads"] += 1
+        if status == "lost_lead":
+            team_perf[uid]["lost"] += 1
+    team_performance = []
+    for tp in team_perf.values():
+        tp["conversion_rate"] = round((tp["converted"] / tp["leads"] * 100), 1) if tp["leads"] else 0
+        tp["revenue"] = tp["converted"] * CAMP_PRICE  # approximation
+        team_performance.append(tp)
+    team_performance.sort(key=lambda x: (-x["converted"], -x["leads"]))
+
     return {
         "total_bookings": total_bookings,
         "total_revenue": total_revenue,
@@ -1139,6 +1179,12 @@ async def get_summer_camp_dashboard(user: dict = Depends(get_current_user)):
             "reg_to_hot_pct": reg_to_hot,
             "hot_to_conv_pct": hot_to_conv,
             "reg_to_conv_pct": reg_to_conv,
+        },
+        "team_performance": team_performance,
+        "unassigned": {
+            "leads": unassigned_total,
+            "converted": unassigned_converted,
+            "conversion_rate": round((unassigned_converted / unassigned_total * 100), 1) if unassigned_total else 0,
         },
         "centers": all_centers,
         "weeks": sorted(data.values(), key=lambda x: x["week"]),

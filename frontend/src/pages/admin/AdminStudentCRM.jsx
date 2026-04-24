@@ -1684,10 +1684,18 @@ const AdminStudentCRM = () => {
                                   {booking.source_name && booking.source_name !== 'Direct' && (
                                     <span className="text-xs px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 font-semibold">{booking.source_name}</span>
                                   )}
-                                  {booking.assigned_to_name && (
+                                  {booking.assigned_to_name ? (
                                     <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-semibold inline-flex items-center gap-1" data-testid={`camp-assignee-tag-${booking.id}`}>
                                       <UserPlus className="w-3 h-3" /> {booking.assigned_to_name}
                                     </span>
+                                  ) : (
+                                    <button
+                                      onClick={() => setCampAssignModal(booking)}
+                                      className="text-xs px-2 py-0.5 rounded-full bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 text-slate-500 font-semibold inline-flex items-center gap-1 border border-dashed border-slate-300 transition-colors"
+                                      data-testid={`camp-assignee-unassigned-${booking.id}`}
+                                    >
+                                      <UserPlus className="w-3 h-3" /> Assign
+                                    </button>
                                   )}
                                   <span className="text-xs text-slate-400 capitalize">{booking.batch_type}</span>
                                   <span className="text-xs text-slate-400 ml-auto">{new Date(booking.created_at).toLocaleDateString('en-IN')}</span>
@@ -2028,6 +2036,62 @@ const AdminStudentCRM = () => {
                     </div>
                   </div>
                 )}
+
+                {/* Team Performance */}
+                <div className="bg-white rounded-2xl border border-slate-100 p-5" data-testid="team-performance-card">
+                  <h3 className="font-bold text-[#1E3A5F] text-base mb-4 flex items-center gap-2">
+                    <UserPlus className="w-4 h-4 text-indigo-500" /> Team Performance
+                  </h3>
+                  {(!campDashboard.team_performance || campDashboard.team_performance.length === 0) && (!campDashboard.unassigned || campDashboard.unassigned.leads === 0) ? (
+                    <p className="text-sm text-slate-400 text-center py-6">No assignments yet. Assign leads to team members to see their performance here.</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-slate-100 text-slate-500 text-xs uppercase tracking-wide">
+                            <th className="px-3 py-2 text-left">Team Member</th>
+                            <th className="px-3 py-2 text-center">Leads</th>
+                            <th className="px-3 py-2 text-center">Hot</th>
+                            <th className="px-3 py-2 text-center">Converted</th>
+                            <th className="px-3 py-2 text-center">Lost</th>
+                            <th className="px-3 py-2 text-center">Conv. Rate</th>
+                            <th className="px-3 py-2 text-center">Revenue (est.)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(campDashboard.team_performance || []).map(tp => (
+                            <tr key={tp.user_id} className="border-b border-slate-50 hover:bg-slate-50" data-testid={`team-perf-row-${tp.user_id}`}>
+                              <td className="px-3 py-2.5 font-semibold text-[#1E3A5F]">{tp.name}</td>
+                              <td className="px-3 py-2.5 text-center font-bold text-slate-700">{tp.leads}</td>
+                              <td className="px-3 py-2.5 text-center font-bold text-purple-600">{tp.hot_leads}</td>
+                              <td className="px-3 py-2.5 text-center font-bold text-green-600">{tp.converted}</td>
+                              <td className="px-3 py-2.5 text-center font-bold text-red-500">{tp.lost}</td>
+                              <td className="px-3 py-2.5 text-center">
+                                <span className={`text-xs font-bold px-2 py-1 rounded-full ${tp.conversion_rate >= 30 ? 'bg-green-50 text-green-700' : tp.conversion_rate >= 10 ? 'bg-yellow-50 text-yellow-700' : 'bg-slate-100 text-slate-500'}`}>
+                                  {tp.conversion_rate}%
+                                </span>
+                              </td>
+                              <td className="px-3 py-2.5 text-center font-bold text-orange-600">₹{(tp.revenue || 0).toLocaleString()}</td>
+                            </tr>
+                          ))}
+                          {campDashboard.unassigned && campDashboard.unassigned.leads > 0 && (
+                            <tr className="border-t-2 border-slate-100 bg-slate-50/60" data-testid="team-perf-row-unassigned">
+                              <td className="px-3 py-2.5 font-semibold text-slate-500 italic">Unassigned</td>
+                              <td className="px-3 py-2.5 text-center font-bold text-slate-700">{campDashboard.unassigned.leads}</td>
+                              <td className="px-3 py-2.5 text-center text-slate-400">—</td>
+                              <td className="px-3 py-2.5 text-center font-bold text-green-600">{campDashboard.unassigned.converted}</td>
+                              <td className="px-3 py-2.5 text-center text-slate-400">—</td>
+                              <td className="px-3 py-2.5 text-center">
+                                <span className="text-xs font-bold px-2 py-1 rounded-full bg-slate-100 text-slate-500">{campDashboard.unassigned.conversion_rate}%</span>
+                              </td>
+                              <td className="px-3 py-2.5 text-center text-slate-400">—</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
 
                 {/* Age Group Breakdown */}
                 <div className="bg-white rounded-2xl border border-slate-100 p-5">
