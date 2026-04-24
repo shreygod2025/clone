@@ -58,6 +58,14 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+### 2026-04-24 (pt 2) — Summer Camp CRM: Assignee visibility + Team Performance Dashboard
+**Feedback fixes:**
+1. **Mobile assignee always visible** — mobile booking card now renders either the assignee name badge OR a dashed-border "Assign" button in the tags row (regardless of crm_status).
+2. **Team Performance on Dashboard** — `GET /api/summer-camp/dashboard` now returns `team_performance` (per-user `{leads, hot_leads, converted, lost, conversion_rate, revenue}`) and `unassigned` totals. Dashboard renders a sortable Team Performance table with an Unassigned row.
+3. Outcomes panel on Summer Camp mobile was fixed to stack on <640px (no more one-word-per-line).
+
+**Tested:** 100% (backend pytest 6/6 + frontend flows). `/app/test_reports/iteration_74.json`. Pytest at `/app/backend/tests/test_iter74_team_performance.py`.
+
 ### 2026-04-24 — Summer Camp CRM: Lead Assignment + Count Fix
 **Features Added / Bugs Fixed:**
 1. **Lead counts now accurate** — `/api/summer-camp/capture-lead` now dedupes by phone (returns existing booking_id if phone already captured). Added `POST /api/summer-camp/cleanup-duplicates` admin endpoint which removed 14 stale `phone_captured` rows (was: 79 total with 24 inflated phone_captured; now: 65 total with 10 genuine phone_captured).
