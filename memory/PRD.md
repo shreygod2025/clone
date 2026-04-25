@@ -58,6 +58,26 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+### 2026-04-25 — Educator Requirement Broadcast + Per-Educator Referral Tracking
+**New feature:**
+1. When admin raises a new Requirement, every existing educator now receives a personalized email with their own unique `?ref=<their_id>` apply link. Anyone who applies through that link gets `referred_by` + `referred_by_name` stamped on their application + `source = "referral"`.
+2. Two new admin actions on each requirement card:
+   - **Send Test Email** (purple Mail icon) → prompts for email address(es), sends sample. **Sample sent to shreyaan@oll.co successfully.**
+   - **Re-send broadcast** (green Send icon) → manually re-broadcasts to ALL existing educators (each with their own unique referral link).
+3. Educator card now displays a purple "Referred by <name>" badge when applicable.
+
+**Backend:**
+- `EducatorApplication.referred_by` / `referred_by_name` fields.
+- `notify_educators_new_requirement` rewritten to accept `override_emails` and to embed unique referral link per educator. Email body now has a clearly-marked "Your referral link" block with copy-friendly text.
+- New endpoints: `POST /api/requirements/{id}/test-email`, `POST /api/requirements/{id}/resend-broadcast`.
+- Both `/educators/apply` and `/educators/apply-verified` resolve referrer name from referred_by id.
+
+**Frontend:**
+- `EducatorApplyPage` reads `?ref=` from URL and passes `referred_by` + `source: 'referral'` to backend.
+- `AdminEducators.jsx` Requirements tab: 2 new buttons + handlers (`handleSendTestEmail`, `handleResendBroadcast`).
+
+**Tested:** 100% (11/11 backend pytest + frontend playwright). `/app/test_reports/iteration_76.json`. Sample email to shreyaan@oll.co confirmed via Resend.
+
 ### 2026-04-24 (pt 4) — Summer Camp: WhatsApp Broadcast + add-lead/bulk-import fixes
 **Root cause of "WhatsApp not sending" on bulk-import / add-lead:**
 - Code was firing sends correctly. AiSensy account returns **HTTP 402 `ERR402: Insufficient WhatsApp Conversation Credits (WCC)!`** — out of credits. Code path verified end-to-end in logs. **User must top up AiSensy.**
