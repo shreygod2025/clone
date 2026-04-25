@@ -92,6 +92,7 @@ const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
 const AdminRequirements = lazy(() => import("./pages/admin/AdminRequirements"));
 const AdminSupportUnified = lazy(() => import("./pages/admin/AdminSupportUnified"));
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
+const AdminDataExport = lazy(() => import("./pages/admin/AdminDataExport"));
 const AdminReports = lazy(() => import("./pages/admin/AdminReports"));
 const AdminDataCenter = lazy(() => import("./pages/admin/AdminDataCenter"));
 const AdminBlogs = lazy(() => import("./pages/admin/AdminBlogs"));
@@ -236,6 +237,7 @@ function App() {
               <Route path="/admin/data-center" element={<ProtectedRoute><AdminDataCenter /></ProtectedRoute>} />
               <Route path="/admin/blogs" element={<ProtectedRoute><AdminBlogs /></ProtectedRoute>} />
               <Route path="/admin/settings" element={<ProtectedRoute><AdminSettings /></ProtectedRoute>} />
+              <Route path="/admin/data-export" element={<ProtectedRoute><AdminDataExport /></ProtectedRoute>} />
               <Route path="/admin/ai-chat" element={<ProtectedRoute><AdminAIChat /></ProtectedRoute>} />
               <Route path="/center" element={<ProtectedRoute><CenterDashboard /></ProtectedRoute>} />
               
