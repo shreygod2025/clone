@@ -132,6 +132,11 @@ export default function EducatorApplyPage() {
       });
       const newAppId = submitRes.data?.id;
       setApplicationId(newAppId || '');
+      if (newAppId) {
+        toast.success('Application submitted! Starting your AI interview…');
+        navigate(`/educator/interview/${newAppId}`);
+        return;
+      }
       setStep('success');
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Submission failed. Please try again.');

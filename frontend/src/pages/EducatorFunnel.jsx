@@ -281,9 +281,15 @@ const EducatorFunnel = () => {
       });
       
       setSubmittedApplication(response.data.application);
+      const newAppId = response.data?.application?.id;
+      toast.success('Application submitted! Starting your AI interview…');
+      // Send the candidate straight to the AI interview screen
+      if (newAppId) {
+        navigate(`/educator/interview/${newAppId}`);
+        return;
+      }
       setStep('success');
       setSubmitted(true);
-      toast.success('Application submitted successfully!');
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to submit. Please try again.');
     } finally {
