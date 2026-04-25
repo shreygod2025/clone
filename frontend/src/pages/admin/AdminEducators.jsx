@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Eye, Phone, Mail, Calendar, Clock, Plus, ChevronRight, MessageSquare, Archive, CalendarClock, CheckCircle2, User, Users, Briefcase, MapPin, UserPlus, Send, Edit, Save, Video, Star, FileText, X, Download, Copy, Link, Trash2, XCircle, RefreshCw } from 'lucide-react';
+import { Search, Eye, Phone, Mail, Calendar, Clock, Plus, ChevronRight, MessageSquare, Archive, CalendarClock, CheckCircle2, User, Users, Briefcase, MapPin, UserPlus, Send, Edit, Save, Video, Star, FileText, X, Download, Copy, Link, Trash2, XCircle, RefreshCw, Sparkles } from 'lucide-react';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -87,6 +87,7 @@ const AdminEducators = () => {
   
   // Modal states
   const [viewEducator, setViewEducator] = useState(null);
+  const [interviewDetail, setInterviewDetail] = useState(null);
   const [showScheduleModal, setShowScheduleModal] = useState(null);
   const [showTechScheduleModal, setShowTechScheduleModal] = useState(null);
   const [showAssignModal, setShowAssignModal] = useState(null);
@@ -1707,6 +1708,58 @@ const AdminEducators = () => {
                     </div>
                   )}
 
+                  {/* AI Interview Scorecard */}
+                  {viewEducator.interview_score != null && (
+                    <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-4" data-testid="ai-interview-scorecard">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#D63031] to-orange-500 flex items-center justify-center">
+                            <Sparkles className="w-4 h-4 text-white" />
+                          </div>
+                          <p className="font-bold text-[#1E3A5F] text-sm">AI Interview Scorecard</p>
+                        </div>
+                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                          viewEducator.interview_status === 'completed' ? 'bg-green-100 text-green-700' :
+                          viewEducator.interview_status === 'auto_failed_anti_cheat' ? 'bg-red-100 text-red-700' :
+                          'bg-amber-100 text-amber-700'
+                        }`}>
+                          {viewEducator.interview_status === 'completed' ? 'Completed' :
+                           viewEducator.interview_status === 'auto_failed_anti_cheat' ? 'Auto-Failed' :
+                           viewEducator.interview_status === 'failed_stage_1' ? 'Failed Stage 1' :
+                           viewEducator.interview_status === 'failed_stage_2' ? 'Failed Stage 2' :
+                           viewEducator.interview_status || 'In Progress'}
+                        </span>
+                      </div>
+                      <div className="text-3xl font-bold text-[#1E3A5F]">
+                        {viewEducator.interview_score}<span className="text-base font-medium text-slate-500">/100</span>
+                      </div>
+                      {viewEducator.interview_breakdown && (
+                        <div className="grid grid-cols-2 gap-2 mt-3">
+                          {Object.entries(viewEducator.interview_breakdown).map(([k, v]) => (
+                            <div key={k} className="bg-white rounded-lg p-2.5">
+                              <p className="text-xs text-slate-500 uppercase tracking-wide font-semibold capitalize">{k.replace(/_/g, ' ')}</p>
+                              <p className="font-bold text-slate-800">{v.score}/{v.max}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {viewEducator.interview_session_id && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              const res = await axios.get(`${API}/admin/educator-interviews/${viewEducator.interview_session_id}`, { headers: getAuthHeaders() });
+                              setInterviewDetail(res.data);
+                            } catch {
+                              toast.error('Failed to load interview details');
+                            }
+                          }}
+                          className="mt-3 text-xs font-bold text-[#D63031] hover:underline"
+                          data-testid="view-interview-transcript-btn"
+                        >View full transcript →</button>
+                      )}
+                    </div>
+                  )}
+
                   {/* Profile Details - For Active/Onboarded educators with profile data */}
                   {(viewEducator.status === 'active' || viewEducator.status === 'onboarded') && (viewEducator.profile_photo || viewEducator.bio || viewEducator.bank_name || viewEducator.aadhar_number) && (
                     <div className="border-t pt-4">
@@ -3061,6 +3114,49 @@ const AdminEducators = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* AI Interview Transcript modal */}
+      {interviewDetail && (
+        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) setInterviewDetail(null); }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between p-5 border-b">
+              <div>
+                <h3 className="text-lg font-bold text-[#1E3A5F] flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-[#D63031]" /> AI Interview Transcript
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">{interviewDetail.candidate_name} · {interviewDetail.candidate_phone}</p>
+              </div>
+              <button onClick={() => setInterviewDetail(null)} className="text-slate-400 hover:text-slate-600 p-1" data-testid="close-transcript-modal"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="p-5 overflow-y-auto space-y-3">
+              {(interviewDetail.answers || []).map((a, idx) => (
+                <div key={idx} className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wide">{a.stage} · {a.category}</span>
+                    {a.stage !== 'stage_3' && (
+                      <span className="text-xs font-bold text-[#1E3A5F]">{a.score}/10</span>
+                    )}
+                  </div>
+                  <p className="text-sm font-semibold text-slate-800 mb-1.5">Q: {a.question}</p>
+                  <p className="text-sm text-slate-600 italic">A: "{a.transcript}"</p>
+                  {a.reasoning && (
+                    <p className="text-xs text-slate-400 mt-1.5">AI note: {a.reasoning}</p>
+                  )}
+                </div>
+              ))}
+              {(!interviewDetail.answers || interviewDetail.answers.length === 0) && (
+                <p className="text-sm text-slate-400 text-center py-8">No answers recorded yet.</p>
+              )}
+            </div>
+            <div className="p-4 border-t bg-slate-50 flex justify-between items-center">
+              <span className="text-xs text-slate-500">
+                {interviewDetail.answers?.length || 0} answers · status: <strong>{interviewDetail.status}</strong>
+              </span>
+              <button onClick={() => setInterviewDetail(null)} className="px-4 py-2 rounded-lg bg-slate-800 text-white text-sm font-semibold hover:bg-slate-900">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 };

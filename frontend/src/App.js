@@ -28,6 +28,7 @@ import NotFoundPage from "./pages/NotFoundPage";
 const StudentFunnel = lazy(() => import("./pages/StudentFunnel"));
 const EducatorFunnel = lazy(() => import("./pages/EducatorFunnel"));
 const EducatorApplyPage = lazy(() => import("./pages/EducatorApplyPage"));
+const EducatorInterviewPage = lazy(() => import("./pages/EducatorInterviewPage"));
 const SchoolFunnel = lazy(() => import("./pages/SchoolFunnel"));
 const SchoolLandingPage = lazy(() => import("./pages/SchoolLandingPage"));
 const SchoolOfferingsPage = lazy(() => import("./pages/SchoolOfferingsPage"));
@@ -129,6 +130,7 @@ function App() {
               <Route path="/student" element={<StudentFunnel />} />
               <Route path="/educator" element={<EducatorFunnel />} />
               <Route path="/educator/apply/:reqId" element={<EducatorApplyPage />} />
+              <Route path="/educator/interview/:applicationId" element={<EducatorInterviewPage />} />
               <Route path="/for-schools" element={<SchoolLandingPage />} />
               <Route path="/school" element={<SchoolFunnel />} />
               <Route path="/school-offerings" element={<SchoolOfferingsPage />} />

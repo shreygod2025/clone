@@ -35,6 +35,7 @@ export default function EducatorApplyPage() {
   const [submitting, setSubmitting] = useState(false);
   const [otpSending, setOtpSending] = useState(false);
   const [otp, setOtp] = useState('');
+  const [applicationId, setApplicationId] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -110,7 +111,7 @@ export default function EducatorApplyPage() {
         setSubmitting(false);
         return;
       }
-      await axios.post(`${API}/api/educators/apply`, {
+      const submitRes = await axios.post(`${API}/api/educators/apply`, {
         name: formData.name,
         email: formData.email,
         phone: fullPhone(),
@@ -128,6 +129,8 @@ export default function EducatorApplyPage() {
         referred_by: referrerId || null,
         source: referrerId ? 'referral' : 'website',
       });
+      const newAppId = submitRes.data?.id;
+      setApplicationId(newAppId || '');
       setStep('success');
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Submission failed. Please try again.');
@@ -183,8 +186,22 @@ export default function EducatorApplyPage() {
               </p>
             </div>
           )}
+          {applicationId && (
+            <div className="mt-6 bg-gradient-to-r from-[#D63031] to-orange-500 rounded-2xl p-5 text-left text-white">
+              <p className="text-xs uppercase tracking-wide opacity-90 font-bold">Final Step</p>
+              <h3 className="font-bold text-lg mt-1">Take your AI Interview now</h3>
+              <p className="text-sm opacity-90 mt-1">A 15–20 minute friendly voice conversation with our AI interviewer. Quiet place + microphone required.</p>
+              <Button
+                onClick={() => navigate(`/educator/interview/${applicationId}`)}
+                className="w-full mt-4 bg-white text-[#D63031] hover:bg-white/90 font-bold py-5"
+                data-testid="go-to-interview-btn"
+              >
+                Start AI Interview →
+              </Button>
+            </div>
+          )}
           <p className="text-sm text-slate-400 mt-6">Our team will get in touch with you shortly.</p>
-          <Link to="/educator" className="mt-4 inline-block text-[#C53030] hover:underline text-sm">
+          <Link to="/educator" className="mt-2 inline-block text-[#C53030] hover:underline text-sm">
             View all openings →
           </Link>
         </div>

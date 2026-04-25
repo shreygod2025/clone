@@ -1,0 +1,75 @@
+{
+  "summary": "Iter77 — AI Voice Interview for educator candidates. Backend: 16/16 pytest pass (start with valid app -> session+s1q1; resume returns same session_id with resumed:true; bogus app -> 404; GET session works; GET 404 on bogus session; /respond returns 400 for short audio (<500B), 400 for mismatched question_id, 404 for nonexistent session; anti-cheat 1->1, 2->2, 3->3+auto_failed:true, status='auto_failed_anti_cheat'; respond after auto-fail -> 400; admin /educator-interviews list+detail require auth (403 without token), filter by application_id works; 404 on bogus session). Live transcription path (Whisper+GPT-4o) not exercised — only validation paths verified per main-agent guidance. Frontend Playwright on /educator/interview/{appId}: intro screen renders correctly with AI Interview title, 15–20 min warning, 3 stage chips, data-testid=start-interview-btn. Click -> running phase shows header 'Stage 1/3 · Personality & Communication · Q1 of 7', chat-msg-0 bubble with s1q1 text, data-testid=record-answer-btn 'Tap to Answer' visible. Anti-cheat: 3 dispatched visibilitychange events -> warning chip 1/3 -> 2/3 -> auto-fail done screen 'Interview ended' rendered; toast 'Interview auto-failed: too many tab switches' displayed. CRITICAL BUG: EducatorApplication Pydantic response model (extra='ignore') strips interview_score / interview_status / interview_session_id / interview_breakdown / interview_completed_at from /api/educators/applications and /api/educators/application/{id} responses, so the AdminEducators 'AI Interview Scorecard' card and 'View full transcript →' button NEVER render — finalize correctly writes status='interview_failed' (which DOES survive) but admin UI cannot display the score.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "/api/educators/applications and /api/educators/application/{id}",
+        "issue": "Response model EducatorApplication (extra='ignore') strips interview_score, interview_status, interview_session_id, interview_breakdown, interview_completed_at from API responses. _finalize_interview() in educator_interview.py writes these fields to the educator_applications doc, but they never reach the frontend. AdminEducators.jsx L1712 (`viewEducator.interview_score != null`) and L1746 (`viewEducator.interview_session_id`) gate the AI Interview Scorecard card and 'View full transcript' button on these stripped fields → both UI elements NEVER render. Verified by direct API query: stored doc has status='interview_failed' (survives because it's a model field) but interview_status & interview_score come back null.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "/api/educator-interview/{id}/anti-cheat",
+        "issue": "Body parameter is `payload: dict` with no schema → accepts any JSON. Frontend always sends {} so OK, but the type hint allows abuse and provides no validation. Consider Pydantic model with optional reason/source fields for analytics."
+      },
+      {
+        "endpoint": "/api/educator-interview/{id}/respond",
+        "issue": "When _transcribe_audio returns empty string (Whisper failure), code substitutes literal '(unable to transcribe — candidate audio was unclear)' and still scores it via GPT-4o, then advances. Candidate is silently penalised for an STT-side failure. Better: return 502/retry hint so candidate can re-record."
+      },
+      {
+        "endpoint": "/api/educator-interview/start",
+        "issue": "Hardcoded application data projection {'_id':0, 'id':1, 'name':1, 'email':1, 'phone':1, 'skills':1} — misses if candidate_name needs to fall back to email/phone. Already handled (defaults to '') but worth noting."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Admin -> view educator with interview_score -> AI Interview Scorecard card",
+        "issue": "Card and 'View full transcript →' button NEVER render because backend response model strips interview_score / interview_session_id / interview_breakdown. Bug is on backend (EducatorApplication response model) but the symptom is UI.",
+        "affected_selectors": ["[data-testid='ai-interview-scorecard']", "[data-testid='close-transcript-modal']"]
+      }
+    ],
+    "design_issues": [
+      {
+        "screen": "EducatorInterviewPage running phase",
+        "issues": ["Chat area has no max-width on mobile beyond max-w-2xl + pb-32 — when only 1 question is shown the bubble sticks at top of huge empty area; consider centering vertically or adding a placeholder 'Listen carefully…' helper."]
+      },
+      {
+        "screen": "EducatorInterviewPage anti-cheat detection",
+        "issues": ["Both `visibilitychange` and `blur` listeners are registered with the SAME warnedThisHide ref, so a real tab switch (which fires both events) ONLY counts once — good. But pressing Cmd-Tab on macOS sometimes only fires `blur` without `visibilitychange`, and vice versa across browsers, so coverage is correct. However, `warnedThisHide` is only reset on visibilitychange (when document.hidden becomes false) — if blur fires without subsequent visibilitychange (e.g. an iframe steals focus), the user can never trigger a 2nd warning. Also reset warnedThisHide on `focus` event."]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter77_educator_interview.py",
+    "/app/test_reports/pytest/pytest_iter77.xml"
+  ],
+  "action_items": [
+    "CRITICAL: Add interview_score (Optional[int]), interview_status (Optional[str]), interview_session_id (Optional[str]), interview_breakdown (Optional[dict]), interview_completed_at (Optional[str]) to the EducatorApplication Pydantic model in /app/backend/routes/educators.py (around L77-149). Without this fix the AdminEducators 'AI Interview Scorecard' UI is invisible even after a candidate completes/fails the interview. After adding fields, also update sanitize_nullable_fields if needed, and verify the full admin flow end-to-end.",
+    "Also surface interview_score on the educator card list (next to the demo_rating) so HR can sort/filter without opening the dialog.",
+    "Reset `warnedThisHide.current = false` on window 'focus' event (currently only reset on visibilitychange) to robustly count tab switches across browsers.",
+    "Replace `payload: dict` on /anti-cheat with a typed Pydantic body model (e.g. AntiCheatEvent { reason: Optional[str], source: Optional[str] }).",
+    "Consider returning a structured 502/retry response when Whisper transcription fails so candidates aren't penalized for STT errors."
+  ],
+  "critical_code_review_comments": [
+    "EducatorApplication model in /app/backend/routes/educators.py uses extra='ignore' as a defensive measure but actively hides newly-added DB fields from API consumers — every time a feature writes a new column to the doc, the team must remember to add it to the Pydantic model. Long-term, consider switching off response_model on /educators/applications and /educators/application/{id} (or use response_model=None and return the raw dict with _id removed) so DB schema can evolve without API regressions. Today this hides interview_score / interview_status / interview_session_id and breaks the admin scorecard card.",
+    "educator_interview.py finalize is invoked synchronously inside the anti-cheat route (line 377) but as a background_task in /respond (line 343). Make this consistent — both should use background tasks to keep the route fast.",
+    "INTERVIEW_QUESTIONS dict + RUBRIC_BUCKETS are hardcoded module-level constants. For a hiring product these should live in DB/admin config so HR can tune questions/weights without a code deploy.",
+    "_score_answer_with_ai catches all exceptions and silently falls back to a word-count heuristic (3/5/7). This means a flaky GPT-4o call results in a low fake score, which is silently included in the final scorecard. At minimum log + persist 'ai_failed=true' on the answer so HR can spot it.",
+    "_finalize_interview computes 'passed = final_score >= 50 AND status == completed' — but stage 3 has max_marks 0, so a candidate who flies through stages 1+2 with ~30+25 = 55 will pass even if their stage-3 reliability answers are concerning. Stage 3 currently shapes nothing. Either include stage-3 in HR signals or remove gating language from the intro.",
+    "Frontend EducatorInterviewPage: SpeechSynthesis voices are async-loaded (Chrome quirk) — the speak() call right after handleStart may pick a wrong voice on first run because getVoices() hasn't resolved yet. The 350ms setTimeout helps but isn't deterministic; consider awaiting a 'voiceschanged' promise once on mount and storing the chosen voice in a ref."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter77_educator_interview.py"
+  ],
+  "success_rate": {"backend": "100% (16/16 — but with one CRITICAL bug captured by an explicit assertion)", "frontend": "100% on tested flows (intro -> running -> anti-cheat auto-fail). Admin scorecard NOT testable because backend strips the field that gates it."},
+  "test_credentials": "admin@oll.co / Dagaji03@",
+  "seed_data_creation": "Created several TEST_-prefixed educator applications via /api/educators/apply during pytest + UI runs (e.g. TEST_Interview_Candidate_<hex>, TEST_AntiCheat_<hex>, TEST_RespondVal_<hex>, TEST_UI_Cand). Triggered ~3 educator_interviews docs, one of which was driven to status='auto_failed_anti_cheat' to validate the finalize+linkage path. No scoring credits consumed (no real audio sent to Whisper/GPT-4o).",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Endpoints (all under /api): POST /educator-interview/start {application_id} -> {session_id, resumed, question, stage, candidate_name}; GET /educator-interview/{id} -> session doc; POST /educator-interview/{id}/respond multipart(audio, question_id) -> {transcript, score, next_question, stage_complete, interview_complete, ...}; POST /educator-interview/{id}/anti-cheat {} -> {ok, warnings, auto_failed}; GET /admin/educator-interviews?application_id=... and /admin/educator-interviews/{id} -> require admin auth. Frontend testids: start-interview-btn, record-answer-btn, stop-record-btn, replay-question-btn, anti-cheat-warning, chat-msg-{i}, back-home-link, go-to-interview-btn (EducatorApplyPage success), ai-interview-scorecard + close-transcript-modal (AdminEducators dialog). The interview-scorecard testid is BLOCKED by the response_model bug — main agent must add interview_* fields to EducatorApplication Pydantic model before retest. Anti-cheat reproduction in Playwright: page.evaluate({Object.defineProperty(document,'hidden',...); document.dispatchEvent(new Event('visibilitychange'));}) toggled hidden=true then hidden=false 3 times triggers auto-fail successfully. SpeechSynthesis + MediaRecorder are NOT exercised in headless Playwright (require fake-ui flags) — verified only via UI presence checks.",
+  "rca of the issue": "Symptom: After a candidate's interview is finalized (completed / failed_stage_X / auto_failed_anti_cheat), AdminEducators.jsx checks `viewEducator.interview_score != null` to render the AI Interview Scorecard, but the field is always undefined in the JSON returned by /api/educators/applications. RCA: backend route uses `response_model=List[EducatorApplication]` and `EducatorApplication` is declared with `model_config = ConfigDict(extra='ignore')` and no `interview_score / interview_status / interview_session_id / interview_breakdown / interview_completed_at` field on the model. Pydantic therefore silently drops these fields when serializing the DB doc into the response. The DB document itself is correct (verified via direct GET — `status='interview_failed'` survives because it IS a model field). Fix: add the five interview_* fields as Optional members of the EducatorApplication model. Reproduction: (1) POST /api/educators/apply, (2) POST /api/educator-interview/start with the new app id, (3) POST /api/educator-interview/{sid}/anti-cheat 3 times, (4) GET /api/educators/applications and inspect the matching doc — `interview_score` is null/missing, but the underlying Mongo doc has it set."
+}
