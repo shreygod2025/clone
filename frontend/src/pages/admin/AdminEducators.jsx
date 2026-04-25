@@ -790,6 +790,8 @@ const AdminEducators = () => {
     } else if (activeTab === 'onboarded') {
       matchesTab = ['onboarded', 'onboarding', 'active'].includes(edu.status) && 
                    onboardingData.some(o => o.educator?.id === edu.id);
+    } else if (activeTab === 'archived') {
+      matchesTab = ['archived', 'auto_failed_anti_cheat', 'interview_failed', 'rejected'].includes(edu.status);
     } else {
       matchesTab = edu.status === activeTab;
     }
@@ -817,6 +819,9 @@ const AdminEducators = () => {
     if (status === 'onboarded') {
       // Count educators that have onboarding records
       return onboardingData.length;
+    }
+    if (status === 'archived') {
+      return educators.filter(e => ['archived', 'auto_failed_anti_cheat', 'interview_failed', 'rejected'].includes(e.status)).length;
     }
     return educators.filter(e => e.status === status).length;
   };

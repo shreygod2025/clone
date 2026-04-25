@@ -58,6 +58,38 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+### 2026-04-25 (pt 2) — AI Voice Interview for Educator Candidates
+**New feature:** End-to-end AI-driven voice interview triggered right after the educator application is submitted.
+
+**Tech stack:**
+- **STT:** OpenAI Whisper (`whisper-1`) via `emergentintegrations.llm.openai.OpenAISpeechToText` + Emergent LLM Universal Key.
+- **LLM:** GPT-4o via `emergentintegrations.llm.chat.LlmChat` for question scoring with structured JSON output.
+- **TTS:** Browser SpeechSynthesis (free, no integration needed) — picks `en-IN` female voice.
+- **Capture:** Browser MediaRecorder (webm/opus); uploaded to FastAPI as multipart.
+
+**3-stage interview** (out of 100):
+- Stage 1 — Personality & Communication (55 marks, pass ≥30)
+- Stage 2 — Subject Knowledge & Classroom Mgmt (45 marks, pass ≥20, gated on Stage 1 pass)
+- Stage 3 — Commitment & Reliability (informational, gated on Stage 2 pass)
+
+**Backend** — new file `/app/backend/routes/educator_interview.py`:
+- `POST /api/educator-interview/start` (resume-aware)
+- `POST /api/educator-interview/{id}/respond` (multipart audio → Whisper → GPT-4o score → next question; advances stage / fails / completes)
+- `POST /api/educator-interview/{id}/anti-cheat` (3 strikes → status=auto_failed_anti_cheat)
+- `GET /api/educator-interview/{id}` + `GET /api/admin/educator-interviews[?application_id=...]` + detail endpoint
+- `_finalize_interview` writes `interview_score / interview_status / interview_breakdown / interview_session_id / interview_completed_at` onto the educator application doc.
+
+**Frontend:**
+- `/educator/interview/{applicationId}` page with intro consent screen (15–20 min, stay-on-screen), running phase (chat-style UI showing both bot questions and transcribed answers), tap-to-record / stop & submit, anti-cheat counter badge, replay-question button.
+- `EducatorApplyPage` success screen now has a prominent **"Start AI Interview →"** CTA (red gradient) right after submission.
+- `AdminEducators` — every educator card now shows an `AI <score>/100` badge (color-coded), and the view dialog has an **AI Interview Scorecard** card with bucket breakdown + **View full transcript** modal. Archived tab now includes `auto_failed_anti_cheat / interview_failed / rejected` so HR can review them.
+
+**Bug fixed in retest:** EducatorApplication response model had `extra="ignore"` which stripped the new interview_* fields. Added them as Optional fields → AdminEducators scorecard now renders.
+
+**Anti-cheat hardening:** added window `focus` event handler to reset the per-hide flag — Cmd-Tab edge cases are now counted reliably.
+
+**Tested:** 100% (32/32 backend pytest combined iter77+78 + frontend playwright). `/app/test_reports/iteration_77.json` & `iteration_78.json`. Test files `/app/backend/tests/test_iter77_educator_interview.py`. Live transcription path (Whisper+GPT-4o) requires real audio and was only smoke-tested via the SDK import; validation paths (short audio, mismatched question_id, status guards) are fully covered.
+
 ### 2026-04-25 — Educator Requirement Broadcast + Per-Educator Referral Tracking
 **New feature:**
 1. When admin raises a new Requirement, every existing educator now receives a personalized email with their own unique `?ref=<their_id>` apply link. Anyone who applies through that link gets `referred_by` + `referred_by_name` stamped on their application + `source = "referral"`.
