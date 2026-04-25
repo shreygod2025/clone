@@ -1,0 +1,37 @@
+{
+  "summary": "Iter76 — Educator Requirement broadcast emails + referral tracking. 11/11 backend pytest cases pass: POST /api/requirements/{id}/test-email (1 recipient, multiple recipients, empty list -> 400, unknown req -> 404, no auth -> 403); POST /api/requirements/{id}/resend-broadcast (success, unknown -> 404, no auth -> 403); POST /api/educators/apply with referred_by → referred_by_name resolved + source defaults to 'referral'; invalid referred_by id is tolerated (record still created, referred_by_name empty); POST /api/educators/apply-verified with bad OTP returns 400 (referred_by code path safe). Backend log confirms Resend delivered: '[REQ_NOTIFY] Sent new requirement notification to 1/1 educators' and '2/2 educators'. Frontend Playwright on /admin/educators → Requirements tab confirms: 2 requirement cards, each exposes data-testid=req-test-email-<id> (purple Mail icon) and data-testid=req-resend-<id> (green Send icon). Clicking test-email opens window.prompt prefilled with 'shreyaan@oll.co' → backend returns success → toast 'Sample email queued for 1 recipient(s)'. Clicking re-send opens confirm dialog → backend returns success → toast 'Broadcast queued — sending to all educators in the background'. EducatorApplyPage with ?ref=<id> renders correctly; backend tests already prove ref persistence + name resolution.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "EducatorApplyPage form", "issues": ["Form inputs (Full Name, Email, Phone, Experience, Why interested, demo date, demo time) have no data-testid attributes — only the submit button does. Functional, but adds friction for future automation."]},
+      {"screen": "Requirement card action icons (Requirements tab)", "issues": ["Test Email & Re-send broadcast actions use native browser window.prompt() and window.confirm() instead of the app's shadcn Dialog/AlertDialog. Works, but breaks the polished UX elsewhere in the admin and is harder to e2e test (Playwright must register page.on('dialog') handlers)."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter76_requirement_broadcast.py",
+    "/app/test_reports/pytest/pytest_iter76.xml"
+  ],
+  "action_items": [
+    "(Nice-to-have) Replace window.prompt + window.confirm in handleSendTestEmail / handleResendBroadcast with the existing shadcn Dialog component used elsewhere in AdminEducators — improves UX consistency and adds testability via data-testid on inputs/buttons.",
+    "(Nice-to-have) Add data-testid attributes to EducatorApplyPage form fields (educator-name, educator-email, educator-phone, educator-experience, educator-interest, educator-demo-date, educator-demo-time, educator-submit) for end-to-end automation."
+  ],
+  "critical_code_review_comments": [
+    "AdminEducators.jsx is 3069 lines — Requirements tab (~250 lines around 1278), educator card (~200 lines around 1397) and modals should be split into RequirementsTab.jsx / EducatorCard.jsx for maintainability. Same recommendation as iteration 74/75.",
+    "notify_educators_new_requirement (educators.py L2643) sends emails sequentially with 0.1s sleep between calls. With ~25 educators that's fine, but at >100 educators the background task will run for tens of seconds and Resend errors bubble only into logs. Consider asyncio.gather with a small semaphore (5–10 concurrent) and persist a broadcast-history doc (similar to summer_camp_broadcasts) so admin can see sent/failed counts per re-send.",
+    "FRONTEND_URL fallback in notify_educators_new_requirement (L2685) hardcodes the preview URL — should source from os.environ.get('FRONTEND_URL') or REACT_APP_BACKEND_URL with no default to avoid stale links in production.",
+    "test-email and resend-broadcast endpoints have no rate-limit / abuse protection. An admin could flood Resend by spamming Re-send. Add a per-requirement 'last_broadcast_at' check (e.g. min 60s between resends) and store it on open_requirements doc.",
+    "Apply with invalid referred_by id silently swallows the issue (referred_by stored, referred_by_name empty). Consider logging a warning so admin can spot tampered/stale referral links."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter76_requirement_broadcast.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "admin@oll.co / Dagaji03@",
+  "seed_data_creation": "Created 3 TEST_-prefixed educator applications via /api/educators/apply during backend tests: 1 referrer (TEST_Referrer_<hex>) and 2 applicants (one with valid referred_by → referred_by_name resolved + source='referral'; one with invalid referred_by 'does-not-exist-xxx'). Triggered 4 live test-email broadcasts to shreyaan@oll.co + test_iter76@example.com (Resend delivered the ones with valid addresses; check inbox if needed). Triggered 1 live resend-broadcast (re-emailed all ~25 active educators with their unique ?ref=<id> link).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Endpoints: POST /api/requirements/{req_id}/test-email body={emails:[]} → 200 {success, queued, message}; POST /api/requirements/{req_id}/resend-broadcast → 200 {success, message}. Both are admin-auth-protected (return 403 without token). Notification function notify_educators_new_requirement(requirement, override_emails=None, override_recipients=None) is shared between auto-broadcast (on requirement create), test-email and resend. EducatorApplyPage reads ?ref=<id> via useSearchParams and POSTs referred_by + source='referral' to /api/educators/apply. Backend resolves referred_by_name from referred_by id (lookup in educator_applications by id). EducatorApplication model fields: referred_by, referred_by_name (both Optional[str]). Existing requirement id used for tests: 4ffde6a8-46f6-452e-af75-1071e4bf6913. Frontend testids: req-test-email-<reqId>, req-resend-<reqId>. AdminEducators.jsx handlers use native browser prompt/confirm dialogs — Playwright must register page.on('dialog') handlers BEFORE clicking. Backend log line to grep for confirmation: '[REQ_NOTIFY] Sent new requirement notification to N/M educators'.",
+  "rca of the issue": "N/A — feature verified end-to-end, no issues found."
+}

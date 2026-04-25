@@ -24,6 +24,7 @@ from .shared import (
     ensure_resend_api_key, EMAIL_TEMPLATES, send_educator_email, SENDER_EMAIL,
     get_next_ticket_number
 )
+import resend
 from .notifications import send_whatsapp_notification, send_demo_confirmation_notifications
 
 # OTP types needed by educator routes
@@ -102,6 +103,9 @@ class EducatorApplication(BaseModel):
     source: str = "website"
     added_by: str = ""
     assigned_to: str = ""
+    # Referral tracking — set when applicant arrived via a unique educator referral link
+    referred_by: Optional[str] = None       # educator_application id of the referrer
+    referred_by_name: Optional[str] = None  # snapshot of referrer's name at the time of apply
 
     # Profile fields (populated from onboarding when moved to active)
     profile_photo: str = ""
@@ -197,6 +201,7 @@ class EducatorApplicationCreate(BaseModel):
     added_by: str = ""
     assigned_to: str = ""
     notes: str = ""
+    referred_by: Optional[str] = None       # educator_application id of the referrer (from ?ref=...)
 
 class EducatorApplicationUpdate(BaseModel):
     status: Optional[str] = None
@@ -614,7 +619,19 @@ async def create_educator_application(data: EducatorApplicationCreate, backgroun
     # Ensure status has a meaningful default (sanitize_nullable_fields may blank it)
     if not application.status:
         application.status = "new"
-    
+
+    # Resolve referrer name from referred_by id (if provided)
+    if application.referred_by:
+        referrer = await db.educator_applications.find_one(
+            {"id": application.referred_by},
+            {"_id": 0, "name": 1, "email": 1}
+        )
+        if referrer:
+            application.referred_by_name = referrer.get("name", "")
+            # Stamp source so admin knows it came from a referral
+            if not application.source or application.source == "website":
+                application.source = "referral"
+
     # If demo_date is provided, set status to demo_scheduled
     if data.demo_date:
         application.status = "demo_scheduled"
@@ -661,6 +678,18 @@ async def create_educator_application_verified(data: EducatorApplyWithOTP, backg
     application = EducatorApplication(**app_data)
     if data.application_data.demo_date:
         application.status = "demo_scheduled"
+
+    # Resolve referrer name from referred_by id (if provided)
+    if application.referred_by:
+        referrer = await db.educator_applications.find_one(
+            {"id": application.referred_by},
+            {"_id": 0, "name": 1}
+        )
+        if referrer:
+            application.referred_by_name = referrer.get("name", "")
+            if not application.source or application.source == "website":
+                application.source = "referral"
+
     meeting_link = generate_meeting_link(application.id)
 
     # ── Check if already exists (non-archived/rejected) ──────────────────────
@@ -2611,24 +2640,50 @@ async def get_single_requirement(req_id: str):
         req['created_at'] = datetime.fromisoformat(req['created_at'])
     return req
 
-async def notify_educators_new_requirement(requirement: dict):
-    """Background task: send email to all educators when a new requirement is posted."""
+async def notify_educators_new_requirement(requirement: dict, override_emails: Optional[List[str]] = None, override_recipients: Optional[List[dict]] = None):
+    """Background task: send email to all educators when a new requirement is posted.
+
+    Each educator gets a UNIQUE referral link `?ref=<their_id>` so admin can track
+    where each new applicant came from.
+
+    Args:
+        requirement: The requirement dict
+        override_emails: If provided, send only to these email addresses (used by test-email endpoint).
+        override_recipients: If provided, use this exact list of recipient dicts {id, name, email}.
+    """
     try:
         await ensure_resend_api_key()
-        # Fetch all educators that should be notified
-        target_statuses = ['new', 'demo_scheduled', 'hr_done', 'tech_scheduled', 'demo_completed', 'onboarded', 'active']
-        educators = await db.educator_applications.find(
-            {"status": {"$in": target_statuses}, "email": {"$exists": True, "$ne": ""}},
-            {"_id": 0, "name": 1, "email": 1}
-        ).to_list(1000)
+        if override_recipients:
+            educators = override_recipients
+        elif override_emails:
+            # Resolve recipients from emails list (for sample/test sends)
+            educators = []
+            for em in override_emails:
+                em_clean = (em or "").strip().lower()
+                if not em_clean:
+                    continue
+                rec = await db.educator_applications.find_one(
+                    {"email": {"$regex": f"^{re.escape(em_clean)}$", "$options": "i"}},
+                    {"_id": 0, "id": 1, "name": 1, "email": 1}
+                )
+                if rec:
+                    educators.append(rec)
+                else:
+                    educators.append({"id": "", "name": em_clean.split("@")[0].title(), "email": em_clean})
+        else:
+            target_statuses = ['new', 'demo_scheduled', 'hr_done', 'tech_scheduled', 'demo_completed', 'onboarded', 'active']
+            educators = await db.educator_applications.find(
+                {"status": {"$in": target_statuses}, "email": {"$exists": True, "$ne": ""}},
+                {"_id": 0, "id": 1, "name": 1, "email": 1}
+            ).to_list(1000)
 
         if not educators:
             logging.info("[REQ_NOTIFY] No educators to notify")
             return
 
         req_id = requirement.get("id", "")
-        frontend_url = os.environ.get("FRONTEND_URL", "https://camp-lead-capture.preview.emergentagent.com")
-        apply_link = f"{frontend_url}/educator/apply/{req_id}"
+        frontend_url = os.environ.get("FRONTEND_URL", "https://camp-lead-capture.preview.emergentagent.com").rstrip("/")
+        base_apply_link = f"{frontend_url}/educator/apply/{req_id}"
 
         pay_text = ""
         if requirement.get("pay_amount"):
@@ -2651,6 +2706,10 @@ async def notify_educators_new_requirement(requirement: dict):
                 if not email:
                     continue
 
+                ed_id = educator.get("id", "")
+                referral_link = f"{base_apply_link}?ref={ed_id}" if ed_id else base_apply_link
+                # Direct apply link is the same — referrer ID just attributes any submission to them
+
                 html = f"""
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
                     <div style="background: linear-gradient(135deg, #1E3A5F 0%, #D63031 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
@@ -2659,7 +2718,7 @@ async def notify_educators_new_requirement(requirement: dict):
                     </div>
                     <div style="background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px;">
                         <h2 style="color: #1E3A5F; margin-top: 0;">Hi {name}! 👋</h2>
-                        <p style="color: #444; line-height: 1.6;">We just posted a new teaching opportunity that you or someone you know might be a great fit for:</p>
+                        <p style="color: #444; line-height: 1.6;">We just posted a new teaching opportunity. Apply yourself, or refer someone — your unique link below tracks every candidate you bring in.</p>
 
                         <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #D63031;">
                             <h3 style="color: #1E3A5F; margin-top: 0; font-size: 18px;">{requirement.get('title', 'New Opening')}</h3>
@@ -2672,19 +2731,17 @@ async def notify_educators_new_requirement(requirement: dict):
                             {('<p style="margin:10px 0 0 0; color:#555;">' + requirement.get('description','') + '</p>') if requirement.get('description') else ''}
                         </div>
 
-                        <p style="color: #444; line-height: 1.6; font-size: 15px;">
-                            <strong>Know someone perfect for this role?</strong> Share the link below — you'll be helping a great candidate find their opportunity!
-                        </p>
-
                         <div style="text-align: center; margin: 28px 0;">
-                            <a href="{apply_link}" style="background: #D63031; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 15px; display: inline-block;">
-                                Apply or Refer a Candidate →
+                            <a href="{referral_link}" style="background: #D63031; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 15px; display: inline-block;">
+                                Apply Now →
                             </a>
                         </div>
 
-                        <p style="color: #888; font-size: 13px; line-height: 1.6;">
-                            Or copy this link: <a href="{apply_link}" style="color: #D63031;">{apply_link}</a>
-                        </p>
+                        <div style="background:#fff8e1; border:1px dashed #f0c14b; border-radius:8px; padding:14px 16px; margin: 22px 0;">
+                            <p style="margin:0 0 6px 0; font-weight:bold; color:#7a4a00;">🔗 Your referral link (share with friends)</p>
+                            <p style="margin:0; word-break:break-all; font-family:monospace; font-size:13px; color:#444;">{referral_link}</p>
+                            <p style="margin:8px 0 0 0; font-size:12px; color:#7a4a00;">Anyone who applies through this link will be tagged as referred by <strong>{name}</strong> in our admin panel.</p>
+                        </div>
 
                         <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
                         <p style="color: #999; font-size: 12px; margin: 0;">You're receiving this because you're part of the OLL Educator community. Thank you for being with us!</p>
@@ -2722,6 +2779,41 @@ async def create_requirement(data: OpenRequirementCreate, user: dict = Depends(g
     if background_tasks:
         background_tasks.add_task(notify_educators_new_requirement, requirement.model_dump())
     return requirement
+
+
+class TestEmailRequest(BaseModel):
+    emails: List[str]  # list of email addresses to send sample to
+
+
+@router.post("/requirements/{req_id}/test-email")
+async def send_requirement_test_email(
+    req_id: str,
+    data: TestEmailRequest,
+    background_tasks: BackgroundTasks,
+    user: dict = Depends(get_current_user),
+):
+    """Send a sample requirement-notification email to specific addresses (admin preview)."""
+    req = await db.open_requirements.find_one({"id": req_id}, {"_id": 0})
+    if not req:
+        raise HTTPException(status_code=404, detail="Requirement not found")
+    if not data.emails:
+        raise HTTPException(status_code=400, detail="At least one email is required")
+    background_tasks.add_task(notify_educators_new_requirement, req, data.emails)
+    return {"success": True, "queued": len(data.emails), "message": f"Sample email queued for {len(data.emails)} recipient(s)"}
+
+
+@router.post("/requirements/{req_id}/resend-broadcast")
+async def resend_requirement_broadcast(
+    req_id: str,
+    background_tasks: BackgroundTasks,
+    user: dict = Depends(get_current_user),
+):
+    """Manually re-broadcast the requirement email to ALL existing educators."""
+    req = await db.open_requirements.find_one({"id": req_id}, {"_id": 0})
+    if not req:
+        raise HTTPException(status_code=404, detail="Requirement not found")
+    background_tasks.add_task(notify_educators_new_requirement, req)
+    return {"success": True, "message": "Broadcast queued — sending to all educators in the background"}
 
 @router.patch("/requirements/{req_id}", response_model=OpenRequirement)
 async def update_requirement(

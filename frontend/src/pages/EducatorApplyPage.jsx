@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { MapPin, Briefcase, Clock, Users, IndianRupee, Calendar, Check, ChevronRight, ArrowLeft, CalendarDays, Star } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -23,6 +23,8 @@ const COUNTRY_CODES = [
 export default function EducatorApplyPage() {
   const { reqId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const referrerId = searchParams.get('ref') || ''; // unique referral code from email link
 
   const [requirement, setRequirement] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -123,6 +125,8 @@ export default function EducatorApplyPage() {
         requirement_id: requirement.id,
         requirement_title: requirement.title,
         why_interested: formData.why_interested || '',
+        referred_by: referrerId || null,
+        source: referrerId ? 'referral' : 'website',
       });
       setStep('success');
     } catch (err) {

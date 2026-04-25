@@ -566,6 +566,40 @@ const AdminEducators = () => {
     }
   };
 
+  const handleSendTestEmail = async (req) => {
+    const input = window.prompt(
+      `Send sample email for "${req.title}" to:\n\nEnter one or more email addresses (comma-separated):`,
+      'shreyaan@oll.co'
+    );
+    if (!input) return;
+    const emails = input.split(',').map(e => e.trim()).filter(Boolean);
+    if (emails.length === 0) return;
+    try {
+      const res = await axios.post(
+        `${API}/requirements/${req.id}/test-email`,
+        { emails },
+        { headers: getAuthHeaders() }
+      );
+      toast.success(res.data?.message || `Sample email sent to ${emails.length} recipient(s)`);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to send sample email');
+    }
+  };
+
+  const handleResendBroadcast = async (req) => {
+    if (!window.confirm(`Re-send the email for "${req.title}" to ALL existing educators? Each educator will receive their own unique referral link.`)) return;
+    try {
+      const res = await axios.post(
+        `${API}/requirements/${req.id}/resend-broadcast`,
+        {},
+        { headers: getAuthHeaders() }
+      );
+      toast.success(res.data?.message || 'Broadcast queued');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to queue broadcast');
+    }
+  };
+
   const handleScheduleTechDemo = async () => {
     if (!techScheduleData.date || !techScheduleData.time) {
       toast.error('Please select date and time for the technical demo');
@@ -1270,6 +1304,24 @@ const AdminEducators = () => {
                         >
                           <Edit className="w-4 h-4 text-slate-500" />
                         </button>
+                        {/* Send test email */}
+                        <button
+                          onClick={() => handleSendTestEmail(req)}
+                          className="p-2 hover:bg-purple-50 rounded-lg transition-colors text-purple-500 hover:text-purple-700"
+                          title="Send sample email to specific recipient(s)"
+                          data-testid={`req-test-email-${req.id}`}
+                        >
+                          <Mail className="w-4 h-4" />
+                        </button>
+                        {/* Re-broadcast to all educators */}
+                        <button
+                          onClick={() => handleResendBroadcast(req)}
+                          className="p-2 hover:bg-green-50 rounded-lg transition-colors text-green-600 hover:text-green-700"
+                          title="Re-send notification to ALL educators"
+                          data-testid={`req-resend-${req.id}`}
+                        >
+                          <Send className="w-4 h-4" />
+                        </button>
                         {/* Close / Reopen */}
                         <button
                           onClick={() => handleCloseRequirement(req)}
@@ -1341,6 +1393,11 @@ const AdminEducators = () => {
                 {educator.requirement_title && (
                   <span className="px-2 py-1 rounded text-xs font-medium bg-[#D63031]/10 text-[#D63031]">
                     {educator.requirement_title}
+                  </span>
+                )}
+                {educator.referred_by_name && (
+                  <span className="px-2 py-1 rounded text-xs font-medium bg-purple-50 text-purple-700 inline-flex items-center gap-1" data-testid={`educator-referrer-${educator.id}`}>
+                    <UserPlus className="w-3 h-3" /> Referred by {educator.referred_by_name}
                   </span>
                 )}
               </div>
