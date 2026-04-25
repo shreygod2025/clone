@@ -116,14 +116,44 @@ const AdminDataExport = () => {
             </h1>
             <p className="text-sm text-slate-500 mt-1">Browse every MongoDB database & collection — download as CSV or JSON Lines.</p>
           </div>
-          <button
-            onClick={fetchDatabases}
-            disabled={loadingDbs}
-            className="px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 flex items-center gap-2 disabled:opacity-50"
-            data-testid="refresh-databases-btn"
-          >
-            <RefreshCw className={`w-4 h-4 ${loadingDbs ? 'animate-spin' : ''}`} /> Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={async () => {
+                setDownloading('all-jsonl');
+                try {
+                  const url = `${API}/api/admin/data-export/all-databases.zip?fmt=both`;
+                  const res = await axios.get(url, { headers: getAuthHeaders(), responseType: 'blob', timeout: 600000 });
+                  const blob = new Blob([res.data], { type: 'application/zip' });
+                  const link = document.createElement('a');
+                  link.href = window.URL.createObjectURL(blob);
+                  link.download = `oll_full_export_${Date.now()}.zip`;
+                  document.body.appendChild(link);
+                  link.click();
+                  link.remove();
+                  toast.success('Complete export downloaded — every database, every collection');
+                } catch (e) {
+                  toast.error(e.response?.data?.detail || 'Failed to export everything');
+                } finally {
+                  setDownloading(null);
+                }
+              }}
+              disabled={downloading === 'all-jsonl'}
+              className="px-3 py-2 rounded-lg bg-[#D63031] text-white text-sm font-bold hover:bg-[#b52828] flex items-center gap-2 disabled:opacity-60"
+              data-testid="export-everything-btn"
+              title="Bundle every collection across every database into one zip file (CSV + JSONL)"
+            >
+              {downloading === 'all-jsonl' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              Download Everything (ZIP)
+            </button>
+            <button
+              onClick={fetchDatabases}
+              disabled={loadingDbs}
+              className="px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 flex items-center gap-2 disabled:opacity-50"
+              data-testid="refresh-databases-btn"
+            >
+              <RefreshCw className={`w-4 h-4 ${loadingDbs ? 'animate-spin' : ''}`} /> Refresh
+            </button>
+          </div>
         </div>
 
         {/* Important note */}

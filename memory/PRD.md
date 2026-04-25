@@ -58,6 +58,17 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+### 2026-04-25 (pt 6) — All-DB Export: mongodump now multi-DB + One-click "Download Everything"
+**User feedback:** "I want ALL the data of OLL, ALL of it. Is mongodump working?"
+
+**Yes — mongodump is working ✅** but it was previously only dumping the primary `test_database`. Fixed:
+1. **`POST /api/admin/db-backup/create`** now lists every visible database (excluding admin/local/config) and runs `mongodump` for each into one tar.gz. Verified: 12.28 MB archive containing `oll_hub/`, `oll_multiuser/`, `teach_n_learn/`, `test_database/` — every DB the server can see.
+2. **NEW `GET /api/admin/data-export/all-databases.zip?fmt=both`** — bundles every collection of every DB into one ZIP archive containing both `<db>/<coll>.jsonl` and `<db>/<coll>.csv` files plus a top-level `MANIFEST.json` with restore instructions.
+3. **Frontend "Download Everything (ZIP)"** red button on `/admin/data-export` next to Refresh — one click pulls 25.7 MB containing 103 files / 51 collections / 1,236 docs across all 4 DBs.
+
+**Restore path (single command per collection):**
+`mongoimport --uri="mongodb://localhost:27017" --db=<db> --collection=<coll> --file=<db>/<coll>.jsonl`
+
 ### 2026-04-25 (pt 5) — Admin Data Export Panel (CSV / JSON Lines)
 **Goal:** Let admin extract every collection in every visible MongoDB database (test_database, oll_hub, oll_multiuser, teach_n_learn, etc.) so they can self-host the data on their own MongoDB instance.
 

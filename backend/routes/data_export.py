@@ -253,3 +253,113 @@ async def export_collection_json(
         media_type="application/x-ndjson",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+# ── Download Everything as ZIP ────────────────────────────────────────────
+@router.get("/admin/data-export/all-databases.zip")
+async def export_all_as_zip(
+    fmt: str = Query("jsonl", regex="^(csv|jsonl|both)$"),
+    user: dict = Depends(get_current_user),
+):
+    """Bundle EVERY collection in EVERY visible database into one ZIP archive.
+    Layout inside the zip:
+        <db_name>/<collection>.jsonl     (always — best for mongoimport)
+        <db_name>/<collection>.csv       (if fmt=csv or fmt=both)
+    Pass fmt=jsonl (default), csv, or both.
+    """
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    import zipfile
+    import tempfile
+
+    client = _get_client()
+    try:
+        all_dbs = await client.list_database_names()
+    except Exception:
+        all_dbs = [_PRIMARY_DB] if _PRIMARY_DB else []
+    skip = {"admin", "local", "config"}
+    target_dbs = [d for d in all_dbs if d and d not in skip]
+
+    # Stream into a temp file so memory stays bounded
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".zip", prefix="oll_full_export_")
+    tmp.close()
+
+    summary: list = []
+    with zipfile.ZipFile(tmp.name, mode="w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
+        for db_name in target_dbs:
+            db = client[db_name]
+            try:
+                colls = await db.list_collection_names()
+            except Exception:
+                continue
+            for coll in colls:
+                if coll.startswith("system."):
+                    continue
+                docs = []
+                try:
+                    async for doc in db[coll].find({}):
+                        docs.append(_stringify(doc))
+                except Exception as e:
+                    logging.warning(f"[zip] read failed {db_name}.{coll}: {e}")
+                    continue
+
+                # Always JSONL (most fidelity, works with mongoimport)
+                if fmt in ("jsonl", "both"):
+                    jsonl = "\n".join(json.dumps(d, default=str, ensure_ascii=False) for d in docs)
+                    zf.writestr(f"{db_name}/{coll}.jsonl", jsonl)
+
+                # CSV if requested
+                if fmt in ("csv", "both"):
+                    flat_rows = [_flatten(d) for d in docs]
+                    headers = []
+                    seen = set()
+                    for r in flat_rows:
+                        for k in r:
+                            if k not in seen:
+                                seen.add(k)
+                                headers.append(k)
+                    sio = io.StringIO()
+                    writer = csv.DictWriter(sio, fieldnames=headers, extrasaction="ignore")
+                    writer.writeheader()
+                    for r in flat_rows:
+                        writer.writerow({h: r.get(h, "") for h in headers})
+                    zf.writestr(f"{db_name}/{coll}.csv", sio.getvalue())
+
+                summary.append({"db": db_name, "collection": coll, "documents": len(docs)})
+
+        # Add a manifest so the user knows what's inside
+        manifest = {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "format": fmt,
+            "databases": target_dbs,
+            "collections": summary,
+            "restore_hint": (
+                "For each <db>/<coll>.jsonl run: "
+                "mongoimport --uri='mongodb://localhost:27017' --db=<db> --collection=<coll> --file=<db>/<coll>.jsonl"
+            ),
+        }
+        zf.writestr("MANIFEST.json", json.dumps(manifest, indent=2, default=str))
+
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    zip_filename = f"oll_full_export_{timestamp}.zip"
+
+    def file_iter():
+        try:
+            with open(tmp.name, "rb") as fh:
+                while True:
+                    chunk = fh.read(64 * 1024)
+                    if not chunk:
+                        break
+                    yield chunk
+        finally:
+            try:
+                os.remove(tmp.name)
+            except Exception:
+                pass
+
+    return StreamingResponse(
+        file_iter(),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{zip_filename}"'},
+    )

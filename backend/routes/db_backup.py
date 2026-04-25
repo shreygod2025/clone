@@ -27,29 +27,46 @@ def _latest_backup():
 
 @router.post("/admin/db-backup/create")
 async def create_backup(user: dict = Depends(get_current_user)):
-    """Trigger a fresh DB backup. Returns backup filename and size."""
+    """Trigger a fresh DB backup. Dumps EVERY non-system database the server can see
+    (test_database + oll_hub + oll_multiuser + teach_n_learn + …) into one archive."""
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     archive = f"{BACKUP_DIR}/oll_db_backup_{timestamp}.tar.gz"
     tmp_dir = f"{BACKUP_DIR}/tmp_{timestamp}"
-
     os.makedirs(tmp_dir, exist_ok=True)
 
-    # Run mongodump
-    dump_result = subprocess.run(
-        ["mongodump", f"--uri={MONGO_URL}", f"--db={DB_NAME}", f"--out={tmp_dir}"],
-        capture_output=True, text=True, timeout=120,
-    )
-    if dump_result.returncode != 0:
-        import shutil; shutil.rmtree(tmp_dir, ignore_errors=True)
-        logging.error(f"mongodump failed: {dump_result.stderr}")
-        raise HTTPException(status_code=500, detail="Backup failed during dump")
+    # Determine which databases to dump — skip Mongo internal DBs
+    try:
+        from motor.motor_asyncio import AsyncIOMotorClient
+        client = AsyncIOMotorClient(MONGO_URL)
+        all_dbs = await client.list_database_names()
+        client.close()
+    except Exception as e:
+        logging.warning(f"listDatabases failed, falling back to primary db only: {e}")
+        all_dbs = [DB_NAME]
+    skip = {"admin", "local", "config"}
+    target_dbs = [d for d in all_dbs if d and d not in skip]
+    if not target_dbs:
+        target_dbs = [DB_NAME]
 
-    # Compress
+    # mongodump each DB into its own folder under tmp_dir
+    for db_name in target_dbs:
+        dump_result = subprocess.run(
+            ["mongodump", f"--uri={MONGO_URL}", f"--db={db_name}", f"--out={tmp_dir}"],
+            capture_output=True, text=True, timeout=180,
+        )
+        if dump_result.returncode != 0:
+            import shutil
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            logging.error(f"mongodump failed for {db_name}: {dump_result.stderr}")
+            raise HTTPException(status_code=500, detail=f"Backup failed during dump of {db_name}")
+
+    # Compress the entire tmp_dir into one archive
     tar_result = subprocess.run(
         ["tar", "-czf", archive, "-C", tmp_dir, "."],
-        capture_output=True, text=True, timeout=60,
+        capture_output=True, text=True, timeout=120,
     )
-    import shutil; shutil.rmtree(tmp_dir, ignore_errors=True)
+    import shutil
+    shutil.rmtree(tmp_dir, ignore_errors=True)
 
     if tar_result.returncode != 0:
         raise HTTPException(status_code=500, detail="Backup failed during compression")
@@ -60,12 +77,19 @@ async def create_backup(user: dict = Depends(get_current_user)):
     # Rotate — keep last 4
     all_backups = sorted(glob.glob(f"{BACKUP_DIR}/oll_db_backup_*.tar.gz"), reverse=True)
     for old in all_backups[4:]:
-        try: os.remove(old)
-        except Exception: pass
+        try:
+            os.remove(old)
+        except Exception:
+            pass
 
     filename = os.path.basename(archive)
-    logging.info(f"DB backup created: {filename} ({size_mb} MB)")
-    return {"filename": filename, "size_mb": size_mb, "created_at": datetime.now(timezone.utc).isoformat()}
+    logging.info(f"DB backup created: {filename} ({size_mb} MB) across {len(target_dbs)} DBs: {target_dbs}")
+    return {
+        "filename": filename,
+        "size_mb": size_mb,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "databases": target_dbs,
+    }
 
 
 @router.get("/admin/db-backup/download")
