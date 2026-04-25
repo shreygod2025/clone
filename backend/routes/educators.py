@@ -107,6 +107,13 @@ class EducatorApplication(BaseModel):
     referred_by: Optional[str] = None       # educator_application id of the referrer
     referred_by_name: Optional[str] = None  # snapshot of referrer's name at the time of apply
 
+    # AI Interview scorecard fields (set by educator_interview module after finalize)
+    interview_session_id: Optional[str] = None
+    interview_score: Optional[int] = None
+    interview_status: Optional[str] = None
+    interview_breakdown: Optional[dict] = None
+    interview_completed_at: Optional[str] = None
+
     # Profile fields (populated from onboarding when moved to active)
     profile_photo: str = ""
     bio: str = ""

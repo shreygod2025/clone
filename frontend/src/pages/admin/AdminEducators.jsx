@@ -1401,6 +1401,15 @@ const AdminEducators = () => {
                     <UserPlus className="w-3 h-3" /> Referred by {educator.referred_by_name}
                   </span>
                 )}
+                {educator.interview_score != null && (
+                  <span className={`px-2 py-1 rounded text-xs font-bold inline-flex items-center gap-1 ${
+                    educator.interview_score >= 70 ? 'bg-green-50 text-green-700' :
+                    educator.interview_score >= 50 ? 'bg-amber-50 text-amber-700' :
+                    'bg-red-50 text-red-700'
+                  }`} data-testid={`educator-interview-score-${educator.id}`}>
+                    <Sparkles className="w-3 h-3" /> AI {educator.interview_score}/100
+                  </span>
+                )}
               </div>
 
               <div className="space-y-2 text-sm text-slate-600 mb-3">

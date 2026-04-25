@@ -1,0 +1,30 @@
+{
+  "summary": "Iter78 retest after main agent added Optional interview_session_id/score/status/breakdown/completed_at to EducatorApplication Pydantic model. ALL FIXES VERIFIED. Backend: GET /api/educators/applications now returns the 5 interview_* fields — 5 educators (TEST_UI_Cand, TEST_AntiCheat_4a2f77, TEST_X_1141f0, TEST_AntiCheat_d7aafa, TEST_BadRef_e94f3b) all surface interview_score=0, interview_status='auto_failed_anti_cheat', interview_session_id, interview_breakdown {communication/personality/classroom_mgmt/subject}, and interview_completed_at. PATCH /api/educators/application/{id} also returns these fields (verified). Frontend: temporarily flipped TEST_UI_Cand status from auto_failed_anti_cheat → new (it gets filtered out of every visible tab while in auto_failed status, see notes) so it appeared in Applicants/All. AI badge data-testid='educator-interview-score-<id>' rendered on card list with bg-red-50/text-red-700 (score 0 <50) and 'AI 0/100' text + Sparkles icon. Clicking View → AI Interview Scorecard card rendered with data-testid='ai-interview-scorecard' showing 'Auto-Failed' chip, big '0/100', breakdown rows (communication 0/35, personality 0/20, classroom mgmt 0/25, subject 0/20), 'View full transcript →' link. Click on link opens AI Interview Transcript modal with close-transcript-modal X button (top right). Modal shows '0 answers · status: auto_failed_anti_cheat' and 'No answers recorded yet.' as expected for this anti-cheat-failed candidate. Anti-cheat focus reset verified by code review of EducatorInterviewPage.jsx lines 116-117: window.addEventListener('focus', () => warnedThisHide.current = false) is registered and cleaned up on unmount — main agent's fix is correct. Restored TEST_UI_Cand status to auto_failed_anti_cheat after test. Skipped audio/Whisper transcription path per main-agent guidance.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "AdminEducators tab filtering", "issues": ["Candidates with status='auto_failed_anti_cheat' are not visible under any current tab (Applicants filters status in {new, demo_scheduled}; Onboarding/Active/Archived filter exact status). HR cannot see auto-failed candidates without a DB-side status flip. Consider adding an 'Auto-Failed' or 'Rejected by AI' bucket OR including 'auto_failed_anti_cheat' under Archived (which currently only catches status='archived'). This is a UX gap exposed by the now-working AI Interview Scorecard, not a regression."]},
+      {"screen": "AI Interview Transcript modal", "issues": ["Click on close-transcript-modal X (top-right) sometimes does not dismiss the modal in headless Playwright force-click — the bottom-right 'Close' button does work. Likely a click-overlay/z-index quirk. Low priority; modal IS dismissable via the visible Close button. Worth verifying with a real user click."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/test_iter77_educator_interview.py"],
+  "action_items": [
+    "Add a UI bucket for 'auto_failed_anti_cheat' status in AdminEducators (e.g., include under Archived tab or add a new 'Auto-Failed' tab). Without it, HR cannot review the AI Scorecard for candidates who failed anti-cheat unless they manually flip the DB status.",
+    "(Optional minor) Verify the X (data-testid=close-transcript-modal) at top-right of the AI Interview Transcript modal closes the dialog reliably — it inconsistently dismissed in Playwright force-click."
+  ],
+  "critical_code_review_comments": [
+    "Main agent's fix to EducatorApplication is correct and minimal — just the 5 Optional fields added at L111-115. No need to widen extra='ignore' since fields now exist on the model. PATCH endpoint also returns the same enriched shape (validated).",
+    "Reminder from previous iter: every new field written to educator_applications must be remembered to be added to the Pydantic model. Long-term, consider response_model=None on these admin endpoints and return raw dicts (with _id stripped) to avoid this re-occurring.",
+    "Anti-cheat focus reset (EducatorInterviewPage.jsx L116-117) is correctly added. Note: blur+focus pair from a real Cmd-Tab or window switch will now allow re-warning on subsequent tab switches, fixing the bug where warnings were stuck at 1 if visibilitychange didn't fire."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (interview_* fields verified in 5 docs via direct curl on /api/educators/applications and PATCH)", "frontend": "100% on tested flows (badge, scorecard card, transcript modal). Anti-cheat focus reset verified by code review."},
+  "test_credentials": "admin@oll.co / Dagaji03@",
+  "seed_data_creation": "Used existing TEST_UI_Cand (id=8cec4e02-80f9-4c1b-adf1-c08327177c65). Temporarily PATCHed status to 'new' for UI test, then restored to 'auto_failed_anti_cheat'. No new seed data created.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "EducatorApplication model in /app/backend/routes/educators.py L77-115 now correctly includes interview_session_id, interview_score, interview_status, interview_breakdown, interview_completed_at as Optional fields. AdminEducators frontend renders: (a) educator-interview-score-<id> badge on card list when interview_score!=null with green/amber/red color buckets, (b) ai-interview-scorecard card inside view dialog with breakdown, (c) close-transcript-modal X in transcript modal. KNOWN GAP: candidates with status='auto_failed_anti_cheat' are filtered out of every visible Applicants/Archived tab — HR needs a UI surface for them. Anti-cheat focus reset (EducatorInterviewPage.jsx L116-117) confirmed via code review.",
+  "rca of the issue": "Original Iter77 RCA (response model stripping interview_* fields) is RESOLVED. Main agent added the 5 Optional fields to the Pydantic model — fields now flow from DB → API → frontend → AI Scorecard UI as expected."
+}

@@ -113,9 +113,12 @@ export default function EducatorInterviewPage() {
     };
     document.addEventListener('visibilitychange', onVis);
     window.addEventListener('blur', onBlur);
+    const onFocus = () => { warnedThisHide.current = false; };
+    window.addEventListener('focus', onFocus);
     return () => {
       document.removeEventListener('visibilitychange', onVis);
       window.removeEventListener('blur', onBlur);
+      window.removeEventListener('focus', onFocus);
     };
   }, [phase, sessionId]);
 
