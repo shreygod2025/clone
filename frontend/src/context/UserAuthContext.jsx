@@ -23,10 +23,10 @@ export const UserAuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const sendOTP = async (phone, userType = 'student') => {
+  const sendOTP = async (phone, userType = 'student', email = null) => {
     try {
-      const response = await axios.post(`${API}/auth/send-otp`, { phone, user_type: userType });
-      return { success: true, message: response.data.message, sent: response.data.sent };
+      const response = await axios.post(`${API}/auth/send-otp`, { phone, user_type: userType, email });
+      return { success: true, message: response.data.message, sent: response.data.sent, channel: response.data.channel };
     } catch (error) {
       return { success: false, message: error.response?.data?.detail || 'Failed to send OTP' };
     }

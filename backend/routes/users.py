@@ -103,6 +103,7 @@ class TokenResponse(BaseModel):
 class OTPRequest(BaseModel):
     phone: str
     user_type: str = "student"  # student, educator, school
+    email: Optional[str] = None  # optional fallback when WhatsApp WCC is exhausted
 
 class OTPVerify(BaseModel):
     phone: str
@@ -492,19 +493,76 @@ async def send_otp(data: OTPRequest):
         
         async with httpx.AsyncClient() as client:
             response = await client.post(aisensy_url, json=payload, timeout=30.0)
-            
+
             if response.status_code == 200:
                 print(f"AiSensy OTP sent successfully to {phone_number}")
-                return {"message": "OTP sent via WhatsApp", "sent": True}
-            else:
-                print(f"AiSensy API error: {response.status_code} - {response.text}")
-                raise HTTPException(status_code=500, detail="Failed to send OTP. Please try again.")
-                
+                return {"message": "OTP sent via WhatsApp", "sent": True, "channel": "whatsapp"}
+
+            # AiSensy failed — try email fallback if email was supplied
+            print(f"AiSensy API error: {response.status_code} - {response.text}")
+            sent_via_email = await _send_otp_via_email(data.email, otp)
+            if sent_via_email:
+                return {"message": "OTP sent to your email", "sent": True, "channel": "email"}
+
+            # Surface a helpful error
+            try:
+                err_body = response.json()
+                if "WhatsApp Conversation Credits" in str(err_body) or err_body.get("errorCode") == 402:
+                    raise HTTPException(status_code=503, detail="WhatsApp OTP service is temporarily unavailable (credits exhausted). Please contact us at info@oll.co or try again later.")
+            except HTTPException:
+                raise
+            except Exception:
+                pass
+            raise HTTPException(status_code=500, detail="Failed to send OTP. Please try again.")
+
     except HTTPException:
         raise
     except Exception as e:
         print(f"AiSensy error: {str(e)}")
+        # Last-ditch attempt: email fallback on exception path too
+        sent_via_email = await _send_otp_via_email(data.email, otp)
+        if sent_via_email:
+            return {"message": "OTP sent to your email", "sent": True, "channel": "email"}
         raise HTTPException(status_code=500, detail="Failed to send OTP. Please try again.")
+
+
+async def _send_otp_via_email(email: Optional[str], otp: str) -> bool:
+    """Email fallback for OTP. Returns True on success, False otherwise.
+    Does not raise — caller decides what to do on failure."""
+    if not email or "@" not in email:
+        return False
+    try:
+        from .shared import ensure_resend_api_key
+        import resend
+        configured = await ensure_resend_api_key()
+        if not configured:
+            return False
+        html = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
+          <div style="background: linear-gradient(135deg, #1E3A5F 0%, #D63031 100%); padding: 22px; text-align: center; border-radius: 10px 10px 0 0;">
+            <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 800;">OLL</h1>
+            <p style="color: #f0f0f0; margin: 4px 0 0 0; font-size: 13px;">Your verification code</p>
+          </div>
+          <div style="background: #ffffff; padding: 26px; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px; text-align: center;">
+            <p style="color: #444; margin: 0 0 14px 0;">Enter this 4-digit code to verify your phone number:</p>
+            <div style="font-size: 42px; font-weight: 800; color: #1E3A5F; letter-spacing: 14px; padding: 14px 0; background: #f5f7fa; border-radius: 10px; font-family: 'Courier New', monospace;">{otp}</div>
+            <p style="color: #888; font-size: 12px; margin-top: 16px;">This code expires in 10 minutes. If you didn't request this, you can safely ignore this email.</p>
+          </div>
+        </div>
+        """
+        params = {
+            "from": "OLL Team <welcome@oll.co>",
+            "to": [email.strip().lower()],
+            "subject": f"Your OLL verification code: {otp}",
+            "html": html,
+            "reply_to": "info@oll.co",
+        }
+        await asyncio.to_thread(resend.Emails.send, params)
+        print(f"[OTP] Sent fallback email OTP to {email}")
+        return True
+    except Exception as e:
+        print(f"[OTP] Email fallback failed: {e}")
+        return False
 
 @router.post("/auth/verify-otp")
 async def verify_otp(data: OTPVerify):

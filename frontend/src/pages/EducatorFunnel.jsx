@@ -234,11 +234,11 @@ const EducatorFunnel = () => {
 
     const fullPhone = formData.countryCode === '+91' ? formData.phone : `${formData.countryCode}${formData.phone}`;
     setOtpSending(true);
-    const result = await sendOTP(fullPhone, 'educator');
+    const result = await sendOTP(fullPhone, 'educator', formData.email);
     setOtpSending(false);
 
     if (result.success && result.sent) {
-      toast.success('OTP sent to your WhatsApp!');
+      toast.success(result.channel === 'email' ? 'OTP sent to your email!' : 'OTP sent to your WhatsApp!');
       setStep('otp');
     } else {
       toast.error(result.message || 'Failed to send OTP');

@@ -58,6 +58,19 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+### 2026-04-25 (pt 3) — Fix: "Failed to send OTP" on educator forms (WhatsApp WCC exhausted) + Email fallback
+**Root cause:** AiSensy account is out of WhatsApp Conversation Credits (HTTP 402 ERR402). Every OTP request was failing with a generic "Failed to send OTP" message and a 500 status, blocking new educator applications.
+
+**Fix:**
+1. `OTPRequest` now accepts an optional `email`. When AiSensy returns 402 (or any non-200), the backend automatically retries via Resend email.
+2. `/auth/send-otp` now returns a `channel: "whatsapp" | "email"` in the success payload so the UI can show the right toast.
+3. When both fail, the user sees a meaningful 503 error: "WhatsApp OTP service is temporarily unavailable (credits exhausted). Please contact us at info@oll.co".
+4. Frontend `EducatorFunnel` + `EducatorApplyPage` (initial send + resend) now pass `formData.email` along with the phone, and show "OTP sent to your email" or "OTP sent to your WhatsApp" based on the response channel.
+
+**User action still needed:** top up AiSensy WhatsApp Conversation Credits to restore WhatsApp delivery (currently every flow falls through to email).
+
+**Verified via curl:** WCC-out + email → returns 200 with channel=email; WCC-out + no email → returns 503 with helpful message; the email fallback log says `[OTP] Sent fallback email OTP to shreyaan@oll.co`.
+
 ### 2026-04-25 (pt 2) — AI Voice Interview for Educator Candidates
 **New feature:** End-to-end AI-driven voice interview triggered right after the educator application is submitted.
 

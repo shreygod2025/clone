@@ -85,11 +85,11 @@ export default function EducatorApplyPage() {
     // Send OTP
     setOtpSending(true);
     try {
-      await axios.post(`${API}/api/auth/send-otp`, { phone: fullPhone(), user_type: 'educator' });
+      const otpRes = await axios.post(`${API}/api/auth/send-otp`, { phone: fullPhone(), user_type: 'educator', email: formData.email });
       setStep('otp');
-      toast.success('OTP sent to your phone');
-    } catch {
-      toast.error('Failed to send OTP. Please try again.');
+      toast.success(otpRes.data?.channel === 'email' ? 'OTP sent to your email' : 'OTP sent to your WhatsApp');
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to send OTP. Please try again.');
     } finally {
       setOtpSending(false);
     }
@@ -258,7 +258,7 @@ export default function EducatorApplyPage() {
               setOtp('');
               try {
                 setOtpSending(true);
-                await axios.post(`${API}/api/auth/send-otp`, { phone: fullPhone(), user_type: 'educator' });
+                await axios.post(`${API}/api/auth/send-otp`, { phone: fullPhone(), user_type: 'educator', email: formData.email });
                 toast.success('OTP resent! Valid for 10 minutes.');
               } catch(e) {
                 toast.error(e.response?.data?.detail || 'Could not resend. Please wait a moment and try again.');
