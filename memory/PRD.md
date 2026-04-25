@@ -58,6 +58,23 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+### 2026-04-25 (pt 5) — Admin Data Export Panel (CSV / JSON Lines)
+**Goal:** Let admin extract every collection in every visible MongoDB database (test_database, oll_hub, oll_multiuser, teach_n_learn, etc.) so they can self-host the data on their own MongoDB instance.
+
+**Backend** — new `/app/backend/routes/data_export.py`:
+- `GET /api/admin/data-export/databases` — lists every DB the connected user can `listDatabases` on, with collection count, doc count, size.
+- `GET /api/admin/data-export/{db}/collections` — lists every collection + estimated doc count.
+- `GET /api/admin/data-export/{db}/{coll}/preview?limit=10` — small JSON sample.
+- `GET /api/admin/data-export/{db}/{coll}/csv` — streams CSV with flattened dot-path column names; ObjectIds + datetimes stringified; nested arrays inline-JSON encoded; unknown fields appearing later go into an `_extras` JSON column.
+- `GET /api/admin/data-export/{db}/{coll}/json` — streams NDJSON (1 JSON object per line — the format `mongoimport` accepts directly).
+- All endpoints require admin auth (role=admin/super_admin or @oll.co email).
+
+**Frontend** — new `/admin/data-export` page (sidebar entry "Data Export" with Download icon):
+- Database picker (primary DB highlighted), Collections list with Preview / CSV / JSON buttons per row, search filter, dark-themed JSON preview modal.
+- Bcrypt note pinned at top: "Passwords are one-way bcrypt hashes — they cannot be decrypted. The hash is exported as-is so existing logins keep working when restored."
+
+**Tested:** 100% (10/10 backend pytest + frontend playwright). `/app/test_reports/iteration_79.json`. Smoke results: 4 visible DBs, 47 collections in primary, summer_camp_bookings → CSV 71 lines (1 header + 70 rows), JSONL 70 lines.
+
 ### 2026-04-25 (pt 4) — Educator OTP: parallel WhatsApp + email send
 For educators (user_type="educator") that supply an `email`, the backend now attempts WhatsApp AND email in parallel. Possible response channels: `whatsapp+email` (both succeeded), `whatsapp` (only WA), `email` (only email — falls through automatically when WA fails). UI toast updated. Currently WhatsApp returns 402 (WCC out), so educators receive only the email — this is invisible to them.
 
