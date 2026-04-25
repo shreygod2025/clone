@@ -87,7 +87,8 @@ export default function EducatorApplyPage() {
     try {
       const otpRes = await axios.post(`${API}/api/auth/send-otp`, { phone: fullPhone(), user_type: 'educator', email: formData.email });
       setStep('otp');
-      toast.success(otpRes.data?.channel === 'email' ? 'OTP sent to your email' : 'OTP sent to your WhatsApp');
+      const ch = otpRes.data?.channel;
+      toast.success(ch === 'email' ? 'OTP sent to your email' : ch === 'whatsapp+email' ? 'OTP sent to WhatsApp & email' : 'OTP sent to your WhatsApp');
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Failed to send OTP. Please try again.');
     } finally {

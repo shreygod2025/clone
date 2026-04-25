@@ -238,7 +238,10 @@ const EducatorFunnel = () => {
     setOtpSending(false);
 
     if (result.success && result.sent) {
-      toast.success(result.channel === 'email' ? 'OTP sent to your email!' : 'OTP sent to your WhatsApp!');
+      const msg = result.channel === 'email' ? 'OTP sent to your email!' :
+                  result.channel === 'whatsapp+email' ? 'OTP sent to your WhatsApp & email!' :
+                  'OTP sent to your WhatsApp!';
+      toast.success(msg);
       setStep('otp');
     } else {
       toast.error(result.message || 'Failed to send OTP');

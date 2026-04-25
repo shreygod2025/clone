@@ -58,8 +58,11 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 
 ## CHANGELOG
 
+### 2026-04-25 (pt 4) — Educator OTP: parallel WhatsApp + email send
+For educators (user_type="educator") that supply an `email`, the backend now attempts WhatsApp AND email in parallel. Possible response channels: `whatsapp+email` (both succeeded), `whatsapp` (only WA), `email` (only email — falls through automatically when WA fails). UI toast updated. Currently WhatsApp returns 402 (WCC out), so educators receive only the email — this is invisible to them.
+
 ### 2026-04-25 (pt 3) — Fix: "Failed to send OTP" on educator forms (WhatsApp WCC exhausted) + Email fallback
-**Root cause:** AiSensy account is out of WhatsApp Conversation Credits (HTTP 402 ERR402). Every OTP request was failing with a generic "Failed to send OTP" message and a 500 status, blocking new educator applications.
+**Root cause:** AiSensy account is out of WhatsApp Conversation Credits (HTTP 402 ERR402).
 
 **Fix:**
 1. `OTPRequest` now accepts an optional `email`. When AiSensy returns 402 (or any non-200), the backend automatically retries via Resend email.

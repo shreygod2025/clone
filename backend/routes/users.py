@@ -491,18 +491,37 @@ async def send_otp(data: OTPRequest):
             }
         }
         
+        # For educators, send via BOTH email and WhatsApp in parallel (so they always get it)
+        send_email_too = data.user_type == "educator" and bool(data.email)
+        email_task = asyncio.create_task(_send_otp_via_email(data.email, otp)) if send_email_too else None
+
         async with httpx.AsyncClient() as client:
             response = await client.post(aisensy_url, json=payload, timeout=30.0)
+            wa_ok = response.status_code == 200
+            email_ok = False
+            if email_task is not None:
+                try:
+                    email_ok = await email_task
+                except Exception:
+                    email_ok = False
 
-            if response.status_code == 200:
+            if wa_ok and email_ok:
+                print(f"AiSensy + email OTP sent to {phone_number} / {data.email}")
+                return {"message": "OTP sent to your WhatsApp and email", "sent": True, "channel": "whatsapp+email"}
+            if wa_ok:
                 print(f"AiSensy OTP sent successfully to {phone_number}")
                 return {"message": "OTP sent via WhatsApp", "sent": True, "channel": "whatsapp"}
 
-            # AiSensy failed — try email fallback if email was supplied
+            # WhatsApp failed — at this point email_task already finished (or was None)
             print(f"AiSensy API error: {response.status_code} - {response.text}")
-            sent_via_email = await _send_otp_via_email(data.email, otp)
-            if sent_via_email:
+            if email_ok:
                 return {"message": "OTP sent to your email", "sent": True, "channel": "email"}
+
+            # Final attempt — try email if it wasn't requested initially
+            if not send_email_too:
+                sent_via_email = await _send_otp_via_email(data.email, otp)
+                if sent_via_email:
+                    return {"message": "OTP sent to your email", "sent": True, "channel": "email"}
 
             # Surface a helpful error
             try:
