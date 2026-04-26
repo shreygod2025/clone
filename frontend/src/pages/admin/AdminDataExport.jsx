@@ -116,6 +116,8 @@ const AdminDataExport = () => {
   const [extInspectResult, setExtInspectResult] = useState(null);
   const [outboundIp, setOutboundIp] = useState('');
   const [ipCopied, setIpCopied] = useState(false);
+  const [bsonDownloading, setBsonDownloading] = useState(null); // "<db>.<coll>"
+  const [progressJob, setProgressJob] = useState(null); // {job_id, status, total, completed, current_collection, message, ...}
 
   const fetchOutboundIp = async () => {
     try {
@@ -223,6 +225,105 @@ const AdminDataExport = () => {
       setIpCopied(true);
       setTimeout(() => setIpCopied(false), 1500);
     });
+  };
+
+  // Per-collection BSON download (mongodump-format that mongorestore consumes)
+  const handleBsonCollection = async (dbName, coll) => {
+    if (!extUri.trim()) { toast.error('Paste a MongoDB URI first'); return; }
+    const key = `${dbName}.${coll}`;
+    setBsonDownloading(key);
+    try {
+      const r = await axios.post(
+        `${API}/api/admin/external-mongo/collection-bson`,
+        { uri: extUri.trim(), db_name: dbName, collection: coll, timeout_ms: 20000 },
+        { headers: getAuthHeaders(), responseType: 'blob', timeout: 600000 },
+      );
+      const blob = new Blob([r.data], { type: 'application/zip' });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = `${dbName}__${coll}.bson.zip`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success(`${coll} BSON exported`);
+    } catch (e) {
+      if (e.response?.data instanceof Blob) {
+        try {
+          const txt = await e.response.data.text();
+          const parsed = JSON.parse(txt);
+          toast.error(parsed.detail || 'BSON export failed');
+        } catch { toast.error('BSON export failed'); }
+      } else {
+        toast.error(e.response?.data?.detail || e.message || 'BSON export failed');
+      }
+    } finally {
+      setBsonDownloading(null);
+    }
+  };
+
+  // Live-progress JSONL ZIP — start job, poll, download
+  const handleStartProgressJob = async () => {
+    if (!extUri.trim()) { toast.error('Paste a MongoDB URI first'); return; }
+    setProgressJob({ status: 'starting', total: 0, completed: 0, message: 'Starting…' });
+    try {
+      const start = await axios.post(
+        `${API}/api/admin/external-mongo/start-zip-job`,
+        { uri: extUri.trim(), db_name: extDbName.trim() || null, timeout_ms: 20000 },
+        { headers: getAuthHeaders() },
+      );
+      const jobId = start.data?.job_id;
+      if (!jobId) throw new Error('No job_id returned');
+      setProgressJob(prev => ({ ...prev, job_id: jobId, status: 'queued' }));
+
+      // Poll every 700ms
+      let stop = false;
+      const poll = async () => {
+        if (stop) return;
+        try {
+          const r = await axios.get(`${API}/api/admin/external-mongo/job/${jobId}`, { headers: getAuthHeaders() });
+          setProgressJob(prev => prev?.job_id === jobId ? { ...prev, ...r.data } : prev);
+          if (r.data.status === 'ready' || r.data.status === 'error') {
+            stop = true;
+            if (r.data.status === 'error') {
+              toast.error(r.data.error || r.data.message || 'Export failed');
+            } else {
+              toast.success('Export ready — click Download');
+            }
+            return;
+          }
+        } catch (e) {
+          stop = true;
+          toast.error(e.response?.data?.detail || 'Lost progress connection');
+          return;
+        }
+        setTimeout(poll, 700);
+      };
+      poll();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || e.message || 'Could not start job');
+      setProgressJob(null);
+    }
+  };
+
+  const handleDownloadProgressJob = async () => {
+    if (!progressJob?.job_id) return;
+    try {
+      const r = await axios.get(
+        `${API}/api/admin/external-mongo/job/${progressJob.job_id}/download`,
+        { headers: getAuthHeaders(), responseType: 'blob', timeout: 600000 },
+      );
+      const blob = new Blob([r.data], { type: 'application/zip' });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = `eventmate19_complete_export_${progressJob.job_id}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success('Downloaded');
+      setProgressJob(prev => prev ? { ...prev, status: 'downloaded' } : prev);
+    } catch (e) {
+      toast.error(e.response?.data?.detail || e.message || 'Download failed');
+    }
   };
 
   return (
@@ -394,16 +495,88 @@ const AdminDataExport = () => {
                   Dump as .archive.gz (mongodump)
                 </button>
                 <button
+                  onClick={handleStartProgressJob}
+                  disabled={!extUri.trim() || (progressJob && ['queued', 'connecting', 'running'].includes(progressJob.status))}
+                  className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 flex items-center gap-2 disabled:opacity-60"
+                  data-testid="external-progress-zip-btn"
+                  title="Export every collection as JSONL inside a ZIP — with live X of Y progress"
+                >
+                  {progressJob && ['queued', 'connecting', 'running'].includes(progressJob.status)
+                    ? <Loader2 className="w-4 h-4 animate-spin" />
+                    : <FileJson className="w-4 h-4" />}
+                  Export Entire Database (with progress)
+                </button>
+                <button
                   onClick={handleExternalJsonlZip}
                   disabled={extZipping || !extUri.trim()}
                   className="px-3 py-2 rounded-lg bg-fuchsia-600 text-white text-sm font-bold hover:bg-fuchsia-700 flex items-center gap-2 disabled:opacity-60"
                   data-testid="external-jsonl-zip-btn"
-                  title="Bundle every collection as JSONL inside a ZIP — works without mongorestore"
+                  title="One-shot JSONL ZIP — no progress (faster for tiny DBs)"
                 >
                   {extZipping ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileJson className="w-4 h-4" />}
-                  Dump as JSONL ZIP
+                  Quick JSONL ZIP (no progress)
                 </button>
               </div>
+
+              {/* Progress card */}
+              {progressJob && (
+                <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3.5 space-y-2 text-xs" data-testid="progress-job-card">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-bold text-indigo-900">
+                      Job <span className="font-mono">{progressJob.job_id}</span> — <span className="capitalize">{progressJob.status}</span>
+                    </p>
+                    {progressJob.status === 'ready' && (
+                      <button
+                        onClick={handleDownloadProgressJob}
+                        className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 flex items-center gap-1.5"
+                        data-testid="progress-job-download-btn"
+                      >
+                        <Download className="w-3.5 h-3.5" /> Download {progressJob.size_mb ? `(${progressJob.size_mb} MB)` : ''}
+                      </button>
+                    )}
+                    {(progressJob.status === 'downloaded' || progressJob.status === 'error') && (
+                      <button
+                        onClick={() => setProgressJob(null)}
+                        className="px-2 py-1 rounded-md bg-white border border-indigo-200 text-indigo-700 text-xs font-semibold hover:bg-indigo-100"
+                      >
+                        Dismiss
+                      </button>
+                    )}
+                  </div>
+
+                  {progressJob.total > 0 && (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-indigo-800 font-semibold">
+                          {progressJob.message || `Exporting ${progressJob.completed} of ${progressJob.total}…`}
+                        </span>
+                        <span className="font-mono text-indigo-600">
+                          {progressJob.completed}/{progressJob.total}
+                        </span>
+                      </div>
+                      <div className="w-full bg-indigo-100 rounded-full h-2 overflow-hidden">
+                        <div
+                          className="h-full bg-indigo-600 transition-all duration-300"
+                          style={{ width: `${Math.min(100, (progressJob.completed / Math.max(1, progressJob.total)) * 100)}%` }}
+                        />
+                      </div>
+                      {progressJob.current_collection && progressJob.status === 'running' && (
+                        <p className="text-indigo-700 font-mono text-[11px]">
+                          → {progressJob.current_collection}
+                        </p>
+                      )}
+                      {typeof progressJob.total_docs === 'number' && progressJob.total_docs > 0 && (
+                        <p className="text-indigo-700 text-[11px]">
+                          {progressJob.total_docs.toLocaleString()} documents written so far
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {progressJob.status === 'error' && (
+                    <p className="text-rose-700 font-semibold">{progressJob.error || progressJob.message}</p>
+                  )}
+                </div>
+              )}
 
               {extInspectResult && (
                 <div className="bg-violet-50 border border-violet-200 rounded-xl p-3.5 space-y-2 text-xs">
@@ -421,12 +594,36 @@ const AdminDataExport = () => {
                       {db.error ? (
                         <p className="text-rose-600 mt-1">{db.error}</p>
                       ) : (
-                        <div className="flex flex-wrap gap-1 mt-1.5">
-                          {(db.collections || []).map(c => (
-                            <span key={c.name} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 font-mono">
-                              {c.name} ({c.count >= 0 ? c.count.toLocaleString() : '?'})
-                            </span>
-                          ))}
+                        <div className="mt-2 space-y-1">
+                          {(db.collections || []).map(c => {
+                            const key = `${db.name}.${c.name}`;
+                            return (
+                              <div
+                                key={c.name}
+                                className="flex items-center justify-between gap-2 px-2 py-1 rounded hover:bg-violet-50/60"
+                                data-testid={`ext-coll-row-${db.name}-${c.name}`}
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <span className="font-mono text-[11px] text-slate-700">{c.name}</span>
+                                  <span className="ml-2 text-[10px] text-slate-500">
+                                    {c.count >= 0 ? `${c.count.toLocaleString()} docs` : '— count unavailable'}
+                                  </span>
+                                </div>
+                                <button
+                                  onClick={() => handleBsonCollection(db.name, c.name)}
+                                  disabled={bsonDownloading === key}
+                                  className="text-[10px] px-2 py-0.5 rounded border border-violet-300 bg-white text-violet-700 hover:bg-violet-100 font-bold flex items-center gap-1 disabled:opacity-50"
+                                  data-testid={`bson-${db.name}-${c.name}`}
+                                  title="Download this collection as .bson + .metadata.json (mongorestore-ready)"
+                                >
+                                  {bsonDownloading === key
+                                    ? <Loader2 className="w-3 h-3 animate-spin" />
+                                    : <Download className="w-3 h-3" />}
+                                  BSON
+                                </button>
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </div>

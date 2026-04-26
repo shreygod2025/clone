@@ -11,13 +11,20 @@ funnels (camp-lead-capture / multi-funnel-oll).
 """
 from __future__ import annotations
 
+import asyncio
+import csv
 import io
 import json
 import logging
 import os
 import re
+import shutil
 import subprocess
 import tempfile
+import threading
+import time
+import uuid
+import zipfile
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -30,6 +37,12 @@ from pymongo import MongoClient
 from .shared import get_current_user
 
 router = APIRouter()
+
+
+# ── In-memory job registry (process-local, fine for single-pod admin tool) ─
+# Each job carries its own URI in memory only — never written to disk/db.
+_JOBS: dict[str, dict] = {}
+_JOBS_LOCK = threading.Lock()
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────
@@ -365,3 +378,305 @@ async def outbound_ip(user: dict = Depends(get_current_user)):
         except Exception:
             continue
     raise HTTPException(status_code=502, detail="Could not detect outbound IP")
+
+
+# ── Per-collection BSON download (mongodump scoped to one collection) ──────
+class CollectionExportRequest(BaseModel):
+    uri: str
+    db_name: str = Field(..., min_length=1)
+    collection: str = Field(..., min_length=1)
+    timeout_ms: int = Field(15000, ge=2000, le=60000)
+
+
+@router.post("/admin/external-mongo/collection-bson")
+async def export_collection_bson(
+    body: CollectionExportRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Run `mongodump --db=X --collection=Y` and stream back a small zip
+    containing `<coll>.bson` + `<coll>.metadata.json` — the canonical BSON
+    format `mongorestore` consumes.
+    """
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    if not re.fullmatch(r"[A-Za-z0-9_.\-]+", body.db_name):
+        raise HTTPException(status_code=400, detail="Invalid db_name")
+    if not re.fullmatch(r"[A-Za-z0-9_.\-]+", body.collection):
+        raise HTTPException(status_code=400, detail="Invalid collection name")
+
+    redacted = _redact_uri(body.uri)
+    out_dir = tempfile.mkdtemp(prefix=f"bson_{body.db_name}_{body.collection}_")
+    cmd = [
+        "mongodump",
+        f"--uri={body.uri}",
+        f"--db={body.db_name}",
+        f"--collection={body.collection}",
+        f"--out={out_dir}",
+    ]
+    logging.info(f"[external-mongo] BSON dump → {redacted} {body.db_name}.{body.collection}")
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+    except subprocess.TimeoutExpired:
+        shutil.rmtree(out_dir, ignore_errors=True)
+        raise HTTPException(status_code=504, detail="mongodump timed out (5 min)")
+
+    if result.returncode != 0:
+        shutil.rmtree(out_dir, ignore_errors=True)
+        stderr = re.sub(r"://[^@\s]+@", "://<redacted>@", (result.stderr or "")[-1500:])
+        raise HTTPException(status_code=502, detail=f"mongodump failed: {stderr.strip()[-400:]}")
+
+    bson_path = os.path.join(out_dir, body.db_name, f"{body.collection}.bson")
+    meta_path = os.path.join(out_dir, body.db_name, f"{body.collection}.metadata.json")
+    if not os.path.isfile(bson_path):
+        shutil.rmtree(out_dir, ignore_errors=True)
+        raise HTTPException(status_code=502, detail="Dump produced no BSON (empty collection?)")
+
+    # Bundle .bson + .metadata.json into a single zip so users get both files
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    safe_db = re.sub(r"[^A-Za-z0-9_-]+", "_", body.db_name)
+    safe_coll = re.sub(r"[^A-Za-z0-9_-]+", "_", body.collection)
+    zip_path = os.path.join(tempfile.gettempdir(), f"bson_{safe_db}_{safe_coll}_{timestamp}.zip")
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
+        zf.write(bson_path, arcname=f"{body.db_name}/{body.collection}.bson")
+        if os.path.isfile(meta_path):
+            zf.write(meta_path, arcname=f"{body.db_name}/{body.collection}.metadata.json")
+    shutil.rmtree(out_dir, ignore_errors=True)
+
+    filename = f"{safe_db}__{safe_coll}_{timestamp}.bson.zip"
+
+    def file_iter():
+        try:
+            with open(zip_path, "rb") as fh:
+                while True:
+                    chunk = fh.read(64 * 1024)
+                    if not chunk:
+                        break
+                    yield chunk
+        finally:
+            try:
+                os.remove(zip_path)
+            except Exception:
+                pass
+
+    return StreamingResponse(
+        file_iter(),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+# ── Async JSONL ZIP with live "X of Y" progress ────────────────────────────
+class StartJobRequest(BaseModel):
+    uri: str
+    db_name: Optional[str] = None
+    timeout_ms: int = Field(15000, ge=2000, le=60000)
+
+
+def _set_job(job_id: str, **patch):
+    with _JOBS_LOCK:
+        if job_id in _JOBS:
+            _JOBS[job_id].update(patch)
+
+
+def _run_zip_job_sync(job_id: str, uri: str, db_name: Optional[str], timeout_ms: int):
+    """Background worker — uses synchronous pymongo to keep things simple.
+    Runs in a thread so the FastAPI event loop stays responsive.
+    """
+    redacted = _redact_uri(uri)
+    client = None
+    try:
+        _set_job(job_id, status="connecting", message=f"Connecting to {redacted}…")
+        client = MongoClient(uri, serverSelectionTimeoutMS=timeout_ms)
+        client.admin.command("ping")
+
+        if db_name:
+            db_names = [db_name]
+        else:
+            try:
+                db_names = client.list_database_names()
+            except Exception:
+                from urllib.parse import urlparse
+                parsed = urlparse(uri)
+                fallback = (parsed.path or "/").lstrip("/").split("?")[0]
+                db_names = [fallback] if fallback else []
+        skip = {"admin", "local", "config"}
+        db_names = [d for d in db_names if d and d not in skip]
+        if not db_names:
+            raise RuntimeError("No accessible databases on this URI")
+
+        # Plan: list every collection up front so progress total is accurate
+        plan: list[tuple[str, str, int]] = []
+        for d in db_names:
+            try:
+                colls = client[d].list_collection_names()
+            except Exception as e:
+                logging.warning(f"[job {job_id}] list {d} failed: {e}")
+                continue
+            for c in colls:
+                if c.startswith("system."):
+                    continue
+                try:
+                    cnt = client[d][c].estimated_document_count()
+                except Exception:
+                    cnt = -1
+                plan.append((d, c, cnt))
+
+        total = len(plan)
+        _set_job(job_id, status="running", total=total, completed=0,
+                 current_collection=None, message=f"Exporting {total} collections…",
+                 plan=[{"db": d, "collection": c, "count": cnt} for d, c, cnt in plan])
+
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        zip_path = os.path.join(tempfile.gettempdir(), f"external_export_{job_id}_{timestamp}.zip")
+        summary = []
+        total_docs = 0
+        with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as zf:
+            for idx, (d, c, expected) in enumerate(plan, 1):
+                _set_job(job_id, completed=idx - 1, current_collection=f"{d}.{c}",
+                         message=f"Exporting {idx}/{total}: {d}.{c}")
+                # Stream collection straight to a per-collection JSONL inside the zip
+                try:
+                    cursor = client[d][c].find({})
+                    # Build the JSONL as a single string per collection — safe for
+                    # legacy DBs whose collections are typically small/medium. For
+                    # genuinely huge ones, the .archive.gz endpoint is preferred.
+                    lines = []
+                    for doc in cursor:
+                        lines.append(json.dumps(_stringify(doc), default=str, ensure_ascii=False))
+                    zf.writestr(f"{d}/{c}.jsonl", "\n".join(lines))
+                    summary.append({"db": d, "collection": c, "documents": len(lines)})
+                    total_docs += len(lines)
+                except Exception as e:
+                    logging.warning(f"[job {job_id}] read fail {d}.{c}: {e}")
+                    summary.append({"db": d, "collection": c, "documents": 0,
+                                    "error": str(e)[:200]})
+                _set_job(job_id, completed=idx, total_docs=total_docs)
+
+            manifest = {
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "source": redacted,
+                "databases": db_names,
+                "collections": summary,
+                "total_documents": total_docs,
+                "restore_hint": (
+                    "For each <db>/<coll>.jsonl run: "
+                    "mongoimport --uri='<TARGET>' --db=<db> --collection=<coll> "
+                    "--file=<db>/<coll>.jsonl"
+                ),
+            }
+            zf.writestr("MANIFEST.json", json.dumps(manifest, indent=2, default=str))
+
+        size_mb = round(os.path.getsize(zip_path) / 1024 / 1024, 2)
+        _set_job(job_id, status="ready", message=f"Done · {total} collections · {total_docs:,} docs · {size_mb} MB",
+                 zip_path=zip_path, size_mb=size_mb, finished_at=datetime.now(timezone.utc).isoformat())
+    except Exception as e:
+        logging.warning(f"[job {job_id}] failed: {type(e).__name__}: {str(e)[:200]}")
+        _set_job(job_id, status="error",
+                 error=f"{type(e).__name__}: {str(e)[:300]}",
+                 message=f"Failed: {str(e)[:200]}")
+    finally:
+        try:
+            if client:
+                client.close()
+        except Exception:
+            pass
+
+
+@router.post("/admin/external-mongo/start-zip-job")
+async def start_zip_job(
+    body: StartJobRequest,
+    user: dict = Depends(get_current_user),
+):
+    """Kick off a background JSONL-zip export with live progress tracking.
+    Returns a job_id you can poll via /admin/external-mongo/job/{id}.
+    """
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    job_id = uuid.uuid4().hex[:12]
+    with _JOBS_LOCK:
+        # Drop any jobs older than 1 hour so the registry doesn't bloat
+        cutoff = time.time() - 3600
+        for jid in list(_JOBS):
+            if _JOBS[jid].get("started_at_ts", 0) < cutoff:
+                # Clean up any leftover zip on disk
+                zp = _JOBS[jid].get("zip_path")
+                if zp and os.path.exists(zp):
+                    try:
+                        os.remove(zp)
+                    except Exception:
+                        pass
+                _JOBS.pop(jid, None)
+        _JOBS[job_id] = {
+            "id": job_id,
+            "status": "queued",
+            "started_at_ts": time.time(),
+            "started_at": datetime.now(timezone.utc).isoformat(),
+            "total": 0, "completed": 0, "total_docs": 0,
+            "current_collection": None,
+            "db_name": body.db_name,
+            "message": "Queued",
+        }
+
+    threading.Thread(
+        target=_run_zip_job_sync,
+        args=(job_id, body.uri, body.db_name, body.timeout_ms),
+        daemon=True,
+        name=f"export-zip-{job_id}",
+    ).start()
+    return {"job_id": job_id, "status": "queued"}
+
+
+@router.get("/admin/external-mongo/job/{job_id}")
+async def get_job(job_id: str, user: dict = Depends(get_current_user)):
+    """Poll a job's progress. Safe to hit every 500-1000ms while running."""
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    with _JOBS_LOCK:
+        job = _JOBS.get(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Unknown job_id")
+        # Don't ever leak the zip_path or any uri in the JSON response
+        public = {k: v for k, v in job.items() if k not in ("zip_path", "started_at_ts")}
+    return public
+
+
+@router.get("/admin/external-mongo/job/{job_id}/download")
+async def download_job(job_id: str, user: dict = Depends(get_current_user)):
+    """Download the resulting zip — only valid once status='ready'."""
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    with _JOBS_LOCK:
+        job = _JOBS.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Unknown job_id")
+    if job.get("status") != "ready":
+        raise HTTPException(status_code=409, detail=f"Job is {job.get('status')}, not ready")
+    zip_path = job.get("zip_path")
+    if not zip_path or not os.path.isfile(zip_path):
+        raise HTTPException(status_code=410, detail="Job artefact already removed — re-run the job")
+
+    filename = f"external_export_{job_id}.zip"
+
+    def file_iter():
+        try:
+            with open(zip_path, "rb") as fh:
+                while True:
+                    chunk = fh.read(64 * 1024)
+                    if not chunk:
+                        break
+                    yield chunk
+        finally:
+            try:
+                os.remove(zip_path)
+            except Exception:
+                pass
+            with _JOBS_LOCK:
+                if job_id in _JOBS:
+                    _JOBS[job_id]["status"] = "downloaded"
+                    _JOBS[job_id].pop("zip_path", None)
+
+    return StreamingResponse(
+        file_iter(),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
