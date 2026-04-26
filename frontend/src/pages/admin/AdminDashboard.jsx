@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
+import { ASSETS } from '../../config/assets';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -63,7 +64,7 @@ const AdminLayout = ({ children, title }) => {
           <Menu className="w-6 h-6" />
         </button>
         <img 
-          src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/rugags0w_OLL-horizontal-logo-white.png" 
+          src={ASSETS.OLL_LOGO_WHITE} 
           alt="OLL" 
           className="h-8"
         />
@@ -85,7 +86,7 @@ const AdminLayout = ({ children, title }) => {
       `}>
         <div className="p-4 flex items-center justify-between shrink-0">
           <img 
-            src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/rugags0w_OLL-horizontal-logo-white.png" 
+            src={ASSETS.OLL_LOGO_WHITE} 
             alt="OLL" 
             className="h-8"
           />

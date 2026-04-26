@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { Home, Search, BookOpen, ArrowLeft } from 'lucide-react';
 import { Button } from '../components/ui/button';
+import { ASSETS } from '../config/assets';
 
 const NotFoundPage = () => {
   return (
@@ -16,7 +17,7 @@ const NotFoundPage = () => {
         {/* Logo */}
         <Link to="/" className="mb-8">
           <img 
-            src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png" 
+            src={ASSETS.OLL_LOGO_COLOR} 
             alt="OLL Logo" 
             className="h-10"
           />

@@ -5,6 +5,7 @@ import { GraduationCap, Users, Building2, ArrowRight, Zap } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { useUserAuth } from '../context/UserAuthContext';
+import { ASSETS } from '../config/assets';
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -71,7 +72,7 @@ const LandingPage = () => {
         <meta property="og:url" content="https://oll.co/" />
         <meta property="og:title" content="OLL - Learn Future Skills | Robotics, AI, Coding & Entrepreneurship" />
         <meta property="og:description" content="Transform your future with OLL. Learn Robotics, AI, Coding, Entrepreneurship & Financial Literacy. Expert educators, flexible timings. Book a free demo!" />
-        <meta property="og:image" content="https://static.prod-images.emergentagent.com/jobs/4048d873-d260-47ab-be01-5efb2f8a71c2/images/3484c900f20debbcd95f333ebd0b59a212adcaeebd3c2db1919581020c07de0c.png" />
+        <meta property="og:image" content={ASSETS.LANDING_OG_IMAGE} />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta property="og:site_name" content="OLL" />
@@ -80,7 +81,7 @@ const LandingPage = () => {
         <meta name="twitter:url" content="https://oll.co/" />
         <meta name="twitter:title" content="OLL - Learn Future Skills | Robotics, AI, Coding & Entrepreneurship" />
         <meta name="twitter:description" content="Transform your future with OLL. Learn Robotics, AI, Coding, Entrepreneurship & Financial Literacy. Book a free demo!" />
-        <meta name="twitter:image" content="https://static.prod-images.emergentagent.com/jobs/4048d873-d260-47ab-be01-5efb2f8a71c2/images/3484c900f20debbcd95f333ebd0b59a212adcaeebd3c2db1919581020c07de0c.png" />
+        <meta name="twitter:image" content={ASSETS.LANDING_OG_IMAGE} />
 
         <script type="application/ld+json">
           {JSON.stringify({

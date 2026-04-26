@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import { 
+import { ASSETS } from '../config/assets';
   Mail, Phone, MapPin, Facebook, Twitter, Instagram, Linkedin, Youtube,
   ChevronDown, ChevronUp, Cpu, Code, Brain, TrendingUp, GraduationCap,
   FileText, Shield, RefreshCcw, HelpCircle, Building2
@@ -228,7 +229,7 @@ const Footer = ({ variant = 'full' }) => {
           <div className="col-span-2">
             <Link to="/" className="flex items-center gap-2 mb-4" itemProp="url">
               <img 
-                src="https://customer-assets.emergentagent.com/job_oll-skill-edu/artifacts/wzn0gh6k_OLL-horizontal-logo-white.png"
+                src={ASSETS.OLL_LOGO_WHITE}
                 alt="OLL Logo - Open Learning Labs"
                 title="OLL - Skill Education Platform"
                 loading="lazy"

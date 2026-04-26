@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { toast } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
+import { ASSETS } from '../../config/assets';
 
 const AdminLogin = () => {
   const navigate = useNavigate();
@@ -54,7 +55,7 @@ const AdminLogin = () => {
         {/* Logo */}
         <Link to="/" className="block mb-8">
           <img 
-            src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/rugags0w_OLL-horizontal-logo-white.png" 
+            src={ASSETS.OLL_LOGO_WHITE} 
             alt="OLL" 
             className="h-12 mx-auto"
           />

@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X, User, LogIn, GraduationCap, Users, Handshake } from 'lucide-react';
 import { Button } from './ui/button';
 import { useUserAuth } from '../context/UserAuthContext';
+import { ASSETS } from '../config/assets';
 
 const Navbar = ({ showBookDemo = false, onBookDemo, variant = 'default' }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -51,7 +52,7 @@ const Navbar = ({ showBookDemo = false, onBookDemo, variant = 'default' }) => {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 62 }}>
             <a href="/" style={{ display: 'flex', alignItems: 'center' }}>
               <img
-                src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png"
+                src={ASSETS.OLL_LOGO_COLOR}
                 alt="OLL Logo"
                 style={{ height: 44, width: 'auto', filter: 'brightness(0) invert(1)' }}
               />
@@ -114,7 +115,7 @@ const Navbar = ({ showBookDemo = false, onBookDemo, variant = 'default' }) => {
         <div className="flex items-center justify-between h-16">
           <Link to={getHomeLink()} className="flex items-center gap-2">
             <img 
-              src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png" 
+              src={ASSETS.OLL_LOGO_COLOR} 
               alt="OLL Logo - Skill Education Platform"
               title="OLL - Robotics, Coding & AI Education"
               loading="eager"

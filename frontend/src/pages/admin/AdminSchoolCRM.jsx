@@ -151,6 +151,7 @@ const TICKET_RELATED_TO_OPTIONS = {
 };
 
 import CitySearch from '../../components/CitySearch';
+import { ASSETS } from '../../config/assets';
 const BOARDS = ['CBSE', 'ICSE', 'IGCSE', 'State Board', 'IB'];
 const TIME_SLOTS = [
   '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', 
@@ -314,7 +315,7 @@ const LMSSetupSection = ({ step, schoolId, onUpdate, authToken }) => {
   const [showPreview, setShowPreview] = useState(false);
   const fileInputRef = useRef(null);
   
-  const SAMPLE_TEMPLATE_URL = 'https://customer-assets.emergentagent.com/job_oll-multiuser/artifacts/ohnqw227_student_upload_template%20%288%29.xlsx';
+  const SAMPLE_TEMPLATE_URL = ASSETS.STUDENT_UPLOAD_TEMPLATE;
   
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];

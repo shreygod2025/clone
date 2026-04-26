@@ -692,7 +692,8 @@ async def _execute(action: dict, user: dict) -> dict:
 
 @router.post("/ai-chat/message")
 async def chat_message(payload: dict, user: dict = Depends(get_current_user)):
-    from emergentintegrations.llm.chat import LlmChat, UserMessage
+    from anthropic import AsyncAnthropic
+    from config import ANTHROPIC_API_KEY
 
     session_id = payload.get("session_id") or str(uuid.uuid4())
     user_text = (payload.get("message") or "").strip()
@@ -748,14 +749,25 @@ async def chat_message(payload: dict, user: dict = Depends(get_current_user)):
     system = AI_SYSTEM_PROMPT + crm_ctx
 
     # LLM call
-    llm_key = os.environ.get("EMERGENT_LLM_KEY", "")
-    chat = LlmChat(
-        api_key=llm_key,
-        session_id=session_id,
-        system_message=system
-    ).with_model("openai", "gpt-5.2")
+    client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
 
-    raw = await chat.send_message(UserMessage(text=enriched_text))
+    # Build message history from session for multi-turn context
+    session_doc = await db.ai_chat_sessions.find_one(
+        {"session_id": session_id}, {"_id": 0, "messages": 1}
+    )
+    history_msgs = []
+    for msg in (session_doc or {}).get("messages", [])[-20:]:
+        role = "user" if msg.get("role") == "user" else "assistant"
+        history_msgs.append({"role": role, "content": msg.get("content", "")})
+    history_msgs.append({"role": "user", "content": enriched_text})
+
+    response = await client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=4096,
+        system=system,
+        messages=history_msgs,
+    )
+    raw = response.content[0].text
 
     # Parse response
     parsed = _parse_response(raw)

@@ -5,6 +5,7 @@ import { CheckCircle2, Circle, Clock, Calendar, Package, Users, Settings, BookOp
 import axios from 'axios';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { ASSETS } from '../config/assets';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -328,7 +329,7 @@ const SchoolTrackingPage = () => {
             <div className="flex items-center justify-between h-16">
               <Link to="/" className="flex items-center gap-2">
                 <img 
-                  src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png" 
+                  src={ASSETS.OLL_LOGO_COLOR} 
                   alt="OLL Logo"
                   className="h-10 w-auto"
                 />
@@ -1153,7 +1154,7 @@ const SchoolTrackingPage = () => {
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <img 
-                  src="https://customer-assets.emergentagent.com/job_oll-skill-edu/artifacts/wzn0gh6k_OLL-horizontal-logo-white.png"
+                  src={ASSETS.OLL_LOGO_WHITE}
                   alt="OLL Logo"
                   className="h-8 w-auto"
                 />

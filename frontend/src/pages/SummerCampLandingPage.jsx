@@ -4,13 +4,14 @@ import { Helmet } from 'react-helmet-async';
 import { Cpu, Code, Brain, Box, Clock, Users, MapPin, ArrowRight, Check, Star } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import { ASSETS } from '../config/assets';
 
 // ── GIF assets ────────────────────────────────────────────────────────────────
 const GIFS = [
-  { src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/4y2zbq59_Robotics.gif',      label: 'Robotics' },
-  { src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/8i8zob06_Pyhton%20.gif',      label: 'Coding' },
-  { src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/xj8dva2y_3D%20Design.gif',    label: '3D Designing' },
-  { src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/je1umfoj_AI%20TOOl.gif',      label: 'AI' },
+  { src: ASSETS.ROBOTICS_GIF,      label: 'Robotics' },
+  { src: ASSETS.CODING_GIF,      label: 'Coding' },
+  { src: ASSETS.DESIGN_3D_GIF,    label: '3D Designing' },
+  { src: ASSETS.AI_TOOL_GIF,      label: 'AI' },
 ];
 
 // ── Images (testimonial/media section) ────────────────────────────────────────
@@ -258,7 +259,7 @@ export default function SummerCampLandingPage() {
         <meta property="og:url" content="https://oll.co/summer-camp" />
         <meta property="og:title" content="Future Skills Summer Camp 2026 — Robotics, AI & Coding for Kids | OLL" />
         <meta property="og:description" content="10-day hands-on tech camps for ages 4–16. Robotics · Coding · AI · 3D Design. Mumbai + Online. STEM.org Certified. As seen on Shark Tank India & KBC." />
-        <meta property="og:image" content="https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/ko80g3wd_images.png" />
+        <meta property="og:image" content={ASSETS.SUMMER_CAMP_OG} />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta property="og:locale" content="en_IN" />
@@ -268,7 +269,7 @@ export default function SummerCampLandingPage() {
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Future Skills Summer Camp 2026 | OLL Mumbai" />
         <meta name="twitter:description" content="Robotics, Coding, AI & 3D Design for kids ages 4–16. Mumbai + Online. May 2026. Limited seats." />
-        <meta name="twitter:image" content="https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/ko80g3wd_images.png" />
+        <meta name="twitter:image" content={ASSETS.SUMMER_CAMP_OG} />
 
         {/* Preconnect for faster font loading */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -290,7 +291,7 @@ export default function SummerCampLandingPage() {
                 { "@type": "Place", "name": "OLL Center Dombivli", "address": { "@type": "PostalAddress", "addressLocality": "Dombivli", "addressRegion": "Maharashtra", "addressCountry": "IN" } },
                 { "@type": "VirtualLocation", "url": "https://oll.co/summer-camp" }
               ],
-              "image": "https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/ko80g3wd_images.png",
+              "image": {ASSETS.SUMMER_CAMP_OG},
               "description": "10-day intensive tech camps for kids ages 4–16 covering Robotics, Coding, AI and 3D Design.",
               "organizer": { "@type": "Organization", "name": "OLL India", "url": "https://oll.co" },
               "offers": { "@type": "Offer", "price": "1999", "priceCurrency": "INR", "availability": "https://schema.org/LimitedAvailability", "url": "https://oll.co/summer-camp/book" }
@@ -668,7 +669,7 @@ export default function SummerCampLandingPage() {
 
                 {/* Badge */}
                 <div style={{ width: 130, height: 130, marginBottom: '1.1rem', position: 'relative' }}>
-                  <img src="https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/ko80g3wd_images.png"
+                  <img src={ASSETS.SUMMER_CAMP_OG}
                     alt="STEM.org Accredited Educational Experience" loading="lazy"
                     style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '0.75rem' }} />
                   <div style={{ position: 'absolute', bottom: -20, left: '50%', transform: 'translateX(-50%)', width: 100, height: 40, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(230,85,13,0.35), transparent)', filter: 'blur(14px)', pointerEvents: 'none' }} />
@@ -696,7 +697,7 @@ export default function SummerCampLandingPage() {
                 <div style={{ position: 'absolute', bottom: 10, right: 10, width: 14, height: 14, borderBottom: '2px solid rgba(50,100,204,0.5)', borderRight: '2px solid rgba(50,100,204,0.5)', borderRadius: '0 0 2px 0' }} />
 
                 <div style={{ width: 170, height: 110, marginBottom: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                  <img src="https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/cqfv2iw2_USFUCA%20logo%203.jpg"
+                  <img src={ASSETS.USFUCA_LOGO}
                     alt="UNESCO USFUCA" loading="lazy"
                     style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '0.75rem' }} />
                   <div style={{ position: 'absolute', bottom: -20, left: '50%', transform: 'translateX(-50%)', width: 100, height: 40, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(30,80,180,0.4), transparent)', filter: 'blur(14px)', pointerEvents: 'none' }} />
@@ -723,7 +724,7 @@ export default function SummerCampLandingPage() {
                 onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,215,0,0.35)'; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; }}
               >
-                <img src="https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/mkbfftaz_KBC%20Website%20%281%29.png"
+                <img src={ASSETS.KBC_WEBSITE}
                   alt="Kaun Banega Crorepati" loading="lazy" />
                 <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(5,12,28,0.95) 0%, rgba(5,12,28,0.3) 50%, transparent 100%)' }} />
                 <div style={{ position: 'absolute', bottom: '1.25rem', left: '1.5rem', right: '1.5rem' }}>
@@ -738,7 +739,7 @@ export default function SummerCampLandingPage() {
                 onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(0,229,255,0.35)'; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; }}
               >
-                <img src="https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/1a3c9g9x_KBC%20%26%20Shark%20Tank%20Website.png"
+                <img src={ASSETS.KBC_SHARK_TANK}
                   alt="Shark Tank India" loading="lazy" />
                 <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(5,12,28,0.95) 0%, rgba(5,12,28,0.3) 50%, transparent 100%)' }} />
                 <div style={{ position: 'absolute', bottom: '1.25rem', left: '1.5rem', right: '1.5rem' }}>

@@ -3,6 +3,7 @@ import { Helmet } from 'react-helmet-async';
 import { MapPin, Users, ArrowRight, Star, CheckCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 import Footer from '../components/Footer';
+import { ASSETS } from '../config/assets';
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 
@@ -147,7 +148,7 @@ export default function SummerCampSEOPage() {
         <meta property="og:description" content={metaDesc} />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={canonical} />
-        <meta property="og:image" content="https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/ko80g3wd_images.png" />
+        <meta property="og:image" content={ASSETS.SUMMER_CAMP_OG} />
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={pageTitle} />
         <meta name="twitter:description" content={metaDesc} />
@@ -171,7 +172,7 @@ export default function SummerCampSEOPage() {
       <nav style={{ padding: '1rem 2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.07)', position: 'sticky', top: 0, background: 'rgba(8,12,22,0.92)', backdropFilter: 'blur(12px)', zIndex: 50 }}>
         <Link to="/" style={{ textDecoration: 'none' }}>
           <img
-            src="https://customer-assets.emergentagent.com/job_oll-skill-edu/artifacts/wzn0gh6k_OLL-horizontal-logo-white.png"
+            src={ASSETS.OLL_LOGO_WHITE}
             alt="OLL – Learn Future Skills"
             style={{ height: 36, width: 'auto' }}
           />
@@ -281,7 +282,7 @@ export default function SummerCampSEOPage() {
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem' }}>
             <div className="cert-badge" style={{ borderColor: 'rgba(230,85,13,0.25)' }}>
-              <img src="https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/ko80g3wd_images.png"
+              <img src={ASSETS.SUMMER_CAMP_OG}
                 alt="STEM.org Accredited Educational Experience" loading="lazy"
                 style={{ width: 110, height: 110, objectFit: 'contain', marginBottom: '1rem', borderRadius: 8 }} />
               <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '0.6rem', color: '#E6550D', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: '0.35rem' }}>STEM.ORG</div>
@@ -289,7 +290,7 @@ export default function SummerCampSEOPage() {
               <p style={{ color: '#64748B', fontSize: '0.82rem', lineHeight: 1.6, margin: 0 }}>Every session is certified by STEM.org — ensuring a world-class, hands-on learning experience.</p>
             </div>
             <div className="cert-badge" style={{ borderColor: 'rgba(30,80,180,0.25)' }}>
-              <img src="https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/cqfv2iw2_USFUCA%20logo%203.jpg"
+              <img src={ASSETS.USFUCA_LOGO}
                 alt="UNESCO USFUCA Recognised" loading="lazy"
                 style={{ width: 140, height: 90, objectFit: 'contain', marginBottom: '1rem', borderRadius: 8 }} />
               <div style={{ fontFamily: JB, fontWeight: 700, fontSize: '0.6rem', color: '#3264CC', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: '0.35rem' }}>UNESCO ALIGNED</div>

@@ -10,6 +10,7 @@ import { Button } from '../components/ui/button';
 import axios from 'axios';
 import Footer from '../components/Footer';
 import SchoolCaseStudies from '../components/SchoolCaseStudies';
+import { ASSETS } from '../config/assets';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -162,7 +163,7 @@ const SchoolOfferingsPage = () => {
             <div className="flex items-center justify-between h-16">
               <Link to="/" className="flex items-center gap-2">
                 <img 
-                  src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/gdvjdp6s_OLL-horizontal-logo-1.png" 
+                  src={ASSETS.OLL_LOGO_COLOR} 
                   alt="OLL Logo - Skill Education Platform"
                   title="OLL - School Programs"
                   loading="eager"

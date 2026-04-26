@@ -22,13 +22,14 @@ from io import BytesIO
 # Heavy libraries are imported lazily (inside the functions that need them)
 # to keep startup time fast and health check responsive.
 # Lazy: reportlab, PIL/qrcode, cloudinary, cashfree_pg
-from emergentintegrations.llm.chat import LlmChat, UserMessage
+from anthropic import AsyncAnthropic
 import time
 import hmac
 import hashlib
 from base64 import b64encode
 import json
 import warnings
+import config
 
 # Suppress urllib3 SSL warnings for Cashfree SDK (SDK handles SSL internally)
 warnings.filterwarnings('ignore', message='Unverified HTTPS request')
@@ -5358,7 +5359,7 @@ async def send_welcome_email(
         raise HTTPException(status_code=500, detail="Email service not configured")
     
     # Team Member Handbook PDF URL
-    handbook_url = "https://customer-assets.emergentagent.com/job_158d09fa-bd08-407b-8f91-2a6e86e5f9fd/artifacts/td39jrre_OLL%20-%20Team%20Member%20Handbook%20-%202025_-compressed.pdf"
+    handbook_url = f"{config.ASSET_CDN_URL}/OLL-Team-Handbook-2025.pdf"
     
     html_content = f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -7094,8 +7095,8 @@ async def bulk_import_educators(file: UploadFile = File(...), user: dict = Depen
 # PDF Generation Helper Functions
 
 # Branded asset URLs (OLL vertical logo and signature)
-_OLL_LOGO_URL = "https://customer-assets.emergentagent.com/job_9d6a9928-5e77-45f3-ad7f-05d2ff27ef55/artifacts/8m4bz68i_OLL-vertical-logo--skills.png"
-_SHREYAAN_SIGN_URL = "https://customer-assets.emergentagent.com/job_9d6a9928-5e77-45f3-ad7f-05d2ff27ef55/artifacts/3iqpdsgr_Shreyaan%20Sign.png"
+_OLL_LOGO_URL = f"{config.ASSET_CDN_URL}/OLL-vertical-logo-skills.png"
+_SHREYAAN_SIGN_URL = f"{config.ASSET_CDN_URL}/Shreyaan-Sign.png"
 _img_cache: dict = {}
 
 def _fetch_image_bytes(url: str):
@@ -8409,7 +8410,7 @@ async def notify_educators_new_requirement(requirement: dict):
             return
 
         req_id = requirement.get("id", "")
-        frontend_url = os.environ.get("FRONTEND_URL", "https://camp-lead-capture.preview.emergentagent.com")
+        frontend_url = os.environ.get("FRONTEND_URL", "http://localhost:3000")
         apply_link = f"{frontend_url}/educator/apply/{req_id}"
 
         pay_text = ""
@@ -10553,41 +10554,43 @@ async def schedule_followup_email(data: dict, user: dict = Depends(get_current_u
             raise HTTPException(status_code=400, detail="Followup date is required")
         
         # Generate AI email content
-        llm_key = os.environ.get("EMERGENT_LLM_KEY", "")
-        if not llm_key:
+        from config import ANTHROPIC_API_KEY
+        if not ANTHROPIC_API_KEY:
             raise HTTPException(status_code=500, detail="LLM service not configured")
-        
+
         programs_str = ", ".join(programs) if programs else "skill education programs"
-        
+
         # Create AI prompt for email generation
-        chat = LlmChat(
-            api_key=llm_key,
-            session_id=f"followup-{school_id}-{followup_date}",
-            system_message="""You are a professional business development representative for OLL (Omni Learning Labs), 
+        system_message = """You are a professional business development representative for OLL (Omni Learning Labs),
             a company that provides skill education programs (Robotics, Coding, AI, Entrepreneurship, Financial Literacy) to schools.
             Write warm, professional, and personalized followup emails that encourage schools to continue the conversation.
             Keep emails concise (under 200 words), friendly but professional.
             Do not use generic templates - make each email feel personalized based on the context provided."""
-        ).with_model("gemini", "gemini-3-flash-preview")
-        
+
         prompt = f"""Write a followup email for:
         - School: {school_name}
         - Contact Person: {contact_name}
         - Programs Discussed: {programs_str}
         - Previous Meeting Notes: {followup_comment if followup_comment else 'Initial discussion about partnership'}
-        
+
         The email should:
         1. Reference our previous conversation naturally
         2. Mention the specific programs they showed interest in
         3. Offer to schedule a call or meeting to discuss next steps
         4. Include a soft call-to-action
         5. Be warm and personalized, not generic
-        
+
         Write ONLY the email body (no subject line, no signature - just the greeting and body text).
         Start with "Dear {contact_name}," and end before the signature."""
-        
-        user_message = UserMessage(text=prompt)
-        ai_email_content = await chat.send_message(user_message)
+
+        client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
+        response = await client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1024,
+            system=system_message,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        ai_email_content = response.content[0].text
         
         # Store scheduled email in database
         scheduled_email = {
@@ -10885,7 +10888,7 @@ async def init_school_onboarding(school_id: str, data: dict = None, user: dict =
             <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 650px; margin: 0 auto; background: #ffffff;">
                 <!-- Header with Logo and Celebration -->
                 <div style="background: linear-gradient(135deg, #1E3A5F 0%, #2d5a8f 100%); padding: 40px 30px; text-align: center;">
-                    <img src="https://customer-assets.emergentagent.com/job_oll-skill-edu/artifacts/wzn0gh6k_OLL-horizontal-logo-white.png" alt="OLL Logo" style="height: 50px; margin-bottom: 20px;">
+                    <img src="{config.ASSET_CDN_URL}/OLL-horizontal-logo-white.png" alt="OLL Logo" style="height: 50px; margin-bottom: 20px;">
                     <h1 style="color: white; margin: 0; font-size: 28px; font-weight: 600;">{header_text}</h1>
                     <p style="color: rgba(255,255,255,0.9); margin: 15px 0 0 0; font-size: 16px;">{header_subtext}</p>
                 </div>
@@ -12041,7 +12044,7 @@ async def update_payment(
                     <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 650px; margin: 0 auto; background: #ffffff;">
                         <!-- Header with Logo -->
                         <div style="background: linear-gradient(135deg, #1E3A5F 0%, #2d5a8f 100%); padding: 30px; text-align: center;">
-                            <img src="https://customer-assets.emergentagent.com/job_oll-skill-edu/artifacts/wzn0gh6k_OLL-horizontal-logo-white.png" alt="OLL Logo" style="height: 50px; margin-bottom: 15px;">
+                            <img src="{config.ASSET_CDN_URL}/OLL-horizontal-logo-white.png" alt="OLL Logo" style="height: 50px; margin-bottom: 15px;">
                             <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 600;">Invoice for Payment</h1>
                         </div>
                         

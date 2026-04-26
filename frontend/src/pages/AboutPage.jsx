@@ -25,6 +25,7 @@ function AdvisorPhoto({ name, src }) {
 }
 import Footer from '../components/Footer';
 import SchoolCaseStudies from '../components/SchoolCaseStudies';
+import { ASSETS } from '../config/assets';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -37,7 +38,7 @@ const CITIES = [
 const FOUNDER = {
   name: 'Shreyaan Daga',
   role: 'Founder & CEO',
-  image: 'https://customer-assets.emergentagent.com/job_teach-n-learn-2/artifacts/8bxvdilp_Shreyaan%20Daga%20%282%29.jpg',
+  image: ASSETS.SHREYAAN_PHOTO,
   instagram: 'https://www.instagram.com/shrey.daga/?hl=en',
   linkedin: 'https://in.linkedin.com/in/shreyaandaga',
   timeline: [

@@ -283,10 +283,13 @@ async def clear_auto_synced_expenses(user: dict = Depends(get_current_user)):
 # PO API INTEGRATION (PROCUREWAY)
 # ========================
 
-PO_API_BASE_URL = os.environ.get("PO_API_BASE_URL", "https://vendorplus-4.emergent.host/api/external")
-PO_API_KEY = os.environ.get("PROCUREWAY_API_KEY", "oll_ext_O5MVdAo6KnEslbB3jtWcDBn_fPu7DRY78vr-ZkHZ7Tg")
-# Production tracking URL domain (replace preview URLs with production)
-PO_TRACKING_PROD_URL = os.environ.get("PO_TRACKING_URL", "https://vendorplus-4.emergent.host")
+PO_API_BASE_URL = os.environ.get("PO_API_BASE_URL", "")
+PO_API_KEY = os.environ.get("PROCUREWAY_API_KEY", "")
+# Production tracking URL domain
+PO_TRACKING_PROD_URL = os.environ.get("PO_TRACKING_URL", "")
+
+if not PO_API_BASE_URL:
+    logging.warning("PO_API_BASE_URL not set -- expenses/vendor features will not work")
 
 def transform_tracking_url(url: str) -> str:
     """Transform preview tracking URLs to production URLs"""
@@ -317,7 +320,7 @@ async def fetch_po_data(endpoint: str, params: dict = None, timeout: float = 10.
             return None
 
 
-VENDOR_PUBLIC_API = os.environ.get("VENDOR_PUBLIC_API", "https://vendorplus-4.emergent.host/api/public")
+VENDOR_PUBLIC_API = os.environ.get("VENDOR_PUBLIC_API", "")
 
 
 async def fetch_vendor_products():

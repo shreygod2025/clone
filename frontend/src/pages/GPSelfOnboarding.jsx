@@ -13,6 +13,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { toast } from 'sonner';
 import axios from 'axios';
+import { ASSETS } from '../config/assets';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -244,7 +245,7 @@ const GPSelfOnboarding = () => {
   });
 
   // GP MOU PDF URL
-  const GP_MOU_PDF_URL = "https://customer-assets.emergentagent.com/job_skill-hub-55/artifacts/tkbt7jy3_OLL%20x%20Growth%20Partner%20MOU.pdf";
+  const GP_MOU_PDF_URL = {ASSETS.GP_MOU_PDF};
 
   useEffect(() => {
     fetchOnboarding();

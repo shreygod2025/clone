@@ -40,11 +40,24 @@ CLOUDINARY_API_KEY: str = os.getenv("CLOUDINARY_API_KEY", "")
 CLOUDINARY_API_SECRET: str = os.getenv("CLOUDINARY_API_SECRET", "")
 
 # ── Frontend URL ─────────────────────────────────────────────────────────
-FRONTEND_URL: str = os.getenv("FRONTEND_URL", "https://camp-lead-capture.preview.emergentagent.com")
+FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 # ── Payment Sync ──────────────────────────────────────────────────────────
 PAYMENT_SYNC_ENABLED: bool = os.getenv("PAYMENT_SYNC_ENABLED", "true").lower() == "true"
 PAYMENT_SYNC_INTERVAL_MINUTES: int = int(os.getenv("PAYMENT_SYNC_INTERVAL_MINUTES", "60"))
+
+# ── Cloudflare R2 ────────────────────────────────────────────────────────
+R2_ACCESS_KEY_ID: str = os.getenv("R2_ACCESS_KEY_ID", "")
+R2_SECRET_ACCESS_KEY: str = os.getenv("R2_SECRET_ACCESS_KEY", "")
+R2_ENDPOINT: str = os.getenv("R2_ENDPOINT", "")
+R2_BUCKET: str = os.getenv("R2_BUCKET", "oll-uploads")
+R2_PUBLIC_URL: str = os.getenv("R2_PUBLIC_URL", "").rstrip("/")
+
+# ── Asset CDN ────────────────────────────────────────────────────────────
+ASSET_CDN_URL: str = os.getenv("ASSET_CDN_URL", "").rstrip("/")
+
+# ── Anthropic (LLM) ──────────────────────────────────────────────────────
+ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "")
 
 # ── OTP Security ─────────────────────────────────────────────────────────
 OTP_EXPIRE_MINUTES = 10

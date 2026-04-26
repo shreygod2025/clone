@@ -16,6 +16,7 @@ import Navbar from '../components/Navbar';
 import CitySearch from '../components/CitySearch';
 import { useUserAuth } from '../context/UserAuthContext';
 import PhoneInput from '../components/PhoneInput';
+import { ASSETS } from '../config/assets';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -963,7 +964,7 @@ const EducatorFunnel = () => {
       <footer className="bg-[#1E3A5F] text-white py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <img 
-            src="https://customer-assets.emergentagent.com/job_51f7c152-ec6b-4d38-953a-09a434414bba/artifacts/rugags0w_OLL-horizontal-logo-white.png" 
+            src={ASSETS.OLL_LOGO_WHITE} 
             alt="OLL" 
             className="h-8 mx-auto mb-4"
           />
