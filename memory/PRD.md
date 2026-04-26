@@ -12,12 +12,22 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - **Funnels & Login:** OTP-based login for all user types
 - **Admin CRM:** Full school management with bulk import, onboarding workflows, inquiry management
 
-### Architecture (Updated: 2026-04-14 — Distributor Invoice Feature, Proxy Download Fix)
+### Architecture (Updated: 2026-04-26 — External MongoDB Dump for legacy clusters)
+
+### Changelog 2026-04-26 — External MongoDB Dump
+- Added `/api/admin/external-mongo/inspect` — connects to any URI, lists DBs/collections/counts (verifies connection before dump).
+- Added `/api/admin/external-mongo/dump` — runs `mongodump --gzip --archive=…` against the supplied URI and streams the single-file archive back to the browser. Restore with `mongorestore --gzip --archive=<file>`.
+- Added `/api/admin/external-mongo/jsonl-zip` — alternative bundled JSONL ZIP (no mongorestore needed).
+- Added `/api/admin/external-mongo/outbound-ip` — surfaces the server's public IP so admins can allowlist it on Atlas Network Access.
+- New UI section in Admin → Data Export with copy-paste IP, inspect/dump buttons and CLI cheatsheet.
+- Pod outbound IP (allowlist on Atlas): **104.198.214.223**
+- Submitted URI is held in memory for the request only; logs always show a redacted host-only form.
+
 ```
 /app/
 ├── backend/
 │   ├── server.py              # FastAPI app setup ONLY (4,226 lines, was 14,805)
-│   └── routes/                # 20 modular route files (387+ routes total)
+│   └── routes/                # 21 modular route files (390+ routes total)
 │       ├── shared.py          # DB, JWT helpers, auto_assign, email utils
 │       ├── notifications.py   # WhatsApp notification helpers
 │       ├── users.py / students.py / team.py / educators.py
@@ -25,6 +35,7 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 │       └── payments.py / gp_onboarding.py / reports.py / jobs.py
 │           expenses.py / summer_camp.py / ai_chat.py / school_emails.py
 │           checkin_api.py / admin_keys.py / daily_report.py / db_backup.py
+│           data_export.py / external_mongo_dump.py  ← NEW (legacy cluster dumps)
 └── frontend/
     ├── public/
     │   └── sitemap.xml        # Updated with /school, all /courses/*, key /school-offerings/*

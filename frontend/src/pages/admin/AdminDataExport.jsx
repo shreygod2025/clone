@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Database, Download, FileJson, FileText, Loader2, RefreshCw, Search, Eye, X } from 'lucide-react';
+import { Database, Download, FileJson, FileText, Loader2, RefreshCw, Search, Eye, X, ServerCog, Globe, ShieldAlert, Copy, CheckCircle2 } from 'lucide-react';
 import { AdminLayout } from './AdminDashboard';
 import { toast } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
@@ -106,6 +106,125 @@ const AdminDataExport = () => {
     !search || c.name.toLowerCase().includes(search.toLowerCase())
   );
 
+  // ── External MongoDB Dump (e.g. legacy eventmate-19 cluster) ────────────
+  const [extOpen, setExtOpen] = useState(false);
+  const [extUri, setExtUri] = useState('');
+  const [extDbName, setExtDbName] = useState('');
+  const [extInspecting, setExtInspecting] = useState(false);
+  const [extDumping, setExtDumping] = useState(false);
+  const [extZipping, setExtZipping] = useState(false);
+  const [extInspectResult, setExtInspectResult] = useState(null);
+  const [outboundIp, setOutboundIp] = useState('');
+  const [ipCopied, setIpCopied] = useState(false);
+
+  const fetchOutboundIp = async () => {
+    try {
+      const r = await axios.get(`${API}/api/admin/external-mongo/outbound-ip`, { headers: getAuthHeaders() });
+      setOutboundIp(r.data?.ip || '');
+    } catch {
+      setOutboundIp('');
+    }
+  };
+
+  useEffect(() => { if (extOpen && !outboundIp) fetchOutboundIp(); }, [extOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleInspectExternal = async () => {
+    if (!extUri.trim()) { toast.error('Paste a MongoDB URI first'); return; }
+    setExtInspecting(true);
+    setExtInspectResult(null);
+    try {
+      const r = await axios.post(
+        `${API}/api/admin/external-mongo/inspect`,
+        { uri: extUri.trim(), db_name: extDbName.trim() || null, timeout_ms: 20000 },
+        { headers: getAuthHeaders(), timeout: 30000 },
+      );
+      setExtInspectResult(r.data);
+      const totalDocs = (r.data?.databases || []).reduce((s, d) => s + (d.total_documents || 0), 0);
+      toast.success(`Connected · ${(r.data?.databases || []).length} DB(s) · ${totalDocs.toLocaleString()} documents`);
+    } catch (e) {
+      const msg = e.response?.data?.detail || e.message || 'Inspection failed';
+      toast.error(msg.length > 200 ? msg.slice(0, 200) + '…' : msg);
+    } finally {
+      setExtInspecting(false);
+    }
+  };
+
+  const handleExternalArchiveDump = async () => {
+    if (!extUri.trim()) { toast.error('Paste a MongoDB URI first'); return; }
+    setExtDumping(true);
+    try {
+      const r = await axios.post(
+        `${API}/api/admin/external-mongo/dump`,
+        { uri: extUri.trim(), db_name: extDbName.trim() || null, timeout_ms: 20000 },
+        { headers: getAuthHeaders(), responseType: 'blob', timeout: 600000 },
+      );
+      const blob = new Blob([r.data], { type: 'application/gzip' });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      const safeDb = (extDbName.trim() || 'all-dbs').replace(/[^A-Za-z0-9_-]+/g, '_');
+      link.download = `mongodump_${safeDb}_${Date.now()}.archive.gz`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success('Archive downloaded · restore with mongorestore --archive=…');
+    } catch (e) {
+      // blob errors come back as Blob → parse them
+      if (e.response?.data instanceof Blob) {
+        try {
+          const txt = await e.response.data.text();
+          const parsed = JSON.parse(txt);
+          toast.error(parsed.detail || 'Dump failed');
+        } catch {
+          toast.error('Dump failed');
+        }
+      } else {
+        toast.error(e.response?.data?.detail || e.message || 'Dump failed');
+      }
+    } finally {
+      setExtDumping(false);
+    }
+  };
+
+  const handleExternalJsonlZip = async () => {
+    if (!extUri.trim()) { toast.error('Paste a MongoDB URI first'); return; }
+    setExtZipping(true);
+    try {
+      const r = await axios.post(
+        `${API}/api/admin/external-mongo/jsonl-zip`,
+        { uri: extUri.trim(), db_name: extDbName.trim() || null, timeout_ms: 20000 },
+        { headers: getAuthHeaders(), responseType: 'blob', timeout: 600000 },
+      );
+      const blob = new Blob([r.data], { type: 'application/zip' });
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = `external_export_${Date.now()}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      toast.success('JSONL zip downloaded');
+    } catch (e) {
+      if (e.response?.data instanceof Blob) {
+        try {
+          const txt = await e.response.data.text();
+          const parsed = JSON.parse(txt);
+          toast.error(parsed.detail || 'Export failed');
+        } catch { toast.error('Export failed'); }
+      } else {
+        toast.error(e.response?.data?.detail || e.message || 'Export failed');
+      }
+    } finally {
+      setExtZipping(false);
+    }
+  };
+
+  const copyIp = () => {
+    if (!outboundIp) return;
+    navigator.clipboard.writeText(outboundIp).then(() => {
+      setIpCopied(true);
+      setTimeout(() => setIpCopied(false), 1500);
+    });
+  };
+
   return (
     <AdminLayout title="Data Export">
       <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-5">
@@ -159,6 +278,195 @@ const AdminDataExport = () => {
         {/* Important note */}
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-xs text-amber-900">
           <strong>Note about passwords:</strong> User passwords are stored as one-way bcrypt hashes — they cannot be decrypted. The hash itself is exported, so when you restore to your own MongoDB, existing passwords keep working as-is.
+        </div>
+
+        {/* External MongoDB Dump (e.g. legacy eventmate-19 cluster) */}
+        <div className="bg-white rounded-2xl border border-slate-100">
+          <button
+            onClick={() => setExtOpen(o => !o)}
+            className="w-full p-4 flex items-center justify-between hover:bg-slate-50 transition-colors"
+            data-testid="external-mongo-toggle"
+          >
+            <div className="flex items-center gap-3 text-left">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center text-white">
+                <ServerCog className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="font-bold text-[#1E3A5F] text-sm">Dump from External MongoDB</p>
+                <p className="text-xs text-slate-500">Pull data out of a different cluster (e.g. legacy eventmate-19 / multi-funnel-oll)</p>
+              </div>
+            </div>
+            <span className="text-xs px-2 py-1 rounded-md bg-violet-50 text-violet-700 border border-violet-200 font-semibold">
+              {extOpen ? 'Hide' : 'Open'}
+            </span>
+          </button>
+
+          {extOpen && (
+            <div className="border-t border-slate-100 p-4 space-y-4">
+              {/* Allowlist warning */}
+              <div className="bg-rose-50 border border-rose-200 rounded-xl p-3.5 text-xs text-rose-900 flex gap-2">
+                <ShieldAlert className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                <div className="space-y-1.5">
+                  <p>
+                    <strong>Atlas IP allowlist:</strong> Most MongoDB Atlas clusters reject all IPs by default.
+                    Before clicking <em>Inspect</em> or <em>Dump</em>, allowlist this server's outbound IP in
+                    <span className="px-1 mx-0.5 rounded bg-white/70 font-mono">Atlas → Network Access → Add IP</span>
+                    or temporarily set <span className="px-1 mx-0.5 rounded bg-white/70 font-mono">0.0.0.0/0</span>.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-rose-700 font-semibold">This server's IP:</span>
+                    {outboundIp ? (
+                      <>
+                        <code className="px-2 py-0.5 rounded bg-white border border-rose-200 font-mono text-rose-900" data-testid="outbound-ip-value">
+                          {outboundIp}
+                        </code>
+                        <button
+                          onClick={copyIp}
+                          className="text-xs px-2 py-0.5 rounded border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 font-semibold flex items-center gap-1"
+                          data-testid="copy-outbound-ip-btn"
+                        >
+                          {ipCopied ? <CheckCircle2 className="w-3 h-3 text-green-600" /> : <Copy className="w-3 h-3" />}
+                          {ipCopied ? 'Copied' : 'Copy'}
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={fetchOutboundIp}
+                        className="text-xs px-2 py-0.5 rounded border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 font-semibold"
+                        data-testid="detect-outbound-ip-btn"
+                      >
+                        Detect IP
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="md:col-span-2">
+                  <label className="text-xs font-semibold text-slate-600 mb-1 block">MongoDB URI <span className="text-rose-500">*</span></label>
+                  <input
+                    type="text"
+                    placeholder="mongodb+srv://user:pass@cluster.xxxx.mongodb.net/?appName=…"
+                    value={extUri}
+                    onChange={e => setExtUri(e.target.value)}
+                    className="w-full text-sm px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-300 font-mono"
+                    spellCheck={false}
+                    autoComplete="off"
+                    data-testid="external-uri-input"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">URI is held in memory only for this request — never logged, never stored.</p>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 mb-1 block">Database (optional)</label>
+                  <input
+                    type="text"
+                    placeholder="eventmate-19-test_database"
+                    value={extDbName}
+                    onChange={e => setExtDbName(e.target.value)}
+                    className="w-full text-sm px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-300 font-mono"
+                    spellCheck={false}
+                    autoComplete="off"
+                    data-testid="external-dbname-input"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">Leave blank to dump every visible database.</p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={handleInspectExternal}
+                  disabled={extInspecting || !extUri.trim()}
+                  className="px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-700 text-sm font-semibold hover:bg-slate-50 flex items-center gap-2 disabled:opacity-50"
+                  data-testid="external-inspect-btn"
+                >
+                  {extInspecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
+                  Inspect (test connection)
+                </button>
+                <button
+                  onClick={handleExternalArchiveDump}
+                  disabled={extDumping || !extUri.trim()}
+                  className="px-3 py-2 rounded-lg bg-violet-600 text-white text-sm font-bold hover:bg-violet-700 flex items-center gap-2 disabled:opacity-60"
+                  data-testid="external-dump-btn"
+                  title="Run mongodump --gzip --archive — restore with `mongorestore --archive=…`"
+                >
+                  {extDumping ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  Dump as .archive.gz (mongodump)
+                </button>
+                <button
+                  onClick={handleExternalJsonlZip}
+                  disabled={extZipping || !extUri.trim()}
+                  className="px-3 py-2 rounded-lg bg-fuchsia-600 text-white text-sm font-bold hover:bg-fuchsia-700 flex items-center gap-2 disabled:opacity-60"
+                  data-testid="external-jsonl-zip-btn"
+                  title="Bundle every collection as JSONL inside a ZIP — works without mongorestore"
+                >
+                  {extZipping ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileJson className="w-4 h-4" />}
+                  Dump as JSONL ZIP
+                </button>
+              </div>
+
+              {extInspectResult && (
+                <div className="bg-violet-50 border border-violet-200 rounded-xl p-3.5 space-y-2 text-xs">
+                  <p className="font-bold text-violet-900">
+                    Connected to <span className="font-mono">{extInspectResult.connected_to}</span>
+                  </p>
+                  {(extInspectResult.databases || []).map(db => (
+                    <div key={db.name} className="bg-white border border-violet-100 rounded-lg p-2.5" data-testid={`ext-db-${db.name}`}>
+                      <p className="font-bold text-[#1E3A5F]">
+                        {db.name}
+                        {db.total_documents != null && (
+                          <span className="ml-2 text-slate-500 font-medium">· {db.total_documents.toLocaleString()} documents</span>
+                        )}
+                      </p>
+                      {db.error ? (
+                        <p className="text-rose-600 mt-1">{db.error}</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {(db.collections || []).map(c => (
+                            <span key={c.name} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 font-mono">
+                              {c.name} ({c.count >= 0 ? c.count.toLocaleString() : '?'})
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* CLI cheatsheet */}
+              <details className="bg-slate-900 rounded-xl text-xs text-slate-300 overflow-hidden">
+                <summary className="cursor-pointer p-3 font-semibold text-white bg-slate-800/60 hover:bg-slate-800">
+                  Or run mongodump from your own machine — copy-paste cheatsheet
+                </summary>
+                <pre className="p-3 overflow-x-auto leading-relaxed whitespace-pre">{`# 1) Install MongoDB Database Tools (one-time)
+#    macOS:    brew install mongodb-database-tools
+#    Ubuntu:   sudo apt-get install mongodb-database-tools
+#    Windows:  https://www.mongodb.com/try/download/database-tools
+
+# 2) Dump a single DB to a single archive (smallest, easiest to share)
+mongodump \\
+  --uri="mongodb+srv://USER:PASS@HOST/?appName=multi-funnel-oll" \\
+  --db="eventmate-19-test_database" \\
+  --gzip --archive=eventmate19.archive.gz
+
+# 3) Restore into your local MongoDB
+mongorestore \\
+  --uri="mongodb://localhost:27017" \\
+  --gzip --archive=eventmate19.archive.gz
+
+# 4) (Alt) Dump ALL databases on the cluster as a folder tree
+mongodump \\
+  --uri="mongodb+srv://USER:PASS@HOST/" \\
+  --gzip --out=./eventmate_all_dbs
+
+# 5) (Alt) Restore the folder tree
+mongorestore \\
+  --uri="mongodb://localhost:27017" \\
+  --gzip ./eventmate_all_dbs`}</pre>
+              </details>
+            </div>
+          )}
         </div>
 
         {/* Database picker */}
