@@ -4409,7 +4409,7 @@ async def send_otp(data: OTPRequest):
         
         payload = {
             "apiKey": AISENSY_API_KEY,
-            "campaignName": "otp",
+            "campaignName": os.environ.get("AISENSY_CAMPAIGN_NAME", "otpollsite"),
             "destination": phone_number,
             "userName": "Clone Futura Live Solutions Ltd",
             "templateParams": [otp],
