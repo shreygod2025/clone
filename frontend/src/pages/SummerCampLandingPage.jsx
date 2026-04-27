@@ -291,7 +291,7 @@ export default function SummerCampLandingPage() {
                 { "@type": "Place", "name": "OLL Center Dombivli", "address": { "@type": "PostalAddress", "addressLocality": "Dombivli", "addressRegion": "Maharashtra", "addressCountry": "IN" } },
                 { "@type": "VirtualLocation", "url": "https://oll.co/summer-camp" }
               ],
-              "image": {ASSETS.SUMMER_CAMP_OG},
+              "image": ASSETS.SUMMER_CAMP_OG,
               "description": "10-day intensive tech camps for kids ages 4–16 covering Robotics, Coding, AI and 3D Design.",
               "organizer": { "@type": "Organization", "name": "OLL India", "url": "https://oll.co" },
               "offers": { "@type": "Offer", "price": "1999", "priceCurrency": "INR", "availability": "https://schema.org/LimitedAvailability", "url": "https://oll.co/summer-camp/book" }

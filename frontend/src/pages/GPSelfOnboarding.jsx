@@ -245,7 +245,7 @@ const GPSelfOnboarding = () => {
   });
 
   // GP MOU PDF URL
-  const GP_MOU_PDF_URL = {ASSETS.GP_MOU_PDF};
+  const GP_MOU_PDF_URL = ASSETS.GP_MOU_PDF;
 
   useEffect(() => {
     fetchOnboarding();

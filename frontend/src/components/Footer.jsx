@@ -1,11 +1,11 @@
 import { Link } from 'react-router-dom';
 import { useState } from 'react';
-import { 
-import { ASSETS } from '../config/assets';
+import {
   Mail, Phone, MapPin, Facebook, Twitter, Instagram, Linkedin, Youtube,
   ChevronDown, ChevronUp, Cpu, Code, Brain, TrendingUp, GraduationCap,
   FileText, Shield, RefreshCcw, HelpCircle, Building2
 } from 'lucide-react';
+import { ASSETS } from '../config/assets';
 
 // All Student Offerings
 const STUDENT_OFFERINGS = [
