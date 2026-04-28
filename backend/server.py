@@ -4045,6 +4045,7 @@ from routes.educators import router as educators_router
 from routes.educator_interview import router as educator_interview_router
 from routes.data_export import router as data_export_router
 from routes.external_mongo_dump import router as external_mongo_dump_router
+from routes.ai_foundations import router as ai_foundations_router
 from routes.support import router as support_router
 from routes.schools import router as schools_router
 from routes.orders import router as orders_router
@@ -4070,6 +4071,7 @@ api_router.include_router(educators_router)
 api_router.include_router(educator_interview_router)
 api_router.include_router(data_export_router)
 api_router.include_router(external_mongo_dump_router)
+api_router.include_router(ai_foundations_router)
 api_router.include_router(support_router)
 api_router.include_router(schools_router)
 api_router.include_router(orders_router)

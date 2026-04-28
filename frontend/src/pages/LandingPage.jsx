@@ -446,6 +446,108 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* ── AI Foundations · 10-Day Online (Grades 6–12) ── */}
+      <section style={{
+        background: 'linear-gradient(180deg, #FFFFFF 0%, #EFF6FF 60%, #FFFFFF 100%)',
+        position: 'relative',
+        overflow: 'hidden',
+        paddingTop: '4.5rem',
+        paddingBottom: '5rem',
+      }} data-testid="homepage-ai-foundations-section">
+        {/* Tech grid */}
+        <div style={{
+          position: 'absolute', inset: 0, opacity: 0.07, pointerEvents: 'none',
+          backgroundImage: 'linear-gradient(#1E3A5F 1px, transparent 1px), linear-gradient(90deg, #1E3A5F 1px, transparent 1px)',
+          backgroundSize: '64px 64px',
+        }} />
+        <div style={{ position: 'absolute', top: '-80px', right: '10%', width: 360, height: 360, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,130,246,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: '-60px', left: '6%', width: 280, height: 280, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.14) 0%, transparent 70%)', pointerEvents: 'none' }} />
+
+        <div className="text-center" style={{ paddingBottom: '2.5rem', paddingLeft: '1rem', paddingRight: '1rem', position: 'relative' }}>
+          <p style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#2563EB', marginBottom: '0.75rem', fontFamily: "'Nunito Sans', sans-serif" }}>
+            NEW · 10-DAY ONLINE COHORT · GRADES 6 – 12
+          </p>
+          <h2 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 'clamp(1.7rem, 4.5vw, 3rem)', fontWeight: 900, color: '#0F1E33', lineHeight: 1.15, marginBottom: '0.75rem' }}>
+            <span style={{ background: 'linear-gradient(90deg, #2563EB, #38BDF8, #6366F1)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>AI Foundations</span> Course
+          </h2>
+          <p style={{ color: '#475569', fontSize: '1rem', maxWidth: 620, margin: '0 auto', lineHeight: 1.6, fontFamily: "'Nunito Sans', sans-serif" }}>
+            10 days. 7+ shareable AI projects. Zero code. Live online cohort capped at 12 students.
+          </p>
+        </div>
+
+        <div style={{ maxWidth: 1000, margin: '0 auto', paddingLeft: '1.5rem', paddingRight: '1.5rem', position: 'relative' }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FBFF 100%)',
+            borderRadius: '1.5rem',
+            border: '2px solid rgba(37,99,235,0.18)',
+            boxShadow: '0 30px 60px rgba(15,30,51,0.08), 0 0 0 1px rgba(37,99,235,0.04)',
+            padding: '2.5rem',
+            position: 'relative',
+            overflow: 'hidden',
+          }}>
+            <div className="grid md:grid-cols-[1fr_280px] gap-8" style={{ position: 'relative' }}>
+              <div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
+                  {['ChatGPT', 'Midjourney', 'Suno', 'Runway', 'Vibe Coding', 'Canva AI', 'Gamma'].map(t => (
+                    <span key={t} style={{ fontSize: '0.7rem', padding: '0.25rem 0.65rem', borderRadius: 999, background: 'rgba(37,99,235,0.08)', color: '#1D4ED8', border: '1px solid rgba(37,99,235,0.2)', fontWeight: 700, fontFamily: "'Nunito Sans', sans-serif" }}>
+                      {t}
+                    </span>
+                  ))}
+                </div>
+                <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: '1.5rem', fontWeight: 900, color: '#0F1E33', marginBottom: '0.5rem' }}>
+                  Build real AI projects, every single day.
+                </h3>
+                <p style={{ color: '#475569', fontSize: '0.95rem', lineHeight: 1.6, marginBottom: '1.25rem', fontFamily: "'Nunito Sans', sans-serif" }}>
+                  Two parallel tracks — Explorer (Grade 6–8) and Creator (Grade 9–12) — taught by OLL Expert Educator <strong style={{ color: '#1E3A5F' }}>Vrishank Mistry</strong>. Same 10 days, right depth for the right age.
+                </p>
+                <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1.5rem', fontSize: '0.9rem', color: '#334155', fontFamily: "'Nunito Sans', sans-serif" }}>
+                  <li>✓ AI images, music, videos, study tools, design & vibe-coded apps</li>
+                  <li>✓ 7+ portfolio projects · OLL Certificate (UNESCO-linked)</li>
+                  <li>✓ Live online · 12 students/cohort · ₹1,999 all-inclusive</li>
+                </ul>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                  <button
+                    onClick={() => navigate('/ai-foundations/book')}
+                    data-testid="homepage-ai-foundations-cta-btn"
+                    style={{ background: '#1E3A5F', color: '#fff', padding: '0.85rem 1.5rem', borderRadius: '999px', fontWeight: 800, fontSize: '0.95rem', border: 'none', cursor: 'pointer', boxShadow: '0 12px 28px rgba(30,58,95,0.25)' }}
+                  >
+                    Enrol Now · ₹1,999 →
+                  </button>
+                  <button
+                    onClick={() => navigate('/ai-foundations')}
+                    style={{ background: 'transparent', color: '#1E3A5F', padding: '0.85rem 1.5rem', borderRadius: '999px', fontWeight: 800, fontSize: '0.95rem', border: '2px solid #CBD5E1', cursor: 'pointer' }}
+                  >
+                    See full curriculum
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 220 }}>
+                {[
+                  { k: '10 Days', v: 'Online live', icon: '🌐' },
+                  { k: '7+ Projects', v: 'Portfolio-grade', icon: '🎨' },
+                  { k: '12 Seats', v: 'Per cohort', icon: '👥' },
+                  { k: '₹1,999', v: 'All-inclusive', icon: '💎' },
+                ].map(s => (
+                  <div key={s.k}
+                    onClick={() => navigate('/ai-foundations')}
+                    style={{ background: 'rgba(37,99,235,0.05)', border: '1px solid rgba(37,99,235,0.15)', borderRadius: '0.65rem', padding: '0.65rem 0.9rem', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.65rem' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(37,99,235,0.1)'; e.currentTarget.style.transform = 'translateX(3px)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(37,99,235,0.05)'; e.currentTarget.style.transform = 'translateX(0)'; }}
+                  >
+                    <span style={{ fontSize: '1.15rem', lineHeight: 1 }}>{s.icon}</span>
+                    <div>
+                      <div style={{ color: '#1D4ED8', fontSize: '0.78rem', fontWeight: 800, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.2 }}>{s.k}</div>
+                      <div style={{ color: '#64748B', fontSize: '0.7rem', fontFamily: "'Nunito Sans', sans-serif", marginTop: '0.1rem' }}>{s.v}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Footer - Always visible */}
       <Footer />
     </div>

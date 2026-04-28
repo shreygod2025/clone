@@ -23,6 +23,26 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - Pod outbound IP (allowlist on Atlas): **104.198.214.223**
 - Submitted URI is held in memory for the request only; logs always show a redacted host-only form.
 
+### Changelog 2026-04-28 — AI Foundations 10-Day Online Course
+- New product: **AI Foundations** — 10-day live-online cohort for Grades 6-12, ₹1,999, direct Cashfree payment.
+- Two parallel tracks: **Explorer** (Grade 6-8) & **Creator** (Grade 9-12) — same 10 days, different depth.
+- Backend: `/app/backend/routes/ai_foundations.py` with atomic `AIF-NNNN` booking refs.
+  - `POST /api/ai-foundations/register` — create lead
+  - `POST /api/ai-foundations/initiate-payment` — open Cashfree order, return hosted payment link
+  - `GET /api/ai-foundations/verify/{booking_id}` — payment verification
+  - `POST /api/ai-foundations/webhook` — Cashfree webhook
+  - `GET /api/admin/ai-foundations/bookings` — admin listing + stats
+  - `PATCH /api/admin/ai-foundations/bookings/{id}` — update CRM status / notes
+- Frontend pages (futuristic white & blue theme):
+  - `/ai-foundations` — landing (`AiFoundationsLandingPage.jsx`) — hero, two tracks, 10-day curriculum, educator (Vrishank Mistry), outcomes, pricing, FAQ
+  - `/ai-foundations/book` — single-page checkout (`AiFoundationsBookingPage.jsx`) — auto-redirects to Cashfree
+  - `/ai-foundations/success` — post-payment (`AiFoundationsSuccessPage.jsx`) — polls verify endpoint
+  - `/admin/ai-foundations` — admin CRM single-page (`AdminAiFoundations.jsx`) with stats, filters, detail drawer
+- Homepage section + Offerings page card now feature this course (between SMI and footer).
+- Educator: **Vrishank Mistry** — OLL Expert Educator (LinkedIn link prominent, bio is a short respectful placeholder ready to edit).
+- New collection: `ai_foundations_bookings`.
+
+
 ```
 /app/
 ├── backend/

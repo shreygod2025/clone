@@ -71,6 +71,11 @@ const SummerCampSuccessPage = lazy(() => import("./pages/SummerCampSuccessPage")
 const SummerCampSEOPage = lazy(() => import("./pages/SummerCampSEOPage"));
 const SummerCampPortalPage = lazy(() => import("./pages/SummerCampPortalPage"));
 
+// AI Foundations Course
+const AiFoundationsLandingPage = lazy(() => import("./pages/AiFoundationsLandingPage"));
+const AiFoundationsBookingPage = lazy(() => import("./pages/AiFoundationsBookingPage"));
+const AiFoundationsSuccessPage = lazy(() => import("./pages/AiFoundationsSuccessPage"));
+
 // Social Media Internship Readiness Program
 const SocialMediaInternPage = lazy(() => import("./pages/SocialMediaInternPage"));
 const SocialMediaInternApplyPage = lazy(() => import("./pages/SocialMediaInternApplyPage"));
@@ -99,6 +104,7 @@ const AdminBlogs = lazy(() => import("./pages/admin/AdminBlogs"));
 const CenterDashboard = lazy(() => import("./pages/admin/CenterDashboard"));
 const SchoolPaymentTracker = lazy(() => import("./pages/admin/SchoolPaymentTracker"));
 const AdminAIChat = lazy(() => import("./pages/admin/AdminAIChat"));
+const AdminAiFoundations = lazy(() => import("./pages/admin/AdminAiFoundations"));
 
 // Auth Context
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -212,6 +218,11 @@ function App() {
               <Route path="/summer-camp" element={<SummerCampLandingPage />} />
               <Route path="/summer-camp/:ageGroup" element={<SummerCampLandingPage />} />
 
+              {/* AI Foundations Course */}
+              <Route path="/ai-foundations" element={<AiFoundationsLandingPage />} />
+              <Route path="/ai-foundations/book" element={<AiFoundationsBookingPage />} />
+              <Route path="/ai-foundations/success" element={<AiFoundationsSuccessPage />} />
+
               {/* Social Media Internship Readiness Program */}
               <Route path="/social-media-intern" element={<SocialMediaInternPage />} />
               <Route path="/social-media-intern/apply" element={<SocialMediaInternApplyPage />} />
@@ -239,6 +250,7 @@ function App() {
               <Route path="/admin/settings" element={<ProtectedRoute><AdminSettings /></ProtectedRoute>} />
               <Route path="/admin/data-export" element={<ProtectedRoute><AdminDataExport /></ProtectedRoute>} />
               <Route path="/admin/ai-chat" element={<ProtectedRoute><AdminAIChat /></ProtectedRoute>} />
+              <Route path="/admin/ai-foundations" element={<ProtectedRoute><AdminAiFoundations /></ProtectedRoute>} />
               <Route path="/center" element={<ProtectedRoute><CenterDashboard /></ProtectedRoute>} />
               
               {/* 404 Not Found - Must be last */}
