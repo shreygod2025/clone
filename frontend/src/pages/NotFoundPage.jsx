@@ -10,6 +10,8 @@ const NotFoundPage = () => {
         <title>Page Not Found | OLL - Learn Future Skills</title>
         <meta name="description" content="The page you're looking for doesn't exist. Explore OLL's Robotics, AI, Coding & Entrepreneurship classes instead." />
         <meta name="robots" content="noindex, follow" />
+        {/* react-snap reads this and writes the file with HTTP 404 status */}
+        <meta name="prerender-status-code" content="404" />
       </Helmet>
 
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 flex flex-col items-center justify-center px-4">

@@ -1,14 +1,68 @@
+# ─── OLL Robots.txt — last updated 2026-04-29 ───────────────────────────────
+# Allow search engines, block private/admin/payment/auth flows.
+
 User-agent: *
 Allow: /
 
-# Block admin and private routes
+# ── Block admin / private / authenticated areas ──
 Disallow: /admin/
+Disallow: /admin
 Disallow: /login
 Disallow: /educator-dashboard
 Disallow: /educator-profile
 Disallow: /educator-onboarding
+Disallow: /educator-interview
 Disallow: /my-bookings
 Disallow: /school-student/dashboard
+Disallow: /school-student/login
+Disallow: /school-tracking
+Disallow: /school-payment-tracker
+Disallow: /school-student/pay
+Disallow: /school-support
+Disallow: /support-flow
+Disallow: /gp-onboarding-track
+Disallow: /gp-self-onboarding
+Disallow: /team-onboarding
+Disallow: /track-onboarding
+Disallow: /verify-otp
+Disallow: /payment/return
+Disallow: /api/
+Disallow: /summer-camp/portal
+Disallow: /summer-camp/success
+Disallow: /summer-camp/book
+Disallow: /ai-foundations/book
+Disallow: /ai-foundations/success
+Disallow: /sm-intern/apply
+Disallow: /sm-intern/success
+Disallow: /reports/
+Disallow: /inquiry?
+Disallow: /*?ref=
+Disallow: /*?utm_*
+Disallow: /*?token=
 
-# Sitemap location
+# ── Block file types that aren't useful in search ──
+Disallow: /*.json$
+Disallow: /static/
+
+# ── AI-specific crawlers (allow useful ones) ──
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Googlebot-Image
+Allow: /
+
+# ── Block bandwidth-wasting bots ──
+User-agent: SemrushBot
+Crawl-delay: 10
+
+User-agent: AhrefsBot
+Crawl-delay: 10
+
+# ── Sitemaps ──
 Sitemap: https://oll.co/sitemap.xml

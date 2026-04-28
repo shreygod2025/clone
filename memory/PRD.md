@@ -33,6 +33,26 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
   - `POST /api/ai-foundations/webhook` — Cashfree webhook
   - `GET /api/admin/ai-foundations/bookings` — admin listing + stats
   - `PATCH /api/admin/ai-foundations/bookings/{id}` — update CRM status / notes
+
+### Changelog 2026-04-29 — SEO Foundation Overhaul (Tier 1 + Pre-rendering)
+**Symptom GSC reported:** 571 noindex, 553 crawled-not-indexed, 8 duplicate-no-canonical, 3 soft 404.
+**Root cause:** SPA returned identical HTML (with summer-camp meta) for every URL.
+
+Files changed:
+- `frontend/public/index.html` — removed summer-camp pollution, added `EducationalOrganization` + `WebSite` JSON-LD, route-neutral defaults, `og:image` → `https://oll.co/og-default.png` (asset to upload).
+- `frontend/public/sitemap.xml` — rewritten: 56 URLs, 7 tiers (brand, funnel, hero products, courses, school-offerings, summer-camp SEO subroutes, career), `image:image` for hero pages.
+- `frontend/public/robots.txt` — tightened: blocks 22 admin/auth/payment paths, allowlists GPTBot/ClaudeBot/PerplexityBot, throttles SemrushBot/AhrefsBot.
+- `frontend/public/_redirects` — NEW: explicit dynamic-route rules + final `/* /404.html 404` so unknown URLs return real HTTP 404 (drops 571 ghost noindex).
+- `frontend/src/pages/NotFoundPage.jsx` — adds `<meta name="prerender-status-code" content="404">` so react-snap writes the prerendered file with HTTP 404 hint.
+- `frontend/src/index.js` — uses `hydrateRoot` when prerendered DOM exists, `createRoot` otherwise. Required for react-snap.
+- `frontend/package.json` — added `react-snap` devDep + `postbuild: react-snap` script + 47-route `reactSnap.include` config (with `puppeteerArgs: ["--no-sandbox"]` for CI compatibility).
+- `backend/routes/seo.py` — NEW: dynamic `/sitemap.xml` (auto-includes published blog posts from DB) + `/robots.txt`, mounted at root (not `/api`). Available on the backend for any future host that proxies root paths.
+
+**Production deploy notes:**
+- Cloudflare/static host serves `oll.co/sitemap.xml` and `oll.co/robots.txt` directly from `frontend/public/`. Backend `/sitemap.xml` route only kicks in for hosts that proxy root paths to the FastAPI app.
+- After deploy, in Google Search Console: re-submit `https://oll.co/sitemap.xml`, click "Validate Fix" on every page-indexing error category.
+- Upload a 1200×630 PNG to `oll.co/og-default.png` (the homepage Open Graph fallback).
+
 - Frontend pages (futuristic white & blue theme):
   - `/ai-foundations` — landing (`AiFoundationsLandingPage.jsx`) — hero, two tracks, 10-day curriculum, educator (Vrishank Mistry), outcomes, pricing, FAQ
   - `/ai-foundations/book` — single-page checkout (`AiFoundationsBookingPage.jsx`) — auto-redirects to Cashfree

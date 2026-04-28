@@ -37,11 +37,19 @@ axios.interceptors.response.use(
   }
 );
 
-const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(
+// react-snap pre-renders each route at build-time → on first browser load
+// the DOM already exists, so we hydrate; on subsequent CSR loads we createRoot.
+const rootElement = document.getElementById("root");
+const tree = (
   <React.StrictMode>
     <HelmetProvider>
       <App />
     </HelmetProvider>
-  </React.StrictMode>,
+  </React.StrictMode>
 );
+
+if (rootElement.hasChildNodes()) {
+  ReactDOM.hydrateRoot(rootElement, tree);
+} else {
+  ReactDOM.createRoot(rootElement).render(tree);
+}

@@ -4,88 +4,132 @@
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="theme-color" content="#1E3A5F" />
-        
-        <!-- Primary SEO Meta Tags - Set per-page by React Helmet -->
-        <title>OLL - Learn Future Skills | Robotics, AI, Coding & Entrepreneurship</title>
-        <meta name="description" content="OLL offers Robotics, AI, Coding, Entrepreneurship & Financial Literacy for students. Lab setups for ICSE, CBSE & State Board schools across India." />
-        <meta name="keywords" content="OLL, robotics classes, AI classes, coding for kids, STEM education, skill education India" />
-        <meta name="robots" content="index, follow" />
+
+        <!-- ──────────────────────────────────────────────────────────────
+             DEFAULT META — represents the homepage only.
+             Every route page sets its own title/description/canonical/OG
+             via React Helmet at runtime. Pre-rendered builds replace
+             these on the static HTML for each route.
+             ────────────────────────────────────────────────────────────── -->
+        <title>OLL — Robotics, AI & Coding Classes for Kids in India | Skill Education</title>
+        <meta name="description" content="OLL is India's leading future-skills platform for kids age 4-16. Live online & in-centre Robotics, AI, Coding, Entrepreneurship & Financial Literacy classes. Trusted by 500+ schools nationwide." />
+        <meta name="keywords" content="robotics classes for kids, AI classes for kids, coding for children India, summer camp Mumbai, STEM education, OLL learning, after-school skill classes, CBSE robotics curriculum, ICSE coding classes" />
+        <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+        <meta name="googlebot" content="index, follow, max-image-preview:large, max-snippet:-1" />
         <meta name="language" content="English" />
         <meta name="author" content="OLL" />
-        
-        <!-- Open Graph / Social - Updated per-page by React Helmet -->
+        <meta name="rating" content="general" />
+        <meta name="geo.region" content="IN" />
+        <meta name="geo.placename" content="Mumbai" />
+
+        <!-- Open Graph (homepage default) -->
         <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://oll.co/summer-camp" />
-        <meta property="og:title" content="Future Skills Summer Camp 2026 — Robotics, AI & Coding for Kids | OLL" />
-        <meta property="og:description" content="5-day hands-on tech camp for ages 4–16. Robotics · Python Coding · AI Tools · 3D Design. Mumbai centers. Limited seats — Book now!" />
-        <meta property="og:image" content="https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/x3ipatnb_Summer%20Camp%20Poster%202026%20%20%28A3%29.png" />
+        <meta property="og:url" content="https://oll.co/" />
+        <meta property="og:title" content="OLL — Robotics, AI & Coding Classes for Kids in India" />
+        <meta property="og:description" content="Live future-skills classes for ages 4-16. Robotics, AI, Coding, Entrepreneurship & Financial Literacy. As seen on Shark Tank India." />
+        <meta property="og:image" content="https://oll.co/og-default.png" />
         <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content="OLL — India's future-skills platform for kids" />
         <meta property="og:site_name" content="OLL" />
         <meta property="og:locale" content="en_IN" />
 
-        <!-- Twitter / X - Updated per-page by React Helmet -->
+        <!-- Twitter / X -->
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Future Skills Summer Camp 2026 | OLL" />
-        <meta name="twitter:description" content="5-day hands-on tech camp for ages 4–16. Robotics · Coding · AI · 3D Design. Mumbai centers. Book now!" />
-        <meta name="twitter:image" content="https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/x3ipatnb_Summer%20Camp%20Poster%202026%20%20%28A3%29.png" />
+        <meta name="twitter:site" content="@ollindia" />
+        <meta name="twitter:title" content="OLL — Robotics, AI & Coding Classes for Kids in India" />
+        <meta name="twitter:description" content="Live future-skills classes for ages 4-16. Robotics, AI, Coding, Entrepreneurship & Financial Literacy." />
+        <meta name="twitter:image" content="https://oll.co/og-default.png" />
 
-        <!-- Canonical URL - Updated per-page by React Helmet -->
+        <!-- Canonical (Helmet overrides per-route) -->
         <link rel="canonical" href="https://oll.co/" />
+
+        <!-- Favicons & PWA -->
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
         <link rel="icon" type="image/png" sizes="192x192" href="/favicon.png" />
         <link rel="apple-touch-icon" sizes="180x180" href="/favicon.png" />
         <link rel="manifest" href="/site.webmanifest" />
-        
-        <!-- Canonical URL - Set per-page by React Helmet -->
 
-        <!-- Organization Structured Data (Brand Knowledge Graph) -->
+        <!-- ─── Structured Data (JSON-LD) ──────────────────────────────── -->
+        <!-- 1. Organization (powers Google's brand knowledge panel) -->
         <script type="application/ld+json">
         {
           "@context": "https://schema.org",
-          "@type": "Organization",
+          "@type": "EducationalOrganization",
+          "@id": "https://oll.co/#organization",
           "name": "OLL",
-          "alternateName": ["OLL India", "OLL - Learn Future Skills"],
+          "alternateName": ["OLL India", "OLL Learning", "OLL - Learn Future Skills"],
           "url": "https://oll.co",
-          "logo": "https://oll.co/favicon.png",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://oll.co/favicon.png",
+            "width": 192,
+            "height": 192
+          },
+          "image": "https://oll.co/og-default.png",
           "sameAs": [
             "https://www.instagram.com/ollindia/",
             "https://www.youtube.com/@ollindia",
-            "https://www.linkedin.com/company/ollindia/"
+            "https://www.linkedin.com/company/ollindia/",
+            "https://www.facebook.com/ollindia"
           ],
-          "description": "OLL is India's leading future-skills education platform for students. We offer Robotics, AI, Coding, Entrepreneurship & Financial Literacy classes for children aged 4-16, and STEM lab setups for schools. As seen on Shark Tank India and Kaun Banega Crorepati.",
+          "description": "OLL is India's leading future-skills education platform. Robotics, AI, Coding, Entrepreneurship & Financial Literacy classes for ages 4-16, plus STEM lab setups for schools nationwide. As seen on Shark Tank India and KBC.",
           "foundingDate": "2020",
-          "areaServed": "IN",
-          "contactPoint": {
+          "areaServed": {
+            "@type": "Country",
+            "name": "India"
+          },
+          "address": {
+            "@type": "PostalAddress",
+            "addressCountry": "IN",
+            "addressRegion": "Maharashtra",
+            "addressLocality": "Mumbai"
+          },
+          "contactPoint": [{
             "@type": "ContactPoint",
             "contactType": "customer service",
             "areaServed": "IN",
-            "availableLanguage": ["English", "Hindi"]
-          }
+            "availableLanguage": ["English", "Hindi"],
+            "email": "welcome@oll.co"
+          }],
+          "knowsAbout": [
+            "Robotics for kids",
+            "Coding for kids",
+            "AI education",
+            "STEM education",
+            "Entrepreneurship for children",
+            "Financial literacy for kids"
+          ]
         }
         </script>
 
-        <!-- WebSite Search Action -->
+        <!-- 2. WebSite + SearchAction (sitelinks search box) -->
         <script type="application/ld+json">
         {
           "@context": "https://schema.org",
           "@type": "WebSite",
-          "name": "OLL - Learn Future Skills",
+          "@id": "https://oll.co/#website",
+          "name": "OLL — Learn Future Skills",
           "url": "https://oll.co",
+          "publisher": { "@id": "https://oll.co/#organization" },
           "potentialAction": {
             "@type": "SearchAction",
-            "target": "https://oll.co/blogs?q={search_term_string}",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://oll.co/blogs?q={search_term_string}"
+            },
             "query-input": "required name=search_term_string"
-          }
+          },
+          "inLanguage": "en-IN"
         }
         </script>
-        
-        <!-- Google Fonts - Non-blocking with font-display: swap -->
+
+        <!-- Google Fonts - Non-blocking -->
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@400;700;900&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
         <noscript><link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Unbounded:wght@400;700;900&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
-        
+
         <script src="https://assets.emergent.sh/scripts/emergent-main.js" defer></script>
         <script>
             // Only load visual edit scripts when inside an iframe

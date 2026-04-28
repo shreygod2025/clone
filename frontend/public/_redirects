@@ -1,0 +1,59 @@
+# ─── OLL Cloudflare Pages / Netlify _redirects ──────────────────────────────
+# Strategy:
+#   1. Prerendered routes serve as static files (Cloudflare/Netlify always
+#      checks the filesystem first, so /summer-camp/index.html wins automatically).
+#   2. Dynamic SPA routes (parameterised by id/slug) fall through to /index.html
+#      with 200 status so React Router can mount.
+#   3. Anything else → /404.html with HTTP 404 status, so Google can drop the
+#      571 noindex ghost URLs cleanly.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Dynamic SPA routes — keep 200 so React Router can pick them up ──────────
+/blogs/*                          /index.html   200
+/blog/*                           /index.html   200
+/admin/*                          /index.html   200
+/admin                            /index.html   200
+/login                            /index.html   200
+/verify-otp                       /index.html   200
+/inquiry                          /index.html   200
+/inquiry/*                        /index.html   200
+/centers/*                        /index.html   200
+/courses/*                        /index.html   200
+/school-offerings/*               /index.html   200
+
+# ── Funnel / checkout / portal flows ────────────────────────────────────────
+/summer-camp/book                 /index.html   200
+/summer-camp/success              /index.html   200
+/summer-camp/portal               /index.html   200
+/summer-camp/:type/:slug          /index.html   200
+/ai-foundations/book              /index.html   200
+/ai-foundations/success           /index.html   200
+/sm-intern/*                      /index.html   200
+/payment/*                        /index.html   200
+
+# ── Authenticated areas (handled by SPA → noindex via Helmet) ───────────────
+/educator-dashboard               /index.html   200
+/educator-profile                 /index.html   200
+/educator-onboarding              /index.html   200
+/educator-onboarding/*            /index.html   200
+/educator-interview               /index.html   200
+/educator-interview/*             /index.html   200
+/educator-apply/*                 /index.html   200
+/my-bookings                     /index.html   200
+/track-onboarding                /index.html   200
+/track-onboarding/*              /index.html   200
+/team-onboarding                 /index.html   200
+/team-onboarding/*               /index.html   200
+/gp-self-onboarding              /index.html   200
+/gp-onboarding-track/*           /index.html   200
+/school-tracking                 /index.html   200
+/school-tracking/*               /index.html   200
+/school-payment-tracker          /index.html   200
+/school-payment-tracker/*        /index.html   200
+/school-student/*                /index.html   200
+/school-support                  /index.html   200
+/support-flow                    /index.html   200
+/reports/*                       /index.html   200
+
+# ── Real 404 for anything else (drops the 571 ghost-noindex URLs) ───────────
+/*                                /404.html     404

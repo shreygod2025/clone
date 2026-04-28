@@ -4046,6 +4046,7 @@ from routes.educator_interview import router as educator_interview_router
 from routes.data_export import router as data_export_router
 from routes.external_mongo_dump import router as external_mongo_dump_router
 from routes.ai_foundations import router as ai_foundations_router
+from routes.seo import router as seo_router
 from routes.support import router as support_router
 from routes.schools import router as schools_router
 from routes.orders import router as orders_router
@@ -4078,6 +4079,10 @@ api_router.include_router(orders_router)
 api_router.include_router(misc_router)
 
 app.include_router(api_router)
+
+# SEO routes mount at the root (NOT under /api/) — Google requests
+# /robots.txt and /sitemap.xml at the domain root.
+app.include_router(seo_router)
 
 # Mount /static for publicly accessible assets (e.g. PDF brochures for WhatsApp)
 import os as _os
