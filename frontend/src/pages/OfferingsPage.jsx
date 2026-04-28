@@ -749,10 +749,10 @@ const OfferingsPage = () => {
                     </div>
                     <button
                       data-testid="ai-foundations-cta-btn"
-                      onClick={(e) => { e.stopPropagation(); navigate('/ai-foundations/book'); }}
+                      onClick={(e) => { e.stopPropagation(); navigate('/ai-foundations'); }}
                       style={{
                         display: 'inline-flex', alignItems: 'center', gap: 10,
-                        padding: '0.9rem 2rem', borderRadius: '999px',
+                        padding: '0.9rem 2.25rem', borderRadius: '999px',
                         background: '#1E3A5F', color: '#fff',
                         fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: '0.85rem',
                         border: 'none', cursor: 'pointer',
@@ -763,7 +763,7 @@ const OfferingsPage = () => {
                       onMouseEnter={e => { e.currentTarget.style.background = '#0F1E33'; e.currentTarget.style.boxShadow = '0 16px 38px rgba(30,58,95,0.35)'; }}
                       onMouseLeave={e => { e.currentTarget.style.background = '#1E3A5F'; e.currentTarget.style.boxShadow = '0 12px 28px rgba(30,58,95,0.25)'; }}
                     >
-                      Enrol Now · ₹1,999
+                      See Curriculum
                       <ArrowRight className="w-4 h-4" />
                     </button>
                   </div>
@@ -792,7 +792,7 @@ const OfferingsPage = () => {
                     ))}
                     <div style={{ gridColumn: '1 / -1', background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.25)', borderRadius: '0.75rem', padding: '0.75rem', textAlign: 'center' }}>
                       <div style={{ fontFamily: 'Unbounded, sans-serif', fontWeight: 700, fontSize: '0.85rem', color: '#1D4ED8' }}>10 Days · Online Live</div>
-                      <div style={{ fontSize: '0.7rem', color: '#475569', fontFamily: 'Outfit, sans-serif' }}>Cohort of 12 · OLL Certificate · ₹1,999</div>
+                      <div style={{ fontSize: '0.7rem', color: '#475569', fontFamily: 'Outfit, sans-serif' }}>Cohort of 12 · OLL Certificate (UNESCO-linked)</div>
                     </div>
                   </div>
                 </div>

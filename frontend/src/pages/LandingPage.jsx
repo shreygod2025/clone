@@ -503,21 +503,15 @@ const LandingPage = () => {
                 <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1.5rem', fontSize: '0.9rem', color: '#334155', fontFamily: "'Nunito Sans', sans-serif" }}>
                   <li>✓ AI images, music, videos, study tools, design & vibe-coded apps</li>
                   <li>✓ 7+ portfolio projects · OLL Certificate (UNESCO-linked)</li>
-                  <li>✓ Live online · 12 students/cohort · ₹1,999 all-inclusive</li>
+                  <li>✓ Live online cohort · 12 students per batch</li>
                 </ul>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
                   <button
-                    onClick={() => navigate('/ai-foundations/book')}
-                    data-testid="homepage-ai-foundations-cta-btn"
-                    style={{ background: '#1E3A5F', color: '#fff', padding: '0.85rem 1.5rem', borderRadius: '999px', fontWeight: 800, fontSize: '0.95rem', border: 'none', cursor: 'pointer', boxShadow: '0 12px 28px rgba(30,58,95,0.25)' }}
-                  >
-                    Enrol Now · ₹1,999 →
-                  </button>
-                  <button
                     onClick={() => navigate('/ai-foundations')}
-                    style={{ background: 'transparent', color: '#1E3A5F', padding: '0.85rem 1.5rem', borderRadius: '999px', fontWeight: 800, fontSize: '0.95rem', border: '2px solid #CBD5E1', cursor: 'pointer' }}
+                    data-testid="homepage-ai-foundations-cta-btn"
+                    style={{ background: '#1E3A5F', color: '#fff', padding: '0.85rem 1.75rem', borderRadius: '999px', fontWeight: 800, fontSize: '0.95rem', border: 'none', cursor: 'pointer', boxShadow: '0 12px 28px rgba(30,58,95,0.25)' }}
                   >
-                    See full curriculum
+                    See Curriculum →
                   </button>
                 </div>
               </div>
@@ -527,7 +521,7 @@ const LandingPage = () => {
                   { k: '10 Days', v: 'Online live', icon: '🌐' },
                   { k: '7+ Projects', v: 'Portfolio-grade', icon: '🎨' },
                   { k: '12 Seats', v: 'Per cohort', icon: '👥' },
-                  { k: '₹1,999', v: 'All-inclusive', icon: '💎' },
+                  { k: 'Certificate', v: 'UNESCO-linked', icon: '🎓' },
                 ].map(s => (
                   <div key={s.k}
                     onClick={() => navigate('/ai-foundations')}
