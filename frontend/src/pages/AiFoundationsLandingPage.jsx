@@ -121,85 +121,67 @@ const AiFoundationsLandingPage = () => {
       <Navbar />
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
-      <section className="relative pt-12 pb-16 md:pt-20 md:pb-24 overflow-hidden">
+      <section className="relative pt-12 pb-12 md:pt-16 md:pb-16 overflow-hidden">
         <TechGrid />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-12 gap-10 lg:gap-12 items-center">
-            <div className="lg:col-span-7 space-y-6">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-bold tracking-wide" data-testid="ai-foundations-badge">
-                <Sparkles className="w-3.5 h-3.5" /> NEW · 10-DAY ONLINE COHORT
-              </div>
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight text-[#0F1E33]">
-                AI Foundations<br />
-                <span className="bg-gradient-to-r from-blue-600 via-sky-500 to-indigo-600 bg-clip-text text-transparent">
-                  for Grades 6 – 12
-                </span>
-              </h1>
-              <p className="text-lg lg:text-xl text-slate-600 max-w-2xl">
-                10 days. 10 themes. Zero code. Your child builds real AI projects every single day —
-                images, music, videos, websites, apps, and a portfolio they{`'`}ll actually show off.
-              </p>
+          {/* Top: Badge + Headline (centered, full-width) */}
+          <div className="text-center max-w-3xl mx-auto mb-10">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-bold tracking-wide mb-5" data-testid="ai-foundations-badge">
+              <Sparkles className="w-3.5 h-3.5" /> NEW · 10-DAY ONLINE COHORT
+            </div>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight text-[#0F1E33]">
+              AI Foundations<br />
+              <span className="bg-gradient-to-r from-blue-600 via-sky-500 to-indigo-600 bg-clip-text text-transparent">
+                for Grades 6 – 12
+              </span>
+            </h1>
+            <p className="text-base lg:text-lg text-slate-600 mt-4 max-w-2xl mx-auto">
+              10 days. 10 themes. Zero code. Your child builds real AI projects every single day —
+              images, music, videos, websites, apps, and a portfolio they{`'`}ll actually show off.
+            </p>
+          </div>
 
-              <div className="flex flex-wrap gap-3 pt-2">
-                <button
-                  onClick={() => navigate('/ai-foundations/book')}
-                  className="group px-7 py-3.5 rounded-full bg-[#1E3A5F] text-white font-bold text-base hover:bg-[#0F1E33] transition-all shadow-lg shadow-blue-900/20 hover:shadow-xl hover:shadow-blue-900/30 flex items-center gap-2"
-                  data-testid="hero-enroll-btn"
-                >
-                  Enrol Now · ₹1,999
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </button>
-                <a
-                  href="#curriculum"
-                  className="px-7 py-3.5 rounded-full border-2 border-slate-200 hover:border-blue-400 text-[#1E3A5F] font-bold text-base transition-colors flex items-center gap-2"
-                  data-testid="hero-curriculum-link"
-                >
-                  See 10-Day Curriculum
-                </a>
-              </div>
+          {/* ── Video player ── */}
+          <div className="relative max-w-4xl mx-auto mb-10" data-testid="ai-foundations-hero-video">
+            <div className="absolute -inset-2 bg-gradient-to-br from-blue-500 via-sky-400 to-indigo-500 rounded-3xl opacity-25 blur-2xl" />
+            <div className="relative rounded-2xl overflow-hidden border-2 border-blue-100 shadow-2xl shadow-blue-900/15 bg-black aspect-video">
+              <iframe
+                src="https://www.youtube.com/embed/mtKXzNNVfP0?rel=0&modestbranding=1"
+                title="AI Foundations Course — Trailer"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                referrerPolicy="strict-origin-when-cross-origin"
+                loading="lazy"
+                className="absolute inset-0 w-full h-full"
+                data-testid="ai-foundations-video-iframe"
+              />
+            </div>
+          </div>
 
-              <div className="flex flex-wrap items-center gap-6 pt-5 text-sm text-slate-600">
-                <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-blue-600" /> 10 sessions · online live</span>
-                <span className="flex items-center gap-1.5"><Users className="w-4 h-4 text-blue-600" /> Cohort size · 12 students</span>
-                <span className="flex items-center gap-1.5"><Award className="w-4 h-4 text-blue-600" /> OLL Certificate (UNESCO-linked)</span>
-              </div>
+          {/* CTAs + meta-row */}
+          <div className="max-w-3xl mx-auto text-center">
+            <div className="flex flex-wrap gap-3 justify-center">
+              <button
+                onClick={() => navigate('/ai-foundations/book')}
+                className="group px-7 py-3.5 rounded-full bg-[#1E3A5F] text-white font-bold text-base hover:bg-[#0F1E33] transition-all shadow-lg shadow-blue-900/20 hover:shadow-xl hover:shadow-blue-900/30 flex items-center gap-2"
+                data-testid="hero-enroll-btn"
+              >
+                Enrol Now · ₹1,999
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </button>
+              <a
+                href="#curriculum"
+                className="px-7 py-3.5 rounded-full border-2 border-slate-200 hover:border-blue-400 text-[#1E3A5F] font-bold text-base transition-colors flex items-center gap-2"
+                data-testid="hero-curriculum-link"
+              >
+                See 10-Day Curriculum
+              </a>
             </div>
 
-            {/* Hero card */}
-            <div className="lg:col-span-5">
-              <div className="relative">
-                <div className="absolute -inset-1 bg-gradient-to-br from-blue-500 via-sky-400 to-indigo-500 rounded-3xl opacity-20 blur-xl" />
-                <div className="relative bg-white border-2 border-blue-100 rounded-3xl p-6 lg:p-7 shadow-2xl shadow-blue-900/10">
-                  <div className="text-xs uppercase tracking-widest text-blue-600 font-bold mb-1">What you{`'`}ll build</div>
-                  <h3 className="text-2xl font-black text-[#0F1E33] mb-4">7+ portfolio projects</h3>
-                  <ul className="space-y-2.5">
-                    {[
-                      { icon: ImageIcon, t: 'AI image series with brand-grade consistency' },
-                      { icon: Music,     t: 'Original AI song + studio-grade voiceover' },
-                      { icon: Video,     t: '30-second AI video advertisement' },
-                      { icon: Code2,     t: 'A real website or app via Vibe Coding' },
-                      { icon: Award,     t: 'Showcase deck for parents / panel / LinkedIn' },
-                    ].map((i, idx) => (
-                      <li key={idx} className="flex items-start gap-3 text-sm">
-                        <span className="mt-0.5 w-7 h-7 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-700 flex-shrink-0">
-                          <i.icon className="w-3.5 h-3.5" />
-                        </span>
-                        <span className="text-slate-700 font-medium">{i.t}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="mt-5 pt-5 border-t border-slate-100 flex items-center justify-between">
-                    <div>
-                      <div className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">All-inclusive</div>
-                      <div className="text-2xl font-black text-[#0F1E33]">₹1,999</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Mode</div>
-                      <div className="text-sm font-bold text-blue-700 flex items-center gap-1"><Globe className="w-3.5 h-3.5" /> Online live</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div className="flex flex-wrap items-center justify-center gap-6 pt-5 text-sm text-slate-600">
+              <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-blue-600" /> 10 sessions · online live</span>
+              <span className="flex items-center gap-1.5"><Users className="w-4 h-4 text-blue-600" /> Cohort size · 12 students</span>
+              <span className="flex items-center gap-1.5"><Award className="w-4 h-4 text-blue-600" /> OLL Certificate (UNESCO-linked)</span>
             </div>
           </div>
         </div>
