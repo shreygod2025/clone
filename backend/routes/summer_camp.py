@@ -404,26 +404,43 @@ async def complete_lead(booking_id: str, data: CompleteLead):
             {"_id": 0}
         )
         if existing:
-            # Same person filled the form again — increment return_count, drop the duplicate
+            # Same person filled the form again — keep the existing record but
+            # REFRESH the age_group / batch / center fields from the user's
+            # *current* selection (held on `booking`, the row we're about to drop).
+            # Without this, a user who changed their mind between submissions
+            # ends up paying for an old age/batch/center.
             return_count = existing.get("return_count", 1) + 1
+            refresh = {
+                "return_count": return_count,
+                "last_returned_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }
+            for field in (
+                "age_group", "age_group_label", "age_group_ages",
+                "batch_type", "batch_week", "batch_dates",
+                "center", "center_label", "mode", "amount",
+            ):
+                cur_val = booking.get(field)
+                if cur_val and cur_val != existing.get(field):
+                    refresh[field] = cur_val
             await db.summer_camp_bookings.update_one(
                 {"id": existing["id"]},
-                {"$set": {
-                    "return_count": return_count,
-                    "last_returned_at": datetime.now(timezone.utc).isoformat(),
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
-                }}
+                {"$set": refresh}
             )
             # Remove the duplicate phone_captured entry
             await db.summer_camp_bookings.delete_one({"id": booking_id})
-            logging.info(f"[SC] Duplicate lead suppressed for phone {norm_phone} / {data.child_name}. Existing: {existing['id']}, return_count={return_count}")
+            logging.info(
+                f"[SC] Duplicate lead merged for phone {norm_phone} / {data.child_name}. "
+                f"Kept: {existing['id']}, return_count={return_count}, refreshed={sorted(k for k in refresh if k not in ('return_count','last_returned_at','updated_at'))}"
+            )
+            merged = await db.summer_camp_bookings.find_one({"id": existing["id"]}, {"_id": 0})
             return {
-                "booking_id": existing["id"],
-                "booking_ref": existing.get("booking_ref"),
+                "booking_id": merged["id"],
+                "booking_ref": merged.get("booking_ref"),
                 "payment_mode": data.payment_mode,
-                "amount": CAMP_PRICE,
-                "center_label": existing.get("center_label"),
-                "batch_dates": existing.get("batch_dates"),
+                "amount": merged.get("amount") or CAMP_PRICE,
+                "center_label": merged.get("center_label"),
+                "batch_dates": merged.get("batch_dates"),
                 "message": "Already registered",
                 "is_duplicate": True,
             }
