@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AdminLayout } from './AdminDashboard';
 import { useAuth } from '../../context/AuthContext';
-import { Search, Eye, Phone, Calendar, Clock, Plus, ChevronRight, ChevronDown, MessageSquare, Archive, CalendarClock, CheckCircle2, X, User, Mail, MapPin, Target, BookOpen, Send, UserPlus, Edit, Save, Video, Navigation, Home, ExternalLink, Bell, Upload, CreditCard, Link2, Copy, Loader2, Trash2, BarChart2, TrendingUp, AlertCircle, Check, Download } from 'lucide-react';
+import { Search, Eye, Phone, Calendar, Clock, Plus, ChevronRight, ChevronDown, MessageSquare, Archive, CalendarClock, CheckCircle2, X, User, Mail, MapPin, Target, BookOpen, Send, UserPlus, Edit, Save, Video, Navigation, Home, ExternalLink, Bell, Upload, CreditCard, Link2, Copy, Loader2, Trash2, BarChart2, TrendingUp, AlertCircle, Check, Download, RefreshCw } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { Input } from '../../components/ui/input';
@@ -1614,6 +1614,33 @@ const AdminStudentCRM = () => {
                           >
                             <Send className="w-4 h-4" />
                             <span className="hidden sm:inline">Broadcast</span>
+                          </Button>
+                          <Button
+                            onClick={async () => {
+                              if (!window.confirm('This will scan every Summer Camp booking and fix:\n• Wrong/missing age group (9-12 vs 13-16 etc.)\n• Missing batch dates\n• Missing center labels\n• Missing booking refs\n\nSafe to run anytime — only blank/wrong fields are touched.\n\nProceed?')) return;
+                              try {
+                                toast.info('Scanning bookings…');
+                                const r = await axios.post(`${API}/summer-camp/admin/backfill-data`, {}, { headers: getAuthHeaders() });
+                                const f = r.data?.fixes_applied || {};
+                                const total = Object.values(f).reduce((s, n) => s + (n || 0), 0);
+                                toast.success(
+                                  total === 0
+                                    ? 'Everything is already clean — no fixes needed.'
+                                    : `Fixed ${total} field${total > 1 ? 's' : ''}: age slug ${f.age_group_normalized}, age range ${f.age_group_ages}, age label ${f.age_group_label}, batch dates ${f.batch_dates}, center ${f.center_label}, refs ${f.booking_ref}.`,
+                                  { duration: 8000 },
+                                );
+                                fetchSummerCampBookings();
+                              } catch (e) {
+                                toast.error(e.response?.data?.detail || 'Backfill failed');
+                              }
+                            }}
+                            variant="outline"
+                            className="flex items-center gap-2 border-purple-300 text-purple-700 hover:bg-purple-50 shrink-0"
+                            data-testid="backfill-summer-camp-btn"
+                            title="Repair earlier bookings — fixes wrong age groups, missing batch dates, missing refs."
+                          >
+                            <RefreshCw className="w-4 h-4" />
+                            <span className="hidden sm:inline">Repair Data</span>
                           </Button>
                         </div>
                       </div>

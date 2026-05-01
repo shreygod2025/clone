@@ -295,15 +295,44 @@ async def capture_lead(data: PartialLeadCapture):
             sort=[("created_at", -1)]
         )
         if existing:
+            # ── Refresh the user's CURRENT selection onto the existing booking.
+            # Without this, switching from (e.g.) "9-12" to "13-16" mid-flow
+            # would persist the OLD age_group and the lead would land in the
+            # wrong age bucket in the CRM. We only override fields the user
+            # has actually re-selected this session — never blank existing data.
+            now_iso = datetime.now(timezone.utc).isoformat()
+            refresh: dict = {"updated_at": now_iso}
+
+            new_age = (data.age_group or "").strip()
+            if new_age and new_age in AGE_GROUPS and new_age != existing.get("age_group"):
+                refresh["age_group"] = new_age
+                refresh["age_group_label"] = AGE_GROUPS[new_age].get("label", "")
+                refresh["age_group_ages"] = AGE_GROUPS[new_age].get("ages", "")
+
+            new_batch_week = (data.batch_week or "").strip()
+            if new_batch_week and new_batch_week != existing.get("batch_week"):
+                refresh["batch_week"] = new_batch_week
+                refresh["batch_dates"] = BATCH_DATES.get(new_batch_week, {}).get(data.batch_type or "weekday", "")
+
+            new_center = (data.center or "").strip()
+            if new_center and new_center != existing.get("center"):
+                refresh["center"] = new_center
+                refresh["center_label"] = await _resolve_center_label(new_center)
+                refresh["amount"] = camp_price_for_center(new_center)
+
             # Bump return_count only if the user had already fully registered before
             if existing.get("crm_status") in ("lead", "hot_lead", "converted", "payment_offline", "seat_reserved"):
+                refresh["return_count"] = existing.get("return_count", 1) + 1
+                refresh["last_returned_at"] = now_iso
+
+            if len(refresh) > 1:  # more than just updated_at
                 await db.summer_camp_bookings.update_one(
                     {"id": existing["id"]},
-                    {"$set": {
-                        "return_count": existing.get("return_count", 1) + 1,
-                        "last_returned_at": datetime.now(timezone.utc).isoformat(),
-                        "updated_at": datetime.now(timezone.utc).isoformat(),
-                    }}
+                    {"$set": refresh},
+                )
+                logging.info(
+                    f"[summer-camp] re-capture {existing.get('booking_ref')} → "
+                    f"updated fields: {sorted(k for k in refresh if k != 'updated_at')}"
                 )
             return {"booking_id": existing["id"], "booking_ref": existing.get("booking_ref")}
 
@@ -765,8 +794,110 @@ async def get_summer_camp_bookings(
     if age_group:
         query["age_group"] = age_group
 
-    bookings = await db.summer_camp_bookings.find(query, {"_id": 0}).sort("created_at", -1).to_list(2000)
+    # Sort by booking_ref desc (most recent ref first) — guarantees a stable,
+    # predictable order in the CRM. booking_ref is monotonic so this matches
+    # creation order even if created_at is missing/duplicated.
+    bookings = await db.summer_camp_bookings.find(query, {"_id": 0}).sort(
+        [("created_at", -1), ("booking_ref", -1)]
+    ).to_list(2000)
     return bookings
+
+
+@router.post("/summer-camp/admin/backfill-data")
+async def backfill_summer_camp_data(user: dict = Depends(get_current_user)):
+    """One-shot tool — repair existing bookings that have:
+      • blank/wrong age_group_label / age_group_ages (re-derive from age_group slug)
+      • free-text or legacy age_group values like '13-16' instead of 'innovators'
+      • missing booking_ref (assign next sequential)
+      • missing batch_dates (re-derive from batch_week)
+      • messy center_label (re-resolve from center id)
+    Safe to re-run — only touches fields that are wrong or empty.
+    """
+    # Admin guard
+    role = (user or {}).get("role", "")
+    email = (user or {}).get("email", "")
+    if role not in ("admin", "super_admin") and not email.endswith("@oll.co"):
+        raise HTTPException(status_code=403, detail="Admin only")
+
+    fixed_age_group = 0
+    fixed_age_label = 0
+    fixed_age_ages = 0
+    fixed_batch_dates = 0
+    fixed_center_label = 0
+    fixed_booking_ref = 0
+    seen_phones: set = set()
+    duplicate_phones: list = []
+
+    cursor = db.summer_camp_bookings.find({}, {"_id": 0})
+    async for b in cursor:
+        update: dict = {}
+        original_age = (b.get("age_group") or "").strip()
+
+        # 1. Normalize age_group slug
+        normalized = _normalize_age_group(original_age)
+        if normalized and normalized != original_age:
+            update["age_group"] = normalized
+            fixed_age_group += 1
+
+        # 2. Re-derive label + ages from the (possibly fixed) slug
+        canonical_slug = update.get("age_group", original_age)
+        canonical = AGE_GROUPS.get(canonical_slug, {})
+        if canonical:
+            want_label = canonical.get("label", "")
+            want_ages = canonical.get("ages", "")
+            if want_label and b.get("age_group_label") != want_label:
+                update["age_group_label"] = want_label
+                fixed_age_label += 1
+            if want_ages and b.get("age_group_ages") != want_ages:
+                update["age_group_ages"] = want_ages
+                fixed_age_ages += 1
+
+        # 3. Re-derive batch_dates from batch_week if present
+        batch_week = b.get("batch_week") or ""
+        if batch_week and batch_week in BATCH_DATES and not (b.get("batch_dates") or "").strip():
+            batch_type = b.get("batch_type") or "weekday"
+            new_dates = BATCH_DATES[batch_week].get(batch_type, "")
+            if new_dates:
+                update["batch_dates"] = new_dates
+                fixed_batch_dates += 1
+
+        # 4. Re-resolve center_label from center id
+        center_id = b.get("center") or ""
+        if center_id and not (b.get("center_label") or "").strip():
+            new_label = await _resolve_center_label(center_id)
+            if new_label:
+                update["center_label"] = new_label
+                fixed_center_label += 1
+
+        # 5. Assign booking_ref if missing
+        if not (b.get("booking_ref") or "").strip():
+            update["booking_ref"] = await _next_booking_ref()
+            fixed_booking_ref += 1
+
+        if update:
+            update["updated_at"] = datetime.now(timezone.utc).isoformat()
+            await db.summer_camp_bookings.update_one({"id": b["id"]}, {"$set": update})
+
+        # Track duplicate phones (informational only)
+        ph = (b.get("parent_phone") or "").strip()
+        if ph:
+            if ph in seen_phones:
+                duplicate_phones.append(ph)
+            else:
+                seen_phones.add(ph)
+
+    return {
+        "ok": True,
+        "fixes_applied": {
+            "age_group_normalized": fixed_age_group,
+            "age_group_label": fixed_age_label,
+            "age_group_ages": fixed_age_ages,
+            "batch_dates": fixed_batch_dates,
+            "center_label": fixed_center_label,
+            "booking_ref": fixed_booking_ref,
+        },
+        "duplicate_phones_count": len(set(duplicate_phones)),
+    }
 
 
 @router.get("/summer-camp/stats")
