@@ -2,12 +2,11 @@
 GP (Growth Partner) Onboarding routes.
 Endpoints: /gp-onboarding/*, /gp-onboard/*
 """
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, EmailStr, ConfigDict
 from typing import Optional, List
 from datetime import datetime, timezone
 import uuid
-import httpx
 import os
 
 from .shared import db, get_current_user
@@ -446,35 +445,69 @@ async def complete_gp_onboarding_step(
     data: dict,
     user: dict = Depends(get_current_user)
 ):
-    """Mark a GP onboarding step as complete"""
+    """Mark a GP onboarding step as complete."""
     step_name = data.get('step')
-    step_data = data.get('data', {})
-    
-    if step_name not in ["personal_info", "contract_signing", "training"]:
-        raise HTTPException(status_code=400, detail="Invalid step name")
-    
+    step_data = data.get('data', {}) or {}
+
+    # Frontend ONBOARDING_STEPS keys (must stay in sync with AdminGPOnboarding.jsx)
+    valid_steps = {
+        "personal_info", "bank_details", "contract_signing",
+        "payment", "kit_delivery", "training",
+    }
+    if step_name not in valid_steps:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid step name '{step_name}'. Must be one of: {sorted(valid_steps)}",
+        )
+
+    onboarding = await db.gp_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
+    if not onboarding:
+        raise HTTPException(status_code=404, detail="Onboarding record not found")
+
+    now_iso = datetime.now(timezone.utc).isoformat()
     update_data = {
         f"steps.{step_name}.completed": True,
-        f"steps.{step_name}.completed_at": datetime.now(timezone.utc).isoformat(),
-        "updated_at": datetime.now(timezone.utc).isoformat()
+        f"steps.{step_name}.completed_at": now_iso,
+        f"steps.{step_name}.completed_by": user.get('id') or user.get('email') or 'admin',
+        "updated_at": now_iso,
     }
-    
-    # Store step-specific data
+
+    # Step-specific side effects
     if step_name == "personal_info" and step_data:
         update_data["personal_info"] = step_data
         if step_data.get('bank_details'):
             update_data["bank_details"] = step_data['bank_details']
+    elif step_name == "bank_details" and step_data:
+        # Bank details usually arrive as either a flat dict or under .bank_details
+        bank = step_data.get('bank_details') if isinstance(step_data.get('bank_details'), dict) else step_data
+        update_data["bank_details"] = bank
     elif step_name == "contract_signing":
         if step_data.get('contract_url'):
             update_data["contract_url"] = step_data['contract_url']
         if step_data.get('commission_structure'):
             update_data["commission_structure"] = step_data['commission_structure']
-        update_data["contract_signed_at"] = datetime.now(timezone.utc).isoformat()
+        update_data["contract_signed_at"] = now_iso
+    elif step_name == "payment":
+        # Manual "Mark Complete" → treat as verified
+        update_data["steps.payment.verified"] = True
+        update_data["steps.payment.verified_at"] = now_iso
+        update_data["steps.payment.verified_by"] = user.get('id') or user.get('email') or 'admin'
+        update_data["payment_status"] = step_data.get('payment_status') or "verified"
+        if step_data.get('amount'):
+            update_data["payment_amount"] = step_data['amount']
+    elif step_name == "kit_delivery":
+        update_data["kit_delivery_status"] = step_data.get('status') or "delivered"
+        update_data["kit_delivered_at"] = now_iso
+        update_data["kit_delivery_date"] = now_iso[:10]
+        if step_data.get('tracking_number'):
+            update_data["kit_tracking_number"] = step_data['tracking_number']
+        if step_data.get('courier_name'):
+            update_data["kit_courier_name"] = step_data['courier_name']
     elif step_name == "training":
-        update_data["training_completed_at"] = datetime.now(timezone.utc).isoformat()
+        update_data["training_completed_at"] = now_iso
         if step_data.get('notes'):
             update_data["training_notes"] = step_data['notes']
-    
+
     await db.gp_onboarding.update_one({"id": onboarding_id}, {"$set": update_data})
     onboarding = await db.gp_onboarding.find_one({"id": onboarding_id}, {"_id": 0})
     return onboarding

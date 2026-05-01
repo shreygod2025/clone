@@ -85,7 +85,9 @@ const AdminGPOnboarding = () => {
       setStepData({});
       fetchOnboardings();
     } catch (error) {
-      toast.error('Failed to complete step');
+      const detail = error.response?.data?.detail || error.message || 'Failed to complete step';
+      toast.error(detail);
+      console.error('[GP onboarding] complete-step failed:', error.response?.status, detail);
     }
   };
 
