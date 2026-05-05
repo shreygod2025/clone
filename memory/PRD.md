@@ -12,7 +12,34 @@ Build a high-conversion, multi-user skill-education platform for "OLL" with sepa
 - **Funnels & Login:** OTP-based login for all user types
 - **Admin CRM:** Full school management with bulk import, onboarding workflows, inquiry management
 
-### Architecture (Updated: 2026-04-26 — External MongoDB Dump for legacy clusters)
+### Architecture (Updated: 2026-02-XX — Future Skills Continuous Program)
+
+### Changelog 2026-02 — Future Skills Continuous Learning Program (Grades 1–10)
+- New flagship product: weekly offline classes in Robotics, Coding, AI, 3D Design & Emerging Tech.
+- **Three age-mapped tiers**: Junior (Grades 1–4), Middle (Grades 5–7), Senior (Grades 8–10), each with distinct curriculum.
+- **Two payment plans** (one-time upfront, no auto-debit mandate):
+  - Monthly: ₹2,000 (cancel anytime)
+  - Yearly: ₹21,000 (₹1,750/mo · saves ₹3,000 · free robotic kit · year-end Tech Showcase)
+- **Two funnels:**
+  - **Free Trial** (lead capture, no payment) → soft pitch on success page + post-trial conversion email
+  - **Direct subscription** via Cashfree (sandbox + production-ready)
+- Backend: `/app/backend/routes/future_skills.py`
+  - `POST /api/future-skills/register-trial` — atomic FST-NNNN refs, dedup on phone, WhatsApp confirmation
+  - `POST /api/future-skills/subscribe` — atomic FSP-NNNN refs, plan validation
+  - `POST /api/future-skills/initiate-payment` — Cashfree order creation
+  - `GET /api/future-skills/verify/{id}` — payment verification + auto-update
+  - `POST /api/future-skills/webhook` — Cashfree webhook handler
+  - Admin (auth required): `GET/PATCH /api/admin/future-skills/{trials,subscriptions}` — full CRM with status filters & search
+- Frontend pages:
+  - `/future-skills` — Hero, Problem, Solution, 5-track What-They-Learn, Tier curriculum cards, How-it-works, Transformation, Social proof, Pricing toggle, Final CTA, FAQ
+  - `/future-skills/book?mode=trial|subscribe&plan=monthly|yearly` — single-page booking form with grade-tier curriculum hint and 12-centre offline dropdown
+  - `/future-skills/success?type=trial|subscription` — success card + (trial-only) soft pitch panel for yearly/monthly subscribe
+- Discoverability:
+  - Homepage `/` adds a flagship Future Skills section (above AI Foundations 10-day card)
+  - `/offerings` adds a Future Skills offering card with tier mini-grid
+  - Admin sidebar: new "Future Skills" entry → `/admin/future-skills` with Trials + Subscriptions tabs, detail drawer with edit-status/centre/notes
+- Test report: `/app/test_reports/iteration_80.json` — 24/24 backend + frontend critical flows PASS.
+- Pytest regression: `/app/backend/tests/test_iter80_future_skills.py`
 
 ### Changelog 2026-04-26 — External MongoDB Dump
 - Added `/api/admin/external-mongo/inspect` — connects to any URI, lists DBs/collections/counts (verifies connection before dump).
