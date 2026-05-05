@@ -271,6 +271,83 @@ const FutureSkillsLandingPage = () => {
         </div>
       </section>
 
+      {/* ── CURRICULUM BY TIER ───────────────────────────────────────────── */}
+      <section className="py-16 lg:py-20 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <span className="text-xs font-bold tracking-widest text-orange-600 uppercase">Grade-mapped curriculum</span>
+            <h2 className="text-3xl lg:text-4xl font-black text-[#0F1E33] mt-2">A different curriculum for every age.</h2>
+            <p className="text-slate-500 mt-2 max-w-xl mx-auto text-sm">Same five skill tracks, paced exactly right for your child's grade.</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-4">
+            {[
+              {
+                tier: 'Junior',
+                grades: 'Grades 1 – 4',
+                accent: 'from-amber-400 to-orange-400',
+                badge: 'bg-amber-50 text-amber-700 border-amber-200',
+                items: [
+                  'Story-led robotics — first robots that move, light up & beep',
+                  'Block coding (Scratch) — animations & simple games',
+                  'AI play — train an image classifier with their drawings',
+                  'Intro 3D — Tinkercad shapes, name keyrings, simple models',
+                  'Soft skills — listening, sharing kits, asking "what if?"',
+                ],
+              },
+              {
+                tier: 'Middle',
+                grades: 'Grades 5 – 7',
+                accent: 'from-orange-500 to-rose-500',
+                badge: 'bg-orange-50 text-orange-700 border-orange-200',
+                items: [
+                  'Sensor robotics — line followers, obstacle avoidance, claws',
+                  'Python intro — first scripts, console games, simple bots',
+                  'AI tools — chatbots, image gen, deepfake spotting',
+                  'Tinkercad 3D — print-ready models, mechanical assemblies',
+                  'Project showcase — a build they own and present',
+                ],
+              },
+              {
+                tier: 'Senior',
+                grades: 'Grades 8 – 10',
+                accent: 'from-rose-500 to-fuchsia-600',
+                badge: 'bg-rose-50 text-rose-700 border-rose-200',
+                items: [
+                  'Advanced robotics + IoT — Arduino, sensors, smart-home circuits',
+                  'Python projects — automations, web scrapers, mini apps',
+                  'ML basics — train a real model, evaluate accuracy, ethics',
+                  'Fusion 360 + 3D printing — designed-to-print engineering',
+                  'Capstone build — portfolio-grade tech project for school & beyond',
+                ],
+              },
+            ].map((t, i) => (
+              <div key={t.tier}
+                className="relative bg-white border-2 border-slate-100 hover:border-orange-300 rounded-3xl p-6 transition-all hover:shadow-xl hover:shadow-orange-100/40 hover:-translate-y-1"
+                data-testid={`tier-card-${t.tier.toLowerCase()}`}>
+                <div className={`inline-flex items-center text-[10px] font-black tracking-widest uppercase px-2 py-1 rounded-full border ${t.badge}`}>
+                  {t.grades}
+                </div>
+                <h3 className={`text-2xl font-black mt-3 bg-gradient-to-r ${t.accent} bg-clip-text text-transparent`}>
+                  {t.tier} Track
+                </h3>
+                <ul className="mt-4 space-y-2.5">
+                  {t.items.map((line, j) => (
+                    <li key={j} className="flex items-start gap-2 text-sm text-slate-700 leading-relaxed">
+                      <Check className="w-4 h-4 text-orange-500 flex-shrink-0 mt-0.5" /> {line}
+                    </li>
+                  ))}
+                </ul>
+                <button onClick={goTrial}
+                  className="mt-5 text-xs font-bold text-orange-600 hover:text-orange-700 inline-flex items-center gap-1"
+                  data-testid={`tier-trial-${t.tier.toLowerCase()}-btn`}>
+                  Book free trial for this tier <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── HOW IT WORKS ─────────────────────────────────────────────────── */}
       <section className="py-16 lg:py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">

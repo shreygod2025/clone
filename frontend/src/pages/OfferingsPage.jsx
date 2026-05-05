@@ -691,6 +691,112 @@ const OfferingsPage = () => {
                 </div>
               </div>
 
+              {/* ── Future Skills · Year-Round Continuous Program ── */}
+              <div
+                data-testid="future-skills-offering-card"
+                onClick={() => navigate('/future-skills')}
+                style={{
+                  position: 'relative',
+                  background: 'linear-gradient(135deg, #FFFFFF 0%, #FFF7ED 50%, #FFFFFF 100%)',
+                  border: '2px solid rgba(255,107,53,0.25)',
+                  borderRadius: '1.5rem',
+                  padding: '1.75rem',
+                  cursor: 'pointer',
+                  overflow: 'hidden',
+                  transition: 'all 0.4s',
+                  boxShadow: '0 8px 40px rgba(15,30,51,0.08)',
+                  marginTop: '1.25rem',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = '#FF6B35'; e.currentTarget.style.boxShadow = '0 0 60px rgba(255,107,53,0.18), 0 8px 40px rgba(15,30,51,0.08)'; e.currentTarget.style.transform = 'translateY(-4px)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,107,53,0.25)'; e.currentTarget.style.boxShadow = '0 8px 40px rgba(15,30,51,0.08)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+              >
+                <div style={{ position: 'absolute', inset: 0, opacity: 0.05, pointerEvents: 'none',
+                  backgroundImage: 'linear-gradient(#FF6B35 1px, transparent 1px), linear-gradient(90deg, #FF6B35 1px, transparent 1px)',
+                  backgroundSize: '60px 60px' }} />
+                <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: 240, height: 240, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,107,53,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
+                <div style={{ position: 'absolute', bottom: '-30px', left: '-30px', width: 180, height: 180, borderRadius: '50%', background: 'radial-gradient(circle, rgba(244,114,182,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
+
+                <div className="relative grid md:grid-cols-[1.6fr_1fr] gap-5 items-center">
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '0.85rem', flexWrap: 'wrap' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: '999px', background: 'rgba(255,107,53,0.1)', border: '1px solid #FF6B35', color: '#C2410C', fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em' }}>
+                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#FF6B35', display: 'inline-block' }} />
+                        Flagship · Offline
+                      </span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: '999px', background: 'rgba(244,114,182,0.1)', border: '1px solid rgba(244,114,182,0.35)', color: '#BE185D', fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em' }}>
+                        Grades 1–10
+                      </span>
+                    </div>
+                    <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 'clamp(1.1rem, 2.6vw, 1.6rem)', fontWeight: 900, color: '#0F1E33', lineHeight: 1.2, marginBottom: '0.5rem' }}>
+                      Future Skills<br />
+                      <span style={{ background: 'linear-gradient(90deg, #FF6B35, #F59E0B, #F472B6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Continuous Program</span>
+                    </h3>
+                    <p style={{ color: '#475569', fontSize: '0.85rem', lineHeight: 1.55, marginBottom: '0.85rem', fontFamily: 'Nunito Sans, sans-serif', maxWidth: 380 }}>
+                      Robotics, Coding, AI, 3D Design & Emerging Tech — once a week, year-round, at your nearest centre. Three age-mapped tiers. Free robotic kit with yearly plan.
+                    </p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem', marginBottom: '1rem' }}>
+                      {[
+                        { icon: '🤖', text: 'Robotics' },
+                        { icon: '💻', text: 'Coding' },
+                        { icon: '🧠', text: 'AI' },
+                        { icon: '🖨️', text: '3D Design' },
+                      ].map(f => (
+                        <span key={f.text} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: '999px', background: 'rgba(255,107,53,0.06)', color: '#1E3A5F', border: '1px solid rgba(255,107,53,0.15)', fontSize: '0.72rem', fontFamily: 'Nunito Sans, sans-serif', fontWeight: 600 }}>
+                          {f.icon} {f.text}
+                        </span>
+                      ))}
+                    </div>
+                    <button
+                      data-testid="future-skills-cta-btn"
+                      onClick={(e) => { e.stopPropagation(); navigate('/future-skills/book?mode=trial'); }}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 8,
+                        padding: '0.65rem 1.5rem', borderRadius: '999px',
+                        background: '#FF6B35', color: '#fff',
+                        fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: '0.78rem',
+                        border: 'none', cursor: 'pointer',
+                        boxShadow: '0 8px 22px rgba(255,107,53,0.3)',
+                        letterSpacing: '0.05em',
+                        transition: 'all 0.3s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#E5572A'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(255,107,53,0.4)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = '#FF6B35'; e.currentTarget.style.boxShadow = '0 8px 22px rgba(255,107,53,0.3)'; }}
+                    >
+                      Book Free Trial
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { ages: 'Gr 1–4',  label: 'Junior',  sub: 'Story-led builds',  color: '#F59E0B', icon: '🧒' },
+                      { ages: 'Gr 5–7',  label: 'Middle',  sub: 'Sensor + Python',   color: '#FF6B35', icon: '🚀' },
+                      { ages: 'Gr 8–10', label: 'Senior',  sub: 'IoT + ML basics',   color: '#BE185D', icon: '🎯' },
+                    ].map(g => (
+                      <div
+                        key={g.ages}
+                        style={{
+                          background: 'rgba(255,107,53,0.04)',
+                          border: `2px solid ${g.color}33`,
+                          borderRadius: '0.75rem',
+                          padding: '0.65rem 0.4rem',
+                          textAlign: 'center',
+                        }}
+                      >
+                        <div style={{ fontSize: '1.2rem', marginBottom: '0.2rem' }}>{g.icon}</div>
+                        <div style={{ fontFamily: 'Unbounded, sans-serif', fontWeight: 900, fontSize: '0.65rem', color: g.color, marginBottom: '0.05rem' }}>{g.ages}</div>
+                        <div style={{ fontSize: '0.65rem', color: '#0F1E33', fontFamily: 'Outfit, sans-serif', fontWeight: 700 }}>{g.label}</div>
+                        <div style={{ fontSize: '0.55rem', color: '#64748B', fontFamily: 'Outfit, sans-serif' }}>{g.sub}</div>
+                      </div>
+                    ))}
+                    <div style={{ gridColumn: '1 / -1', background: 'rgba(255,107,53,0.08)', border: '1px solid rgba(255,107,53,0.25)', borderRadius: '0.5rem', padding: '0.5rem', textAlign: 'center' }}>
+                      <div style={{ fontFamily: 'Unbounded, sans-serif', fontWeight: 700, fontSize: '0.75rem', color: '#C2410C' }}>From ₹1,750/month · Kit Included</div>
+                      <div style={{ fontSize: '0.6rem', color: '#475569', fontFamily: 'Outfit, sans-serif' }}>Cancel anytime · Make-up class free / month</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* ── AI Foundations · 10-Day Online Course ── */}
               <div
                 data-testid="ai-foundations-offering-card"

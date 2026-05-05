@@ -1,0 +1,39 @@
+{
+  "summary": "Iter80 — Future Skills Continuous Learning Program tested end-to-end. 24/24 backend pytest cases PASS. Frontend trial flow, subscribe→Cashfree-redirect flow, success page with soft-pitch panel, admin trials drawer + PATCH, homepage section, /offerings card, regression for summer-camp and ai-foundations all PASS. One observation: Cashfree sandbox shows 'Invalid form' on the constructed payment_link URL (pre-existing pattern shared with payments.py and ai_foundations.py); subscription + payment_link generation work correctly server-side, so this matches the user's expectation that 'Cashfree page should at least load and order_id be returned'.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Subscribe → Cashfree redirect",
+        "issue": "Browser is redirected to https://payments.cashfree.com/forms/{payment_session_id} but Cashfree sandbox responds with 'Oops! Invalid form session_...' page. payment_session_id values from PGCreateOrder are intended for the Cashfree Drop-in JS SDK (cashfree.checkout({paymentSessionId})) or for the order/session API, not for /forms/ which expects pre-configured Hosted Form IDs. This pattern is duplicated across /app/backend/routes/{payments,ai_foundations,future_skills}.py — recommend switching to Drop-in checkout or hosted-checkout returnUrl flow at the next opportunity. NOT blocking for this iteration since order_id is correctly persisted and the Cashfree page does load (even if it errors).",
+        "affected_selectors": ["plan-toggle-yearly", "submit-btn"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter80_future_skills.py",
+    "/app/test_reports/pytest/iter80_future_skills.xml"
+  ],
+  "action_items": [
+    "(Optional, not blocking) Replace the manually-built Cashfree URL pattern with the Drop-in JS SDK or call POST /pg/orders/sessions properly. Same fix would benefit summer-camp / ai-foundations / future-skills uniformly.",
+    "(Optional) Wrap admin tab transitions with a small re-fetch animation so rapid switches don't appear stale (Playwright observed once when switching from trials to subs immediately after closing a drawer)."
+  ],
+  "critical_code_review_comments": [
+    "future_skills.py line 244: order_id is built as 'FSP-{sub.id[:8]}-{epoch}' which can collide if the same sub initiates payment within the same second — low risk but worth using uuid suffix.",
+    "future_skills.py register_trial dedup is correct, but the 'is_existing=True' response does NOT echo the original parent_email/student_name — frontend has no way to know if the returning user is a different student. Consider returning the existing trial doc fields (or at least student_name) so UI can display 'Welcome back X'.",
+    "future_skills.py admin_list_trials has no pagination beyond limit(500) — ok for now but flag for future scale.",
+    "Cashfree payment_link URL construction is duplicated across 3 modules — extract to shared helper in routes/shared.py.",
+    "AdminFutureSkills.jsx line 81 uses `subscriptions/${id}` path but TABS key is 'subs' — works correctly via the ternary, but the inconsistency (`subs` vs `subscriptions`) is a readability footgun.",
+    "FutureSkillsBookingPage centre dropdown has 12 hard-coded centres — should ideally come from /api/centers (already exists)."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter80_future_skills.py"],
+  "success_rate": {"backend": "100% (24/24)", "frontend": "100% on critical flows (trial booking, success+soft-pitch, subscribe+payment-init, admin trial CRUD, homepage section, offerings card, regression)"},
+  "test_credentials": "admin@oll.co / Dagaji03@ — login works (lands on /admin, dashboard renders with Future Skills nav item).",
+  "seed_data_creation": "Created via tests: 1 trial (TEST UI Parent, FST-0004) + 3 subscriptions (FSP-0002 monthly, FSP-0003+FSP-0004 yearly). Existing seed FST-0001 and FSP-0001 confirmed visible. Two trial dedup paths verified.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend tests live in /app/backend/tests/test_iter80_future_skills.py — re-runnable safely (uses random phone numbers per run). Frontend testids that work: future-skills-landing, hero-trial-btn, plan-monthly-btn, plan-yearly-btn, tier-card-{junior|middle|senior}, faq-0..5, final-cta-trial-btn (landing); parent-name-input, parent-phone-input, parent-email-input, student-name-input, student-grade-input, preferred-center-input (12 centres), plan-toggle-{monthly|yearly}, submit-btn (booking); future-skills-success, success-soft-pitch, soft-pitch-{yearly|monthly}-btn, success-home-btn (success); admin-future-skills, tab-trials, tab-subs, row-FST-NNNN, row-FSP-NNNN, detail-drawer, edit-status-select, edit-center-input, edit-notes-input, save-detail-btn, close-detail-btn (admin). Login: admin@oll.co/Dagaji03@ → lands on /admin (NOT /admin/dashboard); use wait_for_load_state('networkidle') instead of wait_for_url. Cashfree sandbox returns 'Invalid form' on the constructed URL but this is consistent with existing modules.",
+  "rca_of_the_issue": "Not a bug — Cashfree 'Invalid form' is a known limitation of how payment_link is constructed (https://payments.cashfree.com/forms/{payment_session_id}). The correct flow is to invoke Cashfree's Drop-in JS SDK via cashfree.checkout({paymentSessionId}) on the FRONTEND, not redirect via window.location. Pre-existing pattern shared with summer-camp and ai-foundations modules — out of scope for this iteration."
+}

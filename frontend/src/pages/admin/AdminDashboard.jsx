@@ -4,7 +4,7 @@ import {
   LayoutDashboard, Users, Building2, GraduationCap, FileText, 
   Briefcase, MessageSquare, LogOut, Menu, X, ChevronRight,
   MapPin, Building, Calendar, Clock, Phone, User, Settings, Shield, BarChart3, Database, PenSquare,
-  Receipt, UserPlus, Upload, Cloud, Wallet, Download, Sparkles
+  Receipt, UserPlus, Upload, Cloud, Wallet, Download, Sparkles, Bot
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import axios from 'axios';
@@ -24,6 +24,7 @@ const AdminLayout = ({ children, title }) => {
     { path: '/admin/ai-chat', icon: MessageSquare, label: 'AI Chat', permission: null }, // Always visible
     { path: '/admin/students', icon: GraduationCap, label: 'Student CRM', permission: 'students' },
     { path: '/admin/ai-foundations', icon: Sparkles, label: 'AI Foundations', permission: 'students' },
+    { path: '/admin/future-skills', icon: Bot, label: 'Future Skills', permission: 'students' },
     { path: '/admin/schools', icon: Building2, label: 'School CRM', permission: 'schools' },
     { path: '/admin/orders', icon: Receipt, label: 'Orders', permission: 'orders' },
     { path: '/admin/expenses', icon: Wallet, label: 'Expenses', permission: 'orders' },

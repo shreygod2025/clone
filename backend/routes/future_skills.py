@@ -440,3 +440,48 @@ async def admin_list_subs(
             "revenue": revenue,
         },
     }
+
+
+# ── Admin update endpoints ────────────────────────────────────────────────
+class TrialUpdate(BaseModel):
+    crm_status: Optional[str] = None
+    trial_status: Optional[str] = None
+    notes: Optional[str] = None
+    assigned_center: Optional[str] = None
+    scheduled_at: Optional[str] = None
+
+
+@router.patch("/admin/future-skills/trials/{trial_id}")
+async def admin_update_trial(trial_id: str, data: TrialUpdate, user: dict = Depends(get_current_user)):
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    update = {k: v for k, v in data.model_dump(exclude_none=True).items()}
+    if not update:
+        raise HTTPException(status_code=400, detail="Nothing to update")
+    update["updated_at"] = datetime.now(timezone.utc).isoformat()
+    res = await db.future_skills_trials.update_one({"id": trial_id}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Trial not found")
+    trial = await db.future_skills_trials.find_one({"id": trial_id}, {"_id": 0})
+    return {"trial": trial}
+
+
+class SubscriptionUpdate(BaseModel):
+    crm_status: Optional[str] = None
+    notes: Optional[str] = None
+    assigned_center: Optional[str] = None
+
+
+@router.patch("/admin/future-skills/subscriptions/{sub_id}")
+async def admin_update_sub(sub_id: str, data: SubscriptionUpdate, user: dict = Depends(get_current_user)):
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail="Admin only")
+    update = {k: v for k, v in data.model_dump(exclude_none=True).items()}
+    if not update:
+        raise HTTPException(status_code=400, detail="Nothing to update")
+    update["updated_at"] = datetime.now(timezone.utc).isoformat()
+    res = await db.future_skills_subscriptions.update_one({"id": sub_id}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Subscription not found")
+    sub = await db.future_skills_subscriptions.find_one({"id": sub_id}, {"_id": 0})
+    return {"subscription": sub}

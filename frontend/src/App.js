@@ -76,6 +76,11 @@ const AiFoundationsLandingPage = lazy(() => import("./pages/AiFoundationsLanding
 const AiFoundationsBookingPage = lazy(() => import("./pages/AiFoundationsBookingPage"));
 const AiFoundationsSuccessPage = lazy(() => import("./pages/AiFoundationsSuccessPage"));
 
+// Future Skills Continuous Learning Program
+const FutureSkillsLandingPage = lazy(() => import("./pages/FutureSkillsLandingPage"));
+const FutureSkillsBookingPage = lazy(() => import("./pages/FutureSkillsBookingPage"));
+const FutureSkillsSuccessPage = lazy(() => import("./pages/FutureSkillsSuccessPage"));
+
 // Social Media Internship Readiness Program
 const SocialMediaInternPage = lazy(() => import("./pages/SocialMediaInternPage"));
 const SocialMediaInternApplyPage = lazy(() => import("./pages/SocialMediaInternApplyPage"));
@@ -105,6 +110,7 @@ const CenterDashboard = lazy(() => import("./pages/admin/CenterDashboard"));
 const SchoolPaymentTracker = lazy(() => import("./pages/admin/SchoolPaymentTracker"));
 const AdminAIChat = lazy(() => import("./pages/admin/AdminAIChat"));
 const AdminAiFoundations = lazy(() => import("./pages/admin/AdminAiFoundations"));
+const AdminFutureSkills = lazy(() => import("./pages/admin/AdminFutureSkills"));
 
 // Auth Context
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -223,6 +229,11 @@ function App() {
               <Route path="/ai-foundations/book" element={<AiFoundationsBookingPage />} />
               <Route path="/ai-foundations/success" element={<AiFoundationsSuccessPage />} />
 
+              {/* Future Skills Continuous Learning Program */}
+              <Route path="/future-skills" element={<FutureSkillsLandingPage />} />
+              <Route path="/future-skills/book" element={<FutureSkillsBookingPage />} />
+              <Route path="/future-skills/success" element={<FutureSkillsSuccessPage />} />
+
               {/* Social Media Internship Readiness Program */}
               <Route path="/social-media-intern" element={<SocialMediaInternPage />} />
               <Route path="/social-media-intern/apply" element={<SocialMediaInternApplyPage />} />
@@ -251,6 +262,7 @@ function App() {
               <Route path="/admin/data-export" element={<ProtectedRoute><AdminDataExport /></ProtectedRoute>} />
               <Route path="/admin/ai-chat" element={<ProtectedRoute><AdminAIChat /></ProtectedRoute>} />
               <Route path="/admin/ai-foundations" element={<ProtectedRoute><AdminAiFoundations /></ProtectedRoute>} />
+              <Route path="/admin/future-skills" element={<ProtectedRoute><AdminFutureSkills /></ProtectedRoute>} />
               <Route path="/center" element={<ProtectedRoute><CenterDashboard /></ProtectedRoute>} />
               
               {/* 404 Not Found - Must be last */}

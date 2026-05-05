@@ -8,7 +8,30 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
-const GRADES = ['1','2','3','4','5','6','7','8','9','10'];
+
+// Tiered grades — curriculum hint shown next to selector
+const GRADE_TIERS = [
+  { label: 'Junior · Grades 1–4',  hint: 'Story-led robotics · Block coding (Scratch) · AI play · Intro 3D',  grades: ['1','2','3','4'] },
+  { label: 'Middle · Grades 5–7',  hint: 'Sensor robotics · Python intro · AI tools · Tinkercad 3D',         grades: ['5','6','7'] },
+  { label: 'Senior · Grades 8–10', hint: 'Advanced robotics + IoT · Python projects · ML basics · Fusion 360', grades: ['8','9','10'] },
+];
+
+const CENTERS = [
+  'Mumbai · Andheri',
+  'Mumbai · Borivali',
+  'Mumbai · Mira Road',
+  'Mumbai · Thane',
+  'Navi Mumbai · Vashi',
+  'Pune · Kothrud',
+  'Pune · Hinjewadi',
+  'Bengaluru · Indiranagar',
+  'Bengaluru · Whitefield',
+  'Hyderabad · Madhapur',
+  'Delhi NCR · Gurugram',
+  'Other / Help me pick',
+];
+
+const tierForGrade = (g) => GRADE_TIERS.find(t => t.grades.includes(String(g)));
 
 const initialForm = {
   parent_name: '', parent_phone: '', parent_email: '',
@@ -35,6 +58,7 @@ const FutureSkillsBookingPage = () => {
     if (!/^\S+@\S+\.\S+$/.test(form.parent_email)) return 'Enter a valid email';
     if (!form.student_name.trim()) return 'Student name is required';
     if (!form.student_grade) return 'Select student grade';
+    if (!form.preferred_center) return 'Pick your preferred centre';
     return null;
   };
 
@@ -157,13 +181,26 @@ const FutureSkillsBookingPage = () => {
                 <select value={form.student_grade} onChange={e => update('student_grade', e.target.value)}
                   className="fs-input" required data-testid="student-grade-input">
                   <option value="">Select grade…</option>
-                  {GRADES.map(g => <option key={g} value={g}>Grade {g}</option>)}
+                  {GRADE_TIERS.map(t => (
+                    <optgroup key={t.label} label={t.label}>
+                      {t.grades.map(g => <option key={g} value={g}>Grade {g}</option>)}
+                    </optgroup>
+                  ))}
                 </select>
+                {form.student_grade && tierForGrade(form.student_grade) && (
+                  <div className="mt-2 text-[11px] text-orange-700 bg-orange-50 border border-orange-100 rounded-lg px-2.5 py-1.5">
+                    <span className="font-bold">{tierForGrade(form.student_grade).label}:</span>{' '}
+                    {tierForGrade(form.student_grade).hint}
+                  </div>
+                )}
               </Field>
-              <Field label="Preferred Centre (optional)" className="sm:col-span-2">
-                <input value={form.preferred_center} onChange={e => update('preferred_center', e.target.value)}
-                  className="fs-input" placeholder="Andheri / Mira Road / Online…"
-                  data-testid="preferred-center-input" />
+              <Field label="Preferred Centre *" className="sm:col-span-2">
+                <select value={form.preferred_center} onChange={e => update('preferred_center', e.target.value)}
+                  className="fs-input" required data-testid="preferred-center-input">
+                  <option value="">Pick your nearest centre…</option>
+                  {CENTERS.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                <p className="text-[11px] text-slate-400 mt-1">Offline only — we'll confirm your batch slot within 24h.</p>
               </Field>
               {mode === 'trial' && (
                 <Field label="What interests you most? (optional)" className="sm:col-span-2">

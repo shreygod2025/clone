@@ -98,6 +98,39 @@ const FutureSkillsSuccessPage = () => {
                 data-testid="success-home-btn">
                 <Home className="w-4 h-4" /> Back to Home
               </button>
+
+              {/* Soft pitch — only for trial bookings */}
+              {isTrial && (
+                <div className="mt-10 text-left bg-gradient-to-br from-orange-500 via-rose-500 to-amber-500 text-white rounded-3xl p-6 lg:p-8 relative overflow-hidden" data-testid="success-soft-pitch">
+                  <div className="absolute inset-0 opacity-10"
+                    style={{
+                      backgroundImage: 'linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px)',
+                      backgroundSize: '40px 40px',
+                    }} />
+                  <div className="relative">
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/20 border border-white/30 text-[10px] font-bold tracking-widest uppercase backdrop-blur-sm">
+                      <Sparkles className="w-3 h-3" /> Save your seat early
+                    </div>
+                    <h3 className="text-xl lg:text-2xl font-black mt-3">Already sure? Lock the full year now & save ₹3,000.</h3>
+                    <p className="text-orange-50 text-sm mt-2 max-w-lg">
+                      Yearly subscribers get the robotic kit free, priority batch slot, and the year-end Tech Showcase entry. Cancel anytime.
+                    </p>
+                    <div className="grid sm:grid-cols-2 gap-3 mt-5">
+                      <button onClick={() => navigate('/future-skills/book?mode=subscribe&plan=yearly')}
+                        className="px-5 py-3 rounded-xl bg-white text-[#1E3A5F] font-bold text-sm hover:bg-slate-100 transition-all shadow-lg flex items-center justify-center gap-2"
+                        data-testid="soft-pitch-yearly-btn">
+                        <Gift className="w-4 h-4" /> Subscribe Yearly · ₹1,750/mo
+                      </button>
+                      <button onClick={() => navigate('/future-skills/book?mode=subscribe&plan=monthly')}
+                        className="px-5 py-3 rounded-xl border-2 border-white text-white font-bold text-sm hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+                        data-testid="soft-pitch-monthly-btn">
+                        <Calendar className="w-4 h-4" /> Subscribe Monthly · ₹2,000/mo
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-orange-100 mt-3 opacity-90">No pressure — your free trial is fully booked either way.</p>
+                  </div>
+                </div>
+              )}
             </>
           )}
 
