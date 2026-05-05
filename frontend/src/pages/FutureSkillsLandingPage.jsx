@@ -1,0 +1,493 @@
+import { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
+import {
+  Sparkles, ArrowRight, Check, Clock, Users, Zap, Award,
+  Bot, Cpu, Code2, Box, Wand2, ChevronDown, Star, Quote,
+  Brain, Hammer, Rocket, BookOpenCheck, ShieldCheck, Calendar,
+  TrendingUp, Lightbulb, Trophy, X, Heart, MapPin, Gift
+} from 'lucide-react';
+import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
+
+// ── Skill buckets ─────────────────────────────────────────────────────────
+const SKILLS = [
+  { icon: Bot, key: 'robotics', name: 'Robotics', tag: 'Build & program robots',
+    out: 'From line-followers in Grade 3 to obstacle-avoiding bots in Grade 8. Real motors, real sensors, real "it works!"' },
+  { icon: Code2, key: 'coding', name: 'Coding', tag: 'Block to Python',
+    out: 'Scratch-style logic in early grades, Python by Grade 7. Kids ship games, websites & automations they can show off.' },
+  { icon: Brain, key: 'ai', name: 'Artificial Intelligence', tag: 'AI tools & ethics',
+    out: 'Train image classifiers, talk to chatbots they built, make AI art — and learn to spot deepfakes.' },
+  { icon: Box, key: '3d', name: '3D Design', tag: 'CAD + 3D printing',
+    out: 'Tinkercad → Fusion 360 progression. Many students 3D-print their own designs at our centers.' },
+  { icon: Wand2, key: 'emerging', name: 'Emerging Tech', tag: 'AR/VR · IoT · Drones',
+    out: 'Quarterly "wild card" modules — drone basics, augmented reality scenes, smart home circuits.' },
+];
+
+const HOW = [
+  { icon: Calendar,    t: '1 Class / Week',         s: '90 minutes of hands-on tech, every week.' },
+  { icon: MapPin,      t: 'Offline Centers',        s: 'In-centre or at partner schools — never just a screen.' },
+  { icon: Users,       t: 'Small Batches · Max 10', s: 'Every kid gets the educator\'s eyes & feedback.' },
+  { icon: TrendingUp,  t: 'Progressive Levels',     s: 'Grade-mapped curriculum that scales as they grow.' },
+];
+
+const TRANSFORM = {
+  before: [
+    { icon: X, t: 'Stuck consuming screens', s: 'YouTube, games, scroll' },
+    { icon: X, t: 'Theory-heavy school work', s: 'Memorise, repeat, forget' },
+    { icon: X, t: 'No outlet for curiosity',  s: '"Why?" gets shut down' },
+    { icon: X, t: 'Shy of new tech',          s: 'Watches others use it' },
+  ],
+  after: [
+    { icon: Heart, t: 'Creates with screens',         s: 'Builds games, robots, art' },
+    { icon: Heart, t: 'Hands-on, lifelong learner',   s: 'Tries → fails → solves' },
+    { icon: Heart, t: 'Confident problem-solver',     s: 'Owns the "why" and the "how"' },
+    { icon: Heart, t: 'Future-ready & fearless',      s: 'AI, 3D, drones — bring it on' },
+  ],
+};
+
+const TESTIMONIALS = [
+  { name: 'Anita S., Grade 5 parent',  quote: 'My son went from gaming all weekend to spending Saturdays designing his own game. The shift in 3 months has been unreal.' },
+  { name: 'Rajesh M., Grade 8 parent', quote: 'He builds robots at home now with parts he saves up for. The class lit a fire we didn\'t know was there.' },
+  { name: 'Priya K., Grade 3 parent',  quote: 'Best investment beyond her academics. She actually looks forward to Saturdays.' },
+];
+
+const STATS = [
+  { v: '2,500+', l: 'Students Trained' },
+  { v: '500+',   l: 'Partner Schools' },
+  { v: '10',     l: 'Max per Batch' },
+  { v: '4.9/5',  l: 'Parent Rating' },
+];
+
+const FAQ = [
+  { q: 'My child is in Grade 1. Is that too young?',
+    a: 'Not at all — our youngest learners start at Grade 1 with story-driven robotics and block-based coding. Activities are tailored to grip strength and attention span.' },
+  { q: 'What if my child has zero tech background?',
+    a: 'Most don\'t when they start. Our curriculum is built for absolute beginners — all materials and kits are provided, and the educator paces the batch to the slowest learner.' },
+  { q: 'Do I need to buy a laptop or kit?',
+    a: 'No. Robotics kits are included free with the yearly plan. Laptops and tools live at the centre — kids work hands-on without family logistics.' },
+  { q: 'Can my child switch between Robotics, Coding & AI?',
+    a: 'Yes — one program covers all five skill tracks across the year, structured so kids try everything and find what they love.' },
+  { q: 'Class missed? Refunds?',
+    a: 'One make-up class per month is included free. Cancel anytime — yearly plan is refunded pro-rata for unused months.' },
+  { q: 'How is this different from Whitehat / BYJU\'s?',
+    a: 'Those are 1-on-1 online. We\'re offline, hands-on, with a small peer group — kids learn faster from each other, and the physical kits make every concept concrete.' },
+];
+
+// Animated background grid
+const TechGrid = ({ accent = '#FF6B35' }) => (
+  <div className="absolute inset-0 pointer-events-none overflow-hidden">
+    <div className="absolute inset-0 opacity-[0.06]"
+      style={{
+        backgroundImage: `linear-gradient(${accent} 1px, transparent 1px), linear-gradient(90deg, ${accent} 1px, transparent 1px)`,
+        backgroundSize: '64px 64px',
+      }}
+    />
+    <div className="absolute -top-32 -right-24 w-[420px] h-[420px] rounded-full blur-3xl"
+      style={{ background: `${accent}26` }} />
+    <div className="absolute top-40 -left-20 w-[320px] h-[320px] rounded-full blur-3xl"
+      style={{ background: '#1E3A5F26' }} />
+  </div>
+);
+
+const FutureSkillsLandingPage = () => {
+  const navigate = useNavigate();
+  const [openFaq, setOpenFaq] = useState(0);
+
+  useEffect(() => { window.scrollTo(0, 0); }, []);
+
+  const goTrial = () => navigate('/future-skills/book?mode=trial');
+  const goSubscribe = (plan) => navigate(`/future-skills/book?mode=subscribe&plan=${plan}`);
+
+  return (
+    <div className="min-h-screen bg-white text-[#0F1E33]" data-testid="future-skills-landing">
+      <Helmet>
+        <title>Future Skills Continuous Learning Program (Grades 1-10) | OLL</title>
+        <meta name="description" content="Weekly offline classes in Robotics, Coding, AI, 3D Design & Emerging Tech for Grades 1-10. Small batches, hands-on kits. Book a free trial — pay just ₹1,750/month." />
+        <meta property="og:title" content="Future Skills Continuous Learning Program | OLL" />
+        <meta property="og:description" content="Robotics, Coding, AI, 3D Design — weekly offline classes for Grades 1-10. From ₹1,750/month, kit included." />
+        <link rel="canonical" href="https://oll.co/future-skills" />
+      </Helmet>
+
+      <Navbar />
+
+      {/* ── HERO ─────────────────────────────────────────────────────────── */}
+      <section className="relative pt-12 pb-16 md:pt-20 md:pb-20 overflow-hidden">
+        <TechGrid accent="#FF6B35" />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-12 gap-10 items-center">
+            <div className="lg:col-span-7 space-y-6">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-orange-50 border border-orange-200 text-orange-700 text-xs font-bold tracking-wide" data-testid="hero-badge">
+                <Sparkles className="w-3.5 h-3.5" /> NEW BATCHES STARTING THIS MONTH
+              </div>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight text-[#0F1E33]">
+                Your child won't just<br />
+                <span className="bg-gradient-to-r from-orange-500 via-amber-500 to-rose-500 bg-clip-text text-transparent">
+                  use the future.
+                </span><br />
+                They'll build it.
+              </h1>
+              <p className="text-lg lg:text-xl text-slate-600 max-w-xl">
+                Hands-on weekly classes in Robotics, Coding, AI, 3D Design & emerging tech — for Grades 1 to 10.
+                Small batches, real kits, lasting curiosity.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={goTrial}
+                  className="group px-7 py-3.5 rounded-full bg-[#FF6B35] text-white font-bold text-base hover:bg-[#E5572A] transition-all shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 flex items-center gap-2"
+                  data-testid="hero-trial-btn"
+                >
+                  Book a Free Trial Class
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </button>
+                <a href="#pricing" className="px-7 py-3.5 rounded-full border-2 border-slate-200 hover:border-orange-300 text-[#1E3A5F] font-bold text-base transition-colors flex items-center gap-2"
+                  data-testid="hero-pricing-link">
+                  See Pricing
+                </a>
+              </div>
+              <div className="flex flex-wrap items-center gap-6 pt-3 text-sm text-slate-600">
+                <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4 text-orange-500" /> Once a week · 90 min</span>
+                <span className="flex items-center gap-1.5"><Users className="w-4 h-4 text-orange-500" /> Max 10 per batch</span>
+                <span className="flex items-center gap-1.5"><Gift className="w-4 h-4 text-orange-500" /> Robotic kit free w/ yearly</span>
+              </div>
+            </div>
+
+            {/* Hero card */}
+            <div className="lg:col-span-5">
+              <div className="relative">
+                <div className="absolute -inset-1 bg-gradient-to-br from-orange-400 via-amber-400 to-rose-400 rounded-3xl opacity-30 blur-xl" />
+                <div className="relative bg-white border-2 border-orange-100 rounded-3xl p-7 shadow-2xl shadow-orange-500/15">
+                  <div className="text-xs uppercase tracking-widest text-orange-600 font-bold mb-1">5 Skill Tracks · One Program</div>
+                  <h3 className="text-2xl font-black text-[#0F1E33] mb-4">Everything they need to think like builders</h3>
+                  <ul className="space-y-2.5">
+                    {SKILLS.map((s, i) => (
+                      <li key={i} className="flex items-start gap-3 text-sm">
+                        <span className="mt-0.5 w-9 h-9 rounded-lg bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 flex items-center justify-center text-orange-700 flex-shrink-0">
+                          <s.icon className="w-4 h-4" />
+                        </span>
+                        <div>
+                          <div className="font-bold text-[#0F1E33]">{s.name}</div>
+                          <div className="text-xs text-slate-500">{s.tag}</div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-5 pt-5 border-t border-slate-100 flex items-center justify-between">
+                    <div>
+                      <div className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Starts at</div>
+                      <div className="text-2xl font-black text-[#0F1E33]">₹1,750<span className="text-sm text-slate-500 font-bold">/month</span></div>
+                    </div>
+                    <span className="text-[10px] uppercase tracking-widest text-orange-700 bg-orange-50 border border-orange-200 px-2 py-1 rounded-full font-bold">Kit Included</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── PROBLEM ──────────────────────────────────────────────────────── */}
+      <section className="py-16 lg:py-20 bg-slate-50">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <span className="text-xs font-bold tracking-widest text-rose-600 uppercase">The honest truth</span>
+          <h2 className="text-3xl lg:text-4xl font-black text-[#0F1E33] mt-2 mb-4">School isn't enough anymore.</h2>
+          <p className="text-slate-600 max-w-2xl mx-auto mb-10">By the time today's kids graduate, half their jobs won't exist yet. Memorising chapters won't cut it.</p>
+          <div className="grid sm:grid-cols-3 gap-4">
+            {[
+              { icon: BookOpenCheck, t: 'Stuck in theory',          s: 'Memorising what AI now finishes in seconds.' },
+              { icon: X,             t: 'No real-world skills',     s: '12 years of classes, zero things they can build.' },
+              { icon: Cpu,           t: 'Consuming, not creating',  s: 'Hours of screen time without ever shipping anything.' },
+            ].map((p, i) => (
+              <div key={i} className="bg-white border-2 border-rose-100 rounded-2xl p-6 hover:border-rose-300 transition-all" data-testid={`problem-${i}`}>
+                <div className="w-12 h-12 mx-auto rounded-xl bg-rose-50 flex items-center justify-center text-rose-500 mb-3">
+                  <p.icon className="w-6 h-6" />
+                </div>
+                <h3 className="font-black text-[#0F1E33] text-base">{p.t}</h3>
+                <p className="text-sm text-slate-500 mt-1.5">{p.s}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── SOLUTION ─────────────────────────────────────────────────────── */}
+      <section className="py-16 lg:py-20 relative">
+        <TechGrid accent="#FF6B35" />
+        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <span className="text-xs font-bold tracking-widest text-orange-600 uppercase">A different kind of class</span>
+          <h2 className="text-3xl lg:text-4xl font-black text-[#0F1E33] mt-2 mb-4">The Future Skills Program</h2>
+          <p className="text-slate-600 max-w-2xl mx-auto mb-10 text-lg">
+            Once a week, your child walks into a centre, picks up a kit, and <strong className="text-[#1E3A5F]">builds something real</strong>.
+            Robots that move. Code that runs. Designs that print. Across 5 future-defining skill tracks — taught by educators, not videos.
+          </p>
+          <div className="grid sm:grid-cols-3 gap-4">
+            {[
+              { icon: Hammer,    t: 'Build by doing',     s: 'Every class produces a thing they take home or display.' },
+              { icon: Lightbulb, t: 'Curiosity-led',      s: 'Kids choose what to deepen — robots, AI, 3D, you decide.' },
+              { icon: Rocket,    t: 'Compounding skills', s: 'Today\'s line-follower becomes tomorrow\'s drone.' },
+            ].map((p, i) => (
+              <div key={i} className="bg-white border-2 border-slate-100 rounded-2xl p-6 hover:border-orange-300 transition-all hover:-translate-y-0.5">
+                <div className="w-12 h-12 mx-auto rounded-xl bg-gradient-to-br from-orange-50 to-amber-50 flex items-center justify-center text-orange-600 mb-3 border border-orange-200">
+                  <p.icon className="w-6 h-6" />
+                </div>
+                <h3 className="font-black text-[#0F1E33] text-base">{p.t}</h3>
+                <p className="text-sm text-slate-500 mt-1.5">{p.s}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── WHAT THEY LEARN ──────────────────────────────────────────────── */}
+      <section className="py-16 lg:py-20 bg-gradient-to-b from-slate-50 to-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <span className="text-xs font-bold tracking-widest text-orange-600 uppercase">5 Tracks · 1 program</span>
+            <h2 className="text-3xl lg:text-4xl font-black text-[#0F1E33] mt-2">What your child will actually walk away with</h2>
+            <p className="text-slate-500 mt-2 max-w-xl mx-auto text-sm">Outcome-focused, grade-mapped, taught hands-on.</p>
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {SKILLS.map((s, i) => (
+              <div key={s.key}
+                className="group relative bg-white border-2 border-slate-100 hover:border-orange-300 rounded-2xl p-6 transition-all hover:shadow-xl hover:shadow-orange-100/50 hover:-translate-y-1"
+                data-testid={`skill-card-${s.key}`}>
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-500 text-white flex items-center justify-center mb-4 shadow-lg shadow-orange-500/30">
+                  <s.icon className="w-7 h-7" />
+                </div>
+                <div className="text-[11px] font-bold tracking-wider uppercase text-orange-600">{s.tag}</div>
+                <h3 className="text-xl font-black text-[#0F1E33] mt-1">{s.name}</h3>
+                <p className="text-sm text-slate-600 leading-relaxed mt-2">{s.out}</p>
+              </div>
+            ))}
+            <div className="relative bg-gradient-to-br from-[#0F1E33] to-[#1E3A5F] text-white border-2 border-blue-900 rounded-2xl p-6">
+              <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center mb-4">
+                <Trophy className="w-7 h-7 text-amber-400" />
+              </div>
+              <div className="text-[11px] font-bold tracking-wider uppercase text-amber-300">Year-end</div>
+              <h3 className="text-xl font-black mt-1">Tech Showcase Project</h3>
+              <p className="text-sm text-blue-100 leading-relaxed mt-2">Every student presents their year's biggest build — robots, apps, AI projects — to parents and an industry panel.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── HOW IT WORKS ─────────────────────────────────────────────────── */}
+      <section className="py-16 lg:py-20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <span className="text-xs font-bold tracking-widest text-orange-600 uppercase">How the program runs</span>
+            <h2 className="text-3xl lg:text-4xl font-black text-[#0F1E33] mt-2">A rhythm that fits your week</h2>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {HOW.map((h, i) => (
+              <div key={i} className="bg-white border-2 border-slate-100 rounded-2xl p-6 text-center hover:border-orange-300 transition-all" data-testid={`how-${i}`}>
+                <div className="w-12 h-12 mx-auto rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center text-orange-600 mb-3">
+                  <h.icon className="w-6 h-6" />
+                </div>
+                <h3 className="font-black text-[#0F1E33]">{h.t}</h3>
+                <p className="text-sm text-slate-500 mt-1.5 leading-snug">{h.s}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── TRANSFORMATION ───────────────────────────────────────────────── */}
+      <section className="py-16 lg:py-20 bg-gradient-to-br from-[#0F1E33] via-[#1E3A5F] to-[#0F1E33] text-white relative overflow-hidden">
+        <div className="absolute inset-0 opacity-[0.06]"
+          style={{
+            backgroundImage: 'linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px)',
+            backgroundSize: '64px 64px',
+          }} />
+        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <span className="text-xs font-bold tracking-widest text-amber-300 uppercase">The transformation</span>
+            <h2 className="text-3xl lg:text-4xl font-black mt-2">From screen-stuck to skill-stacked.</h2>
+            <p className="text-blue-200 max-w-2xl mx-auto mt-2 text-sm">A 90-day shift in how your child sees themselves and tech.</p>
+          </div>
+          <div className="grid md:grid-cols-2 gap-5">
+            <div className="rounded-2xl border-2 border-rose-500/30 bg-rose-500/5 p-6">
+              <div className="text-[11px] font-bold tracking-widest uppercase text-rose-300 mb-2">Before OLL</div>
+              <ul className="space-y-3">
+                {TRANSFORM.before.map((b, i) => (
+                  <li key={i} className="flex items-start gap-3 text-sm">
+                    <span className="mt-0.5 w-7 h-7 rounded-lg bg-rose-500/20 border border-rose-400/40 flex items-center justify-center text-rose-300 flex-shrink-0">
+                      <b.icon className="w-3.5 h-3.5" />
+                    </span>
+                    <div>
+                      <div className="font-bold">{b.t}</div>
+                      <div className="text-xs text-blue-200">{b.s}</div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-2xl border-2 border-amber-400/40 bg-amber-400/10 p-6">
+              <div className="text-[11px] font-bold tracking-widest uppercase text-amber-300 mb-2">After 3 months at OLL</div>
+              <ul className="space-y-3">
+                {TRANSFORM.after.map((a, i) => (
+                  <li key={i} className="flex items-start gap-3 text-sm">
+                    <span className="mt-0.5 w-7 h-7 rounded-lg bg-amber-400/20 border border-amber-300/40 flex items-center justify-center text-amber-300 flex-shrink-0">
+                      <a.icon className="w-3.5 h-3.5" />
+                    </span>
+                    <div>
+                      <div className="font-bold">{a.t}</div>
+                      <div className="text-xs text-blue-100">{a.s}</div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── SOCIAL PROOF ─────────────────────────────────────────────────── */}
+      <section className="py-16 lg:py-20">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <span className="text-xs font-bold tracking-widest text-orange-600 uppercase">Numbers parents trust</span>
+            <h2 className="text-3xl lg:text-4xl font-black text-[#0F1E33] mt-2">2,500+ kids. 500+ schools. One mission.</h2>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-12">
+            {STATS.map((s, i) => (
+              <div key={i} className="bg-gradient-to-br from-white to-orange-50/30 border-2 border-orange-100 rounded-2xl p-5 text-center" data-testid={`stat-${i}`}>
+                <div className="text-3xl lg:text-4xl font-black text-orange-600">{s.v}</div>
+                <div className="text-xs text-slate-500 font-bold uppercase tracking-wider mt-1">{s.l}</div>
+              </div>
+            ))}
+          </div>
+          <div className="grid md:grid-cols-3 gap-4">
+            {TESTIMONIALS.map((t, i) => (
+              <div key={i} className="bg-white border-2 border-slate-100 rounded-2xl p-6" data-testid={`testimonial-${i}`}>
+                <Quote className="w-6 h-6 text-orange-300 mb-3" />
+                <p className="text-sm text-slate-700 leading-relaxed italic">"{t.quote}"</p>
+                <div className="flex items-center gap-1 mt-3 mb-1">
+                  {[1,2,3,4,5].map(s => <Star key={s} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />)}
+                </div>
+                <div className="text-xs font-bold text-[#0F1E33]">{t.name}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── PRICING ──────────────────────────────────────────────────────── */}
+      <section id="pricing" className="py-16 lg:py-20 bg-gradient-to-b from-orange-50/30 to-white relative">
+        <TechGrid accent="#FF6B35" />
+        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-10">
+            <span className="text-xs font-bold tracking-widest text-orange-600 uppercase">Investment, not expense</span>
+            <h2 className="text-3xl lg:text-4xl font-black text-[#0F1E33] mt-2">Simple subscription pricing</h2>
+            <p className="text-slate-500 mt-2 max-w-xl mx-auto text-sm">Cancel anytime. Robotic kit free with yearly. 1 free make-up class per month.</p>
+          </div>
+          <div className="grid md:grid-cols-2 gap-5 max-w-3xl mx-auto">
+            <div className="bg-white border-2 border-slate-200 rounded-3xl p-7 hover:border-orange-300 transition-all" data-testid="plan-monthly">
+              <div className="text-xs font-bold tracking-widest text-slate-500 uppercase">Monthly</div>
+              <div className="flex items-baseline gap-1 mt-2">
+                <span className="text-5xl font-black text-[#0F1E33]">₹2,000</span>
+                <span className="text-sm text-slate-500 font-bold">/month</span>
+              </div>
+              <div className="text-xs text-slate-500 mt-1">Cancel anytime · Billed monthly</div>
+              <ul className="space-y-2.5 mt-5 text-sm text-slate-700">
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-orange-500" /> 4 classes per month</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-orange-500" /> All 5 skill tracks</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-orange-500" /> Small batch · max 10</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-orange-500" /> Kit access at centre</li>
+                <li className="flex items-center gap-2 text-slate-400"><X className="w-4 h-4 text-slate-300" /> Take-home robotic kit</li>
+              </ul>
+              <button onClick={() => goSubscribe('monthly')}
+                className="w-full mt-6 py-3 rounded-xl border-2 border-[#1E3A5F] text-[#1E3A5F] font-bold hover:bg-[#1E3A5F] hover:text-white transition-all"
+                data-testid="plan-monthly-btn">
+                Choose Monthly
+              </button>
+            </div>
+
+            <div className="relative bg-gradient-to-br from-[#1E3A5F] to-[#0F1E33] text-white border-2 border-orange-400 rounded-3xl p-7 shadow-2xl shadow-orange-500/20" data-testid="plan-yearly">
+              <span className="absolute -top-3 right-6 bg-orange-500 text-white text-[10px] font-black tracking-widest uppercase px-3 py-1 rounded-full">Save ₹3,000</span>
+              <div className="text-xs font-bold tracking-widest text-amber-300 uppercase">Yearly · Best Value</div>
+              <div className="flex items-baseline gap-1 mt-2">
+                <span className="text-5xl font-black">₹1,750</span>
+                <span className="text-sm text-blue-200 font-bold">/month</span>
+              </div>
+              <div className="text-xs text-blue-200 mt-1">₹21,000 billed annually</div>
+              <ul className="space-y-2.5 mt-5 text-sm">
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-amber-400" /> 48 classes (full year)</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-amber-400" /> All 5 skill tracks</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-amber-400" /> Small batch · max 10</li>
+                <li className="flex items-center gap-2 text-amber-200 font-semibold"><Gift className="w-4 h-4 text-amber-400" /> Free Robotic Kit · Take Home</li>
+                <li className="flex items-center gap-2"><Check className="w-4 h-4 text-amber-400" /> Year-end Tech Showcase</li>
+              </ul>
+              <button onClick={() => goSubscribe('yearly')}
+                className="w-full mt-6 py-3 rounded-xl bg-orange-500 text-white font-bold hover:bg-orange-600 transition-all shadow-lg shadow-orange-500/30"
+                data-testid="plan-yearly-btn">
+                Choose Yearly · Save ₹3,000
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── URGENCY + FINAL CTA ─────────────────────────────────────────── */}
+      <section className="py-16 lg:py-20">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="bg-gradient-to-br from-orange-500 via-rose-500 to-amber-500 rounded-3xl p-8 lg:p-12 text-white text-center relative overflow-hidden">
+            <div className="absolute inset-0 opacity-10"
+              style={{
+                backgroundImage: 'linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px)',
+                backgroundSize: '40px 40px',
+              }} />
+            <div className="relative">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/20 border border-white/30 text-xs font-bold tracking-wide backdrop-blur-sm">
+                <Clock className="w-3.5 h-3.5" /> NEW BATCH FILLING UP · ONLY 4 SEATS LEFT
+              </div>
+              <h2 className="text-3xl lg:text-5xl font-black mt-4">Don't miss the next batch.</h2>
+              <p className="text-orange-50 mt-3 text-base lg:text-lg max-w-2xl mx-auto">
+                Each batch caps at 10 students for a reason. Once it fills, you wait a month.
+                Free trial slots are limited too — claim yours before it's gone.
+              </p>
+              <div className="flex flex-wrap gap-3 justify-center mt-6">
+                <button onClick={goTrial}
+                  className="px-7 py-3.5 rounded-full bg-white text-[#1E3A5F] font-bold text-base hover:bg-slate-100 transition-all shadow-lg flex items-center gap-2"
+                  data-testid="final-cta-trial-btn">
+                  Book Free Trial Class <ArrowRight className="w-5 h-5" />
+                </button>
+                <button onClick={() => goSubscribe('yearly')}
+                  className="px-7 py-3.5 rounded-full border-2 border-white text-white font-bold text-base hover:bg-white/10 transition-all">
+                  Subscribe Now · Save ₹3,000
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── FAQ ──────────────────────────────────────────────────────────── */}
+      <section className="py-16 lg:py-20 bg-slate-50">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl lg:text-4xl font-black text-[#0F1E33] text-center mb-2">Parent questions, answered.</h2>
+          <p className="text-center text-slate-500 mb-8 text-sm">Quick answers to what every parent asks before booking.</p>
+          <div className="space-y-2.5">
+            {FAQ.map((f, idx) => {
+              const isOpen = openFaq === idx;
+              return (
+                <div key={idx} className={`bg-white border-2 ${isOpen ? 'border-orange-300' : 'border-slate-100'} rounded-2xl overflow-hidden transition-all`} data-testid={`faq-${idx}`}>
+                  <button onClick={() => setOpenFaq(isOpen ? null : idx)}
+                    className="w-full px-5 py-4 flex items-center justify-between gap-4 text-left hover:bg-orange-50/30">
+                    <span className="font-bold text-[#0F1E33] text-sm">{f.q}</span>
+                    <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isOpen ? 'rotate-180 text-orange-600' : ''}`} />
+                  </button>
+                  {isOpen && <div className="px-5 pb-4 text-sm text-slate-600 leading-relaxed">{f.a}</div>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      <Footer />
+    </div>
+  );
+};
+
+export default FutureSkillsLandingPage;
