@@ -219,11 +219,32 @@ const FutureSkillsLandingPage = () => {
     return () => window.removeEventListener('keydown', onKey);
   }, [videoOpen, mediaOpen]);
 
+  // Smooth scroll-reveal — sections fade + lift in as they enter viewport.
+  // Falls back to no-op on browsers without IntersectionObserver.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('IntersectionObserver' in window)) return undefined;
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      // Reveal everything immediately for users who prefer reduced motion.
+      document.querySelectorAll('.fs-reveal').forEach((el) => el.classList.add('fs-in-view'));
+      return undefined;
+    }
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) {
+          e.target.classList.add('fs-in-view');
+          obs.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
+    document.querySelectorAll('.fs-reveal').forEach((el) => obs.observe(el));
+    return () => obs.disconnect();
+  }, []);
+
   const goTrial = () => navigate('/future-skills/book?mode=trial');
   const goSubscribe = (plan) => navigate(`/future-skills/book?mode=subscribe&plan=${plan}`);
 
   return (
-    <div className="min-h-screen bg-white text-[#0F1E33]" data-testid="future-skills-landing">
+    <div className="min-h-screen bg-white text-[#0F1E33] fs-stack" data-testid="future-skills-landing">
       <Helmet>
         <title>Future Skills Continuous Learning Program (Grades 1-10) | OLL</title>
         <meta name="description" content="Weekly offline classes in Robotics, Coding, AI, 3D Design & Emerging Tech for Grades 1-10. Small batches, hands-on kits. Book a free trial — pay just ₹1,750/month." />
@@ -235,43 +256,43 @@ const FutureSkillsLandingPage = () => {
       <Navbar />
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
-      <section className="relative pt-12 pb-16 md:pt-20 md:pb-20 overflow-hidden">
+      <section className="fs-reveal relative pt-8 pb-12 sm:pt-12 sm:pb-16 md:pt-20 md:pb-20 overflow-hidden">
         <TechGrid accent="#1E3A5F" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-12 gap-10 items-center">
-            <div className="lg:col-span-7 space-y-6">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-50 border border-red-200 text-[#D63031] text-xs font-bold tracking-wide" data-testid="hero-badge">
-                <Sparkles className="w-3.5 h-3.5" /> NEW BATCHES STARTING THIS MONTH
+          <div className="grid lg:grid-cols-12 gap-8 lg:gap-10 items-center">
+            <div className="lg:col-span-7 space-y-5 sm:space-y-6">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-50 border border-red-200 text-[#D63031] text-[11px] sm:text-xs font-bold tracking-wide" data-testid="hero-badge">
+                <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5" /> NEW BATCHES STARTING THIS MONTH
               </div>
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-tight text-[#0F1E33]">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black leading-[1.05] sm:leading-tight text-[#0F1E33]">
                 Your child won't just<br />
                 <span className="bg-gradient-to-r from-[#D63031] via-[#7B2C5C] to-[#1E3A5F] bg-clip-text text-transparent">
                   use the future.
                 </span><br />
                 They'll build it.
               </h1>
-              <p className="text-lg lg:text-xl text-slate-600 max-w-xl">
+              <p className="text-base sm:text-lg lg:text-xl text-slate-600 max-w-xl">
                 Hands-on weekly classes in Robotics, Coding, AI, 3D Design & emerging tech — for Grades 1 to 10.
                 Small batches, real kits, lasting curiosity.
               </p>
               <div className="flex flex-wrap gap-3">
                 <button
                   onClick={goTrial}
-                  className="group px-7 py-3.5 rounded-full bg-gradient-to-r from-[#D63031] to-[#1E3A5F] text-white font-bold text-base hover:from-[#B52828] hover:to-[#0F1E33] transition-all shadow-lg shadow-blue-900/25 hover:shadow-xl hover:shadow-blue-900/35 flex items-center gap-2"
+                  className="group px-5 py-3 sm:px-7 sm:py-3.5 rounded-full bg-gradient-to-r from-[#D63031] to-[#1E3A5F] text-white font-bold text-sm sm:text-base hover:from-[#B52828] hover:to-[#0F1E33] transition-all shadow-lg shadow-blue-900/25 hover:shadow-xl hover:shadow-blue-900/35 flex items-center gap-2"
                   data-testid="hero-trial-btn"
                 >
                   Book a Free Trial Class
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
                 </button>
-                <a href="#pricing" className="px-7 py-3.5 rounded-full border-2 border-slate-200 hover:border-[#1E3A5F] text-[#1E3A5F] font-bold text-base transition-colors flex items-center gap-2"
+                <a href="#pricing" className="px-5 py-3 sm:px-7 sm:py-3.5 rounded-full border-2 border-slate-200 hover:border-[#1E3A5F] text-[#1E3A5F] font-bold text-sm sm:text-base transition-colors flex items-center gap-2"
                   data-testid="hero-pricing-link">
                   See Pricing
                 </a>
               </div>
-              <div className="flex flex-wrap items-center gap-6 pt-3 text-sm text-slate-600">
-                <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4 text-[#1E3A5F]" /> Once a week · 90 min</span>
-                <span className="flex items-center gap-1.5"><Users className="w-4 h-4 text-[#1E3A5F]" /> Max 10 per batch</span>
-                <span className="flex items-center gap-1.5"><Gift className="w-4 h-4 text-[#D63031]" /> Robotic kit free w/ yearly</span>
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-2 sm:pt-3 text-xs sm:text-sm text-slate-600">
+                <span className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#1E3A5F]" /> Once a week · 90 min</span>
+                <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#1E3A5F]" /> Max 10 per batch</span>
+                <span className="flex items-center gap-1.5"><Gift className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#D63031]" /> Robotic kit free w/ yearly</span>
               </div>
             </div>
 
@@ -310,7 +331,7 @@ const FutureSkillsLandingPage = () => {
       </section>
 
       {/* ── AS SEEN ON (National TV + Press ticker) ─────────────────────── */}
-      <section className="py-12 lg:py-16 bg-gradient-to-b from-[#0F1E33] to-[#1E3A5F] text-white relative overflow-hidden" data-testid="fs-as-seen-on">
+      <section className="fs-reveal py-12 lg:py-16 bg-gradient-to-b from-[#0F1E33] to-[#1E3A5F] text-white relative overflow-hidden" data-testid="fs-as-seen-on">
         <div className="absolute inset-0 opacity-[0.05] pointer-events-none"
           style={{
             backgroundImage: 'linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px)',
@@ -381,7 +402,7 @@ const FutureSkillsLandingPage = () => {
       </section>
 
       {/* ── USP · SAFETY & TRANSPARENCY ──────────────────────────────────── */}
-      <section className="py-16 lg:py-20 bg-gradient-to-b from-slate-50 to-white relative overflow-hidden" data-testid="fs-usp-section">
+      <section className="fs-reveal py-16 lg:py-20 bg-gradient-to-b from-slate-50 to-white relative overflow-hidden" data-testid="fs-usp-section">
         {/* Subtle grid */}
         <div className="absolute inset-0 opacity-[0.04] pointer-events-none"
           style={{
@@ -523,7 +544,7 @@ const FutureSkillsLandingPage = () => {
       </section>
 
       {/* ── SOLUTION ─────────────────────────────────────────────────────── */}
-      <section className="py-16 lg:py-20 relative">
+      <section className="fs-reveal py-16 lg:py-20 relative">
         <TechGrid accent="#1E3A5F" />
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-5xl mx-auto">
@@ -638,7 +659,7 @@ const FutureSkillsLandingPage = () => {
       </section>
 
       {/* ── WHAT THEY LEARN ──────────────────────────────────────────────── */}
-      <section className="py-16 lg:py-20 bg-gradient-to-b from-slate-50 to-white">
+      <section className="fs-reveal py-16 lg:py-20 bg-gradient-to-b from-slate-50 to-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
             <span className="text-xs font-bold tracking-widest text-[#D63031] uppercase">5 Tracks · 1 program</span>
@@ -671,7 +692,7 @@ const FutureSkillsLandingPage = () => {
       </section>
 
       {/* ── CURRICULUM BY TIER ───────────────────────────────────────────── */}
-      <section className="py-16 lg:py-20 bg-white">
+      <section className="fs-reveal py-16 lg:py-20 bg-white">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
             <span className="text-xs font-bold tracking-widest text-[#D63031] uppercase">Grade-mapped curriculum</span>
@@ -748,7 +769,7 @@ const FutureSkillsLandingPage = () => {
       </section>
 
       {/* ── HOW IT WORKS ─────────────────────────────────────────────────── */}
-      <section className="py-16 lg:py-20">
+      <section className="fs-reveal py-16 lg:py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
             <span className="text-xs font-bold tracking-widest text-[#D63031] uppercase">How the program runs</span>
@@ -769,7 +790,7 @@ const FutureSkillsLandingPage = () => {
       </section>
 
       {/* ── TRANSFORMATION ───────────────────────────────────────────────── */}
-      <section className="py-16 lg:py-20 bg-gradient-to-br from-[#0F1E33] via-[#1E3A5F] to-[#0F1E33] text-white relative overflow-hidden">
+      <section className="fs-reveal py-16 lg:py-20 bg-gradient-to-br from-[#0F1E33] via-[#1E3A5F] to-[#0F1E33] text-white relative overflow-hidden">
         <div className="absolute inset-0 opacity-[0.06]"
           style={{
             backgroundImage: 'linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px)',
@@ -819,7 +840,7 @@ const FutureSkillsLandingPage = () => {
       </section>
 
       {/* ── SOCIAL PROOF ─────────────────────────────────────────────────── */}
-      <section className="py-16 lg:py-20">
+      <section className="fs-reveal py-16 lg:py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
             <span className="text-xs font-bold tracking-widest text-[#D63031] uppercase">Numbers parents trust</span>
@@ -923,7 +944,7 @@ const FutureSkillsLandingPage = () => {
       </section>
 
       {/* ── PRICING ──────────────────────────────────────────────────────── */}
-      <section id="pricing" className="py-16 lg:py-20 bg-gradient-to-b from-blue-50/40 to-white relative">
+      <section id="pricing" className="fs-reveal py-16 lg:py-20 bg-gradient-to-b from-blue-50/40 to-white relative">
         <TechGrid accent="#1E3A5F" />
         <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
@@ -979,7 +1000,7 @@ const FutureSkillsLandingPage = () => {
       </section>
 
       {/* ── URGENCY + FINAL CTA ─────────────────────────────────────────── */}
-      <section className="py-16 lg:py-20">
+      <section className="fs-reveal py-16 lg:py-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-gradient-to-br from-[#D63031] via-[#7B2C5C] to-[#1E3A5F] rounded-3xl p-8 lg:p-12 text-white text-center relative overflow-hidden">
             <div className="absolute inset-0 opacity-10"
@@ -1013,7 +1034,7 @@ const FutureSkillsLandingPage = () => {
       </section>
 
       {/* ── FAQ ──────────────────────────────────────────────────────────── */}
-      <section className="py-16 lg:py-20 bg-slate-50">
+      <section className="fs-reveal py-16 lg:py-20 bg-slate-50">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <h2 className="text-3xl lg:text-4xl font-black text-[#0F1E33] text-center mb-2">Parent questions, answered.</h2>
           <p className="text-center text-slate-500 mb-8 text-sm">Quick answers to what every parent asks before booking.</p>
@@ -1098,6 +1119,81 @@ const FutureSkillsLandingPage = () => {
           </div>
         </div>
       )}
+
+      {/* ── Global scroll-reveal + mobile polish ─────────────────────── */}
+      <style>{`
+        /* Smooth scroll-reveal: each section fades + lifts as it enters viewport */
+        .fs-reveal {
+          opacity: 0;
+          transform: translateY(48px) scale(0.985);
+          transition: opacity 0.9s cubic-bezier(0.22, 0.61, 0.36, 1),
+                      transform 0.9s cubic-bezier(0.22, 0.61, 0.36, 1);
+          will-change: opacity, transform;
+        }
+        .fs-reveal.fs-in-view {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+
+        /* Native scroll-driven view-timeline animation (Chrome 115+, Safari TP).
+           Falls back gracefully — IntersectionObserver still handles it. */
+        @supports (animation-timeline: view()) {
+          .fs-reveal {
+            opacity: 1;
+            transform: none;
+            transition: none;
+            animation: fs-stack-in linear both;
+            animation-timeline: view();
+            animation-range: entry 0% cover 22%;
+          }
+          .fs-reveal.fs-in-view { animation: none; }
+          @keyframes fs-stack-in {
+            from { opacity: 0; transform: translateY(56px) scale(0.97); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+          }
+        }
+
+        /* Honor user motion preferences */
+        @media (prefers-reduced-motion: reduce) {
+          .fs-reveal { opacity: 1 !important; transform: none !important; animation: none !important; transition: none !important; }
+        }
+
+        html { scroll-behavior: smooth; }
+
+        /* ──────── Mobile dynamic polish ──────── */
+        @media (max-width: 640px) {
+          /* Tighter section padding on mobile */
+          .fs-stack > section { padding-top: 3rem; padding-bottom: 3rem; }
+
+          /* Hero text scales down for readability */
+          .fs-stack h1 { font-size: clamp(1.85rem, 8vw, 2.5rem); line-height: 1.1; }
+
+          /* As-Seen-On TV cards: shorter, still cinematic */
+          [data-testid="fs-as-seen-on"] [data-testid^="media-card-"] { height: 200px !important; }
+          [data-testid="fs-as-seen-on"] h2 { font-size: 1.85rem; }
+
+          /* Press ticker — smaller, faster pace on mobile */
+          .fs-ticker-item { font-size: 0.8rem !important; }
+          .fs-ticker-inner { gap: 1.85rem !important; animation-duration: 22s !important; }
+
+          /* Class moments mosaic — shorter so kids' faces stay visible */
+          [data-testid="fs-class-moments"] .grid-cols-6 { height: 380px !important; }
+
+          /* USP cards — slightly tighter */
+          [data-testid="fs-usp-section"] h2 { font-size: 1.85rem; line-height: 1.15; }
+
+          /* Pricing cards padding tight */
+          [data-testid="plan-monthly"], [data-testid="plan-yearly"] { padding: 1.5rem !important; }
+
+          /* Final CTA card */
+          .fs-stack section.py-16 .text-3xl.lg\\:text-5xl { font-size: 1.85rem; line-height: 1.15; }
+        }
+
+        /* Tablets — softer mobile, still scaled */
+        @media (min-width: 641px) and (max-width: 1023px) {
+          [data-testid="fs-class-moments"] .grid-cols-6 { height: 480px !important; }
+        }
+      `}</style>
     </div>
   );
 };
