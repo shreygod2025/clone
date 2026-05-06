@@ -60,6 +60,40 @@ const VIDEO_TESTIMONIALS = [
   },
 ];
 
+// ── Real classroom media (images + videos) ───────────────────────────────
+const CLASS_MEDIA = [
+  {
+    type: 'video',
+    src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/5h69is60_20260504_122331.mp4',
+    label: 'Hands-on build',
+    caption: 'Kids assembling their first IoT & AI lab kit',
+  },
+  {
+    type: 'image',
+    src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/h11kmu1i_20260504_122503.jpg',
+    label: 'Live class',
+    caption: 'Working through a circuit module step by step',
+  },
+  {
+    type: 'image',
+    src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/gwljm6r9_20260504_122607.jpg',
+    label: 'Build station',
+    caption: 'Pair-builds with the OLL IoT & AI Lab Kit',
+  },
+  {
+    type: 'video',
+    src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/04pgqymv_20260504_123958.mp4',
+    label: 'In action',
+    caption: 'Real class footage — what a session feels like',
+  },
+  {
+    type: 'image',
+    src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/tqatbciw_20260504_124243.jpg',
+    label: 'Manipulative station',
+    caption: 'Kids exploring components together',
+  },
+];
+
 const SKILLS = [
   { icon: Bot, key: 'robotics', name: 'Robotics', tag: 'Build & program robots',
     out: 'From line-followers in Grade 3 to obstacle-avoiding bots in Grade 8. Real motors, real sensors, real "it works!"' },
@@ -142,17 +176,18 @@ const TechGrid = ({ accent = '#1E3A5F' }) => (
 const FutureSkillsLandingPage = () => {
   const navigate = useNavigate();
   const [openFaq, setOpenFaq] = useState(0);
-  const [videoOpen, setVideoOpen] = useState(null); // { src, name, line }
+  const [videoOpen, setVideoOpen] = useState(null); // { src, name, line, role }
+  const [mediaOpen, setMediaOpen] = useState(null); // { type, src, label, caption }
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
 
-  // ESC closes the video modal
+  // ESC closes any open modal
   useEffect(() => {
-    if (!videoOpen) return undefined;
-    const onKey = (e) => { if (e.key === 'Escape') setVideoOpen(null); };
+    if (!videoOpen && !mediaOpen) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') { setVideoOpen(null); setMediaOpen(null); } };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [videoOpen]);
+  }, [videoOpen, mediaOpen]);
 
   const goTrial = () => navigate('/future-skills/book?mode=trial');
   const goSubscribe = (plan) => navigate(`/future-skills/book?mode=subscribe&plan=${plan}`);
@@ -460,27 +495,96 @@ const FutureSkillsLandingPage = () => {
       {/* ── SOLUTION ─────────────────────────────────────────────────────── */}
       <section className="py-16 lg:py-20 relative">
         <TechGrid accent="#1E3A5F" />
-        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <span className="text-xs font-bold tracking-widest text-[#D63031] uppercase">A different kind of class</span>
-          <h2 className="text-3xl lg:text-4xl font-black text-[#0F1E33] mt-2 mb-4">The Future Skills Program</h2>
-          <p className="text-slate-600 max-w-2xl mx-auto mb-10 text-lg">
-            Once a week, your child walks into a centre, picks up a kit, and <strong className="text-[#1E3A5F]">builds something real</strong>.
-            Robots that move. Code that runs. Designs that print. Across 5 future-defining skill tracks — taught by educators, not videos.
-          </p>
-          <div className="grid sm:grid-cols-3 gap-4">
-            {[
-              { icon: Hammer,    t: 'Build by doing',     s: 'Every class produces a thing they take home or display.' },
-              { icon: Lightbulb, t: 'Curiosity-led',      s: 'Kids choose what to deepen — robots, AI, 3D, you decide.' },
-              { icon: Rocket,    t: 'Compounding skills', s: 'Today\'s line-follower becomes tomorrow\'s drone.' },
-            ].map((p, i) => (
-              <div key={i} className="bg-white border-2 border-slate-100 rounded-2xl p-6 hover:border-[#1E3A5F] transition-all hover:-translate-y-0.5">
-                <div className="w-12 h-12 mx-auto rounded-xl bg-gradient-to-br from-red-50 to-blue-50 flex items-center justify-center text-[#1E3A5F] mb-3 border border-blue-200">
-                  <p.icon className="w-6 h-6" />
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-5xl mx-auto">
+            <span className="text-xs font-bold tracking-widest text-[#D63031] uppercase">A different kind of class</span>
+            <h2 className="text-3xl lg:text-4xl font-black text-[#0F1E33] mt-2 mb-4">The Future Skills Program</h2>
+            <p className="text-slate-600 max-w-2xl mx-auto mb-10 text-lg">
+              Once a week, your child walks into a centre, picks up a kit, and <strong className="text-[#1E3A5F]">builds something real</strong>.
+              Robots that move. Code that runs. Designs that print. Across 5 future-defining skill tracks — taught by educators, not videos.
+            </p>
+            <div className="grid sm:grid-cols-3 gap-4">
+              {[
+                { icon: Hammer,    t: 'Build by doing',     s: 'Every class produces a thing they take home or display.' },
+                { icon: Lightbulb, t: 'Curiosity-led',      s: 'Kids choose what to deepen — robots, AI, 3D, you decide.' },
+                { icon: Rocket,    t: 'Compounding skills', s: 'Today\'s line-follower becomes tomorrow\'s drone.' },
+              ].map((p, i) => (
+                <div key={i} className="bg-white border-2 border-slate-100 rounded-2xl p-6 hover:border-[#1E3A5F] transition-all hover:-translate-y-0.5">
+                  <div className="w-12 h-12 mx-auto rounded-xl bg-gradient-to-br from-red-50 to-blue-50 flex items-center justify-center text-[#1E3A5F] mb-3 border border-blue-200">
+                    <p.icon className="w-6 h-6" />
+                  </div>
+                  <h3 className="font-black text-[#0F1E33] text-base">{p.t}</h3>
+                  <p className="text-sm text-slate-500 mt-1.5">{p.s}</p>
                 </div>
-                <h3 className="font-black text-[#0F1E33] text-base">{p.t}</h3>
-                <p className="text-sm text-slate-500 mt-1.5">{p.s}</p>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Real class moments gallery ─────────────────────────── */}
+          <div className="mt-14 lg:mt-16" data-testid="fs-class-moments">
+            <div className="flex items-end justify-between flex-wrap gap-3 mb-5">
+              <div>
+                <span className="text-[10px] font-black tracking-[0.22em] uppercase text-[#D63031]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>// real moments · real builds</span>
+                <h3 className="text-xl lg:text-2xl font-black text-[#0F1E33] mt-1">Inside an OLL classroom</h3>
               </div>
-            ))}
+              <span className="text-[11px] text-slate-500 italic">Tap any tile to play / view</span>
+            </div>
+
+            {/* Asymmetric mosaic */}
+            <div className="grid grid-cols-6 grid-rows-2 gap-2.5 sm:gap-3 h-[440px] sm:h-[520px]">
+              {CLASS_MEDIA.map((m, i) => {
+                // Layout: tile 0 spans 2x2 left, tiles 1-4 fill the rest
+                const layouts = [
+                  'col-span-3 row-span-2',                  // big tile (video)
+                  'col-span-3 sm:col-span-2 row-span-1',
+                  'col-span-3 sm:col-span-1 row-span-1',
+                  'col-span-3 sm:col-span-2 row-span-1',
+                  'col-span-3 sm:col-span-1 row-span-1',
+                ];
+                return (
+                  <button key={i} onClick={() => setMediaOpen(m)}
+                    className={`group relative ${layouts[i]} rounded-2xl overflow-hidden border-2 border-blue-100 hover:border-[#D63031] transition-all shadow-lg shadow-blue-900/10 hover:shadow-2xl bg-gradient-to-br from-[#0F1E33] to-[#1E3A5F]`}
+                    data-testid={`class-moment-${i}`}
+                    aria-label={`View ${m.label}`}>
+                    {m.type === 'video' ? (
+                      <video src={m.src} preload="metadata" muted playsInline
+                        className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
+                        style={{ pointerEvents: 'none' }} />
+                    ) : (
+                      <img src={m.src} alt={m.label} loading="lazy"
+                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    )}
+                    {/* Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#0F1E33] via-[#0F1E33]/30 to-transparent opacity-90 group-hover:opacity-95 transition-opacity" />
+                    {/* Type pill */}
+                    <div className="absolute top-2.5 left-2.5">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black tracking-widest uppercase backdrop-blur-sm border"
+                        style={{
+                          background: m.type === 'video' ? 'rgba(214,48,49,0.65)' : 'rgba(30,58,95,0.65)',
+                          borderColor: m.type === 'video' ? '#D63031' : '#60A5FA',
+                          color: '#fff',
+                        }}>
+                        {m.type === 'video' ? <Video className="w-2.5 h-2.5" /> : <Sparkles className="w-2.5 h-2.5" />}
+                        {m.type === 'video' ? 'Video' : 'Photo'}
+                      </span>
+                    </div>
+                    {/* Centered play button for videos */}
+                    {m.type === 'video' && (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white/15 backdrop-blur-sm border-2 border-white/40 flex items-center justify-center group-hover:scale-110 group-hover:bg-[#D63031] group-hover:border-[#D63031] transition-all shadow-2xl">
+                          <Play className="w-5 h-5 sm:w-6 sm:h-6 text-white fill-white translate-x-0.5" />
+                        </div>
+                      </div>
+                    )}
+                    {/* Caption */}
+                    <div className="absolute bottom-0 inset-x-0 p-3 text-left">
+                      <div className="text-xs font-black text-white leading-tight">{m.label}</div>
+                      <div className="text-[10px] text-blue-200 mt-0.5 leading-snug line-clamp-2 hidden sm:block">{m.caption}</div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </section>
@@ -885,7 +989,41 @@ const FutureSkillsLandingPage = () => {
 
       <Footer />
 
-      {/* ── Video modal ──────────────────────────────────────────────── */}
+      {/* ── Class media modal (image OR video) ───────────────────────── */}
+      {mediaOpen && (
+        <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setMediaOpen(null); }}
+          data-testid="media-modal">
+          <button onClick={(e) => { e.stopPropagation(); setMediaOpen(null); }}
+            className="absolute top-4 right-4 sm:top-6 sm:right-6 w-11 h-11 rounded-full bg-white/10 hover:bg-[#D63031] border border-white/30 flex items-center justify-center text-white transition-all backdrop-blur-sm z-10"
+            data-testid="media-modal-close-btn"
+            aria-label="Close">
+            <X className="w-5 h-5 pointer-events-none" />
+          </button>
+          <div className="w-full max-w-2xl">
+            <div className="rounded-2xl overflow-hidden border-2 border-white/15 shadow-2xl shadow-black/60 bg-[#0F1E33]">
+              {mediaOpen.type === 'video' ? (
+                <video src={mediaOpen.src} controls autoPlay playsInline
+                  className="w-full max-h-[75vh] bg-black"
+                  data-testid="media-modal-video">
+                  Your browser doesn't support inline video.
+                </video>
+              ) : (
+                <img src={mediaOpen.src} alt={mediaOpen.label}
+                  className="w-full max-h-[80vh] object-contain bg-black"
+                  data-testid="media-modal-image" />
+              )}
+              <div className="p-4 sm:p-5 bg-gradient-to-r from-[#D63031]/10 to-[#1E3A5F]/10">
+                <div className="text-[10px] font-black tracking-widest uppercase text-[#FCA5A5]">{mediaOpen.type === 'video' ? 'Class footage' : 'Class moment'}</div>
+                <div className="text-base sm:text-lg font-black text-white mt-1">{mediaOpen.label}</div>
+                <p className="text-sm text-blue-100 mt-1">{mediaOpen.caption}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Video testimonials modal ─────────────────────────────────── */}
       {videoOpen && (
         <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
           onClick={(e) => { if (e.target === e.currentTarget) setVideoOpen(null); }}
