@@ -100,7 +100,7 @@ const AdminFutureSkills = () => {
         <div className="flex items-start justify-between flex-wrap gap-3">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-[#1E3A5F] flex items-center gap-2">
-              <Bot className="w-7 h-7 text-orange-500" /> Future Skills CRM
+              <Bot className="w-7 h-7 text-[#D63031]" /> Future Skills CRM
             </h1>
             <p className="text-sm text-slate-500 mt-1">Trial leads & active subscriptions, all in one place.</p>
           </div>
@@ -138,7 +138,7 @@ const AdminFutureSkills = () => {
             <Stat icon={Users} label={tab === 'trials' ? 'Total Trials' : 'Total Subs'} value={stats.total || 0} accent="#1E3A5F" />
             {tab === 'trials' ? (
               <>
-                <Stat icon={Calendar} label="This view" value={rows.length} accent="#FF6B35" />
+                <Stat icon={Calendar} label="This view" value={rows.length} accent="#D63031" />
                 <Stat icon={TrendingUp} label="Latest" value={rows[0]?.trial_ref || '—'} accent="#3B82F6" />
                 <Stat icon={Sparkles} label="Status filter" value={statusFilter === 'all' ? 'All' : statusFilter} accent="#7C3AED" />
               </>
@@ -155,7 +155,7 @@ const AdminFutureSkills = () => {
         {/* Filters */}
         <div className="bg-white rounded-2xl border border-slate-100 p-3 flex flex-wrap items-center gap-2">
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-            className="text-xs px-3 py-2 rounded-lg border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-orange-200"
+            className="text-xs px-3 py-2 rounded-lg border border-slate-200 bg-white font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-200"
             data-testid="filter-status">
             <option value="all">All statuses</option>
             {tab === 'trials'
@@ -169,7 +169,7 @@ const AdminFutureSkills = () => {
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input type="text" placeholder="Search ref / name / phone / email…"
               value={search} onChange={e => setSearch(e.target.value)}
-              className="w-full pl-10 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-200"
+              className="w-full pl-10 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-200"
               data-testid="search-input" />
           </div>
         </div>
@@ -201,7 +201,7 @@ const AdminFutureSkills = () => {
                 <tbody>
                   {rows.map(r => (
                     <tr key={r.id} onClick={() => openDetail(r)}
-                      className="border-t border-slate-100 hover:bg-orange-50/40 cursor-pointer transition-colors"
+                      className="border-t border-slate-100 hover:bg-blue-50/40 cursor-pointer transition-colors"
                       data-testid={`row-${r.trial_ref || r.subscription_ref}`}>
                       <td className="px-4 py-3 font-mono font-bold text-[#1E3A5F]">{r.trial_ref || r.subscription_ref}</td>
                       <td className="px-4 py-3">
@@ -240,7 +240,7 @@ const AdminFutureSkills = () => {
           <div className="w-full max-w-md bg-white h-full overflow-y-auto shadow-2xl" data-testid="detail-drawer">
             <div className="sticky top-0 bg-white border-b border-slate-100 p-4 flex items-center justify-between">
               <div>
-                <div className="text-[10px] uppercase tracking-widest text-orange-600 font-bold">{tab === 'trials' ? 'Trial Booking' : 'Subscription'}</div>
+                <div className="text-[10px] uppercase tracking-widest text-[#D63031] font-bold">{tab === 'trials' ? 'Trial Booking' : 'Subscription'}</div>
                 <div className="font-mono font-bold text-[#1E3A5F]">{selected.trial_ref || selected.subscription_ref}</div>
               </div>
               <button onClick={() => setSelected(null)} className="p-1.5 hover:bg-slate-100 rounded-lg" data-testid="close-detail-btn">
@@ -281,7 +281,7 @@ const AdminFutureSkills = () => {
                 <label className="text-xs font-bold tracking-wider text-slate-600 uppercase mb-1.5 block">CRM Status</label>
                 <select value={editing.crm_status || ''}
                   onChange={e => setEditing(prev => ({ ...prev, crm_status: e.target.value }))}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-200"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
                   data-testid="edit-status-select">
                   {STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                 </select>
@@ -291,7 +291,7 @@ const AdminFutureSkills = () => {
                 <label className="text-xs font-bold tracking-wider text-slate-600 uppercase mb-1.5 block">Assigned Centre</label>
                 <input value={editing.assigned_center || ''}
                   onChange={e => setEditing(prev => ({ ...prev, assigned_center: e.target.value }))}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-200"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
                   placeholder="e.g. Mumbai · Andheri"
                   data-testid="edit-center-input" />
               </div>
@@ -301,13 +301,13 @@ const AdminFutureSkills = () => {
                 <textarea value={editing.notes || ''}
                   onChange={e => setEditing(prev => ({ ...prev, notes: e.target.value }))}
                   rows={4}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-200"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200"
                   placeholder="Conversation notes, follow-up plan, etc."
                   data-testid="edit-notes-input" />
               </div>
 
               <button onClick={handleSave} disabled={saving}
-                className="w-full py-3 rounded-xl bg-[#FF6B35] text-white font-bold hover:bg-[#E5572A] transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-[#D63031] to-[#1E3A5F] text-white font-bold hover:from-[#B52828] hover:to-[#0F1E33] transition-all flex items-center justify-center gap-2 disabled:opacity-60"
                 data-testid="save-detail-btn">
                 {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving…</> : <><Save className="w-4 h-4" /> Save changes</>}
               </button>

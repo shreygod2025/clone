@@ -117,19 +117,19 @@ const FutureSkillsBookingPage = () => {
   const PRICE_DISPLAY = { monthly: '₹2,000/mo', yearly: '₹1,750/mo · ₹21,000/yr' };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-orange-50/30 to-white" data-testid="future-skills-booking">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50/40 to-white" data-testid="future-skills-booking">
       <Helmet><title>{mode === 'trial' ? 'Book Free Trial' : 'Subscribe'} · Future Skills | OLL</title></Helmet>
       <Navbar />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-16">
-        <Link to="/future-skills" className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-orange-600 mb-5">
+        <Link to="/future-skills" className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-[#D63031] mb-5 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to program
         </Link>
 
         <div className="grid lg:grid-cols-12 gap-6">
-          <form onSubmit={handleSubmit} className="lg:col-span-7 bg-white border-2 border-slate-100 rounded-3xl p-6 lg:p-8 shadow-xl shadow-orange-100/30 space-y-5">
+          <form onSubmit={handleSubmit} className="lg:col-span-7 bg-white border-2 border-slate-100 rounded-3xl p-6 lg:p-8 shadow-xl shadow-blue-100/40 space-y-5">
             <div>
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold tracking-widest text-orange-600 uppercase">
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold tracking-widest text-[#D63031] uppercase">
                 <Sparkles className="w-3.5 h-3.5" /> {mode === 'trial' ? 'Single-page trial booking' : 'Subscribe & save'}
               </span>
               <h1 className="text-2xl lg:text-3xl font-black text-[#0F1E33] mt-1">
@@ -188,8 +188,8 @@ const FutureSkillsBookingPage = () => {
                   ))}
                 </select>
                 {form.student_grade && tierForGrade(form.student_grade) && (
-                  <div className="mt-2 text-[11px] text-orange-700 bg-orange-50 border border-orange-100 rounded-lg px-2.5 py-1.5">
-                    <span className="font-bold">{tierForGrade(form.student_grade).label}:</span>{' '}
+                  <div className="mt-2 text-[11px] text-[#1E3A5F] bg-blue-50 border border-blue-100 rounded-lg px-2.5 py-1.5">
+                    <span className="font-bold text-[#D63031]">{tierForGrade(form.student_grade).label}:</span>{' '}
                     {tierForGrade(form.student_grade).hint}
                   </div>
                 )}
@@ -224,7 +224,7 @@ const FutureSkillsBookingPage = () => {
 
             <button type="submit" disabled={submitting}
               className={`w-full py-4 rounded-xl text-white font-bold text-base transition-all flex items-center justify-center gap-2 disabled:opacity-60 ${
-                mode === 'trial' ? 'bg-[#FF6B35] hover:bg-[#E5572A] shadow-lg shadow-orange-500/30'
+                mode === 'trial' ? 'bg-gradient-to-r from-[#D63031] to-[#1E3A5F] hover:from-[#B52828] hover:to-[#0F1E33] shadow-lg shadow-blue-900/25'
                                  : 'bg-[#1E3A5F] hover:bg-[#0F1E33] shadow-lg shadow-blue-900/20'
               }`}
               data-testid="submit-btn">
@@ -243,7 +243,7 @@ const FutureSkillsBookingPage = () => {
 
           <aside className="lg:col-span-5 space-y-4">
             <div className="bg-gradient-to-br from-[#1E3A5F] to-[#0F1E33] text-white rounded-3xl p-6 lg:p-7 shadow-xl shadow-blue-900/20">
-              <div className="text-[11px] uppercase tracking-widest text-amber-300 font-bold">
+              <div className="text-[11px] uppercase tracking-widest text-[#FCA5A5] font-bold">
                 {mode === 'trial' ? 'Trial Summary' : 'Order Summary'}
               </div>
               <h3 className="text-xl font-black mt-1">Future Skills Continuous Program</h3>
@@ -273,14 +273,14 @@ const FutureSkillsBookingPage = () => {
                 <span className="text-2xl font-black">{mode === 'trial' ? 'Free' : `₹${PRICE[plan].toLocaleString()}`}</span>
               </div>
             </div>
-            <div className="bg-orange-50/60 border-2 border-orange-100 rounded-2xl p-5 text-sm text-slate-700">
+            <div className="bg-blue-50/60 border-2 border-blue-100 rounded-2xl p-5 text-sm text-slate-700">
               <div className="font-bold text-[#0F1E33] mb-1.5">{mode === 'trial' ? 'After booking' : 'After payment'}</div>
               <ul className="space-y-1.5">
-                <li className="flex gap-2"><Check className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" /> Instant WhatsApp confirmation</li>
-                <li className="flex gap-2"><Check className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" /> Centre & batch details within 24h</li>
+                <li className="flex gap-2"><Check className="w-4 h-4 text-[#1E3A5F] mt-0.5 flex-shrink-0" /> Instant WhatsApp confirmation</li>
+                <li className="flex gap-2"><Check className="w-4 h-4 text-[#1E3A5F] mt-0.5 flex-shrink-0" /> Centre & batch details within 24h</li>
                 {mode === 'trial'
-                  ? <li className="flex gap-2"><Check className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" /> Trial scheduled at your convenience</li>
-                  : <li className="flex gap-2"><Gift className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" /> {plan === 'yearly' ? 'Robotic kit ships in 5-7 days' : 'Kit access at centre on Day 1'}</li>}
+                  ? <li className="flex gap-2"><Check className="w-4 h-4 text-[#1E3A5F] mt-0.5 flex-shrink-0" /> Trial scheduled at your convenience</li>
+                  : <li className="flex gap-2"><Gift className="w-4 h-4 text-[#D63031] mt-0.5 flex-shrink-0" /> {plan === 'yearly' ? 'Robotic kit ships in 5-7 days' : 'Kit access at centre on Day 1'}</li>}
               </ul>
             </div>
           </aside>
@@ -288,7 +288,7 @@ const FutureSkillsBookingPage = () => {
       </div>
 
       <style>{`.fs-input{width:100%;padding:.7rem .85rem;border:2px solid #E2E8F0;border-radius:.75rem;font-size:.9rem;background:white;outline:none;transition:all .15s}
-        .fs-input:focus{border-color:#FF6B35;box-shadow:0 0 0 4px rgba(255,107,53,0.12)}`}</style>
+        .fs-input:focus{border-color:#1E3A5F;box-shadow:0 0 0 4px rgba(30,58,95,0.15)}`}</style>
       <Footer />
     </div>
   );

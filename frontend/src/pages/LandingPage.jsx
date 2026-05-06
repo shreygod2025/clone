@@ -448,7 +448,7 @@ const LandingPage = () => {
 
       {/* ── Future Skills · Year-Round Continuous Program (Grades 1–10) ── */}
       <section style={{
-        background: 'linear-gradient(180deg, #FFFFFF 0%, #FFF7ED 60%, #FFFFFF 100%)',
+        background: 'linear-gradient(180deg, #FFFFFF 0%, #F0F7FF 60%, #FFFFFF 100%)',
         position: 'relative',
         overflow: 'hidden',
         paddingTop: '4.5rem',
@@ -457,18 +457,18 @@ const LandingPage = () => {
         {/* Tech grid */}
         <div style={{
           position: 'absolute', inset: 0, opacity: 0.07, pointerEvents: 'none',
-          backgroundImage: 'linear-gradient(#FF6B35 1px, transparent 1px), linear-gradient(90deg, #FF6B35 1px, transparent 1px)',
+          backgroundImage: 'linear-gradient(#1E3A5F 1px, transparent 1px), linear-gradient(90deg, #1E3A5F 1px, transparent 1px)',
           backgroundSize: '64px 64px',
         }} />
-        <div style={{ position: 'absolute', top: '-80px', right: '8%', width: 360, height: 360, borderRadius: '50%', background: 'radial-gradient(circle, rgba(255,107,53,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', bottom: '-60px', left: '6%', width: 280, height: 280, borderRadius: '50%', background: 'radial-gradient(circle, rgba(244,114,182,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', top: '-80px', right: '8%', width: 360, height: 360, borderRadius: '50%', background: 'radial-gradient(circle, rgba(214,48,49,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', bottom: '-60px', left: '6%', width: 280, height: 280, borderRadius: '50%', background: 'radial-gradient(circle, rgba(30,58,95,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
         <div className="text-center" style={{ paddingBottom: '2.5rem', paddingLeft: '1rem', paddingRight: '1rem', position: 'relative' }}>
-          <p style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#EA580C', marginBottom: '0.75rem', fontFamily: "'Nunito Sans', sans-serif" }}>
+          <p style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#D63031', marginBottom: '0.75rem', fontFamily: "'Nunito Sans', sans-serif" }}>
             FLAGSHIP · WEEKLY OFFLINE · GRADES 1 – 10
           </p>
           <h2 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 'clamp(1.7rem, 4.5vw, 3rem)', fontWeight: 900, color: '#0F1E33', lineHeight: 1.15, marginBottom: '0.75rem' }}>
-            <span style={{ background: 'linear-gradient(90deg, #FF6B35, #F59E0B, #F472B6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Future Skills</span> Continuous Program
+            <span style={{ background: 'linear-gradient(90deg, #D63031, #7B2C5C, #1E3A5F)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Future Skills</span> Continuous Program
           </h2>
           <p style={{ color: '#475569', fontSize: '1rem', maxWidth: 640, margin: '0 auto', lineHeight: 1.6, fontFamily: "'Nunito Sans', sans-serif" }}>
             Robotics · Coding · AI · 3D Design · Emerging Tech — once a week, year-round, at your nearest centre. Small batches of 10. Robotic kit free with yearly.
@@ -477,10 +477,10 @@ const LandingPage = () => {
 
         <div style={{ maxWidth: 1000, margin: '0 auto', paddingLeft: '1.5rem', paddingRight: '1.5rem', position: 'relative' }}>
           <div style={{
-            background: 'linear-gradient(135deg, #FFFFFF 0%, #FFF8F1 100%)',
+            background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FBFF 100%)',
             borderRadius: '1.5rem',
-            border: '2px solid rgba(255,107,53,0.22)',
-            boxShadow: '0 30px 60px rgba(15,30,51,0.08), 0 0 0 1px rgba(255,107,53,0.04)',
+            border: '2px solid rgba(30,58,95,0.22)',
+            boxShadow: '0 30px 60px rgba(15,30,51,0.08), 0 0 0 1px rgba(214,48,49,0.06)',
             padding: '2.5rem',
             position: 'relative',
             overflow: 'hidden',
@@ -489,7 +489,7 @@ const LandingPage = () => {
               <div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
                   {['Robotics', 'Coding', 'AI', '3D Design', 'IoT', 'AR / VR', 'Drones'].map(t => (
-                    <span key={t} style={{ fontSize: '0.7rem', padding: '0.25rem 0.65rem', borderRadius: 999, background: 'rgba(255,107,53,0.08)', color: '#C2410C', border: '1px solid rgba(255,107,53,0.2)', fontWeight: 700, fontFamily: "'Nunito Sans', sans-serif" }}>
+                    <span key={t} style={{ fontSize: '0.7rem', padding: '0.25rem 0.65rem', borderRadius: 999, background: 'rgba(30,58,95,0.08)', color: '#1E3A5F', border: '1px solid rgba(30,58,95,0.2)', fontWeight: 700, fontFamily: "'Nunito Sans', sans-serif" }}>
                       {t}
                     </span>
                   ))}
@@ -498,7 +498,7 @@ const LandingPage = () => {
                   One weekly class. Five future-defining skills.
                 </h3>
                 <p style={{ color: '#475569', fontSize: '0.95rem', lineHeight: 1.6, marginBottom: '1.25rem', fontFamily: "'Nunito Sans', sans-serif" }}>
-                  Three age-mapped tiers — <strong style={{ color: '#1E3A5F' }}>Junior (1–4)</strong>, <strong style={{ color: '#1E3A5F' }}>Middle (5–7)</strong>, <strong style={{ color: '#1E3A5F' }}>Senior (8–10)</strong>. Curiosity in, builders out.
+                  Three age-mapped tiers — <strong style={{ color: '#D63031' }}>Junior (1–4)</strong>, <strong style={{ color: '#7B2C5C' }}>Middle (5–7)</strong>, <strong style={{ color: '#1E3A5F' }}>Senior (8–10)</strong>. Curiosity in, builders out.
                 </p>
                 <ul style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '1.5rem', fontSize: '0.9rem', color: '#334155', fontFamily: "'Nunito Sans', sans-serif" }}>
                   <li>✓ 90-min hands-on offline class · 1 / week</li>
@@ -509,7 +509,7 @@ const LandingPage = () => {
                   <button
                     onClick={() => navigate('/future-skills/book?mode=trial')}
                     data-testid="homepage-future-skills-trial-btn"
-                    style={{ background: '#FF6B35', color: '#fff', padding: '0.85rem 1.75rem', borderRadius: '999px', fontWeight: 800, fontSize: '0.95rem', border: 'none', cursor: 'pointer', boxShadow: '0 12px 28px rgba(255,107,53,0.3)' }}
+                    style={{ background: 'linear-gradient(90deg, #D63031, #1E3A5F)', color: '#fff', padding: '0.85rem 1.75rem', borderRadius: '999px', fontWeight: 800, fontSize: '0.95rem', border: 'none', cursor: 'pointer', boxShadow: '0 12px 28px rgba(30,58,95,0.3)' }}
                   >
                     Book Free Trial →
                   </button>
@@ -525,20 +525,20 @@ const LandingPage = () => {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 220 }}>
                 {[
-                  { k: '1 Class / Week', v: '90 min · offline', icon: '📅' },
-                  { k: 'Max 10 / Batch',  v: 'Small group',     icon: '👥' },
-                  { k: '₹1,750/mo',      v: 'Yearly · Save 15%', icon: '💸' },
-                  { k: 'Free Kit',       v: 'With yearly plan',  icon: '🎁' },
+                  { k: '1 Class / Week', v: '90 min · offline', icon: '📅', accent: '#1E3A5F' },
+                  { k: 'Max 10 / Batch',  v: 'Small group',     icon: '👥', accent: '#1E3A5F' },
+                  { k: '₹1,750/mo',      v: 'Yearly · Save 15%', icon: '💸', accent: '#D63031' },
+                  { k: 'Free Kit',       v: 'With yearly plan',  icon: '🎁', accent: '#D63031' },
                 ].map(s => (
                   <div key={s.k}
                     onClick={() => navigate('/future-skills')}
-                    style={{ background: 'rgba(255,107,53,0.05)', border: '1px solid rgba(255,107,53,0.15)', borderRadius: '0.65rem', padding: '0.65rem 0.9rem', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.65rem' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,107,53,0.1)'; e.currentTarget.style.transform = 'translateX(3px)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,107,53,0.05)'; e.currentTarget.style.transform = 'translateX(0)'; }}
+                    style={{ background: 'rgba(30,58,95,0.05)', border: '1px solid rgba(30,58,95,0.15)', borderRadius: '0.65rem', padding: '0.65rem 0.9rem', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.65rem' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(30,58,95,0.1)'; e.currentTarget.style.transform = 'translateX(3px)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(30,58,95,0.05)'; e.currentTarget.style.transform = 'translateX(0)'; }}
                   >
                     <span style={{ fontSize: '1.15rem', lineHeight: 1 }}>{s.icon}</span>
                     <div>
-                      <div style={{ color: '#C2410C', fontSize: '0.78rem', fontWeight: 800, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.2 }}>{s.k}</div>
+                      <div style={{ color: s.accent, fontSize: '0.78rem', fontWeight: 800, fontFamily: "'JetBrains Mono', monospace", lineHeight: 1.2 }}>{s.k}</div>
                       <div style={{ color: '#64748B', fontSize: '0.7rem', fontFamily: "'Nunito Sans', sans-serif", marginTop: '0.1rem' }}>{s.v}</div>
                     </div>
                   </div>
