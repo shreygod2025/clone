@@ -11,6 +11,18 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
 // ── Skill buckets ─────────────────────────────────────────────────────────
+const GIFS = [
+  { src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/4y2zbq59_Robotics.gif',   label: 'Robotics' },
+  { src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/8i8zob06_Pyhton%20.gif',  label: 'Coding' },
+  { src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/je1umfoj_AI%20TOOl.gif',  label: 'AI' },
+  { src: 'https://customer-assets.emergentagent.com/job_2a8df49e-1feb-4d6f-a87f-46645bc0c91f/artifacts/xj8dva2y_3D%20Design.gif', label: '3D Design' },
+];
+
+const PRESS_ITEMS = [
+  'Shark Tank India', 'Kaun Banega Crorepati', 'NDTV', 'Times of India',
+  'Economic Times', 'India Today', 'YourStory', 'Inc42',
+];
+
 const SKILLS = [
   { icon: Bot, key: 'robotics', name: 'Robotics', tag: 'Build & program robots',
     out: 'From line-followers in Grade 3 to obstacle-avoiding bots in Grade 8. Real motors, real sensors, real "it works!"' },
@@ -152,27 +164,27 @@ const FutureSkillsLandingPage = () => {
               </div>
             </div>
 
-            {/* Hero card */}
+            {/* Hero card — GIF showcase */}
             <div className="lg:col-span-5">
               <div className="relative">
-                <div className="absolute -inset-1 bg-gradient-to-br from-[#D63031] via-[#7B2C5C] to-[#1E3A5F] rounded-3xl opacity-30 blur-xl" />
-                <div className="relative bg-white border-2 border-blue-100 rounded-3xl p-7 shadow-2xl shadow-blue-900/15">
-                  <div className="text-xs uppercase tracking-widest text-[#D63031] font-bold mb-1">5 Skill Tracks · One Program</div>
-                  <h3 className="text-2xl font-black text-[#0F1E33] mb-4">Everything they need to think like builders</h3>
-                  <ul className="space-y-2.5">
-                    {SKILLS.map((s, i) => (
-                      <li key={i} className="flex items-start gap-3 text-sm">
-                        <span className="mt-0.5 w-9 h-9 rounded-lg bg-gradient-to-br from-red-50 to-blue-50 border border-blue-200 flex items-center justify-center text-[#1E3A5F] flex-shrink-0">
-                          <s.icon className="w-4 h-4" />
-                        </span>
-                        <div>
-                          <div className="font-bold text-[#0F1E33]">{s.name}</div>
-                          <div className="text-xs text-slate-500">{s.tag}</div>
+                <div className="absolute -inset-1 bg-gradient-to-br from-[#D63031] via-[#7B2C5C] to-[#1E3A5F] rounded-3xl opacity-25 blur-xl" />
+                <div className="relative bg-white border-2 border-blue-100 rounded-3xl p-5 sm:p-6 shadow-2xl shadow-blue-900/15">
+                  <div className="text-[10px] uppercase tracking-widest text-[#D63031] font-black mb-1">Live at every OLL centre</div>
+                  <h3 className="text-lg sm:text-xl font-black text-[#0F1E33] mb-4 leading-tight">What a weekly class actually looks like</h3>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    {GIFS.map((g) => (
+                      <div key={g.label} className="group">
+                        <div className="relative overflow-hidden rounded-xl border-2 border-blue-100 hover:border-[#D63031] transition-all bg-slate-50 aspect-square shadow-md shadow-blue-900/5">
+                          <img src={g.src} alt={g.label} loading="lazy"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-[#0F1E33]/90 via-[#0F1E33]/40 to-transparent p-2">
+                            <div className="text-[10px] font-black tracking-widest uppercase text-white">{g.label}</div>
+                          </div>
                         </div>
-                      </li>
+                      </div>
                     ))}
-                  </ul>
-                  <div className="mt-5 pt-5 border-t border-slate-100 flex items-center justify-between">
+                  </div>
+                  <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
                     <div>
                       <div className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Starts at</div>
                       <div className="text-2xl font-black text-[#0F1E33]">₹1,750<span className="text-sm text-slate-500 font-bold">/month</span></div>
@@ -184,6 +196,77 @@ const FutureSkillsLandingPage = () => {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* ── AS SEEN ON (National TV + Press ticker) ─────────────────────── */}
+      <section className="py-12 lg:py-16 bg-gradient-to-b from-[#0F1E33] to-[#1E3A5F] text-white relative overflow-hidden" data-testid="fs-as-seen-on">
+        <div className="absolute inset-0 opacity-[0.05] pointer-events-none"
+          style={{
+            backgroundImage: 'linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px)',
+            backgroundSize: '64px 64px',
+          }} />
+        <div className="absolute -top-24 left-1/4 w-[420px] h-[420px] rounded-full blur-3xl pointer-events-none" style={{ background: 'rgba(214,48,49,0.18)' }} />
+        <div className="absolute -bottom-24 right-1/4 w-[360px] h-[360px] rounded-full blur-3xl pointer-events-none" style={{ background: 'rgba(37,99,235,0.22)' }} />
+
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-7">
+            <p className="text-[10px] font-black tracking-[0.22em] uppercase text-[#FCA5A5]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>featured.on.national.tv</p>
+            <h2 className="text-3xl lg:text-4xl font-black mt-2">As Seen On</h2>
+            <p className="text-blue-200 text-sm mt-2 max-w-xl mx-auto">India's leading EdTech for young builders — trusted by the country's biggest stages.</p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-4 lg:gap-5">
+            {/* KBC */}
+            <div className="group relative rounded-2xl overflow-hidden border-2 border-white/10 hover:border-[#D63031]/60 transition-all shadow-2xl shadow-black/40" style={{ height: 260 }}
+              data-testid="media-card-kbc">
+              <img src="https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/mkbfftaz_KBC%20Website%20%281%29.png"
+                alt="Kaun Banega Crorepati" loading="lazy"
+                className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0F1E33] via-[#0F1E33]/40 to-transparent" />
+              <div className="absolute bottom-4 left-5 right-5">
+                <div className="text-[10px] font-bold tracking-[0.18em] uppercase text-[#FCA5A5] mb-1" style={{ fontFamily: "'JetBrains Mono', monospace" }}>Sony Entertainment · KBC</div>
+                <div className="font-black text-base lg:text-lg text-white" style={{ fontFamily: "'JetBrains Mono', monospace" }}>Kaun Banega Crorepati</div>
+                <div className="text-xs text-blue-200 mt-1">Featured as India's leading EdTech for kids</div>
+              </div>
+            </div>
+
+            {/* Shark Tank India */}
+            <div className="group relative rounded-2xl overflow-hidden border-2 border-white/10 hover:border-[#60A5FA]/60 transition-all shadow-2xl shadow-black/40" style={{ height: 260 }}
+              data-testid="media-card-shark-tank">
+              <img src="https://customer-assets.emergentagent.com/job_bd46440b-dd5c-4da0-88ea-ad65b8f91d70/artifacts/1a3c9g9x_KBC%20%26%20Shark%20Tank%20Website.png"
+                alt="Shark Tank India" loading="lazy"
+                className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0F1E33] via-[#0F1E33]/40 to-transparent" />
+              <div className="absolute bottom-4 left-5 right-5">
+                <div className="text-[10px] font-bold tracking-[0.18em] uppercase text-[#60A5FA] mb-1" style={{ fontFamily: "'JetBrains Mono', monospace" }}>Sony LIV · Season Finale</div>
+                <div className="font-black text-base lg:text-lg text-white" style={{ fontFamily: "'JetBrains Mono', monospace" }}>Shark Tank India</div>
+                <div className="text-xs text-blue-200 mt-1">Pitched to India's top investors on national TV</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Press ticker */}
+          <div className="mt-8 overflow-hidden">
+            <div className="text-center mb-3">
+              <span className="text-[10px] font-bold tracking-[0.22em] uppercase text-blue-300/70" style={{ fontFamily: "'JetBrains Mono', monospace" }}>// Also covered by</span>
+            </div>
+            <div className="fs-ticker-wrap">
+              <div className="fs-ticker-inner">
+                {[...PRESS_ITEMS, ...PRESS_ITEMS].map((name, i) => (
+                  <span key={i} className="fs-ticker-item">{name}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <style>{`
+          .fs-ticker-wrap { position: relative; overflow: hidden; mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent); }
+          .fs-ticker-inner { display: flex; gap: 3rem; white-space: nowrap; animation: fs-ticker-scroll 32s linear infinite; width: max-content; }
+          .fs-ticker-item { font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; font-weight: 800; color: rgba(255,255,255,0.55); letter-spacing: 0.08em; text-transform: uppercase; padding: 0.25rem 0; flex-shrink: 0; transition: color 0.2s; }
+          .fs-ticker-item:hover { color: #FCA5A5; }
+          @keyframes fs-ticker-scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+        `}</style>
       </section>
 
       {/* ── PROBLEM ──────────────────────────────────────────────────────── */}
