@@ -92,6 +92,36 @@ const CLASS_MEDIA = [
     label: 'Manipulative station',
     caption: 'Kids exploring components together',
   },
+  {
+    type: 'video',
+    src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/9p89o2y6_20260504_154936.mp4',
+    label: 'Class showcase',
+    caption: 'Students presenting what they built today',
+  },
+  {
+    type: 'image',
+    src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/rhwyg94z_20260504_163950.jpg',
+    label: 'Batch of builders',
+    caption: 'End-of-class group photo — the whole crew',
+  },
+  {
+    type: 'video',
+    src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/geb6vgey_VID20260504135039.mp4',
+    label: 'Build moment',
+    caption: 'Mid-class hands-on — heads-down focus',
+  },
+  {
+    type: 'image',
+    src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/ctig02to_IMG-20260504-WA0020.jpg',
+    label: 'Educator-led',
+    caption: 'Trainers walking kids through their first build',
+  },
+  {
+    type: 'video',
+    src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/e7dknsgn_VID20260504155236.mp4',
+    label: 'In progress',
+    caption: 'Kids deep in their build — a real session glimpse',
+  },
 ];
 
 const SKILLS = [
@@ -530,60 +560,78 @@ const FutureSkillsLandingPage = () => {
               <span className="text-[11px] text-slate-500 italic">Tap any tile to play / view</span>
             </div>
 
-            {/* Asymmetric mosaic */}
-            <div className="grid grid-cols-6 grid-rows-2 gap-2.5 sm:gap-3 h-[440px] sm:h-[520px]">
-              {CLASS_MEDIA.map((m, i) => {
-                // Layout: tile 0 spans 2x2 left, tiles 1-4 fill the rest
-                const layouts = [
-                  'col-span-3 row-span-2',                  // big tile (video)
-                  'col-span-3 sm:col-span-2 row-span-1',
-                  'col-span-3 sm:col-span-1 row-span-1',
-                  'col-span-3 sm:col-span-2 row-span-1',
-                  'col-span-3 sm:col-span-1 row-span-1',
-                ];
-                return (
-                  <button key={i} onClick={() => setMediaOpen(m)}
-                    className={`group relative ${layouts[i]} rounded-2xl overflow-hidden border-2 border-blue-100 hover:border-[#D63031] transition-all shadow-lg shadow-blue-900/10 hover:shadow-2xl bg-gradient-to-br from-[#0F1E33] to-[#1E3A5F]`}
-                    data-testid={`class-moment-${i}`}
-                    aria-label={`View ${m.label}`}>
-                    {m.type === 'video' ? (
-                      <video src={m.src} preload="metadata" muted playsInline
-                        className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
-                        style={{ pointerEvents: 'none' }} />
-                    ) : (
-                      <img src={m.src} alt={m.label} loading="lazy"
-                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    )}
-                    {/* Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#0F1E33] via-[#0F1E33]/30 to-transparent opacity-90 group-hover:opacity-95 transition-opacity" />
-                    {/* Type pill */}
-                    <div className="absolute top-2.5 left-2.5">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black tracking-widest uppercase backdrop-blur-sm border"
-                        style={{
-                          background: m.type === 'video' ? 'rgba(214,48,49,0.65)' : 'rgba(30,58,95,0.65)',
-                          borderColor: m.type === 'video' ? '#D63031' : '#60A5FA',
-                          color: '#fff',
-                        }}>
-                        {m.type === 'video' ? <Video className="w-2.5 h-2.5" /> : <Sparkles className="w-2.5 h-2.5" />}
-                        {m.type === 'video' ? 'Video' : 'Photo'}
-                      </span>
-                    </div>
-                    {/* Centered play button for videos */}
-                    {m.type === 'video' && (
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white/15 backdrop-blur-sm border-2 border-white/40 flex items-center justify-center group-hover:scale-110 group-hover:bg-[#D63031] group-hover:border-[#D63031] transition-all shadow-2xl">
-                          <Play className="w-5 h-5 sm:w-6 sm:h-6 text-white fill-white translate-x-0.5" />
+            {/* Two stacked asymmetric mosaics — 5 tiles each */}
+            <div className="space-y-3 sm:space-y-4">
+              {[0, 5].map((startIdx) => (
+                <div key={startIdx} className="grid grid-cols-6 grid-rows-2 gap-2.5 sm:gap-3 h-[440px] sm:h-[520px]">
+                  {CLASS_MEDIA.slice(startIdx, startIdx + 5).map((m, j) => {
+                    const i = startIdx + j;
+                    // Big tile alternates side: row 1 left, row 2 right
+                    const bigOnLeft = startIdx === 0;
+                    const layouts = bigOnLeft
+                      ? [
+                          'col-span-3 row-span-2',                  // big (left)
+                          'col-span-3 sm:col-span-2 row-span-1',
+                          'col-span-3 sm:col-span-1 row-span-1',
+                          'col-span-3 sm:col-span-2 row-span-1',
+                          'col-span-3 sm:col-span-1 row-span-1',
+                        ]
+                      : [
+                          'col-span-3 sm:col-span-2 row-span-1',
+                          'col-span-3 sm:col-span-1 row-span-1',
+                          'col-span-3 row-span-2 order-first sm:order-none', // big (right on desktop, top on mobile)
+                          'col-span-3 sm:col-span-2 row-span-1',
+                          'col-span-3 sm:col-span-1 row-span-1',
+                        ];
+                    return (
+                      <button key={i} onClick={() => setMediaOpen(m)}
+                        className={`group relative ${layouts[j]} rounded-2xl overflow-hidden border-2 border-blue-100 hover:border-[#D63031] transition-all shadow-lg shadow-blue-900/10 hover:shadow-2xl bg-gradient-to-br from-[#0F1E33] to-[#1E3A5F]`}
+                        data-testid={`class-moment-${i}`}
+                        aria-label={`View ${m.label}`}>
+                        {m.type === 'video' ? (
+                          <video src={m.src} preload="metadata" muted playsInline
+                            className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
+                            style={{ pointerEvents: 'none' }} />
+                        ) : (
+                          <img src={m.src} alt={m.label} loading="lazy"
+                            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                        )}
+                        {/* Overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#0F1E33] via-[#0F1E33]/30 to-transparent opacity-90 group-hover:opacity-95 transition-opacity" />
+                        {/* Type pill */}
+                        <div className="absolute top-2.5 left-2.5">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black tracking-widest uppercase backdrop-blur-sm border"
+                            style={{
+                              background: m.type === 'video' ? 'rgba(214,48,49,0.65)' : 'rgba(30,58,95,0.65)',
+                              borderColor: m.type === 'video' ? '#D63031' : '#60A5FA',
+                              color: '#fff',
+                            }}>
+                            {m.type === 'video' ? <Video className="w-2.5 h-2.5" /> : <Sparkles className="w-2.5 h-2.5" />}
+                            {m.type === 'video' ? 'Video' : 'Photo'}
+                          </span>
                         </div>
-                      </div>
-                    )}
-                    {/* Caption */}
-                    <div className="absolute bottom-0 inset-x-0 p-3 text-left">
-                      <div className="text-xs font-black text-white leading-tight">{m.label}</div>
-                      <div className="text-[10px] text-blue-200 mt-0.5 leading-snug line-clamp-2 hidden sm:block">{m.caption}</div>
-                    </div>
-                  </button>
-                );
-              })}
+                        {/* Centered play button for videos */}
+                        {m.type === 'video' && (
+                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white/15 backdrop-blur-sm border-2 border-white/40 flex items-center justify-center group-hover:scale-110 group-hover:bg-[#D63031] group-hover:border-[#D63031] transition-all shadow-2xl">
+                              <Play className="w-5 h-5 sm:w-6 sm:h-6 text-white fill-white translate-x-0.5" />
+                            </div>
+                          </div>
+                        )}
+                        {/* Caption */}
+                        <div className="absolute bottom-0 inset-x-0 p-3 text-left">
+                          <div className="text-xs font-black text-white leading-tight">{m.label}</div>
+                          <div className="text-[10px] text-blue-200 mt-0.5 leading-snug line-clamp-2 hidden sm:block">{m.caption}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+
+            <div className="text-center mt-5">
+              <span className="text-[11px] text-slate-500 italic">{CLASS_MEDIA.length} moments · captured at our centres in May 2026</span>
             </div>
           </div>
         </div>
