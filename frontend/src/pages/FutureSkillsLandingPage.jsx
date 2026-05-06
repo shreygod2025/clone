@@ -5,7 +5,7 @@ import {
   Sparkles, ArrowRight, Check, Clock, Users, Zap, Award,
   Bot, Cpu, Code2, Box, Wand2, ChevronDown, Star, Quote,
   Brain, Hammer, Rocket, BookOpenCheck, ShieldCheck, Calendar,
-  TrendingUp, Lightbulb, Trophy, X, Heart, MapPin, Gift
+  TrendingUp, Lightbulb, Trophy, X, Heart, MapPin, Gift, Play
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -21,6 +21,42 @@ const GIFS = [
 const PRESS_ITEMS = [
   'Shark Tank India', 'Kaun Banega Crorepati', 'NDTV', 'Times of India',
   'Economic Times', 'India Today', 'YourStory', 'Inc42',
+];
+
+// ── Video testimonials (parents + students) ───────────────────────────────
+const VIDEO_TESTIMONIALS = [
+  {
+    src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/39v27qp3_Testimonial%20Parents.mp4',
+    poster: null,
+    role: 'Parent',
+    name: 'OLL Parents',
+    line: '"Our kids come home buzzing about what they built."',
+    accent: '#D63031',
+  },
+  {
+    src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/yl1ydmda_IMG_7029.MOV',
+    poster: null,
+    role: 'Student',
+    name: 'Young Builder · Grade 5',
+    line: '"I made a robot that follows a line!"',
+    accent: '#1E3A5F',
+  },
+  {
+    src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/4boxtvd2_IMG_7035.MOV',
+    poster: null,
+    role: 'Student',
+    name: 'Young Coder · Grade 7',
+    line: '"I wrote my first Python game in class."',
+    accent: '#7B2C5C',
+  },
+  {
+    src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/vo8r3dzk_IMG_7045.MOV',
+    poster: null,
+    role: 'Student',
+    name: 'Young Creator · Grade 9',
+    line: '"3D-printed my own phone stand this week!"',
+    accent: '#D63031',
+  },
 ];
 
 const SKILLS = [
@@ -105,8 +141,17 @@ const TechGrid = ({ accent = '#1E3A5F' }) => (
 const FutureSkillsLandingPage = () => {
   const navigate = useNavigate();
   const [openFaq, setOpenFaq] = useState(0);
+  const [videoOpen, setVideoOpen] = useState(null); // { src, name, line }
 
   useEffect(() => { window.scrollTo(0, 0); }, []);
+
+  // ESC closes the video modal
+  useEffect(() => {
+    if (!videoOpen) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') setVideoOpen(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [videoOpen]);
 
   const goTrial = () => navigate('/future-skills/book?mode=trial');
   const goSubscribe = (plan) => navigate(`/future-skills/book?mode=subscribe&plan=${plan}`);
@@ -509,6 +554,88 @@ const FutureSkillsLandingPage = () => {
             <span className="text-xs font-bold tracking-widest text-[#D63031] uppercase">Numbers parents trust</span>
             <h2 className="text-3xl lg:text-4xl font-black text-[#0F1E33] mt-2">2,500+ kids. 500+ schools. One mission.</h2>
           </div>
+
+          {/* ── Rating bar — 4.75 / 5 ─────────────────────────────────── */}
+          <div className="max-w-2xl mx-auto mb-10" data-testid="fs-rating-bar">
+            <div className="bg-white border-2 border-blue-100 rounded-3xl px-5 sm:px-7 py-5 shadow-xl shadow-blue-900/8">
+              <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+                {/* Big number */}
+                <div className="text-center sm:text-left flex-shrink-0">
+                  <div className="flex items-baseline gap-1 justify-center sm:justify-start">
+                    <span className="text-5xl sm:text-6xl font-black bg-gradient-to-r from-[#D63031] to-[#1E3A5F] bg-clip-text text-transparent">4.75</span>
+                    <span className="text-xl font-black text-slate-400">/5</span>
+                  </div>
+                  <div className="text-[10px] font-bold tracking-widest uppercase text-[#D63031] mt-1">Parent rating</div>
+                </div>
+
+                {/* Bars */}
+                <div className="flex-1 w-full">
+                  <div className="flex items-center gap-1.5 justify-center sm:justify-start mb-3">
+                    {[1,2,3,4,5].map(i => (
+                      <Star key={i} className={`w-5 h-5 ${i <= 4 ? 'fill-[#D63031] text-[#D63031]' : 'fill-[#D63031]/75 text-[#D63031]/75'}`} />
+                    ))}
+                    <span className="text-xs font-semibold text-slate-500 ml-2">based on 500+ reviews</span>
+                  </div>
+                  {[
+                    { label: '5★', pct: 82 },
+                    { label: '4★', pct: 14 },
+                    { label: '3★', pct: 3 },
+                    { label: '2★', pct: 1 },
+                  ].map(r => (
+                    <div key={r.label} className="flex items-center gap-2 text-[11px] mb-1">
+                      <span className="w-6 font-bold text-slate-500">{r.label}</span>
+                      <div className="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                        <div className="h-full rounded-full bg-gradient-to-r from-[#D63031] to-[#1E3A5F]" style={{ width: `${r.pct}%` }} />
+                      </div>
+                      <span className="w-8 text-right font-mono font-bold text-slate-400">{r.pct}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Video testimonials ──────────────────────────────────────── */}
+          <div className="mb-12" data-testid="fs-video-testimonials">
+            <div className="text-center mb-6">
+              <span className="text-[10px] font-black tracking-[0.2em] uppercase text-[#D63031]">// Real voices · real builds</span>
+              <h3 className="text-xl lg:text-2xl font-black text-[#0F1E33] mt-1">Hear it from our parents & students</h3>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+              {VIDEO_TESTIMONIALS.map((v, i) => (
+                <button key={i} onClick={() => setVideoOpen(v)}
+                  className="group relative aspect-[3/4] rounded-2xl overflow-hidden border-2 border-blue-100 hover:border-[#D63031] transition-all shadow-lg shadow-blue-900/10 hover:shadow-2xl hover:-translate-y-0.5 bg-gradient-to-br from-[#0F1E33] to-[#1E3A5F]"
+                  data-testid={`video-testimonial-${i}`}
+                  aria-label={`Play ${v.role} testimonial`}>
+                  {/* Lazy-loaded inline preview frame */}
+                  <video src={v.src} preload="metadata" muted playsInline
+                    className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
+                    style={{ pointerEvents: 'none' }} />
+                  {/* Dark overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0F1E33] via-[#0F1E33]/40 to-[#0F1E33]/20" />
+                  {/* Play button center */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-14 h-14 lg:w-16 lg:h-16 rounded-full bg-white/15 backdrop-blur-sm border-2 border-white/40 flex items-center justify-center group-hover:scale-110 group-hover:bg-[#D63031] group-hover:border-[#D63031] transition-all shadow-2xl">
+                      <Play className="w-6 h-6 lg:w-7 lg:h-7 text-white fill-white translate-x-0.5" />
+                    </div>
+                  </div>
+                  {/* Role pill (top-left) */}
+                  <div className="absolute top-3 left-3">
+                    <span className="text-[9px] font-black tracking-widest uppercase text-white px-2 py-1 rounded-full backdrop-blur-sm border"
+                      style={{ background: `${v.accent}aa`, borderColor: `${v.accent}` }}>
+                      {v.role}
+                    </span>
+                  </div>
+                  {/* Caption (bottom) */}
+                  <div className="absolute bottom-0 inset-x-0 p-3 lg:p-4 text-left">
+                    <div className="text-xs lg:text-sm font-black text-white leading-tight">{v.name}</div>
+                    <div className="text-[10px] lg:text-[11px] text-blue-200 mt-1 leading-snug line-clamp-2">{v.line}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-12">
             {STATS.map((s, i) => (
               <div key={i} className="bg-gradient-to-br from-white via-red-50/20 to-blue-50/30 border-2 border-blue-100 rounded-2xl p-5 text-center" data-testid={`stat-${i}`}>
@@ -646,6 +773,34 @@ const FutureSkillsLandingPage = () => {
       </section>
 
       <Footer />
+
+      {/* ── Video modal ──────────────────────────────────────────────── */}
+      {videoOpen && (
+        <div className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
+          onClick={(e) => { if (e.target === e.currentTarget) setVideoOpen(null); }}
+          data-testid="video-modal">
+          <button onClick={(e) => { e.stopPropagation(); setVideoOpen(null); }}
+            className="absolute top-4 right-4 sm:top-6 sm:right-6 w-11 h-11 rounded-full bg-white/10 hover:bg-[#D63031] border border-white/30 flex items-center justify-center text-white transition-all backdrop-blur-sm z-10"
+            data-testid="video-modal-close-btn"
+            aria-label="Close video">
+            <X className="w-5 h-5 pointer-events-none" />
+          </button>
+          <div className="w-full max-w-md sm:max-w-lg lg:max-w-xl">
+            <div className="rounded-2xl overflow-hidden border-2 border-white/15 shadow-2xl shadow-black/60 bg-[#0F1E33]">
+              <video src={videoOpen.src} controls autoPlay playsInline
+                className="w-full max-h-[75vh] bg-black"
+                data-testid="video-modal-player">
+                Your browser doesn't support inline video. <a href={videoOpen.src} className="underline">Open video</a>.
+              </video>
+              <div className="p-4 sm:p-5 bg-gradient-to-r from-[#D63031]/10 to-[#1E3A5F]/10">
+                <div className="text-[10px] font-black tracking-widest uppercase text-[#FCA5A5]">{videoOpen.role}</div>
+                <div className="text-base sm:text-lg font-black text-white mt-1">{videoOpen.name}</div>
+                <p className="text-sm text-blue-100 mt-1 italic">{videoOpen.line}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
