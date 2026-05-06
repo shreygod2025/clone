@@ -5,7 +5,8 @@ import {
   Sparkles, ArrowRight, Check, Clock, Users, Zap, Award,
   Bot, Cpu, Code2, Box, Wand2, ChevronDown, Star, Quote,
   Brain, Hammer, Rocket, BookOpenCheck, ShieldCheck, Calendar,
-  TrendingUp, Lightbulb, Trophy, X, Heart, MapPin, Gift, Play
+  TrendingUp, Lightbulb, Trophy, X, Heart, MapPin, Gift, Play,
+  Video, ClipboardCheck, UserCheck, BadgeCheck, Bell
 } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -314,26 +315,144 @@ const FutureSkillsLandingPage = () => {
         `}</style>
       </section>
 
-      {/* ── PROBLEM ──────────────────────────────────────────────────────── */}
-      <section className="py-16 lg:py-20 bg-slate-50">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <span className="text-xs font-bold tracking-widest text-[#D63031] uppercase">The honest truth</span>
-          <h2 className="text-3xl lg:text-4xl font-black text-[#0F1E33] mt-2 mb-4">School isn't enough anymore.</h2>
-          <p className="text-slate-600 max-w-2xl mx-auto mb-10">By the time today's kids graduate, half their jobs won't exist yet. Memorising chapters won't cut it.</p>
-          <div className="grid sm:grid-cols-3 gap-4">
-            {[
-              { icon: BookOpenCheck, t: 'Stuck in theory',          s: 'Memorising what AI now finishes in seconds.' },
-              { icon: X,             t: 'No real-world skills',     s: '12 years of classes, zero things they can build.' },
-              { icon: Cpu,           t: 'Consuming, not creating',  s: 'Hours of screen time without ever shipping anything.' },
-            ].map((p, i) => (
-              <div key={i} className="bg-white border-2 border-red-100 rounded-2xl p-6 hover:border-[#D63031] transition-all" data-testid={`problem-${i}`}>
-                <div className="w-12 h-12 mx-auto rounded-xl bg-red-50 flex items-center justify-center text-[#D63031] mb-3">
-                  <p.icon className="w-6 h-6" />
+      {/* ── USP · SAFETY & TRANSPARENCY ──────────────────────────────────── */}
+      <section className="py-16 lg:py-20 bg-gradient-to-b from-slate-50 to-white relative overflow-hidden" data-testid="fs-usp-section">
+        {/* Subtle grid */}
+        <div className="absolute inset-0 opacity-[0.04] pointer-events-none"
+          style={{
+            backgroundImage: 'linear-gradient(#1E3A5F 1px, transparent 1px), linear-gradient(90deg, #1E3A5F 1px, transparent 1px)',
+            backgroundSize: '64px 64px',
+          }} />
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-[#D63031]/10 to-[#1E3A5F]/10 border border-[#D63031]/20 text-[10px] font-black tracking-widest uppercase text-[#D63031]">
+              <ShieldCheck className="w-3.5 h-3.5" /> Why parents trust us
+            </div>
+            <h2 className="text-3xl lg:text-5xl font-black text-[#0F1E33] mt-4 leading-tight">
+              Safety & Transparency.<br />
+              <span className="bg-gradient-to-r from-[#D63031] to-[#1E3A5F] bg-clip-text text-transparent">
+                Our top priority.
+              </span>
+            </h2>
+            <p className="text-slate-600 max-w-2xl mx-auto mt-3 text-base">
+              You see everything. You hear everything. And if you're not convinced — you get every rupee back.
+            </p>
+          </div>
+
+          {/* USP grid — each card visually distinct */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+
+            {/* CARD 1 · LIVE STREAMING — dark navy, "live screen" feel */}
+            <div className="relative rounded-3xl bg-gradient-to-br from-[#0F1E33] to-[#1E3A5F] text-white p-6 overflow-hidden shadow-2xl shadow-blue-900/30 hover:shadow-blue-900/50 hover:-translate-y-1 transition-all"
+              data-testid="usp-live-streaming">
+              {/* Faux camera scan lines */}
+              <div className="absolute inset-0 opacity-[0.07] pointer-events-none"
+                style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent 0px, transparent 3px, white 3px, white 4px)' }} />
+              {/* Live pulse pill */}
+              <div className="relative flex items-center justify-between mb-5">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#D63031]/20 border border-[#D63031]/50">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#FCA5A5] opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[#D63031]" />
+                  </span>
+                  <span className="text-[9px] font-black tracking-widest uppercase text-[#FCA5A5]">Live</span>
                 </div>
-                <h3 className="font-black text-[#0F1E33] text-base">{p.t}</h3>
-                <p className="text-sm text-slate-500 mt-1.5">{p.s}</p>
+                <Video className="w-5 h-5 text-blue-300" />
               </div>
-            ))}
+              <div className="relative">
+                <h3 className="text-xl font-black leading-tight">Live Stream Every Class</h3>
+                <p className="text-sm text-blue-100 mt-2 leading-relaxed">
+                  Watch your child build, code & create in real time — from your phone, anywhere, anytime.
+                </p>
+                <div className="mt-5 pt-4 border-t border-white/10 flex items-center gap-2 text-[11px] text-blue-200">
+                  <Check className="w-3.5 h-3.5 text-[#FCA5A5] flex-shrink-0" />
+                  <span>Secure, parent-only feed</span>
+                </div>
+              </div>
+            </div>
+
+            {/* CARD 2 · DAILY REPORTING — light card, "report" feel with bell + checklist */}
+            <div className="relative rounded-3xl bg-white border-2 border-[#D63031]/30 p-6 overflow-hidden shadow-xl shadow-red-100/50 hover:border-[#D63031] hover:-translate-y-1 transition-all"
+              data-testid="usp-daily-reporting">
+              {/* Pattern */}
+              <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-gradient-to-br from-[#D63031]/15 to-[#D63031]/5 blur-2xl" />
+              <div className="relative">
+                <div className="flex items-center gap-2 mb-5">
+                  <div className="w-11 h-11 rounded-xl bg-[#D63031] text-white flex items-center justify-center shadow-lg shadow-red-200">
+                    <Bell className="w-5 h-5" />
+                  </div>
+                  <span className="text-[9px] font-black tracking-widest uppercase text-[#D63031] bg-red-50 border border-red-200 px-2 py-1 rounded-full">Daily</span>
+                </div>
+                <h3 className="text-xl font-black text-[#0F1E33] leading-tight">Daily Parent Reports</h3>
+                <p className="text-sm text-slate-600 mt-2 leading-relaxed">
+                  After every class, you get a WhatsApp + email update on attendance, what was learnt & what's next.
+                </p>
+                {/* Mini checklist */}
+                <ul className="mt-5 pt-4 border-t border-slate-100 space-y-1.5">
+                  {['Attendance ✓', 'Topics covered', 'What to ask your child'].map((line) => (
+                    <li key={line} className="flex items-center gap-2 text-[11px] text-slate-700 font-semibold">
+                      <ClipboardCheck className="w-3.5 h-3.5 text-[#D63031] flex-shrink-0" /> {line}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            {/* CARD 3 · 1:5 RATIO — bold ratio number, ribbon style */}
+            <div className="relative rounded-3xl bg-gradient-to-br from-white to-blue-50/40 border-2 border-[#1E3A5F]/25 p-6 overflow-hidden shadow-xl shadow-blue-100/60 hover:border-[#1E3A5F] hover:-translate-y-1 transition-all"
+              data-testid="usp-teacher-ratio">
+              {/* Big ratio */}
+              <div className="absolute top-3 right-3 text-[5rem] font-black leading-none bg-gradient-to-br from-[#D63031] to-[#1E3A5F] bg-clip-text text-transparent opacity-20" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                1:5
+              </div>
+              <div className="relative">
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#D63031] to-[#1E3A5F] text-white flex items-center justify-center shadow-lg shadow-blue-900/20 mb-5">
+                  <UserCheck className="w-5 h-5" />
+                </div>
+                <h3 className="text-xl font-black text-[#0F1E33] leading-tight">2 Teachers · 1:5 Ratio</h3>
+                <p className="text-sm text-slate-600 mt-2 leading-relaxed">
+                  Two qualified educators in every batch. <strong className="text-[#1E3A5F]">One trainer for every 5 kids</strong> — no one falls behind.
+                </p>
+                <div className="mt-5 pt-4 border-t border-slate-200 flex items-center justify-between">
+                  <div className="flex -space-x-2">
+                    {[1,2,3,4,5].map(i => (
+                      <div key={i} className="w-7 h-7 rounded-full border-2 border-white bg-gradient-to-br from-blue-100 to-red-100 flex items-center justify-center text-[10px] font-black text-[#1E3A5F]">
+                        {i}
+                      </div>
+                    ))}
+                  </div>
+                  <span className="text-[10px] font-black tracking-widest uppercase text-[#D63031]">Per Trainer</span>
+                </div>
+              </div>
+            </div>
+
+            {/* CARD 4 · 100% REFUND — guarantee badge */}
+            <div className="relative rounded-3xl bg-gradient-to-br from-[#D63031] via-[#7B2C5C] to-[#1E3A5F] text-white p-6 overflow-hidden shadow-2xl shadow-red-900/25 hover:shadow-red-900/40 hover:-translate-y-1 transition-all"
+              data-testid="usp-refund">
+              <div className="absolute inset-0 opacity-10 pointer-events-none"
+                style={{ backgroundImage: 'linear-gradient(white 1px, transparent 1px), linear-gradient(90deg, white 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
+              {/* Big 100% badge */}
+              <div className="absolute -top-6 -right-6 w-32 h-32 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="text-3xl font-black leading-none" style={{ fontFamily: "'JetBrains Mono', monospace" }}>100%</div>
+                  <div className="text-[8px] font-bold tracking-widest uppercase mt-0.5 text-white/80">Money Back</div>
+                </div>
+              </div>
+              <div className="relative">
+                <div className="w-11 h-11 rounded-xl bg-white/15 backdrop-blur-sm border border-white/30 flex items-center justify-center mb-5">
+                  <BadgeCheck className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="text-xl font-black leading-tight">100% Refund Guarantee</h3>
+                <p className="text-sm text-white/90 mt-2 leading-relaxed">
+                  Not satisfied with the program? Get every rupee back. No fine print, no questions asked.
+                </p>
+                <div className="mt-5 pt-4 border-t border-white/15 flex items-center gap-2 text-[11px] text-white/85 font-semibold">
+                  <ShieldCheck className="w-3.5 h-3.5 text-white flex-shrink-0" />
+                  <span>The OLL Parent Promise</span>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </section>
@@ -636,14 +755,6 @@ const FutureSkillsLandingPage = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-12">
-            {STATS.map((s, i) => (
-              <div key={i} className="bg-gradient-to-br from-white via-red-50/20 to-blue-50/30 border-2 border-blue-100 rounded-2xl p-5 text-center" data-testid={`stat-${i}`}>
-                <div className="text-3xl lg:text-4xl font-black bg-gradient-to-r from-[#D63031] to-[#1E3A5F] bg-clip-text text-transparent">{s.v}</div>
-                <div className="text-xs text-slate-500 font-bold uppercase tracking-wider mt-1">{s.l}</div>
-              </div>
-            ))}
-          </div>
           <div className="grid md:grid-cols-3 gap-4">
             {TESTIMONIALS.map((t, i) => (
               <div key={i} className="bg-white border-2 border-slate-100 rounded-2xl p-6" data-testid={`testimonial-${i}`}>
