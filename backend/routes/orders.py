@@ -239,6 +239,7 @@ async def get_student_payments(
             "receipt_url": (existing_payment.get("receipt_url") if existing_payment else None) or onboarding_data.get("receipt_url"),
             "payment_link": existing_payment.get("payment_link") if existing_payment else onboarding_data.get("payment_link"),
             "notes": existing_payment.get("notes") if existing_payment else "",
+            "paid_amount": existing_payment.get("paid_amount", 0) if existing_payment else 0,
             "created_at": student.get("created_at"),
             # Payment source fields
             "payment_from": existing_payment.get("payment_from", "individual") if existing_payment else "individual",
@@ -605,6 +606,11 @@ async def update_payment(
         if not incoming_receipt_url and not data.get("clear_receipt") and existing_student_payment.get("receipt_url"):
             incoming_receipt_url = existing_student_payment.get("receipt_url")
 
+        # Preserve gst_type if incoming is empty
+        incoming_gst_type = data.get("gst_type")
+        if not incoming_gst_type:
+            incoming_gst_type = existing_student_payment.get("gst_type") or student.get("onboarding_data", {}).get("gst_type", "")
+
         payment_record = {
             "id": payment_id,
             "status": data.get("status", "pending"),
@@ -612,7 +618,10 @@ async def update_payment(
             "transaction_id": data.get("transaction_id"),
             "invoice_url": incoming_invoice_url,
             "receipt_url": incoming_receipt_url,
+            "gst_type": incoming_gst_type,
+            "payment_link": data.get("payment_link"),
             "notes": data.get("notes", ""),
+            "paid_amount": data.get("paid_amount", 0),
             "updated_at": datetime.now(timezone.utc).isoformat(),
             "updated_by": user.get("name", user.get("email", "Admin")),
         }

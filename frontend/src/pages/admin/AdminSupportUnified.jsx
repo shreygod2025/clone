@@ -155,6 +155,7 @@ const INQUIRY_TYPES = [
   { value: 'growth_partner', label: 'Growth Partner' },
   { value: 'teacher', label: 'Teacher' },
   { value: 'team', label: 'Team' },
+  { value: 'general', label: 'General' },
 ];
 
 // Tabs for query status

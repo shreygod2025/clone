@@ -1,6 +1,12 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
+### Latest Changes (2026-05-07) — Bug Fixes
+1. **Student Partial Payment now saved** — `update_payment` in `/app/backend/routes/orders.py` was silently dropping `paid_amount`, `gst_type`, `payment_link` on student payment updates. Fixed: payment_record now persists all fields & `get_student_payments` returns `paid_amount`.
+2. **Student Orders row** — Added "Paid: ₹X / Receivable: ₹Y" + progress bar for partial student payments (was only shown on school rows).
+3. **Need Help popup → Admin Support Center** — `RaiseQueryButton.jsx` now maps page context to `inquiry_type` (student/school/teacher/growth_partner/team) instead of always tagging 'general'. Queries now appear under the correct User Type filter in `/admin/support`.
+4. **Admin Support filter** — Added "General" option to User Type filter for legacy queries.
+
 ### Original Problem Statement
 Build a high-conversion, multi-user skill-education platform for "OLL" with separate funnels for Students/Parents, Educators, and Schools. The platform must be SEO-first and include a powerful backend admin panel and CRM system.
 

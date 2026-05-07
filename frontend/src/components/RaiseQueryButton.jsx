@@ -574,6 +574,18 @@ const getPageTypeKey = (path) => {
   return 'general';
 };
 
+// Map page type → inquiry_type used by Admin Support Center filter
+// Keeps admin "User Type" filter useful instead of dumping everything in 'general'
+const getInquiryTypeForPage = (path) => {
+  if (path.includes('/educator')) return 'teacher';
+  if (path.includes('/centers') || path.includes('/growth-partner')) return 'growth_partner';
+  if (path.includes('/admin')) return 'team';
+  if (path.includes('/school-pay') || path.includes('/school')) return 'school';
+  if (path.includes('/track')) return 'school';
+  // Student-facing landing pages, courses, summer camp, future skills, payment FAQs etc
+  return 'student';
+};
+
 const RaiseQueryButton = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -773,7 +785,7 @@ const RaiseQueryButton = () => {
       const subCategoryLabel = selectedQueryType?.subCategories?.find(s => s.value === formData.related_to)?.label || '';
 
       await axios.post(`${API}/inquiry/query`, {
-        inquiry_type: 'general',
+        inquiry_type: getInquiryTypeForPage(currentPath),
         action_type: 'query',
         name: formData.name || userData?.name || 'Anonymous',
         phone: formData.phone || userData?.phone || '',

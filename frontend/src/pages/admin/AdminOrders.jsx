@@ -1486,6 +1486,22 @@ const AdminOrders = () => {
                           {payment.gst_amount > 0 && (
                             <p className="text-xs text-slate-500 mt-0.5">GST: ₹{(payment.gst_amount || 0).toLocaleString()}</p>
                           )}
+                          {(payment.status === 'partial' || (payment.paid_amount > 0 && payment.paid_amount < (payment.amount || 0))) && (
+                            <div className="mt-1 space-y-0.5">
+                              <p className="text-xs text-green-600 font-medium">
+                                Paid: ₹{(payment.paid_amount || 0).toLocaleString()}
+                              </p>
+                              <p className="text-xs text-orange-600 font-medium">
+                                Receivable: ₹{Math.max(0, (payment.amount || 0) - (payment.paid_amount || 0)).toLocaleString()}
+                              </p>
+                              <div className="w-24 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-gradient-to-r from-green-400 to-green-500"
+                                  style={{ width: `${Math.min(100, ((payment.paid_amount || 0) / (payment.amount || 1)) * 100)}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
                           {payment.gst_type && getGstLabel(payment.gst_type) && (
                             <span className={`mt-1 inline-block text-xs px-2 py-0.5 rounded-full font-medium ${getGstColorClass(payment.gst_type)}`}>
                               {getGstLabel(payment.gst_type)}
