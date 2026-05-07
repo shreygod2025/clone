@@ -1,9 +1,30 @@
 import { useState, useEffect, useRef, memo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
-import { Cpu, Code, Brain, Box, Clock, Users, MapPin, ArrowRight, Check, Star, ChevronDown, Download } from 'lucide-react';
+import { Cpu, Code, Brain, Box, Clock, Users, MapPin, ArrowRight, Check, Star, ChevronDown, Download, Play, Video, X, Sparkles } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+
+// ── Real classroom media (images + videos) — same set used on Future Skills ──
+const CAMP_CLASS_MEDIA = [
+  { type: 'video', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/5h69is60_20260504_122331.mp4', label: 'Hands-on build', caption: 'Kids assembling their first IoT & AI lab kit' },
+  { type: 'image', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/h11kmu1i_20260504_122503.jpg', label: 'Live class', caption: 'Working through a circuit module step by step' },
+  { type: 'image', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/gwljm6r9_20260504_122607.jpg', label: 'Build station', caption: 'Pair-builds with the OLL IoT & AI Lab Kit' },
+  { type: 'video', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/04pgqymv_20260504_123958.mp4', label: 'In action', caption: 'Real class footage — what a session feels like' },
+  { type: 'image', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/tqatbciw_20260504_124243.jpg', label: 'Manipulative station', caption: 'Kids exploring components together' },
+  { type: 'video', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/9p89o2y6_20260504_154936.mp4', label: 'Class showcase', caption: 'Students presenting what they built today' },
+  { type: 'image', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/rhwyg94z_20260504_163950.jpg', label: 'Batch of builders', caption: 'End-of-class group photo — the whole crew' },
+  { type: 'video', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/geb6vgey_VID20260504135039.mp4', label: 'Build moment', caption: 'Mid-class hands-on — heads-down focus' },
+  { type: 'image', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/ctig02to_IMG-20260504-WA0020.jpg', label: 'Educator-led', caption: 'Trainers walking kids through their first build' },
+  { type: 'video', src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/e7dknsgn_VID20260504155236.mp4', label: 'In progress', caption: 'Kids deep in their build — a real session glimpse' },
+];
+
+const CAMP_VIDEO_TESTIMONIALS = [
+  { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/39v27qp3_Testimonial%20Parents.mp4', role: 'Parent',  name: 'OLL Parents',          line: '"Our kids come home buzzing about what they built."', accent: '#00E5FF' },
+  { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/yl1ydmda_IMG_7029.MOV',          role: 'Student', name: 'Young Builder · Grade 5', line: '"I made a robot that follows a line!"',                accent: '#F59E0B' },
+  { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/4boxtvd2_IMG_7035.MOV',          role: 'Student', name: 'Young Coder · Grade 7',   line: '"I wrote my first Python game in class."',            accent: '#A78BFA' },
+  { src: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/vo8r3dzk_IMG_7045.MOV',          role: 'Student', name: 'Young Creator · Grade 9', line: '"3D-printed my own phone stand this week!"',          accent: '#34D399' },
+];
 
 // ── GIF assets ────────────────────────────────────────────────────────────────
 const GIFS = [
@@ -337,6 +358,18 @@ export default function SummerCampLandingPage() {
   });
   // Removed batchType state (weekday-only now)
   const [centers, setCenters] = useState([]);
+  // Media + video testimonial modal
+  const [mediaOpen, setMediaOpen] = useState(null); // { type, src, label, caption }
+  const [videoTestimonialOpen, setVideoTestimonialOpen] = useState(null); // { src, role, name, line }
+
+  // ESC closes any open modal
+  useEffect(() => {
+    if (!mediaOpen && !videoTestimonialOpen) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape') { setMediaOpen(null); setVideoTestimonialOpen(null); } };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mediaOpen, videoTestimonialOpen]);
+
   const activeCamp = AGE_GROUPS[activeAgeIdx];
 
   useEffect(() => {
@@ -746,6 +779,128 @@ export default function SummerCampLandingPage() {
           </div>
         </div>
 
+        {/* ── INSIDE OLL CLASSROOM (real moments + videos) ──────────────── */}
+        <section data-testid="camp-class-moments" style={{ padding: '5rem 0 4.5rem', position: 'relative', zIndex: 1, background: 'rgba(5,12,28,0.86)' }}>
+          <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 1.5rem' }}>
+            <div className="sr-blur" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.5rem' }}>
+              <div>
+                <p className="sec-label" style={{ marginBottom: '0.4rem' }}>// real moments · real builds</p>
+                <h2 className="sec-title" style={{ marginBottom: 0 }}>Inside an OLL classroom</h2>
+              </div>
+              <span style={{ fontSize: '0.78rem', color: '#7A9AB8', fontStyle: 'italic' }}>Tap any tile to play / view</span>
+            </div>
+
+            {/* Two stacked asymmetric mosaics — 5 tiles each */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {[0, 5].map((startIdx) => (
+                <div key={startIdx} className="camp-mosaic">
+                  {CAMP_CLASS_MEDIA.slice(startIdx, startIdx + 5).map((m, j) => {
+                    const i = startIdx + j;
+                    const bigOnLeft = startIdx === 0;
+                    const layoutClass = bigOnLeft
+                      ? ['camp-tile-big', 'camp-tile-w2', 'camp-tile-w1', 'camp-tile-w2', 'camp-tile-w1'][j]
+                      : ['camp-tile-w2', 'camp-tile-w1', 'camp-tile-big-right', 'camp-tile-w2', 'camp-tile-w1'][j];
+                    return (
+                      <button key={i} onClick={() => setMediaOpen(m)}
+                        className={`camp-tile ${layoutClass}`}
+                        data-testid={`camp-class-moment-${i}`}
+                        aria-label={`View ${m.label}`}>
+                        {m.type === 'video' ? (
+                          <video src={m.src} preload="metadata" muted playsInline className="camp-tile-media" />
+                        ) : (
+                          <img src={m.src} alt={m.label} loading="lazy" className="camp-tile-media" />
+                        )}
+                        <div className="camp-tile-overlay" />
+                        {/* Type pill */}
+                        <div className="camp-tile-pill" style={{
+                          background: m.type === 'video' ? 'rgba(0,229,255,0.65)' : 'rgba(167,139,250,0.65)',
+                          borderColor: m.type === 'video' ? '#00E5FF' : '#A78BFA',
+                        }}>
+                          {m.type === 'video' ? <Video style={{ width: 10, height: 10 }} /> : <Sparkles style={{ width: 10, height: 10 }} />}
+                          {m.type === 'video' ? 'Video' : 'Photo'}
+                        </div>
+                        {/* Centered play for videos */}
+                        {m.type === 'video' && (
+                          <div className="camp-tile-play">
+                            <div className="camp-tile-play-btn">
+                              <Play style={{ width: 22, height: 22, color: '#fff', fill: '#fff', transform: 'translateX(2px)' }} />
+                            </div>
+                          </div>
+                        )}
+                        {/* Caption */}
+                        <div className="camp-tile-caption">
+                          <div className="camp-tile-label">{m.label}</div>
+                          <div className="camp-tile-sub">{m.caption}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+
+            <div style={{ textAlign: 'center', marginTop: '1.25rem', fontSize: '0.78rem', color: '#7A9AB8', fontStyle: 'italic' }}>
+              {CAMP_CLASS_MEDIA.length} moments · captured at our centres in May 2026
+            </div>
+          </div>
+
+          <style>{`
+            .camp-mosaic {
+              display: grid;
+              grid-template-columns: repeat(6, 1fr);
+              grid-template-rows: repeat(2, 1fr);
+              gap: 12px;
+              height: 520px;
+            }
+            .camp-tile-big       { grid-column: span 3; grid-row: span 2; }
+            .camp-tile-big-right { grid-column: span 3; grid-row: span 2; }
+            .camp-tile-w2        { grid-column: span 2; grid-row: span 1; }
+            .camp-tile-w1        { grid-column: span 1; grid-row: span 1; }
+            .camp-tile {
+              position: relative; border-radius: 16px; overflow: hidden;
+              border: 2px solid rgba(0,229,255,0.12);
+              background: linear-gradient(135deg, #0F1E33, #1E3A5F);
+              cursor: pointer; padding: 0; transition: all 0.35s cubic-bezier(.2,.7,.2,1);
+              box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+            }
+            .camp-tile:hover { border-color: #00E5FF; transform: translateY(-3px); box-shadow: 0 18px 40px rgba(0,229,255,0.18); }
+            .camp-tile-media { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.92; transition: opacity 0.3s, transform 0.5s; pointer-events: none; }
+            .camp-tile:hover .camp-tile-media { opacity: 1; transform: scale(1.04); }
+            .camp-tile-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(5,12,28,0.92) 0%, rgba(5,12,28,0.30) 55%, rgba(5,12,28,0.05) 100%); }
+            .camp-tile-pill {
+              position: absolute; top: 10px; left: 10px;
+              display: inline-flex; align-items: center; gap: 4px;
+              padding: 3px 8px; border-radius: 999px; border: 1px solid;
+              font-size: 9px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase;
+              color: #fff; backdrop-filter: blur(6px);
+            }
+            .camp-tile-play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+            .camp-tile-play-btn {
+              width: 56px; height: 56px; border-radius: 50%;
+              background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.45);
+              display: flex; align-items: center; justify-content: center;
+              backdrop-filter: blur(6px); transition: all 0.3s;
+            }
+            .camp-tile:hover .camp-tile-play-btn { background: #00E5FF; border-color: #00E5FF; transform: scale(1.1); }
+            .camp-tile-caption { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px; text-align: left; }
+            .camp-tile-label { font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 12px; color: #F8FAFC; line-height: 1.15; }
+            .camp-tile-sub { font-size: 10px; color: #94A3B8; margin-top: 3px; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+            @media (max-width: 720px) {
+              .camp-mosaic { height: 380px; gap: 8px; }
+              .camp-tile-sub { display: none; }
+            }
+            @media (max-width: 480px) {
+              .camp-mosaic { grid-template-columns: repeat(4, 1fr); }
+              .camp-tile-big, .camp-tile-big-right { grid-column: span 4; grid-row: span 2; }
+              .camp-tile-w2 { grid-column: span 2; }
+              .camp-tile-w1 { grid-column: span 2; }
+              .camp-mosaic { height: auto; grid-template-rows: auto; }
+              .camp-tile { aspect-ratio: 4 / 3; }
+              .camp-tile-big, .camp-tile-big-right { aspect-ratio: 16 / 10; grid-row: auto; }
+            }
+          `}</style>
+        </section>
+
         {/* ── CERTIFICATIONS ─────────────────────────────────────────────── */}
         <section data-testid="camp-certifications" style={{ padding: '5.5rem 0', position: 'relative', zIndex: 1, overflow: 'hidden', background: 'rgba(5,12,28,0.82)' }}>
           {/* Top separator glow */}
@@ -1102,11 +1257,83 @@ export default function SummerCampLandingPage() {
         {/* ── TESTIMONIALS ─────────────────────────────────────────────── */}
         <section data-testid="camp-testimonials" style={{ padding: '6rem 0', background: 'rgba(8,15,30,0.78)', position: 'relative', zIndex: 1 }}>
           <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 1.5rem' }}>
-            <div className="sr-blur" style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <div className="sr-blur" style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
               <p className="sec-label">Parents Love It</p>
               <h2 className="sec-title">What Parents Are Saying</h2>
             </div>
 
+            {/* ── Rating bar — 4.85 / 5 ───────────────────────────────── */}
+            <div className="sr-blur" data-testid="camp-rating-bar" style={{
+              maxWidth: 640, margin: '0 auto 2.5rem',
+              background: 'linear-gradient(135deg, rgba(8,18,38,0.85), rgba(15,30,55,0.85))',
+              border: '1px solid rgba(0,229,255,0.18)',
+              borderRadius: 22,
+              padding: '1.5rem 1.75rem',
+              boxShadow: '0 18px 50px rgba(0,0,0,0.35)',
+            }}>
+              <div className="camp-rating-row">
+                <div className="camp-rating-num">
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                    <span style={{ fontSize: '3.4rem', fontWeight: 900, fontFamily: 'JetBrains Mono, monospace', lineHeight: 1, background: 'linear-gradient(135deg, #00E5FF, #A78BFA)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.03em' }}>4.85</span>
+                    <span style={{ fontSize: '1.2rem', fontWeight: 800, color: '#475569' }}>/5</span>
+                  </div>
+                  <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#00E5FF', marginTop: 4 }}>Parent Rating</div>
+                </div>
+                <div className="camp-rating-bars">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                    {[1,2,3,4,5].map(i => (
+                      <Star key={i} style={{ width: 16, height: 16, fill: i <= 4 ? '#F59E0B' : '#F59E0B', color: '#F59E0B', opacity: i === 5 ? 0.9 : 1 }} />
+                    ))}
+                    <span style={{ fontSize: 11, color: '#94A3B8', marginLeft: 6, fontWeight: 600 }}>based on 1,200+ parent reviews</span>
+                  </div>
+                  {[
+                    { label: '5★', pct: 88 },
+                    { label: '4★', pct: 10 },
+                    { label: '3★', pct: 1.5 },
+                    { label: '2★', pct: 0.5 },
+                  ].map(r => (
+                    <div key={r.label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, fontSize: 10 }}>
+                      <span style={{ width: 22, fontWeight: 800, color: '#94A3B8' }}>{r.label}</span>
+                      <div style={{ flex: 1, height: 5, borderRadius: 999, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', borderRadius: 999, width: `${r.pct}%`, background: 'linear-gradient(90deg, #00E5FF, #A78BFA)' }} />
+                      </div>
+                      <span style={{ width: 32, textAlign: 'right', fontFamily: 'JetBrains Mono, monospace', fontWeight: 800, color: '#7A9AB8' }}>{r.pct}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* ── Video Testimonials ─────────────────────────────────── */}
+            <div className="sr-blur" data-testid="camp-video-testimonials" style={{ marginBottom: '2.75rem' }}>
+              <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+                <p style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#00E5FF', fontFamily: 'JetBrains Mono, monospace' }}>// real voices · real builds</p>
+                <h3 style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '1.25rem', fontWeight: 800, color: '#F8FAFC', marginTop: 4 }}>Hear it from our parents & students</h3>
+              </div>
+              <div className="camp-video-grid">
+                {CAMP_VIDEO_TESTIMONIALS.map((v, i) => (
+                  <button key={i} onClick={() => setVideoTestimonialOpen(v)}
+                    className="camp-video-card"
+                    data-testid={`camp-video-testimonial-${i}`}
+                    aria-label={`Play ${v.role} testimonial`}>
+                    <video src={v.src} preload="metadata" muted playsInline className="camp-video-frame" />
+                    <div className="camp-video-overlay" />
+                    <div className="camp-video-play-wrap">
+                      <div className="camp-video-play">
+                        <Play style={{ width: 22, height: 22, color: '#fff', fill: '#fff', transform: 'translateX(2px)' }} />
+                      </div>
+                    </div>
+                    <span className="camp-video-role" style={{ background: `${v.accent}cc`, borderColor: v.accent }}>{v.role}</span>
+                    <div className="camp-video-caption">
+                      <div style={{ fontSize: 12, fontWeight: 900, color: '#F8FAFC', lineHeight: 1.15, fontFamily: 'JetBrains Mono, monospace' }}>{v.name}</div>
+                      <div style={{ fontSize: 10, color: '#CBD5E1', marginTop: 4, lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{v.line}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* ── Existing written testimonials ───────────────────────── */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem' }}>
               {TESTIMONIALS.map((t, i) => (
                 <div
@@ -1129,6 +1356,46 @@ export default function SummerCampLandingPage() {
               ))}
             </div>
           </div>
+
+          <style>{`
+            .camp-rating-row { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; }
+            .camp-rating-num { flex-shrink: 0; min-width: 130px; }
+            .camp-rating-bars { flex: 1; min-width: 220px; }
+
+            .camp-video-grid {
+              display: grid;
+              grid-template-columns: repeat(4, 1fr);
+              gap: 12px;
+            }
+            .camp-video-card {
+              position: relative; aspect-ratio: 3/4; border-radius: 16px; overflow: hidden;
+              border: 2px solid rgba(0,229,255,0.18);
+              background: linear-gradient(135deg, #0F1E33, #1E3A5F);
+              cursor: pointer; padding: 0; transition: all 0.35s cubic-bezier(.2,.7,.2,1);
+              box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+            }
+            .camp-video-card:hover { border-color: #00E5FF; transform: translateY(-3px); box-shadow: 0 18px 40px rgba(0,229,255,0.18); }
+            .camp-video-frame { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.9; pointer-events: none; }
+            .camp-video-overlay { position: absolute; inset: 0; background: linear-gradient(to top, rgba(5,12,28,0.92) 0%, rgba(5,12,28,0.40) 55%, rgba(5,12,28,0.20) 100%); }
+            .camp-video-play-wrap { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+            .camp-video-play {
+              width: 60px; height: 60px; border-radius: 50%;
+              background: rgba(255,255,255,0.15); border: 2px solid rgba(255,255,255,0.45);
+              display: flex; align-items: center; justify-content: center;
+              backdrop-filter: blur(6px); transition: all 0.3s;
+            }
+            .camp-video-card:hover .camp-video-play { background: #00E5FF; border-color: #00E5FF; transform: scale(1.1); }
+            .camp-video-role {
+              position: absolute; top: 10px; left: 10px;
+              padding: 3px 8px; border-radius: 999px; border: 1px solid;
+              font-size: 9px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase;
+              color: #fff; backdrop-filter: blur(6px);
+            }
+            .camp-video-caption { position: absolute; left: 0; right: 0; bottom: 0; padding: 12px; text-align: left; }
+            @media (max-width: 720px) {
+              .camp-video-grid { grid-template-columns: repeat(2, 1fr); }
+            }
+          `}</style>
         </section>
 
         {/* ── FAQ ──────────────────────────────────────────────────────── */}
@@ -1239,6 +1506,66 @@ export default function SummerCampLandingPage() {
         </section>
 
         <Footer />
+
+        {/* ── Universal media modal (image / video) ─────────────── */}
+        {mediaOpen && (
+          <div
+            onClick={(e) => { if (e.target === e.currentTarget) setMediaOpen(null); }}
+            data-testid="camp-media-modal"
+            style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(14px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+          >
+            <button onClick={(e) => { e.stopPropagation(); setMediaOpen(null); }}
+              data-testid="camp-media-modal-close"
+              style={{ position: 'absolute', top: 18, right: 18, width: 44, height: 44, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', backdropFilter: 'blur(8px)', zIndex: 10 }}
+              aria-label="Close">
+              <X style={{ width: 20, height: 20, pointerEvents: 'none' }} />
+            </button>
+            <div style={{ width: '100%', maxWidth: 720 }}>
+              <div style={{ borderRadius: 18, overflow: 'hidden', border: '2px solid rgba(255,255,255,0.15)', boxShadow: '0 24px 60px rgba(0,0,0,0.6)', background: '#0F1E33' }}>
+                {mediaOpen.type === 'video' ? (
+                  <video src={mediaOpen.src} controls autoPlay playsInline style={{ width: '100%', maxHeight: '75vh', background: '#000' }} data-testid="camp-media-modal-video">
+                    Your browser doesn't support inline video.
+                  </video>
+                ) : (
+                  <img src={mediaOpen.src} alt={mediaOpen.label} style={{ width: '100%', maxHeight: '80vh', objectFit: 'contain', background: '#000' }} data-testid="camp-media-modal-image" />
+                )}
+                <div style={{ padding: '1rem 1.25rem', background: 'linear-gradient(90deg, rgba(0,229,255,0.10), rgba(167,139,250,0.10))' }}>
+                  <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#00E5FF' }}>{mediaOpen.type === 'video' ? 'Class footage' : 'Class moment'}</div>
+                  <div style={{ fontSize: 17, fontWeight: 900, color: '#F8FAFC', marginTop: 4, fontFamily: 'JetBrains Mono, monospace' }}>{mediaOpen.label}</div>
+                  <p style={{ fontSize: 13, color: '#CBD5E1', marginTop: 4 }}>{mediaOpen.caption}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Video testimonial modal ─────────────────────────── */}
+        {videoTestimonialOpen && (
+          <div
+            onClick={(e) => { if (e.target === e.currentTarget) setVideoTestimonialOpen(null); }}
+            data-testid="camp-video-testimonial-modal"
+            style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(14px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}
+          >
+            <button onClick={(e) => { e.stopPropagation(); setVideoTestimonialOpen(null); }}
+              data-testid="camp-video-testimonial-modal-close"
+              style={{ position: 'absolute', top: 18, right: 18, width: 44, height: 44, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', backdropFilter: 'blur(8px)', zIndex: 10 }}
+              aria-label="Close">
+              <X style={{ width: 20, height: 20, pointerEvents: 'none' }} />
+            </button>
+            <div style={{ width: '100%', maxWidth: 540 }}>
+              <div style={{ borderRadius: 18, overflow: 'hidden', border: '2px solid rgba(255,255,255,0.15)', boxShadow: '0 24px 60px rgba(0,0,0,0.6)', background: '#0F1E33' }}>
+                <video src={videoTestimonialOpen.src} controls autoPlay playsInline style={{ width: '100%', maxHeight: '75vh', background: '#000' }} data-testid="camp-video-testimonial-modal-video">
+                  Your browser doesn't support inline video.
+                </video>
+                <div style={{ padding: '1rem 1.25rem', background: 'linear-gradient(90deg, rgba(0,229,255,0.10), rgba(167,139,250,0.10))' }}>
+                  <div style={{ fontSize: 10, fontWeight: 900, letterSpacing: '0.2em', textTransform: 'uppercase', color: videoTestimonialOpen.accent || '#00E5FF' }}>{videoTestimonialOpen.role}</div>
+                  <div style={{ fontSize: 17, fontWeight: 900, color: '#F8FAFC', marginTop: 4, fontFamily: 'JetBrains Mono, monospace' }}>{videoTestimonialOpen.name}</div>
+                  <p style={{ fontSize: 13, color: '#CBD5E1', marginTop: 4, fontStyle: 'italic' }}>{videoTestimonialOpen.line}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
