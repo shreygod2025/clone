@@ -15,6 +15,7 @@ import axios from 'axios';
 import PhoneInput from '../../components/PhoneInput';
 import CitySearch from '../../components/CitySearch';
 import SocialMediaInternCRM from './SocialMediaInternCRM';
+import FutureSkillsCRMTab from './FutureSkillsCRMTab';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -34,6 +35,7 @@ const STATUS_SECTIONS = [
   { value: 'converted', label: 'Converted', color: 'bg-green-500' },
   { value: 'archived', label: 'Archived', color: 'bg-slate-400' },
   { value: 'summer_camp', label: '🏕️ Summer Camp', color: 'bg-orange-500' },
+  { value: 'future_skills', label: '🤖 Future Skills', color: 'bg-gradient-to-r from-[#D63031] to-[#1E3A5F]' },
   { value: 'social_media_intern', label: '🎬 Social Media Intern', color: 'bg-lime-500' },
 ];
 
@@ -1120,7 +1122,7 @@ const AdminStudentCRM = () => {
   // ── Export Helpers ───────────────────────────────────────────────────────────
   const exportStudentCRMToExcel = () => {
     const sectionLabel = STATUS_SECTIONS.find(s => s.value === activeSection)?.label || activeSection;
-    const rows = (activeSection === 'summer_camp' ? [] : filteredInquiries).map(inq => ({
+    const rows = (['summer_camp', 'future_skills'].includes(activeSection) ? [] : filteredInquiries).map(inq => ({
       'Name': inq.name || '',
       'Phone': inq.phone || '',
       'Email': inq.email || '',
@@ -1452,7 +1454,7 @@ const AdminStudentCRM = () => {
             variant="outline"
             className="flex items-center gap-2 flex-1 sm:flex-none justify-center border-slate-300 text-slate-600 hover:bg-slate-50"
             data-testid="export-student-crm-btn"
-            disabled={activeSection === 'summer_camp'}
+            disabled={['summer_camp', 'future_skills'].includes(activeSection)}
           >
             <Download className="w-4 h-4" /> Export
           </Button>
@@ -1493,6 +1495,8 @@ const AdminStudentCRM = () => {
       {/* Lead Cards */}
       {activeSection === 'social_media_intern' ? (
         <SocialMediaInternCRM getAuthHeaders={getAuthHeaders} />
+      ) : activeSection === 'future_skills' ? (
+        <FutureSkillsCRMTab getAuthHeaders={getAuthHeaders} />
       ) : activeSection === 'summer_camp' ? (
         <div>
           {/* Sub-tabs */}
