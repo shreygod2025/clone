@@ -1,11 +1,15 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
-### Latest Changes (2026-05-07) — Bug Fixes
-1. **Student Partial Payment now saved** — `update_payment` in `/app/backend/routes/orders.py` was silently dropping `paid_amount`, `gst_type`, `payment_link` on student payment updates. Fixed: payment_record now persists all fields & `get_student_payments` returns `paid_amount`.
-2. **Student Orders row** — Added "Paid: ₹X / Receivable: ₹Y" + progress bar for partial student payments (was only shown on school rows).
-3. **Need Help popup → Admin Support Center** — `RaiseQueryButton.jsx` now maps page context to `inquiry_type` (student/school/teacher/growth_partner/team) instead of always tagging 'general'. Queries now appear under the correct User Type filter in `/admin/support`.
-4. **Admin Support filter** — Added "General" option to User Type filter for legacy queries.
+### Latest Changes (2026-05-07) — Bug Fixes (Round 2)
+1. **AI Interview disabled** — Commented out auto-navigation to `/educator/interview/:id` after application submit in both `EducatorApplyPage.jsx` and `EducatorFunnel.jsx`. Also commented out the "Take your AI Interview now" CTA card on the success screen. The route + page remain intact in case you want to re-enable later.
+2. **All website applications visible in admin** — Backfilled 2 educator_applications records that had empty `status` to `'new'`. Hardened `AdminEducators.jsx` applicants tab to treat empty/null status as `'new'` defensively going forward. Applicants tab count went from 28 → 30.
+
+### Previous Changes (2026-05-07) — Bug Fixes (Round 1)
+1. **Student Partial Payment now saved** — `update_payment` for student branch was silently dropping `paid_amount`, `gst_type`, `payment_link`. Fixed payment_record build + `get_student_payments` response.
+2. **Student Orders row** — Added "Paid: ₹X / Receivable: ₹Y" + progress bar for partial student payments.
+3. **Need Help popup → Admin Support Center** — `RaiseQueryButton.jsx` now maps page context to `inquiry_type` (student/school/teacher/growth_partner/team) instead of always 'general'.
+4. **Admin Support filter** — Added "General" option to User Type filter.
 
 ### Original Problem Statement
 Build a high-conversion, multi-user skill-education platform for "OLL" with separate funnels for Students/Parents, Educators, and Schools. The platform must be SEO-first and include a powerful backend admin panel and CRM system.

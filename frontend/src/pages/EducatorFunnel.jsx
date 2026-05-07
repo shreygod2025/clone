@@ -281,13 +281,14 @@ const EducatorFunnel = () => {
       });
       
       setSubmittedApplication(response.data.application);
-      const newAppId = response.data?.application?.id;
-      toast.success('Application submitted! Starting your AI interview…');
-      // Send the candidate straight to the AI interview screen
-      if (newAppId) {
-        navigate(`/educator/interview/${newAppId}`);
-        return;
-      }
+      // ── AI Interview disabled (commented out per request) ──
+      // const newAppId = response.data?.application?.id;
+      // toast.success('Application submitted! Starting your AI interview…');
+      // if (newAppId) {
+      //   navigate(`/educator/interview/${newAppId}`);
+      //   return;
+      // }
+      toast.success('Application submitted! Our team will reach out shortly.');
       setStep('success');
       setSubmitted(true);
     } catch (error) {

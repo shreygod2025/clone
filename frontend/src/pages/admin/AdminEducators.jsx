@@ -776,10 +776,12 @@ const AdminEducators = () => {
     // For applicants tab, filter by new and demo_scheduled
     let matchesTab = false;
     if (activeTab === 'applicants') {
+      // Treat empty/null/missing status as 'new' so website applications never get hidden
+      const effectiveStatus = edu.status || 'new';
       if (applicantSubFilter === 'all') {
-        matchesTab = ['new', 'demo_scheduled', 'hr_done', 'tech_scheduled'].includes(edu.status);
+        matchesTab = ['new', 'demo_scheduled', 'hr_done', 'tech_scheduled'].includes(effectiveStatus);
       } else {
-        matchesTab = edu.status === applicantSubFilter;
+        matchesTab = effectiveStatus === applicantSubFilter;
       }
       // Apply requirement filter if set
       if (requirementFilter && matchesTab) {
@@ -811,7 +813,7 @@ const AdminEducators = () => {
 
   const getCount = (status) => {
     if (status === 'applicants') {
-      return educators.filter(e => ['new', 'demo_scheduled', 'hr_done', 'tech_scheduled'].includes(e.status)).length;
+      return educators.filter(e => ['new', 'demo_scheduled', 'hr_done', 'tech_scheduled'].includes(e.status || 'new')).length;
     }
     if (status === 'requirements') {
       return requirements.length;

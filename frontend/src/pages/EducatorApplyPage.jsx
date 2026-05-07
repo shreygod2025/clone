@@ -132,11 +132,13 @@ export default function EducatorApplyPage() {
       });
       const newAppId = submitRes.data?.id;
       setApplicationId(newAppId || '');
-      if (newAppId) {
-        toast.success('Application submitted! Starting your AI interview…');
-        navigate(`/educator/interview/${newAppId}`);
-        return;
-      }
+      // ── AI Interview disabled (commented out per request) ──
+      // if (newAppId) {
+      //   toast.success('Application submitted! Starting your AI interview…');
+      //   navigate(`/educator/interview/${newAppId}`);
+      //   return;
+      // }
+      toast.success('Application submitted! Our team will reach out shortly.');
       setStep('success');
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Submission failed. Please try again.');
@@ -192,7 +194,8 @@ export default function EducatorApplyPage() {
               </p>
             </div>
           )}
-          {applicationId && (
+          {/* ── AI Interview CTA disabled (commented out per request) ── */}
+          {/* {applicationId && (
             <div className="mt-6 bg-gradient-to-r from-[#D63031] to-orange-500 rounded-2xl p-5 text-left text-white">
               <p className="text-xs uppercase tracking-wide opacity-90 font-bold">Final Step</p>
               <h3 className="font-bold text-lg mt-1">Take your AI Interview now</h3>
@@ -205,7 +208,7 @@ export default function EducatorApplyPage() {
                 Start AI Interview →
               </Button>
             </div>
-          )}
+          )} */}
           <p className="text-sm text-slate-400 mt-6">Our team will get in touch with you shortly.</p>
           <Link to="/educator" className="mt-2 inline-block text-[#C53030] hover:underline text-sm">
             View all openings →
