@@ -34,6 +34,7 @@ STATIC_URLS: List[dict] = [
     {"loc": "/for-schools",     "priority": "0.85", "changefreq": "weekly"},
     # Tier 3: Hero products
     {"loc": "/summer-camp",         "priority": "0.95", "changefreq": "daily"},
+    {"loc": "/future-skills",       "priority": "0.97", "changefreq": "weekly"},
     {"loc": "/ai-foundations",      "priority": "0.95", "changefreq": "weekly"},
     {"loc": "/social-media-intern", "priority": "0.8",  "changefreq": "weekly"},
     {"loc": "/growth-partner",      "priority": "0.7",  "changefreq": "monthly"},
@@ -161,6 +162,8 @@ Disallow: /summer-camp/success
 Disallow: /summer-camp/book
 Disallow: /ai-foundations/book
 Disallow: /ai-foundations/success
+Disallow: /future-skills/book
+Disallow: /future-skills/success
 Disallow: /sm-intern/apply
 Disallow: /sm-intern/success
 Disallow: /reports/

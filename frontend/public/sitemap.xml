@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
-        xmlns:image="http://www.google.com/schemas/sitemap-image/0.9"
-        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
   <!-- ════════════════════════════════════════════════════════════════════
        OLL Sitemap — last updated 2026-04-29
@@ -87,10 +85,12 @@
     <lastmod>2026-04-29</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.95</priority>
-    <image:image>
-      <image:loc>https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/x3ipatnb_Summer%20Camp%20Poster%202026%20%20%28A3%29.png</image:loc>
-      <image:title>OLL Summer Camp 2026 — Robotics, AI &amp; Coding for Kids</image:title>
-    </image:image>
+  </url>
+  <url>
+    <loc>https://oll.co/future-skills</loc>
+    <lastmod>2026-05-07</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.97</priority>
   </url>
   <url>
     <loc>https://oll.co/ai-foundations</loc>

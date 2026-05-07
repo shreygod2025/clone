@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
+import useSeo from '../hooks/useSeo';
 import {
   Sparkles, ArrowRight, Check, Clock, Users, Zap, Award,
   Bot, Cpu, Code2, Box, Wand2, ChevronDown, Star, Quote,
@@ -243,15 +243,70 @@ const FutureSkillsLandingPage = () => {
   const goTrial = () => navigate('/future-skills/book?mode=trial');
   const goSubscribe = (plan) => navigate(`/future-skills/book?mode=subscribe&plan=${plan}`);
 
+  // ── SEO (React-19-safe imperative hook; replaces broken Helmet meta injection) ──
+  useSeo({
+    title: 'Future Skills Continuous Learning Program (Grades 1-10) | Robotics, Coding, AI, 3D Design | OLL',
+    description: "OLL's flagship Future Skills program — weekly offline classes in Robotics, Coding, AI, 3D Design & Emerging Tech for Grades 1-10. Small batches of 10. Free robotic kit with yearly. Book a free trial from ₹1,750/month.",
+    keywords: 'robotics for kids, coding classes for children, AI for kids India, 3D design classes, STEM education India, after school robotics, weekend coding classes, OLL future skills, kids tech classes Mumbai, Bengaluru, Pune',
+    canonical: 'https://oll.co/future-skills',
+    robots: 'index, follow, max-image-preview:large',
+    og: {
+      type: 'website',
+      url: 'https://oll.co/future-skills',
+      title: 'Future Skills Program · Robotics, Coding, AI & 3D for Kids (Grades 1-10) | OLL',
+      description: 'Weekly offline classes · Small batches of 10 · Free robotic kit · Year-end Tech Showcase · From ₹1,750/month. Book a free trial today.',
+      image: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/h11kmu1i_20260504_122503.jpg',
+      siteName: 'OLL',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: 'Future Skills Program · Robotics, Coding, AI & 3D for Kids | OLL',
+      description: 'Weekly offline classes · Grades 1-10 · From ₹1,750/month · Free robotic kit. Book a free trial.',
+      image: 'https://customer-assets.emergentagent.com/job_fb8cd4bf-3b7a-429f-a2a5-3e03f993cb50/artifacts/h11kmu1i_20260504_122503.jpg',
+    },
+    jsonLd: [
+      {
+        '@context': 'https://schema.org',
+        '@type': 'Course',
+        name: 'Future Skills Continuous Learning Program',
+        description: 'Year-round weekly offline classes in Robotics, Coding, AI, 3D Design & Emerging Tech for Grades 1-10.',
+        provider: { '@type': 'Organization', name: 'OLL', url: 'https://oll.co', logo: 'https://oll.co/logo.png' },
+        courseCode: 'OLL-FS-G1-10',
+        educationalLevel: 'Grades 1-10',
+        inLanguage: 'en',
+        audience: { '@type': 'EducationalAudience', educationalRole: 'student', audienceType: 'Children · Grades 1-10' },
+        offers: [
+          { '@type': 'Offer', name: 'Monthly Plan', price: '2000', priceCurrency: 'INR', availability: 'https://schema.org/InStock', url: 'https://oll.co/future-skills/book?mode=subscribe&plan=monthly' },
+          { '@type': 'Offer', name: 'Yearly Plan (Save ₹3,000 + Free Kit)', price: '21000', priceCurrency: 'INR', availability: 'https://schema.org/InStock', url: 'https://oll.co/future-skills/book?mode=subscribe&plan=yearly' },
+        ],
+        hasCourseInstance: {
+          '@type': 'CourseInstance',
+          courseMode: 'In-Person',
+          location: { '@type': 'Place', name: 'OLL Centres · Mumbai · Pune · Bengaluru · Hyderabad · Delhi NCR' },
+          courseSchedule: { '@type': 'Schedule', repeatFrequency: 'P1W', duration: 'PT90M' },
+          instructor: { '@type': 'Person', name: 'OLL Educators · 2 trainers per batch · 1:5 ratio' },
+        },
+        aggregateRating: { '@type': 'AggregateRating', ratingValue: '4.75', reviewCount: '500', bestRating: '5', worstRating: '1' },
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: FAQ.map(f => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } })),
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'OLL', item: 'https://oll.co/' },
+          { '@type': 'ListItem', position: 2, name: 'Offerings', item: 'https://oll.co/offerings' },
+          { '@type': 'ListItem', position: 3, name: 'Future Skills Program', item: 'https://oll.co/future-skills' },
+        ],
+      },
+    ],
+  });
+
   return (
     <div className="min-h-screen bg-white text-[#0F1E33] fs-stack" data-testid="future-skills-landing">
-      <Helmet>
-        <title>Future Skills Continuous Learning Program (Grades 1-10) | OLL</title>
-        <meta name="description" content="Weekly offline classes in Robotics, Coding, AI, 3D Design & Emerging Tech for Grades 1-10. Small batches, hands-on kits. Book a free trial — pay just ₹1,750/month." />
-        <meta property="og:title" content="Future Skills Continuous Learning Program | OLL" />
-        <meta property="og:description" content="Robotics, Coding, AI, 3D Design — weekly offline classes for Grades 1-10. From ₹1,750/month, kit included." />
-        <link rel="canonical" href="https://oll.co/future-skills" />
-      </Helmet>
 
       <Navbar showBookDemo onBookDemo={goTrial} bookDemoLabel="Book Now" />
 

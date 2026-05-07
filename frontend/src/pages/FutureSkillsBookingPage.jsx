@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
+import useSeo from '../hooks/useSeo';
 import axios from 'axios';
 import { ArrowLeft, ArrowRight, Loader2, Shield, Check, Gift, Sparkles, Calendar } from 'lucide-react';
 import { toast } from 'sonner';
@@ -116,9 +116,14 @@ const FutureSkillsBookingPage = () => {
   const PRICE = { monthly: 2000, yearly: 21000 };
   const PRICE_DISPLAY = { monthly: '₹2,000/mo', yearly: '₹1,750/mo · ₹21,000/yr' };
 
+  useSeo({
+    title: `${mode === 'trial' ? 'Book Free Trial' : 'Subscribe'} · Future Skills | OLL`,
+    robots: 'noindex, follow',
+    canonical: 'https://oll.co/future-skills',
+  });
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50/40 to-white" data-testid="future-skills-booking">
-      <Helmet><title>{mode === 'trial' ? 'Book Free Trial' : 'Subscribe'} · Future Skills | OLL</title></Helmet>
       <Navbar showBookDemo onBookDemo={() => navigate('/future-skills/book?mode=trial')} bookDemoLabel="Book Now" />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-16">

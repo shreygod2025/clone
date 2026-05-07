@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
-import { Helmet } from 'react-helmet-async';
+import useSeo from '../hooks/useSeo';
 import axios from 'axios';
 import { CheckCircle2, Loader2, Sparkles, Calendar, Home, AlertCircle, Gift } from 'lucide-react';
 import Navbar from '../components/Navbar';
@@ -42,9 +42,14 @@ const FutureSkillsSuccessPage = () => {
 
   const isTrial = type === 'trial';
 
+  useSeo({
+    title: `${isTrial ? 'Trial Booked' : 'Subscription Active'} · Future Skills | OLL`,
+    robots: 'noindex, follow',
+    canonical: 'https://oll.co/future-skills',
+  });
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50/40 to-white" data-testid="future-skills-success">
-      <Helmet><title>{isTrial ? 'Trial Booked' : 'Subscription Active'} · Future Skills | OLL</title></Helmet>
       <Navbar showBookDemo onBookDemo={() => navigate('/future-skills/book?mode=trial')} bookDemoLabel="Book Now" />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
         <div className="bg-white border-2 border-slate-100 rounded-3xl p-8 lg:p-12 shadow-2xl shadow-blue-100/50 text-center">
