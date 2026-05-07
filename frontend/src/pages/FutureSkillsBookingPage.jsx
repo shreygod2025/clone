@@ -119,7 +119,7 @@ const FutureSkillsBookingPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50/40 to-white" data-testid="future-skills-booking">
       <Helmet><title>{mode === 'trial' ? 'Book Free Trial' : 'Subscribe'} · Future Skills | OLL</title></Helmet>
-      <Navbar />
+      <Navbar showBookDemo onBookDemo={() => navigate('/future-skills/book?mode=trial')} bookDemoLabel="Book Now" />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-16">
         <Link to="/future-skills" className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-[#D63031] mb-5 transition-colors">

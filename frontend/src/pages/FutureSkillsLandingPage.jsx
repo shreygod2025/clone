@@ -253,7 +253,7 @@ const FutureSkillsLandingPage = () => {
         <link rel="canonical" href="https://oll.co/future-skills" />
       </Helmet>
 
-      <Navbar />
+      <Navbar showBookDemo onBookDemo={goTrial} bookDemoLabel="Book Now" />
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section className="fs-reveal relative pt-8 pb-12 sm:pt-12 sm:pb-16 md:pt-20 md:pb-20 overflow-hidden">

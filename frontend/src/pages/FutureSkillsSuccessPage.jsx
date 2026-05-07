@@ -45,7 +45,7 @@ const FutureSkillsSuccessPage = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50/40 to-white" data-testid="future-skills-success">
       <Helmet><title>{isTrial ? 'Trial Booked' : 'Subscription Active'} · Future Skills | OLL</title></Helmet>
-      <Navbar />
+      <Navbar showBookDemo onBookDemo={() => navigate('/future-skills/book?mode=trial')} bookDemoLabel="Book Now" />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
         <div className="bg-white border-2 border-slate-100 rounded-3xl p-8 lg:p-12 shadow-2xl shadow-blue-100/50 text-center">
           {status === 'verifying' && (

@@ -23,7 +23,6 @@ const AdminLayout = ({ children, title }) => {
     { path: '/admin', icon: LayoutDashboard, label: 'Dashboard', permission: null }, // Always visible
     { path: '/admin/ai-chat', icon: MessageSquare, label: 'AI Chat', permission: null }, // Always visible
     { path: '/admin/students', icon: GraduationCap, label: 'Student CRM', permission: 'students' },
-    { path: '/admin/ai-foundations', icon: Sparkles, label: 'AI Foundations', permission: 'students' },
     { path: '/admin/future-skills', icon: Bot, label: 'Future Skills', permission: 'students' },
     { path: '/admin/schools', icon: Building2, label: 'School CRM', permission: 'schools' },
     { path: '/admin/orders', icon: Receipt, label: 'Orders', permission: 'orders' },

@@ -4,7 +4,7 @@ import { Menu, X, User, LogIn, GraduationCap, Users, Handshake } from 'lucide-re
 import { Button } from './ui/button';
 import { useUserAuth } from '../context/UserAuthContext';
 
-const Navbar = ({ showBookDemo = false, onBookDemo, variant = 'default' }) => {
+const Navbar = ({ showBookDemo = false, onBookDemo, bookDemoLabel = 'Book Free Demo', variant = 'default' }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -199,7 +199,7 @@ const Navbar = ({ showBookDemo = false, onBookDemo, variant = 'default' }) => {
                     className="bg-[#D63031] hover:bg-[#b52828] text-white ml-2"
                     data-testid="nav-book-demo-btn"
                   >
-                    Book Free Demo
+                    {bookDemoLabel}
                   </Button>
                 )}
               </>
@@ -260,7 +260,7 @@ const Navbar = ({ showBookDemo = false, onBookDemo, variant = 'default' }) => {
                     className="bg-[#D63031] hover:bg-[#b52828] text-white text-sm px-3 py-1 h-8"
                     data-testid="mobile-book-demo-btn"
                   >
-                    Book Demo
+                    {bookDemoLabel === 'Book Now' ? 'Book Now' : 'Book Demo'}
                   </Button>
                 )}
               </>

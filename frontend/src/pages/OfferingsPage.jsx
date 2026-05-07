@@ -699,49 +699,48 @@ const OfferingsPage = () => {
                   position: 'relative',
                   background: 'linear-gradient(135deg, #FFFFFF 0%, #F0F7FF 50%, #FFFFFF 100%)',
                   border: '2px solid rgba(30,58,95,0.25)',
-                  borderRadius: '1.5rem',
-                  padding: '1.75rem',
+                  borderRadius: '1.25rem',
+                  padding: '1.25rem',
                   cursor: 'pointer',
                   overflow: 'hidden',
                   transition: 'all 0.4s',
-                  boxShadow: '0 8px 40px rgba(15,30,51,0.08)',
-                  marginTop: '1.25rem',
+                  boxShadow: '0 8px 30px rgba(15,30,51,0.08)',
+                  marginTop: '1rem',
                 }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = '#1E3A5F'; e.currentTarget.style.boxShadow = '0 0 60px rgba(30,58,95,0.18), 0 8px 40px rgba(15,30,51,0.08)'; e.currentTarget.style.transform = 'translateY(-4px)'; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(30,58,95,0.25)'; e.currentTarget.style.boxShadow = '0 8px 40px rgba(15,30,51,0.08)'; e.currentTarget.style.transform = 'translateY(0)'; }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = '#1E3A5F'; e.currentTarget.style.boxShadow = '0 0 50px rgba(30,58,95,0.18), 0 8px 30px rgba(15,30,51,0.08)'; e.currentTarget.style.transform = 'translateY(-3px)'; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(30,58,95,0.25)'; e.currentTarget.style.boxShadow = '0 8px 30px rgba(15,30,51,0.08)'; e.currentTarget.style.transform = 'translateY(0)'; }}
               >
-                <div style={{ position: 'absolute', inset: 0, opacity: 0.05, pointerEvents: 'none',
+                <div style={{ position: 'absolute', inset: 0, opacity: 0.04, pointerEvents: 'none',
                   backgroundImage: 'linear-gradient(#1E3A5F 1px, transparent 1px), linear-gradient(90deg, #1E3A5F 1px, transparent 1px)',
-                  backgroundSize: '60px 60px' }} />
-                <div style={{ position: 'absolute', top: '-40px', right: '-40px', width: 240, height: 240, borderRadius: '50%', background: 'radial-gradient(circle, rgba(214,48,49,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
-                <div style={{ position: 'absolute', bottom: '-30px', left: '-30px', width: 180, height: 180, borderRadius: '50%', background: 'radial-gradient(circle, rgba(30,58,95,0.15) 0%, transparent 70%)', pointerEvents: 'none' }} />
+                  backgroundSize: '50px 50px' }} />
+                <div style={{ position: 'absolute', top: '-30px', right: '-30px', width: 180, height: 180, borderRadius: '50%', background: 'radial-gradient(circle, rgba(214,48,49,0.15) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
-                <div className="relative grid md:grid-cols-[1.6fr_1fr] gap-5 items-center">
+                <div className="relative grid md:grid-cols-[1.7fr_1fr] gap-4 items-center">
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '0.85rem', flexWrap: 'wrap' }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: '999px', background: 'rgba(214,48,49,0.1)', border: '1px solid #D63031', color: '#D63031', fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em' }}>
-                        <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#D63031', display: 'inline-block' }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: '0.6rem', flexWrap: 'wrap' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: '999px', background: 'rgba(214,48,49,0.1)', border: '1px solid #D63031', color: '#D63031', fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em' }}>
+                        <span style={{ width: 4, height: 4, borderRadius: '50%', background: '#D63031', display: 'inline-block' }} />
                         Flagship · Offline
                       </span>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: '999px', background: 'rgba(30,58,95,0.1)', border: '1px solid rgba(30,58,95,0.35)', color: '#1E3A5F', fontSize: '0.62rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.15em' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: '999px', background: 'rgba(30,58,95,0.08)', border: '1px solid rgba(30,58,95,0.3)', color: '#1E3A5F', fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em' }}>
                         Grades 1–10
                       </span>
                     </div>
-                    <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 'clamp(1.1rem, 2.6vw, 1.6rem)', fontWeight: 900, color: '#0F1E33', lineHeight: 1.2, marginBottom: '0.5rem' }}>
-                      Future Skills<br />
+                    <h3 style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 'clamp(1rem, 2.2vw, 1.35rem)', fontWeight: 900, color: '#0F1E33', lineHeight: 1.2, marginBottom: '0.4rem' }}>
+                      Future Skills{' '}
                       <span style={{ background: 'linear-gradient(90deg, #D63031, #7B2C5C, #1E3A5F)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Continuous Program</span>
                     </h3>
-                    <p style={{ color: '#475569', fontSize: '0.85rem', lineHeight: 1.55, marginBottom: '0.85rem', fontFamily: 'Nunito Sans, sans-serif', maxWidth: 380 }}>
-                      Robotics, Coding, AI, 3D Design & Emerging Tech — once a week, year-round, at your nearest centre. Three age-mapped tiers. Free robotic kit with yearly plan.
+                    <p style={{ color: '#475569', fontSize: '0.8rem', lineHeight: 1.5, marginBottom: '0.7rem', fontFamily: 'Nunito Sans, sans-serif' }}>
+                      Robotics · Coding · AI · 3D Design · Emerging Tech — once a week, year-round, at your nearest centre.
                     </p>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem', marginBottom: '1rem' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.85rem' }}>
                       {[
                         { icon: '🤖', text: 'Robotics' },
                         { icon: '💻', text: 'Coding' },
                         { icon: '🧠', text: 'AI' },
                         { icon: '🖨️', text: '3D Design' },
                       ].map(f => (
-                        <span key={f.text} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '4px 10px', borderRadius: '999px', background: 'rgba(30,58,95,0.06)', color: '#1E3A5F', border: '1px solid rgba(30,58,95,0.15)', fontSize: '0.72rem', fontFamily: 'Nunito Sans, sans-serif', fontWeight: 600 }}>
+                        <span key={f.text} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, padding: '2px 8px', borderRadius: '999px', background: 'rgba(30,58,95,0.06)', color: '#1E3A5F', border: '1px solid rgba(30,58,95,0.15)', fontSize: '0.65rem', fontFamily: 'Nunito Sans, sans-serif', fontWeight: 600 }}>
                           {f.icon} {f.text}
                         </span>
                       ))}
@@ -750,48 +749,49 @@ const OfferingsPage = () => {
                       data-testid="future-skills-cta-btn"
                       onClick={(e) => { e.stopPropagation(); navigate('/future-skills/book?mode=trial'); }}
                       style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 8,
-                        padding: '0.65rem 1.5rem', borderRadius: '999px',
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        padding: '0.5rem 1.1rem', borderRadius: '999px',
                         background: 'linear-gradient(90deg, #D63031, #1E3A5F)', color: '#fff',
-                        fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: '0.78rem',
+                        fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: '0.7rem',
                         border: 'none', cursor: 'pointer',
-                        boxShadow: '0 8px 22px rgba(30,58,95,0.3)',
-                        letterSpacing: '0.05em',
-                        transition: 'all 0.3s',
+                        boxShadow: '0 6px 18px rgba(30,58,95,0.3)',
+                        letterSpacing: '0.04em', transition: 'all 0.3s',
                       }}
-                      onMouseEnter={e => { e.currentTarget.style.background = 'linear-gradient(90deg, #B52828, #0F1E33)'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(30,58,95,0.4)'; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(90deg, #D63031, #1E3A5F)'; e.currentTarget.style.boxShadow = '0 8px 22px rgba(30,58,95,0.3)'; }}
+                      onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 10px 26px rgba(30,58,95,0.4)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 6px 18px rgba(30,58,95,0.3)'; }}
                     >
                       Book Free Trial
-                      <ArrowRight className="w-3.5 h-3.5" />
+                      <ArrowRight className="w-3 h-3" />
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  {/* Right column — single compact info column instead of grid */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {[
-                      { ages: 'Gr 1–4',  label: 'Junior',  sub: 'Story-led builds',  color: '#D63031', icon: '🧒' },
-                      { ages: 'Gr 5–7',  label: 'Middle',  sub: 'Sensor + Python',   color: '#7B2C5C', icon: '🚀' },
-                      { ages: 'Gr 8–10', label: 'Senior',  sub: 'IoT + ML basics',   color: '#1E3A5F', icon: '🎯' },
+                      { ages: 'Gr 1–4',  label: 'Junior',  sub: 'Story-led builds', color: '#D63031', icon: '🧒' },
+                      { ages: 'Gr 5–7',  label: 'Middle',  sub: 'Sensor + Python',  color: '#7B2C5C', icon: '🚀' },
+                      { ages: 'Gr 8–10', label: 'Senior',  sub: 'IoT + ML basics',  color: '#1E3A5F', icon: '🎯' },
                     ].map(g => (
-                      <div
-                        key={g.ages}
+                      <div key={g.ages}
                         style={{
                           background: 'rgba(30,58,95,0.04)',
-                          border: `2px solid ${g.color}33`,
-                          borderRadius: '0.75rem',
-                          padding: '0.65rem 0.4rem',
-                          textAlign: 'center',
-                        }}
-                      >
-                        <div style={{ fontSize: '1.2rem', marginBottom: '0.2rem' }}>{g.icon}</div>
-                        <div style={{ fontFamily: 'Unbounded, sans-serif', fontWeight: 900, fontSize: '0.65rem', color: g.color, marginBottom: '0.05rem' }}>{g.ages}</div>
-                        <div style={{ fontSize: '0.65rem', color: '#0F1E33', fontFamily: 'Outfit, sans-serif', fontWeight: 700 }}>{g.label}</div>
-                        <div style={{ fontSize: '0.55rem', color: '#64748B', fontFamily: 'Outfit, sans-serif' }}>{g.sub}</div>
+                          border: `1px solid ${g.color}33`,
+                          borderRadius: '0.55rem',
+                          padding: '0.45rem 0.65rem',
+                          display: 'flex', alignItems: 'center', gap: '0.6rem',
+                        }}>
+                        <span style={{ fontSize: '1.1rem', flexShrink: 0 }}>{g.icon}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ fontFamily: 'Unbounded, sans-serif', fontWeight: 900, fontSize: '0.6rem', color: g.color }}>{g.ages}</span>
+                            <span style={{ fontSize: '0.65rem', color: '#0F1E33', fontFamily: 'Outfit, sans-serif', fontWeight: 700 }}>{g.label}</span>
+                          </div>
+                          <div style={{ fontSize: '0.6rem', color: '#64748B', fontFamily: 'Outfit, sans-serif', marginTop: '0.05rem' }}>{g.sub}</div>
+                        </div>
                       </div>
                     ))}
-                    <div style={{ gridColumn: '1 / -1', background: 'linear-gradient(90deg, rgba(214,48,49,0.1), rgba(30,58,95,0.1))', border: '1px solid rgba(30,58,95,0.25)', borderRadius: '0.5rem', padding: '0.5rem', textAlign: 'center' }}>
-                      <div style={{ fontFamily: 'Unbounded, sans-serif', fontWeight: 700, fontSize: '0.75rem', color: '#D63031' }}>From ₹1,750/month · Kit Included</div>
-                      <div style={{ fontSize: '0.6rem', color: '#475569', fontFamily: 'Outfit, sans-serif' }}>Cancel anytime · Make-up class free / month</div>
+                    <div style={{ background: 'linear-gradient(90deg, rgba(214,48,49,0.1), rgba(30,58,95,0.1))', border: '1px solid rgba(30,58,95,0.25)', borderRadius: '0.5rem', padding: '0.45rem', textAlign: 'center' }}>
+                      <div style={{ fontFamily: 'Unbounded, sans-serif', fontWeight: 700, fontSize: '0.7rem', color: '#D63031' }}>From ₹1,750/mo · Kit Free</div>
                     </div>
                   </div>
                 </div>
