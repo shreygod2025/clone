@@ -463,7 +463,8 @@ const AdminStudentCRM = () => {
               if (b.crm_status !== 'converted' && b.crm_status !== 'payment_offline' && b.crm_status !== 'seat_reserved') return false;
             } else if (b.crm_status !== campFilters.status) return false;
           }
-          if (campFilters.center && b.center_label !== campFilters.center) return false;
+          if (campFilters.batch && b.batch_week !== campFilters.batch) return false;
+          if (campFilters.center && b.center_label !== campFilters.center && b.center !== campFilters.center) return false;
           if (campFilters.source) {
             const src = b.source_name || 'Direct';
             if (src !== campFilters.source) return false;
@@ -1547,7 +1548,8 @@ const AdminStudentCRM = () => {
                         if (b.crm_status !== 'converted' && b.crm_status !== 'payment_offline' && b.crm_status !== 'seat_reserved') return false;
                       } else if (b.crm_status !== campFilters.status) return false;
                     }
-                    if (campFilters.center && b.center_label !== campFilters.center) return false;
+                    if (campFilters.batch && b.batch_week !== campFilters.batch) return false;
+                    if (campFilters.center && b.center_label !== campFilters.center && b.center !== campFilters.center) return false;
                     if (campFilters.source) {
                       const src = b.source_name || 'Direct';
                       if (src !== campFilters.source) return false;
