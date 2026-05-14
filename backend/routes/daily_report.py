@@ -248,6 +248,8 @@ async def fetch_support_data(start, end):
 
 async def fetch_b2c_data(start, end):
     query = {"created_at": {"$gte": start, "$lt": end}}
+
+    # ── Core student inquiries (1:1 demos) ──
     today = await db.student_inquiries.find(query, {"_id": 0}).to_list(2000)
     converted = [l for l in today if l.get("status") == "converted"]
     demos = [l for l in today if l.get("status") in ("demo_completed", "converted")]
@@ -255,6 +257,37 @@ async def fetch_b2c_data(start, end):
         float(str(l.get("conversion_amount", 0)).replace(",", "") or 0)
         for l in converted
     )
+
+    # ── Summer Camp bookings ──
+    camp_today = await db.summer_camp_bookings.find(query, {"_id": 0}).to_list(2000)
+    camp_converted = [c for c in camp_today if c.get("crm_status") in ("converted", "payment_offline")]
+    camp_revenue = sum(
+        float(str(c.get("amount") or 0).replace(",", "") or 0)
+        for c in camp_today
+        if c.get("crm_status") in ("converted", "payment_offline") or (c.get("payment_status") or "").lower() == "paid"
+    )
+
+    # ── Summer Internship (Social Media Intern) registrations ──
+    smi_today = await db.social_media_intern_registrations.find(query, {"_id": 0}).to_list(2000)
+    smi_converted = [s for s in smi_today if (s.get("crm_status") or "").lower() == "converted" or (s.get("payment_status") or "").lower() == "paid"]
+
+    # ── AI Foundations bookings ──
+    aif_today = await db.ai_foundations_bookings.find(query, {"_id": 0}).to_list(2000)
+    aif_converted = [a for a in aif_today if (a.get("crm_status") or "").lower() == "converted" or (a.get("payment_status") or "").lower() == "paid"]
+    aif_revenue = sum(
+        float(str(a.get("amount") or 0).replace(",", "") or 0)
+        for a in aif_converted
+    )
+
+    # ── Future Skills subscriptions ──
+    fs_today = await db.future_skills_subscriptions.find(query, {"_id": 0}).to_list(2000)
+    fs_converted = [f for f in fs_today if (f.get("payment_status") or "").upper() == "PAID" or (f.get("crm_status") or "").lower() in ("converted", "active")]
+    fs_revenue = sum(
+        float(str(f.get("amount") or 0).replace(",", "") or 0)
+        for f in fs_converted
+    )
+    fs_trials_today = await db.future_skills_trials.count_documents(query)
+
     return dict(
         new_leads=len(today),
         courses=count_by(today, "skill"),
@@ -267,6 +300,23 @@ async def fetch_b2c_data(start, end):
         revenue=revenue,
         conversion_ratio=pct(len(converted), len(today)),
         avg_order_value=round(revenue / len(converted), 0) if converted else 0,
+        # New product lines
+        camp_leads=len(camp_today),
+        camp_converted=len(camp_converted),
+        camp_revenue=camp_revenue,
+        camp_batches=count_by(camp_today, "batch_week"),
+        camp_centers=count_by(camp_today, "center_label"),
+        smi_leads=len(smi_today),
+        smi_converted=len(smi_converted),
+        aif_leads=len(aif_today),
+        aif_converted=len(aif_converted),
+        aif_revenue=aif_revenue,
+        aif_tracks=count_by(aif_today, "track_label"),
+        fs_subs=len(fs_today),
+        fs_converted=len(fs_converted),
+        fs_revenue=fs_revenue,
+        fs_plans=count_by(fs_today, "plan_label"),
+        fs_trials=fs_trials_today,
     )
 
 
@@ -353,9 +403,40 @@ def build_support_email(d, date_str):
 def build_b2c_email(d, date_str):
     rev = f"₹{int(d['revenue']):,}" if d['revenue'] else "₹0"
     aov = f"₹{int(d['avg_order_value']):,}" if d['avg_order_value'] else "₹0"
+    camp_rev = f"₹{int(d['camp_revenue']):,}" if d['camp_revenue'] else "₹0"
+    aif_rev = f"₹{int(d['aif_revenue']):,}" if d['aif_revenue'] else "₹0"
+    fs_rev = f"₹{int(d['fs_revenue']):,}" if d['fs_revenue'] else "₹0"
+
+    # Product sub-section helper
+    def _product_row(label, color, leads, converted, revenue=None, extra=None):
+        rev_html = f'<div style="font-size:13px;color:#475569;margin-top:2px">Revenue: <strong>{revenue}</strong></div>' if revenue is not None else ''
+        extra_html = f'<div style="font-size:12px;color:#64748b;margin-top:2px">{extra}</div>' if extra else ''
+        return f"""
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid {color};border-radius:8px;padding:12px 14px;margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:12px">
+            <div style="font-weight:700;color:#1e293b;font-size:14px">{label}</div>
+            <div style="font-size:13px;color:#475569">
+              <strong style="color:#1e293b">{leads}</strong> leads ·
+              <strong style="color:#16a34a">{converted}</strong> converted
+            </div>
+          </div>
+          {rev_html}
+          {extra_html}
+        </div>"""
+
+    products_html = (
+        _product_row("☀️ Summer Camp", "#f59e0b", d['camp_leads'], d['camp_converted'], camp_rev,
+                     f"Batches: {', '.join(f'{k}={v}' for k,v in d['camp_batches'].items()) or '—'}") +
+        _product_row("💼 Summer Internship (Social Media)", "#8b5cf6", d['smi_leads'], d['smi_converted']) +
+        _product_row("✨ AI Foundations", "#0ea5e9", d['aif_leads'], d['aif_converted'], aif_rev,
+                     f"Tracks: {', '.join(f'{k}={v}' for k,v in d['aif_tracks'].items()) or '—'}") +
+        _product_row("🤖 Future Skills (Subscriptions)", "#dc2626", d['fs_subs'], d['fs_converted'], fs_rev,
+                     f"Plans: {', '.join(f'{k}={v}' for k,v in d['fs_plans'].items()) or '—'} · Trials today: {d['fs_trials']}")
+    )
+
     body = f"""
     <div class="kpi-grid">
-      {kpi(d['new_leads'], "New Leads")}
+      {kpi(d['new_leads'], "New Leads", "1:1 Demos")}
       {kpi(d['demos_completed'], "Demos Completed")}
       {kpi(d['demo_ratio'], "Lead → Demo Rate")}
       {kpi(d['conversions'], "Conversions")}
@@ -363,6 +444,9 @@ def build_b2c_email(d, date_str):
       {kpi(rev, "Revenue")}
       {kpi(aov, "Avg Order Value")}
     </div>
+    <hr class="divider">
+    <div class="section-title">Product Lines (Today)</div>
+    {products_html}
     <hr class="divider">
     {breakdown_table(d['courses'], "Course Division")}
     {breakdown_table(d['age_groups'], "Age Group Division")}
@@ -446,13 +530,71 @@ def build_educator_email(d, date_str):
 
 
 # ─────────────────────────────────────────────
+# Consolidated Email Builder — One email with all sections
+# ─────────────────────────────────────────────
+
+def _strip_email_chrome(html: str) -> str:
+    """Extract just the inner section body from a category email (drop header/footer)."""
+    # Use the raw body HTML — easier to just rebuild by calling each section builder's body directly
+    return html
+
+
+def _section_header(color, icon, title):
+    return f"""
+    <div style="margin: 8px 0 14px; padding: 14px 18px; border-radius: 10px; background: linear-gradient(135deg,{color} 0%,{color}cc 100%); color:#fff">
+      <div style="font-size:18px;font-weight:700">{icon} {title}</div>
+    </div>"""
+
+
+def build_consolidated_email(support_d, b2c_d, gp_d, team_d, educator_d, accounts_d, b2b_d, date_str):
+    """Single unified daily report email containing all 7 sections."""
+    sections = [
+        (COLORS["b2c"],      "📈", "B2C Report",                build_b2c_email(b2c_d, date_str)),
+        (COLORS["b2b"],      "🏫", "B2B CRM Report",            build_b2b_email(b2b_d, date_str)),
+        (COLORS["accounts"], "💰", "Accounts — Receivables",    build_accounts_email(accounts_d, date_str)),
+        (COLORS["support"],  "🎧", "Support Report",            build_support_email(support_d, date_str)),
+        (COLORS["educator"], "🎓", "Educators Report",          build_educator_email(educator_d, date_str)),
+        (COLORS["team"],     "👥", "Team Members Report",       build_team_email(team_d, date_str)),
+        (COLORS["gp"],       "🤝", "Growth Partners Report",    build_gp_email(gp_d, date_str)),
+    ]
+
+    # Extract body of each section email (between <div class="body"> ... </div>)
+    import re
+    pattern = re.compile(r'<div class="body">(.*?)</div>\s*<div class="footer">', re.DOTALL)
+
+    section_html = ""
+    for color, icon, title, full_html in sections:
+        m = pattern.search(full_html)
+        inner = m.group(1) if m else full_html
+        section_html += _section_header(color, icon, title) + f'<div style="padding:0 6px 28px">{inner}</div>'
+
+    header_color = "#1E3A5F"
+    consolidated_body = section_html + """
+    <p style="margin-top:24px;color:#94a3b8;font-size:12px;text-align:center">
+      Need anything more granular? Reply to this email and we'll add it to the next build.
+    </p>"""
+
+    return f"""<!DOCTYPE html><html><head>{BASE_STYLE}</head><body>
+    <div class="wrap" style="max-width:760px">
+      <div class="header" style="background: linear-gradient(135deg,{header_color} 0%,#2d5a8a 100%)">
+        <h1>📊 OLL Daily Briefing</h1>
+        <p>{date_str} &nbsp;|&nbsp; All Reports Consolidated &nbsp;|&nbsp; OLL Platform</p>
+      </div>
+      <div class="body" style="padding:18px 24px">{consolidated_body}</div>
+      <div class="footer">OLL Platform &mdash; Automated Daily Report &mdash; Do not reply</div>
+    </div>
+    </body></html>"""
+
+
+# ─────────────────────────────────────────────
 # Email Dispatcher
 # ─────────────────────────────────────────────
 
-async def _send(subject: str, html: str, api_key: str):
-    """Send to all report recipients via Resend."""
+async def _send(subject: str, html: str, api_key: str, recipients=None):
+    """Send to all (or specified) report recipients via Resend."""
     resend.api_key = api_key
-    for recipient in REPORT_RECIPIENTS:
+    targets = recipients if recipients is not None else REPORT_RECIPIENTS
+    for recipient in targets:
         try:
             await asyncio.to_thread(resend.Emails.send, {
                 "from": REPORT_FROM,
@@ -466,29 +608,33 @@ async def _send(subject: str, html: str, api_key: str):
         await asyncio.sleep(0.3)  # Avoid Resend rate limit (5 req/s)
 
 
-async def send_daily_reports():
-    """Main entry — gather all data and fire 7 category emails. Uses a MongoDB lock to prevent duplicate sends in multi-worker environments."""
+async def send_daily_reports(force: bool = False, recipients=None):
+    """Main entry — gather all data and fire ONE consolidated email. Uses a MongoDB lock to prevent duplicate sends in multi-worker environments.
+
+    Args:
+        force: If True, skip the daily lock (used for manual test sends).
+        recipients: Optional list of recipient emails. Defaults to REPORT_RECIPIENTS.
+    """
     logger.info("[DailyReport] Starting daily report generation...")
     api_key = await get_resend_api_key()
     if not api_key:
         logger.warning("[DailyReport] No Resend API key — skipping emails.")
         return
 
-    # ── Distributed daily lock ─────────────────────────────────────
-    # Prevents duplicate sends when multiple uvicorn workers each run APScheduler
-    today_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    lock_result = await db.daily_report_locks.find_one_and_update(
-        {"date": today_key},
-        {"$setOnInsert": {"date": today_key, "locked_at": datetime.now(timezone.utc).isoformat()}},
-        upsert=True,
-        return_document=False  # returns the document BEFORE update (None = was just inserted)
-    )
-    if lock_result is not None:
-        # Document already existed → another worker already sent today
-        logger.info(f"[DailyReport] Lock exists for {today_key} — skipping duplicate send.")
-        return
-    logger.info(f"[DailyReport] Acquired lock for {today_key} — proceeding.")
-    # ───────────────────────────────────────────────────────────────
+    if not force:
+        # ── Distributed daily lock ─────────────────────────────────────
+        today_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        lock_result = await db.daily_report_locks.find_one_and_update(
+            {"date": today_key},
+            {"$setOnInsert": {"date": today_key, "locked_at": datetime.now(timezone.utc).isoformat()}},
+            upsert=True,
+            return_document=False
+        )
+        if lock_result is not None:
+            logger.info(f"[DailyReport] Lock exists for {today_key} — skipping duplicate send.")
+            return
+        logger.info(f"[DailyReport] Acquired lock for {today_key} — proceeding.")
+        # ───────────────────────────────────────────────────────────────
 
     start, end = day_range()
     date_str = fmt_date()
@@ -505,25 +651,18 @@ async def send_daily_reports():
         )
     except Exception as e:
         logger.error(f"[DailyReport] Data fetch error: {e}")
-        # Release lock on failure so it can retry
-        await db.daily_report_locks.delete_one({"date": today_key})
+        if not force:
+            today_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            await db.daily_report_locks.delete_one({"date": today_key})
         return
 
-    emails = [
-        (f"[OLL Report] Support — {date_str}",         build_support_email(support_d, date_str)),
-        (f"[OLL Report] B2C — {date_str}",              build_b2c_email(b2c_d, date_str)),
-        (f"[OLL Report] Growth Partners — {date_str}",  build_gp_email(gp_d, date_str)),
-        (f"[OLL Report] Team Members — {date_str}",     build_team_email(team_d, date_str)),
-        (f"[OLL Report] Educators — {date_str}",        build_educator_email(educator_d, date_str)),
-        (f"[OLL Report] Accounts / Receivables — {date_str}", build_accounts_email(accounts_d, date_str)),
-        (f"[OLL Report] B2B CRM — {date_str}",          build_b2b_email(b2b_d, date_str)),
-    ]
+    consolidated_html = build_consolidated_email(
+        support_d, b2c_d, gp_d, team_d, educator_d, accounts_d, b2b_d, date_str
+    )
+    subject = f"[OLL Daily Briefing] {date_str}"
+    await _send(subject, consolidated_html, api_key, recipients=recipients)
 
-    for subject, html in emails:
-        await _send(subject, html, api_key)
-        await asyncio.sleep(1)  # 1s gap between category batches
-
-    logger.info("[DailyReport] All 7 reports dispatched.")
+    logger.info("[DailyReport] Consolidated daily report dispatched.")
 
 
 # ─────────────────────────────────────────────
@@ -736,9 +875,18 @@ def build_b2b_email(d, date_str):
 # ─────────────────────────────────────────────
 
 @router.post("/admin/daily-report/send-now")
-async def trigger_daily_report(user: dict = Depends(get_current_user)):
-    """Manually trigger today's daily report emails."""
+async def trigger_daily_report(payload: dict = None, user: dict = Depends(get_current_user)):
+    """Manually trigger today's daily report email.
+
+    Body (optional):
+      - recipients: list[str]  — override the default recipient list (e.g., for a sample send)
+      - force: bool            — bypass today's lock so the same day can be re-sent for testing
+    """
     if user.get("role") not in ["admin", "super_admin"]:
         raise HTTPException(status_code=403, detail="Admin only")
-    asyncio.create_task(send_daily_reports())
-    return {"message": "Daily reports queued. Emails will be sent to all recipients shortly."}
+    payload = payload or {}
+    recipients = payload.get("recipients")
+    force = bool(payload.get("force", False))
+    asyncio.create_task(send_daily_reports(force=force, recipients=recipients))
+    targets = recipients if recipients else REPORT_RECIPIENTS
+    return {"message": f"Daily report queued. Emails will be sent to: {', '.join(targets)}"}
