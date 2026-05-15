@@ -6,6 +6,7 @@ import { ArrowLeft, ArrowRight, Loader2, Shield, Check, Gift, Sparkles, Calendar
 import { toast } from 'sonner';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import { openCashfreeCheckout } from '../utils/cashfreeCheckout';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -93,12 +94,16 @@ const FutureSkillsBookingPage = () => {
       if (!subId) throw new Error('Subscription creation failed');
       const pay = await axios.post(`${API}/future-skills/initiate-payment`, {
         subscription_id: subId,
-        frontend_url: process.env.REACT_APP_BACKEND_URL,
+        frontend_url: window.location.origin,
       });
-      const link = pay.data?.payment_link;
-      if (!link) throw new Error('Could not initiate payment');
-      toast.success('Redirecting to secure payment…');
-      window.location.href = link;
+      const sessionId = pay.data?.payment_session_id;
+      if (!sessionId) throw new Error('Could not initiate payment');
+      toast.success('Opening secure payment…');
+      await openCashfreeCheckout({
+        paymentSessionId: sessionId,
+        mode: 'production',
+        redirectTarget: '_self',
+      });
     } catch (e) {
       toast.error(e.response?.data?.detail || e.message || 'Subscription failed');
       setSubmitting(false);

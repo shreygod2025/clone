@@ -82,7 +82,7 @@ const FAQS = [
   { q: 'My child has never used AI tools. Is that fine?', a: 'Absolutely. Day 1 starts at zero — no accounts, no setup, no jargon. By Day 2 they\'re generating their first AI image.' },
   { q: 'Is any coding required?', a: 'None. Track A is fully no-code. Track B introduces "Vibe Coding" (AI-assisted app building) on Day 7 — still no manual programming.' },
   { q: 'What devices do they need?', a: 'A laptop or tablet with a Chrome / Edge browser, plus a stable internet connection. No special software to install.' },
-  { q: 'What\'s the class size?', a: 'Capped at 12 students per cohort so every child gets live feedback from the educator.' },
+  { q: 'What\'s the class size?', a: 'Live online classes capped at 10 students per cohort (small cohort) so every child gets personal feedback from the educator.' },
   { q: 'Refund policy?', a: 'Full refund up to 24 hours before Day 1 begins. After Day 1, refunds are pro-rated for the remaining sessions.' },
 ];
 
@@ -118,7 +118,7 @@ const AiFoundationsLandingPage = () => {
         <link rel="canonical" href="https://oll.co/ai-foundations" />
       </Helmet>
 
-      <Navbar />
+      <Navbar variant="aifoundations" />
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section className="relative pt-12 pb-12 md:pt-16 md:pb-16 overflow-hidden">
@@ -180,7 +180,7 @@ const AiFoundationsLandingPage = () => {
 
             <div className="flex flex-wrap items-center justify-center gap-6 pt-5 text-sm text-slate-600">
               <span className="flex items-center gap-1.5"><Clock className="w-4 h-4 text-blue-600" /> 10 sessions · online live</span>
-              <span className="flex items-center gap-1.5"><Users className="w-4 h-4 text-blue-600" /> Cohort size · 12 students</span>
+              <span className="flex items-center gap-1.5"><Users className="w-4 h-4 text-blue-600" /> Live classes · max 10 students (small cohort)</span>
               <span className="flex items-center gap-1.5"><Award className="w-4 h-4 text-blue-600" /> OLL Certificate (UNESCO-linked)</span>
             </div>
           </div>

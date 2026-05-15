@@ -72,14 +72,110 @@ async def _next_ref() -> str:
     return f"AIF-{seq:04d}"
 
 
+# ── Batches ────────────────────────────────────────────────────────────────
+class BatchCreate(BaseModel):
+    label: str = Field(..., min_length=2, max_length=120)
+    track: Optional[str] = Field(default="", pattern=r"^(explorer|creator)?$")
+    days_label: str = Field(default="", max_length=80)   # e.g. "Mon · Wed · Fri"
+    days: list[str] = Field(default_factory=list)
+    timing: str = Field(default="", max_length=64)        # e.g. "5–6 PM IST"
+    start_date: str = Field(default="", max_length=24)
+    start_date_label: str = Field(default="", max_length=80)
+    capacity: int = Field(default=10, ge=1, le=100)
+    is_active: bool = Field(default=True)
+
+
+class BatchUpdate(BaseModel):
+    label: Optional[str] = None
+    track: Optional[str] = None
+    days_label: Optional[str] = None
+    days: Optional[list[str]] = None
+    timing: Optional[str] = None
+    start_date: Optional[str] = None
+    start_date_label: Optional[str] = None
+    capacity: Optional[int] = Field(default=None, ge=1, le=100)
+    is_active: Optional[bool] = None
+
+
+@router.get("/ai-foundations/batches")
+async def list_batches_public(track: Optional[str] = None, active_only: bool = True):
+    """Public — list available batches for the booking form."""
+    q: dict = {}
+    if active_only:
+        q["is_active"] = True
+    if track:
+        q["$or"] = [{"track": track}, {"track": ""}, {"track": None}]
+    batches = await db.ai_foundations_batches.find(q, {"_id": 0}).sort("start_date", 1).to_list(50)
+    # Append seats_left per batch
+    for b in batches:
+        booked = await db.ai_foundations_bookings.count_documents({
+            "batch_id": b["id"],
+            "payment_status": {"$in": ["paid"]}
+        })
+        b["seats_left"] = max(0, int(b.get("capacity", 10)) - int(booked))
+    return {"batches": batches}
+
+
+@router.get("/admin/ai-foundations/batches")
+async def list_batches_admin(user: dict = Depends(get_current_user)):
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+    batches = await db.ai_foundations_batches.find({}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    for b in batches:
+        booked = await db.ai_foundations_bookings.count_documents({"batch_id": b["id"]})
+        paid = await db.ai_foundations_bookings.count_documents({"batch_id": b["id"], "payment_status": "paid"})
+        b["enrolled_total"] = booked
+        b["enrolled_paid"] = paid
+        b["seats_left"] = max(0, int(b.get("capacity", 10)) - paid)
+    return {"batches": batches}
+
+
+@router.post("/admin/ai-foundations/batches")
+async def create_batch(data: BatchCreate, user: dict = Depends(get_current_user)):
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+    doc = data.dict()
+    doc["id"] = str(uuid.uuid4())
+    doc["created_at"] = datetime.now(timezone.utc).isoformat()
+    doc["updated_at"] = doc["created_at"]
+    await db.ai_foundations_batches.insert_one(doc)
+    return {"success": True, "batch": {k: v for k, v in doc.items() if k != "_id"}}
+
+
+@router.patch("/admin/ai-foundations/batches/{batch_id}")
+async def update_batch(batch_id: str, data: BatchUpdate, user: dict = Depends(get_current_user)):
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+    update = {k: v for k, v in data.dict().items() if v is not None}
+    if not update:
+        return {"success": True, "updated": 0}
+    update["updated_at"] = datetime.now(timezone.utc).isoformat()
+    res = await db.ai_foundations_batches.update_one({"id": batch_id}, {"$set": update})
+    if not res.matched_count:
+        raise HTTPException(status_code=404, detail="Batch not found")
+    return {"success": True, "updated": res.modified_count}
+
+
+@router.delete("/admin/ai-foundations/batches/{batch_id}")
+async def delete_batch(batch_id: str, user: dict = Depends(get_current_user)):
+    if user.get("role") not in ("admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Admin only")
+    res = await db.ai_foundations_batches.delete_one({"id": batch_id})
+    if not res.deleted_count:
+        raise HTTPException(status_code=404, detail="Batch not found")
+    return {"success": True}
+
+
 # ── Models ─────────────────────────────────────────────────────────────────
 class BookingCreate(BaseModel):
-    parent_name: str = Field(..., min_length=2, max_length=120)
     parent_phone: str = Field(..., min_length=10, max_length=15)
-    parent_email: EmailStr
     student_name: str = Field(..., min_length=2, max_length=120)
     student_grade: str = Field(..., min_length=1, max_length=8)  # "6", "7", "10" etc
     track: str = Field(..., pattern=r"^(explorer|creator)$")
+    batch_id: Optional[str] = Field(default="", max_length=64)
+    # Optional / legacy fields (kept for backwards-compat, not collected on form anymore)
+    parent_name: Optional[str] = Field(default="", max_length=120)
+    parent_email: Optional[str] = Field(default="", max_length=200)
     school_name: Optional[str] = Field(default="", max_length=200)
     notes: Optional[str] = Field(default="", max_length=500)
     source_ref: Optional[str] = Field(default="", max_length=64)
@@ -105,14 +201,15 @@ async def register_booking(data: BookingCreate):
         "booking_ref": booking_ref,
         "course_key": COURSE_KEY,
         "course_name": COURSE_NAME,
-        "parent_name": data.parent_name.strip(),
+        "parent_name": (data.parent_name or "").strip(),
         "parent_phone": data.parent_phone.strip(),
-        "parent_email": data.parent_email.lower(),
+        "parent_email": (data.parent_email or "").lower().strip(),
         "student_name": data.student_name.strip(),
         "student_grade": data.student_grade.strip(),
         "track": data.track,
         "track_label": TRACKS[data.track]["label"],
         "track_grades": TRACKS[data.track]["grades"],
+        "batch_id": (data.batch_id or "").strip(),
         "school_name": (data.school_name or "").strip(),
         "notes": (data.notes or "").strip(),
         "source_ref": (data.source_ref or "").strip(),

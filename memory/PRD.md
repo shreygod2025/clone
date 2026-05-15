@@ -1,15 +1,24 @@
 # OLL - Skill Education Platform
 ## Product Requirements Document
 
-### Latest Changes (2026-05-07) — Bug Fixes (Round 2)
-1. **AI Interview disabled** — Commented out auto-navigation to `/educator/interview/:id` after application submit in both `EducatorApplyPage.jsx` and `EducatorFunnel.jsx`. Also commented out the "Take your AI Interview now" CTA card on the success screen. The route + page remain intact in case you want to re-enable later.
-2. **All website applications visible in admin** — Backfilled 2 educator_applications records that had empty `status` to `'new'`. Hardened `AdminEducators.jsx` applicants tab to treat empty/null status as `'new'` defensively going forward. Applicants tab count went from 28 → 30.
+### Latest Changes (2026-05-15) — AI Foundations Overhaul + Cashfree v3 SDK
+1. **🔴 Cashfree "Invalid form" fixed** — Root cause: `payments.cashfree.com/forms/{session_id}` is the deprecated v2 hosted URL; v3 sessions cannot be opened that way. Added the v3 SDK (`https://sdk.cashfree.com/js/v3/cashfree.js`) to `index.html`, created `frontend/src/utils/cashfreeCheckout.js` helper, and switched `AiFoundationsBookingPage.jsx` + `FutureSkillsBookingPage.jsx` to `cashfree.checkout({ paymentSessionId, redirectTarget:'_self', mode:'production' })`. Summer Camp was already using the SDK. On preview, Cashfree shows a domain whitelist error (expected — only `oll.co` is approved); on production it routes directly to the checkout.
+2. **AI Foundations form simplified** — Removed parent_name, parent_email, school_name, notes from form. Phone + Student Name + Grade + Track + Batch only. Backend `BookingCreate` model made those fields optional for backwards-compat.
+3. **AI Foundations navbar** — New `variant="aifoundations"` Navbar: sticky white nav, single "Book Now" CTA → `/ai-foundations/book`, Login hidden. Applied to landing, booking, and success pages.
+4. **Mobile order** — Order Summary now renders first (order-1), form second (order-2) on mobile; reverts to right-column on `lg:` desktop.
+5. **Copy update** — "Live classes · max 10 students (small cohort)" replaces "Cohort size · 12 students" in hero + FAQ + checkout summary.
+6. **Batches feature** — New collection `ai_foundations_batches` + 5 endpoints (`/api/ai-foundations/batches` public + `/api/admin/ai-foundations/batches` CRUD). New `AiFoundationsBatchesSection.jsx` admin UI inside AI Foundations CRM tab lets admins create batches (label, track, days, timing, start_date, capacity, active). Booking form reads active batches via public endpoint and shows them as picker cards with seats-left counter.
 
-### Previous Changes (2026-05-07) — Bug Fixes (Round 1)
-1. **Student Partial Payment now saved** — `update_payment` for student branch was silently dropping `paid_amount`, `gst_type`, `payment_link`. Fixed payment_record build + `get_student_payments` response.
-2. **Student Orders row** — Added "Paid: ₹X / Receivable: ₹Y" + progress bar for partial student payments.
-3. **Need Help popup → Admin Support Center** — `RaiseQueryButton.jsx` now maps page context to `inquiry_type` (student/school/teacher/growth_partner/team) instead of always 'general'.
-4. **Admin Support filter** — Added "General" option to User Type filter.
+### Previous Changes (2026-05-15) — Daily Report
+- Support fetcher: unified queries across `support_queries`, `inquiry_queries`, `support_tickets` (counts, overdue, resolution rate now correct).
+- Accounts receivables: partial payments now subtract `paid_amount` from tranche total (was showing full tranche due).
+- Avg resolution time: 30-day rolling fallback when "today" is empty.
+
+### Previous Changes (2026-05-07) — Bug Fixes
+1. AI Interview commented out in apply flows.
+2. Educator applications with empty status backfilled to `'new'` so all website apps are visible.
+3. Student Partial Payment now saved; admin row shows Paid/Receivable + bar.
+4. Need Help popup → maps page context to `inquiry_type`.
 
 ### Original Problem Statement
 Build a high-conversion, multi-user skill-education platform for "OLL" with separate funnels for Students/Parents, Educators, and Schools. The platform must be SEO-first and include a powerful backend admin panel and CRM system.

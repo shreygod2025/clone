@@ -15,6 +15,7 @@ import {
   Sparkles, Search, RefreshCw, Loader2, X, Phone, Mail, GraduationCap,
   TrendingUp, Users, IndianRupee, Award, ExternalLink, Save, CheckCircle2, Clock, Gift,
 } from 'lucide-react';
+import AiFoundationsBatchesSection from './AiFoundationsBatchesSection';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
@@ -157,6 +158,9 @@ const AiFoundationsCRMTab = ({ getAuthHeaders }) => {
           <Stat icon={IndianRupee} label="Revenue" value={fmtMoney(stats.revenue)} accent="#7C3AED" />
         </div>
       )}
+
+      {/* Batches manager */}
+      <AiFoundationsBatchesSection getAuthHeaders={getAuthHeaders} />
 
       {/* Filters */}
       <div className="bg-white rounded-xl border border-slate-200 p-3 flex flex-wrap items-center gap-2">

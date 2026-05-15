@@ -47,7 +47,7 @@ const AiFoundationsSuccessPage = () => {
       <Helmet>
         <title>Enrolment Confirmed · AI Foundations | OLL</title>
       </Helmet>
-      <Navbar />
+      <Navbar variant="aifoundations" />
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
         <div className="bg-white border-2 border-slate-100 rounded-3xl p-8 lg:p-12 shadow-2xl shadow-blue-900/10 text-center">
           {status === 'verifying' && (
